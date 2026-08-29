@@ -209,7 +209,7 @@ path = "docs/products/cargo-allow/getting-started.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow getting-started surface linked from the integrated docs index for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "spec:policy/product-support-matrix.toml", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -231,7 +231,7 @@ path = "docs/products/cargo-allow/command-reference.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow command reference surface with an explicit core-only boundary for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "spec:policy/product-support-matrix.toml", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -253,7 +253,7 @@ path = "docs/products/cargo-allow/schemas.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow schema subset surface with a full-catalog boundary for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/schemas/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/schemas/README.md", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -275,7 +275,7 @@ path = "docs/products/cargo-allow/limitations.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow limitations and claim-boundary surface linked from the integrated docs index for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/claim-boundaries.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/claim-boundaries.md", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -297,7 +297,7 @@ path = "docs/products/cargo-allow/compatibility.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow compatibility and upgrade surface linked from the integrated docs index for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "spec:policy/product-support-matrix.toml", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -319,7 +319,7 @@ path = "docs/products/cargo-allow/support-and-security.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow support, security, and issue-routing surface linked from the integrated docs index for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "spec:policy/product-support-matrix.toml", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -341,7 +341,7 @@ path = "docs/products/cargo-allow/release-notes.md"
 owner = "core/docs"
 classification = "cargo_allow_product_documentation"
 reason = "Independent cargo-allow release-notes and authorization-boundary surface linked from the integrated docs index for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/release/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/release/README.md", "test:product_docs_are_independent_and_indexed"]
 created = "2026-08-15"
 review_after = "2027-02-15"
 
@@ -363,7 +363,7 @@ path = "docs/dogfood/fixtures/release/exact-candidate-install-journey.v1.schema.
 owner = "core/release"
 classification = "exact_candidate_install_journey_schema"
 reason = "Defines the digest-bound receipt contract for the isolated thirteen-crate cargo-allow install journey; it records evidence only and does not authorize publication."
-evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3357", "doc:docs/release/README.md"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -407,7 +407,7 @@ path = "scripts/exact-candidate-install-journey.sh"
 owner = "core/release"
 classification = "exact_candidate_install_journey_harness"
 reason = "Runs the first-hour cargo-allow journey only from the extracted local-registry candidate install and binds its receipt to package, fixture, isolation, negative-control, and cleanup evidence."
-evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3357", "doc:docs/release/README.md"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -429,7 +429,7 @@ path = "scripts/test-exact-candidate-install-journey.sh"
 owner = "core/release"
 classification = "exact_candidate_install_journey_characterization"
 reason = "Offline schema and negative characterization for the exact-candidate install journey receipt; hosted CI supplies the executable Cargo journey proof."
-evidence = ["issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -451,7 +451,7 @@ path = "scripts/validate-exact-candidate-install-journey.py"
 owner = "core/release"
 classification = "exact_candidate_receipt_validator"
 reason = "Standard-library validator for exact-candidate package and journey receipt schemas plus cross-receipt digest and claim invariants; it performs no publication or registry operation."
-evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3357", "doc:docs/release/README.md"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -539,7 +539,7 @@ path = "docs/dogfood/receipts/proof-candidate-smoke-pass.example.json"
 owner = "core/release"
 classification = "docs_executable_contract"
 reason = "Example receipt for ProofCandidateInstallSmokeV1 (#2589-B)."
-evidence = ["test:example_proof_candidate_smoke_matches_contract", "issue:2589", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:example_proof_candidate_smoke_matches_contract", "issue:2589"]
 created = "2026-08-12"
 review_after = "2027-01-01"
 
@@ -604,7 +604,7 @@ path = "scripts/test-release-topology-publisher.py"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Deterministic release-topology checksum contract harness that exercises fresh, published, and recovered receipt rows without publishing or mutating release state."
-evidence = ["issue:3393", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml", "test:topology_publisher_checksum_contract"]
+evidence = ["issue:3393", "doc:docs/release/README.md", "test:topology_publish_receipt_preserves_incident_recovery_boundary"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -626,7 +626,7 @@ path = "docs/release/incident-recovery.md"
 owner = "core/release"
 classification = "release_incident_runbook"
 reason = "Documents evidence-preserving incident classification, containment, consumer rollback, and new-version recovery without executing release mutations or claiming atomic rollback."
-evidence = ["issue:2484", "doc:docs/release/README.md", "workflow:.github/workflows/release.yml"]
+evidence = ["issue:2484", "doc:docs/release/README.md"]
 created = "2026-08-03"
 review_after = "2027-02-01"
 
@@ -670,7 +670,7 @@ path = "scripts/package-release-binary.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Linux release archive packager for the exact target-specific executable envelope; attestation and publication remain workflow controls."
-evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:2464", "doc:docs/release/README.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -692,7 +692,7 @@ path = "scripts/verify-release-binary.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Consumer-shaped verifier for the Linux release archive envelope, checksum sidecars, safe paths, executable identity, and clean-repository command journey."
-evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:2464", "doc:docs/release/README.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -714,7 +714,7 @@ path = "scripts/test-release-binary.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Fixture characterization for Linux release archive packaging and verifier negative controls; hosted CI supplies the Ubuntu execution proof."
-evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:2464", "doc:docs/release/README.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -4069,7 +4069,7 @@ path = "docs/dogfood/fixtures/ci/partial-diff-artifacts.yml"
 owner = "core/policy"
 classification = "docs_executable_contract"
 reason = "Documented negative CI fixture proving partial revision scans stay blocking while their evidence artifacts remain reviewable (#3302)."
-evidence = ["workflow:examples/github-actions/cargo-allow-diff.yml", "test:committed_workflow_examples_parse_and_meet_semantic_contract", "issue:3302"]
+evidence = ["doc:examples/github-actions/cargo-allow-diff.yml", "test:committed_workflow_examples_parse_and_meet_semantic_contract", "issue:3302"]
 created = "2026-08-12"
 review_after = "2026-11-10"
 
@@ -6831,7 +6831,7 @@ path = "scripts/shallow-diff-base-smoke.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
 reason = "Hosted/local characterization that shallow missing-base fails closed for diff --base, then succeeds after history deepen (#2366)."
-evidence = ["doc:docs/how-to/run-in-ci.md", "issue:2366", "workflow:.github/workflows/ci.yml"]
+evidence = ["doc:docs/how-to/run-in-ci.md", "issue:2366"]
 created = "2026-07-15"
 review_after = "2026-10-15"
 
@@ -8770,7 +8770,7 @@ path = "scripts/intent-candidate-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "IntentCandidateInstallSmokeV1: package/extract/install seven-crate intent stack outside workspace (#2599-C)."
-evidence = ["doc:docs/architecture/cargo-intent.md", "test:example_intent_candidate_smoke_matches_schema_constants", "issue:2599", "workflow:.github/workflows/ci.yml"]
+evidence = ["doc:docs/architecture/cargo-intent.md", "test:example_intent_candidate_smoke_matches_schema_constants", "issue:2599"]
 created = "2026-07-23"
 review_after = "2027-01-01"
 
@@ -9955,7 +9955,7 @@ path = "docs/dogfood/fixtures/release/proof-candidate-crate-set.toml"
 owner = "core/release"
 classification = "release_automation_fixture"
 reason = "Shared six-crate package order for ProofCandidate install smoke (#2589-B)."
-evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589", "workflow:.github/workflows/ci.yml"]
+evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -9976,7 +9976,7 @@ path = "scripts/proof-candidate-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "ProofCandidateInstallSmokeV1: package/extract/install six-crate proof stack outside workspace (#2589-B)."
-evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589", "workflow:.github/workflows/ci.yml"]
+evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10312,7 +10312,7 @@ path = "docs/dogfood/fixtures/release/exact-candidate-interop-journeys.toml"
 owner = "core/release"
 classification = "docs_executable_contract"
 reason = "Exact-candidate interop journey inventory fixture (#2605)."
-evidence = ["test:interop_journey_fixture_lists_five_journeys", "issue:2605", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:interop_journey_fixture_lists_five_journeys", "issue:2605"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10333,7 +10333,7 @@ path = "docs/dogfood/receipts/exact-candidate-interop-pass.example.json"
 owner = "core/release"
 classification = "docs_executable_contract"
 reason = "Example receipt for ExactCandidateInteropSmokeV1 (#2605)."
-evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10354,7 +10354,7 @@ path = "scripts/exact-candidate-interop-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "ExactCandidateInteropSmokeV1: journeys A–E outside monorepo (#2605)."
-evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10396,7 +10396,7 @@ path = "tests/fixtures/three-product-dogfood/pipeline-stages-v1.toml"
 owner = "core/release"
 classification = "docs_executable_contract"
 reason = "Three-product dogfood pipeline stage inventory (#2558)."
-evidence = ["test:dogfood_stage_fixture_lists_seventeen_pipeline_stages", "issue:2558", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:dogfood_stage_fixture_lists_seventeen_pipeline_stages", "issue:2558"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10438,7 +10438,7 @@ path = "docs/dogfood/receipts/three-product-dogfood-pass.example.json"
 owner = "core/release"
 classification = "docs_executable_contract"
 reason = "Example receipt for ThreeProductDogfoodSmokeV1 (#2558)."
-evidence = ["test:example_three_product_dogfood_matches_schema_constants", "issue:2558", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:example_three_product_dogfood_matches_schema_constants", "issue:2558"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10459,7 +10459,7 @@ path = "scripts/three-product-dogfood-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "ThreeProductDogfoodSmokeV1 pipeline (#2558)."
-evidence = ["test:example_three_product_dogfood_matches_schema_constants", "issue:2558", "workflow:.github/workflows/ci.yml"]
+evidence = ["test:example_three_product_dogfood_matches_schema_constants", "issue:2558"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -10669,7 +10669,7 @@ path = "scripts/extraction-cutover-status.sh"
 owner = "core/ci"
 classification = "extraction_cutover_status"
 reason = "Runs both extraction parity stages and emits a fail-closed cutover status artifact without promoting policy (#3469)."
-evidence = ["issue:3469", "workflow:.github/workflows/ci.yml", "doc:docs/architecture/extraction-parity.md"]
+evidence = ["issue:3469", "doc:docs/architecture/extraction-parity.md"]
 created = "2026-08-11"
 review_after = "2027-01-01"
 
@@ -10690,7 +10690,7 @@ path = "scripts/test-extraction-cutover-status.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
 reason = "Deterministic characterization for extraction cutover status evidence and stale receipt cleanup (#3469)."
-evidence = ["issue:3469", "workflow:.github/workflows/ci.yml", "doc:docs/architecture/extraction-parity.md"]
+evidence = ["issue:3469", "doc:docs/architecture/extraction-parity.md"]
 created = "2026-08-12"
 review_after = "2027-01-01"
 
@@ -11271,7 +11271,7 @@ path = "docs/schemas/operator-latency.schema.json"
 owner = "core/ci"
 classification = "performance_contract_schema"
 reason = "Defines the versioned supporting receipt contract for hosted operator-latency characterization; it is intentionally outside the governed cargo-allow command-artifact registry."
-evidence = ["issue:2468", "doc:docs/performance-budgets.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:2468", "doc:docs/performance-budgets.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -11293,7 +11293,7 @@ path = "scripts/test-perf-budget-smoke.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
 reason = "Cheap local characterization for the operator-latency receipt/schema wiring; hosted CI supplies the actual binary execution proof."
-evidence = ["issue:2468", "doc:docs/performance-budgets.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:2468", "doc:docs/performance-budgets.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -11571,7 +11571,7 @@ path = "docs/schemas/topology-publish-receipt.schema.json"
 owner = "core/release"
 classification = "topology_publication_receipt_schema"
 reason = "Defines the supporting receipt contract that binds topology-derived release-manifest rows to the exact topology and Cargo.lock identities; it is evidence only and does not authorize publication."
-evidence = ["issue:3393", "doc:docs/schemas/README.md", "workflow:.github/workflows/release.yml"]
+evidence = ["issue:3393", "doc:docs/schemas/README.md"]
 created = "2026-08-11"
 review_after = "2026-11-09"
 
@@ -11613,8 +11613,8 @@ kind = "panic"
 family = "assert"
 owner = "core"
 classification = "baseline_assert"
-evidence = ["issue:2577"]
 reason = "Baseline assert! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+evidence = ["issue:2577"]
 created = "2026-08-13"
 review_after = "2027-02-01"
 
@@ -11629,8 +11629,8 @@ kind = "panic"
 family = "assert_eq"
 owner = "core"
 classification = "baseline_assert"
-evidence = ["issue:2577"]
 reason = "Baseline assert_eq! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+evidence = ["issue:2577"]
 created = "2026-08-13"
 review_after = "2027-02-01"
 
@@ -11645,8 +11645,8 @@ kind = "panic"
 family = "assert_ne"
 owner = "core"
 classification = "baseline_assert"
-evidence = ["issue:2577"]
 reason = "Baseline assert_ne! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+evidence = ["issue:2577"]
 created = "2026-08-13"
 review_after = "2027-02-01"
 
@@ -11695,7 +11695,7 @@ path = "scripts/extraction-cutover-build-receipt.sh"
 owner = "core/ci"
 classification = "extraction_cutover_build_receipt"
 reason = "Produces the fail-closed independent build/package receipt for one cutover stage from exact-candidate package-set artifacts (#3469/#3552)."
-evidence = ["issue:3552", "issue:3469", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3552", "issue:3469"]
 created = "2026-08-14"
 review_after = "2027-02-01"
 
@@ -12481,7 +12481,7 @@ path = "docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.j
 owner = "core/release"
 classification = "exact_upgrade_rollback_journey_schema"
 reason = "Defines the typed receipt contract for the isolated 0.1.11 to candidate and rollback journey; it records bounded evidence and does not authorize publication."
-evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3853", "doc:docs/release/README.md"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
@@ -12503,7 +12503,7 @@ path = "docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"
 owner = "core/release"
 classification = "exact_upgrade_rollback_repository_fixture"
 reason = "Provides the deterministic committed repository input used by each exact installed transition leg and its unrelated-file rollback control."
-evidence = ["issue:3853", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3853"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
@@ -12525,7 +12525,7 @@ path = "scripts/exact-upgrade-rollback-journey.sh"
 owner = "core/release"
 classification = "exact_upgrade_rollback_journey_harness"
 reason = "Runs the exact installed 0.1.11, candidate, and restored 0.1.11 read-only legs with absolute binary paths, preimage restoration, and digest-bound receipt validation."
-evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3853", "doc:docs/release/README.md"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
@@ -12547,7 +12547,7 @@ path = "scripts/test-exact-upgrade-rollback-journey.sh"
 owner = "core/release"
 classification = "exact_upgrade_rollback_journey_characterization"
 reason = "Offline schema and forged-identity characterization for the exact installed upgrade and rollback receipt; hosted CI supplies the executable journey proof."
-evidence = ["issue:3853", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3853"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
@@ -12569,7 +12569,7 @@ path = "scripts/validate-upgrade-rollback-journey.py"
 owner = "core/release"
 classification = "exact_upgrade_rollback_receipt_validator"
 reason = "Standard-library validator for exact binary identity, three-leg completeness, fixture binding, and rollback negative controls."
-evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+evidence = ["issue:3853", "doc:docs/release/README.md"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
@@ -13944,6 +13944,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3970-workflow-sentinel.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3970-workflow-sentinel.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0659"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/weak-evidence-retargets.toml"
+owner = "core/docs"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the eight evidence_removed transitions that retarget stale test anchors to their surviving tests in the weak-evidence cleanup lane."
+evidence = ["doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/weak-evidence-retargets.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/weak-evidence-retargets.toml"
 
 [allow.last_seen]
 line = 1

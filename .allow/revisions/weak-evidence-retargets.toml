@@ -69,3 +69,9 @@ change_kinds = ["evidence_removed"]
 before_fingerprint = "sha256:v1:94fc51e28932e7049f42308687ad58258d35bb559b6922b84569ec71323f04ad"
 after_fingerprint = "sha256:v1:6c15bf391dbd39d043c95ea9e62425ffe374081ac3ca4c8497ed0bcd255a3b90"
 reason = "Same renamed-anchor retarget as allow-11112 for the release-notes docs entry."
+
+[[records]]
+allow_ids = ["allow-0659"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e80057d3754931093711467f3714ce56c4cab33956636ae4f52a80962c655ec7"
+reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
