@@ -4,6 +4,7 @@ mod add_plan_application;
 mod adoption_plan;
 mod diff;
 mod doctor;
+mod evaluation_artifact_set_v1;
 mod exact_candidate_receipt_v2;
 mod explain;
 pub(crate) mod federation;
@@ -82,6 +83,13 @@ pub use github_pr_check_v1::{
     GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
     GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
     GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
+};
+
+pub use evaluation_artifact_set_v1::{
+    EVALUATION_ARTIFACT_SET_V1_SCHEMA_ID, EVALUATION_ARTIFACT_SET_V1_SCHEMA_VERSION,
+    EvaluationArtifactEntryV1, EvaluationArtifactSetResultV2, EvaluationArtifactSetV1,
+    EvaluationArtifactSetV1Validation, EvaluationResultClassV2, RendererFormatV1,
+    render_evaluation_artifact_set_v1, render_evaluation_artifact_set_v1_bytes,
 };
 
 pub use isolated_install_receipt_v2::{
