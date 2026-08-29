@@ -22,10 +22,18 @@ fn counted_baseline_entry_reports_occurrence_headroom_and_worklist_routing() {
         "crates/beta/Cargo.toml",
         "[package]\nname = \"beta\"\nversion = \"0.1.0\"\n",
     );
+    // The fixture entry must stay live and non-review-due for the headroom
+    // projection, and baseline_debt expiry is validated against the 120-day
+    // window from creation, so its dates are computed relative to today
+    // instead of hardcoded calendar days the test would eventually sail past.
+    let created = allow_core::SimpleDate::today_utc_approx().add_days(-30);
+    let review_after = allow_core::SimpleDate::today_utc_approx().add_days(30);
+    let expires = allow_core::SimpleDate::today_utc_approx().add_days(60);
     write_file(
         &root,
         "policy/allow.toml",
-        r#"schema_version = "0.1"
+        &format!(
+            r#"schema_version = "0.1"
 policy = "cargo-allow"
 owner = "core/policy"
 status = "active"
@@ -60,16 +68,17 @@ owner = "core/release"
 classification = "baseline_debt"
 reason = "Fixture caps crate manifests with counted baseline debt headroom."
 occurrence_limit = 3
-created = "2026-06-15"
-review_after = "2026-08-29"
-expires = "2026-09-30"
+created = "{created}"
+review_after = "{review_after}"
+expires = "{expires}"
 evidence = ["test:e2e_occurrence_headroom"]
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "crates/*/Cargo.toml"
-"#,
+"#
+        ),
     );
 
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
