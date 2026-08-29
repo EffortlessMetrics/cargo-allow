@@ -22,7 +22,7 @@
 
 use allow_core::{Finding, read_file_capped_with_limit};
 use std::collections::HashMap;
-use std::fs::{File, TryLockError};
+use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -478,7 +478,15 @@ impl WriterLock {
         if !regular_file_identity_matches(&path, &identity) {
             return None;
         }
-        for _ in 0..100 {
+        // Serialization budget: a contended flush waits for the holder
+        // instead of giving up, because a worker that returns false here
+        // turns an advisory cache miss into lost persistence. The budget is
+        // generous (loaded hosted runners have taken multiple seconds to
+        // release the lock) but bounded, so a stuck holder still degrades
+        // to a correct cold scan. Transient Windows sharing violations
+        // under contention retry inside the same budget.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        loop {
             match file.try_lock() {
                 Ok(()) => {
                     let lock = Self {
@@ -491,16 +499,17 @@ impl WriterLock {
                     }
                     return None;
                 }
-                Err(TryLockError::WouldBlock) => {
+                Err(_) => {
                     if let Some(wait_hook) = wait_hook {
                         wait_hook();
                     }
+                    if std::time::Instant::now() >= deadline {
+                        return None;
+                    }
                     std::thread::sleep(Duration::from_millis(5));
                 }
-                Err(_) => return None,
             }
         }
-        None
     }
 
     fn is_current(&self) -> bool {
