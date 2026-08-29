@@ -78,37 +78,6 @@ jobs:
 
           fixture_path = "crates/cargo-allow/tests/saved_artifact_outputs/fixture.rs"
           fixture = read(fixture_path)
-          old_dated = '''/// Map the authored fixture calendar dates to today-relative ones so the
-          /// entries stay live: fixtures hardcoded `2026-05-29`/`2026-08-29` the
-          /// calendar eventually catches up with, flipping advisory diffs into
-          /// blocking failures and review-due rows into shifted advisory counts.
-          /// baseline_debt expiry is validated against the 120-day window from
-          /// creation, so the mapped creation date moves with the mapped expiry.
-          fn dated(policy: &str) -> String {
-              let created = allow_core::SimpleDate::today_utc_approx()
-                  .add_days(-30)
-                  .to_string();
-              let review_after = allow_core::SimpleDate::today_utc_approx()
-                  .add_days(30)
-                  .to_string();
-              let expires = allow_core::SimpleDate::today_utc_approx()
-                  .add_days(60)
-                  .to_string();
-              policy
-                  .replace(
-                      "created = \"2026-05-29\"",
-                      &format!("created = \"{created}\""),
-                  )
-                  .replace(
-                      "review_after = \"2026-08-29\"",
-                      &format!("review_after = \"{review_after}\""),
-                  )
-                  .replace(
-                      "expires = \"2026-08-29\"",
-                      &format!("expires = \"{expires}\""),
-                  )
-          }
-          '''
           new_dated = f'''const FIXTURE_CREATED_TOKEN: &str = "{CREATED_TOKEN}";
           const FIXTURE_REVIEW_AFTER_TOKEN: &str = "{REVIEW_TOKEN}";
           const FIXTURE_EXPIRES_TOKEN: &str = "{EXPIRES_TOKEN}";
@@ -157,13 +126,15 @@ jobs:
               assert!(!rendered.contains("__CARGO_ALLOW_FIXTURE_"));
           }}
           '''
-          fixture = replace_exact(
-              fixture,
-              old_dated,
-              new_dated,
-              count=1,
-              label="saved fixture date adapter",
+          dated_start, dated_end = function_slice(fixture, "dated")
+          comment_start = fixture.rfind(
+              "/// Map the authored fixture calendar dates",
+              0,
+              dated_start,
           )
+          if comment_start < 0:
+              raise SystemExit("saved fixture date adapter comment boundary missing")
+          fixture = fixture[:comment_start] + new_dated + fixture[dated_end:]
           fixture_replacements = {
               'created = "2026-05-29"': f'created = "{CREATED_TOKEN}"',
               'review_after = "2026-08-29"': f'review_after = "{REVIEW_TOKEN}"',
