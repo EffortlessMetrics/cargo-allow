@@ -632,7 +632,11 @@ fn windows_mid_walk_component_swap_is_structurally_refused() -> Result<(), Strin
 
     let real_target = root.join("target.real");
     let alias = root.join("target");
-    store.flush_with_test_hook(&|_| {
+    // The flush result is intentionally discarded: the structural refusal
+    // under test is the failed rename itself (asserted via SWAP_DENIED),
+    // and whether the uncontended flush then succeeds is not this test's
+    // subject.
+    let _ = store.flush_with_test_hook(&|_| {
         if fs::rename(&alias, &real_target).is_err() {
             SWAP_DENIED.store(true, Ordering::SeqCst);
             return;
