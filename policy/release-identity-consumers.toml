@@ -1,0 +1,331 @@
+# Checked denominator of release-identity consumers (#3752).
+#
+# One Rust authority owns release-version channel semantics:
+# crates/allow-report/src/artifacts/release_identity_v1.rs projected by the
+# hidden `cargo-allow release-identity` command. Every non-Rust surface below
+# was surveyed for release-version parsing, channel inference, tag stripping,
+# prerelease posture, and workspace-version reading. The guard test
+# (crates/cargo-allow/src/release_identity_denominator_tests.rs) fails when:
+#   - a scanned surface gains release-semantic constructs without a row,
+#   - a declared row no longer matches the detected constructs or anchors,
+#   - an exact count drifts, or
+#   - any scanned surface infers a channel from an `-rc` marker.
+# Dispositions use the #3752 vocabulary: typed-producer, typed-consumer,
+# exact-value-pass-through, historical-fixture-only, non-semantic-formatting,
+# superseded-parser-to-delete, deferred-with-named-owner.
+schema = "cargo-allow.release-identity-consumers.v1"
+schema_version = 1
+controlling_issue = 3752
+guard = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
+scan_roots = ["scripts", ".github/workflows", "action.yml", ".changie.yaml"]
+
+[[consumers]]
+id = "release-workflow-tag-channel"
+path = ".github/workflows/release.yml"
+role = "tag-triggered release orchestrator"
+disposition = "deferred-with-named-owner"
+owner = "#3752"
+marker_classes = ["tag-strip", "workspace-reader", "prerelease-posture"]
+exact_counts = [
+  { class = "tag-strip", count = 8 },
+  { class = "prerelease-posture", count = 2 },
+]
+sites = [
+  "version=\"${GITHUB_REF_NAME#v}\"",
+  "prerelease: false",
+]
+claim_boundary = "Eight local tag strips re-derive identity per job instead of consuming the preflight projection, and GitHub prerelease is hard-coded false on both release steps, so an -rc tag would ship as a stable release. Slice B of #3752 routes the workflow through the typed channel projection; until then the release train must not tag an RC without that slice."
+
+[[consumers]]
+id = "release-version-preflight"
+path = "scripts/release-version-preflight.sh"
+role = "release version/artifact preflight"
+disposition = "typed-consumer"
+marker_classes = ["tag-strip", "workspace-reader"]
+exact_counts = [{ class = "tag-strip", count = 1 }]
+sites = [
+  "release-identity --version",
+  "tag_version=\"${GITHUB_REF_NAME#v}\"",
+]
+claim_boundary = "Version grammar and channel decisions are delegated to `cargo-allow release-identity`; the residual tag strip and workspace-version reader only feed exact comparison inputs and the typed call, not independent channel inference."
+
+[[consumers]]
+id = "verify-release-binary"
+path = "scripts/verify-release-binary.sh"
+role = "clean-install verification of the release archive"
+disposition = "exact-value-pass-through"
+marker_classes = ["tag-strip"]
+exact_counts = [{ class = "tag-strip", count = 2 }]
+sites = ["version=\"${archive_name#${prefix}}\""]
+claim_boundary = "Derives the version from the archive filename to compare it for exact equality with the caller-supplied version; no channel or prerelease semantics are decided here."
+
+[[consumers]]
+id = "changie-config"
+path = ".changie.yaml"
+role = "Changie changelog heading format"
+disposition = "non-semantic-formatting"
+marker_classes = ["version-no-prefix"]
+exact_counts = [{ class = "version-no-prefix", count = 1 }]
+sites = ["VersionNoPrefix"]
+claim_boundary = "Tag-prefix stripping is delegated to Changie's VersionNoPrefix template field for heading formatting; no channel semantics are decided here."
+
+[[consumers]]
+id = "generate-release-manifest"
+path = "scripts/generate-release-manifest.sh"
+role = "release-manifest-v2 envelope builder"
+disposition = "superseded-parser-to-delete"
+owner = "#3752"
+marker_classes = ["version-regex"]
+sites = ["SEMVER_PATTERN", "valid_semver"]
+claim_boundary = "Embeds a Python full-SemVer regex (including build metadata the typed authority rejects) to validate topology row versions; this parser conflicts with the release grammar and must be replaced by the typed projection."
+
+[[consumers]]
+id = "install-action-version-gate"
+path = "action.yml"
+role = "consumer-facing install composite action"
+disposition = "deferred-with-named-owner"
+owner = "#3752"
+marker_classes = ["version-regex"]
+sites = ["=~ ^[0-9]+\\.[0-9]+\\.[0-9]+"]
+claim_boundary = "Independently validates the requested install version shape and rejects moving channels; shape checking is release-adjacent product behavior, so migration must preserve the exact accepted/rejected set with parity fixtures."
+
+[[consumers]]
+id = "test-changie-history-roundtrip"
+path = "scripts/test-changie-history-roundtrip.sh"
+role = "Changie corpus roundtrip proof"
+disposition = "deferred-with-named-owner"
+owner = "#3752"
+marker_classes = ["version-regex", "prerelease-posture"]
+sites = [
+  "re.match(r'^(\\d+)\\.(\\d+)\\.(\\d+)",
+  "pre_tuple = (1, '') if prerelease is None",
+]
+claim_boundary = "Embeds an independent SemVer parser and stable-over-prerelease ordering comparator to select the newest retained version and derive the next candidate; ordering semantics belong to the typed authority."
+
+[[consumers]]
+id = "check-msrv-consistency"
+path = "scripts/check-msrv-consistency.sh"
+role = "MSRV consistency check"
+disposition = "exact-value-pass-through"
+marker_classes = ["version-regex", "workspace-reader"]
+sites = ["/^\\[workspace\\.package\\]/ { in_section = 1; next }"]
+claim_boundary = "Reads rust-version from the workspace section and parses rustc toolchain versions; toolchain identity is not release-channel semantics. Retained here to keep the workspace-reader denominator complete."
+
+[[consumers]]
+id = "check-msrv-resolved"
+path = "scripts/check-msrv-resolved.sh"
+role = "resolved-toolchain MSRV check"
+disposition = "exact-value-pass-through"
+marker_classes = ["version-regex", "workspace-reader"]
+sites = ["/^\\[workspace\\.package\\]/ { in_section = 1; next }"]
+claim_boundary = "Same toolchain-identity boundary as check-msrv-consistency; not a release-identity authority."
+
+[[consumers]]
+id = "package-candidate-smoke"
+path = "scripts/package-candidate-smoke.sh"
+role = "candidate package smoke harness"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
+
+[[consumers]]
+id = "intent-candidate-smoke"
+path = "scripts/intent-candidate-smoke.sh"
+role = "cargo-intent candidate smoke harness"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
+
+[[consumers]]
+id = "proof-candidate-smoke"
+path = "scripts/proof-candidate-smoke.sh"
+role = "cargo-proof candidate smoke harness"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
+
+[[consumers]]
+id = "source-candidate-smoke"
+path = "scripts/source-candidate-smoke.sh"
+role = "pre-publication source candidate proof"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version and compares binary self-reports for equality; no channel inference."
+
+[[consumers]]
+id = "three-product-dogfood-smoke"
+path = "scripts/three-product-dogfood-smoke.sh"
+role = "three-product dogfood smoke"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
+
+[[consumers]]
+id = "exact-candidate-interop-smoke"
+path = "scripts/exact-candidate-interop-smoke.sh"
+role = "product-candidates interop smoke"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
+
+[[consumers]]
+id = "exact-candidate-package-set"
+path = "scripts/exact-candidate-package-set.sh"
+role = "13-crate candidate package set harness"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Resolves exact crate versions (including workspace inheritance) for name-version identity comparison; no channel inference."
+
+[[consumers]]
+id = "package-release-binary"
+path = "scripts/package-release-binary.sh"
+role = "deterministic release archive packaging"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["read_workspace_version()"]
+claim_boundary = "Embeds the exact workspace version and tag into the archive name and package receipt; identity is passed through, not inferred."
+
+[[consumers]]
+id = "test-release-version-preflight"
+path = "scripts/test-release-version-preflight.sh"
+role = "characterization tests for the release preflight"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["workspace_version=\"$(awk '/^\\[workspace\\.package\\]/"]
+claim_boundary = "Fabricates v-prefixed tags as negative fixtures and independently reads the workspace version to build them; fixtures only, not a release authority."
+
+[[consumers]]
+id = "test-verify-crate-registry-version"
+path = "scripts/test-verify-crate-registry-version.sh"
+role = "registry version verification test"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["workspace_version=\"$(awk '/^\\[workspace\\.package\\]/"]
+claim_boundary = "Reads the workspace version to build fixture expectations; fixtures only, not a release authority."
+
+[[consumers]]
+id = "perf-budget-smoke"
+path = "scripts/perf-budget-smoke.sh"
+role = "performance budget smoke harness"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["[workspace]"]
+claim_boundary = "Writes a synthetic [workspace] manifest fixture for budget measurement; no release identity involved."
+
+[[consumers]]
+id = "test-changie-sensor-external-consumer"
+path = "scripts/test-changie-sensor-external-consumer.sh"
+role = "Changie sensor external-consumer test"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["printf '\\n[workspace]\\n'"]
+claim_boundary = "Builds a synthetic minimal workspace manifest fixture; no release identity involved."
+
+[[consumers]]
+id = "test-check-msrv-consistency"
+path = "scripts/test-check-msrv-consistency.sh"
+role = "MSRV consistency check test"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["/^\\[workspace\\.package\\]/ { in_section = 1; next }"]
+claim_boundary = "Fixture replica of the checked toolchain reader; fixtures only, not a release authority."
+
+[[consumers]]
+id = "test-check-msrv-resolved"
+path = "scripts/test-check-msrv-resolved.sh"
+role = "resolved-toolchain MSRV check test"
+disposition = "historical-fixture-only"
+marker_classes = ["workspace-reader"]
+sites = ["/^\\[workspace\\.package\\]/ { in_section = 1; next }"]
+claim_boundary = "Fixture replica of the checked toolchain reader; fixtures only, not a release authority."
+
+[[consumers]]
+id = "test-final-packaged-surface"
+path = "scripts/test-final-packaged-surface.py"
+role = "packaged-surface reconciliation test"
+disposition = "historical-fixture-only"
+marker_classes = ["prerelease-posture"]
+sites = ["test_surface_preserves_prerelease_and_hyphenated_identity"]
+claim_boundary = "Asserts that packaging preserves prerelease and hyphenated identity in fixture literals; identity preservation, not channel inference."
+
+[[consumers]]
+id = "test-release-binary"
+path = "scripts/test-release-binary.sh"
+role = "packaging/verify/manifest contract tests"
+disposition = "historical-fixture-only"
+marker_classes = []
+sites = ["if name.startswith(\"effortless-\")"]
+claim_boundary = "Hard-codes the two-channel version split (shared rows at 0.1.0 versus candidate rows) as fixture data; the split mirrors the topology denominator and must be updated with it."
+
+[[consumers]]
+id = "release-topology-publisher"
+path = "scripts/release-topology-publisher.py"
+role = "namespace publication state machine"
+disposition = "exact-value-pass-through"
+marker_classes = []
+sites = []
+claim_boundary = "Treats every version as an opaque exact string compared for equality; zero release-semantic parsing (guard-verified)."
+
+[[consumers]]
+id = "release-rehearsal"
+path = "scripts/release-rehearsal.py"
+role = "zero-upload release rehearsal harness"
+disposition = "deferred-with-named-owner"
+owner = "#3751"
+marker_classes = []
+sites = []
+claim_boundary = "The rehearsal identity phase is currently a file-existence characterization; typed ReleaseIdentityV1 consumption arrives with the #3751 rehearsal phases."
+
+[[consumers]]
+id = "release-install-smoke"
+path = "scripts/release-install-smoke.sh"
+role = "published install smoke"
+disposition = "exact-value-pass-through"
+marker_classes = []
+sites = []
+claim_boundary = "Passes the version opaquely to `cargo install --version`; no parsing."
+
+[[consumers]]
+id = "generate-changie-history"
+path = "scripts/generate-changie-history.py"
+role = "Changie corpus generator"
+disposition = "non-semantic-formatting"
+marker_classes = []
+sites = ["RELEASE_HEADING"]
+claim_boundary = "Parses changelog headings with an opaque version capture plus a date pattern; the version string is formatting input, never channel semantics."
+
+[[consumers]]
+id = "validate-upgrade-rollback-journey"
+path = "scripts/validate-upgrade-rollback-journey.py"
+role = "upgrade/rollback journey receipt validator"
+disposition = "deferred-with-named-owner"
+owner = "#2485"
+marker_classes = []
+sites = ["re.fullmatch(r\"cargo-allow 0\\.1\\.11.*\""]
+claim_boundary = "Hard-codes published/candidate version-prefix assumptions with wildcard tails that silently accept prerelease variants; replace with exact typed identity when the #2485 journey is refreshed."
+
+[[consumers]]
+id = "release-authorized-workflow"
+path = ".github/workflows/release-authorized.yml"
+role = "one-shot authorized publication workflow"
+disposition = "exact-value-pass-through"
+marker_classes = []
+sites = ["release/authorize-v0.2.0.json"]
+claim_boundary = "Validates an exact already-projected identity (the checked authorization artifact names the tag); update this row when the authorization target changes. Hard-coded per-release identity is the issue-selected design."
+
+[[consumers]]
+id = "release-prep-rust-classifier"
+path = "crates/cargo-allow/src/release_prep_tests.rs"
+role = "cross-artifact release-contract tests (Rust)"
+disposition = "deferred-with-named-owner"
+owner = "#3752"
+marker_classes = []
+sites = ["workspace_version.starts_with(\"0.2.0\")"]
+claim_boundary = "Classifies the workspace version as candidate-channel via a literal prefix test instead of the typed channel; documented here because the guard scans only the non-Rust surfaces. Migration is part of #3752."
