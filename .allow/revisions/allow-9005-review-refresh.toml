@@ -1,0 +1,15 @@
+# Revision note: allow-9005 advisory review refresh (0.1.11 readiness record).
+
+# The entry receipts docs/release/0.1.11-readiness.md, the qualification
+# record for 0.1.11 — the designated stable rollback baseline, still
+# published and supported, so the record remains required and is retained.
+# The entry matches its subject 1:1 with no location drift; the review is
+# refreshed on that basis rather than pruning or narrowing. Date-only
+# lifecycle bump; no other field changes.
+
+[[records]]
+allow_ids = ["allow-9005"]
+change_kinds = ["review_after_extended"]
+before_fingerprint = "sha256:v1:53ce5e48720cb954d9c63162f3e0d20889164d732715833f6f3cad5a5f86ce8d"
+after_fingerprint = "sha256:v1:9d004aed023107ce1a20086e44a8d2d62f066362729cf0dc18bec6034b624bf9"
+reason = "Operator review re-confirms the 0.1.11 readiness record: the doc exists, the entry matches 1:1, and 0.1.11 remains the stable rollback baseline, so the review deadline extends one quarter."
