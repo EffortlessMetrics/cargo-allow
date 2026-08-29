@@ -56,23 +56,25 @@ jobs:
           block_end = script.find("          '''", function_at)
           if block_start < 0 or block_end < 0:
               raise SystemExit('generated fixture self-test boundaries missing')
-          replacement = r'''          #[test]
-          fn dated_resolves_every_live_fixture_token_relative_to_today() {{
-              let rendered = dated(
-                  r#"created = "{CREATED_TOKEN}"
-          review_after = "{REVIEW_TOKEN}"
-          expires = "{EXPIRES_TOKEN}"
-          "#,
-              );
-              assert!(rendered.contains(&format!(r#"created = "{{}}""#, fixture_created())));
-              assert!(rendered.contains(&format!(
-                  r#"review_after = "{{}}""#,
-                  fixture_review_after()
-              )));
-              assert!(rendered.contains(&format!(r#"expires = "{{}}""#, fixture_expires())));
-              assert!(!rendered.contains("__CARGO_ALLOW_FIXTURE_"));
-          }}
-'''
+          replacement = '\n'.join([
+              '          #[test]',
+              '          fn dated_resolves_every_live_fixture_token_relative_to_today() {{',
+              '              let rendered = dated(',
+              '                  r#"created = "{CREATED_TOKEN}"',
+              '          review_after = "{REVIEW_TOKEN}"',
+              '          expires = "{EXPIRES_TOKEN}"',
+              '          "#,',
+              '              );',
+              '              assert!(rendered.contains(&format!(r#"created = "{{}}""#, fixture_created())));',
+              '              assert!(rendered.contains(&format!(',
+              '                  r#"review_after = "{{}}""#,',
+              '                  fixture_review_after()',
+              '              )));',
+              '              assert!(rendered.contains(&format!(r#"expires = "{{}}""#, fixture_expires())));',
+              '              assert!(!rendered.contains("__CARGO_ALLOW_FIXTURE_"));',
+              '          }}',
+              '',
+          ])
           script = script[:block_start] + replacement + script[block_end:]
           compile(script, '<one-shot-4023-implementation>', 'exec')
           script_path = Path('/tmp/one-shot-4023-implementation.py')
