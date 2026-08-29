@@ -1,0 +1,82 @@
+name: One-shot 4023 lifecycle-date inventory
+
+on:
+  push:
+    branches:
+      - fix/4023-relative-fixture-dates
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-shot-4023-inventory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inventory hardcoded lifecycle dates in Rust fixtures
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import collections
+          import datetime as dt
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path("crates")
+          field_pattern = re.compile(
+              r'\b(created|expires|review_after)\s*=\s*\\?"(20\d{2}-\d{2}-\d{2})\\?"'
+          )
+          function_pattern = re.compile(r'^\s*(?:pub(?:\([^)]*\))?\s+)?fn\s+([A-Za-z0-9_]+)')
+          records: list[dict[str, object]] = []
+
+          for path in sorted(root.rglob("*.rs")):
+              text = path.read_text(encoding="utf-8")
+              lines = text.splitlines()
+              current_function = "<module>"
+              for line_number, line in enumerate(lines, start=1):
+                  function_match = function_pattern.match(line)
+                  if function_match:
+                      current_function = function_match.group(1)
+                  for match in field_pattern.finditer(line):
+                      date_text = match.group(2)
+                      records.append(
+                          {
+                              "path": path.as_posix(),
+                              "line": line_number,
+                              "field": match.group(1),
+                              "date": date_text,
+                              "function": current_function,
+                              "source": line.strip(),
+                              "distance_days": (
+                                  dt.date.fromisoformat(date_text) - dt.date.today()
+                              ).days,
+                          }
+                      )
+
+          print("LIFECYCLE_DATE_INVENTORY_V1")
+          print(json.dumps(records, indent=2, sort_keys=True))
+          print("LIFECYCLE_DATE_SUMMARY_V1")
+          by_path = collections.Counter(record["path"] for record in records)
+          by_date = collections.Counter(record["date"] for record in records)
+          by_field = collections.Counter(record["field"] for record in records)
+          print(json.dumps({
+              "total": len(records),
+              "by_field": dict(sorted(by_field.items())),
+              "by_date": dict(sorted(by_date.items())),
+              "by_path": dict(sorted(by_path.items())),
+          }, indent=2, sort_keys=True))
+
+          if not records:
+              raise SystemExit("expected at least one hardcoded lifecycle fixture date")
+          PY
