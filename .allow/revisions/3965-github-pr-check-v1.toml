@@ -1,0 +1,13 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11194"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6c640439cfbfc1fb639d99753754bba3b78d9efbaafa1b1c1134cc46c1eb1043"
+reason = "receipt for docs/schemas/github-pr-check-v1.schema.json, the PR check projection contract (#3965)"
+
+[[records]]
+allow_ids = ["allow-11195"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a7ca4ccfb85b81ddc1ef1a5599e88c29998e9933d243526444714ab1dba9aa09"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

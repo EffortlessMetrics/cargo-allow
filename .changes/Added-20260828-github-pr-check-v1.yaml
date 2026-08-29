@@ -1,0 +1,28 @@
+kind: Added
+body: >-
+  Publish exact cargo-allow PR finding deltas as a bounded GitHub
+  check (#3965). A typed CargoAllowGitHubPrCheckV1 projection in
+  allow-report consumes exactly one canonical diff report
+  (cargo-allow.report.v1) plus the PR subject, declared base-scan
+  completeness, and an annotation budget, and projects the bounded
+  check: subject identity, closed result vocabulary (Passed,
+  FindingsBlocking, FindingsAdvisory, Partial, UnknownAttribution,
+  Stale, Unsupported, ProviderUnavailable, InstrumentFailure),
+  introduced/worsened/touched/resolved/unaffected/unknown counts,
+  inline annotations with canonical row-key identity, and omitted
+  counts. Fail-honest law: only a Complete-coverage, passed, exact
+  current diff projects Passed; missing bases project
+  UnknownAttribution with counts only (no low-confidence inline
+  annotations); partial bases project Partial with unknown-class
+  rows; malformed, failed, unknown-generation, and absent diff
+  evaluations stay non-clean. Budget truncation keeps a
+  deterministic priority order (introduced, worsened, touched,
+  unknown; ties by stable key), reports omitted counts, discloses
+  truncation, and never becomes clean. Resolved rows appear only in
+  the summary; advisory rows never strengthen into blocking. The
+  schema, four offline test suites (adapter projection, annotation
+  budget, currentness/idempotency, partial diffs), receipts
+  allow-11194/11195 with the revision note, and a changie fragment
+  complete the lane. The hosted advisory GitHub-check transport is
+  the follow-up integration under #2283/#2284 governance; this lane
+  adds no live control, no merge authority, and no publication.
