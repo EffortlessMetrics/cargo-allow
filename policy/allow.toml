@@ -14036,3 +14036,95 @@ glob = ".allow/revisions/3752-release-identity-consumer-denominator.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0663"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked release-identity consumer denominator guard (#3752); panic on unread or unscannable release surfaces is the established guard idiom in release_prep_tests"
+evidence = ["issue:3752"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "read_workspace_file"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:a6e397825c693cd2"
+
+[allow.last_seen]
+line = 133
+column = 33
+
+[[allow]]
+id = "allow-0664"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked release-identity consumer denominator guard (#3752); panic on unread or unscannable release surfaces is the established guard idiom in release_prep_tests"
+evidence = ["issue:3752"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "parse_denominator"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:4c0311d0548f4566"
+
+[allow.last_seen]
+line = 138
+column = 52
+
+[[allow]]
+id = "allow-0665"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked release-identity consumer denominator guard (#3752); panic on unread or unscannable release surfaces is the established guard idiom in release_prep_tests"
+evidence = ["issue:3752"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "collect_files"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:5be1a89c30a5f064"
+
+[allow.last_seen]
+line = 156
+column = 33
+
+[[allow]]
+id = "allow-0666"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked release-identity consumer denominator guard (#3752); panic on unread or unscannable release surfaces is the established guard idiom in release_prep_tests"
+evidence = ["issue:3752"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "collect_files"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:cbe3ec246ec7049c"
+
+[allow.last_seen]
+line = 158
+column = 50

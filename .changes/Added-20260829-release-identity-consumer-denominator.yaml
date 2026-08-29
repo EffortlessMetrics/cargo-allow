@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Add the checked release-identity consumer denominator (#3752 slice A).
+  One Rust authority (allow-report ReleaseIdentityV1 projected by the
+  hidden cargo-allow release-identity command) now has a machine-checkable
+  inventory of every non-Rust surface that parses, infers, or projects
+  release-version semantics: policy/release-identity-consumers.toml
+  declares 31 surveyed consumer rows with dispositions from the #3752
+  vocabulary, detected marker classes, verified site anchors, and exact
+  counts for the release-critical surfaces. The new
+  release_identity_denominator_tests guard fails when a scanned surface
+  (scripts, workflows, action.yml, .changie.yaml) gains undeclared
+  release-semantic constructs, when a declared row drifts from its file,
+  when an exact count changes, or when any surface infers release channel
+  from an -rc marker. The denominator documents the live release.yml
+  defect where GitHub prerelease is hard-coded false on both release
+  steps, so an -rc tag would ship as a stable release; routing the
+  workflow through the typed channel projection is slice B. Receipts
+  allow-0663..allow-0666, allow-11198/11199 and the revision note
+  complete the lane.
