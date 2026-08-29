@@ -12,3 +12,9 @@ allow_ids = ["allow-0655"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:79bcc81fdeb8180006b4e056a0cdb7f3e120fb8e6ef75521a1c976496ae126bb"
 reason = "panic.indexing receipt for the asserted single annotation row in introduced_blocking_finding_annotates_first; an out-of-range index panics the test, which is the intended failure mode for this projection contract test."
+
+[[records]]
+allow_ids = ["allow-0656"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:560eb8ac169ec3c7212f8ff89d8beca4ae38455717d851e8cc7dbd01f9cef6a2"
+reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
