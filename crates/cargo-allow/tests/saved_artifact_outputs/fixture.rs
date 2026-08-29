@@ -4,6 +4,37 @@ use std::process::Command;
 
 use super::support::{remove_temp_root, temp_root};
 
+/// Map the authored fixture calendar dates to today-relative ones so the
+/// entries stay live: fixtures hardcoded `2026-05-29`/`2026-08-29` the
+/// calendar eventually catches up with, flipping advisory diffs into
+/// blocking failures and review-due rows into shifted advisory counts.
+/// baseline_debt expiry is validated against the 120-day window from
+/// creation, so the mapped creation date moves with the mapped expiry.
+fn dated(policy: &str) -> String {
+    let created = allow_core::SimpleDate::today_utc_approx()
+        .add_days(-30)
+        .to_string();
+    let review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(30)
+        .to_string();
+    let expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(60)
+        .to_string();
+    policy
+        .replace(
+            "created = \"2026-05-29\"",
+            &format!("created = \"{created}\""),
+        )
+        .replace(
+            "review_after = \"2026-08-29\"",
+            &format!("review_after = \"{review_after}\""),
+        )
+        .replace(
+            "expires = \"2026-08-29\"",
+            &format!("expires = \"{expires}\""),
+        )
+}
+
 pub(crate) fn commit_fixture_base(root: &Path) {
     git(root, &["init"]);
     git(
@@ -110,7 +141,7 @@ safety_comment_required = false
     pub(crate) fn append_saved_artifact_allow_entries(&self) {
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -147,7 +178,7 @@ symbol = "docs/missing.md"
 target_fingerprint = "md"
 glob = "docs/missing.md"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -180,7 +211,7 @@ glob = "docs/missing.md"
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -199,7 +230,7 @@ expires = "2026-08-29"
 [allow.selector]
 ast_kind = "unsafe_block"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -215,7 +246,7 @@ ast_kind = "unsafe_block"
         .unwrap_or_else(|err| std::panic::panic_any(format!("write docs fixture: {err}")));
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -235,7 +266,7 @@ symbol = "docs/policy.md"
 target_fingerprint = "md"
 glob = "docs/policy.md"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -245,7 +276,7 @@ glob = "docs/policy.md"
         self.write_panic_source();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -264,7 +295,7 @@ ast_kind = "method_call"
 container = "load"
 callee = "unwrap"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -274,7 +305,7 @@ callee = "unwrap"
         self.write_unsafe_source();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -292,7 +323,7 @@ expires = "2026-08-29"
 [allow.selector]
 ast_kind = "unsafe_block"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -301,7 +332,7 @@ ast_kind = "unsafe_block"
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -320,7 +351,7 @@ expires = "2026-08-29"
 ast_kind = "method_call"
 callee = "unwrap"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -343,7 +374,7 @@ callee = "unwrap"
         .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(
+        policy.push_str(&dated(
             r#"
 
 [[allow]]
@@ -364,7 +395,7 @@ expires = "2026-08-29"
 [allow.selector]
 ast_kind = "unsafe_block"
 "#,
-        );
+        ));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
@@ -373,7 +404,7 @@ ast_kind = "unsafe_block"
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
-        policy.push_str(&format!(
+        policy.push_str(&dated(&format!(
             r#"
 
 [[allow]]
@@ -391,7 +422,7 @@ expires = "2026-08-29"
 [allow.selector]
 ast_kind = "unsafe_block"
 "#,
-        ));
+        )));
         fs::write(self.root.join("policy/allow.toml"), policy)
             .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }

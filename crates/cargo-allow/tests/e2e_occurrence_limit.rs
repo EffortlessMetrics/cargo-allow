@@ -23,10 +23,15 @@ fn capped_manifest_policy_reports_extra_crate_manifest_as_new_debt() {
         "crates/beta/Cargo.toml",
         "[package]\nname = \"beta\"\nversion = \"0.1.0\"\n",
     );
+    // The capped entry must stay live and non-review-due so the extra
+    // manifest still classifies as new debt, so review_after is computed
+    // relative to today instead of a hardcoded date the calendar catches.
+    let review_after = allow_core::SimpleDate::today_utc_approx().add_days(30);
     write_file(
         &root,
         "policy/allow.toml",
-        r#"schema_version = "0.1"
+        &format!(
+            r#"schema_version = "0.1"
 policy = "cargo-allow"
 owner = "core/policy"
 status = "active"
@@ -61,13 +66,14 @@ owner = "core/release"
 classification = "rust_package_metadata"
 reason = "Fixture caps current crate manifests so added manifests become new debt."
 occurrence_limit = 1
-review_after = "2026-08-29"
+review_after = "{review_after}"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "crates/*/Cargo.toml"
 "#,
+        ),
     );
 
     let check_output = root.join("target/cargo-allow/check.json");
