@@ -2,6 +2,7 @@ use std::process;
 
 mod add;
 mod adoption;
+mod artifact_emit;
 mod audit;
 mod capabilities;
 mod check;

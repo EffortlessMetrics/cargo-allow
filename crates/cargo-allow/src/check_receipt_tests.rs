@@ -5,6 +5,8 @@ use std::fs;
 #[test]
 fn check_args_leave_mode_unset_for_policy_default() {
     let args = CheckArgs {
+        artifact_dir: None,
+        emit: None,
         persistent_cache: super::check_args::PersistentCacheMode::On,
         root: crate::RootArgs::default(),
         config: None,
@@ -41,6 +43,8 @@ fn source_tree_check_emits_scan_status_before_missing_policy_error() -> Result<(
     fs::create_dir_all(&root).map_err(|error| error.to_string())?;
 
     let result = cmd_check(&CheckArgs {
+        artifact_dir: None,
+        emit: None,
         persistent_cache: super::check_args::PersistentCacheMode::On,
         root: crate::RootArgs {
             root: Some(root.clone()),

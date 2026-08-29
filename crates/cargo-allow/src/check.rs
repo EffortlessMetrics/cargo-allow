@@ -35,6 +35,7 @@ mod check_source_coupling_guard;
 pub(crate) mod governance_projection;
 use check_source_coupling_guard::source_coupling_diagnostics_for_check;
 
+use crate::artifact_emit;
 use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
@@ -353,6 +354,51 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         });
         write_file(path, &receipt)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    }
+    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
+        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
+            Ok(formats) => formats,
+            Err(error) => {
+                eprintln!("cargo-allow check: {error}");
+                process::exit(1);
+            }
+        };
+        let mut artifact_context = source_context.report(Some(baseline_debt_entries));
+        evidence.apply_to(&mut artifact_context);
+        artifact_context.mode = Some(mode.as_str());
+        let policy_config_text = config_path(&root, args.config.as_deref())
+            .map(|path| allow_report::source_tree_path_text(&path));
+        artifact_context.policy_config = policy_config_text.as_deref();
+        artifact_context.tool_version = Some(env!("CARGO_PKG_VERSION"));
+        let emit_ctx = artifact_emit::ArtifactEmitContext {
+            command: "check",
+            findings: &findings,
+            outcomes: &projected_outcomes,
+            failed,
+            report_context: &artifact_context,
+            receipt_context: None,
+        };
+        let source_subj = format!("worktree:{}", mode.as_str());
+        let result_class = if failed {
+            allow_report::EvaluationResultClassV2::Blocking
+        } else {
+            allow_report::EvaluationResultClassV2::Passed
+        };
+        if let Err(error) = artifact_emit::emit_artifact_set(
+            artifact_dir,
+            &artifact_emit::EmitConfig {
+                operation: "check",
+                formats: &formats,
+                result_class,
+                blocking: failed,
+                resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
+                source_subject: &source_subj,
+            },
+            &emit_ctx,
+        ) {
+            eprintln!("cargo-allow check: artifact emit: {error}");
+            process::exit(1);
+        }
     }
     if failed {
         process::exit(1);
