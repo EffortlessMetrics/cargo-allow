@@ -381,9 +381,13 @@ mod tests {
     #[test]
     fn renderer_failure_is_fail_honest() -> Result<(), String> {
         let mut set = artifact_set();
-        set.artifacts[2].status = "RenderFailed".to_string();
-        set.artifacts[2].render_errors = vec!["SARIF renderer failed: disk full".to_string()];
-        set.artifacts[2].content_digest = None;
+        let sarif = set
+            .artifacts
+            .get_mut(2)
+            .ok_or("fixture lost its SARIF row")?;
+        sarif.status = "RenderFailed".to_string();
+        sarif.render_errors = vec!["SARIF renderer failed: disk full".to_string()];
+        sarif.content_digest = None;
         let validation = set.validate();
         if validation.result != EvaluationArtifactSetResultV2::RenderFailure {
             return Err(format!(

@@ -78,9 +78,13 @@ fn contract_semantic_and_renderer_status_are_separate() -> Result<(), String> {
         ));
     }
     // A renderer failure does not change the semantic posture.
-    set.artifacts[0].status = "RenderFailed".to_string();
-    set.artifacts[0].render_errors = vec!["markdown renderer panicked".to_string()];
-    set.artifacts[0].content_digest = None;
+    let markdown = set
+        .artifacts
+        .first_mut()
+        .ok_or_else(|| "fixture lost its markdown entry".to_string())?;
+    markdown.status = "RenderFailed".to_string();
+    markdown.render_errors = vec!["markdown renderer panicked".to_string()];
+    markdown.content_digest = None;
     let validation = set.validate();
     if validation.result != EvaluationArtifactSetResultV2::RenderFailure {
         return Err(format!(
@@ -104,9 +108,9 @@ fn contract_digest_is_bound_across_artifacts() -> Result<(), String> {
             let digest = artifact
                 .content_digest
                 .as_deref()
-                .ok_or_else(|| format!("{} missing digest", artifact.file_name))?;
+                .unwrap_or_else(|| panic_any(format!("{} missing digest", artifact.file_name)));
             if !digest.starts_with("sha256:") || digest.len() != "sha256:".len() + 64 {
-                return Err(format!("{} has malformed digest", artifact.file_name));
+                panic_any(format!("{} has malformed digest", artifact.file_name));
             }
         }
     }
