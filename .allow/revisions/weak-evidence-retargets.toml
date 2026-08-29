@@ -1,0 +1,71 @@
+# Revision note: weak-evidence cleanup — retarget stale test anchors.
+
+# The weak-evidence sweep (#4023 follow-up lane) found five occurrences of
+# two stale test anchors in the product-documentation and release-schema
+# entries: test:topology_publisher_checksum_contract no longer exists
+# anywhere in the tree (the surviving coverage is
+# test:topology_publish_receipt_preserves_incident_recovery_boundary in
+# crates/cargo-allow/src/release_prep_tests.rs, which asserts exactly the
+# receipt schema these entries point at), and
+# test:cargo_allow_product_docs_are_independent_and_indexed was renamed to
+# test:product_docs_are_independent_and_indexed in
+# crates/cargo-allow/src/product_support_matrix_tests.rs. Each record below
+# retargets one entry's anchor to the surviving test; every entry keeps its
+# issue: and doc: anchors unchanged, so scope, owner, and classification are
+# untouched and no entry is widened.
+
+[[records]]
+allow_ids = ["allow-0525"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:b6901d6300e18460918d3f8169617f1556d5cb654382deb1e4dbef18a0adcdd4"
+after_fingerprint = "sha256:v1:6dbd7d62443e09412695783f36561dd054d2ee7ef8f98fe91d7c4b35c87deacb"
+reason = "Drops the dangling test:topology_publisher_checksum_contract anchor and cites the surviving checksum-canonicalization test (topology_publish_receipt_preserves_incident_recovery_boundary) that covers the same receipt schema."
+
+[[records]]
+allow_ids = ["allow-11112"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:951b02c268b08f31fb2bbdbc7b85511e280a708a0fdb3b3e20887d7ce2c428a0"
+after_fingerprint = "sha256:v1:605ef0022074ba2b0a7ea09ac635380017335fd38e0d8a30d94d597ba0bb2d09"
+reason = "Retargets the renamed product-docs independence test (cargo_allow_product_docs_... → product_docs_are_independent_and_indexed) so the anchor tracks the surviving contract test."
+
+[[records]]
+allow_ids = ["allow-11113"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:38ab1cd4bca45bf2c08ec24431899a3147cecf3d663cdb24531ca2f721823c55"
+after_fingerprint = "sha256:v1:58e322bbbf7e5e6e294a920505eeca291b2a7d84ff74b7d85ed58f2aed9c43de"
+reason = "Same renamed-anchor retarget as allow-11112 for the command-reference docs entry."
+
+[[records]]
+allow_ids = ["allow-11114"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:dd09cca88bdd8b8922e1fd32658248a8cb2416966721d7a2aabf1281c7098e16"
+after_fingerprint = "sha256:v1:511e695937e29161c41f5dad3ddd3788acd2854e65275c075751667af7b75498"
+reason = "Same renamed-anchor retarget as allow-11112 for the schemas docs entry."
+
+[[records]]
+allow_ids = ["allow-11115"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:8619736c70fa74f8b07b2a47ef2f59bc16f10dbe62878b45291d1544b0bc383a"
+after_fingerprint = "sha256:v1:f4d8df4e30e55be349b31079a2834b3708a9461c0887b3e21490772b6988315c"
+reason = "Same renamed-anchor retarget as allow-11112 for the limitations docs entry."
+
+[[records]]
+allow_ids = ["allow-11116"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:4376f93ef03e56f27e053785c0a0f61a20707abda2c0c117356729fca05ca3be"
+after_fingerprint = "sha256:v1:62fa0498a667d3b26e068749669a8cf47e289ab95baa71a188051d3c4760b36c"
+reason = "Same renamed-anchor retarget as allow-11112 for the compatibility docs entry."
+
+[[records]]
+allow_ids = ["allow-11117"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:24908d9902658ca463f69d55ef599daac96a59e14af630c6e5734a346e6dcc0d"
+after_fingerprint = "sha256:v1:d160d8128739086fb2a533f0cfc222006087b65501c92e2c2390adfe3e090569"
+reason = "Same renamed-anchor retarget as allow-11112 for the support-and-security docs entry."
+
+[[records]]
+allow_ids = ["allow-11118"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:94fc51e28932e7049f42308687ad58258d35bb559b6922b84569ec71323f04ad"
+after_fingerprint = "sha256:v1:6c15bf391dbd39d043c95ea9e62425ffe374081ac3ca4c8497ed0bcd255a3b90"
+reason = "Same renamed-anchor retarget as allow-11112 for the release-notes docs entry."
