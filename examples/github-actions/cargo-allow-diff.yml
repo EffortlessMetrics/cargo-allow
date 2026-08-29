@@ -27,6 +27,7 @@ jobs:
             --base "$base_ref" \
             --artifact-dir target/cargo-allow \
             --emit markdown,json,sarif,receipt
+          cp target/cargo-allow/diff-markdown.md target/cargo-allow/pr-summary.md
       - name: Publish cargo-allow summary
         if: always()
         shell: bash
