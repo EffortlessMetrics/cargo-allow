@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Run the complete release-set suite including allow-rust persistent
+  scan-cache tests on both macOS CI rows (#3915 PR C), remove the bounded
+  cache exclusion and its platform-receipt limitation line, add a contract
+  drift guard against reintroducing platform-wide cache-test exclusions,
+  and cover the mid-walk component-swap detection and structural-refusal
+  boundaries with dedicated fixtures.

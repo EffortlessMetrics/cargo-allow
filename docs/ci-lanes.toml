@@ -58,7 +58,7 @@ id = "test-core-platforms"
 product = "cargo-allow"
 posture = "required"
 scope = "cargo-allow-release-set"
-note = "release-set suite on Linux, Windows, macOS arm64, and macOS x86_64; macOS cache exclusions remain bounded by #3915"
+note = "complete release-set suite including allow-rust persistent scan-cache tests on Linux, Windows, macOS arm64, and macOS x86_64 (#3915 PR C); platform-wide cache-test exclusions are drift-guarded"
 
 [[lane]]
 id = "compat-delegation"

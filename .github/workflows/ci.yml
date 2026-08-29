@@ -528,16 +528,12 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            cache_scope: full
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            cache_scope: full
           - os: macos-14
             target: aarch64-apple-darwin
-            cache_scope: bounded
           - os: macos-15-intel
             target: x86_64-apple-darwin
-            cache_scope: bounded
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -549,15 +545,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.cache_scope }}" == "bounded" ]]; then
-            # macOS currently cannot run allow-rust's persistent scan-cache
-            # fixture because /var is presented as /private/var. Keep the
-            # bounded exception explicit until that path guard is portable.
-            cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
-            cargo test --locked -p allow-rust --lib -- --skip persistent_scan_cache --skip scan_cache_store
-          else
-            cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
-          fi
+          cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
       - name: Cross-platform semantic fixture (#2265)
         shell: bash
         run: cargo test --locked -p allow-core cross_platform_semantics -- --nocapture
@@ -576,9 +564,6 @@ jobs:
             printf 'toolchain_identity=\n'
             rustc -Vv | sed 's/^/  /'
             printf 'proof=release-set,cross_platform_semantics\n'
-            if [[ "${{ matrix.cache_scope }}" == "bounded" ]]; then
-              printf 'limitation=allow-rust persistent scan-cache tests excluded; macOS /var alias is not accepted by the cache path guard\n'
-            fi
             printf 'result=%s\n' '${{ job.status }}'
           } > target/cross-platform/${{ matrix.target }}.proof.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
