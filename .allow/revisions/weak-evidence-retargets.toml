@@ -18,8 +18,8 @@
 allow_ids = ["allow-0525"]
 change_kinds = ["evidence_removed"]
 before_fingerprint = "sha256:v1:b6901d6300e18460918d3f8169617f1556d5cb654382deb1e4dbef18a0adcdd4"
-after_fingerprint = "sha256:v1:6dbd7d62443e09412695783f36561dd054d2ee7ef8f98fe91d7c4b35c87deacb"
-reason = "Drops the dangling test:topology_publisher_checksum_contract anchor and cites the surviving checksum-canonicalization test (topology_publish_receipt_preserves_incident_recovery_boundary) that covers the same receipt schema."
+after_fingerprint = "sha256:v1:779281d625c3d92d08ce73b7de414d587ab6fae38dd3dabeb0889804f9948256"
+reason = "Drops the dangling test:topology_publisher_checksum_contract anchor and cites test:release_workflow_exists_and_lists_publish_order (release_prep_tests.rs), which reads scripts/test-release-topology-publisher.py and asserts the publish order this entry documents. Supersedes the earlier fingerprint 6dbd7d62... whose anchor (topology_publish_receipt_preserves_incident_recovery_boundary) covers the receipt schema but not this harness."
 
 [[records]]
 allow_ids = ["allow-11112"]

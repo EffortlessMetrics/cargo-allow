@@ -429,7 +429,7 @@ path = "scripts/test-exact-candidate-install-journey.sh"
 owner = "core/release"
 classification = "exact_candidate_install_journey_characterization"
 reason = "Offline schema and negative characterization for the exact-candidate install journey receipt; hosted CI supplies the executable Cargo journey proof."
-evidence = ["issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound"]
+evidence = ["doc:.github/workflows/ci.yml", "issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -604,7 +604,7 @@ path = "scripts/test-release-topology-publisher.py"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Deterministic release-topology checksum contract harness that exercises fresh, published, and recovered receipt rows without publishing or mutating release state."
-evidence = ["issue:3393", "doc:docs/release/README.md", "test:topology_publish_receipt_preserves_incident_recovery_boundary"]
+evidence = ["issue:3393", "doc:docs/release/README.md", "test:release_workflow_exists_and_lists_publish_order"]
 created = "2026-08-12"
 review_after = "2027-02-12"
 
@@ -714,7 +714,7 @@ path = "scripts/test-release-binary.sh"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Fixture characterization for Linux release archive packaging and verifier negative controls; hosted CI supplies the Ubuntu execution proof."
-evidence = ["issue:2464", "doc:docs/release/README.md"]
+evidence = ["doc:.github/workflows/ci.yml", "issue:2464", "doc:docs/release/README.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -11293,7 +11293,7 @@ path = "scripts/test-perf-budget-smoke.sh"
 owner = "core/ci"
 classification = "ci_characterization_script"
 reason = "Cheap local characterization for the operator-latency receipt/schema wiring; hosted CI supplies the actual binary execution proof."
-evidence = ["issue:2468", "doc:docs/performance-budgets.md"]
+evidence = ["doc:.github/workflows/ci.yml", "issue:2468", "doc:docs/performance-budgets.md"]
 created = "2026-08-02"
 review_after = "2027-02-01"
 
@@ -12547,7 +12547,7 @@ path = "scripts/test-exact-upgrade-rollback-journey.sh"
 owner = "core/release"
 classification = "exact_upgrade_rollback_journey_characterization"
 reason = "Offline schema and forged-identity characterization for the exact installed upgrade and rollback receipt; hosted CI supplies the executable journey proof."
-evidence = ["issue:3853"]
+evidence = ["doc:.github/workflows/ci.yml", "issue:3853"]
 created = "2026-08-25"
 review_after = "2027-02-25"
 
