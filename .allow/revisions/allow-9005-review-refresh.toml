@@ -13,3 +13,9 @@ change_kinds = ["review_after_extended"]
 before_fingerprint = "sha256:v1:53ce5e48720cb954d9c63162f3e0d20889164d732715833f6f3cad5a5f86ce8d"
 after_fingerprint = "sha256:v1:9d004aed023107ce1a20086e44a8d2d62f066362729cf0dc18bec6034b624bf9"
 reason = "Operator review re-confirms the 0.1.11 readiness record: the doc exists, the entry matches 1:1, and 0.1.11 remains the stable rollback baseline, so the review deadline extends one quarter."
+
+[[records]]
+allow_ids = ["allow-0660"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7c09981154537ee0d190591e98f82ac9ab9456803f714e8c8a8ff8cd7794c77d"
+reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
