@@ -18,6 +18,8 @@ fn clap_parses_include_untracked_audit_flag() {
     assert!(matches!(
         parsed.command,
         Some(CargoAllowCommand::Audit(ReportArgs {
+            artifact_dir: None,
+            emit: None,
             include_untracked: true,
             ..
         }))
@@ -64,6 +66,8 @@ fn audit_json_reports_broken_evidence_links_without_aborting() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
 
     cmd_audit(&ReportArgs {
+        artifact_dir: None,
+        emit: None,
         root: RootArgs {
             root: Some(root.clone()),
         },

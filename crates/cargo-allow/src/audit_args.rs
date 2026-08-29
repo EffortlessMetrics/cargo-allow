@@ -28,4 +28,10 @@ pub(crate) struct ReportArgs {
     /// Write report to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+    /// Emit multi-format artifacts into this directory.
+    #[arg(long, value_name = "DIR")]
+    pub(crate) artifact_dir: Option<PathBuf>,
+    /// Comma-separated renderer formats to emit (markdown,json,html).
+    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    pub(crate) emit: Option<String>,
 }

@@ -1,3 +1,4 @@
+use crate::artifact_emit;
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
@@ -9,7 +10,7 @@ use crate::{
     EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
-    spec_system,
+    reporting::SourceTreeReportContext, spec_system,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -85,6 +86,45 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         // `audit` never fails a run; its pass is advisory by definition.
         enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
     })?;
+
+    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
+        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
+            Ok(formats) => formats,
+            Err(error) => {
+                eprintln!("cargo-allow audit: {error}");
+                std::process::exit(1);
+            }
+        };
+        let source_ctx = SourceTreeReportContext::new(&root, inventory_facts);
+        let mut artifact_context =
+            source_ctx.report(Some(policy_baseline_debt_entries(&report_cfg)));
+        evidence.apply_to(&mut artifact_context);
+        artifact_context.tool_version = Some(env!("CARGO_PKG_VERSION"));
+        let emit_ctx = artifact_emit::ArtifactEmitContext {
+            command: "audit",
+            findings: &findings,
+            outcomes: &projected_outcomes,
+            failed: false,
+            report_context: &artifact_context,
+            receipt_context: None,
+        };
+        let source_subj = format!("audit:{}", args.kind.as_deref().unwrap_or("all"));
+        if let Err(error) = artifact_emit::emit_artifact_set(
+            artifact_dir,
+            &artifact_emit::EmitConfig {
+                operation: "audit",
+                formats: &formats,
+                result_class: allow_report::EvaluationResultClassV2::Advisory,
+                blocking: false,
+                resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
+                source_subject: &source_subj,
+            },
+            &emit_ctx,
+        ) {
+            eprintln!("cargo-allow audit: artifact emit: {error}");
+            std::process::exit(1);
+        }
+    }
     Ok(())
 }
 
