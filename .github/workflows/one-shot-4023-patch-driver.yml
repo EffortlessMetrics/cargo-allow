@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
           ref: fix/4023-relative-fixture-dates
 
-      - name: Replace the generated escaped string with a Rust raw literal
+      - name: Replace the generated escaped string with Rust raw literals
         shell: bash
         run: |
           python - <<'PY'
@@ -30,35 +30,37 @@ jobs:
 
           path = Path(".github/workflows/one-shot-4023-implement.yml")
           source = path.read_text(encoding="utf-8")
-          start_marker = '''          #[test]
-          fn dated_resolves_every_live_fixture_token_relative_to_today() {{
-          '''
-          end_marker = '''          }}
-          '''
-          start = source.find(start_marker)
+          name_marker = "fn dated_resolves_every_live_fixture_token_relative_to_today() {{"
+          name_at = source.find(name_marker)
+          if name_at < 0:
+              raise SystemExit("generated fixture test function missing")
+          start = source.rfind("          #[test]\n", 0, name_at)
           if start < 0:
-              raise SystemExit("generated fixture test start marker missing")
-          end = source.find(end_marker, start + len(start_marker))
+              raise SystemExit("generated fixture test attribute missing")
+          end = source.find("          '''\n          dated_start", name_at)
           if end < 0:
-              raise SystemExit("generated fixture test end marker missing")
-          end += len(end_marker)
-          replacement = '''          #[test]
-          fn dated_resolves_every_live_fixture_token_relative_to_today() {{
-              let rendered = dated(
-                  r#"created = "{CREATED_TOKEN}"
-          review_after = "{REVIEW_TOKEN}"
-          expires = "{EXPIRES_TOKEN}"
-          "#,
-              );
-              assert!(rendered.contains(&format!("created = \\"{{}}\\"", fixture_created())));
-              assert!(rendered.contains(&format!(
-                  "review_after = \\"{{}}\\"",
-                  fixture_review_after()
-              )));
-              assert!(rendered.contains(&format!("expires = \\"{{}}\\"", fixture_expires())));
-              assert!(!rendered.contains("__CARGO_ALLOW_FIXTURE_"));
-          }}
-          '''
+              raise SystemExit("generated fixture test triple-quote boundary missing")
+          replacement = "\n".join(
+              [
+                  "          #[test]",
+                  "          fn dated_resolves_every_live_fixture_token_relative_to_today() {{",
+                  "              let rendered = dated(",
+                  "                  r#\"created = \"{CREATED_TOKEN}\"",
+                  "          review_after = \"{REVIEW_TOKEN}\"",
+                  "          expires = \"{EXPIRES_TOKEN}\"",
+                  "          \"# ,",
+                  "              );",
+                  "              assert!(rendered.contains(&format!(r#\"created = \"{{}}\"\"#, fixture_created())));",
+                  "              assert!(rendered.contains(&format!(",
+                  "                  r#\"review_after = \"{{}}\"\"# ,",
+                  "                  fixture_review_after()",
+                  "              )));",
+                  "              assert!(rendered.contains(&format!(r#\"expires = \"{{}}\"\"#, fixture_expires())));",
+                  "              assert!(!rendered.contains(\"__CARGO_ALLOW_FIXTURE_\"));",
+                  "          }}",
+                  "",
+              ]
+          )
           updated = source[:start] + replacement + source[end:]
           if updated == source:
               raise SystemExit("implementation workflow was not changed")
@@ -73,5 +75,5 @@ jobs:
           git config user.email "git@effortlesssteven.com"
           git add -A
           git diff --cached --check
-          git commit -m "chore(test): repair generated fixture test literal"
+          git commit -m "chore(test): make generated fixture test raw"
           git push origin HEAD:fix/4023-relative-fixture-dates
