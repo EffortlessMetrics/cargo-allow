@@ -82,19 +82,25 @@ fn sha256_bytes(data: &[u8]) -> String {
     allow_core::sha256_v1_bytes(data)
 }
 
+/// Configuration for the artifact set emission.
+pub struct EmitConfig<'a> {
+    pub operation: &'a str,
+    pub formats: &'a [RendererFormatV1],
+    pub result_class: EvaluationResultClassV2,
+    pub blocking: bool,
+    pub resolved_config_identity: &'a str,
+    pub source_subject: &'a str,
+}
+
 /// Render and write the requested artifacts into `artifact_dir`, producing a
 /// typed `EvaluationArtifactSetV1` manifest.
 pub fn emit_artifact_set(
     artifact_dir: &std::path::Path,
-    operation: &str,
-    formats: &[RendererFormatV1],
+    config: &EmitConfig<'_>,
     ctx: &ArtifactEmitContext<'_>,
-    result_class: EvaluationResultClassV2,
-    blocking: bool,
-    resolved_config_identity: &str,
-    source_subject: &str,
-    core_command_summary_ref: Option<&str>,
 ) -> Result<EvaluationArtifactSetV1, String> {
+    let operation = config.operation;
+    let formats = config.formats;
     std::fs::create_dir_all(artifact_dir)
         .map_err(|error| format!("create artifact dir: {error}"))?;
 
@@ -137,8 +143,8 @@ pub fn emit_artifact_set(
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         operation: operation.to_string(),
         mode: None,
-        source_subject: source_subject.to_string(),
-        resolved_config_identity: resolved_config_identity.to_string(),
+        source_subject: config.source_subject.to_string(),
+        resolved_config_identity: config.resolved_config_identity.to_string(),
         semantic_result_digest: allow_core::sha256_v1_bytes(
             serde_json::to_vec(&serde_json::json!({
                 "command": ctx.command,
@@ -147,11 +153,11 @@ pub fn emit_artifact_set(
             .unwrap_or_default()
             .as_slice(),
         ),
-        result_class,
-        blocking,
+        result_class: config.result_class,
+        blocking: config.blocking,
         requested_formats: formats.to_vec(),
         artifacts: entries,
-        core_command_summary_ref: core_command_summary_ref.map(str::to_string),
+        core_command_summary_ref: None,
         detailed_result_ref: None,
         limitations: Vec::new(),
         claim_boundary: ("One-evaluation multi-artifact output; renderers consume the \

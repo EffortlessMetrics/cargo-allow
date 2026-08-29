@@ -386,14 +386,15 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         };
         if let Err(error) = artifact_emit::emit_artifact_set(
             artifact_dir,
-            "check",
-            &formats,
+            &artifact_emit::EmitConfig {
+                operation: "check",
+                formats: &formats,
+                result_class,
+                blocking: failed,
+                resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
+                source_subject: &source_subj,
+            },
             &emit_ctx,
-            result_class,
-            failed,
-            &inventory_facts.policy_digest_text().unwrap_or_default(),
-            &source_subj,
-            None,
         ) {
             eprintln!("cargo-allow check: artifact emit: {error}");
             process::exit(1);
