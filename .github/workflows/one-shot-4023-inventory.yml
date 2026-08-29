@@ -50,6 +50,13 @@ jobs:
                       current_function = function_match.group(1)
                   for match in field_pattern.finditer(line):
                       date_text = match.group(2)
+                      try:
+                          parsed_date = dt.date.fromisoformat(date_text)
+                          valid_calendar_date = True
+                          distance_days: int | None = (parsed_date - dt.date.today()).days
+                      except ValueError:
+                          valid_calendar_date = False
+                          distance_days = None
                       records.append(
                           {
                               "path": path.as_posix(),
@@ -58,9 +65,8 @@ jobs:
                               "date": date_text,
                               "function": current_function,
                               "source": line.strip(),
-                              "distance_days": (
-                                  dt.date.fromisoformat(date_text) - dt.date.today()
-                              ).days,
+                              "valid_calendar_date": valid_calendar_date,
+                              "distance_days": distance_days,
                           }
                       )
 
@@ -72,6 +78,8 @@ jobs:
           by_field = collections.Counter(record["field"] for record in records)
           print(json.dumps({
               "total": len(records),
+              "valid_calendar_dates": sum(bool(record["valid_calendar_date"]) for record in records),
+              "invalid_calendar_dates": sum(not bool(record["valid_calendar_date"]) for record in records),
               "by_field": dict(sorted(by_field.items())),
               "by_date": dict(sorted(by_date.items())),
               "by_path": dict(sorted(by_path.items())),
