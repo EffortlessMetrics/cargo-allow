@@ -1,3 +1,21 @@
+/// The review date fixtures whose consumers assert strict `Matched` status
+/// must not be reached: a reached `review_after` demotes the entry to
+/// `ReviewDue`, so those fixtures use a date computed relative to today
+/// instead of a hardcoded calendar date the suite would eventually sail
+/// past.
+pub(super) fn live_review_after() -> String {
+    allow_core::SimpleDate::today_utc_approx()
+        .add_days(30)
+        .to_string()
+}
+
+fn with_live_review_after(text: &str) -> String {
+    text.replace(
+        "review_after = \"2026-09-09\"",
+        &format!("review_after = \"{}\"", live_review_after()),
+    )
+}
+
 pub(super) fn policy_fixture_text() -> String {
     let mut text = String::from(
         r#"schema_version = 1
@@ -116,7 +134,8 @@ count = 1
 }
 
 pub(super) fn no_panic_allowlist_fixture_text() -> String {
-    r#"schema_version = 1
+    with_live_review_after(
+        r#"schema_version = 1
 policy = "no-panic-allowlist"
 owner = "EffortlessMetrics"
 status = "advisory"
@@ -148,8 +167,8 @@ family = "panic"
 [allow.selector]
 kind = "macro-call"
 callee = "panic"
-"#
-    .to_string()
+"#,
+    )
 }
 
 pub(super) fn clippy_policy_fixture_text() -> String {
@@ -163,7 +182,8 @@ status = "advisory"
     );
     push_allow(
         &mut text,
-        r#"id = "clippy-unwrap-policy"
+        &with_live_review_after(
+            r#"id = "clippy-unwrap-policy"
 path = "src/lib.rs"
 lint = "clippy::unwrap_used"
 family = "expect"
@@ -174,12 +194,14 @@ policy_id = "clippy-unwrap-policy"
 created = "2026-05-09"
 review_after = "2026-09-09"
 "#,
+        ),
     );
     text
 }
 
 pub(super) fn unsafe_policy_fixture_text() -> String {
-    r#"schema_version = 1
+    with_live_review_after(
+        r#"schema_version = 1
 policy = "unsafe-allowlist"
 owner = "EffortlessMetrics"
 status = "advisory"
@@ -210,8 +232,8 @@ family = "unsafe_fn"
 
 [allow.selector]
 kind = "unsafe-fn"
-"#
-    .to_string()
+"#,
+    )
 }
 
 pub(super) fn executable_policy_fixture_text() -> String {

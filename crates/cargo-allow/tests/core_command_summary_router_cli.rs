@@ -789,7 +789,11 @@ classification = "reviewed_exception"
 reason = "Entry intentionally has no current finding."
 evidence = ["test:stale"]
 created = "2026-01-01"
-review_after = "2027-01-01"
+# The test asserts this unused entry reports status "stale"; an unused
+# entry becomes review-due once review_after arrives (advisory but a
+# different status), so pin it far in the future to keep the asserted
+# status stable.
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "method_call"

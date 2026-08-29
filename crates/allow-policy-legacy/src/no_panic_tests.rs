@@ -114,7 +114,10 @@ fn migrates_no_panic_allowlist_to_structural_panic_entries() {
             .map(|seen| (seen.line, seen.column)),
         Some((7, 12))
     );
-    assert_eq!(unwrap.lifecycle.review_after.as_deref(), Some("2026-09-09"));
+    assert_eq!(
+        unwrap.lifecycle.review_after.as_deref(),
+        Some(crate::test_fixture_text::live_review_after().as_str())
+    );
 
     let generated = cfg
         .allow

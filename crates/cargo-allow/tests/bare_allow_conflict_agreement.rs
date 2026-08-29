@@ -42,9 +42,17 @@ fn remove_temp_root(root: PathBuf) {
 fn write_conflict_policy(root: &std::path::Path) {
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    // The entry must keep covering the bare-allow finding for the check/add
+    // agreement, so its lifecycle dates are computed relative to today
+    // instead of hardcoded calendar days the test would eventually sail
+    // past.
+    let created = allow_core::SimpleDate::today_utc_approx().add_days(-30);
+    let review_after = allow_core::SimpleDate::today_utc_approx().add_days(30);
+    let expires = allow_core::SimpleDate::today_utc_approx().add_days(60);
     fs::write(
         root.join("policy/allow.toml"),
-        r#"schema_version = "0.1"
+        format!(
+            r#"schema_version = "0.1"
 policy = "cargo-allow"
 owner = "core"
 status = "active"
@@ -61,15 +69,16 @@ owner = "core"
 classification = "reviewed_exception"
 reason = "receipt the bare allow"
 evidence = ["test:fixture"]
-created = "2026-01-01"
-review_after = "2027-12-01"
-expires = "2027-12-31"
+created = "{created}"
+review_after = "{review_after}"
+expires = "{expires}"
 
 [allow.selector]
 ast_kind = "attribute"
 lint = "clippy::expect_used"
 glob = "src/lib.rs"
-"#,
+"#
+        ),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
