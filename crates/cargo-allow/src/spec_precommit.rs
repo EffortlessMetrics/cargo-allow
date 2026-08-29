@@ -617,6 +617,8 @@ pub(crate) mod tests {
 
     fn check_args(output: Option<PathBuf>, receipt: Option<PathBuf>) -> CheckArgs {
         CheckArgs {
+            artifact_dir: None,
+            emit: None,
             persistent_cache: crate::check::PersistentCacheMode::On,
             root: RootArgs::default(),
             config: None,

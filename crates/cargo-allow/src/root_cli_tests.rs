@@ -234,6 +234,8 @@ mod tests {
         assert!(matches!(
             parsed.command,
             Some(CargoAllowCommand::Check(check::CheckArgs {
+                artifact_dir: None,
+                emit: None,
                 format: OutputFormat::Markdown,
                 ..
             }))
@@ -263,6 +265,8 @@ mod tests {
         assert!(matches!(
             parsed.command,
             Some(CargoAllowCommand::Check(check::CheckArgs {
+                artifact_dir: None,
+                emit: None,
                 root: RootArgs { root: Some(root) },
                 ..
             })) if root == Path::new("fixtures/source-snapshot")
@@ -277,6 +281,8 @@ mod tests {
         assert!(matches!(
             parsed.command,
             Some(CargoAllowCommand::Check(check::CheckArgs {
+                artifact_dir: None,
+                emit: None,
                 mode: None,
                 ..
             }))
@@ -294,6 +300,8 @@ mod tests {
         assert!(matches!(
             parsed.command,
             Some(CargoAllowCommand::Check(check::CheckArgs {
+                artifact_dir: None,
+                emit: None,
                 mode: Some(mode),
                 ..
             })) if mode == "strict"
@@ -315,6 +323,8 @@ mod tests {
         assert!(matches!(
             parsed.command,
             Some(CargoAllowCommand::Check(check::CheckArgs {
+                artifact_dir: None,
+                emit: None,
                 deny,
                 ..
             })) if deny == vec!["review_due".to_string(), "stale".to_string()]
