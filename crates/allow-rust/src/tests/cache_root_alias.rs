@@ -575,7 +575,7 @@ fn unix_mid_walk_component_swap_is_detected_and_refused() -> Result<(), String> 
     // No content escape: the store behind the renamed component is
     // byte-identical to the last admitted flush, and the outside directory
     // never received a cache artifact.
-    let bytes_after = fs::read(&real_target.join("cargo-allow/cache/scan-cache.v2.bin"))
+    let bytes_after = fs::read(real_target.join("cargo-allow/cache/scan-cache.v2.bin"))
         .map_err(|error| error.to_string())?;
     assert_eq!(bytes_before, bytes_after, "store bytes must not change");
     assert!(
