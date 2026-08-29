@@ -2192,7 +2192,7 @@ classification = "release_qualification_report"
 reason = "Records the current ReleaseQualificationV1 capability, platform, MSRV, safety, package, authentication, and provenance dispositions without claiming candidate or tag readiness."
 evidence = ["issue:2262", "issue:2261", "issue:2258"]
 created = "2026-07-15"
-review_after = "2026-08-15"
+review_after = "2026-11-27"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -13966,6 +13966,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/weak-evidence-retargets.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/weak-evidence-retargets.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0660"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/allow-9005-review-refresh.toml"
+owner = "release/qualification"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the allow-9005 review_after extension after the operator re-confirmed the 0.1.11 readiness record."
+evidence = ["doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/allow-9005-review-refresh.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/allow-9005-review-refresh.toml"
 
 [allow.last_seen]
 line = 1
