@@ -108,9 +108,9 @@ fn contract_digest_is_bound_across_artifacts() -> Result<(), String> {
             let digest = artifact
                 .content_digest
                 .as_deref()
-                .unwrap_or_else(|| panic_any(format!("{} missing digest", artifact.file_name)));
+                .ok_or_else(|| format!("{} missing digest", artifact.file_name))?;
             if !digest.starts_with("sha256:") || digest.len() != "sha256:".len() + 64 {
-                panic_any(format!("{} has malformed digest", artifact.file_name));
+                return Err(format!("{} has malformed digest", artifact.file_name));
             }
         }
     }
