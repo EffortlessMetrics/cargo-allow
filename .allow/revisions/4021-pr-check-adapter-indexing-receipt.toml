@@ -3,15 +3,19 @@
 # #4021 introduced crates/cargo-allow/tests/github_pr_check_adapter.rs with an
 # unreceipted panic.indexing finding, which turned main's no-new gate and the
 # dogfood hook test red on every platform. This note authorizes the single
-# added receipt: test-only slice indexing whose out-of-range panic is the
-# intended failure mode of the projection contract test. No existing entry is
-# widened, no expiry is extended, and no baseline_debt is created.
+# added receipt: guarded, test-only slice indexing that the scanner flags at
+# source-syntax posture even though the len() comparison short-circuits before
+# the index and no out-of-range path exists. No existing entry is widened, no
+# expiry is extended, and no baseline_debt is created. The allow-0655 record
+# was rebound after the entry reason was corrected to state the guarded
+# short-circuit fact; the superseded fingerprint is
+# sha256:v1:79bcc81fdeb8180006b4e056a0cdb7f3e120fb8e6ef75521a1c976496ae126bb.
 
 [[records]]
 allow_ids = ["allow-0655"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:79bcc81fdeb8180006b4e056a0cdb7f3e120fb8e6ef75521a1c976496ae126bb"
-reason = "panic.indexing receipt for the asserted single annotation row in introduced_blocking_finding_annotates_first; an out-of-range index panics the test, which is the intended failure mode for this projection contract test."
+after_fingerprint = "sha256:v1:60d79df597f166b526c7aa15ce5f5ecc9bcdfae6c509abd12ff1abd2013902fa"
+reason = "panic.indexing receipt for the asserted single annotation row in introduced_blocking_finding_annotates_first: the len() != 1 comparison short-circuits before the index, so no out-of-range path exists; receipted because the scanner flags the index expression itself at source-syntax posture."
 
 [[records]]
 allow_ids = ["allow-0656"]

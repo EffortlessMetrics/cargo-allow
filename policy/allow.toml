@@ -13863,7 +13863,7 @@ family = "indexing"
 path = "crates/cargo-allow/tests/github_pr_check_adapter.rs"
 owner = "core/devex"
 classification = "github_pr_check_projection_test"
-reason = "Reviewed 2026-08-29: required. Test-only slice of the asserted single annotation row in introduced_blocking_finding_annotates_first; an out-of-range index panics the test, which is the intended failure mode for this projection contract test."
+reason = "Reviewed 2026-08-29: required. Test-only, guarded slice indexing of the asserted single annotation row in introduced_blocking_finding_annotates_first: the len() != 1 comparison short-circuits before the index, so no out-of-range path exists; receipted because the scanner flags the index expression itself at source-syntax posture."
 evidence = ["issue:3965", "test:introduced_blocking_finding_annotates_first"]
 created = "2026-08-29"
 review_after = "2026-11-27"
