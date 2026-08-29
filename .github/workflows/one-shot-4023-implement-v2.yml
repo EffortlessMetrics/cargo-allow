@@ -51,8 +51,8 @@ jobs:
           function_at = script.find(function_name)
           if function_at < 0:
               raise SystemExit('generated fixture self-test missing')
-          block_start = script.rfind('          #[test]\n', 0, function_at)
-          block_end = script.find("          '''", function_at)
+          block_start = script.rfind('#[test]\n', 0, function_at)
+          block_end = script.find("'''", function_at)
           if block_start < 0 or block_end < 0:
               raise SystemExit('generated fixture self-test boundaries missing')
           replacement = '\n'.join([
