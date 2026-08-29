@@ -94,18 +94,26 @@ fn test_ci_workflow_runs_the_full_cache_suite_on_every_platform() -> Result<(), 
 /// next same-indent job key) so assertions bind to that job only.
 fn test_core_platforms_job_block(content: &str) -> Option<String> {
     let lines: Vec<&str> = content.lines().collect();
-    let mut start = None;
-    let mut end = lines.len();
-    for (idx, line) in lines.iter().enumerate() {
-        if start.is_none() {
+    let mut collected: Vec<&str> = Vec::new();
+    let mut in_block = false;
+    for line in &lines {
+        if !in_block {
             if *line == "  test-core-platforms:" {
-                start = Some(idx);
+                in_block = true;
+                collected.push(line);
             }
-        } else if line.starts_with("  ") && !line.starts_with("    ") && line.ends_with(':') {
-            end = idx;
+            continue;
+        }
+        // A same-indent bare key opens the next job; nested keys are
+        // indented deeper and stay in this block.
+        if line.starts_with("  ") && !line.starts_with("    ") && line.ends_with(':') {
             break;
         }
+        collected.push(line);
     }
-    let start = start?;
-    Some(lines[start..end].join("\n"))
+    if collected.is_empty() {
+        None
+    } else {
+        Some(collected.join("\n"))
+    }
 }
