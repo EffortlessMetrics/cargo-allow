@@ -13855,3 +13855,49 @@ glob = ".allow/revisions/3965-github-pr-check-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0655"
+kind = "panic"
+family = "indexing"
+path = "crates/cargo-allow/tests/github_pr_check_adapter.rs"
+owner = "core/devex"
+classification = "github_pr_check_projection_test"
+reason = "Reviewed 2026-08-29: required. Test-only, guarded slice indexing of the asserted single annotation row in introduced_blocking_finding_annotates_first: the len() != 1 comparison short-circuits before the index, so no out-of-range path exists; receipted because the scanner flags the index expression itself at source-syntax posture."
+evidence = ["issue:3965", "test:introduced_blocking_finding_annotates_first"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "introduced_blocking_finding_annotates_first"
+symbol = "check.annotations[0]"
+receiver_fingerprint = "check.annotations"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:a8b2ec92b06eabf8"
+
+[allow.last_seen]
+line = 95
+column = 57
+
+[[allow]]
+id = "allow-0656"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
+owner = "core/devex"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the allow-0655 added_allow transition that receipts the panic.indexing finding in the #4021 GitHub PR check adapter test."
+evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:3965"]
+created = "2026-08-29"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
