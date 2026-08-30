@@ -16,6 +16,11 @@ fn release_identity_cli_accepts_valid_stable_and_rc() -> Result<(), Box<dyn Erro
     assert_eq!(json["channel"], "stable");
     assert_eq!(json["rc_ordinal"], serde_json::Value::Null);
     assert_eq!(json["github_prerelease"], false);
+    assert_eq!(json["precedence"]["major"], 0);
+    assert_eq!(json["precedence"]["minor"], 2);
+    assert_eq!(json["precedence"]["patch"], 0);
+    assert_eq!(json["precedence"]["is_stable"], true);
+    assert_eq!(json["precedence"]["rc_ordinal"], serde_json::Value::Null);
 
     // 2. Stable release with matching observed tag
     let output = run_cmd(&[
@@ -45,6 +50,8 @@ fn release_identity_cli_accepts_valid_stable_and_rc() -> Result<(), Box<dyn Erro
     assert_eq!(json["channel"], "release_candidate");
     assert_eq!(json["rc_ordinal"], 1);
     assert_eq!(json["github_prerelease"], true);
+    assert_eq!(json["precedence"]["is_stable"], false);
+    assert_eq!(json["precedence"]["rc_ordinal"], 1);
 
     // 4. Numbered RC2 with --observed-tag
     let output = run_cmd(&[

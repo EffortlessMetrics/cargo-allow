@@ -95,26 +95,70 @@ count_yaml_fragments() {
   find .changes -maxdepth 1 -name '*.yaml' | wc -l | tr -d '[:space:]'
 }
 
-# Corpus version files, newest first, derived at run time.
+# Corpus version files, newest first. Ordering is release-identity
+# semantics and belongs to the typed authority (#3752): each corpus
+# filename is validated through `cargo-allow release-identity`, and the
+# sort key is its validated precedence projection. Malformed corpus
+# names fail closed instead of silently sorting oldest. Both helpers pin
+# cwd to ROOT (argv) so the workspace toolchain and ROOT corpus are used
+# regardless of the caller's working directory.
 corpus_versions() {
-  "${PY}" - <<'PYEOF' | tr -d '\r'
-import re
+  "${PY}" - "${ROOT}" <<'PYEOF' | tr -d '\r'
+import json
+import subprocess
+import sys
 from pathlib import Path
 
-def parse_semver(s):
-    m = re.match(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$', s)
-    if not m:
-        return (0, 0, 0, (0, ''))
-    major, minor, patch, prerelease = m.groups()
-    pre_tuple = (1, '') if prerelease is None else (0, prerelease)
-    return (int(major), int(minor), int(patch), pre_tuple)
+root = Path(sys.argv[1])
+stems = sorted(
+    p.stem for p in (root / ".changes").glob("*.md")
+    if p.name not in {"header.md", "README.md"}
+)
+entries = []
+for stem in stems:
+    probe = subprocess.run(
+        ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+         "release-identity", "--version", stem],
+        cwd=root, capture_output=True, text=True,
+    )
+    if probe.returncode != 0 or '"result": "validated"' not in probe.stdout:
+        sys.exit(
+            "typed release identity rejected corpus version file "
+            f"{stem}.md: {probe.stderr.strip()}"
+        )
+    precedence = json.loads(probe.stdout)["precedence"]
+    entries.append((
+        (precedence["major"], precedence["minor"], precedence["patch"],
+         1 if precedence["is_stable"] else 0, precedence["rc_ordinal"] or 0),
+        stem,
+    ))
+for _, stem in sorted(entries, reverse=True):
+    print(stem)
+PYEOF
+}
 
-names = [
-    p.stem for p in Path('.changes').glob('*.md')
-    if p.name != 'header.md' and p.name != 'README.md' and re.match(r'^\d+\.\d+\.\d+', p.name)
-]
-for name in sorted(names, key=parse_semver, reverse=True):
-    print(name)
+# Candidate batch version: next patch after the newest retained release.
+# The current-line identity comes from the typed precedence projection;
+# only the bump arithmetic itself is local.
+batch_version() {
+  "${PY}" - "${ROOT}" "${1}" <<'PYEOF' | tr -d '\r'
+import json
+import subprocess
+import sys
+
+root, newest = sys.argv[1], sys.argv[2]
+probe = subprocess.run(
+    ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+     "release-identity", "--version", newest],
+    cwd=root, capture_output=True, text=True,
+)
+if probe.returncode != 0 or '"result": "validated"' not in probe.stdout:
+    sys.exit(
+        f"typed release identity rejected newest retained version "
+        f"{newest}: {probe.stderr.strip()}"
+    )
+precedence = json.loads(probe.stdout)["precedence"]
+print(f"{precedence['major']}.{precedence['minor']}.{precedence['patch'] + 1}")
 PYEOF
 }
 
@@ -159,12 +203,9 @@ CORPUS_DIGEST="$(corpus_digest)"
 RETAINED_VERSIONS="$(corpus_versions)"
 [ -n "${RETAINED_VERSIONS}" ] || fail "no corpus version files discovered in .changes"
 NEWEST_RETAINED="$(printf '%s\n' "${RETAINED_VERSIONS}" | head -1)"
-# Candidate batch version: next patch after the newest retained release.
-BATCH_VERSION="$("${PY}" -c "
-import re
-parts = re.split(r'[-.]', '${NEWEST_RETAINED}')
-major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
-print(f'{major}.{minor}.{patch + 1}')" | tr -d '\r')"
+# Candidate batch version: next patch after the newest retained release,
+# with the current-line identity read from the typed precedence projection.
+BATCH_VERSION="$(batch_version "${NEWEST_RETAINED}")"
 [ -n "${BATCH_VERSION}" ] || fail "could not derive a candidate batch version"
 
 YAML_COUNT_BEFORE="$(count_yaml_fragments)"

@@ -98,14 +98,10 @@ claim_boundary = "Independently validates the requested install version shape an
 id = "test-changie-history-roundtrip"
 path = "scripts/test-changie-history-roundtrip.sh"
 role = "Changie corpus roundtrip proof"
-disposition = "deferred-with-named-owner"
-owner = "#3752"
-marker_classes = ["version-regex", "prerelease-posture"]
-sites = [
-  "re.match(r'^(\\d+)\\.(\\d+)\\.(\\d+)",
-  "pre_tuple = (1, '') if prerelease is None",
-]
-claim_boundary = "Embeds an independent SemVer parser and stable-over-prerelease ordering comparator to select the newest retained version and derive the next candidate; ordering semantics belong to the typed authority."
+disposition = "typed-consumer"
+marker_classes = []
+sites = ["\"release-identity\", \"--version\""]
+claim_boundary = "Corpus ordering and current-line selection are typed: every .changes corpus filename is validated through `cargo-allow release-identity` and sorted by its validated precedence projection (malformed names fail closed), and the batch version reads major/minor/patch from the same projection before the local patch bump. The former embedded SemVer parser, stable-over-prerelease comparator, and version-prefix filename filter are deleted; only the patch-increment arithmetic itself stays local."
 
 [[consumers]]
 id = "check-msrv-consistency"
