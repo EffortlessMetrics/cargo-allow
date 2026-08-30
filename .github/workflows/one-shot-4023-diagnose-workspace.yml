@@ -1,0 +1,89 @@
+name: One-shot 4023 diagnose workspace gate
+
+on:
+  push:
+    branches:
+      - fix/4023-relative-fixture-dates
+    paths:
+      - .github/workflows/one-shot-4023-diagnose-workspace.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: one-shot-4023-diagnose-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out the exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/4023-relative-fixture-dates
+
+      - name: Reproduce the verified lifecycle transformation
+        shell: bash
+        run: |
+          python - <<'DRIVER'
+          from __future__ import annotations
+
+          import textwrap
+          from pathlib import Path
+
+          workflow_path = Path(".github/workflows/one-shot-4023-implement-v3.yml")
+          workflow = workflow_path.read_text(encoding="utf-8")
+          start_marker = "          python - <<'PY'\n"
+          start = workflow.find(start_marker)
+          if start < 0:
+              raise SystemExit("v3 implementation heredoc start missing")
+          start += len(start_marker)
+          end = workflow.find("\n          PY\n", start)
+          if end < 0:
+              raise SystemExit("v3 implementation heredoc end missing")
+          script = textwrap.dedent(workflow[start:end])
+          old_source = '"HEAD^:.github/workflows/one-shot-4023-implement.yml"'
+          new_source = '"78c04c0837bc71d9eb985743fe9706845bfcceae:.github/workflows/one-shot-4023-implement.yml"'
+          if script.count(old_source) != 1:
+              raise SystemExit("v3 source-commit reference shape changed")
+          script = script.replace(old_source, new_source, 1)
+          exec(compile(script, str(workflow_path), "exec"), {"__name__": "__main__"})
+          DRIVER
+          cargo fmt --all
+          cargo fmt --all -- --check
+
+      - name: Diagnose workspace Clippy and test gates
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --workspace --all-targets --locked -- -D warnings > /tmp/clippy.log 2>&1
+          clippy_status=$?
+          cargo test --workspace --locked --no-fail-fast > /tmp/tests.log 2>&1
+          test_status=$?
+          set -e
+
+          echo "WORKSPACE_CLIPPY_STATUS=${clippy_status}"
+          echo "WORKSPACE_TEST_STATUS=${test_status}"
+
+          if [ "${clippy_status}" -ne 0 ]; then
+            echo "--- CLIPPY ERROR INDEX ---"
+            grep -nE '(^error(\[|:)|^warning:|could not compile|aborting due)' /tmp/clippy.log | tail -n 120 || true
+            echo "--- CLIPPY TAIL ---"
+            tail -n 240 /tmp/clippy.log
+          fi
+
+          if [ "${test_status}" -ne 0 ]; then
+            echo "--- TEST FAILURE INDEX ---"
+            grep -nE '(^failures:|^---- .* stdout ----|FAILED$|test result: FAILED|could not compile|^error(\[|:))' /tmp/tests.log | tail -n 180 || true
+            echo "--- TEST TAIL ---"
+            tail -n 320 /tmp/tests.log
+          fi
+
+          if [ "${clippy_status}" -ne 0 ] || [ "${test_status}" -ne 0 ]; then
+            exit 1
+          fi
+
+          echo "WORKSPACE_GATES_OK"
