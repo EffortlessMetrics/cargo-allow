@@ -6,10 +6,16 @@
 # was surveyed for release-version parsing, channel inference, tag stripping,
 # prerelease posture, and workspace-version reading. The guard test
 # (crates/cargo-allow/src/release_identity_denominator_tests.rs) fails when:
-#   - a scanned surface gains release-semantic constructs without a row,
+#   - a scanned surface gains release-semantic constructs matching a marker
+#     class without a row (the six classes are a tripwire for the established
+#     parsing shapes, not a parser detector; the manual survey behind the rows
+#     is the completeness evidence),
 #   - a declared row no longer matches the detected constructs or anchors,
 #   - an exact count drifts, or
 #   - any scanned surface infers a channel from an `-rc` marker.
+# The scan covers .sh/.py/.yml/.yaml files under the declared scan_roots;
+# new surface directories or extensions must be added to scan_roots to come
+# under the guard.
 # Dispositions use the #3752 vocabulary: typed-producer, typed-consumer,
 # exact-value-pass-through, historical-fixture-only, non-semantic-formatting,
 # superseded-parser-to-delete, deferred-with-named-owner.
@@ -308,7 +314,10 @@ role = "upgrade/rollback journey receipt validator"
 disposition = "deferred-with-named-owner"
 owner = "#2485"
 marker_classes = []
-sites = ["re.fullmatch(r\"cargo-allow 0\\.1\\.11.*\""]
+sites = [
+  "re.fullmatch(r\"cargo-allow 0\\.1\\.11.*\"",
+  "re.fullmatch(r\"cargo-allow 0\\.2\\.0.*\"",
+]
 claim_boundary = "Hard-codes published/candidate version-prefix assumptions with wildcard tails that silently accept prerelease variants; replace with exact typed identity when the #2485 journey is refreshed."
 
 [[consumers]]

@@ -238,6 +238,7 @@ fn denominator_rows_carry_complete_attribution() {
     let denominator = parse_denominator(&root);
 
     let mut seen_ids = BTreeSet::new();
+    let mut seen_paths = BTreeSet::new();
     for row in &denominator.consumers {
         assert!(
             !row.id.is_empty() && !row.role.is_empty() && !row.claim_boundary.is_empty(),
@@ -248,6 +249,11 @@ fn denominator_rows_carry_complete_attribution() {
             seen_ids.insert(row.id.as_str()),
             "duplicate denominator row id {}",
             row.id
+        );
+        assert!(
+            seen_paths.insert(row.path.as_str()),
+            "duplicate denominator row path {} would silently drop anchor enforcement",
+            row.path
         );
         if matches!(
             row.disposition,

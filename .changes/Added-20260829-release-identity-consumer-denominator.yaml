@@ -5,7 +5,7 @@ body: >-
   hidden cargo-allow release-identity command) now has a machine-checkable
   inventory of every non-Rust surface that parses, infers, or projects
   release-version semantics: policy/release-identity-consumers.toml
-  declares 31 surveyed consumer rows with dispositions from the #3752
+  declares 32 surveyed consumer rows with dispositions from the #3752
   vocabulary, detected marker classes, verified site anchors, and exact
   counts for the release-critical surfaces. The new
   release_identity_denominator_tests guard fails when a scanned surface

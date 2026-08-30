@@ -1,19 +1,46 @@
+schema_version = 1
 # Revision note for #3752 slice A: checked release-identity consumer denominator.
 
-# This diff adds two source-exception entries and four test-guard panic
-# receipts, all in service of one checked denominator of release-identity
-# consumers. allow-11198 receipts the new machine-checkable inventory
-# policy/release-identity-consumers.toml (31 surveyed consumer rows with
-# dispositions, marker classes, verified site anchors, and exact counts for
-# the release-critical surfaces). allow-11199 is the self-receipt for this
-# revision note file, following the established ledger_change_note precedent.
+# This diff adds six source-exception entries, all in service of one checked
+# denominator of release-identity consumers. allow-11198 receipts the new
+# machine-checkable inventory policy/release-identity-consumers.toml (32
+# surveyed consumer rows with dispositions, marker classes, verified site
+# anchors, and exact counts for the release-critical surfaces).
 # allow-0663..allow-0666 receipt the four `panic!` invocations in the
 # fail-closed helpers of release_identity_denominator_tests.rs; panic on
 # unread or unscannable release surfaces is the established guard idiom in
 # release_prep_tests, and assert/assert_eq findings are already covered by
-# the retained test-assert entries. No existing exception is weakened, no
-# expiry is extended, and no scope is broadened: every record below is an
-# addition that makes release-identity parsing more visible, not less.
+# the retained test-assert entries. allow-11199 is the self-receipt for this
+# revision note file, following the established ledger_change_note precedent.
+# No existing exception is weakened, no expiry is extended, and no scope is
+# broadened: every record below is an addition that makes release-identity
+# parsing more visible, not less. allow.toml is rewritten with normalized
+# LF line endings in this transition; entry content and fingerprints are
+# unchanged by that serialization.
+
+[[records]]
+allow_ids = ["allow-0663"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:747050ffdc34ec26444e0423c21e1efb309276854750f4fcd9c78c4ad8ac9bc3"
+reason = "Receipts the panic! in the denominator guard's read_workspace_file helper so an unreadable release surface fails the guard loudly instead of silently passing; test-only, matching the release_prep_tests guard idiom."
+
+[[records]]
+allow_ids = ["allow-0664"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e88ae3aac873f5fa33f7558e2c5dc69ef322871da3abc86e1c9dee4eb572f280"
+reason = "Receipts the panic! in the denominator guard's parse_denominator helper so a malformed consumer denominator fails closed rather than degrading the guard to no-op; test-only."
+
+[[records]]
+allow_ids = ["allow-0665"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ff740d4a9411da1099fda675dc88504eab7b4f20cd8cf616b825e4a5282ac9f9"
+reason = "Receipts the panic! in the denominator guard's collect_files directory scan so an unscannable surface aborts the guard instead of narrowing coverage silently; test-only."
+
+[[records]]
+allow_ids = ["allow-0666"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4c96411e10f33041f586256dcb04d8e608e408c223d6e6af7c7e6c4821aed352"
+reason = "Receipts the panic! in the denominator guard's collect_files entry scan with the same fail-closed boundary; test-only."
 
 [[records]]
 allow_ids = ["allow-11198"]
