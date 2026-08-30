@@ -337,3 +337,14 @@ pub use artifacts::{
     render_final_evidence_evaluation_markdown, render_final_evidence_graph_canonical_bytes,
     render_final_evidence_graph_canonical_json,
 };
+
+// Root re-exports for the #3929 final pre-freeze readiness aggregate.
+pub use artifacts::{
+    CargoAllowFinalReadinessV1, FINAL_READINESS_SCHEMA_ID, FINAL_READINESS_SCHEMA_VERSION,
+    FinalReadinessClaimNarrowingV1, FinalReadinessCustodyPostureV1, FinalReadinessDecisionInputsV1,
+    FinalReadinessDecisionStateV1, FinalReadinessPostMergePostureV1,
+    FinalReadinessQualificationPostureV1, FinalReadinessRequiredEvidenceV1,
+    FinalReadinessRootDecisionV1, FinalReadinessRowKindV1, FinalReadinessRowV1,
+    FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
+    render_final_readiness_json, render_final_readiness_markdown,
+};
