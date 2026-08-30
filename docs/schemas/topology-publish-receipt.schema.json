@@ -36,7 +36,7 @@
           "release_order": { "type": "integer", "minimum": 1 },
           "local_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
           "registry_checksum": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
-          "state": { "enum": ["missing", "already_published_exact", "checksum_conflict"] }
+          "state": { "enum": ["missing", "already_published_exact", "checksum_conflict", "evidence_unavailable"] }
         },
         "oneOf": [
           {
@@ -48,6 +48,12 @@
           {
             "properties": {
               "state": { "enum": ["already_published_exact", "checksum_conflict"] },
+              "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            }
+          },
+          {
+            "properties": {
+              "state": { "const": "evidence_unavailable" },
               "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
             }
           }
