@@ -1,0 +1,155 @@
+{
+  "schema": "cargo-allow.rc-publication-incident.v1",
+  "incident_id": "rc1-moved-tag-publication",
+  "channel_version": "0.2.0-rc.1",
+  "channel_tag": "v0.2.0-rc.1",
+  "attempts": [
+    {
+      "run_id": 32688128233,
+      "commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "conclusion": "failure",
+      "result_class": "partial",
+      "retained_publish_receipt_artifact_id": 9506518765
+    },
+    {
+      "run_id": 32698363934,
+      "commit": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+      "tree": "4b9f15d68a4797e5a94739c88bee3468810a4b03",
+      "conclusion": "success",
+      "result_class": "complete",
+      "retained_publish_receipt_artifact_id": 9509808660
+    }
+  ],
+  "tag_observation": {
+    "current_tag_object": "994343d6c5357f6bd4530f9ed1fd95424624e48f",
+    "current_target_commit": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+    "events": [],
+    "observation_limit": "The create/delete/recreate event history of the incident tag is not retained in repository evidence; the ruling records that the same tag was moved across multiple source candidates after immutable publication began, and only the current annotated tag target (peeled to the final run's commit) is observable now."
+  },
+  "row_reconciliations": [
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-core",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:a3f6c99da45120b96968349bc51c83ddf81e6d7a2c49e06e8727d3ab4195a3b2",
+      "observed_checksum": "sha256:a3f6c99da45120b96968349bc51c83ddf81e6d7a2c49e06e8727d3ab4195a3b2"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-policy",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:36236a47b2ab58b3ae32e859fa7ab5eb33142ecf6166a389bc0ca92f72ba6434",
+      "observed_checksum": "sha256:36236a47b2ab58b3ae32e859fa7ab5eb33142ecf6166a389bc0ca92f72ba6434"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-inventory",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:7dbf2d02588e70234ab00e7fb22bf5ebf300f42b364afe87003e43a691d8356b",
+      "observed_checksum": "sha256:7dbf2d02588e70234ab00e7fb22bf5ebf300f42b364afe87003e43a691d8356b"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-files",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:5179e9c863ed22281f4e238813e0d41c5813dff02a49e62aacff0e7440ad56f2",
+      "observed_checksum": "sha256:5179e9c863ed22281f4e238813e0d41c5813dff02a49e62aacff0e7440ad56f2"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-rust",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:ee886bde7f70d17e10a351749572f181f070679560d87db90244059554d35919",
+      "observed_checksum": "sha256:ee886bde7f70d17e10a351749572f181f070679560d87db90244059554d35919"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-match",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:3342d56858ee23d98b6388bd83affb063df8f6a7414c4681bd0f6602dc7dc756",
+      "observed_checksum": "sha256:3342d56858ee23d98b6388bd83affb063df8f6a7414c4681bd0f6602dc7dc756"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-report",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:d8e27aa29a0ae6c0f92401a6ceb3a43be014685dbf4631eba7b620c35a52858c",
+      "observed_checksum": "sha256:d8e27aa29a0ae6c0f92401a6ceb3a43be014685dbf4631eba7b620c35a52858c"
+    },
+    {
+      "state": "published_exact_candidate",
+      "package": "allow-policy-legacy",
+      "version": "0.2.0-rc.1",
+      "candidate_commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
+      "candidate_tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
+      "candidate_receipt_artifact_id": 9506518765,
+      "expected_checksum": "sha256:3ef3613fcbd6a0afe3552b29f37cfd7a3ef6d8794cc848127a6afa65b32c4ca9",
+      "observed_checksum": "sha256:3ef3613fcbd6a0afe3552b29f37cfd7a3ef6d8794cc848127a6afa65b32c4ca9"
+    },
+    {
+      "state": "published_across_candidate_history",
+      "package": "allow-diff",
+      "version": "0.2.0-rc.1",
+      "registry_checksum": "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488",
+      "retained_candidate_checksums": [
+        "sha256:90637b00caf45d494fe8bbe1fbae29a730ed0cf6cc17f0c8f3122c6941fd0786",
+        "sha256:86fe2512fda53f78468273d5829876cf16c9c55e2f39d41652644fdd2fb22afd"
+      ],
+      "note": "The first attempt uploaded its own candidate bytes (86fe2512...) and observed the registry already holding ae3f4ed1...; the final run's repackage (90637b00...) also differs. The registry bytes match no retained candidate receipt, so the producing candidate is unretained intermediate moved-tag history."
+    },
+    {
+      "state": "published_across_candidate_history",
+      "package": "cargo-allow",
+      "version": "0.2.0-rc.1",
+      "registry_checksum": "sha256:212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
+      "retained_candidate_checksums": [
+        "sha256:8f3bdd549b1bccfdbdd3301ab655377c2fd49e71989871bf7bc2949d573e0f76"
+      ],
+      "note": "The first attempt never reached this row; the final run's repackage (8f3bdd54...) differs from the registry bytes (212dfcc8...), so those bytes were published by an unretained intermediate moved-tag candidate."
+    }
+  ],
+  "github_release": {
+    "name": "v0.2.0-rc.1",
+    "draft": false,
+    "prerelease": false,
+    "asset_count": 7,
+    "observed_note": "The RC GitHub Release is published with draft=false AND prerelease=false - a stable-release posture for a prerelease channel identity (the RcReleasePrereleaseFlagMismatch incident class; fixed for future tags by routing the workflow's prerelease field through the typed identity projection). The published release is not rewritten as part of incident reconciliation."
+  },
+  "registry_observation": {
+    "observed_at": "2026-08-30",
+    "rows_present": 10,
+    "yanked_count": 0
+  },
+  "observation_completeness": "partial_observation",
+  "observation_limits": [
+    "The incident tag's create/delete/recreate event history (timestamps, actor, order) is not retained; only the current annotated tag target is observable.",
+    "The producing-candidate receipts for the allow-diff and cargo-allow registry bytes are unretained: no retained topology receipt carries checksums ae3f4ed1... or 212dfcc8..., so their source candidates are identified only as intermediate moved-tag history.",
+    "docs.rs build state for the ten rows was not observed in this record.",
+    "Attestation state is carried by the final run's verified install receipts rather than re-verified here."
+  ],
+  "channel_posture": "public_prerelease_with_incident",
+  "final_candidate_eligibility": "not_reusable",
+  "claim_boundary": "Reconciles retained run receipts (artifacts 9506518765 and 9509808660), the current annotated tag target, a crates.io registry observation dated 2026-08-30 (all ten rows present, none yanked, checksums matching the final run's observed registry values), and the current GitHub Release state. Registry checksum equality is not source-tag provenance: rows are exact only against the retained candidate receipt that produced their irreversible upload, and rows whose bytes match no retained candidate stay visibly across-candidate. This record establishes no clean single-candidate release, authorizes no yank, replaces no public release, and renders no rc.1 evidence reusable for the final 0.2.0 identity."
+}

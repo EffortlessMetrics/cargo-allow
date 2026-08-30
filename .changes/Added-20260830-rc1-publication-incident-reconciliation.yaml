@@ -1,0 +1,23 @@
+kind: Added
+body: >-
+  Reconcile the moved v0.2.0-rc.1 publication incident (#3759). A typed
+  CargoAllowRcPublicationIncidentV1 contract (allow-report) validates the
+  reconciliation law: ruling-fixed channel posture
+  (public_prerelease_with_incident) and final-candidate eligibility
+  (not_reusable) are not free fields; exact-candidate rows must carry
+  equal retained checksums from the receipt that produced their
+  irreversible upload; across-candidate rows must list the retained
+  candidates their registry bytes do not match; partial observations must
+  name their limits. The retained record
+  (docs/release/evidence/rc1-publication-incident.v1.json) is generated
+  from the two retained run receipts (artifacts 9506518765 and
+  9509808660), a crates.io registry observation dated 2026-08-30 (all ten
+  rows present, none yanked, checksums equal to the final run's observed
+  values), the current annotated tag target, and the GitHub Release
+  state. Findings: eight rows trace exactly to the partial attempt's
+  candidate f8bbd3a8; allow-diff and cargo-allow registry bytes match no
+  retained candidate (unretained moved-tag history); the RC GitHub
+  Release shipped with prerelease=false (RcReleasePrereleaseFlagMismatch
+  class, recorded as an observed deviation, not normalized). JSON schema
+  added under docs/schemas; integration test binds the record to the
+  typed law.
