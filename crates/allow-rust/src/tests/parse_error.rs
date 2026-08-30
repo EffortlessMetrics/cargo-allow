@@ -83,10 +83,7 @@ fn temp_root_preserves_typed_io_errors() -> TestResult {
         Err(error) => error,
     };
     if error.downcast_ref::<io::Error>().is_none() {
-        return Err(io::Error::other(format!(
-            "expected io::Error, received {error:?}"
-        ))
-        .into());
+        return Err(io::Error::other(format!("expected io::Error, received {error:?}")).into());
     }
 
     fs::remove_dir_all(&root)?;
