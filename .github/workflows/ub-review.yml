@@ -18,11 +18,18 @@ jobs:
     permissions:
       contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      # The corpus-ordering probes validate versions through the typed
+      # release-identity authority (#3752), so this job builds the
+      # workspace binary; the cache lane keeps the cold compile bounded.
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: changie-contract
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: '1.25.0'
