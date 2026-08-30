@@ -377,3 +377,20 @@ required_stronger_owner = "#2478"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Support wording is checked; package, platform, and external evidence are not established."
+
+[[surfaces]]
+id = "rc1-publication-incident-reconciliation"
+owner_issue = 3759
+semantic_authority = "rc.1 publication incident reconciliation"
+path = "crates/cargo-allow/tests/rc_publication_incident.rs"
+subject = "docs/release/evidence/rc1-publication-incident.v1.json"
+producer = "Rust integration test"
+consumer = "release incident ledger / #2501 final refreeze"
+claimed_acceptance_row = "the retained incident record validates against the typed reconciliation law"
+assertion_mechanism = "typed validation plus provenance assertions (8/2 row split, ruling-fixed posture and eligibility, partial-observation limits)"
+evidence_class = "StructuredShapeValidation"
+disposition = "typed record validation"
+required_stronger_owner = "#3759"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The retained record is checked against the typed contract and its internal consistency; external receipt bytes were byte-verified during the reconciliation observation and by independent review, not continuously re-verified here."
