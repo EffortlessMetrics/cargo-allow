@@ -14,9 +14,8 @@ schema_version = 1
 # revision note file, following the established ledger_change_note precedent.
 # No existing exception is weakened, no expiry is extended, and no scope is
 # broadened: every record below is an addition that makes release-identity
-# parsing more visible, not less. allow.toml is rewritten with normalized
-# LF line endings in this transition; entry content and fingerprints are
-# unchanged by that serialization.
+# parsing more visible, not less. policy/allow.toml keeps its CRLF
+# line-ending contract; the net transition is append-only.
 
 [[records]]
 allow_ids = ["allow-0663"]
