@@ -1,0 +1,170 @@
+name: One-shot 4023 finalize lifecycle repair
+
+on:
+  push:
+    branches:
+      - fix/4023-relative-fixture-dates
+    paths:
+      - .github/workflows/one-shot-4023-finalize.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: one-shot-4023-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: EffortlessMetrics/cargo-allow
+      HEAD_BRANCH: fix/4023-relative-fixture-dates
+    steps:
+      - name: Wait for the verified PR or surface the landing failure
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 180); do
+            pr=$(gh pr list \
+              --repo "$REPO" \
+              --head "$HEAD_BRANCH" \
+              --state all \
+              --json number \
+              --jq '.[0].number // empty')
+            if [[ -n "$pr" ]]; then
+              echo "pr=$pr" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            status=$(gh run list \
+              --repo "$REPO" \
+              --workflow one-shot-4023-land.yml \
+              --branch "$HEAD_BRANCH" \
+              --limit 1 \
+              --json status,conclusion,databaseId \
+              --jq '.[0] | [.status, (.conclusion // ""), (.databaseId|tostring)] | @tsv' \
+              2>/dev/null || true)
+            if [[ -n "$status" ]]; then
+              IFS=$'\t' read -r run_status conclusion run_id <<< "$status"
+              if [[ "$run_status" == completed && "$conclusion" != success ]]; then
+                gh run view "$run_id" --repo "$REPO" --log-failed \
+                  > /tmp/issue-4023-land-failure.log 2>&1 || true
+                {
+                  echo 'The #4023 assertion-guarded landing workflow stopped before publishing a PR.'
+                  echo
+                  echo "Run: https://github.com/$REPO/actions/runs/$run_id"
+                  echo
+                  echo 'No code change was accepted or merged by the finalizer.'
+                } > /tmp/issue-4023-land-failure.md
+                gh issue comment 4023 --repo "$REPO" \
+                  --body-file /tmp/issue-4023-land-failure.md
+                tail -n 200 /tmp/issue-4023-land-failure.log
+                exit 1
+              fi
+            fi
+            sleep 30
+          done
+          echo 'No PR or terminal landing result appeared inside the bounded finalization window.' >&2
+          exit 1
+
+      - name: Review the exact published patch
+        id: review
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=${{ steps.locate.outputs.pr }}
+          gh pr view "$pr" --repo "$REPO" \
+            --json number,state,title,headRefName,baseRefName,headRefOid,mergeable,files \
+            > /tmp/issue-4023-pr.json
+          gh pr diff "$pr" --repo "$REPO" > /tmp/issue-4023.patch
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "crates/cargo-allow/tests/add_glob_ratchet.rs",
+              "crates/cargo-allow/tests/audit_output.rs",
+              "crates/cargo-allow/tests/concurrent_mutation.rs",
+              "crates/cargo-allow/tests/lifecycle_corpus.rs",
+              "crates/cargo-allow/tests/lifecycle_fixture_date_guard.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/diff.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/fixture.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/migrate.rs",
+              "crates/cargo-allow/tests/summary_output.rs",
+          }
+          data = json.loads(Path('/tmp/issue-4023-pr.json').read_text())
+          actual = {item['path'] for item in data['files']}
+          if actual != expected:
+              raise SystemExit(
+                  f"published PR file denominator differs from reviewed surface: "
+                  f"missing={sorted(expected-actual)} unexpected={sorted(actual-expected)}"
+              )
+          if data['baseRefName'] != 'main' or data['headRefName'] != 'fix/4023-relative-fixture-dates':
+              raise SystemExit('published PR branch identity is not the reviewed candidate')
+          patch = Path('/tmp/issue-4023.patch').read_text(encoding='utf-8', errors='replace')
+          forbidden = (
+              'diff --git a/crates/cargo-allow/src/',
+              'diff --git a/crates/allow-',
+              'diff --git a/.github/',
+              'diff --git a/policy/',
+          )
+          present = [marker for marker in forbidden if marker in patch]
+          if present:
+              raise SystemExit(f'published patch crosses the fixture-only claim boundary: {present}')
+          required = (
+              'SimpleDate::today_utc_approx()',
+              'lifecycle_fixture_date_guard.rs',
+              '__CARGO_ALLOW_FIXTURE_CREATED__',
+          )
+          missing = [marker for marker in required if marker not in patch]
+          if missing:
+              raise SystemExit(f'published patch lacks expected lifecycle controls: {missing}')
+          PY
+
+      - name: Require terminal green checks and merge the reviewed candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=${{ steps.locate.outputs.pr }}
+          state=$(gh pr view "$pr" --repo "$REPO" --json state --jq .state)
+          if [[ "$state" == MERGED ]]; then
+            exit 0
+          fi
+          gh pr checks "$pr" --repo "$REPO" --watch --interval 20
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+
+      - name: Publish the merged receipt on the issue
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=${{ steps.locate.outputs.pr }}
+          gh pr view "$pr" --repo "$REPO" \
+            --json number,state,mergedAt,mergeCommit,url \
+            > /tmp/issue-4023-merged.json
+          python - <<'PY' > /tmp/issue-4023-merged.md
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('/tmp/issue-4023-merged.json').read_text())
+          if data['state'] != 'MERGED' or not data['mergedAt']:
+              raise SystemExit('finalizer did not observe a merged PR')
+          commit = (data.get('mergeCommit') or {}).get('oid', '<unavailable>')
+          print('Completed #4023 through reviewed merge.')
+          print()
+          print(f"- PR: #{data['number']}")
+          print(f"- Merge commit: `{commit}`")
+          print(f"- Merged at: {data['mergedAt']}")
+          print('- Patch boundary: cargo-allow integration fixtures and recurrence guard only')
+          print('- Acceptance: affected suites, workspace Clippy, workspace tests, and terminal PR checks')
+          PY
+          gh issue comment 4023 --repo "$REPO" \
+            --body-file /tmp/issue-4023-merged.md
