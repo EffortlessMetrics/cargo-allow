@@ -9,8 +9,7 @@ use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
 use super::divergence::{FederationDivergenceRecord, detect_mirror_divergences};
 use super::load::{FederationLoadOutcome, load_federation_config};
 use super::precedence::ordered_ledgers_by_precedence;
-use crate::SkippedPolicyCandidate;
-use crate::discover_config;
+use crate::{SkippedPolicyCandidate, discover_config};
 
 pub const FEDERATION_VERSION: &str = "1";
 pub const SOURCE_EXCEPTION_LANE: &str = "source-exception";
@@ -282,6 +281,7 @@ mod tests {
 
         let skipped = missing_policy_config_error(&[SkippedPolicyCandidate {
             path: PathBuf::from("foreign/allow.toml"),
+            source: crate::SOURCE_CONVENTIONAL_PATH,
             reason: "foreign policy dialect".to_string(),
         }]);
         assert_eq!(skipped.kind(), CargoAllowErrorKind::InvalidConfig);

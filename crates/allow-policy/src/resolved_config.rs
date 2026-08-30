@@ -8,13 +8,12 @@ use allow_core::{
 use serde::{Deserialize, Serialize};
 
 use crate::discovery::DiscoverConfigResult;
-use crate::discovery::skipped_metadata_candidate_source;
 use crate::federation::{
     FEDERATION_CONFIG_REL_PATH, FederationEvaluation, FederationLoadOutcome, LedgerRole,
     PrecedenceTier, SOURCE_EXCEPTION_LANE, load_federation_config,
 };
 use crate::{
-    DISCOVERY_REL_PATHS, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
+    SOURCE_CARGO_METADATA, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
     SOURCE_WORKSPACE_METADATA, discover_config, evaluate_source_exception_policy,
     parse_policy_with_reportable_evidence_at,
 };
@@ -59,6 +58,7 @@ pub enum ConfigCandidateSourceV1 {
     FederationRegistry,
     PackageMetadata,
     WorkspaceMetadata,
+    CargoMetadata,
     ConventionalPath,
     LegacyDiscovery,
 }
@@ -502,21 +502,12 @@ fn candidates_from_discovery(
             }),
         });
     }
-    candidates.extend(discovery.skipped.iter().map(|candidate| {
-        ConfigCandidateV1 {
-            source: skipped_metadata_candidate_source(root, &candidate.path)
-                .and_then(source_from_label)
-                .unwrap_or_else(|| {
-                    if is_conventional_candidate(root, &candidate.path) {
-                        ConfigCandidateSourceV1::ConventionalPath
-                    } else {
-                        ConfigCandidateSourceV1::LegacyDiscovery
-                    }
-                }),
-            path: portable_config_path(root, &candidate.path, true),
-            disposition: ConfigCandidateDispositionV1::Skipped,
-            reason: Some(portable_message(root, &candidate.reason)),
-        }
+    candidates.extend(discovery.skipped.iter().map(|candidate| ConfigCandidateV1 {
+        source:
+            source_from_label(candidate.source).unwrap_or(ConfigCandidateSourceV1::LegacyDiscovery),
+        path: portable_config_path(root, &candidate.path, true),
+        disposition: ConfigCandidateDispositionV1::Skipped,
+        reason: Some(portable_message(root, &candidate.reason)),
     }));
     candidates
 }
@@ -537,21 +528,6 @@ fn candidate_from_cli(root: &Path, config: &Path, cli_selected: bool) -> ConfigC
         },
         reason: (!is_safe)
             .then(|| "absolute or parent-traversing CLI path is not portable".to_string()),
-    }
-}
-
-fn is_conventional_candidate(root: &Path, candidate: &Path) -> bool {
-    let mut dir = root.to_path_buf();
-    loop {
-        if DISCOVERY_REL_PATHS
-            .iter()
-            .any(|relative| dir.join(relative) == candidate)
-        {
-            return true;
-        }
-        if !dir.pop() {
-            return false;
-        }
     }
 }
 
@@ -590,8 +566,9 @@ fn candidate_source_key(source: ConfigCandidateSourceV1) -> u8 {
         ConfigCandidateSourceV1::FederationRegistry => 1,
         ConfigCandidateSourceV1::PackageMetadata => 2,
         ConfigCandidateSourceV1::WorkspaceMetadata => 3,
-        ConfigCandidateSourceV1::ConventionalPath => 4,
-        ConfigCandidateSourceV1::LegacyDiscovery => 5,
+        ConfigCandidateSourceV1::CargoMetadata => 4,
+        ConfigCandidateSourceV1::ConventionalPath => 5,
+        ConfigCandidateSourceV1::LegacyDiscovery => 6,
     }
 }
 
@@ -768,6 +745,7 @@ fn source_from_label(label: &str) -> Option<ConfigCandidateSourceV1> {
     match label {
         SOURCE_PACKAGE_METADATA => Some(ConfigCandidateSourceV1::PackageMetadata),
         SOURCE_WORKSPACE_METADATA => Some(ConfigCandidateSourceV1::WorkspaceMetadata),
+        SOURCE_CARGO_METADATA => Some(ConfigCandidateSourceV1::CargoMetadata),
         SOURCE_CONVENTIONAL_PATH => Some(ConfigCandidateSourceV1::ConventionalPath),
         _ => None,
     }
@@ -850,7 +828,12 @@ fn portable_config_path(
     let mut anchor = root.to_path_buf();
     let mut ancestor_depth = 0u32;
     loop {
-        if let Some(relative) = lexical_relative_path(&anchor, path) {
+        let relative = lexical_relative_path(&anchor, path).or_else(|| {
+            let resolved_anchor = anchor.canonicalize().ok()?;
+            let resolved_path = path.canonicalize().ok()?;
+            lexical_relative_path(&resolved_anchor, &resolved_path)
+        });
+        if let Some(relative) = relative {
             let path = if relative.is_empty() {
                 ".".to_string()
             } else {

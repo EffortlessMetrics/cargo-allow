@@ -1,6 +1,6 @@
 use std::path::{Component, Path, PathBuf};
 
-use allow_core::{normalize_path, read_text_file_capped};
+use allow_core::read_text_file_capped;
 use serde::Deserialize;
 
 use crate::policy_header::{SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS};
@@ -22,12 +22,16 @@ pub const NATIVE_LEDGER_REL_PATH: &str = "policy/cargo-allow.toml";
 pub const SOURCE_PACKAGE_METADATA: &str = "package_metadata";
 /// Provenance label for a config selected from workspace metadata.
 pub const SOURCE_WORKSPACE_METADATA: &str = "workspace_metadata";
+/// Provenance label for a Cargo manifest metadata attempt whose package or
+/// workspace origin could not be distinguished.
+pub const SOURCE_CARGO_METADATA: &str = "cargo_metadata";
 /// Provenance label for a config selected from a conventional path.
 pub const SOURCE_CONVENTIONAL_PATH: &str = "conventional_path";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkippedPolicyCandidate {
     pub path: PathBuf,
+    pub source: &'static str,
     pub reason: String,
 }
 
@@ -97,6 +101,7 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
                 }
                 CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
                     path: candidate,
+                    source: SOURCE_CONVENTIONAL_PATH,
                     reason,
                 }),
             }
@@ -109,44 +114,6 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
         selected: None,
         selected_source: None,
         skipped,
-    }
-}
-
-pub(crate) fn skipped_metadata_candidate_source(
-    start: &Path,
-    candidate: &Path,
-) -> Option<&'static str> {
-    let mut dir = start.canonicalize().ok()?;
-    loop {
-        let manifest_path = dir.join("Cargo.toml");
-        if manifest_path.exists()
-            && let Ok(text) = read_text_file_capped(&manifest_path)
-            && let Ok(manifest) = toml::from_str::<CargoManifestProbe>(&text)
-        {
-            let package = manifest
-                .package
-                .as_ref()
-                .and_then(|package| package.metadata.as_ref())
-                .and_then(|metadata| metadata.cargo_allow.as_ref())
-                .and_then(|metadata| metadata.config.as_deref())
-                .map(|config| (config, SOURCE_PACKAGE_METADATA));
-            let workspace = manifest
-                .workspace
-                .as_ref()
-                .and_then(|workspace| workspace.metadata.as_ref())
-                .and_then(|metadata| metadata.cargo_allow.as_ref())
-                .and_then(|metadata| metadata.config.as_deref())
-                .map(|config| (config, SOURCE_WORKSPACE_METADATA));
-            if let Some((_, source)) = package.into_iter().chain(workspace).find(|(config, _)| {
-                normalize_path(dir.join(config)) == normalize_path(candidate)
-                    || normalize_path(&manifest_path) == normalize_path(candidate)
-            }) {
-                return Some(source);
-            }
-        }
-        if !dir.pop() {
-            return None;
-        }
     }
 }
 
@@ -190,6 +157,7 @@ fn discover_cargo_metadata_config(
         Err(err) => {
             skipped.push(SkippedPolicyCandidate {
                 path: manifest_path,
+                source: SOURCE_CARGO_METADATA,
                 reason: format!("cargo-allow metadata could not be read: {err}"),
             });
             return None;
@@ -200,6 +168,7 @@ fn discover_cargo_metadata_config(
         Err(err) => {
             skipped.push(SkippedPolicyCandidate {
                 path: manifest_path,
+                source: SOURCE_CARGO_METADATA,
                 reason: format!("cargo-allow metadata could not be parsed: {err}"),
             });
             return None;
@@ -228,6 +197,7 @@ fn discover_cargo_metadata_config(
     {
         skipped.push(SkippedPolicyCandidate {
             path: manifest_path,
+            source,
             reason: format!(
                 "cargo-allow metadata config `{config}` must be a non-empty relative path without `..`"
             ),
@@ -238,6 +208,7 @@ fn discover_cargo_metadata_config(
     if !candidate.exists() {
         skipped.push(SkippedPolicyCandidate {
             path: candidate,
+            source,
             reason: "cargo-allow metadata config path does not exist".to_string(),
         });
         return None;
@@ -247,6 +218,7 @@ fn discover_cargo_metadata_config(
         CandidateClass::Skip(reason) => {
             skipped.push(SkippedPolicyCandidate {
                 path: candidate,
+                source,
                 reason: format!("cargo-allow metadata config {reason}"),
             });
             None

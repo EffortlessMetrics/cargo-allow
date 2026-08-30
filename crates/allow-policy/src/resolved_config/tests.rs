@@ -289,6 +289,25 @@ config = "policy/missing.toml"
 }
 
 #[test]
+fn resolved_cargo_allow_config_preserves_malformed_manifest_provenance() -> TestResult {
+    let fixture = Fixture::new("malformed-metadata")?;
+    fixture.write("Cargo.toml", "[workspace\n")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:malformed")?;
+
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::CargoMetadata
+                && candidate.path.as_ref().map(|path| path.path.as_str()) == Some("Cargo.toml")
+                && candidate.disposition == ConfigCandidateDispositionV1::Skipped
+        }),
+        "malformed manifest should retain generic Cargo metadata provenance",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn resolved_cargo_allow_config_preserves_unsafe_metadata_source_provenance() -> TestResult {
     let fixture = Fixture::new("unsafe-metadata")?;
     fixture.write(
@@ -686,6 +705,30 @@ fn resolved_cargo_allow_config_accepts_internal_symlink_with_lexical_identity() 
                 && policy.digest.is_some()
         }),
         "internal symlink should preserve its lexical configured identity",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_accepts_absolute_cli_through_directory_alias() -> TestResult {
+    let fixture = Fixture::new("aliased-root")?;
+    let alias_holder = Fixture::new("alias-holder")?;
+    fixture.write("policy/explicit.toml", valid_policy())?;
+    let alias = alias_holder.path().join("repo-alias");
+    std::os::unix::fs::symlink(fixture.path(), &alias)?;
+    let cli_path = alias.join("policy/explicit.toml");
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), Some(&cli_path), "subject:directory-alias")?;
+
+    ensure_eq(
+        resolved
+            .selected_policy
+            .as_ref()
+            .map(|policy| policy.path.path.as_str()),
+        Some("policy/explicit.toml"),
+        "canonical fallback should recover the portable in-root path",
     )?;
     Ok(())
 }

@@ -108,8 +108,8 @@ pub use import_roots::{
 };
 
 pub use discovery::{
-    DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
-    SOURCE_WORKSPACE_METADATA, SkippedPolicyCandidate, discover_config,
+    DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SOURCE_CARGO_METADATA, SOURCE_CONVENTIONAL_PATH,
+    SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA, SkippedPolicyCandidate, discover_config,
 };
 
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
