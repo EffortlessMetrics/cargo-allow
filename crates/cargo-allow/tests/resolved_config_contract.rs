@@ -110,11 +110,12 @@ fn resolved_config_schema_rejects_path_bearing_source_subjects() -> TestResult {
 fn empty_federation_identity_fails_closed_in_schema_valid_projection() -> TestResult {
     let fixture = Fixture::new("empty-federation-id")?;
     fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write("policy/invalid-registry-winner.toml", valid_policy())?;
     fixture.write(
         ".allow/config.toml",
         r#"[[ledgers]]
 id = ""
-path = "policy/allow.toml"
+path = "policy/invalid-registry-winner.toml"
 dialect = "cargo-allow"
 role = "canonical"
 lanes = ["source-exception"]
@@ -136,6 +137,22 @@ priority = 10
     ensure(
         resolved.federation.configured_ledgers.is_empty(),
         "invalid empty identity should not enter configured ledgers",
+    )?;
+    ensure(
+        !resolved.federation.selected_for_source_exception
+            && resolved
+                .selected_policy
+                .as_ref()
+                .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
+        "invalid empty identity must not influence the selected policy",
+    )?;
+    ensure(
+        resolved.selection_source == Some(allow_policy::ConfigCandidateSourceV1::ConventionalPath)
+            && resolved.precedence_tier
+                == Some(allow_policy::ConfigPrecedenceTierV1::DiscoveryFallback)
+            && resolved.fallback.considered
+            && resolved.fallback.selected,
+        "empty-id registry should produce an explicit conventional fallback posture",
     )?;
     ensure(
         validator.is_valid(&instance),

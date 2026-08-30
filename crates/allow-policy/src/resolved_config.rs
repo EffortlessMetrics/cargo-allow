@@ -435,11 +435,6 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 error: None,
             },
             FederationLoadOutcome::Parsed(validated) => {
-                let has_empty_ledger_id = validated
-                    .config
-                    .ledgers
-                    .iter()
-                    .any(|ledger| ledger.id.trim().is_empty());
                 let source_exception_ambiguous = validated
                     .config
                     .ledgers
@@ -456,7 +451,7 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 FederationObservation {
                     participation: ConfigFederationParticipationV1 {
                         config_path: root_relative_config_path(&loaded.path),
-                        posture: if validated.valid && !has_empty_ledger_id {
+                        posture: if validated.valid {
                             ConfigFederationPostureV1::Valid
                         } else {
                             ConfigFederationPostureV1::Invalid
@@ -473,7 +468,6 @@ fn observe_federation(root: &Path) -> FederationObservation {
                             .diagnostics
                             .iter()
                             .map(|diagnostic| diagnostic.kind.as_str().to_string())
-                            .chain(has_empty_ledger_id.then(|| "empty_ledger_id".to_string()))
                             .collect(),
                     },
                     source_exception_ambiguous,

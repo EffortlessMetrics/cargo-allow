@@ -128,6 +128,74 @@ priority = 20
 }
 
 #[test]
+fn validate_federation_config_rejects_empty_ledger_id() -> std::io::Result<()> {
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = ""
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    );
+    if config.valid
+        || !config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::EmptyLedgerId
+                && diagnostic.message.contains("ledgers[0]")
+                && diagnostic.message.contains("policy/allow.toml")
+        })
+    {
+        return Err(std::io::Error::other(format!(
+            "empty federation identity was not rejected: {config:?}"
+        )));
+    }
+    Ok(())
+}
+
+#[test]
+fn evaluate_source_exception_policy_falls_back_from_empty_id_registry() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("empty-id-fallback");
+    std::fs::create_dir_all(root.join(".allow"))?;
+    std::fs::create_dir_all(root.join("policy"))?;
+    std::fs::write(
+        root.join(".allow/config.toml"),
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = ""
+path = "policy/federated.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    )?;
+    std::fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n")?;
+    std::fs::write(
+        root.join("policy/federated.toml"),
+        "schema_version = \"0.1\"\n",
+    )?;
+
+    let (path, evaluation) = super::evaluate::evaluate_source_exception_policy(&root, None)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    if path != root.join("policy/allow.toml").canonicalize()?
+        || evaluation.precedence_applied != super::evaluate::PrecedenceTier::DiscoveryFallback
+        || evaluation.active_provenance.is_some()
+    {
+        cleanup_fixture_root(&root);
+        return Err(std::io::Error::other(format!(
+            "empty-id registry influenced selection: {path:?} {evaluation:?}"
+        )));
+    }
+    cleanup_fixture_root(&root);
+    Ok(())
+}
+
+#[test]
 fn validate_federation_config_reports_foreign_dialect_on_canonical() {
     let config = parse_validated(
         r#"

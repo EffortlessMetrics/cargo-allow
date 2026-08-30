@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
 use allow_core::read_text_file_capped;
@@ -71,39 +73,54 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
         }
         for rel in DISCOVERY_REL_PATHS {
             let candidate = dir.join(rel);
-            if !candidate.exists() {
-                continue;
-            }
-            match classify_candidate(&candidate, rel == NATIVE_LEDGER_REL_PATH) {
-                CandidateClass::Accept => {
-                    // Warn if the native ledger (cargo-allow.toml) shadows a
-                    // conventional allow.toml at the same directory level (#3232).
-                    // The native path wins on discovery precedence, but an
-                    // operator who just ran `init` (which writes allow.toml)
-                    // may be confused that their new file is ignored.
-                    if rel == NATIVE_LEDGER_REL_PATH {
-                        let shadowed = dir.join("policy/allow.toml");
-                        if shadowed.exists() && shadowed != candidate {
-                            eprintln!(
-                                "warning: {} is shadowed by the native ledger {} on the discovery path; \
-                                 only {} will be used (#3232)",
-                                shadowed.display(),
-                                candidate.display(),
-                                candidate.display(),
-                            );
-                        }
-                    }
-                    return DiscoverConfigResult {
-                        selected: Some(candidate),
-                        selected_source: Some(SOURCE_CONVENTIONAL_PATH),
-                        skipped,
-                    };
+            match candidate_target_posture(&dir, &candidate) {
+                CandidateTargetPosture::Missing => continue,
+                CandidateTargetPosture::Rejected(reason) => {
+                    skipped.push(SkippedPolicyCandidate {
+                        path: candidate,
+                        source: SOURCE_CONVENTIONAL_PATH,
+                        reason,
+                    });
+                    continue;
                 }
-                CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
-                    path: candidate,
-                    source: SOURCE_CONVENTIONAL_PATH,
-                    reason,
-                }),
+                CandidateTargetPosture::Contained(read_path) => {
+                    match classify_candidate(&read_path, rel == NATIVE_LEDGER_REL_PATH) {
+                        CandidateClass::Accept => {
+                            // Warn if the native ledger (cargo-allow.toml) shadows a
+                            // conventional allow.toml at the same directory level (#3232).
+                            // The native path wins on discovery precedence, but an
+                            // operator who just ran `init` (which writes allow.toml)
+                            // may be confused that their new file is ignored.
+                            if rel == NATIVE_LEDGER_REL_PATH {
+                                let shadowed = dir.join("policy/allow.toml");
+                                if matches!(
+                                    candidate_target_posture(&dir, &shadowed),
+                                    CandidateTargetPosture::Contained(_)
+                                ) && shadowed != candidate
+                                {
+                                    eprintln!(
+                                        "warning: {} is shadowed by the native ledger {} on the discovery path; \
+                                         only {} will be used (#3232)",
+                                        shadowed.display(),
+                                        candidate.display(),
+                                        candidate.display(),
+                                    );
+                                }
+                            }
+                            return DiscoverConfigResult {
+                                selected: Some(candidate),
+                                selected_source: Some(SOURCE_CONVENTIONAL_PATH),
+                                skipped,
+                            };
+                        }
+                        CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
+                            path: candidate,
+                            source: SOURCE_CONVENTIONAL_PATH,
+                            reason,
+                        }),
+                    }
+                    continue;
+                }
             }
         }
         if !dir.pop() {
@@ -149,10 +166,19 @@ fn discover_cargo_metadata_config(
     skipped: &mut Vec<SkippedPolicyCandidate>,
 ) -> Option<(PathBuf, &'static str)> {
     let manifest_path = dir.join("Cargo.toml");
-    if !manifest_path.exists() {
-        return None;
-    }
-    let text = match read_text_file_capped(&manifest_path) {
+    let manifest_read_path = match candidate_target_posture(dir, &manifest_path) {
+        CandidateTargetPosture::Missing => return None,
+        CandidateTargetPosture::Rejected(reason) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: manifest_path,
+                source: SOURCE_CARGO_METADATA,
+                reason: format!("cargo-allow metadata {reason}"),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Contained(path) => path,
+    };
+    let text = match read_text_file_capped(&manifest_read_path) {
         Ok(text) => text,
         Err(err) => {
             skipped.push(SkippedPolicyCandidate {
@@ -205,15 +231,26 @@ fn discover_cargo_metadata_config(
         return None;
     }
     let candidate = dir.join(config_path);
-    if !candidate.exists() {
-        skipped.push(SkippedPolicyCandidate {
-            path: candidate,
-            source,
-            reason: "cargo-allow metadata config path does not exist".to_string(),
-        });
-        return None;
-    }
-    match classify_candidate(&candidate, true) {
+    let candidate_read_path = match candidate_target_posture(dir, &candidate) {
+        CandidateTargetPosture::Missing => {
+            skipped.push(SkippedPolicyCandidate {
+                path: candidate,
+                source,
+                reason: "cargo-allow metadata config path does not exist".to_string(),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Rejected(reason) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: candidate,
+                source,
+                reason: format!("cargo-allow metadata config {reason}"),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Contained(path) => path,
+    };
+    match classify_candidate(&candidate_read_path, true) {
         CandidateClass::Accept => Some((candidate, source)),
         CandidateClass::Skip(reason) => {
             skipped.push(SkippedPolicyCandidate {
@@ -223,6 +260,49 @@ fn discover_cargo_metadata_config(
             });
             None
         }
+    }
+}
+
+enum CandidateTargetPosture {
+    Missing,
+    Contained(PathBuf),
+    Rejected(String),
+}
+
+fn candidate_target_posture(anchor: &Path, candidate: &Path) -> CandidateTargetPosture {
+    match fs::symlink_metadata(candidate) {
+        Ok(_) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return CandidateTargetPosture::Missing;
+        }
+        Err(_) => {
+            return CandidateTargetPosture::Rejected(
+                "candidate metadata could not be inspected".to_string(),
+            );
+        }
+    }
+    let target = match candidate.canonicalize() {
+        Ok(path) => path,
+        Err(_) => {
+            return CandidateTargetPosture::Rejected(
+                "candidate target could not be resolved".to_string(),
+            );
+        }
+    };
+    let resolved_anchor = match anchor.canonicalize() {
+        Ok(path) => path,
+        Err(_) => {
+            return CandidateTargetPosture::Rejected(
+                "candidate discovery anchor could not be resolved".to_string(),
+            );
+        }
+    };
+    if target.strip_prefix(resolved_anchor).is_ok() {
+        CandidateTargetPosture::Contained(target)
+    } else {
+        CandidateTargetPosture::Rejected(
+            "candidate target resolves outside its discovery anchor".to_string(),
+        )
     }
 }
 

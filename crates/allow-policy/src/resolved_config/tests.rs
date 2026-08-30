@@ -730,18 +730,22 @@ fn resolved_cargo_allow_config_rejects_in_root_symlink_to_external_policy() -> T
         external.path().join("outside.toml"),
         fixture.path().join("policy/allow.toml"),
     )?;
+    fixture.write(".cargo/allow.toml", valid_policy())?;
 
     let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:symlink")?;
     let rendered = serde_json::to_string(&resolved)?;
 
     ensure_eq(
         resolved.status,
-        ConfigResolutionStatusV1::Unsupported,
+        ConfigResolutionStatusV1::Complete,
         "status",
     )?;
     ensure(
-        resolved.selected_policy.is_none(),
-        "external symlink target must not be read as a selected policy",
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == ".cargo/allow.toml"),
+        "safe lower-precedence policy should win without probing external bytes",
     )?;
     ensure(
         !rendered.contains(&external.path().display().to_string()),
