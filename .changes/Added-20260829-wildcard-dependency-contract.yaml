@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add a dependency wildcard contract: scan every workspace manifest for
+  wildcard version requirements (star and bare-major forms, shorthand and
+  table syntax), prove the scanner on seeded requirements, and document the
+  cargo-deny posture as warning-only — flipping to deny is blocked on the
+  exact-candidate packaging contracts accepting versioned path edges
+  (#3908).

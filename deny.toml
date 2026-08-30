@@ -33,7 +33,11 @@ confidence-threshold = 0.8
 [bans]
 # Warn on multiple versions of the same crate when they can be avoided.
 multiple-versions = "warn"
-# Warn on wildcard dependencies.
+# Wildcard dependency requirements stay warning-only for now: the deny
+# posture has no per-dependency exception (skip covers duplicate detection
+# only), and flipping to deny requires versioned path edges, which the
+# exact-candidate packaging contracts (#2372/#2925) do not accept yet
+# (#3908).
 wildcards = "warn"
 
 [sources]
