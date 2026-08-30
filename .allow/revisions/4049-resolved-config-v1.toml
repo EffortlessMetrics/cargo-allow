@@ -1,0 +1,15 @@
+# Revision note for #4049: reusable resolved-configuration component schema.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11200"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:94b15ba329687f56275521a8c6015b4d49960f0038c00c99c4130255ce2dcee8"
+reason = "Receipts the reusable resolved-config v1 JSON component schema added for issue #3875. The exception is limited to the tracked documentation schema and is backed by producer/schema parity tests."
+
+[[records]]
+allow_ids = ["allow-11201"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:07ed387cff85d7a51678a30d138ee3118e09e629b34d16ddc43aa880df72e532"
+reason = "Self-receipt for this revision note file, following the repository's existing ledger-change-note precedent."

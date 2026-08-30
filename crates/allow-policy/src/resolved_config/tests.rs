@@ -31,7 +31,7 @@ fn resolved_cargo_allow_config_preserves_conventional_selection() -> TestResult 
         resolved
             .selected_policy
             .as_ref()
-            .map(|policy| policy.path.as_str()),
+            .map(|policy| policy.path.path.as_str()),
         Some("policy/allow.toml"),
         "selected path",
     )?;
@@ -112,14 +112,15 @@ priority = 10
         resolved
             .selected_policy
             .as_ref()
-            .map(|policy| policy.path.as_str()),
+            .map(|policy| policy.path.path.as_str()),
         Some("policy/other.toml"),
         "selected path",
     )?;
     ensure(
         resolved.candidates.iter().any(|candidate| {
             candidate.source == ConfigCandidateSourceV1::ConventionalPath
-                && candidate.path.as_deref() == Some("policy/allow.toml")
+                && candidate.path.as_ref().map(|path| path.path.as_str())
+                    == Some("policy/allow.toml")
                 && candidate.disposition == ConfigCandidateDispositionV1::Available
         }),
         "conventional candidate should remain visible",
@@ -222,7 +223,7 @@ priority = 10
         resolved
             .selected_policy
             .as_ref()
-            .map(|policy| policy.path.as_str()),
+            .map(|policy| policy.path.path.as_str()),
         Some("policy/explicit.toml"),
         "selected path",
     )?;
@@ -255,7 +256,7 @@ config = "policy/workspace.toml"
         resolved
             .selected_policy
             .as_ref()
-            .map(|policy| policy.path.as_str()),
+            .map(|policy| policy.path.path.as_str()),
         Some("policy/package.toml"),
         "selected path",
     )?;
@@ -278,7 +279,8 @@ config = "policy/missing.toml"
     ensure(
         resolved.candidates.iter().any(|candidate| {
             candidate.source == ConfigCandidateSourceV1::PackageMetadata
-                && candidate.path.as_deref() == Some("policy/missing.toml")
+                && candidate.path.as_ref().map(|path| path.path.as_str())
+                    == Some("policy/missing.toml")
                 && candidate.disposition == ConfigCandidateDispositionV1::Skipped
         }),
         "skipped metadata should retain its typed package source",
@@ -301,7 +303,7 @@ config = "../outside.toml"
     ensure(
         resolved.candidates.iter().any(|candidate| {
             candidate.source == ConfigCandidateSourceV1::PackageMetadata
-                && candidate.path.as_deref() == Some("Cargo.toml")
+                && candidate.path.as_ref().map(|path| path.path.as_str()) == Some("Cargo.toml")
                 && candidate.disposition == ConfigCandidateDispositionV1::Skipped
         }),
         "unsafe metadata should retain its typed package source",
@@ -322,7 +324,7 @@ fn resolved_cargo_allow_config_retains_foreign_candidate_rejection() -> TestResu
     ensure_eq(resolved.status, ConfigResolutionStatusV1::Invalid, "status")?;
     ensure(
         resolved.candidates.iter().any(|candidate| {
-            candidate.path.as_deref() == Some("policy/allow.toml")
+            candidate.path.as_ref().map(|path| path.path.as_str()) == Some("policy/allow.toml")
                 && candidate.disposition == ConfigCandidateDispositionV1::Skipped
         }),
         "foreign candidate should remain visible",
@@ -392,6 +394,328 @@ priority = 10
 }
 
 #[test]
+fn resolved_cargo_allow_config_keeps_cli_winner_over_ambiguous_federation() -> TestResult {
+    let fixture = Fixture::new("cli-over-ambiguous-federation")?;
+    fixture.write("policy/explicit.toml", valid_policy())?;
+    fixture.write("policy/first.toml", valid_policy())?;
+    fixture.write("policy/second.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "first"
+path = "policy/first.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "second"
+path = "policy/second.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#,
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/explicit.toml")),
+        "subject:cli-ambiguous",
+    )?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Partial, "status")?;
+    ensure_eq(
+        resolved.selection_source,
+        Some(ConfigCandidateSourceV1::CliOverride),
+        "selection source",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_does_not_launder_spec_lane_conflict_into_core_ambiguity()
+-> TestResult {
+    let fixture = Fixture::new("spec-only-ambiguity")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write("docs/first.toml", "schema_version = \"1\"\n")?;
+    fixture.write("docs/second.toml", "schema_version = \"1\"\n")?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "first"
+path = "docs/first.toml"
+dialect = "cargo-allow-doc-artifacts"
+role = "canonical"
+lanes = ["spec-system"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "second"
+path = "docs/second.toml"
+dialect = "cargo-allow-doc-artifacts"
+role = "canonical"
+lanes = ["spec-system"]
+mode = "blocking"
+priority = 10
+"#,
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:spec-conflict")?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Partial, "status")?;
+    ensure_eq(
+        resolved.selection_source,
+        Some(ConfigCandidateSourceV1::ConventionalPath),
+        "selection source",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_represents_ancestor_winner_without_private_path() -> TestResult {
+    let fixture = Fixture::new("ancestor-winner")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fs::create_dir_all(fixture.path().join("nested/source"))?;
+    let requested = fixture.path().join("nested/source");
+
+    let resolved = resolve_cargo_allow_config_v1(&requested, None, "subject:ancestor")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Complete,
+        "status",
+    )?;
+    ensure_eq(
+        resolved.selection_source,
+        Some(ConfigCandidateSourceV1::ConventionalPath),
+        "selection source",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::ConventionalPath
+                && candidate.path.as_ref().is_some_and(|path| {
+                    path.anchor == ConfigPathAnchorV1::DiscoveryAncestor
+                        && path.ancestor_depth == 2
+                        && path.path == "policy/allow.toml"
+                })
+                && candidate.disposition == ConfigCandidateDispositionV1::Selected
+        }),
+        "ancestor winner should retain portable anchor provenance",
+    )?;
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.anchor == ConfigPathAnchorV1::DiscoveryAncestor
+                && policy.path.ancestor_depth == 2
+                && policy.path.path == "policy/allow.toml"
+                && policy.digest.is_some()
+        }),
+        "ancestor winner should retain policy identity and digest",
+    )?;
+    ensure(
+        !rendered.contains(&fixture.path().display().to_string()),
+        "ancestor winner should not leak the private fixture root",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_retains_ancestor_metadata_provenance() -> TestResult {
+    let fixture = Fixture::new("ancestor-metadata")?;
+    fixture.write("policy/package.toml", valid_policy())?;
+    fixture.write(
+        "Cargo.toml",
+        r#"[package.metadata.cargo-allow]
+config = "policy/package.toml"
+"#,
+    )?;
+    fs::create_dir_all(fixture.path().join("nested/source"))?;
+    let requested = fixture.path().join("nested/source");
+
+    let resolved = resolve_cargo_allow_config_v1(&requested, None, "subject:ancestor-metadata")?;
+
+    ensure_eq(
+        resolved.selection_source,
+        Some(ConfigCandidateSourceV1::PackageMetadata),
+        "selection source",
+    )?;
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.anchor == ConfigPathAnchorV1::DiscoveryAncestor
+                && policy.path.ancestor_depth == 2
+                && policy.path.path == "policy/package.toml"
+                && policy.digest.is_some()
+        }),
+        "ancestor metadata winner should retain anchored path and digest",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_redacts_missing_ancestor_metadata_path() -> TestResult {
+    let fixture = Fixture::new("ancestor-metadata-missing")?;
+    fixture.write(
+        "Cargo.toml",
+        r#"[package.metadata.cargo-allow]
+config = "policy/missing.toml"
+"#,
+    )?;
+    fs::create_dir_all(fixture.path().join("nested/source"))?;
+    let requested = fixture.path().join("nested/source");
+
+    let resolved =
+        resolve_cargo_allow_config_v1(&requested, None, "subject:ancestor-metadata-missing")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure(
+        !rendered.contains(&fixture.path().display().to_string()),
+        "missing ancestor metadata diagnostics should not leak the private fixture root",
+    )?;
+    ensure(
+        rendered.contains("<discovery_ancestor:2>"),
+        "missing ancestor metadata should retain bounded portable provenance",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_keeps_child_policy_ahead_of_parent() -> TestResult {
+    let fixture = Fixture::new("child-before-parent")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write("nested/source/policy/allow.toml", valid_policy())?;
+    let requested = fixture.path().join("nested/source");
+
+    let resolved = resolve_cargo_allow_config_v1(&requested, None, "subject:child")?;
+
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.anchor == ConfigPathAnchorV1::ResolvedRepositoryRoot
+                && policy.path.ancestor_depth == 0
+                && policy.path.path == "policy/allow.toml"
+        }),
+        "nearest child policy should preserve current discovery precedence",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_keeps_root_valued_cli_path_schema_safe() -> TestResult {
+    let fixture = Fixture::new("root-valued-cli")?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), Some(Path::new(".")), "subject:root")?;
+
+    ensure_eq(
+        resolved
+            .explicit_cli_values
+            .iter()
+            .map(|path| path.path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["."],
+        "root-valued explicit path",
+    )?;
+    ensure_eq(
+        resolved
+            .selected_policy
+            .as_ref()
+            .map(|policy| policy.path.path.as_str()),
+        Some("."),
+        "root-valued selected policy path",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_in_root_symlink_to_external_policy() -> TestResult {
+    let fixture = Fixture::new("symlink-root")?;
+    let external = Fixture::new("symlink-external")?;
+    external.write("outside.toml", valid_policy())?;
+    fs::create_dir_all(fixture.path().join("policy"))?;
+    std::os::unix::fs::symlink(
+        external.path().join("outside.toml"),
+        fixture.path().join("policy/allow.toml"),
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:symlink")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "status",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "external symlink target must not be read as a selected policy",
+    )?;
+    ensure(
+        !rendered.contains(&external.path().display().to_string()),
+        "external symlink target should not enter the portable projection",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_accepts_internal_symlink_with_lexical_identity() -> TestResult {
+    let fixture = Fixture::new("internal-symlink")?;
+    fixture.write("policy/actual.toml", valid_policy())?;
+    std::os::unix::fs::symlink("actual.toml", fixture.path().join("policy/allow.toml"))?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:internal-link")?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Complete,
+        "status",
+    )?;
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.anchor == ConfigPathAnchorV1::ResolvedRepositoryRoot
+                && policy.path.path == "policy/allow.toml"
+                && policy.digest.is_some()
+        }),
+        "internal symlink should preserve its lexical configured identity",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_dangling_explicit_symlink() -> TestResult {
+    let fixture = Fixture::new("dangling-symlink")?;
+    fs::create_dir_all(fixture.path().join("policy"))?;
+    std::os::unix::fs::symlink("missing.toml", fixture.path().join("policy/dangling.toml"))?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/dangling.toml")),
+        "subject:dangling-link",
+    )?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "status",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "dangling link must not become a selected policy",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn resolved_cargo_allow_config_selects_only_the_winning_source_for_a_shared_path() -> TestResult {
     let fixture = Fixture::new("shared-candidate-path")?;
     fixture.write("policy/allow.toml", valid_policy())?;
@@ -441,14 +765,19 @@ fn resolved_cargo_allow_config_accepts_absolute_cli_paths_inside_the_root() -> T
         "selection source",
     )?;
     ensure_eq(
-        resolved.explicit_cli_values,
-        vec!["policy/explicit.toml".to_string()],
+        resolved
+            .explicit_cli_values
+            .iter()
+            .map(|path| path.path.as_str())
+            .collect::<Vec<_>>(),
+        vec!["policy/explicit.toml"],
         "portable explicit CLI values",
     )?;
     ensure(
         resolved.candidates.iter().any(|candidate| {
             candidate.source == ConfigCandidateSourceV1::CliOverride
-                && candidate.path.as_deref() == Some("policy/explicit.toml")
+                && candidate.path.as_ref().map(|path| path.path.as_str())
+                    == Some("policy/explicit.toml")
                 && candidate.disposition == ConfigCandidateDispositionV1::Selected
         }),
         "absolute in-root CLI path should remain selected and portable",

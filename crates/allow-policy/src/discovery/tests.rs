@@ -259,6 +259,33 @@ fn discover_config_falls_back_when_metadata_config_is_missing() -> io::Result<()
 }
 
 #[test]
+fn skipped_candidate_source_matches_workspace_after_nonmatching_package() -> io::Result<()> {
+    let root = TempRoot::new("workspace-skipped-provenance")?;
+    write_policy(
+        &root.path().join("Cargo.toml"),
+        r#"[package]
+name = "fixture"
+version = "0.0.0"
+
+[package.metadata.cargo-allow]
+config = "policy/package.toml"
+
+[workspace.metadata.cargo-allow]
+config = "policy/workspace.toml"
+"#,
+    )?;
+    let workspace_candidate = root.path().join("policy/workspace.toml");
+
+    let actual = skipped_metadata_candidate_source(root.path(), &workspace_candidate);
+    if actual != Some(SOURCE_WORKSPACE_METADATA) {
+        return Err(io::Error::other(format!(
+            "workspace-only candidate match should preserve workspace provenance, got {actual:?}"
+        )));
+    }
+    Ok(())
+}
+
+#[test]
 fn discover_config_falls_back_when_metadata_config_is_foreign() -> io::Result<()> {
     let root = TempRoot::new("metadata-foreign")?;
     let conventional = root.path().join("policy/allow.toml");

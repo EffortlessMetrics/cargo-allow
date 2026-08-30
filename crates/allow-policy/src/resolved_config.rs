@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use allow_core::{
@@ -9,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use crate::discovery::DiscoverConfigResult;
 use crate::discovery::skipped_metadata_candidate_source;
 use crate::federation::{
-    FEDERATION_CONFIG_REL_PATH, FederationDiagnosticKind, FederationEvaluation,
-    FederationLoadOutcome, PrecedenceTier, load_federation_config,
+    FEDERATION_CONFIG_REL_PATH, FederationEvaluation, FederationLoadOutcome, LedgerRole,
+    PrecedenceTier, SOURCE_EXCEPTION_LANE, load_federation_config,
 };
 use crate::{
     DISCOVERY_REL_PATHS, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
@@ -88,11 +89,26 @@ pub enum ConfigFederationPostureV1 {
     Unreadable,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfigPathAnchorV1 {
+    ResolvedRepositoryRoot,
+    DiscoveryAncestor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PortableConfigPathV1 {
+    pub anchor: ConfigPathAnchorV1,
+    pub ancestor_depth: u32,
+    pub path: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigCandidateV1 {
     pub source: ConfigCandidateSourceV1,
-    pub path: Option<String>,
+    pub path: Option<PortableConfigPathV1>,
     pub disposition: ConfigCandidateDispositionV1,
     pub reason: Option<String>,
 }
@@ -108,7 +124,7 @@ pub struct ConfigDiagnosticV1 {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ResolvedPolicyV1 {
-    pub path: String,
+    pub path: PortableConfigPathV1,
     pub digest: Option<String>,
     pub schema_version: Option<String>,
     pub policy: Option<String>,
@@ -126,7 +142,7 @@ pub struct ConfigFallbackV1 {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigFederationParticipationV1 {
-    pub config_path: String,
+    pub config_path: PortableConfigPathV1,
     pub posture: ConfigFederationPostureV1,
     pub selected_for_source_exception: bool,
     pub configured_ledgers: Vec<String>,
@@ -155,7 +171,7 @@ pub struct ResolvedCargoAllowConfigV1 {
     pub selected_policy: Option<ResolvedPolicyV1>,
     pub selection_source: Option<ConfigCandidateSourceV1>,
     pub precedence_tier: Option<ConfigPrecedenceTierV1>,
-    pub explicit_cli_values: Vec<String>,
+    pub explicit_cli_values: Vec<PortableConfigPathV1>,
     pub candidates: Vec<ConfigCandidateV1>,
     pub fallback: ConfigFallbackV1,
     pub federation: ConfigFederationParticipationV1,
@@ -218,7 +234,7 @@ pub fn resolve_cargo_allow_config_v1(
 
 struct FederationObservation {
     participation: ConfigFederationParticipationV1,
-    ambiguous: bool,
+    source_exception_ambiguous: bool,
     error: Option<ConfigDiagnosticV1>,
 }
 
@@ -291,9 +307,9 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         let federation_path = if precedence == Some(ConfigPrecedenceTierV1::FederationRegistry) {
             selected_path
                 .as_deref()
-                .and_then(|path| portable_path(input.root, path))
+                .and_then(|path| portable_config_path(input.root, path, false))
         } else {
-            Some(FEDERATION_CONFIG_REL_PATH.to_string())
+            Some(root_relative_config_path(FEDERATION_CONFIG_REL_PATH))
         };
         candidates.push(ConfigCandidateV1 {
             source: ConfigCandidateSourceV1::FederationRegistry,
@@ -327,25 +343,33 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
 
     let policy_observation = selected_path
         .as_deref()
-        .map(|path| observe_policy(input.root, path))
+        .map(|path| {
+            observe_policy(
+                input.root,
+                path,
+                selection_source.is_some_and(source_allows_ancestor),
+            )
+        })
         .unwrap_or_default();
     if let Some(error) = policy_observation.error.clone() {
         diagnostics.push(error);
     }
 
-    let ambiguous = input.federation_observation.ambiguous;
-    let status = resolution_status(
-        policy_observation.policy.as_ref(),
+    let ambiguous = input.federation_observation.source_exception_ambiguous
+        && precedence != Some(ConfigPrecedenceTierV1::CliOverride);
+    let status = resolution_status(ResolutionStatusInput {
+        selected_policy: policy_observation.policy.as_ref(),
+        status_override: policy_observation.status_override,
         evaluation_error,
-        fallback.selected,
+        fallback_selected: fallback.selected,
         ambiguous,
-        federation.posture,
-        input.cli_config.is_none()
+        federation_posture: federation.posture,
+        no_policy_observed: input.cli_config.is_none()
             && input.discovery.selected.is_none()
             && input.discovery.skipped.is_empty()
             && federation.posture == ConfigFederationPostureV1::Missing,
-        &diagnostics,
-    );
+        diagnostics: &diagnostics,
+    });
 
     ResolvedCargoAllowConfigV1 {
         schema_id: RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID.to_string(),
@@ -361,7 +385,7 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         precedence_tier: precedence,
         explicit_cli_values: input
             .cli_config
-            .and_then(|path| portable_joined_path(input.root, path))
+            .and_then(|path| portable_joined_path(input.root, path, false))
             .into_iter()
             .collect(),
         candidates,
@@ -392,27 +416,38 @@ fn observe_federation(root: &Path) -> FederationObservation {
         Ok(loaded) => match loaded.outcome {
             FederationLoadOutcome::Missing => FederationObservation {
                 participation: ConfigFederationParticipationV1 {
-                    config_path: loaded.path,
+                    config_path: root_relative_config_path(&loaded.path),
                     posture: ConfigFederationPostureV1::Missing,
                     selected_for_source_exception: false,
                     configured_ledgers: Vec::new(),
                     diagnostics: Vec::new(),
                 },
-                ambiguous: false,
+                source_exception_ambiguous: false,
                 error: None,
             },
             FederationLoadOutcome::Parsed(validated) => {
-                let ambiguous = validated.diagnostics.iter().any(|diagnostic| {
-                    matches!(
-                        diagnostic.kind,
-                        FederationDiagnosticKind::DuplicateCanonicalLane
-                            | FederationDiagnosticKind::PriorityTie
-                    )
-                });
+                let has_empty_ledger_id = validated
+                    .config
+                    .ledgers
+                    .iter()
+                    .any(|ledger| ledger.id.trim().is_empty());
+                let source_exception_ambiguous = validated
+                    .config
+                    .ledgers
+                    .iter()
+                    .filter(|ledger| {
+                        ledger.role == LedgerRole::Canonical
+                            && ledger
+                                .lanes
+                                .iter()
+                                .any(|lane| lane == SOURCE_EXCEPTION_LANE)
+                    })
+                    .count()
+                    > 1;
                 FederationObservation {
                     participation: ConfigFederationParticipationV1 {
-                        config_path: loaded.path,
-                        posture: if validated.valid {
+                        config_path: root_relative_config_path(&loaded.path),
+                        posture: if validated.valid && !has_empty_ledger_id {
                             ConfigFederationPostureV1::Valid
                         } else {
                             ConfigFederationPostureV1::Invalid
@@ -422,28 +457,30 @@ fn observe_federation(root: &Path) -> FederationObservation {
                             .config
                             .ledgers
                             .iter()
+                            .filter(|ledger| !ledger.id.trim().is_empty())
                             .map(|ledger| ledger.id.clone())
                             .collect(),
                         diagnostics: validated
                             .diagnostics
                             .iter()
                             .map(|diagnostic| diagnostic.kind.as_str().to_string())
+                            .chain(has_empty_ledger_id.then(|| "empty_ledger_id".to_string()))
                             .collect(),
                     },
-                    ambiguous,
+                    source_exception_ambiguous,
                     error: None,
                 }
             }
         },
         Err(error) => FederationObservation {
             participation: ConfigFederationParticipationV1 {
-                config_path: FEDERATION_CONFIG_REL_PATH.to_string(),
+                config_path: root_relative_config_path(FEDERATION_CONFIG_REL_PATH),
                 posture: ConfigFederationPostureV1::Unreadable,
                 selected_for_source_exception: false,
                 configured_ledgers: Vec::new(),
                 diagnostics: vec![error.code().to_string()],
             },
-            ambiguous: false,
+            source_exception_ambiguous: false,
             error: Some(diagnostic_from_error(root, &error)),
         },
     }
@@ -455,11 +492,14 @@ fn candidates_from_discovery(
 ) -> Vec<ConfigCandidateV1> {
     let mut candidates = Vec::new();
     if let (Some(path), Some(source)) = (&discovery.selected, discovery.selected_source) {
+        let portable = portable_config_path(root, path, true);
         candidates.push(ConfigCandidateV1 {
             source: source_from_label(source).unwrap_or(ConfigCandidateSourceV1::ConventionalPath),
-            path: portable_path(root, path),
+            path: portable.clone(),
             disposition: ConfigCandidateDispositionV1::Available,
-            reason: None,
+            reason: portable.is_none().then(|| {
+                "selected current winner is outside the portable repository boundary".to_string()
+            }),
         });
     }
     candidates.extend(discovery.skipped.iter().map(|candidate| {
@@ -473,7 +513,7 @@ fn candidates_from_discovery(
                         ConfigCandidateSourceV1::LegacyDiscovery
                     }
                 }),
-            path: portable_path(root, &candidate.path),
+            path: portable_config_path(root, &candidate.path, true),
             disposition: ConfigCandidateDispositionV1::Skipped,
             reason: Some(portable_message(root, &candidate.reason)),
         }
@@ -483,7 +523,7 @@ fn candidates_from_discovery(
 
 fn candidate_from_cli(root: &Path, config: &Path, cli_selected: bool) -> ConfigCandidateV1 {
     let joined = root.join(config);
-    let portable = portable_path(root, &joined);
+    let portable = portable_config_path(root, &joined, false);
     let is_safe = portable.is_some();
     ConfigCandidateV1 {
         source: ConfigCandidateSourceV1::CliOverride,
@@ -521,12 +561,11 @@ fn mark_selected_candidate(
     selected_source: Option<ConfigCandidateSourceV1>,
     root: &Path,
 ) {
-    let selected = selected.and_then(|path| portable_path(root, path));
+    let allow_ancestor = selected_source.is_some_and(source_allows_ancestor);
+    let selected = selected.and_then(|path| portable_config_path(root, path, allow_ancestor));
     if let (Some(selected), Some(selected_source)) = (selected, selected_source) {
         for candidate in candidates {
-            if candidate.source == selected_source
-                && candidate.path.as_deref() == Some(selected.as_str())
-            {
+            if candidate.source == selected_source && candidate.path.as_ref() == Some(&selected) {
                 candidate.disposition = ConfigCandidateDispositionV1::Selected;
             }
         }
@@ -571,19 +610,44 @@ struct PolicyObservation {
     ignored_scopes: Vec<String>,
     generated_scopes: Vec<String>,
     error: Option<ConfigDiagnosticV1>,
+    status_override: Option<ConfigResolutionStatusV1>,
 }
 
-fn observe_policy(root: &Path, path: &Path) -> PolicyObservation {
-    let Some(portable) = portable_path(root, path) else {
+fn observe_policy(root: &Path, path: &Path, allow_ancestor: bool) -> PolicyObservation {
+    let Some(portable) = portable_config_path(root, path, allow_ancestor) else {
+        let status = if allow_ancestor {
+            ConfigResolutionStatusV1::Unsupported
+        } else {
+            ConfigResolutionStatusV1::Invalid
+        };
+        let kind = if allow_ancestor {
+            CargoAllowErrorKind::Unsupported
+        } else {
+            CargoAllowErrorKind::InvalidConfig
+        };
         return PolicyObservation {
             error: Some(ConfigDiagnosticV1 {
-                code: CargoAllowErrorKind::InvalidConfig.code().to_string(),
-                kind: CargoAllowErrorKind::InvalidConfig.as_str().to_string(),
-                message: "selected policy is outside the repository root".to_string(),
+                code: kind.code().to_string(),
+                kind: kind.as_str().to_string(),
+                message: "selected current policy cannot be represented inside the portable repository boundary"
+                    .to_string(),
             }),
+            status_override: Some(status),
             ..PolicyObservation::default()
         };
     };
+    if !selected_path_is_contained(root, path, &portable) {
+        return PolicyObservation {
+            error: Some(ConfigDiagnosticV1 {
+                code: CargoAllowErrorKind::Unsupported.code().to_string(),
+                kind: CargoAllowErrorKind::Unsupported.as_str().to_string(),
+                message: "selected policy target is outside its authorized portable anchor or is a dangling link"
+                    .to_string(),
+            }),
+            status_override: Some(ConfigResolutionStatusV1::Unsupported),
+            ..PolicyObservation::default()
+        };
+    }
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
         Err(error) => {
@@ -619,6 +683,7 @@ fn observe_policy(root: &Path, path: &Path) -> PolicyObservation {
                 status: policy.status,
             }),
             error: None,
+            status_override: None,
         },
         Err(error) => PolicyObservation {
             policy: Some(ResolvedPolicyV1 {
@@ -634,20 +699,26 @@ fn observe_policy(root: &Path, path: &Path) -> PolicyObservation {
     }
 }
 
-fn resolution_status(
-    selected_policy: Option<&ResolvedPolicyV1>,
+struct ResolutionStatusInput<'a> {
+    selected_policy: Option<&'a ResolvedPolicyV1>,
+    status_override: Option<ConfigResolutionStatusV1>,
     evaluation_error: Option<CargoAllowErrorKind>,
     fallback_selected: bool,
     ambiguous: bool,
     federation_posture: ConfigFederationPostureV1,
     no_policy_observed: bool,
-    diagnostics: &[ConfigDiagnosticV1],
-) -> ConfigResolutionStatusV1 {
-    if ambiguous {
+    diagnostics: &'a [ConfigDiagnosticV1],
+}
+
+fn resolution_status(input: ResolutionStatusInput<'_>) -> ConfigResolutionStatusV1 {
+    if input.ambiguous {
         return ConfigResolutionStatusV1::Ambiguous;
     }
-    if let Some(kind) = evaluation_error {
-        if fallback_selected {
+    if let Some(status) = input.status_override {
+        return status;
+    }
+    if let Some(kind) = input.evaluation_error {
+        if input.fallback_selected {
             return ConfigResolutionStatusV1::Partial;
         }
         return match kind {
@@ -658,24 +729,24 @@ fn resolution_status(
             | CargoAllowErrorKind::Artifact
             | CargoAllowErrorKind::Internal
             | CargoAllowErrorKind::Unknown => ConfigResolutionStatusV1::InstrumentFailure,
-            CargoAllowErrorKind::InvalidConfig if no_policy_observed => {
+            CargoAllowErrorKind::InvalidConfig if input.no_policy_observed => {
                 ConfigResolutionStatusV1::NoPolicy
             }
             _ => ConfigResolutionStatusV1::Invalid,
         };
     }
-    if selected_policy.is_none() {
-        if diagnostics.is_empty() {
+    if input.selected_policy.is_none() {
+        if input.diagnostics.is_empty() {
             ConfigResolutionStatusV1::NoPolicy
         } else {
             ConfigResolutionStatusV1::Invalid
         }
     } else if matches!(
-        federation_posture,
+        input.federation_posture,
         ConfigFederationPostureV1::Invalid | ConfigFederationPostureV1::Unreadable
     ) {
         ConfigResolutionStatusV1::Partial
-    } else if diagnostics.is_empty() {
+    } else if input.diagnostics.is_empty() {
         ConfigResolutionStatusV1::Complete
     } else {
         ConfigResolutionStatusV1::Invalid
@@ -702,6 +773,16 @@ fn source_from_label(label: &str) -> Option<ConfigCandidateSourceV1> {
     }
 }
 
+fn source_allows_ancestor(source: ConfigCandidateSourceV1) -> bool {
+    matches!(
+        source,
+        ConfigCandidateSourceV1::PackageMetadata
+            | ConfigCandidateSourceV1::WorkspaceMetadata
+            | ConfigCandidateSourceV1::ConventionalPath
+            | ConfigCandidateSourceV1::LegacyDiscovery
+    )
+}
+
 impl From<PrecedenceTier> for ConfigPrecedenceTierV1 {
     fn from(value: PrecedenceTier) -> Self {
         match value {
@@ -720,11 +801,15 @@ fn diagnostic_from_error(root: &Path, error: &CargoAllowError) -> ConfigDiagnost
     }
 }
 
-fn portable_joined_path(root: &Path, path: &Path) -> Option<String> {
+fn portable_joined_path(
+    root: &Path,
+    path: &Path,
+    allow_ancestor: bool,
+) -> Option<PortableConfigPathV1> {
     if path.is_absolute() {
-        portable_path(root, path)
+        portable_config_path(root, path, allow_ancestor)
     } else {
-        portable_path(root, &root.join(path))
+        portable_config_path(root, &root.join(path), allow_ancestor)
     }
 }
 
@@ -757,13 +842,101 @@ fn validate_source_subject(root: &Path, source_subject: &str) -> CargoAllowResul
     Ok(())
 }
 
-fn portable_path(root: &Path, path: &Path) -> Option<String> {
-    if let Ok(relative) = path.strip_prefix(root) {
+fn portable_config_path(
+    root: &Path,
+    path: &Path,
+    allow_ancestor: bool,
+) -> Option<PortableConfigPathV1> {
+    let mut anchor = root.to_path_buf();
+    let mut ancestor_depth = 0u32;
+    loop {
+        if let Some(relative) = lexical_relative_path(&anchor, path) {
+            let path = if relative.is_empty() {
+                ".".to_string()
+            } else {
+                relative
+            };
+            if !is_safe_portable_path_text(&path) {
+                return None;
+            }
+            return Some(PortableConfigPathV1 {
+                anchor: if ancestor_depth == 0 {
+                    ConfigPathAnchorV1::ResolvedRepositoryRoot
+                } else {
+                    ConfigPathAnchorV1::DiscoveryAncestor
+                },
+                ancestor_depth,
+                path,
+            });
+        }
+        if !allow_ancestor || !anchor.pop() {
+            return None;
+        }
+        ancestor_depth = ancestor_depth.checked_add(1)?;
+    }
+}
+
+fn lexical_relative_path(anchor: &Path, path: &Path) -> Option<String> {
+    if path
+        .components()
+        .any(|component| component == Component::ParentDir)
+    {
+        return None;
+    }
+    if let Ok(relative) = path.strip_prefix(anchor) {
         return is_safe_relative_path(relative).then(|| normalize_path(relative));
     }
-    let canonical = path.canonicalize().ok()?;
-    let relative = canonical.strip_prefix(root).ok()?;
-    is_safe_relative_path(relative).then(|| normalize_path(relative))
+
+    let normalized_anchor = normalize_path(anchor);
+    let normalized_path = normalize_path(path);
+    let comparable_anchor = if cfg!(windows) {
+        normalized_anchor.to_lowercase()
+    } else {
+        normalized_anchor.clone()
+    };
+    let comparable_path = if cfg!(windows) {
+        normalized_path.to_lowercase()
+    } else {
+        normalized_path.clone()
+    };
+    if comparable_path == comparable_anchor {
+        return Some(String::new());
+    }
+    let prefix = format!("{}/", comparable_anchor.trim_end_matches('/'));
+    comparable_path
+        .strip_prefix(&prefix)
+        .and_then(|_| normalized_path.get(prefix.len()..))
+        .map(ToString::to_string)
+}
+
+fn root_relative_config_path(path: &str) -> PortableConfigPathV1 {
+    let normalized = normalize_path(Path::new(path));
+    PortableConfigPathV1 {
+        anchor: ConfigPathAnchorV1::ResolvedRepositoryRoot,
+        ancestor_depth: 0,
+        path: if normalized.is_empty() {
+            ".".to_string()
+        } else {
+            normalized
+        },
+    }
+}
+
+fn selected_path_is_contained(root: &Path, path: &Path, portable: &PortableConfigPathV1) -> bool {
+    let mut anchor = root.to_path_buf();
+    for _ in 0..portable.ancestor_depth {
+        if !anchor.pop() {
+            return false;
+        }
+    }
+    match path.canonicalize() {
+        Ok(target) => anchor
+            .canonicalize()
+            .ok()
+            .and_then(|resolved_anchor| lexical_relative_path(&resolved_anchor, &target))
+            .is_some(),
+        Err(_) => fs::symlink_metadata(path).is_err(),
+    }
 }
 
 fn is_safe_relative_path(path: &Path) -> bool {
@@ -776,12 +949,33 @@ fn is_safe_relative_path(path: &Path) -> bool {
         })
 }
 
+fn is_safe_portable_path_text(path: &str) -> bool {
+    if path.is_empty() || path.starts_with('/') || path.starts_with('\\') {
+        return false;
+    }
+    let bytes = path.as_bytes();
+    if bytes.first().is_some_and(|byte| byte.is_ascii_alphabetic()) && bytes.get(1) == Some(&b':') {
+        return false;
+    }
+    !path.split(['/', '\\']).any(|segment| segment == "..")
+}
+
 fn portable_message(root: &Path, message: &str) -> String {
-    let root_text = root.display().to_string();
-    let normalized_root = normalize_path(root);
-    let without_native = message.replace(&root_text, ".");
-    let without_normalized = without_native.replace(&normalized_root, ".");
-    bounded_message(&without_normalized)
+    let mut portable = message.to_string();
+    for (depth, anchor) in root
+        .ancestors()
+        .take_while(|anchor| anchor.parent().is_some())
+        .enumerate()
+    {
+        let replacement = if depth == 0 {
+            ".".to_string()
+        } else {
+            format!("<discovery_ancestor:{depth}>")
+        };
+        portable = portable.replace(&anchor.display().to_string(), &replacement);
+        portable = portable.replace(&normalize_path(anchor), &replacement);
+    }
+    bounded_message(&portable)
 }
 
 fn bounded_message(message: &str) -> String {
@@ -817,7 +1011,7 @@ fn unavailable_resolution(
             reason: None,
         },
         federation: ConfigFederationParticipationV1 {
-            config_path: FEDERATION_CONFIG_REL_PATH.to_string(),
+            config_path: root_relative_config_path(FEDERATION_CONFIG_REL_PATH),
             posture: ConfigFederationPostureV1::Unreadable,
             selected_for_source_exception: false,
             configured_ledgers: Vec::new(),

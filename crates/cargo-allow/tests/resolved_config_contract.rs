@@ -43,10 +43,42 @@ fn resolved_config_schema_rejects_non_portable_repository_paths() -> TestResult 
         "\\outside.toml",
         "C:outside.toml",
     ] {
-        instance["selected_policy"]["path"] = serde_json::Value::String(unsafe_path.to_string());
+        replace_string(&mut instance, "/selected_policy/path/path", unsafe_path)?;
         ensure(
             !validator.is_valid(&instance),
             &format!("schema should reject non-portable path {unsafe_path}"),
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn producer_keeps_foreign_style_cli_paths_schema_valid() -> TestResult {
+    let fixture = Fixture::new("producer-path-matrix")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+    ))?;
+    let validator = jsonschema::validator_for(&schema)?;
+
+    for unsafe_path in [
+        "../outside.toml",
+        "policy/../../outside.toml",
+        "..\\outside.toml",
+        "policy\\..\\outside.toml",
+        "\\outside.toml",
+        "C:outside.toml",
+    ] {
+        let resolved = resolve_cargo_allow_config_v1(
+            fixture.path(),
+            Some(Path::new(unsafe_path)),
+            "subject:producer-path-matrix",
+        )?;
+        let instance: serde_json::Value =
+            serde_json::from_str(&render_resolved_cargo_allow_config_json(&resolved)?)?;
+        ensure(
+            validator.is_valid(&instance),
+            &format!("producer output should remain schema-valid for CLI path {unsafe_path}"),
         )?;
     }
     Ok(())
@@ -65,13 +97,50 @@ fn resolved_config_schema_rejects_path_bearing_source_subjects() -> TestResult {
     let validator = jsonschema::validator_for(&schema)?;
 
     for unsafe_subject in ["subject:/home/private", "artifact:C:\\private\\x"] {
-        instance["source_subject"] = serde_json::Value::String(unsafe_subject.to_string());
+        replace_string(&mut instance, "/source_subject", unsafe_subject)?;
         ensure(
             !validator.is_valid(&instance),
             &format!("schema should reject path-bearing subject {unsafe_subject}"),
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn empty_federation_identity_fails_closed_in_schema_valid_projection() -> TestResult {
+    let fixture = Fixture::new("empty-federation-id")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"[[ledgers]]
+id = ""
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    )?;
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:empty-id")?;
+    let instance: serde_json::Value =
+        serde_json::from_str(&render_resolved_cargo_allow_config_json(&resolved)?)?;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+    ))?;
+    let validator = jsonschema::validator_for(&schema)?;
+
+    ensure(
+        resolved.status == allow_policy::ConfigResolutionStatusV1::Partial,
+        "invalid registry plus conventional fallback should stay partial",
+    )?;
+    ensure(
+        resolved.federation.configured_ledgers.is_empty(),
+        "invalid empty identity should not enter configured ledgers",
+    )?;
+    ensure(
+        validator.is_valid(&instance),
+        "fail-closed empty-id projection should remain schema-valid",
+    )
 }
 
 fn valid_policy() -> &'static str {
@@ -93,6 +162,14 @@ fn ensure(condition: bool, message: &str) -> TestResult {
     } else {
         Err(message.to_string().into())
     }
+}
+
+fn replace_string(instance: &mut serde_json::Value, pointer: &str, value: &str) -> TestResult {
+    let target = instance
+        .pointer_mut(pointer)
+        .ok_or_else(|| format!("test instance should contain {pointer}"))?;
+    *target = serde_json::Value::String(value.to_string());
+    Ok(())
 }
 
 struct Fixture {

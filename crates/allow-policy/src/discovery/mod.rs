@@ -1,6 +1,6 @@
 use std::path::{Component, Path, PathBuf};
 
-use allow_core::read_text_file_capped;
+use allow_core::{normalize_path, read_text_file_capped};
 use serde::Deserialize;
 
 use crate::policy_header::{SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS};
@@ -137,9 +137,10 @@ pub(crate) fn skipped_metadata_candidate_source(
                 .and_then(|metadata| metadata.cargo_allow.as_ref())
                 .and_then(|metadata| metadata.config.as_deref())
                 .map(|config| (config, SOURCE_WORKSPACE_METADATA));
-            if let Some((config, source)) = package.or(workspace)
-                && (dir.join(config) == candidate || manifest_path == candidate)
-            {
+            if let Some((_, source)) = package.into_iter().chain(workspace).find(|(config, _)| {
+                normalize_path(dir.join(config)) == normalize_path(candidate)
+                    || normalize_path(&manifest_path) == normalize_path(candidate)
+            }) {
                 return Some(source);
             }
         }

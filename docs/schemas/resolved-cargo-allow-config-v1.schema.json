@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://effortlessmetrics.github.io/cargo-allow/schemas/resolved-cargo-allow-config-v1.schema.json",
-  "title": "ResolvedCargoAllowConfigV1",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/resolved-cargo-allow-config.v1.schema.json",
+  "title": "cargo-allow resolved-config v1",
   "description": "Reusable read-only configuration-resolution component. It is not a standalone command artifact and does not authorize policy contents or writes.",
   "type": "object",
   "additionalProperties": false,
@@ -72,7 +72,7 @@
     },
     "explicit_cli_values": {
       "type": "array",
-      "items": { "$ref": "#/$defs/repository_path" },
+      "items": { "$ref": "#/$defs/portable_config_path" },
       "uniqueItems": true
     },
     "candidates": {
@@ -102,6 +102,26 @@
         "pattern": "(?:^(?:[\\\\/]|[A-Za-z]:)|(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))"
       }
     },
+    "portable_config_path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["anchor", "ancestor_depth", "path"],
+      "properties": {
+        "anchor": { "enum": ["resolved_repository_root", "discovery_ancestor"] },
+        "ancestor_depth": { "type": "integer", "minimum": 0 },
+        "path": { "$ref": "#/$defs/repository_path" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "anchor": { "const": "resolved_repository_root" } } },
+          "then": { "properties": { "ancestor_depth": { "const": 0 } } }
+        },
+        {
+          "if": { "properties": { "anchor": { "const": "discovery_ancestor" } } },
+          "then": { "properties": { "ancestor_depth": { "minimum": 1 } } }
+        }
+      ]
+    },
     "candidate_source": {
       "enum": [
         "cli_override",
@@ -129,7 +149,7 @@
         },
         "path": {
           "oneOf": [
-            { "$ref": "#/$defs/repository_path" },
+            { "$ref": "#/$defs/portable_config_path" },
             { "type": "null" }
           ]
         },
@@ -152,7 +172,7 @@
       "additionalProperties": false,
       "required": ["path", "digest", "schema_version", "policy", "status"],
       "properties": {
-        "path": { "$ref": "#/$defs/repository_path" },
+        "path": { "$ref": "#/$defs/portable_config_path" },
         "digest": { "type": ["string", "null"] },
         "schema_version": { "type": ["string", "null"] },
         "policy": { "type": ["string", "null"] },
@@ -180,7 +200,7 @@
         "diagnostics"
       ],
       "properties": {
-        "config_path": { "$ref": "#/$defs/repository_path" },
+        "config_path": { "$ref": "#/$defs/portable_config_path" },
         "posture": { "enum": ["missing", "valid", "invalid", "unreadable"] },
         "selected_for_source_exception": { "type": "boolean" },
         "configured_ledgers": {

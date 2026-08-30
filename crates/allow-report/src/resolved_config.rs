@@ -16,10 +16,10 @@ mod tests {
     use allow_policy::{
         ConfigCandidateDispositionV1, ConfigCandidateSourceV1, ConfigCandidateV1,
         ConfigCompletenessV1, ConfigFallbackV1, ConfigFederationParticipationV1,
-        ConfigFederationPostureV1, ConfigPrecedenceTierV1, ConfigProfileParticipationV1,
-        ConfigResolutionStatusV1, RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY,
-        RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID, RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION,
-        ResolvedCargoAllowConfigV1, ResolvedPolicyV1,
+        ConfigFederationPostureV1, ConfigPathAnchorV1, ConfigPrecedenceTierV1,
+        ConfigProfileParticipationV1, ConfigResolutionStatusV1, PortableConfigPathV1,
+        RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY, RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID,
+        RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION, ResolvedCargoAllowConfigV1, ResolvedPolicyV1,
     };
 
     use super::render_resolved_cargo_allow_config_json;
@@ -116,7 +116,7 @@ mod tests {
             status: ConfigResolutionStatusV1::Complete,
             completeness: ConfigCompletenessV1::Partial,
             selected_policy: Some(ResolvedPolicyV1 {
-                path: "policy/allow.toml".to_string(),
+                path: root_path("policy/allow.toml"),
                 digest: Some("sha256:v1:policy".to_string()),
                 schema_version: Some("0.1".to_string()),
                 policy: Some("cargo-allow".to_string()),
@@ -127,7 +127,7 @@ mod tests {
             explicit_cli_values: Vec::new(),
             candidates: vec![ConfigCandidateV1 {
                 source: ConfigCandidateSourceV1::ConventionalPath,
-                path: Some("policy/allow.toml".to_string()),
+                path: Some(root_path("policy/allow.toml")),
                 disposition: ConfigCandidateDispositionV1::Selected,
                 reason: None,
             }],
@@ -137,7 +137,7 @@ mod tests {
                 reason: None,
             },
             federation: ConfigFederationParticipationV1 {
-                config_path: ".allow/config.toml".to_string(),
+                config_path: root_path(".allow/config.toml"),
                 posture: ConfigFederationPostureV1::Missing,
                 selected_for_source_exception: false,
                 configured_ledgers: Vec::new(),
@@ -157,6 +157,14 @@ mod tests {
                 "current_multi_pass_adapter_does_not_prove_atomic_resolution".to_string(),
             ],
             claim_boundary: RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY.to_string(),
+        }
+    }
+
+    fn root_path(path: &str) -> PortableConfigPathV1 {
+        PortableConfigPathV1 {
+            anchor: ConfigPathAnchorV1::ResolvedRepositoryRoot,
+            ancestor_depth: 0,
+            path: path.to_string(),
         }
     }
 

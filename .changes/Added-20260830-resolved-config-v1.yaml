@@ -2,7 +2,7 @@ kind: Added
 body: >-
   Add the reusable ResolvedCargoAllowConfigV1 contract for cargo-allow's
   source-exception configuration selection (#3875). The read-only adapter
-  preserves the current winner, typed source and precedence, repository-relative
+  preserves the current winner, typed source and precedence, anchored portable
   policy identity and digest, candidate dispositions, explicit legacy fallback,
   federation/profile participation, diagnostics, completeness, and limitations.
   Its canonical JSON component schema excludes private checkout paths and marks

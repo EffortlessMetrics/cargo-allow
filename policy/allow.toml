@@ -14503,3 +14503,47 @@ normalized_snippet_hash = "fnv1a64:d1bdfbac31c1005d"
 [allow.last_seen]
 line = 701
 column = 35
+
+[[allow]]
+id = "allow-11200"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+owner = "core/policy"
+classification = "resolved_config_component_schema"
+reason = "Defines the versioned reusable JSON component contract for the read-only source-exception configuration projection in issue #3875."
+evidence = ["issue:3875", "doc:docs/schemas/README.md", "test:resolved_config_contract"]
+created = "2026-08-30"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11201"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4049-resolved-config-v1.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the resolved-config v1 component-schema exception added by PR #4049."
+evidence = ["issue:3875", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-30"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4049-resolved-config-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4049-resolved-config-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
