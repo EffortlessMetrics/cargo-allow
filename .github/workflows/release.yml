@@ -56,6 +56,7 @@ jobs:
       recovery: ${{ steps.release_context.outputs.recovery }}
       authorization: ${{ steps.release_context.outputs.authorization }}
       recovery_receipt_run_id: ${{ steps.release_context.outputs.recovery_receipt_run_id }}
+      github_prerelease: ${{ steps.release_context.outputs.github_prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -123,7 +124,9 @@ jobs:
               exit 1
             fi
           fi
-          bash scripts/release-version-preflight.sh "${version}"
+          RELEASE_IDENTITY_PROJECTION_FILE="target/cargo-allow/release-identity.json" \
+            bash scripts/release-version-preflight.sh "${version}"
+          github_prerelease="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["github_prerelease"]).lower())' target/cargo-allow/release-identity.json)"
           {
             echo "version=${version}"
             echo "tag=${tag}"
@@ -132,6 +135,7 @@ jobs:
             echo "recovery=${recovery}"
             echo "authorization=${authorization}"
             echo "recovery_receipt_run_id=${RECOVERY_RECEIPT_RUN_ID}"
+            echo "github_prerelease=${github_prerelease}"
           } >> "${GITHUB_OUTPUT}"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -153,6 +157,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       auth_source: ${{ steps.registry_token.outputs.source }}
+      version: ${{ needs.preflight.outputs.version }}
+      github_prerelease: ${{ needs.preflight.outputs.github_prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -291,6 +297,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ needs.publish.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
@@ -300,7 +308,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           bash scripts/release-install-smoke.sh "${version}"
       - name: Record install-smoke receipt
         if: always()
@@ -312,7 +320,7 @@ jobs:
             "event": "${{ github.event_name }}",
             "ref": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
-            "version": "${GITHUB_REF_NAME#v}",
+            "version": "${RELEASE_VERSION}",
             "os": "${{ matrix.os }}",
             "workflow_run_id": ${{ github.run_id }}
           }
@@ -331,6 +339,8 @@ jobs:
       contents: write
       attestations: write
       id-token: write
+    env:
+      RELEASE_VERSION: ${{ needs.publish.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -352,7 +362,7 @@ jobs:
           OUTPUT_DIR: target/cargo-allow/release-assets
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           bash scripts/package-release-binary.sh --version "${version}" --target x86_64-unknown-linux-gnu --output-dir "${OUTPUT_DIR}"
       - name: Verify tagged Linux executable archive
@@ -362,7 +372,7 @@ jobs:
           OUTPUT_DIR: target/cargo-allow/release-assets
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
           bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
@@ -378,7 +388,7 @@ jobs:
           OUTPUT_DIR: target/cargo-allow/release-assets
         run: |
           set -euo pipefail
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
           gh attestation verify "${archive}" --repo "${GITHUB_REPOSITORY}"
@@ -401,7 +411,7 @@ jobs:
           TOPOLOGY_RECEIPT: target/cargo-allow/topology-publish.receipt.json
         run: |
           set -euo pipefail
-          export VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION="${RELEASE_VERSION}"
           export TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           bash scripts/generate-release-manifest.sh
       - name: Attest release manifest
@@ -411,7 +421,7 @@ jobs:
       - name: Resolve release notes
         id: notes
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${RELEASE_VERSION}"
           notes_path="docs/release/github/v${version}.md"
           if [ -f "${notes_path}" ]; then
             echo "body_path=${notes_path}" >> "${GITHUB_OUTPUT}"
@@ -435,7 +445,7 @@ jobs:
           name: cargo-allow ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.body_path }}
           draft: true
-          prerelease: false
+          prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}
       - name: Attach release manifest to GitHub Release
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
@@ -453,4 +463,4 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}

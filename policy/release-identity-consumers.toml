@@ -33,27 +33,27 @@ disposition = "deferred-with-named-owner"
 owner = "#3752"
 marker_classes = ["tag-strip", "workspace-reader", "prerelease-posture"]
 exact_counts = [
-  { class = "tag-strip", count = 8 },
-  { class = "prerelease-posture", count = 2 },
+  { class = "tag-strip", count = 1 },
+  { class = "prerelease-posture", count = 6 },
 ]
 sites = [
   "version=\"${GITHUB_REF_NAME#v}\"",
-  "prerelease: false",
+  "prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}",
 ]
-claim_boundary = "Eight local tag strips re-derive identity per job instead of consuming the preflight projection, and GitHub prerelease is hard-coded false on both release steps, so an -rc tag would ship as a stable release. Slice B of #3752 routes the workflow through the typed channel projection; until then the release train must not tag an RC without that slice."
+claim_boundary = "GitHub prerelease posture now comes from the typed projection: the preflight job validates identity through `cargo-allow release-identity`, writes its projection file, exports github_prerelease, and publish relays it so both GitHub release steps render `prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}`; an -rc tag can no longer ship as a stable release. Downstream jobs consume the preflight-projected version via RELEASE_VERSION instead of re-stripping the tag. The residual tag strip is the tag channel feeding the typed authority itself, and the workspace reader remains on the manual-dispatch path; both are input gathering, not channel inference. Remaining #3752 migrations cover the other inventoried surfaces."
 
 [[consumers]]
 id = "release-version-preflight"
 path = "scripts/release-version-preflight.sh"
 role = "release version/artifact preflight"
 disposition = "typed-consumer"
-marker_classes = ["tag-strip", "workspace-reader"]
+marker_classes = ["tag-strip", "workspace-reader", "prerelease-posture"]
 exact_counts = [{ class = "tag-strip", count = 1 }]
 sites = [
   "release-identity --version",
   "tag_version=\"${GITHUB_REF_NAME#v}\"",
 ]
-claim_boundary = "Version grammar and channel decisions are delegated to `cargo-allow release-identity`; the residual tag strip and workspace-version reader only feed exact comparison inputs and the typed call, not independent channel inference."
+claim_boundary = "Version grammar and channel decisions are delegated to `cargo-allow release-identity`; the script also writes the validated typed projection (including github_prerelease) to RELEASE_IDENTITY_PROJECTION_FILE for callers. The residual tag strip and workspace-version reader only feed exact comparison inputs and the typed call, not independent channel inference."
 
 [[consumers]]
 id = "verify-release-binary"
@@ -203,9 +203,9 @@ id = "test-release-version-preflight"
 path = "scripts/test-release-version-preflight.sh"
 role = "characterization tests for the release preflight"
 disposition = "historical-fixture-only"
-marker_classes = ["workspace-reader"]
+marker_classes = ["workspace-reader", "prerelease-posture"]
 sites = ["workspace_version=\"$(awk '/^\\[workspace\\.package\\]/"]
-claim_boundary = "Fabricates v-prefixed tags as negative fixtures and independently reads the workspace version to build them; fixtures only, not a release authority."
+claim_boundary = "Fabricates v-prefixed tags as negative fixtures and independently reads the workspace version to build them; also asserts the typed projection file carries a validated result and a github_prerelease field (field presence only — value semantics stay in the Rust CLI tests). Fixtures only, not a release authority."
 
 [[consumers]]
 id = "test-verify-crate-registry-version"

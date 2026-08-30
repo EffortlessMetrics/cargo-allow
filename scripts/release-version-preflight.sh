@@ -7,6 +7,10 @@
 # Environment:
 #   DRY_RUN=true          Skip release-record file requirements (workflow_dispatch).
 #   RELEASE_VERSION       Version override when no positional arg is supplied.
+#   RELEASE_IDENTITY_PROJECTION_FILE
+#                         When set, the validated typed release-identity JSON
+#                         projection is written to this path for callers that
+#                         consume its channel/github_prerelease fields.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -64,6 +68,12 @@ validate_typed_release_identity() {
   fi
   printf '%s\n' "${projection}" | grep -q '"result": "validated"' \
     || fail "typed release identity did not return a validated projection"
+  if [[ -n "${RELEASE_IDENTITY_PROJECTION_FILE:-}" ]]; then
+    mkdir -p "$(dirname "${RELEASE_IDENTITY_PROJECTION_FILE}")"
+    printf '%s\n' "${projection}" > "${RELEASE_IDENTITY_PROJECTION_FILE}" \
+      || fail "could not write typed release identity projection ${RELEASE_IDENTITY_PROJECTION_FILE}"
+    log "typed release identity projection written to ${RELEASE_IDENTITY_PROJECTION_FILE}"
+  fi
   log "typed release identity accepted ${release_version}"
 }
 
@@ -94,6 +104,10 @@ fi
 
 while IFS= read -r dep_version; do
   [[ -n "${dep_version}" ]] || continue
+  # Workspace dependencies are exact-pinned (`=X.Y.Z`); the requirement
+  # operator is stripped before the equality check. Exactness itself is
+  # enforced by the release-prep topology tests.
+  dep_version="${dep_version#=}"
   [[ "${dep_version}" == "${workspace_version}" ]] || fail "workspace dependency version ${dep_version} does not match workspace version ${workspace_version}"
 done < <(read_workspace_dependency_versions)
 log "internal workspace dependency versions match ${workspace_version}"
