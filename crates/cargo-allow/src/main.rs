@@ -218,6 +218,8 @@ mod proof_provider_api_parity_tests;
 #[cfg(test)]
 mod readme_tests;
 #[cfg(test)]
+mod release_identity_denominator_tests;
+#[cfg(test)]
 mod release_prep_tests;
 #[cfg(test)]
 mod report_config_tests;
