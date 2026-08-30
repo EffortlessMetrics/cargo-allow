@@ -145,7 +145,7 @@
   "observation_completeness": "partial_observation",
   "observation_limits": [
     "The incident tag's create/delete/recreate event history (timestamps, actor, order) is not retained; only the current annotated tag target is observable.",
-    "The producing-candidate receipts for the allow-diff and cargo-allow registry bytes are unretained: no retained topology receipt carries checksums ae3f4ed1... or 212dfcc8..., so their source candidates are identified only as intermediate moved-tag history.",
+    "The producing-candidate receipts for the allow-diff and cargo-allow registry bytes are unretained: no retained topology receipt carries ae3f4ed1... or 212dfcc8... as a candidate-local package checksum (they appear only as observed registry values), so their source candidates are identified only as intermediate moved-tag history.",
     "docs.rs build state for the ten rows was not observed in this record.",
     "Attestation state is carried by the final run's verified install receipts rather than re-verified here."
   ],

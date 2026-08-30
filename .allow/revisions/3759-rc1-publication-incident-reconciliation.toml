@@ -3,14 +3,16 @@ schema_version = 1
 
 # This diff adds six source-exception entries, all in service of the checked
 # reconciliation of the moved v0.2.0-rc.1 publication sequence. allow-0667
-# through allow-0669 receipt the test-only fail-closed helpers (panic!, and
-# expect on evidence parsing) in the integration test that binds the retained
-# record to the typed law; panic on unread evidence is the established guard
-# idiom, and assert/assert_eq findings are covered by the retained test-assert
-# entries. allow-0670 receipts the retained evidence record itself
+# through allow-0671 receipt the test-only fail-closed helpers and the new
+# evidence surfaces for the integration test that binds the retained record to
+# the typed law: allow-0667 (panic! on unread evidence), allow-0668 (panic! on
+# unexpected row states), allow-0671 (expect on record parsing) are the
+# established fail-closed guard idioms, and assert/assert_eq findings are
+# covered by the retained test-assert entries. allow-0669 receipts the
+# retained evidence record itself
 # (docs/release/evidence/rc1-publication-incident.v1.json), generated from the
 # two retained run receipts, a 2026-08-30 crates.io registry observation, the
-# current annotated tag target, and the GitHub Release state. allow-0671
+# current annotated tag target, and the GitHub Release state. allow-0670
 # receipts the JSON schema for the contract. allow-0672 is the self-receipt
 # for this revision note, following the ledger_change_note precedent. No
 # existing exception is weakened, no expiry is extended, and no scope is
@@ -28,25 +30,25 @@ reason = "Receipts the panic! on unread incident evidence in the reconciliation 
 allow_ids = ["allow-0668"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:51dd6f45a338dd5bf52562a0ff8b33ba963b30cbf0ee3d1b9aa612277ed4ecbb"
-reason = "Receipts the expect on incident-record parsing so malformed evidence fails the check with the parse error; test-only."
+reason = "Receipts the panic! on unexpected row states in the retained record so any classification outside the law fails visibly; test-only."
 
 [[records]]
 allow_ids = ["allow-0669"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:c463fbf4c8c7159102e58c9edc8d54a53710eeb89f704066220c35e7a5bb2ab7"
-reason = "Receipts the panic! on unexpected row states in the retained record so any classification outside the law fails visibly; test-only."
+reason = "Receipts the retained rc.1 publication incident evidence record: the checked reconciliation artifact carrying per-row candidate provenance, current registry state, the GitHub Release posture deviation, and the explicit observation limits."
 
 [[records]]
 allow_ids = ["allow-0670"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ecfd22a83cba991beb4695eb2083b7f91bbf9f7de16c7543ae7e191bb5d9a65c"
-reason = "Receipts the retained rc.1 publication incident evidence record: the checked reconciliation artifact carrying per-row candidate provenance, current registry state, the GitHub Release posture deviation, and the explicit observation limits."
+reason = "Receipts the JSON schema for the rc.1 publication incident contract, giving external consumers a structural description of the record."
 
 [[records]]
 allow_ids = ["allow-0671"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:1fad30bc5ca65e10db78787a501d2b342dd7ce06049c7c062c14935cc8b28203"
-reason = "Receipts the JSON schema for the rc.1 publication incident contract, giving external consumers a structural description of the record."
+reason = "Receipts the expect on incident-record parsing so malformed evidence fails the check with the parse error; test-only, receipted under the panic kind per the CLI kind vocabulary."
 
 [[records]]
 allow_ids = ["allow-0672"]
