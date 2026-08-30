@@ -55,14 +55,16 @@ fn wildcard_requirements(
         if DEPENDENCY_SECTIONS.contains(&key.as_str()) {
             dep_tables.push((key.clone(), value));
         } else if key == "target" {
-            if let Some(targets) = value.as_table() {
-                for (target_name, target_value) in targets {
-                    if let Some(target_table) = target_value.as_table() {
-                        for (key, value) in target_table {
-                            if DEPENDENCY_SECTIONS.contains(&key.as_str()) {
-                                dep_tables.push((format!("{key} (target {target_name})"), value));
-                            }
-                        }
+            let Some(targets) = value.as_table() else {
+                continue;
+            };
+            for (target_name, target_value) in targets {
+                let Some(target_table) = target_value.as_table() else {
+                    continue;
+                };
+                for (key, value) in target_table {
+                    if DEPENDENCY_SECTIONS.contains(&key.as_str()) {
+                        dep_tables.push((format!("{key} (target {target_name})"), value));
                     }
                 }
             }
