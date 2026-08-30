@@ -348,3 +348,17 @@ pub use artifacts::{
     FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
     render_final_readiness_json, render_final_readiness_markdown,
 };
+
+// Root re-exports for the #3919 final-freeze replay contract.
+pub use artifacts::{
+    CargoAllowFinalFreezeReceiptV1, CargoAllowFinalFreezeReplayInputsV1,
+    CargoAllowFinalFreezeReplayV1, FINAL_FREEZE_EXPECTED_SHARED_ROWS_V1,
+    FINAL_FREEZE_EXPECTED_UPLOAD_ROWS_V1, FINAL_FREEZE_RECEIPT_SCHEMA_ID,
+    FINAL_FREEZE_RECEIPT_SCHEMA_VERSION, FINAL_FREEZE_REPLAY_SCHEMA_ID,
+    FINAL_FREEZE_REPLAY_SCHEMA_VERSION, FinalFreezeManifestBindingV1, FinalFreezeManifestResultV1,
+    FinalFreezeReceiptInitV1, FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1,
+    FinalFreezeReplayRowV1, ObservationFreshnessV1, ObservationReadingRowV1, ObservationReadingV1,
+    RefreshableObservationAdapterV1, RefreshableObservationKindV1, RefreshableObservationV1,
+    RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
+    render_final_freeze_replay_markdown, replay_final_freeze,
+};
