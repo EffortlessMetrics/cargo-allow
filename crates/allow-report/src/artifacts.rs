@@ -9,6 +9,7 @@ mod exact_candidate_receipt_v2;
 mod explain;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
+mod final_readiness_v1;
 mod frozen_candidate_custody_v1;
 mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
@@ -55,6 +56,15 @@ pub use federation::{
     FederationReportContext, LedgerContributorSummary,
 };
 pub use final_evidence_graph_v1::*;
+pub use final_readiness_v1::{
+    CargoAllowFinalReadinessV1, FINAL_READINESS_SCHEMA_ID, FINAL_READINESS_SCHEMA_VERSION,
+    FinalReadinessClaimNarrowingV1, FinalReadinessCustodyPostureV1, FinalReadinessDecisionInputsV1,
+    FinalReadinessDecisionStateV1, FinalReadinessPostMergePostureV1,
+    FinalReadinessQualificationPostureV1, FinalReadinessRequiredEvidenceV1,
+    FinalReadinessRootDecisionV1, FinalReadinessRowKindV1, FinalReadinessRowV1,
+    FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
+    render_final_readiness_json, render_final_readiness_markdown,
+};
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
     CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,

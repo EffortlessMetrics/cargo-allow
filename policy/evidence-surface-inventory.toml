@@ -124,6 +124,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The plan wording is retained; no irreversible publication is authorized."
 
 [[surfaces]]
+id = "final-readiness-aggregate"
+owner_issue = 3929
+semantic_authority = "final readiness aggregate"
+path = "crates/cargo-allow/tests/final_readiness.rs"
+subject = "CargoAllowFinalReadinessV1"
+producer = "Rust integration test"
+consumer = "pre-freeze readiness decision"
+claimed_acceptance_row = "readiness aggregate verdict behavior"
+assertion_mechanism = "typed graph fixtures and verdict assertions"
+evidence_class = "TypedModelValidation"
+disposition = "local typed-model validation"
+required_stronger_owner = "#3929"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The typed aggregate's verdicts are exercised on in-memory fixture graphs; production evidence, custody, and release gates are not established here."
+
+[[surfaces]]
 id = "pilot-selection"
 owner_issue = 3771
 semantic_authority = "pilot selection record"
