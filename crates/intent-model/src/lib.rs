@@ -13,6 +13,7 @@ extern crate self as allow_core;
 mod agentic_candidate;
 mod agentic_reservation;
 mod agentic_reservation_gh;
+mod agentic_review_profile;
 mod error;
 mod governance_v2;
 mod parity;
@@ -33,6 +34,15 @@ pub use agentic_reservation::{
     validate_object_id,
 };
 pub use agentic_reservation_gh::{GH_PROGRAM, GhCandidateRefTransport};
+pub use agentic_review_profile::{
+    AGENT_REVIEW_FINDING_SCHEMA_V1, AGENT_REVIEW_PACKET_SCHEMA_V1,
+    CAPTURED_REVIEW_SCHEMA_GENERATION, CAPTURED_REVIEW_SCHEMA_SECTIONS,
+    CAPTURED_SCHEMA_DELETION_CONDITION, CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1,
+    CapturedReviewSchemaFixtureV1, CargoSuiteReviewProfileV1, ClosureSurfaceKindV1,
+    ClosureSurfaceV1, ProofObligationKindV1, ReviewLensV1, ReviewMapEntryV1,
+    SHARED_REVIEW_PACKET_AUTHORITY, STAGE_CLOSURE_PROJECTION_SCHEMA_V1,
+    captured_review_schema_fixture,
+};
 pub use error::{
     IntentModelError, IntentModelErrorKind, IntentModelErrorLocation, IntentModelResult,
     normalize_path, read_text_file_capped, stable_hash_hex,
