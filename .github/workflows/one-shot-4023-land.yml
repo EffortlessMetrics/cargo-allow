@@ -1,0 +1,350 @@
+name: One-shot 4023 land lifecycle fixtures
+
+on:
+  push:
+    branches:
+      - fix/4023-relative-fixture-dates
+    paths:
+      - .github/workflows/one-shot-4023-land.yml
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: one-shot-4023-land-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  land:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out the exact branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/4023-relative-fixture-dates
+
+      - name: Resolve current main and materialize the reviewed transformation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          python - <<'PY'
+          from __future__ import annotations
+
+          import subprocess
+          import sys
+          import textwrap
+          from pathlib import Path
+
+          guard = Path("crates/cargo-allow/tests/lifecycle_fixture_date_guard.rs")
+          fixture = Path("crates/cargo-allow/tests/saved_artifact_outputs/fixture.rs")
+          if guard.is_file():
+              source = fixture.read_text(encoding="utf-8")
+              required = (
+                  "__CARGO_ALLOW_FIXTURE_CREATED__",
+                  "__CARGO_ALLOW_FIXTURE_REVIEW_AFTER__",
+                  "__CARGO_ALLOW_FIXTURE_EXPIRES__",
+              )
+              missing = [token for token in required if token not in source]
+              if missing:
+                  raise SystemExit(f"partially materialized lifecycle fixture change: {missing}")
+              raise SystemExit(0)
+
+          transport_commit = "c17149904afc9fda266d626e8e5bbcc0d33c628d"
+          original_script_commit = "78c04c0837bc71d9eb985743fe9706845bfcceae"
+          workflow = subprocess.run(
+              [
+                  "git",
+                  "show",
+                  f"{transport_commit}:.github/workflows/one-shot-4023-implement-v3.yml",
+              ],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout
+          marker = "          python - <<'PY'\n"
+          start = workflow.find(marker)
+          if start < 0:
+              raise SystemExit("reviewed v3 transport has no Python implementation step")
+          start += len(marker)
+          end = workflow.find("\n          PY\n", start)
+          if end < 0:
+              raise SystemExit("reviewed v3 transport implementation step is unterminated")
+          script = textwrap.dedent(workflow[start:end])
+          old = '"HEAD^:.github/workflows/one-shot-4023-implement.yml"'
+          new = f'"{original_script_commit}:.github/workflows/one-shot-4023-implement.yml"'
+          if script.count(old) != 1:
+              raise SystemExit("reviewed v3 source-transport identity changed")
+          script = script.replace(old, new, 1)
+          compile(script, "<issue-4023-reviewed-transform>", "exec")
+          path = Path("/tmp/issue-4023-reviewed-transform.py")
+          path.write_text(script, encoding="utf-8")
+          subprocess.run([sys.executable, str(path)], check=True)
+          PY
+
+      - name: Format and accept only scoped Clippy repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          for target in \
+            lifecycle_fixture_date_guard \
+            saved_artifact_outputs \
+            lifecycle_corpus \
+            audit_output \
+            summary_output \
+            add_glob_ratchet \
+            concurrent_mutation
+          do
+            cargo clippy --locked -p cargo-allow --test "$target" \
+              --fix --allow-dirty --allow-staged -- -D warnings
+          done
+          cargo fmt --all
+          python - <<'PY'
+          import subprocess
+
+          expected = {
+              "crates/cargo-allow/tests/add_glob_ratchet.rs",
+              "crates/cargo-allow/tests/audit_output.rs",
+              "crates/cargo-allow/tests/concurrent_mutation.rs",
+              "crates/cargo-allow/tests/lifecycle_corpus.rs",
+              "crates/cargo-allow/tests/lifecycle_fixture_date_guard.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/diff.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/fixture.rs",
+              "crates/cargo-allow/tests/saved_artifact_outputs/migrate.rs",
+              "crates/cargo-allow/tests/summary_output.rs",
+          }
+          changed = set(subprocess.run(
+              ["git", "diff", "--name-only", "--", "crates"],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout.splitlines())
+          unexpected = sorted(changed - expected)
+          if unexpected:
+              raise SystemExit(f"Clippy or formatting escaped the reviewed fixture surface: {unexpected}")
+          PY
+          cargo fmt --all -- --check
+
+      - name: Run the affected test denominator
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in \
+            lifecycle_fixture_date_guard \
+            saved_artifact_outputs \
+            lifecycle_corpus \
+            audit_output \
+            summary_output \
+            add_glob_ratchet \
+            concurrent_mutation
+          do
+            cargo test --locked -p cargo-allow --test "$target"
+          done
+
+      - name: Compare workspace gates with exact current main
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/issue-4023-logs
+
+          cargo clippy --workspace --all-targets --locked -- -D warnings \
+            > /tmp/issue-4023-logs/branch-clippy.log 2>&1
+          branch_clippy=$?
+          cargo test --workspace --locked --no-fail-fast \
+            > /tmp/issue-4023-logs/branch-test.log 2>&1
+          branch_test=$?
+
+          if [[ $branch_clippy -eq 0 && $branch_test -eq 0 ]]; then
+            printf 'branch_clippy=0\nbranch_test=0\nmain_comparison=not_needed\n' \
+              > /tmp/issue-4023-logs/verdict.txt
+            exit 0
+          fi
+
+          git worktree add --detach /tmp/issue-4023-main origin/main
+          (
+            cd /tmp/issue-4023-main
+            CARGO_TARGET_DIR=/tmp/issue-4023-main-target \
+              cargo clippy --workspace --all-targets --locked -- -D warnings \
+              > /tmp/issue-4023-logs/main-clippy.log 2>&1
+          )
+          main_clippy=$?
+          (
+            cd /tmp/issue-4023-main
+            CARGO_TARGET_DIR=/tmp/issue-4023-main-target \
+              cargo test --workspace --locked --no-fail-fast \
+              > /tmp/issue-4023-logs/main-test.log 2>&1
+          )
+          main_test=$?
+
+          BRANCH_CLIPPY=$branch_clippy BRANCH_TEST=$branch_test \
+          MAIN_CLIPPY=$main_clippy MAIN_TEST=$main_test python - <<'PY'
+          from __future__ import annotations
+
+          import os
+          import re
+          from pathlib import Path
+
+          root = Path('/tmp/issue-4023-logs')
+
+          def text(name: str) -> str:
+              path = root / name
+              return path.read_text(encoding='utf-8', errors='replace') if path.exists() else ''
+
+          def failed_tests(value: str) -> set[str]:
+              return set(re.findall(r'^test (.+?) \.\.\. FAILED$', value, flags=re.MULTILINE))
+
+          def error_signatures(value: str) -> set[str]:
+              signatures = set()
+              for line in value.splitlines():
+                  plain = re.sub(r'\x1b\[[0-9;]*m', '', line).strip()
+                  if plain.startswith('error:') or plain.startswith('error['):
+                      signatures.add(re.sub(r'\s+', ' ', plain))
+              return signatures
+
+          branch_clippy = int(os.environ['BRANCH_CLIPPY'])
+          branch_test = int(os.environ['BRANCH_TEST'])
+          main_clippy = int(os.environ['MAIN_CLIPPY'])
+          main_test = int(os.environ['MAIN_TEST'])
+
+          branch_test_failures = failed_tests(text('branch-test.log'))
+          main_test_failures = failed_tests(text('main-test.log'))
+          branch_errors = error_signatures(text('branch-clippy.log')) | error_signatures(text('branch-test.log'))
+          main_errors = error_signatures(text('main-clippy.log')) | error_signatures(text('main-test.log'))
+
+          new_tests = sorted(branch_test_failures - main_test_failures)
+          new_errors = sorted(branch_errors - main_errors)
+          status_regressions = []
+          if branch_clippy and not main_clippy:
+              status_regressions.append('workspace Clippy fails only on the branch')
+          if branch_test and not main_test:
+              status_regressions.append('workspace tests fail only on the branch')
+
+          verdict = [
+              f'branch_clippy={branch_clippy}',
+              f'branch_test={branch_test}',
+              f'main_clippy={main_clippy}',
+              f'main_test={main_test}',
+              f'new_failed_tests={new_tests}',
+              f'new_error_signatures={new_errors}',
+              f'status_regressions={status_regressions}',
+          ]
+          (root / 'verdict.txt').write_text('\n'.join(verdict) + '\n', encoding='utf-8')
+          print('\n'.join(verdict))
+          if new_tests or new_errors or status_regressions:
+              raise SystemExit('issue #4023 introduces a workspace-gate regression')
+          PY
+
+      - name: Review and commit the verified change
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_file=/tmp/issue-4023-expected.txt
+          cat > "$expected_file" <<'EOF'
+          crates/cargo-allow/tests/add_glob_ratchet.rs
+          crates/cargo-allow/tests/audit_output.rs
+          crates/cargo-allow/tests/concurrent_mutation.rs
+          crates/cargo-allow/tests/lifecycle_corpus.rs
+          crates/cargo-allow/tests/lifecycle_fixture_date_guard.rs
+          crates/cargo-allow/tests/saved_artifact_outputs.rs
+          crates/cargo-allow/tests/saved_artifact_outputs/diff.rs
+          crates/cargo-allow/tests/saved_artifact_outputs/fixture.rs
+          crates/cargo-allow/tests/saved_artifact_outputs/migrate.rs
+          crates/cargo-allow/tests/summary_output.rs
+          EOF
+          sed -i 's/^          //' "$expected_file"
+          sort -o "$expected_file" "$expected_file"
+
+          git diff --name-only -- crates | sort > /tmp/issue-4023-actual.txt
+          diff -u "$expected_file" /tmp/issue-4023-actual.txt
+          test -f crates/cargo-allow/tests/lifecycle_fixture_date_guard.rs
+          git diff --check
+          if git diff --name-only -- crates | grep -Ev '^crates/cargo-allow/tests/'; then
+            echo 'production source changed' >&2
+            exit 1
+          fi
+
+          rm -f .github/workflows/one-shot-4023-*.yml
+          git add -A .github/workflows crates/cargo-allow/tests
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "test: make live lifecycle fixtures today-relative"
+          git push origin HEAD:fix/4023-relative-fixture-dates
+
+      - name: Open the reviewed PR and enable guarded auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr=$(gh pr list \
+            --repo EffortlessMetrics/cargo-allow \
+            --head fix/4023-relative-fixture-dates \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          if [[ -z "$pr" ]]; then
+            gh pr create \
+              --repo EffortlessMetrics/cargo-allow \
+              --base main \
+              --head fix/4023-relative-fixture-dates \
+              --title 'test: keep live lifecycle fixtures today-relative' \
+              --body-file - <<'EOF'
+          ## Summary
+          - replace aging live-fixture calendar dates with `SimpleDate::today_utc_approx()` offsets
+          - preserve deliberately expired and review-due lifecycle corpus as fixed historical cases
+          - add a guard that rejects new near-term fixed lifecycle dates unless explicitly marked as calendar-bound corpus
+          - keep the change confined to cargo-allow integration fixtures and their tests
+
+          ## Verification
+          - focused lifecycle, saved-artifact, audit, summary, glob-ratchet, and concurrent-mutation test binaries
+          - workspace Clippy with `-D warnings`
+          - full workspace tests with `--no-fail-fast`
+          - when a workspace gate was already failing on current `main`, branch and main failure identities were compared and branch-only regressions were rejected
+
+          ## Claim boundary
+          This changes test-fixture time construction and the recurrence guard only. It does not change runtime lifecycle evaluation, date parsing, policy semantics, or production output contracts.
+
+          Closes #4023
+          EOF
+            pr=$(gh pr list \
+              --repo EffortlessMetrics/cargo-allow \
+              --head fix/4023-relative-fixture-dates \
+              --state open \
+              --json number \
+              --jq '.[0].number')
+          fi
+          gh pr merge "$pr" \
+            --repo EffortlessMetrics/cargo-allow \
+            --auto --squash --delete-branch
+
+      - name: Publish failure evidence on the claimed issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo 'The #4023 landing gate stopped before merge.'
+            echo
+            echo '```text'
+            cat /tmp/issue-4023-logs/verdict.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo 'No branch-only workspace regression was accepted.'
+          } > /tmp/issue-4023-comment.md
+          gh issue comment 4023 \
+            --repo EffortlessMetrics/cargo-allow \
+            --body-file /tmp/issue-4023-comment.md || true
+          tail -n 120 /tmp/issue-4023-logs/branch-clippy.log 2>/dev/null || true
+          tail -n 160 /tmp/issue-4023-logs/branch-test.log 2>/dev/null || true
+          git status --short
+          git diff --stat
