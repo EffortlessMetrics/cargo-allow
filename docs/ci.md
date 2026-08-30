@@ -202,7 +202,11 @@ Tag pushes matching `v*` trigger the [Release
 workflow](../.github/workflows/release.yml). The workflow runs preflight checks,
 processes and verifies the topology-derived thirteen-row cargo-allow candidate,
 and creates a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file
-exists. Before any cargo-allow upload, the workflow derives the
+exists. The release identity — including the GitHub prerelease posture — comes
+from the typed `cargo-allow release-identity` projection validated in the
+preflight job, so an `-rc.N` tag publishes as a prerelease and a stable tag
+publishes as a full release; no workflow step infers the channel itself.
+Before any cargo-allow upload, the workflow derives the
 three selected shared rows from the V2 topology and enforces a shared-first,
 commit/tree/topology-bound read-only registry preflight proving
 `AlreadyPublishedExact` and checksum equality. A missing or malformed result

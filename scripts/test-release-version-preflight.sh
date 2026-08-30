@@ -46,6 +46,21 @@ run_expect_failure "observed tag mismatch fails closed" \
 run_expect_failure "release version mismatch" \
   bash scripts/release-version-preflight.sh "0.0.0-missing"
 
+projection_file="target/cargo-allow/test-release-identity-projection.json"
+rm -f "${projection_file}"
+run_expect_success "projection file emitted on request" \
+  env DRY_RUN=true RELEASE_IDENTITY_PROJECTION_FILE="${projection_file}" \
+  bash scripts/release-version-preflight.sh "${workspace_version}"
+grep -q '"result": "validated"' "${projection_file}" || {
+  printf 'fail projection file missing validated result\n' >&2
+  exit 1
+}
+grep -q '"github_prerelease"' "${projection_file}" || {
+  printf 'fail projection file missing github_prerelease field\n' >&2
+  exit 1
+}
+printf 'ok typed release identity projection file carries validated prerelease posture\n'
+
 grep -q 'release-identity --version' scripts/release-version-preflight.sh || {
   printf 'fail typed release identity invocation missing\n' >&2
   exit 1

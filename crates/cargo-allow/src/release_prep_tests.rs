@@ -477,6 +477,48 @@ fn candidate_release_docs_preserve_unpublished_extraction_posture() {
 }
 
 #[test]
+fn release_workflow_projects_typed_prerelease_posture() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    let preflight = read_workspace_file(&root, "scripts/release-version-preflight.sh");
+
+    assert!(
+        workflow
+            .contains("github_prerelease: ${{ steps.release_context.outputs.github_prerelease }}"),
+        "{RELEASE_WORKFLOW} preflight job should export the typed github_prerelease output"
+    );
+    assert!(
+        workflow.contains("github_prerelease: ${{ needs.preflight.outputs.github_prerelease }}"),
+        "{RELEASE_WORKFLOW} publish job should relay the typed github_prerelease output"
+    );
+    let expected_prerelease =
+        "prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}";
+    assert_eq!(
+        workflow.matches(expected_prerelease).count(),
+        2,
+        "{RELEASE_WORKFLOW} both GitHub release steps should render the typed prerelease posture"
+    );
+    assert!(
+        !workflow.contains("prerelease: false"),
+        "{RELEASE_WORKFLOW} must not hard-code a stable prerelease posture; an -rc tag would ship as a stable release"
+    );
+    assert!(
+        workflow.contains(
+            "RELEASE_IDENTITY_PROJECTION_FILE=\"target/cargo-allow/release-identity.json\""
+        ),
+        "{RELEASE_WORKFLOW} preflight should capture the typed release-identity projection"
+    );
+    assert!(
+        workflow.matches("version=\"${GITHUB_REF_NAME#v}\"").count() == 1,
+        "{RELEASE_WORKFLOW} only the tag-channel source derivation may strip the tag; downstream jobs must consume RELEASE_VERSION"
+    );
+    assert!(
+        preflight.contains("RELEASE_IDENTITY_PROJECTION_FILE"),
+        "release-version-preflight.sh should support emitting the typed projection file"
+    );
+}
+
+#[test]
 fn release_workflow_gates_linux_binary_attachment_on_identity_and_attestation() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
