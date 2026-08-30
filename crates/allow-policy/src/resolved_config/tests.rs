@@ -76,6 +76,72 @@ fn resolved_cargo_allow_config_retains_malformed_federation_fallback() -> TestRe
 }
 
 #[test]
+fn resolved_cargo_allow_config_keeps_cli_winner_when_federation_is_malformed() -> TestResult {
+    let fixture = Fixture::new("cli-malformed-federation")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write("policy/explicit.toml", valid_policy())?;
+    fixture.write(".allow/config.toml", "[[ledgers]\ninvalid = true\n")?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/explicit.toml")),
+        "subject:cli-malformed-federation",
+    )?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Partial, "status")?;
+    ensure_eq(
+        resolved.selection_source,
+        Some(ConfigCandidateSourceV1::CliOverride),
+        "selection source",
+    )?;
+    ensure_eq(
+        resolved.precedence_tier,
+        Some(ConfigPrecedenceTierV1::CliOverride),
+        "precedence",
+    )?;
+    ensure_eq(
+        resolved
+            .selected_policy
+            .as_ref()
+            .map(|policy| policy.path.path.as_str()),
+        Some("policy/explicit.toml"),
+        "selected path",
+    )?;
+    ensure(
+        !resolved.fallback.considered && !resolved.fallback.selected,
+        "an explicit CLI selection must not be rewritten as discovery fallback",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_marks_invalid_discovery_fallback_invalid() -> TestResult {
+    let fixture = Fixture::new("invalid-discovery-fallback")?;
+    fixture.write(
+        "policy/allow.toml",
+        &valid_policy().replace("status = \"active\"", "status = \"bogus\""),
+    )?;
+    fixture.write(".allow/config.toml", "[[ledgers]\ninvalid = true\n")?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:invalid-discovery-fallback")?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Invalid, "status")?;
+    ensure(
+        resolved.fallback.selected,
+        "discovery fallback selection should remain visible",
+    )?;
+    ensure(
+        resolved
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == "invalid_policy"),
+        "invalid fallback policy diagnostic should remain typed",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn resolved_cargo_allow_config_keeps_federation_and_conventional_candidates_distinct() -> TestResult
 {
     let fixture = Fixture::new("federation-winner")?;

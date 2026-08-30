@@ -272,16 +272,25 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         }
         Err(error) => {
             let diagnostic = diagnostic_from_error(input.root, &error);
-            fallback.considered = true;
-            fallback.selected = input.discovery.selected.is_some();
-            fallback.reason = Some(diagnostic.code.clone());
             diagnostics.push(diagnostic);
-            (
-                input.discovery.selected.clone(),
-                None,
-                input.discovery.selected_source.and_then(source_from_label),
-                Some(error.kind()),
-            )
+            if let Some(config) = input.cli_config {
+                (
+                    Some(input.root.join(config)),
+                    Some(ConfigPrecedenceTierV1::CliOverride),
+                    Some(ConfigCandidateSourceV1::CliOverride),
+                    None,
+                )
+            } else {
+                fallback.considered = true;
+                fallback.selected = input.discovery.selected.is_some();
+                fallback.reason = Some(error.code().to_string());
+                (
+                    input.discovery.selected.clone(),
+                    None,
+                    input.discovery.selected_source.and_then(source_from_label),
+                    Some(error.kind()),
+                )
+            }
         }
     };
 
@@ -647,6 +656,7 @@ fn observe_policy(root: &Path, path: &Path, allow_ancestor: bool) -> PolicyObser
                         "selected policy could not be read: {error}"
                     )),
                 }),
+                status_override: Some(ConfigResolutionStatusV1::Invalid),
                 ..PolicyObservation::default()
             };
         }
@@ -675,6 +685,7 @@ fn observe_policy(root: &Path, path: &Path, allow_ancestor: bool) -> PolicyObser
                 status: None,
             }),
             error: Some(diagnostic_from_error(root, &error)),
+            status_override: Some(ConfigResolutionStatusV1::Invalid),
             ..PolicyObservation::default()
         },
     }
