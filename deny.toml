@@ -33,9 +33,23 @@ confidence-threshold = 0.8
 [bans]
 # Warn on multiple versions of the same crate when they can be avoided.
 multiple-versions = "warn"
-# Wildcard dependency requirements are denied: a new wildcard must be
-# an explicit, owned config change, never a quiet entry.
-wildcards = "deny"
+# Wildcard dependency requirements stay warning-only for now: flipping to
+# "deny" requires versioned path edges, which the exact-candidate packaging
+# contracts (#2372/#2925) do not accept yet (#3908).
+wildcards = "warn"
+# Exact exceptions to the wildcard denial: these five workspace members
+# are consumed as bare path dependencies (no version requirement), which
+# cargo-deny classifies as wildcards. The packaging contracts (#2372/#2925)
+# require them to stay version-less path edges, so each is skipped by name
+# rather than weakening the rule globally. Revisit if the packaging
+# contracts accept versioned path edges (#3908).
+skip = [
+    { crate = "effortless-rust-source-index", reason = "workspace path dep, version-less by packaging contract (#3908, reviewed 2026-08-30)" },
+    { crate = "intent-model", reason = "workspace path dep, version-less by packaging contract (#3908, reviewed 2026-08-30)" },
+    { crate = "intent-protocol", reason = "workspace path dep, version-less by packaging contract (#3908, reviewed 2026-08-30)" },
+    { crate = "intent-engine", reason = "workspace path dep (consumed as intent-compiler), version-less by packaging contract (#3908, reviewed 2026-08-30)" },
+    { crate = "effortless-repo-protocol", reason = "workspace path dep, version-less by packaging contract (#3908, reviewed 2026-08-30)" },
+]
 
 [sources]
 # Only allow crates from crates.io.

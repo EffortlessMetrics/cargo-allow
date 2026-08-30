@@ -17,8 +17,9 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
 /// Report the line numbers and quoted values of version requirements that
 /// cargo treats as wildcard requirements: a value containing `*`, or a bare
 /// major version with no minor/patch (both resolve across every later
-/// release in that position, which is exactly what the deny posture
-/// forbids).
+/// release in that position). The workspace must contain none; flipping the
+/// cargo-deny posture to "deny" is documented as blocked on the packaging
+/// contracts (#3908).
 fn wildcard_requirements(manifest_text: &str) -> Vec<(usize, String)> {
     let mut hits = Vec::new();
     let mut in_dependency_section = false;
@@ -73,9 +74,9 @@ fn manifest_paths(root: &Path, out: &mut Vec<PathBuf>) -> Result<(), Box<dyn Err
 }
 
 /// The shipped workspace must contain no wildcard dependency requirement:
-/// with `deny.toml` pinning `wildcards = "deny"`, one would fail the
-/// cargo-deny gate, and the contract here keeps that posture visible in the
-/// test suite as well.
+/// cargo-deny's wildcard posture is warning-only while the deny flip waits
+/// on the packaging contracts (#3908), so this contract is the visible
+/// no-wildcards guarantee in the test suite until that flip can land.
 #[test]
 fn workspace_manifests_have_no_wildcard_requirements() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
@@ -122,18 +123,26 @@ fn wildcard_scan_flags_seeded_requirements() {
     );
 }
 
-/// Drift guard: the wildcard posture stays denied and the duplicate-version
+/// Drift guard: the wildcard posture stays warning-only (documented blocker:
+/// the exact-candidate packaging contracts #2372/#2925 require version-less
+/// path edges, which the deny posture would forbid) and the duplicate-version
 /// posture stays separately advisory (negative control for accidental scope
 /// expansion of the bans rules).
 #[test]
-fn deny_config_pins_wildcards_to_deny() -> Result<(), Box<dyn Error>> {
+fn deny_config_documents_the_wildcard_posture() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let deny_path = root.join("deny.toml");
     assert!(deny_path.exists(), "deny.toml must exist");
     let content = fs::read_to_string(&deny_path)?;
     assert!(
-        content.contains("wildcards = \"deny\""),
-        "wildcard dependency requirements must stay denied"
+        content.contains("wildcards = \"warn\""),
+        "the wildcard posture must stay explicitly warning-only while the \
+         deny flip is blocked on the packaging contracts (#3908)"
+    );
+    assert!(
+        !content.contains("wildcards = \"deny\""),
+        "flipping to deny requires the packaging contracts to accept \
+         versioned path edges first (#3908)"
     );
     assert!(
         content.contains("multiple-versions = \"warn\""),

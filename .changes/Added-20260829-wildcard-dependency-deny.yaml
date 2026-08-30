@@ -1,8 +1,0 @@
-kind: Added
-body: >-
-  Deny new wildcard dependency requirements in cargo-deny (previously
-  warning-only), pin the five workspace path dependencies that carried no
-  version requirement to their exact crate versions, and add a contract
-  suite that scans workspace manifests for wildcard requirements, proves
-  the scanner on seeded bare-major and star requirements, and drift-guards
-  the denied wildcard and advisory duplicate-version postures. (#3908)
