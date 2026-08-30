@@ -156,40 +156,43 @@ fn producer(evidence_id: &str) -> FinalEvidenceProducerV1 {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn node(
-    evidence_id: &str,
+/// Fixture parameters for one evidence node, bundled so the builder stays
+/// under the argument-count lint without any lint-exception attribute.
+struct NodeFixture {
+    evidence_id: &'static str,
     class: FinalEvidenceNodeClassV1,
     origin: FinalEvidenceOriginV1,
     authority_scope: FinalEvidenceAuthorityScopeV1,
     subject: FinalEvidenceSubjectBindingV1,
     required: bool,
     seed: u64,
-) -> FinalEvidenceNodeV1 {
+}
+
+fn node(fixture: NodeFixture) -> FinalEvidenceNodeV1 {
     FinalEvidenceNodeV1 {
         schema_id: FINAL_EVIDENCE_NODE_SCHEMA_ID.to_string(),
         schema_version: FINAL_EVIDENCE_NODE_SCHEMA_VERSION,
-        evidence_id: evidence_id.to_string(),
-        class,
-        origin,
-        authority_scope,
-        required,
-        producer: producer(evidence_id),
+        evidence_id: fixture.evidence_id.to_string(),
+        class: fixture.class,
+        origin: fixture.origin,
+        authority_scope: fixture.authority_scope,
+        required: fixture.required,
+        producer: producer(fixture.evidence_id),
         producer_expectation: None,
-        subject,
-        semantic_digest: digest(seed),
-        expected_semantic_digest: Some(digest(seed)),
-        artifact_digest: Some(digest(seed + 1_000)),
-        expected_artifact_digest: Some(digest(seed + 1_000)),
+        subject: fixture.subject,
+        semantic_digest: digest(fixture.seed),
+        expected_semantic_digest: Some(digest(fixture.seed)),
+        artifact_digest: Some(digest(fixture.seed + 1_000)),
+        expected_artifact_digest: Some(digest(fixture.seed + 1_000)),
         result: FinalEvidenceNodeResultV1::Complete,
         currentness: FinalEvidenceCurrentnessV1::Current,
         invalidation_dimensions: vec![
             FinalEvidenceInvalidationDimensionV1::Source,
             FinalEvidenceInvalidationDimensionV1::ProducerGeneration,
         ],
-        rerun_owner: Some(format!("owner:{evidence_id}")),
+        rerun_owner: Some(format!("owner:{}", fixture.evidence_id)),
         limitations: Vec::new(),
-        claim_boundary: format!("Exact bounded evidence for {evidence_id}."),
+        claim_boundary: format!("Exact bounded evidence for {}.", fixture.evidence_id),
     }
 }
 
@@ -208,87 +211,87 @@ fn base_graph() -> FinalEvidenceGraphV1 {
     let subject = selected_subject();
     let binding = final_binding(&subject);
     let nodes = vec![
-        node(
-            "package-archive",
-            FinalEvidenceNodeClassV1::PackageArchive,
-            FinalEvidenceOriginV1::CandidateBytes,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            11,
-        ),
-        node(
-            "installed-journey",
-            FinalEvidenceNodeClassV1::InstalledJourney,
-            FinalEvidenceOriginV1::WorkflowArtifact,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            12,
-        ),
-        node(
-            "package-docs",
-            FinalEvidenceNodeClassV1::GeneratedProjection,
-            FinalEvidenceOriginV1::GeneratedProjection,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            13,
-        ),
-        node(
-            "platform-receipt",
-            FinalEvidenceNodeClassV1::PlatformReceipt,
-            FinalEvidenceOriginV1::WorkflowArtifact,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            14,
-        ),
-        node(
-            "support-selection",
-            FinalEvidenceNodeClassV1::SupportSelection,
-            FinalEvidenceOriginV1::SourceAuthority,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            15,
-        ),
-        node(
-            "registry-observation",
-            FinalEvidenceNodeClassV1::RegistryObservation,
-            FinalEvidenceOriginV1::ProviderObservation,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding.clone(),
-            true,
-            16,
-        ),
-        node(
-            "authorization-prerequisite",
-            FinalEvidenceNodeClassV1::AuthorizationPrerequisite,
-            FinalEvidenceOriginV1::GeneratedProjection,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            binding,
-            true,
-            17,
-        ),
-        node(
-            "external-adoption",
-            FinalEvidenceNodeClassV1::InstalledJourney,
-            FinalEvidenceOriginV1::WorkflowArtifact,
-            FinalEvidenceAuthorityScopeV1::FinalExact,
-            final_binding(&selected_subject()),
-            false,
-            18,
-        ),
-        node(
-            "rc1-incident",
-            FinalEvidenceNodeClassV1::IncidentHandoff,
-            FinalEvidenceOriginV1::HistoricalObservation,
-            FinalEvidenceAuthorityScopeV1::HistoricalIncident,
-            historical_binding(),
-            false,
-            19,
-        ),
+        node(NodeFixture {
+            evidence_id: "package-archive",
+            class: FinalEvidenceNodeClassV1::PackageArchive,
+            origin: FinalEvidenceOriginV1::CandidateBytes,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 11,
+        }),
+        node(NodeFixture {
+            evidence_id: "installed-journey",
+            class: FinalEvidenceNodeClassV1::InstalledJourney,
+            origin: FinalEvidenceOriginV1::WorkflowArtifact,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 12,
+        }),
+        node(NodeFixture {
+            evidence_id: "package-docs",
+            class: FinalEvidenceNodeClassV1::GeneratedProjection,
+            origin: FinalEvidenceOriginV1::GeneratedProjection,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 13,
+        }),
+        node(NodeFixture {
+            evidence_id: "platform-receipt",
+            class: FinalEvidenceNodeClassV1::PlatformReceipt,
+            origin: FinalEvidenceOriginV1::WorkflowArtifact,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 14,
+        }),
+        node(NodeFixture {
+            evidence_id: "support-selection",
+            class: FinalEvidenceNodeClassV1::SupportSelection,
+            origin: FinalEvidenceOriginV1::SourceAuthority,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 15,
+        }),
+        node(NodeFixture {
+            evidence_id: "registry-observation",
+            class: FinalEvidenceNodeClassV1::RegistryObservation,
+            origin: FinalEvidenceOriginV1::ProviderObservation,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding.clone(),
+            required: true,
+            seed: 16,
+        }),
+        node(NodeFixture {
+            evidence_id: "authorization-prerequisite",
+            class: FinalEvidenceNodeClassV1::AuthorizationPrerequisite,
+            origin: FinalEvidenceOriginV1::GeneratedProjection,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: binding,
+            required: true,
+            seed: 17,
+        }),
+        node(NodeFixture {
+            evidence_id: "external-adoption",
+            class: FinalEvidenceNodeClassV1::InstalledJourney,
+            origin: FinalEvidenceOriginV1::WorkflowArtifact,
+            authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+            subject: final_binding(&selected_subject()),
+            required: false,
+            seed: 18,
+        }),
+        node(NodeFixture {
+            evidence_id: "rc1-incident",
+            class: FinalEvidenceNodeClassV1::IncidentHandoff,
+            origin: FinalEvidenceOriginV1::HistoricalObservation,
+            authority_scope: FinalEvidenceAuthorityScopeV1::HistoricalIncident,
+            subject: historical_binding(),
+            required: false,
+            seed: 19,
+        }),
     ];
     let required_node_ids = nodes
         .iter()
@@ -557,15 +560,15 @@ fn final_readiness_claim_narrowing_never_becomes_proof() -> Result<(), String> {
 #[test]
 fn final_readiness_rc1_receipt_cannot_satisfy_the_final_package_row() -> Result<(), String> {
     let mut graph = base_graph();
-    graph.nodes.push(node(
-        "rc1-package-receipt",
-        FinalEvidenceNodeClassV1::PackageArchive,
-        FinalEvidenceOriginV1::CandidateBytes,
-        FinalEvidenceAuthorityScopeV1::FinalExact,
-        historical_binding(),
-        true,
-        21,
-    ));
+    graph.nodes.push(node(NodeFixture {
+        evidence_id: "rc1-package-receipt",
+        class: FinalEvidenceNodeClassV1::PackageArchive,
+        origin: FinalEvidenceOriginV1::CandidateBytes,
+        authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+        subject: historical_binding(),
+        required: true,
+        seed: 21,
+    }));
     graph.edges.push(edge(
         "rc1-package-receipt",
         "authorization-prerequisite",
@@ -613,15 +616,15 @@ fn final_readiness_expired_registry_observation_forces_stale() -> Result<(), Str
 #[test]
 fn final_readiness_provider_unavailable_stays_distinct_from_ready() -> Result<(), String> {
     let mut graph = base_graph();
-    graph.nodes.push(node(
-        "live-control",
-        FinalEvidenceNodeClassV1::LiveControlObservation,
-        FinalEvidenceOriginV1::ProviderObservation,
-        FinalEvidenceAuthorityScopeV1::FinalExact,
-        final_binding(&selected_subject()),
-        true,
-        22,
-    ));
+    graph.nodes.push(node(NodeFixture {
+        evidence_id: "live-control",
+        class: FinalEvidenceNodeClassV1::LiveControlObservation,
+        origin: FinalEvidenceOriginV1::ProviderObservation,
+        authority_scope: FinalEvidenceAuthorityScopeV1::FinalExact,
+        subject: final_binding(&selected_subject()),
+        required: true,
+        seed: 22,
+    }));
     graph.edges.push(edge(
         "live-control",
         "authorization-prerequisite",
@@ -726,6 +729,95 @@ fn final_readiness_aggregate_creates_no_release_state() -> Result<(), String> {
     let json = render_final_readiness_json(&first).map_err(|error| error.to_string())?;
     if !json.contains("\"verdict\"") {
         return Err("json projection lost the verdict".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn final_readiness_required_not_proven_rejects_a_narrowing() -> Result<(), String> {
+    let mut graph = base_graph();
+    set_node(&mut graph, "installed-journey", |node| {
+        node.result = FinalEvidenceNodeResultV1::NotProven;
+    })?;
+    let mut decision_inputs = inputs();
+    decision_inputs.permitted_claim_narrowings = vec![FinalReadinessClaimNarrowingV1 {
+        evidence_id: "installed-journey".to_string(),
+        permitted_by_decision: "support:journey-tier".to_string(),
+        owner: "owner:support".to_string(),
+    }];
+    let readiness = aggregate_final_readiness(&graph, &decision_inputs);
+    if readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze {
+        return Err("a required NotProven row cannot be narrowed into ready".to_string());
+    }
+    let row = readiness
+        .rows
+        .iter()
+        .find(|row| {
+            row.kind == FinalReadinessRowKindV1::NotProven
+                && row.evidence_id.as_deref() == Some("installed-journey")
+        })
+        .ok_or_else(|| "required not-proven row is absent".to_string())?;
+    if !row.message.contains("inapplicable") || row.owner != "owner:installed-journey" {
+        return Err("required row lost the rejected-narrowing note or owner".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn final_readiness_fixture_mode_graph_is_never_ready_for_freeze() -> Result<(), String> {
+    let mut graph = base_graph();
+    graph.mode = FinalEvidenceGraphModeV1::Fixture;
+    let readiness = aggregate_final_readiness(&graph, &inputs());
+    expect_verdict(&readiness, FinalReadinessVerdictV1::Mismatch)?;
+    let row = row_of_kind(&readiness, FinalReadinessRowKindV1::Mismatch)
+        .ok_or_else(|| "fixture-mode mismatch row is absent".to_string())?;
+    if !row.message.contains("fixture") {
+        return Err("mismatch row did not name the graph mode".to_string());
+    }
+    if row.owner != "owner:release-campaign" || !row.next_action.contains("production mode") {
+        return Err("fixture-mode row lost its owner or next action".to_string());
+    }
+    expect_all_rows_named(&readiness)
+}
+
+#[test]
+fn final_readiness_declared_limitations_require_supported_inputs() -> Result<(), String> {
+    let mut graph = base_graph();
+    graph.limitations = vec!["limitation:windows-symlink".to_string()];
+    set_node(&mut graph, "platform-receipt", |node| {
+        node.limitations = vec!["limitation:long-path-support".to_string()];
+    })?;
+
+    let blocked = aggregate_final_readiness(&graph, &inputs());
+    expect_verdict(&blocked, FinalReadinessVerdictV1::Unsupported)?;
+    for limitation in ["limitation:windows-symlink", "limitation:long-path-support"] {
+        if !blocked.rows.iter().any(|row| {
+            row.kind == FinalReadinessRowKindV1::Unsupported && row.message.contains(limitation)
+        }) {
+            return Err(format!("unsupported row did not name `{limitation}`"));
+        }
+    }
+    if !blocked.supported_limitation_ids.is_empty() {
+        return Err("undeclared-support limitations leaked into supported ids".to_string());
+    }
+
+    let mut supported_inputs = inputs();
+    supported_inputs.supported_limitations = vec![
+        FinalReadinessSupportedLimitationV1 {
+            limitation_id: "limitation:windows-symlink".to_string(),
+            user_facing_projection: Some("windows: symlinks require developer mode".to_string()),
+            owner: Some("owner:support".to_string()),
+        },
+        FinalReadinessSupportedLimitationV1 {
+            limitation_id: "limitation:long-path-support".to_string(),
+            user_facing_projection: Some("windows: long paths require registry opt-in".to_string()),
+            owner: Some("owner:support".to_string()),
+        },
+    ];
+    let supported = aggregate_final_readiness(&graph, &supported_inputs);
+    expect_verdict(&supported, FinalReadinessVerdictV1::ReadyForFreeze)?;
+    if supported.supported_limitation_ids.len() != 2 {
+        return Err("supported limitation ids were not retained".to_string());
     }
     Ok(())
 }

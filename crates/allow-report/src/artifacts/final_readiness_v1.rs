@@ -7,15 +7,16 @@
 //! Issue state, merged PRs, green CI, labels, checklists, and prose never
 //! substitute for a receipt or evidence result; every blocking, stale,
 //! mismatched, not-proven, unsupported, provider, instrument, and decision row
-//! carries one exact owner and next action. The aggregate is pure: it never
+//! carries one exact owner and next action. Fixture-mode graphs are always
+//! rejected with a blocking mismatch row. The aggregate is pure: it never
 //! creates package bytes, freeze receipts, authorization, tags, uploads, or
 //! any other release state.
 
 use super::final_evidence_graph_v1::{
     FinalEvidenceAuthorityScopeV1, FinalEvidenceCurrentnessV1, FinalEvidenceFindingKindV1,
-    FinalEvidenceGraphEvaluationV1, FinalEvidenceGraphV1, FinalEvidenceNodeClassV1,
-    FinalEvidenceNodeDispositionV1, FinalEvidenceNodeResultV1, FinalEvidenceReleaseIdentityV1,
-    evaluate_final_evidence_graph,
+    FinalEvidenceGraphEvaluationV1, FinalEvidenceGraphModeV1, FinalEvidenceGraphV1,
+    FinalEvidenceNodeClassV1, FinalEvidenceNodeDispositionV1, FinalEvidenceNodeResultV1,
+    FinalEvidenceReleaseIdentityV1, evaluate_final_evidence_graph,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -62,7 +63,9 @@ impl FinalReadinessVerdictV1 {
 
 /// Closed row vocabulary. Every row kind except `ClaimNarrowed` blocks
 /// `ReadyForFreeze`; `ClaimNarrowed` records an explicitly permitted
-/// support-only narrowing that never becomes proof.
+/// support-only narrowing that never becomes proof. Narrowing applies only to
+/// non-required support-tier nodes; a required row always stays blocking until
+/// its exact current evidence exists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FinalReadinessRowKindV1 {
@@ -170,7 +173,9 @@ pub struct FinalReadinessSupportedLimitationV1 {
 }
 
 /// An explicit support decision permitting one `NotProven` evidence node to
-/// narrow its claim. The narrowed claim stays out of proof narration forever.
+/// narrow its claim. The narrowed claim stays out of proof narration forever,
+/// and the decision is honored only on non-required support-tier nodes; it can
+/// never substitute for a required exact evidence row.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FinalReadinessClaimNarrowingV1 {
     pub evidence_id: String,
@@ -264,9 +269,41 @@ pub fn aggregate_final_readiness(
     let evaluation = evaluate_final_evidence_graph(graph);
     let mut rows = Vec::new();
 
+    // A fixture-mode graph is a rehearsal artifact. The evaluator relaxes
+    // origin and authority checks outside production mode, so a complete
+    // fixture graph would otherwise yield zero rows and a false
+    // `ReadyForFreeze`. Emit the blocking mismatch before any other
+    // aggregation: fixture evidence can never support a freeze decision.
+    if graph.mode != FinalEvidenceGraphModeV1::Production {
+        push_row(
+            &mut rows,
+            FinalReadinessRowKindV1::Mismatch,
+            None,
+            &format!(
+                "the evidence graph was supplied in `{}` mode, not `production`; fixture evidence cannot support a pre-freeze readiness decision",
+                graph_mode_label(graph.mode)
+            ),
+            resolve_owner(None, &inputs.graph_owner),
+            "re-evaluate the evidence graph in production mode",
+        );
+    }
+
+    let required_ids = graph
+        .required_node_ids
+        .iter()
+        .chain(
+            graph
+                .nodes
+                .iter()
+                .filter(|node| node.required)
+                .map(|node| &node.evidence_id),
+        )
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
     collect_graph_rows(&evaluation, inputs, &mut rows);
-    collect_node_rows(&evaluation, inputs, &mut rows);
-    collect_decision_rows(inputs, &mut rows);
+    collect_node_rows(&evaluation, &required_ids, inputs, &mut rows);
+    collect_decision_rows(graph, inputs, &mut rows);
     collect_post_merge_rows(inputs, &mut rows);
     collect_custody_rows(inputs, &mut rows);
 
@@ -315,18 +352,6 @@ pub fn aggregate_final_readiness(
         .into_iter()
         .collect::<Vec<_>>();
 
-    let required_ids = graph
-        .required_node_ids
-        .iter()
-        .chain(
-            graph
-                .nodes
-                .iter()
-                .filter(|node| node.required)
-                .map(|node| &node.evidence_id),
-        )
-        .cloned()
-        .collect::<BTreeSet<_>>();
     let mut required_evidence = graph
         .nodes
         .iter()
@@ -538,6 +563,7 @@ fn collect_graph_rows(
 
 fn collect_node_rows(
     evaluation: &FinalEvidenceGraphEvaluationV1,
+    required_ids: &BTreeSet<String>,
     inputs: &FinalReadinessDecisionInputsV1,
     rows: &mut Vec<FinalReadinessRowV1>,
 ) {
@@ -545,7 +571,8 @@ fn collect_node_rows(
         if !disposition_is_non_current(disposition) {
             continue;
         }
-        classify_disposition(disposition, inputs, rows);
+        let is_required = required_ids.contains(&disposition.evidence_id);
+        classify_disposition(disposition, is_required, inputs, rows);
     }
 }
 
@@ -555,6 +582,7 @@ fn disposition_is_non_current(disposition: &FinalEvidenceNodeDispositionV1) -> b
 
 fn classify_disposition(
     disposition: &FinalEvidenceNodeDispositionV1,
+    is_required: bool,
     inputs: &FinalReadinessDecisionInputsV1,
     rows: &mut Vec<FinalReadinessRowV1>,
 ) {
@@ -621,7 +649,7 @@ fn classify_disposition(
             "select a supported support/claim projection or drop the claim",
         );
     } else if disposition.result == FinalEvidenceNodeResultV1::NotProven {
-        classify_not_proven(&evidence_id, owner, inputs, rows);
+        classify_not_proven(&evidence_id, owner, is_required, inputs, rows);
     } else {
         push_row(
             rows,
@@ -637,6 +665,7 @@ fn classify_disposition(
 fn classify_not_proven(
     evidence_id: &str,
     owner: String,
+    is_required: bool,
     inputs: &FinalReadinessDecisionInputsV1,
     rows: &mut Vec<FinalReadinessRowV1>,
 ) {
@@ -644,6 +673,25 @@ fn classify_not_proven(
         .permitted_claim_narrowings
         .iter()
         .find(|narrowing| narrowing.evidence_id == evidence_id);
+    if is_required {
+        // Only exact current graph nodes satisfy required rows, so a support
+        // narrowing can never stand in for a required `NotProven` node, even
+        // when an explicit decision record exists.
+        let message = if permitted.is_some() {
+            "the required exact evidence claim is not proven; the recorded narrowing is inapplicable to a required row"
+        } else {
+            "the selected claim is not proven and no support decision permits narrowing it"
+        };
+        push_row(
+            rows,
+            FinalReadinessRowKindV1::NotProven,
+            Some(evidence_id.to_string()),
+            message,
+            owner,
+            "produce the exact current evidence for this required row; a narrowing cannot substitute",
+        );
+        return;
+    }
     let Some(narrowing) = permitted else {
         push_row(
             rows,
@@ -678,6 +726,7 @@ fn classify_not_proven(
 }
 
 fn collect_decision_rows(
+    graph: &FinalEvidenceGraphV1,
     inputs: &FinalReadinessDecisionInputsV1,
     rows: &mut Vec<FinalReadinessRowV1>,
 ) {
@@ -724,6 +773,42 @@ fn collect_decision_rows(
             "select the user-facing support/claim projection and exact owner, or withdraw the limitation",
         );
     }
+
+    // Every limitation the graph declares (graph-level or node-level) is a
+    // support claim that must be explicitly accepted. Requiring a matching
+    // valid input entry keeps declared limitations from silently broadening
+    // into unstated support claims.
+    for limitation_id in declared_limitation_ids(graph) {
+        let supported = inputs
+            .supported_limitations
+            .iter()
+            .find(|limitation| limitation.limitation_id == limitation_id)
+            .is_some_and(|limitation| supported_limitation_is_valid(limitation, inputs));
+        if supported {
+            continue;
+        }
+        push_row(
+            rows,
+            FinalReadinessRowKindV1::Unsupported,
+            None,
+            &format!(
+                "declared limitation `{}` has no matching valid supported-limitation input entry",
+                limitation_id
+            ),
+            resolve_owner(None, &inputs.graph_owner),
+            "record a user-facing projection and exact owner for the limitation, or remove it from the graph",
+        );
+    }
+}
+
+/// The distinct limitation IDs the graph itself declares, at graph level or on
+/// any node, in deterministic order.
+fn declared_limitation_ids(graph: &FinalEvidenceGraphV1) -> BTreeSet<String> {
+    let mut ids = graph.limitations.iter().cloned().collect::<BTreeSet<_>>();
+    for node in &graph.nodes {
+        ids.extend(node.limitations.iter().cloned());
+    }
+    ids
 }
 
 fn collect_post_merge_rows(
@@ -848,6 +933,13 @@ fn canonical_words(words: &[String]) -> Vec<String> {
     canonical.sort();
     canonical.dedup();
     canonical
+}
+
+fn graph_mode_label(mode: FinalEvidenceGraphModeV1) -> &'static str {
+    match mode {
+        FinalEvidenceGraphModeV1::Production => "production",
+        FinalEvidenceGraphModeV1::Fixture => "fixture",
+    }
 }
 
 fn qualification_label(posture: FinalReadinessQualificationPostureV1) -> &'static str {
@@ -1136,14 +1228,14 @@ mod tests {
 
     #[test]
     fn not_proven_blocks_unless_support_permits_an_explicit_narrowing() -> Result<(), String> {
-        let mut graph = graph();
+        let mut required_graph = graph();
         set_node_result(
-            &mut graph,
+            &mut required_graph,
             "installed-journey",
             FinalEvidenceNodeResultV1::NotProven,
             FinalEvidenceCurrentnessV1::Current,
         )?;
-        let blocked = aggregate_final_readiness(&graph, &inputs());
+        let blocked = aggregate_final_readiness(&required_graph, &inputs());
         if blocked.verdict != FinalReadinessVerdictV1::NotProven {
             return Err(format!("expected not_proven, got {:?}", blocked.verdict));
         }
@@ -1154,10 +1246,46 @@ mod tests {
             permitted_by_decision: "support:journey-tier".to_string(),
             owner: "owner:support".to_string(),
         }];
-        let narrowed = aggregate_final_readiness(&graph, &narrowing_inputs);
+
+        // A required exact row cannot be narrowed: NotProven stays blocking
+        // even with an explicit support decision on record.
+        let required_blocked = aggregate_final_readiness(&required_graph, &narrowing_inputs);
+        if required_blocked.verdict != FinalReadinessVerdictV1::NotProven {
+            return Err(format!(
+                "a narrowing must not unblock a required row, got {:?}",
+                required_blocked.verdict
+            ));
+        }
+        if !required_blocked.rows.iter().any(|row| {
+            row.kind == FinalReadinessRowKindV1::NotProven
+                && row.evidence_id.as_deref() == Some("installed-journey")
+                && row.message.contains("inapplicable")
+        }) {
+            return Err("required row lost the rejected-narrowing note".to_string());
+        }
+
+        // On a support-tier (non-required) node the same decision narrows the
+        // claim without turning NotProven into proof.
+        let mut support_graph = graph();
+        set_node_result(
+            &mut support_graph,
+            "installed-journey",
+            FinalEvidenceNodeResultV1::NotProven,
+            FinalEvidenceCurrentnessV1::Current,
+        )?;
+        support_graph
+            .required_node_ids
+            .retain(|id| id != "installed-journey");
+        let journey = support_graph
+            .nodes
+            .iter_mut()
+            .find(|node| node.evidence_id == "installed-journey")
+            .ok_or_else(|| "missing fixture node installed-journey".to_string())?;
+        journey.required = false;
+        let narrowed = aggregate_final_readiness(&support_graph, &narrowing_inputs);
         if narrowed.verdict != FinalReadinessVerdictV1::ReadyForFreeze {
             return Err(format!(
-                "explicitly permitted narrowing should stop blocking, got {:?}",
+                "explicitly permitted support-tier narrowing should stop blocking, got {:?}",
                 narrowed.verdict
             ));
         }
@@ -1170,6 +1298,65 @@ mod tests {
             || !narrowed_row.next_action.contains("out of proof narration")
         {
             return Err("narrowing row lost its owner or claim boundary".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn fixture_mode_graph_cannot_ready_for_freeze() -> Result<(), String> {
+        let mut fixture_graph = graph();
+        fixture_graph.mode = FinalEvidenceGraphModeV1::Fixture;
+        let readiness = aggregate_final_readiness(&fixture_graph, &inputs());
+        if readiness.verdict != FinalReadinessVerdictV1::Mismatch {
+            return Err(format!(
+                "fixture-mode graph must be mismatched, got {:?}",
+                readiness.verdict
+            ));
+        }
+        let row = readiness
+            .rows
+            .iter()
+            .find(|row| row.kind == FinalReadinessRowKindV1::Mismatch)
+            .ok_or_else(|| "fixture-mode mismatch row is missing".to_string())?;
+        if !row.message.contains("fixture") || row.owner != "owner:release-campaign" {
+            return Err("fixture-mode row lost the mode name or graph owner".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn declared_limitations_require_supported_inputs() -> Result<(), String> {
+        let mut declared = graph();
+        declared.limitations = vec!["limitation:windows-symlink".to_string()];
+        let blocked = aggregate_final_readiness(&declared, &inputs());
+        if blocked.verdict != FinalReadinessVerdictV1::Unsupported {
+            return Err(format!(
+                "declared limitation must block as unsupported, got {:?}",
+                blocked.verdict
+            ));
+        }
+        if !blocked.rows.iter().any(|row| {
+            row.kind == FinalReadinessRowKindV1::Unsupported
+                && row.message.contains("limitation:windows-symlink")
+        }) {
+            return Err("unsupported row did not name the declared limitation".to_string());
+        }
+
+        let mut supported_inputs = inputs();
+        supported_inputs.supported_limitations = vec![FinalReadinessSupportedLimitationV1 {
+            limitation_id: "limitation:windows-symlink".to_string(),
+            user_facing_projection: Some("windows: symlinks require developer mode".to_string()),
+            owner: Some("owner:support".to_string()),
+        }];
+        let ready = aggregate_final_readiness(&declared, &supported_inputs);
+        if ready.verdict != FinalReadinessVerdictV1::ReadyForFreeze {
+            return Err(format!(
+                "a supported declared limitation should not block, got {:?}",
+                ready.verdict
+            ));
+        }
+        if ready.supported_limitation_ids != vec!["limitation:windows-symlink".to_string()] {
+            return Err("supported limitation id was not retained".to_string());
         }
         Ok(())
     }
