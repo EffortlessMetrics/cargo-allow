@@ -14128,3 +14128,138 @@ normalized_snippet_hash = "fnv1a64:cbe3ec246ec7049c"
 [allow.last_seen]
 line = 158
 column = 50
+
+[[allow]]
+id = "allow-0667"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/tests/rc_publication_incident.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked rc.1 publication incident reconciliation (#3759); panic on unread evidence is the established guard idiom"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "load_record"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:d50ea4fd6c3a8f17"
+
+[allow.last_seen]
+line = 24
+column = 33
+
+[[allow]]
+id = "allow-0668"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/tests/rc_publication_incident.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helpers for the checked rc.1 publication incident reconciliation (#3759); panic on unread evidence is the established guard idiom"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "per_row_reconciliation_reflects_retained_provenance"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:018dca44bb646409"
+
+[allow.last_seen]
+line = 110
+column = 22
+
+[[allow]]
+id = "allow-0669"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-publication-incident.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained CargoAllowRcPublicationIncidentV1 evidence record reconciling the moved rc.1 publication sequence (#3759)"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-publication-incident.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-publication-incident.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0670"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/rc-publication-incident-v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "JSON schema for the rc.1 publication incident reconciliation contract (#3759)"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/rc-publication-incident-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/rc-publication-incident-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0671"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/tests/rc_publication_incident.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed helper for the checked rc.1 publication incident reconciliation (#3759); expect on evidence parsing is the established guard idiom"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load_record"
+callee = "expect"
+receiver_fingerprint = "serde_json::from_str(&text)"
+normalized_snippet_hash = "fnv1a64:be260cd3b6a7d936"
+
+[allow.last_seen]
+line = 25
+column = 33
+
+[[allow]]
+id = "allow-0672"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the added_allow receipts for the rc.1 publication incident reconciliation (#3759)."
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
