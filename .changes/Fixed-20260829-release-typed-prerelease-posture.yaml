@@ -11,6 +11,11 @@ body: >-
   jobs (install-smoke, package/verify/attest, manifest, release notes)
   consume the preflight-projected version via RELEASE_VERSION instead of
   re-stripping the tag, leaving only the tag-channel source derivation as a
-  local strip. The release-identity consumer denominator, the release_prep
-  typed-posture contract test, the preflight characterization fixture, and
-  docs/ci.md were updated atomically; no receipts changed.
+  local strip. The same lane fixes a latent preflight defect surfaced by its
+  characterization suite: the workspace dependency-version comparison now
+  strips the exact-pin requirement operator the awk reader captures
+  (=X.Y.Z versus X.Y.Z), which has failed the local suite since the
+  allow-* dependency pinning. The release-identity consumer denominator,
+  the release_prep typed-posture contract test, the preflight
+  characterization fixture, and docs/ci.md were updated atomically; no
+  receipts changed.
