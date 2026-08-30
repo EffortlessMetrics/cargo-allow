@@ -11,6 +11,8 @@
 extern crate self as allow_core;
 
 mod agentic_candidate;
+mod agentic_reservation;
+mod agentic_reservation_gh;
 mod error;
 mod governance_v2;
 mod parity;
@@ -20,6 +22,17 @@ pub use agentic_candidate::{
     CLAIM_REF_SCHEMA_V1, CandidateAdmissionDecisionV1, CandidateDispositionV1,
     CandidateObservationSetV1, CandidateObservationV1, CandidateStateV1, ClaimRefV1,
 };
+pub use agentic_reservation::{
+    CANDIDATE_REF_NAMESPACE, CandidateAnchorReadBackV1, CandidateRefTransport,
+    CandidateReservationObservationV1, CandidateReservationReceiptV1,
+    CandidateReservationRequestV1, CandidateReservationResultV1, CreateRefCommandV1,
+    CreateRefOutcomeV1, EnvironmentCapabilityPrerequisiteV1, FixtureCandidateResponse,
+    FixtureCreateResponse, FixtureReadRefResponse, InMemoryCandidateRefTransport, RefReadBackV1,
+    TransportFailureV1, admission_decision_identity, canonical_candidate_digest,
+    canonical_candidate_ref, canonical_candidate_ref_for_identity, reserve_candidate_ref,
+    validate_object_id,
+};
+pub use agentic_reservation_gh::{GH_PROGRAM, GhCandidateRefTransport};
 pub use error::{
     IntentModelError, IntentModelErrorKind, IntentModelErrorLocation, IntentModelResult,
     normalize_path, read_text_file_capped, stable_hash_hex,

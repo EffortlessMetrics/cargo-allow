@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **109**
+- Entries: **111**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -17,7 +17,7 @@
 - `CutoverCurrent`: **15**
 - `CutoverOutstanding`: **5**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **88**
+- `TargetRatified`: **90**
 
 ### Disposition counts
 
@@ -28,7 +28,7 @@
 - `MoveToCargoProofApp`: **2**
 - `MoveToIntentEdit`: **7**
 - `MoveToIntentEngine`: **12**
-- `MoveToIntentModel`: **12**
+- `MoveToIntentModel`: **14**
 - `MoveToIntentProtocol`: **4**
 - `MoveToProofAdapter`: **9**
 - `MoveToProofEngine`: **9**
@@ -61,6 +61,28 @@
 - Removal: Retain while the agentic candidate contract is supported
 - Next: #3975 consumes Create eligibility through atomic reservation.
 - Deletion output: No compatibility deletion; this is a new intent-model contract.
+
+### `ADD-INTENT-MODEL-AGENTIC-RESERVATION`
+
+- Current: Pure candidate-reservation contracts, canonical ref derivation, and one create-only exclusion transition
+- Target: `cargo-intent / intent-model::agentic_reservation`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Retain while the candidate reservation contract is supported
+- Next: #3984 attaches direct Cursor execution only to the canonical reserved branch.
+- Deletion output: No compatibility deletion; this is a new intent-model contract.
+
+### `ADD-INTENT-MODEL-AGENTIC-RESERVATION-GH`
+
+- Current: Thin gh CLI create-ref/read-ref transport adapter with typed exit and output mapping
+- Target: `cargo-intent / intent-model::agentic_reservation_gh`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Retain while the gh reservation adapter is supported
+- Next: #3984 consumes the same canonical exclusion point through the transport boundary.
+- Deletion output: No compatibility deletion; this is a new intent-model adapter.
 
 ### `INVENTORY-CARGO_INTENT-SRC`
 
