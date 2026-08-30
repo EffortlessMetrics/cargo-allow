@@ -191,11 +191,11 @@ fn discover_cargo_metadata_config(
     };
     let manifest = match toml::from_str::<CargoManifestProbe>(&text) {
         Ok(manifest) => manifest,
-        Err(err) => {
+        Err(_) => {
             skipped.push(SkippedPolicyCandidate {
                 path: manifest_path,
                 source: SOURCE_CARGO_METADATA,
-                reason: format!("cargo-allow metadata could not be parsed: {err}"),
+                reason: "cargo-allow metadata could not be parsed".to_string(),
             });
             return None;
         }
@@ -313,41 +313,38 @@ enum CandidateClass {
 fn classify_candidate(path: &Path, native: bool) -> CandidateClass {
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
-        Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to read policy config: {err})"
-            ));
+        Err(_) => {
+            return CandidateClass::Skip(
+                "not cargo-allow dialect (policy config could not be read)".to_string(),
+            );
         }
     };
     let header = match toml::from_str::<PolicyHeaderProbe>(&text) {
         Ok(header) => header,
-        Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to parse policy header: {err})"
-            ));
+        Err(_) => {
+            return CandidateClass::Skip(
+                "not cargo-allow dialect (policy header could not be parsed)".to_string(),
+            );
         }
     };
     if !supported_schema_version(header.schema_version.as_deref()) {
-        let version = header
-            .schema_version
-            .unwrap_or_else(|| "<missing>".to_string());
-        return CandidateClass::Skip(format!(
-            "not cargo-allow dialect (unsupported schema_version `{version}`)"
-        ));
+        return CandidateClass::Skip(
+            "not cargo-allow dialect (missing or unsupported schema_version)".to_string(),
+        );
     }
     if native {
         return match header.policy.as_deref() {
             None | Some("cargo-allow") => CandidateClass::Accept,
-            Some(policy) => CandidateClass::Skip(format!(
-                "not cargo-allow dialect (unsupported policy `{policy}`)"
-            )),
+            Some(_) => CandidateClass::Skip(
+                "not cargo-allow dialect (unsupported policy marker)".to_string(),
+            ),
         };
     }
     match header.policy.as_deref() {
         Some("cargo-allow") => CandidateClass::Accept,
-        Some(policy) => CandidateClass::Skip(format!(
-            "not cargo-allow dialect (unsupported policy `{policy}`)"
-        )),
+        Some(_) => {
+            CandidateClass::Skip("not cargo-allow dialect (unsupported policy marker)".to_string())
+        }
         None if header.schema_version.is_none()
             || header.schema_version.as_deref() == Some(SUPPORTED_SCHEMA_VERSION) =>
         {

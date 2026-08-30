@@ -357,10 +357,15 @@ config = "policy/missing.toml"
 #[test]
 fn resolved_cargo_allow_config_preserves_malformed_manifest_provenance() -> TestResult {
     let fixture = Fixture::new("malformed-metadata")?;
-    fixture.write("Cargo.toml", "[workspace\n")?;
+    let private_path = "/home/alice/private/customer-policy.toml";
+    fixture.write(
+        "Cargo.toml",
+        &format!("[workspace\nprivate = \"{private_path}\"\n"),
+    )?;
     fixture.write("policy/allow.toml", valid_policy())?;
 
     let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:malformed")?;
+    let rendered = serde_json::to_string(&resolved)?;
 
     ensure(
         resolved.candidates.iter().any(|candidate| {
@@ -369,6 +374,66 @@ fn resolved_cargo_allow_config_preserves_malformed_manifest_provenance() -> Test
                 && candidate.disposition == ConfigCandidateDispositionV1::Skipped
         }),
         "malformed manifest should retain generic Cargo metadata provenance",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::CargoMetadata
+                && candidate.reason.as_deref() == Some("cargo-allow metadata could not be parsed")
+        }),
+        "malformed manifest should use a bounded generic parse reason",
+    )?;
+    ensure(
+        !rendered.contains(private_path),
+        "malformed manifest source text must not leak through the resolved artifact",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_redacts_malformed_selected_policy_source() -> TestResult {
+    let fixture = Fixture::new("malformed-selected-policy")?;
+    let private_path = "/home/alice/private/selected-policy.toml";
+    fixture.write(
+        "policy/explicit.toml",
+        &format!("schema_version = [\"0.1\"\nprivate = \"{private_path}\"\n"),
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/explicit.toml")),
+        "subject:malformed-selected-policy",
+    )?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Invalid, "status")?;
+    ensure(
+        !rendered.contains(private_path),
+        "selected policy parser source text must not leak through diagnostics",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_redacts_malformed_federation_source() -> TestResult {
+    let fixture = Fixture::new("malformed-federation-private-source")?;
+    let private_path = "/home/alice/private/federation-policy.toml";
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        &format!("[[ledgers]\nprivate = \"{private_path}\"\n"),
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        None,
+        "subject:malformed-federation-private-source",
+    )?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Partial, "status")?;
+    ensure(
+        !rendered.contains(private_path),
+        "federation parser source text must not leak through diagnostics",
     )?;
     Ok(())
 }
@@ -666,8 +731,15 @@ config = "policy/missing.toml"
         "missing ancestor metadata diagnostics should not leak the private fixture root",
     )?;
     ensure(
-        rendered.contains("<discovery_ancestor:2>"),
-        "missing ancestor metadata should retain bounded portable provenance",
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::PackageMetadata
+                && candidate.path.as_ref().is_some_and(|path| {
+                    path.anchor == ConfigPathAnchorV1::DiscoveryAncestor
+                        && path.ancestor_depth == 2
+                        && path.path == "policy/missing.toml"
+                })
+        }),
+        "missing ancestor metadata should retain structured portable provenance",
     )?;
     Ok(())
 }
@@ -1333,6 +1405,63 @@ fn resolved_cargo_allow_config_rejects_literal_backslash_filename_identity() -> 
                 .is_some_and(|path| path.path == "outside.toml")
         }),
         "literal backslash filename must not collide with outside.toml",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_non_utf8_filename_identity() -> TestResult {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    let fixture = Fixture::new("non-utf8-identity")?;
+    let invalid_name = OsString::from_vec(b"policy-\xff.toml".to_vec());
+    let invalid_path = PathBuf::from(&invalid_name);
+    fs::write(fixture.path().join(&invalid_path), valid_policy())?;
+    fixture.write("policy-�.toml", valid_policy())?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(&invalid_path),
+        "subject:non-utf8-identity",
+    )?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "non-UTF-8 identity posture",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "non-UTF-8 identity must not produce a selected policy or digest",
+    )?;
+    let cli_candidates = resolved
+        .candidates
+        .iter()
+        .filter(|candidate| candidate.source == ConfigCandidateSourceV1::CliOverride)
+        .collect::<Vec<_>>();
+    ensure_eq(cli_candidates.len(), 1, "CLI candidate count")?;
+    ensure(
+        cli_candidates.first().is_some_and(|candidate| {
+            candidate.path.is_none()
+                && candidate.disposition == ConfigCandidateDispositionV1::Invalid
+                && candidate.reason.as_deref()
+                    == Some("CLI path cannot be represented as a portable identity")
+        }),
+        "non-UTF-8 CLI candidate must have a truthful invalid portable posture",
+    )?;
+    ensure(
+        !resolved
+            .candidates
+            .iter()
+            .any(|candidate| candidate.disposition == ConfigCandidateDispositionV1::Selected),
+        "non-UTF-8 identity must not select any candidate",
+    )?;
+    ensure(
+        !rendered.contains("policy-�.toml"),
+        "non-UTF-8 identity must not collide with a replacement-character filename",
     )?;
     Ok(())
 }

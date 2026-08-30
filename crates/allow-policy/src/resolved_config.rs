@@ -275,7 +275,7 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
             )
         }
         Err(error) => {
-            let diagnostic = diagnostic_from_error(input.root, &error);
+            let diagnostic = diagnostic_from_error(&error);
             diagnostics.push(diagnostic);
             if let Some(config) = input.cli_config {
                 (
@@ -504,11 +504,11 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 }
             }
         },
-        Err(error) => unreadable_federation_observation(root, error),
+        Err(error) => unreadable_federation_observation(error),
     }
 }
 
-fn unreadable_federation_observation(root: &Path, error: CargoAllowError) -> FederationObservation {
+fn unreadable_federation_observation(error: CargoAllowError) -> FederationObservation {
     FederationObservation {
         participation: ConfigFederationParticipationV1 {
             config_path: root_relative_config_path(FEDERATION_CONFIG_REL_PATH),
@@ -519,7 +519,7 @@ fn unreadable_federation_observation(root: &Path, error: CargoAllowError) -> Fed
         },
         source_exception_path: None,
         source_exception_ambiguous: false,
-        error: Some(diagnostic_from_error(root, &error)),
+        error: Some(diagnostic_from_error(&error)),
     }
 }
 
@@ -564,7 +564,7 @@ fn candidate_from_cli(root: &Path, config: &Path, cli_selected: bool) -> ConfigC
             ConfigCandidateDispositionV1::Invalid
         },
         reason: (!is_safe)
-            .then(|| "absolute or parent-traversing CLI path is not portable".to_string()),
+            .then(|| "CLI path cannot be represented as a portable identity".to_string()),
     }
 }
 
@@ -668,7 +668,7 @@ fn observe_policy(
     }
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
-        Err(error) => {
+        Err(_) => {
             return PolicyObservation {
                 policy: Some(ResolvedPolicyV1 {
                     path: portable,
@@ -680,9 +680,7 @@ fn observe_policy(
                 error: Some(ConfigDiagnosticV1 {
                     code: CargoAllowErrorKind::InvalidConfig.code().to_string(),
                     kind: CargoAllowErrorKind::InvalidConfig.as_str().to_string(),
-                    message: bounded_message(&format!(
-                        "selected policy could not be read: {error}"
-                    )),
+                    message: "selected policy could not be read".to_string(),
                 }),
                 status_override: Some(ConfigResolutionStatusV1::Invalid),
                 ..PolicyObservation::default()
@@ -712,7 +710,7 @@ fn observe_policy(
                 policy: None,
                 status: None,
             }),
-            error: Some(diagnostic_from_error(root, &error)),
+            error: Some(diagnostic_from_error(&error)),
             status_override: Some(ConfigResolutionStatusV1::Invalid),
             ..PolicyObservation::default()
         },
@@ -814,11 +812,14 @@ impl From<PrecedenceTier> for ConfigPrecedenceTierV1 {
     }
 }
 
-fn diagnostic_from_error(root: &Path, error: &CargoAllowError) -> ConfigDiagnosticV1 {
+fn diagnostic_from_error(error: &CargoAllowError) -> ConfigDiagnosticV1 {
     ConfigDiagnosticV1 {
         code: error.code().to_string(),
         kind: error.kind().as_str().to_string(),
-        message: portable_message(root, &error.to_string()),
+        message: format!(
+            "cargo-allow configuration resolution reported {}",
+            error.kind().as_str()
+        ),
     }
 }
 
@@ -903,6 +904,9 @@ fn portable_config_path(
 }
 
 fn lexical_relative_path(anchor: &Path, path: &Path) -> Option<String> {
+    if anchor.to_str().is_none() || path.to_str().is_none() {
+        return None;
+    }
     if path
         .components()
         .any(|component| component == Component::ParentDir)
@@ -966,7 +970,8 @@ fn selected_path_is_contained(root: &Path, path: &Path, portable: &PortableConfi
 }
 
 fn is_safe_relative_path(path: &Path) -> bool {
-    !(cfg!(unix) && path.to_string_lossy().contains('\\'))
+    path.to_str().is_some()
+        && !(cfg!(unix) && path.to_string_lossy().contains('\\'))
         && !path.is_absolute()
         && !path.components().any(|component| {
             matches!(
