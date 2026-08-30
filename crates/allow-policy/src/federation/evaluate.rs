@@ -201,6 +201,7 @@ pub fn federation_has_blocking_divergence(evaluation: &FederationEvaluation) -> 
 
 fn load_ledger_contributors(root: &Path) -> CargoAllowResult<Vec<LedgerContributor>> {
     Ok(load_validated_federation_config(root)?
+        .filter(|validated| validated.valid)
         .map(|validated| ledger_contributors_from_config(&validated.config))
         .unwrap_or_default())
 }

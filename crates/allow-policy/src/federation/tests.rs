@@ -157,8 +157,8 @@ priority = 10
 }
 
 #[test]
-fn evaluate_source_exception_policy_falls_back_from_empty_id_registry() -> std::io::Result<()> {
-    let root = fixture_root_for_federation_test("empty-id-fallback");
+fn evaluate_source_exception_policy_omits_invalid_registry_provenance() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("invalid-id-provenance");
     std::fs::create_dir_all(root.join(".allow"))?;
     std::fs::create_dir_all(root.join("policy"))?;
     std::fs::write(
@@ -166,8 +166,8 @@ fn evaluate_source_exception_policy_falls_back_from_empty_id_registry() -> std::
         r#"schema_version = "1.0"
 
 [[ledgers]]
-id = ""
-path = "policy/federated.toml"
+id = "   "
+path = "policy/allow.toml"
 dialect = "cargo-allow"
 role = "canonical"
 lanes = ["source-exception"]
@@ -175,20 +175,17 @@ priority = 10
 "#,
     )?;
     std::fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n")?;
-    std::fs::write(
-        root.join("policy/federated.toml"),
-        "schema_version = \"0.1\"\n",
-    )?;
 
     let (path, evaluation) = super::evaluate::evaluate_source_exception_policy(&root, None)
         .map_err(|error| std::io::Error::other(error.to_string()))?;
     if path != root.join("policy/allow.toml").canonicalize()?
         || evaluation.precedence_applied != super::evaluate::PrecedenceTier::DiscoveryFallback
         || evaluation.active_provenance.is_some()
+        || !evaluation.ledger_contributors.is_empty()
     {
         cleanup_fixture_root(&root);
         return Err(std::io::Error::other(format!(
-            "empty-id registry influenced selection: {path:?} {evaluation:?}"
+            "invalid registry supplied selection or provenance: {path:?} {evaluation:?}"
         )));
     }
     cleanup_fixture_root(&root);

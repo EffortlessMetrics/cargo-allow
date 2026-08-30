@@ -324,6 +324,7 @@ fn discover_config_falls_back_on_malformed_manifest() -> io::Result<()> {
 fn discover_config_skips_external_conventional_symlink_before_probe() -> io::Result<()> {
     let root = TempRoot::new("external-conventional-link")?;
     let external = TempRoot::new("external-conventional-target")?;
+    let canonical_root = root.path().canonicalize()?;
     write_policy(
         &external.path().join("outside.toml"),
         "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
@@ -339,9 +340,9 @@ fn discover_config_skips_external_conventional_symlink_before_probe() -> io::Res
     )?;
 
     let result = discover_config(root.path());
-    if result.selected != Some(root.path().join(".cargo/allow.toml"))
+    if result.selected != Some(canonical_root.join(".cargo/allow.toml"))
         || !result.skipped.iter().any(|candidate| {
-            candidate.path == root.path().join("policy/allow.toml")
+            candidate.path == canonical_root.join("policy/allow.toml")
                 && candidate.reason.contains("outside its discovery anchor")
         })
     {
@@ -357,6 +358,7 @@ fn discover_config_skips_external_conventional_symlink_before_probe() -> io::Res
 fn discover_config_skips_external_manifest_symlink_before_probe() -> io::Result<()> {
     let root = TempRoot::new("external-manifest-link")?;
     let external = TempRoot::new("external-manifest-target")?;
+    let canonical_root = root.path().canonicalize()?;
     write_policy(
         &root.path().join("policy/metadata.toml"),
         "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
@@ -375,9 +377,9 @@ fn discover_config_skips_external_manifest_symlink_before_probe() -> io::Result<
     )?;
 
     let result = discover_config(root.path());
-    if result.selected != Some(root.path().join("policy/allow.toml"))
+    if result.selected != Some(canonical_root.join("policy/allow.toml"))
         || !result.skipped.iter().any(|candidate| {
-            candidate.path == root.path().join("Cargo.toml")
+            candidate.path == canonical_root.join("Cargo.toml")
                 && candidate.source == SOURCE_CARGO_METADATA
                 && candidate.reason.contains("outside its discovery anchor")
         })
@@ -394,6 +396,7 @@ fn discover_config_skips_external_manifest_symlink_before_probe() -> io::Result<
 fn discover_config_skips_external_metadata_policy_symlink_before_probe() -> io::Result<()> {
     let root = TempRoot::new("external-metadata-policy-link")?;
     let external = TempRoot::new("external-metadata-policy-target")?;
+    let canonical_root = root.path().canonicalize()?;
     write_policy(
         &root.path().join("Cargo.toml"),
         "[package.metadata.cargo-allow]\nconfig = \"policy/metadata.toml\"\n",
@@ -413,9 +416,9 @@ fn discover_config_skips_external_metadata_policy_symlink_before_probe() -> io::
     )?;
 
     let result = discover_config(root.path());
-    if result.selected != Some(root.path().join("policy/allow.toml"))
+    if result.selected != Some(canonical_root.join("policy/allow.toml"))
         || !result.skipped.iter().any(|candidate| {
-            candidate.path == root.path().join("policy/metadata.toml")
+            candidate.path == canonical_root.join("policy/metadata.toml")
                 && candidate.source == SOURCE_PACKAGE_METADATA
                 && candidate.reason.contains("outside its discovery anchor")
                 && !candidate
