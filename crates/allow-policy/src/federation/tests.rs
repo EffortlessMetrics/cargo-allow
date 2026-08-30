@@ -30,6 +30,39 @@ lanes = ["spec-system"]
 priority = 20
 "#;
 
+#[cfg(unix)]
+const MIRROR_DRAIN_CONFIG: &str = r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+lanes = ["source-exception"]
+priority = 15
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "containment test"
+review_after = "2026-09-01"
+expiry = "2027-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#;
+
+#[cfg(unix)]
+const MINIMAL_POLICY: &str = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n";
+
 fn parse_validated(input: &str) -> ValidatedFederationConfig {
     let parsed = parse_federation_config(input)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse federation config: {err}")));
@@ -190,6 +223,96 @@ priority = 10
     }
     cleanup_fixture_root(&root);
     Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_external_policy_link_before_read() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("external-mirror-link");
+    let external = fixture_root_for_federation_test("external-mirror-target");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::fs::write(external.join("policy.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink(
+            external.join("policy.toml"),
+            root.join(".allow/mirror/policy.toml"),
+        )?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences.first().is_some_and(|record| {
+                record.mirror_fingerprint.is_none()
+                    && record.message.contains("unavailable or invalid")
+            })
+        {
+            return Err(std::io::Error::other(format!(
+                "external mirror target was not contained: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    cleanup_fixture_root(&external);
+    result
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_accepts_internal_policy_link() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("internal-mirror-link");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink(
+            "../../policy/allow.toml",
+            root.join(".allow/mirror/policy.toml"),
+        )?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if !divergences.is_empty() {
+            return Err(std::io::Error::other(format!(
+                "contained internal mirror link should compare normally: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    result
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_dangling_policy_link() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("dangling-mirror-link");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink("missing.toml", root.join(".allow/mirror/policy.toml"))?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences
+                .first()
+                .is_some_and(|record| record.mirror_fingerprint.is_none())
+        {
+            return Err(std::io::Error::other(format!(
+                "dangling mirror link should remain unavailable: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    result
 }
 
 #[test]

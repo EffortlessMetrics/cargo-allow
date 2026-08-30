@@ -232,9 +232,17 @@ fn discover_config_skips_unsafe_metadata_path_and_falls_back() -> io::Result<()>
     )?;
 
     let result = discover_config(root.path());
-    assert_eq!(result.selected, Some(conventional.canonicalize()?));
-    assert_eq!(result.skipped.len(), 1);
-    assert!(result.skipped[0].reason.contains("without `..`"));
+    if result.selected != Some(conventional.canonicalize()?)
+        || result.skipped.len() != 1
+        || !result
+            .skipped
+            .first()
+            .is_some_and(|candidate| candidate.reason.contains("without parent traversal"))
+    {
+        return Err(io::Error::other(format!(
+            "unsafe metadata path did not produce bounded fallback: {result:?}"
+        )));
+    }
     Ok(())
 }
 

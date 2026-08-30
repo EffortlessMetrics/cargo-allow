@@ -224,9 +224,8 @@ fn discover_cargo_metadata_config(
         skipped.push(SkippedPolicyCandidate {
             path: manifest_path,
             source,
-            reason: format!(
-                "cargo-allow metadata config `{config}` must be a non-empty relative path without `..`"
-            ),
+            reason: "cargo-allow metadata config must be a non-empty source-tree-relative path without parent traversal"
+                .to_string(),
         });
         return None;
     }

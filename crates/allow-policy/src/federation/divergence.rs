@@ -104,14 +104,16 @@ fn compare_mirror_canonical_ledgers(
 ) -> CargoAllowResult<Vec<FederationDivergenceRecord>> {
     let canonical_path = root.join(&canonical.path);
     let mirror_path = root.join(&mirror.path);
-    let canonical_cfg = load_policy(&canonical_path).ok();
-    let mirror_cfg = load_policy(&mirror_path).ok();
+    let canonical_cfg = load_contained_policy(root, &canonical_path);
+    let mirror_cfg = load_contained_policy(root, &mirror_path);
+    let canonical_available = canonical_cfg.is_some();
+    let mirror_available = mirror_cfg.is_some();
     let (Some(canonical_cfg), Some(mirror_cfg)) = (canonical_cfg, mirror_cfg) else {
-        let missing = match (&canonical_path.is_file(), &mirror_path.is_file()) {
-            (false, false) => "canonical and mirror policy files are missing",
-            (false, true) => "canonical policy file is missing",
-            (true, false) => "mirror policy file is missing",
-            (true, true) => "policy files could not be parsed",
+        let missing = match (canonical_available, mirror_available) {
+            (false, false) => "canonical and mirror policy files are unavailable or invalid",
+            (false, true) => "canonical policy file is unavailable or invalid",
+            (true, false) => "mirror policy file is unavailable or invalid",
+            (true, true) => "policy files could not be compared",
         };
         return Ok(vec![FederationDivergenceRecord {
             kind: FederationDivergenceKind::MirrorDivergence,
@@ -232,6 +234,13 @@ fn compare_mirror_canonical_ledgers(
         mirror_fingerprint: Some(mirror_fingerprint),
         recommended_action: "sync mirror from canonical or document intentional drain posture",
     }])
+}
+
+fn load_contained_policy(root: &Path, candidate: &Path) -> Option<AllowConfig> {
+    let canonical_root = root.canonicalize().ok()?;
+    let canonical_candidate = candidate.canonicalize().ok()?;
+    canonical_candidate.strip_prefix(canonical_root).ok()?;
+    load_policy(canonical_candidate).ok()
 }
 
 fn entry_id_set(cfg: &AllowConfig) -> BTreeSet<String> {

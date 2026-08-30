@@ -11,6 +11,7 @@ use crate::discovery::DiscoverConfigResult;
 use crate::federation::{
     FEDERATION_CONFIG_REL_PATH, FederationEvaluation, FederationLoadOutcome, LedgerRole,
     PrecedenceTier, SOURCE_EXCEPTION_LANE, load_federation_config,
+    resolve_canonical_ledger_for_lane,
 };
 use crate::{
     SOURCE_CARGO_METADATA, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
@@ -30,6 +31,8 @@ const SENSOR_OBSERVATION_LIMITATION: &str =
     "sensor_and_inventory_selection_not_observed_by_policy_adapter";
 const ROOT_RELATIONSHIP_LIMITATION: &str =
     "requested_and_repository_root_share_the_callers_resolved_root_input";
+const EXTERNAL_CLI_LIMITATION: &str =
+    "external_cli_policy_identity_is_redacted_and_reported_unsupported";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -234,6 +237,7 @@ pub fn resolve_cargo_allow_config_v1(
 
 struct FederationObservation {
     participation: ConfigFederationParticipationV1,
+    source_exception_path: Option<PathBuf>,
     source_exception_ambiguous: bool,
     error: Option<ConfigDiagnosticV1>,
 }
@@ -312,14 +316,20 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
             selection_source == Some(ConfigCandidateSourceV1::CliOverride),
         ));
     }
-    if input.federation_observation.participation.posture != ConfigFederationPostureV1::Missing {
-        let federation_path = if precedence == Some(ConfigPrecedenceTierV1::FederationRegistry) {
-            selected_path
-                .as_deref()
-                .and_then(|path| portable_config_path(input.root, path, false))
-        } else {
-            Some(root_relative_config_path(FEDERATION_CONFIG_REL_PATH))
-        };
+    if input.federation_observation.participation.posture != ConfigFederationPostureV1::Missing
+        && (input.federation_observation.participation.posture != ConfigFederationPostureV1::Valid
+            || input.federation_observation.source_exception_path.is_some())
+    {
+        let federation_path = input
+            .federation_observation
+            .source_exception_path
+            .as_deref()
+            .and_then(|path| portable_config_path(input.root, path, false))
+            .or_else(|| {
+                (input.federation_observation.participation.posture
+                    != ConfigFederationPostureV1::Valid)
+                    .then(|| root_relative_config_path(FEDERATION_CONFIG_REL_PATH))
+            });
         candidates.push(ConfigCandidateV1 {
             source: ConfigCandidateSourceV1::FederationRegistry,
             path: federation_path,
@@ -357,6 +367,12 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
                 input.root,
                 path,
                 selection_source.is_some_and(source_allows_ancestor),
+                selection_source == Some(ConfigCandidateSourceV1::CliOverride)
+                    && input.cli_config.is_some_and(|config| {
+                        config
+                            .components()
+                            .any(|component| component == Component::ParentDir)
+                    }),
             )
         })
         .unwrap_or_default();
@@ -376,7 +392,10 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         no_policy_observed: input.cli_config.is_none()
             && input.discovery.selected.is_none()
             && input.discovery.skipped.is_empty()
-            && federation.posture == ConfigFederationPostureV1::Missing,
+            && matches!(
+                federation.posture,
+                ConfigFederationPostureV1::Missing | ConfigFederationPostureV1::Valid
+            ),
         diagnostics: &diagnostics,
     });
 
@@ -415,6 +434,7 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
             CANDIDATE_ENUMERATION_LIMITATION.to_string(),
             SENSOR_OBSERVATION_LIMITATION.to_string(),
             ROOT_RELATIONSHIP_LIMITATION.to_string(),
+            EXTERNAL_CLI_LIMITATION.to_string(),
         ],
         claim_boundary: RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY.to_string(),
     }
@@ -431,10 +451,18 @@ fn observe_federation(root: &Path) -> FederationObservation {
                     configured_ledgers: Vec::new(),
                     diagnostics: Vec::new(),
                 },
+                source_exception_path: None,
                 source_exception_ambiguous: false,
                 error: None,
             },
             FederationLoadOutcome::Parsed(validated) => {
+                let source_exception_path = validated
+                    .valid
+                    .then(|| {
+                        resolve_canonical_ledger_for_lane(&validated.config, SOURCE_EXCEPTION_LANE)
+                    })
+                    .flatten()
+                    .map(|ledger| root.join(&ledger.path));
                 let source_exception_ambiguous = validated
                     .config
                     .ledgers
@@ -470,6 +498,7 @@ fn observe_federation(root: &Path) -> FederationObservation {
                             .map(|diagnostic| diagnostic.kind.as_str().to_string())
                             .collect(),
                     },
+                    source_exception_path,
                     source_exception_ambiguous,
                     error: None,
                 }
@@ -488,6 +517,7 @@ fn unreadable_federation_observation(root: &Path, error: CargoAllowError) -> Fed
             configured_ledgers: Vec::new(),
             diagnostics: vec![error.code().to_string()],
         },
+        source_exception_path: None,
         source_exception_ambiguous: false,
         error: Some(diagnostic_from_error(root, &error)),
     }
@@ -597,17 +627,17 @@ struct PolicyObservation {
     status_override: Option<ConfigResolutionStatusV1>,
 }
 
-fn observe_policy(root: &Path, path: &Path, allow_ancestor: bool) -> PolicyObservation {
+fn observe_policy(
+    root: &Path,
+    path: &Path,
+    allow_ancestor: bool,
+    invalid_unportable_cli: bool,
+) -> PolicyObservation {
     let Some(portable) = portable_config_path(root, path, allow_ancestor) else {
-        let status = if allow_ancestor {
-            ConfigResolutionStatusV1::Unsupported
-        } else {
-            ConfigResolutionStatusV1::Invalid
-        };
-        let kind = if allow_ancestor {
-            CargoAllowErrorKind::Unsupported
-        } else {
+        let kind = if invalid_unportable_cli {
             CargoAllowErrorKind::InvalidConfig
+        } else {
+            CargoAllowErrorKind::Unsupported
         };
         return PolicyObservation {
             error: Some(ConfigDiagnosticV1 {
@@ -616,7 +646,11 @@ fn observe_policy(root: &Path, path: &Path, allow_ancestor: bool) -> PolicyObser
                 message: "selected current policy cannot be represented inside the portable repository boundary"
                     .to_string(),
             }),
-            status_override: Some(status),
+            status_override: Some(if invalid_unportable_cli {
+                ConfigResolutionStatusV1::Invalid
+            } else {
+                ConfigResolutionStatusV1::Unsupported
+            }),
             ..PolicyObservation::default()
         };
     };
@@ -932,7 +966,8 @@ fn selected_path_is_contained(root: &Path, path: &Path, portable: &PortableConfi
 }
 
 fn is_safe_relative_path(path: &Path) -> bool {
-    !path.is_absolute()
+    !(cfg!(unix) && path.to_string_lossy().contains('\\'))
+        && !path.is_absolute()
         && !path.components().any(|component| {
             matches!(
                 component,

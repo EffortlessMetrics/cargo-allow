@@ -1152,6 +1152,191 @@ fn resolved_cargo_allow_config_preserves_valid_long_subject_when_root_is_unavail
     Ok(())
 }
 
+#[test]
+fn resolved_cargo_allow_config_redacts_unrelated_absolute_metadata_value() -> TestResult {
+    let fixture = Fixture::new("absolute-metadata-redaction")?;
+    let private_path = std::env::temp_dir()
+        .join("cargo-allow-private")
+        .join("policy.toml");
+    let private_text = private_path.display().to_string().replace('\\', "/");
+    fixture.write(
+        "Cargo.toml",
+        &format!(
+            "[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n\n[package.metadata.cargo-allow]\nconfig = \"{private_text}\"\n"
+        ),
+    )?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:absolute-metadata")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure(
+        !rendered.contains(&private_text),
+        "unrelated absolute metadata value must not enter the portable artifact",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::PackageMetadata
+                && candidate
+                    .reason
+                    .as_deref()
+                    .is_some_and(|reason| reason.contains("source-tree-relative"))
+        }),
+        "redacted metadata rejection should retain bounded provenance",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_keeps_no_policy_with_unrelated_federation_lane() -> TestResult {
+    let fixture = Fixture::new("spec-only-federation")?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "doc-artifacts"
+path = ".allow/artifacts/doc-artifacts.toml"
+dialect = "cargo-allow-doc-artifacts"
+role = "canonical"
+lanes = ["spec-system"]
+priority = 20
+"#,
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:spec-only")?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::NoPolicy,
+        "source-exception status",
+    )?;
+    ensure_eq(
+        resolved.federation.posture,
+        ConfigFederationPostureV1::Valid,
+        "federation participation posture",
+    )?;
+    ensure(
+        !resolved
+            .candidates
+            .iter()
+            .any(|candidate| candidate.source == ConfigCandidateSourceV1::FederationRegistry),
+        "an unrelated valid lane is participation, not a source-policy candidate",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_keeps_federation_ledger_candidate_under_cli() -> TestResult {
+    let fixture = Fixture::new("cli-over-federation-candidate")?;
+    fixture.write("policy/cli.toml", valid_policy())?;
+    fixture.write("policy/federated.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/federated.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/cli.toml")),
+        "subject:cli-over-federation",
+    )?;
+
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::FederationRegistry
+                && candidate.disposition == ConfigCandidateDispositionV1::Available
+                && candidate
+                    .path
+                    .as_ref()
+                    .is_some_and(|path| path.path == "policy/federated.toml")
+        }),
+        "available federation candidate should retain the source-policy ledger identity",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_reports_external_cli_as_unsupported_without_identity() -> TestResult
+{
+    let fixture = Fixture::new("external-cli-root")?;
+    let external = Fixture::new("external-cli-policy")?;
+    external.write("policy.toml", valid_policy())?;
+    let external_path = external.path().join("policy.toml").canonicalize()?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(&external_path),
+        "subject:external-cli",
+    )?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "external CLI posture",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "unsupported external identity must not be projected as a repository policy",
+    )?;
+    ensure(
+        !rendered.contains(&external_path.display().to_string()),
+        "external CLI identity must remain redacted",
+    )?;
+    ensure(
+        resolved
+            .limitations
+            .iter()
+            .any(|limitation| limitation == EXTERNAL_CLI_LIMITATION),
+        "external CLI limitation should be explicit",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_literal_backslash_filename_identity() -> TestResult {
+    let fixture = Fixture::new("literal-backslash")?;
+    let literal = r"policy\..\outside.toml";
+    fixture.write(literal, valid_policy())?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new(literal)),
+        "subject:literal-backslash",
+    )?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "literal backslash identity posture",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "literal Unix filename must not be normalized into another selected identity",
+    )?;
+    ensure(
+        !resolved.candidates.iter().any(|candidate| {
+            candidate
+                .path
+                .as_ref()
+                .is_some_and(|path| path.path == "outside.toml")
+        }),
+        "literal backslash filename must not collide with outside.toml",
+    )?;
+    Ok(())
+}
+
 fn valid_policy() -> &'static str {
     r#"schema_version = "0.1"
 policy = "cargo-allow"
