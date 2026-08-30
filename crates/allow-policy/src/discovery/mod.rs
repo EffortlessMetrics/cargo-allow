@@ -112,6 +112,43 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
     }
 }
 
+pub(crate) fn skipped_metadata_candidate_source(
+    start: &Path,
+    candidate: &Path,
+) -> Option<&'static str> {
+    let mut dir = start.canonicalize().ok()?;
+    loop {
+        let manifest_path = dir.join("Cargo.toml");
+        if manifest_path.exists()
+            && let Ok(text) = read_text_file_capped(&manifest_path)
+            && let Ok(manifest) = toml::from_str::<CargoManifestProbe>(&text)
+        {
+            let package = manifest
+                .package
+                .as_ref()
+                .and_then(|package| package.metadata.as_ref())
+                .and_then(|metadata| metadata.cargo_allow.as_ref())
+                .and_then(|metadata| metadata.config.as_deref())
+                .map(|config| (config, SOURCE_PACKAGE_METADATA));
+            let workspace = manifest
+                .workspace
+                .as_ref()
+                .and_then(|workspace| workspace.metadata.as_ref())
+                .and_then(|metadata| metadata.cargo_allow.as_ref())
+                .and_then(|metadata| metadata.config.as_deref())
+                .map(|config| (config, SOURCE_WORKSPACE_METADATA));
+            if let Some((config, source)) = package.or(workspace)
+                && (dir.join(config) == candidate || manifest_path == candidate)
+            {
+                return Some(source);
+            }
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize)]
 struct CargoManifestProbe {
     package: Option<CargoPackageProbe>,

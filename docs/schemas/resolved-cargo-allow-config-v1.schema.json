@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.github.io/cargo-allow/schemas/resolved-cargo-allow-config-v1.schema.json",
+  "title": "ResolvedCargoAllowConfigV1",
+  "description": "Reusable read-only configuration-resolution component. It is not a standalone command artifact and does not authorize policy contents or writes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "producer_generation",
+    "source_subject",
+    "requested_root",
+    "resolved_repository_root",
+    "status",
+    "completeness",
+    "selected_policy",
+    "selection_source",
+    "precedence_tier",
+    "explicit_cli_values",
+    "candidates",
+    "fallback",
+    "federation",
+    "profile",
+    "inventory_mode",
+    "ignored_scopes",
+    "generated_scopes",
+    "selected_sensor_families",
+    "diagnostics",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.resolved-config.v1" },
+    "schema_version": { "const": 1 },
+    "producer_generation": { "type": "integer", "minimum": 1 },
+    "source_subject": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[A-Za-z0-9._:@+\\-]+$"
+    },
+    "requested_root": { "const": "." },
+    "resolved_repository_root": { "const": "." },
+    "status": {
+      "enum": [
+        "complete",
+        "no_policy",
+        "invalid",
+        "partial",
+        "ambiguous",
+        "unsupported",
+        "instrument_failure"
+      ]
+    },
+    "completeness": { "enum": ["complete", "partial", "unavailable"] },
+    "selected_policy": {
+      "oneOf": [
+        { "$ref": "#/$defs/selected_policy" },
+        { "type": "null" }
+      ]
+    },
+    "selection_source": {
+      "oneOf": [
+        { "$ref": "#/$defs/candidate_source" },
+        { "type": "null" }
+      ]
+    },
+    "precedence_tier": {
+      "type": ["string", "null"],
+      "enum": ["cli_override", "federation_registry", "discovery_fallback", null]
+    },
+    "explicit_cli_values": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/repository_path" },
+      "uniqueItems": true
+    },
+    "candidates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidate" }
+    },
+    "fallback": { "$ref": "#/$defs/fallback" },
+    "federation": { "$ref": "#/$defs/federation" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "inventory_mode": { "type": ["string", "null"] },
+    "ignored_scopes": { "type": "array", "items": { "type": "string" } },
+    "generated_scopes": { "type": "array", "items": { "type": "string" } },
+    "selected_sensor_families": { "type": "array", "items": { "type": "string" } },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "repository_path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "(?:^(?:[\\\\/]|[A-Za-z]:)|(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))"
+      }
+    },
+    "candidate_source": {
+      "enum": [
+        "cli_override",
+        "federation_registry",
+        "package_metadata",
+        "workspace_metadata",
+        "conventional_path",
+        "legacy_discovery"
+      ]
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "path", "disposition", "reason"],
+      "properties": {
+        "source": {
+          "enum": [
+            "cli_override",
+            "federation_registry",
+            "package_metadata",
+            "workspace_metadata",
+            "conventional_path",
+            "legacy_discovery"
+          ]
+        },
+        "path": {
+          "oneOf": [
+            { "$ref": "#/$defs/repository_path" },
+            { "type": "null" }
+          ]
+        },
+        "disposition": { "enum": ["selected", "available", "skipped", "invalid"] },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "kind", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 515 }
+      }
+    },
+    "selected_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "schema_version", "policy", "status"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repository_path" },
+        "digest": { "type": ["string", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "policy": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["considered", "selected", "reason"],
+      "properties": {
+        "considered": { "type": "boolean" },
+        "selected": { "type": "boolean" },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "federation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_path",
+        "posture",
+        "selected_for_source_exception",
+        "configured_ledgers",
+        "diagnostics"
+      ],
+      "properties": {
+        "config_path": { "$ref": "#/$defs/repository_path" },
+        "posture": { "enum": ["missing", "valid", "invalid", "unreadable"] },
+        "selected_for_source_exception": { "type": "boolean" },
+        "configured_ledgers": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "selected_profile", "reason"],
+      "properties": {
+        "observed": { "type": "boolean" },
+        "selected_profile": { "type": ["string", "null"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
