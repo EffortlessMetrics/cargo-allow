@@ -33,8 +33,9 @@ confidence-threshold = 0.8
 [bans]
 # Warn on multiple versions of the same crate when they can be avoided.
 multiple-versions = "warn"
-# Warn on wildcard dependencies.
-wildcards = "warn"
+# Wildcard dependency requirements are denied: a new wildcard must be
+# an explicit, owned config change, never a quiet entry.
+wildcards = "deny"
 
 [sources]
 # Only allow crates from crates.io.
