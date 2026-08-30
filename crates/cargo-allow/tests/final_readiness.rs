@@ -435,10 +435,10 @@ fn set_node(
     Ok(())
 }
 
-fn row_of_kind<'a>(
-    readiness: &'a CargoAllowFinalReadinessV1,
+fn row_of_kind(
+    readiness: &CargoAllowFinalReadinessV1,
     kind: FinalReadinessRowKindV1,
-) -> Option<&'a FinalReadinessRowV1> {
+) -> Option<&FinalReadinessRowV1> {
     readiness.rows.iter().find(|row| row.kind == kind)
 }
 
