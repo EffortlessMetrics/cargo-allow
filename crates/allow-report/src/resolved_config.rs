@@ -84,6 +84,7 @@ mod tests {
                 "federation_registry",
                 "package_metadata",
                 "workspace_metadata",
+                "cargo_metadata",
                 "conventional_path",
                 "legacy_discovery",
             ],

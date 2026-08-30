@@ -318,6 +318,7 @@ mod tests {
 
         let err = missing_config_error(&[SkippedPolicyCandidate {
             path: PathBuf::from("foreign/allow.toml"),
+            source: allow_policy::SOURCE_CONVENTIONAL_PATH,
             reason: "foreign policy dialect".to_string(),
         }]);
         assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);

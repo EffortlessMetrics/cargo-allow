@@ -472,17 +472,21 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 }
             }
         },
-        Err(error) => FederationObservation {
-            participation: ConfigFederationParticipationV1 {
-                config_path: root_relative_config_path(FEDERATION_CONFIG_REL_PATH),
-                posture: ConfigFederationPostureV1::Unreadable,
-                selected_for_source_exception: false,
-                configured_ledgers: Vec::new(),
-                diagnostics: vec![error.code().to_string()],
-            },
-            source_exception_ambiguous: false,
-            error: Some(diagnostic_from_error(root, &error)),
+        Err(error) => unreadable_federation_observation(root, error),
+    }
+}
+
+fn unreadable_federation_observation(root: &Path, error: CargoAllowError) -> FederationObservation {
+    FederationObservation {
+        participation: ConfigFederationParticipationV1 {
+            config_path: root_relative_config_path(FEDERATION_CONFIG_REL_PATH),
+            posture: ConfigFederationPostureV1::Unreadable,
+            selected_for_source_exception: false,
+            configured_ledgers: Vec::new(),
+            diagnostics: vec![error.code().to_string()],
         },
+        source_exception_ambiguous: false,
+        error: Some(diagnostic_from_error(root, &error)),
     }
 }
 

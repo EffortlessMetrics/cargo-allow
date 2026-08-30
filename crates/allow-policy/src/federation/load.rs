@@ -1,3 +1,5 @@
+use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 
 use allow_core::{
@@ -49,19 +51,49 @@ impl FederationLoadResult {
 
 pub fn load_federation_config(root: &Path) -> CargoAllowResult<FederationLoadResult> {
     let path = root.join(FEDERATION_CONFIG_REL_PATH);
-    if !path.exists() {
-        return Ok(FederationLoadResult {
-            path: FEDERATION_CONFIG_REL_PATH.to_string(),
-            outcome: FederationLoadOutcome::Missing,
-        });
+    match fs::symlink_metadata(&path) {
+        Ok(_) => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Ok(FederationLoadResult {
+                path: FEDERATION_CONFIG_REL_PATH.to_string(),
+                outcome: FederationLoadOutcome::Missing,
+            });
+        }
+        Err(error) => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!("failed to inspect {FEDERATION_CONFIG_REL_PATH}"),
+            )
+            .with_cause(&error));
+        }
     }
-    let text = read_text_file_capped(&path).map_err(|err| match err {
+    let canonical_root = root.canonicalize().map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            "failed to resolve federation source-tree root",
+        )
+        .with_cause(&error)
+    })?;
+    let canonical_path = path.canonicalize().map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("failed to resolve {FEDERATION_CONFIG_REL_PATH}"),
+        )
+        .with_cause(&error)
+    })?;
+    if canonical_path.strip_prefix(&canonical_root).is_err() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("{FEDERATION_CONFIG_REL_PATH} resolves outside the source-tree root"),
+        ));
+    }
+    let text = read_text_file_capped(&canonical_path).map_err(|err| match err {
         CappedReadError::Io(source) => CargoAllowError::from(source)
-            .with_message_prefix(format!("failed to read {}: ", path.display())),
+            .with_message_prefix(format!("failed to read {FEDERATION_CONFIG_REL_PATH}: ")),
         CappedReadError::Oversized { .. } | CappedReadError::NotUtf8(_) => {
             CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
-                format!("failed to read {}: {err}", path.display()),
+                format!("failed to read {FEDERATION_CONFIG_REL_PATH}: {err}"),
             )
         }
     })?;

@@ -711,6 +711,131 @@ fn resolved_cargo_allow_config_accepts_internal_symlink_with_lexical_identity() 
 
 #[cfg(unix)]
 #[test]
+fn resolved_cargo_allow_config_rejects_external_federation_registry_symlink() -> TestResult {
+    let fixture = Fixture::new("external-federation-link")?;
+    let external = Fixture::new("external-federation-target")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    external.write(
+        "config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "external-policy"
+path = "policy/outside.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#,
+    )?;
+    fs::create_dir_all(fixture.path().join(".allow"))?;
+    std::os::unix::fs::symlink(
+        external.path().join("config.toml"),
+        fixture.path().join(".allow/config.toml"),
+    )?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:external-federation-link")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(
+        resolved.federation.posture,
+        ConfigFederationPostureV1::Unreadable,
+        "federation posture",
+    )?;
+    ensure(
+        resolved.federation.configured_ledgers.is_empty(),
+        "external registry contents must not be observed",
+    )?;
+    ensure(
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
+        "safe conventional policy should remain the bounded fallback",
+    )?;
+    ensure(
+        !rendered.contains("external-policy")
+            && !rendered.contains(&external.path().display().to_string()),
+        "external registry identity and path must not enter the projection",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_accepts_internal_federation_registry_symlink() -> TestResult {
+    let fixture = Fixture::new("internal-federation-link")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write(
+        ".allow/actual.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "internal-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#,
+    )?;
+    std::os::unix::fs::symlink("actual.toml", fixture.path().join(".allow/config.toml"))?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:internal-federation-link")?;
+
+    ensure_eq(
+        resolved.federation.posture,
+        ConfigFederationPostureV1::Valid,
+        "federation posture",
+    )?;
+    ensure_eq(
+        resolved.federation.configured_ledgers,
+        vec!["internal-policy".to_string()],
+        "configured ledgers",
+    )?;
+    ensure(
+        resolved.federation.selected_for_source_exception,
+        "internal registry link should remain selectable",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_dangling_federation_registry_symlink() -> TestResult {
+    let fixture = Fixture::new("dangling-federation-link")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fs::create_dir_all(fixture.path().join(".allow"))?;
+    std::os::unix::fs::symlink("missing.toml", fixture.path().join(".allow/config.toml"))?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:dangling-federation-link")?;
+
+    ensure_eq(
+        resolved.federation.posture,
+        ConfigFederationPostureV1::Unreadable,
+        "federation posture",
+    )?;
+    ensure(
+        resolved.federation.configured_ledgers.is_empty(),
+        "dangling registry link must not produce configured ledgers",
+    )?;
+    ensure(
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
+        "safe conventional policy should remain the bounded fallback",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn resolved_cargo_allow_config_accepts_absolute_cli_through_directory_alias() -> TestResult {
     let fixture = Fixture::new("aliased-root")?;
     let alias_holder = Fixture::new("alias-holder")?;
