@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  Route release-manifest version validation through the typed
+  release-identity authority (#3752 slice C). generate-release-manifest.sh
+  embedded an official-SemVer regex to validate topology receipt row
+  versions, accepting forms the release grammar rejects — SemVer build
+  metadata and unsupported prerelease spellings. Each distinct row version
+  is now validated with a memoized cargo-allow release-identity invocation
+  (fail-closed on rejection), and the embedded regex is deleted. The
+  release-binary fixture contract suite gains a negative parity fixture
+  proving a 9.9.9+build.7 row is rejected, and the release-identity
+  consumer denominator moves the script from superseded-parser-to-delete
+  to typed-consumer. No manifest schema or content change: validated
+  manifests carry the same bytes as before.

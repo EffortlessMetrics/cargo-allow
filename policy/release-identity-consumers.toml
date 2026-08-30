@@ -79,11 +79,10 @@ claim_boundary = "Tag-prefix stripping is delegated to Changie's VersionNoPrefix
 id = "generate-release-manifest"
 path = "scripts/generate-release-manifest.sh"
 role = "release-manifest-v2 envelope builder"
-disposition = "superseded-parser-to-delete"
-owner = "#3752"
-marker_classes = ["version-regex"]
-sites = ["SEMVER_PATTERN", "valid_semver"]
-claim_boundary = "Embeds a Python full-SemVer regex (including build metadata the typed authority rejects) to validate topology row versions; this parser conflicts with the release grammar and must be replaced by the typed projection."
+disposition = "typed-consumer"
+marker_classes = ["prerelease-posture"]
+sites = ["\"release-identity\", \"--version\""]
+claim_boundary = "Every topology receipt row version is validated through the typed Rust release-identity authority (memoized per distinct version), so the manifest never accepts a form the authority rejects — the former embedded full-SemVer regex, which accepted build metadata and unsupported prerelease spellings, is deleted. The one detected prerelease-posture line is this row's own documented boundary comment inside the script."
 
 [[consumers]]
 id = "install-action-version-gate"

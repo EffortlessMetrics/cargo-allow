@@ -162,6 +162,27 @@ manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 assert manifest["payload"]["publication_posture"] == "published"
 PY
 
+# The typed release-identity authority owns version grammar (#3752): a
+# SemVer form the old embedded regex accepted (build metadata) must now
+# fail manifest generation.
+build_metadata_receipt="${work}/build-metadata-topology.receipt.json"
+cp "${topology_receipt}" "${build_metadata_receipt}"
+python3 - "${build_metadata_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["rows"][0]["version"] = "9.9.9+build.7"
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
+  COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
+  TOPOLOGY_RECEIPT="${build_metadata_receipt}" OUTPUT="${work}/build-metadata-manifest.json" \
+  bash scripts/generate-release-manifest.sh
+printf 'ok typed authority rejects semver build metadata in manifest rows\n'
+
 checksum_conflict_receipt="${work}/checksum-conflict-topology.receipt.json"
 cp "${published_receipt}" "${checksum_conflict_receipt}"
 python3 - "${checksum_conflict_receipt}" <<'PY'
