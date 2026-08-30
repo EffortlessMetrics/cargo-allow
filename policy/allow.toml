@@ -14359,3 +14359,147 @@ normalized_snippet_hash = "fnv1a64:7a8a29d23c531d0d"
 [allow.last_seen]
 line = 599
 column = 35
+
+[[allow]]
+id = "allow-0677"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.attempts[0]"
+receiver_fingerprint = "record.attempts"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:ab638b1bb1bb178d"
+
+[allow.last_seen]
+line = 632
+column = 45
+
+[[allow]]
+id = "allow-0678"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.attempts[0]"
+receiver_fingerprint = "record.attempts"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:9b97546fda454f00"
+
+[allow.last_seen]
+line = 639
+column = 24
+
+[[allow]]
+id = "allow-0679"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.row_reconciliations[8]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "8"
+normalized_snippet_hash = "fnv1a64:23813aabaef3b810"
+
+[allow.last_seen]
+line = 660
+column = 35
+
+[[allow]]
+id = "allow-0680"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.row_reconciliations[0]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:68cdac893b37ce63"
+
+[allow.last_seen]
+line = 667
+column = 35
+
+[[allow]]
+id = "allow-0681"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.row_reconciliations[8]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "8"
+normalized_snippet_hash = "fnv1a64:58d2bd267180f172"
+
+[allow.last_seen]
+line = 694
+column = 35
+
+[[allow]]
+id = "allow-0682"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::validation_law_rejects_each_violation"
+symbol = "record.row_reconciliations[8]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "8"
+normalized_snippet_hash = "fnv1a64:d1bdfbac31c1005d"
+
+[allow.last_seen]
+line = 701
+column = 35

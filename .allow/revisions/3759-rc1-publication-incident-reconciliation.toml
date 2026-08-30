@@ -79,3 +79,39 @@ allow_ids = ["allow-0676"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:08eafa5c49459a9d9b4553a49f3b56665e6de8b91a8be7dd92e75b892a70088a"
 reason = "Same indexed-row coverage mutation for the fourth exercised row state; test-only."
+
+[[records]]
+allow_ids = ["allow-0677"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:400a78f34fd0264b41ec42c17c247f889280a1e3566c33d09fa0c27ed9d88f42"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0678"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bec01dd168c44791ccff2dea4f636432d6179cb92a7c4939fb77da8f55753e28"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0679"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f2b703d8156757913468c9701682219a02abc0f456b553c019fe745b3cb79d39"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0680"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8e91d7e53005e46e5c51c2b42e72ddd5b9422b5f6b03e9df65daea0198761294"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0681"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c1b833cf02665f4e10967b7ab84cc645c5a5bef53b7ab8db331167953529d8ec"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0682"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0040d64714a519ec5d1ffe726a96297736b58c7e10fd19688e0dfc4cc87991e4"
+reason = "Test-only indexed row mutation in the validation-law rejection test (#3759); out-of-range indices are unreachable for the fixed 10-row fixture."
