@@ -20,6 +20,7 @@ mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
+mod rc_publication_incident_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
 mod release_identity_v1;
@@ -93,6 +94,12 @@ pub use github_pr_check_v1::{
     GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
     GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
     GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
+};
+
+pub use rc_publication_incident_v1::{
+    ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
+    ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
+    RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
 };
 
 pub use evaluation_artifact_set_v1::{
