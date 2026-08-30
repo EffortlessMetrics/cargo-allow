@@ -1,4 +1,4 @@
-kind: test
+kind: Added
 body: >-
   Add a dependency wildcard contract: scan every workspace manifest for
   wildcard version requirements (star and bare-major forms, shorthand and
