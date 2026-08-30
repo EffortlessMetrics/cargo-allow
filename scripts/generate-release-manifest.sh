@@ -63,10 +63,11 @@ python3 - "${output}" "${version}" "${repository}" "${tag}" "${commit}" \
   "${tree}" "${auth_source}" "${workflow_run_id}" "${msrv}" "${platforms}" \
   "${generated_at}" "${binary_package_receipt}" "${binary_install_receipt}" \
   "${rust_toolchain}" "${runner}" "${topology_receipt}" <<'PY'
+import functools
 import hashlib
 import json
 import pathlib
-import re
+import subprocess
 import sys
 
 (
@@ -140,13 +141,20 @@ def valid_unprefixed_digest(value):
     )
 
 
-SEMVER_PATTERN = re.compile(
-    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
-)
-
-
-def valid_semver(value):
-    return isinstance(value, str) and bool(SEMVER_PATTERN.match(value))
+@functools.lru_cache(maxsize=None)
+def typed_release_version_accepted(value):
+    # Release-version grammar is owned by the typed Rust authority (#3752);
+    # the manifest never accepts a form the authority rejects, including
+    # SemVer build metadata and unsupported prerelease spellings.
+    probe = subprocess.run(
+        [
+            "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+            "release-identity", "--version", value,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return probe.returncode == 0 and '"result": "validated"' in probe.stdout
 
 
 if not valid_unprefixed_digest(topology.get("topology_sha256")):
@@ -178,8 +186,10 @@ for raw in raw_rows:
         raise SystemExit("release-manifest: topology receipt row is incomplete")
     if not isinstance(raw["logical_id"], str) or not isinstance(raw["name"], str):
         raise SystemExit("release-manifest: topology receipt identity fields must be strings")
-    if not isinstance(raw["version"], str) or not valid_semver(raw["version"]):
-        raise SystemExit(f"release-manifest: malformed package version for {raw['name']}")
+    if not isinstance(raw["version"], str) or not typed_release_version_accepted(raw["version"]):
+        raise SystemExit(
+            f"release-manifest: package version {raw['version']} for {raw['name']} is not a validated typed release identity"
+        )
     name = raw["name"]
     order = int(raw["release_order"])
     if order <= 0 or name in seen_names or raw["logical_id"] in seen_logical_ids or order in seen_orders:
