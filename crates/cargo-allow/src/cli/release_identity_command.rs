@@ -18,6 +18,15 @@ pub(crate) struct ReleaseIdentityArgs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+struct ReleasePrecedenceProjectionV1 {
+    major: u64,
+    minor: u64,
+    patch: u64,
+    is_stable: bool,
+    rc_ordinal: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 struct ReleaseIdentityProjectionV1 {
     schema: &'static str,
     result: &'static str,
@@ -27,6 +36,7 @@ struct ReleaseIdentityProjectionV1 {
     channel: &'static str,
     rc_ordinal: Option<u32>,
     github_prerelease: bool,
+    precedence: ReleasePrecedenceProjectionV1,
 }
 
 pub(super) fn cmd_release_identity(args: &ReleaseIdentityArgs) -> CargoAllowResult<()> {
@@ -57,6 +67,7 @@ fn build_release_identity_projection(
         ReleaseChannelV1::Stable => ("stable", None),
         ReleaseChannelV1::ReleaseCandidate { ordinal } => ("release_candidate", Some(ordinal)),
     };
+    let (major, minor, patch, stable_flag, precedence_ordinal) = identity.version().precedence();
 
     Ok(ReleaseIdentityProjectionV1 {
         schema: RELEASE_IDENTITY_SCHEMA,
@@ -67,6 +78,13 @@ fn build_release_identity_projection(
         channel,
         rc_ordinal,
         github_prerelease,
+        precedence: ReleasePrecedenceProjectionV1 {
+            major,
+            minor,
+            patch,
+            is_stable: stable_flag == 1,
+            rc_ordinal: (stable_flag == 0).then_some(precedence_ordinal),
+        },
     })
 }
 
@@ -96,6 +114,13 @@ mod tests {
                 channel: "stable",
                 rc_ordinal: None,
                 github_prerelease: false,
+                precedence: ReleasePrecedenceProjectionV1 {
+                    major: 0,
+                    minor: 2,
+                    patch: 0,
+                    is_stable: true,
+                    rc_ordinal: None,
+                },
             })
         {
             return Err(format!("unexpected stable projection: {projection:?}"));
@@ -111,6 +136,14 @@ mod tests {
             || projection.channel != "release_candidate"
             || projection.rc_ordinal != Some(1)
             || !projection.github_prerelease
+            || projection.precedence
+                != (ReleasePrecedenceProjectionV1 {
+                    major: 0,
+                    minor: 2,
+                    patch: 0,
+                    is_stable: false,
+                    rc_ordinal: Some(1),
+                })
         {
             return Err(format!("unexpected RC projection: {projection:?}"));
         }

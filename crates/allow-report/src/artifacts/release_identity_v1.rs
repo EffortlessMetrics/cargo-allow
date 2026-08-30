@@ -69,6 +69,23 @@ impl ReleaseVersionV1 {
         &self.core
     }
 
+    /// SemVer precedence key for the supported grammar: core identifiers
+    /// ascending, then stable-over-prerelease, then the RC ordinal. The
+    /// grammar restricts prereleases to a single `rc.N` identifier, so
+    /// SemVer's full identifier comparison rules collapse to this tuple;
+    /// larger tuples are newer releases.
+    pub fn precedence(&self) -> (u64, u64, u64, u8, u32) {
+        let (stable_flag, ordinal) = match self.channel {
+            ReleaseChannelV1::Stable => (1_u8, 0_u32),
+            ReleaseChannelV1::ReleaseCandidate { ordinal } => (0_u8, ordinal),
+        };
+        let mut core = self.core.split('.');
+        let major = core.next().and_then(|c| c.parse().ok()).unwrap_or(0);
+        let minor = core.next().and_then(|c| c.parse().ok()).unwrap_or(0);
+        let patch = core.next().and_then(|c| c.parse().ok()).unwrap_or(0);
+        (major, minor, patch, stable_flag, ordinal)
+    }
+
     pub const fn channel(&self) -> ReleaseChannelV1 {
         self.channel
     }
@@ -312,6 +329,28 @@ fn parse_numeric_identifier(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn precedence_orders_releases_newest_first() -> Result<(), String> {
+        let parse = |value: &str| {
+            ReleaseVersionV1::parse(value)
+                .map_err(|error| error.to_string())
+                .map(|parsed| parsed.precedence())
+        };
+        let stable = parse("0.2.0")?;
+        let rc1 = parse("0.2.0-rc.1")?;
+        let rc2 = parse("0.2.0-rc.2")?;
+        let older_line = parse("0.1.9")?;
+        if !(stable > rc2 && rc2 > rc1 && rc1 > older_line) {
+            return Err(format!(
+                "precedence misordered releases: {stable:?} {rc2:?} {rc1:?} {older_line:?}"
+            ));
+        }
+        if parse("0.10.0")? <= parse("0.9.0")? {
+            return Err("precedence compared core components lexicographically".to_string());
+        }
+        Ok(())
+    }
 
     #[test]
     fn core_accessor_exposes_the_validated_release_line() -> Result<(), String> {

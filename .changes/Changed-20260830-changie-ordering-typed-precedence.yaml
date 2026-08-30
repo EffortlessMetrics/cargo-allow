@@ -1,0 +1,15 @@
+kind: Changed
+body: >-
+  Give the release identity a SemVer precedence key and route the Changie
+  corpus ordering through it (#3752 slice E). ReleaseVersionV1 gains
+  precedence() — core identifiers, then stable-over-prerelease, then the
+  RC ordinal; the release-identity JSON projection carries the same
+  precedence object — and the Changie history roundtrip harness now
+  validates every .changes corpus filename through the typed authority
+  and sorts by that projection instead of an embedded SemVer regex with
+  a hand-rolled stable-over-prerelease comparator. Malformed corpus names
+  fail closed instead of silently sorting oldest, and the candidate batch
+  version reads major/minor/patch from the validated projection before
+  the local patch bump. Additive projection field, byte-identical for
+  previously validated inputs; the corpus ordering it produces matches
+  the reviewed changelog layout.
