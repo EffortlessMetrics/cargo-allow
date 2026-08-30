@@ -305,8 +305,13 @@ def shared_registry_preflight(
 
     A rehearsal records read-only observations, but a publishing run requires
     all three topology-selected shared rows to be exact against retained namespace
-    evidence. The complete batch is queried before returning so a later cargo-allow
-    row can never upload after an unexamined or conflicting shared prerequisite.
+    evidence: the topology row's expected_registry_checksum, reconciled into the
+    source-controlled topology by the #3733/#3734 namespace observation chain.
+    A missing or malformed expected checksum is evidence_unavailable, never
+    already_published_exact (#3744 negative control 5), and any non-exact state
+    blocks a publishing run before the first upload. The complete batch is queried
+    before returning so a later cargo-allow row can never upload after an
+    unexamined or conflicting shared prerequisite.
     """
     shared = [row for row in rows if row["product_family"] == "shared"]
     if len(shared) != 3:
@@ -316,9 +321,14 @@ def shared_registry_preflight(
     for row in shared:
         name = row["cargo_package_name"]
         version = row["package_version"]
-        expected = row.get("expected_registry_checksum")
+        expected: str | None = row.get("expected_registry_checksum")
         if expected is not None:
-            expected = canonical_receipt_checksum(expected, f"{name} expected registry checksum")
+            try:
+                expected = canonical_receipt_checksum(
+                    expected, f"{name} expected registry checksum"
+                )
+            except SystemExit:
+                expected = None
         crate_path, local_checksum = package_crate(name, version)
         observed = registry_checksum(name, version)
         observed_canonical = (
@@ -332,7 +342,9 @@ def shared_registry_preflight(
 
         if observed is None:
             state = "missing"
-        elif expected is not None and observed_canonical != expected:
+        elif expected is None:
+            state = "evidence_unavailable"
+        elif observed_canonical != expected:
             state = "checksum_conflict"
         else:
             state = "already_published_exact"
@@ -348,16 +360,18 @@ def shared_registry_preflight(
         }
         evidence.append(item)
         write_receipt(receipt_path, receipt)
-        if publish and observed is None:
-            receipt["incident_state"] = "release_incident"
-            write_receipt(receipt_path, receipt)
-            fail(f"shared registry preflight missing {name} {version}")
-        if publish and state == "checksum_conflict":
+    if publish:
+        offenders = [
+            f"{item['name']} {item['version']}={item['state']}"
+            for item in evidence
+            if item["state"] != "already_published_exact"
+        ]
+        if offenders:
             receipt["incident_state"] = "release_incident"
             write_receipt(receipt_path, receipt)
             fail(
-                f"shared registry preflight checksum conflict for {name} {version}: "
-                f"expected {expected}, observed {observed_canonical}"
+                "shared registry preflight blocked before upload: "
+                + ", ".join(offenders)
             )
     receipt["shared_registry_preflight_complete"] = True
     write_receipt(receipt_path, receipt)
