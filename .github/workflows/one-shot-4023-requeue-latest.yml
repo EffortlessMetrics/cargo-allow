@@ -1,0 +1,89 @@
+name: One-shot 4023 requeue latest landing
+
+on:
+  push:
+    branches:
+      - fix/4023-relative-fixture-dates
+    paths:
+      - .github/workflows/one-shot-4023-requeue-latest.yml
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: one-shot-4023-requeue-latest
+  cancel-in-progress: false
+
+jobs:
+  requeue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the latest branch head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/4023-relative-fixture-dates
+
+      - name: Publish a latest-head landing controller
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing=$(gh pr list \
+            --repo EffortlessMetrics/cargo-allow \
+            --head fix/4023-relative-fixture-dates \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          if [[ -n "$existing" ]]; then
+            echo "PR #$existing already exists; no branch mutation required."
+            exit 0
+          fi
+
+          source=.github/workflows/one-shot-4023-land.yml
+          target=.github/workflows/one-shot-4023-land-latest.yml
+          test -f "$source"
+          cp "$source" "$target"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/one-shot-4023-land-latest.yml')
+          text = path.read_text(encoding='utf-8')
+          replacements = (
+              (
+                  'name: One-shot 4023 land lifecycle fixtures',
+                  'name: One-shot 4023 land lifecycle fixtures from latest head',
+              ),
+              (
+                  '      - .github/workflows/one-shot-4023-land.yml',
+                  '      - .github/workflows/one-shot-4023-land-latest.yml',
+              ),
+              (
+                  '  group: one-shot-4023-land-${{ github.ref }}',
+                  '  group: one-shot-4023-land-latest-${{ github.ref }}',
+              ),
+              (
+                  '          gh pr merge "$pr" \\\n            --repo EffortlessMetrics/cargo-allow \\\n            --auto --squash --delete-branch',
+                  '          gh pr merge "$pr" \\\n            --repo EffortlessMetrics/cargo-allow \\\n            --auto --squash --delete-branch || true\n'
+                  '          gh pr checks "$pr" \\\n            --repo EffortlessMetrics/cargo-allow \\\n            --watch --interval 20\n'
+                  '          state=$(gh pr view "$pr" \\\n            --repo EffortlessMetrics/cargo-allow \\\n            --json state --jq .state)\n'
+                  '          if [[ "$state" != MERGED ]]; then\n'
+                  '            gh pr merge "$pr" \\\n              --repo EffortlessMetrics/cargo-allow \\\n              --squash --delete-branch\n'
+                  '          fi',
+              ),
+          )
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'latest-head controller replacement count changed for: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add "$target"
+          git diff --cached --check
+          git commit -m "chore(test): run lifecycle repair from latest head"
+          git push origin HEAD:fix/4023-relative-fixture-dates
