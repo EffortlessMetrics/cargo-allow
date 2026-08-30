@@ -501,6 +501,115 @@ mod tests {
     }
 
     #[test]
+    fn every_row_state_carries_its_required_evidence() {
+        let digest = |hex: &str| format!("sha256:{hex}");
+        let checksum_a = digest(&"ab".repeat(32));
+        let rows = vec![
+            RowReconciliationV1::PublishedExactCandidate {
+                package: "allow-0".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
+                candidate_tree: "73e98378d9053445cde2adfbc806c11a6cad6a67".to_string(),
+                candidate_receipt_artifact_id: 1,
+                expected_checksum: checksum_a.clone(),
+                observed_checksum: checksum_a.clone(),
+            },
+            RowReconciliationV1::PublishedButCandidateEvidenceUnavailable {
+                package: "allow-1".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                registry_checksum: checksum_a.clone(),
+                note: "receipt unretained".to_string(),
+            },
+            RowReconciliationV1::Missing {
+                package: "allow-2".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+            },
+            RowReconciliationV1::Yanked {
+                package: "allow-3".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                registry_checksum: checksum_a.clone(),
+            },
+            RowReconciliationV1::ChecksumConflict {
+                package: "allow-4".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                expected_checksum: checksum_a.clone(),
+                observed_checksum: digest(&"cd".repeat(32)),
+            },
+            RowReconciliationV1::ProviderUnavailable {
+                package: "allow-5".to_string(),
+            },
+            RowReconciliationV1::InstrumentFailure {
+                package: "allow-6".to_string(),
+                note: "scanner failed mid-observation".to_string(),
+            },
+            RowReconciliationV1::PublishedExactCandidate {
+                package: "allow-7".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
+                candidate_tree: "73e98378d9053445cde2adfbc806c11a6cad6a67".to_string(),
+                candidate_receipt_artifact_id: 2,
+                expected_checksum: checksum_a.clone(),
+                observed_checksum: checksum_a.clone(),
+            },
+            RowReconciliationV1::PublishedExactCandidate {
+                package: "allow-8".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
+                candidate_tree: "73e98378d9053445cde2adfbc806c11a6cad6a67".to_string(),
+                candidate_receipt_artifact_id: 3,
+                expected_checksum: checksum_a.clone(),
+                observed_checksum: checksum_a.clone(),
+            },
+            RowReconciliationV1::Missing {
+                package: "allow-9".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+            },
+        ];
+        let mut record = incident(rows);
+        record.observation_limits = vec!["mixed-state fixture".to_string()];
+        assert_eq!(record.validate(), Ok(()));
+
+        record.row_reconciliations[3] = RowReconciliationV1::Yanked {
+            package: "allow-3".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            registry_checksum: "not-a-digest".to_string(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "yanked rows with malformed checksums must be rejected"
+        );
+        record.row_reconciliations[3] = RowReconciliationV1::ChecksumConflict {
+            package: "allow-3".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            expected_checksum: "short".to_string(),
+            observed_checksum: checksum_a.clone(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "checksum-conflict rows with malformed checksums must be rejected"
+        );
+        record.row_reconciliations[3] = RowReconciliationV1::InstrumentFailure {
+            package: "allow-3".to_string(),
+            note: String::new(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "instrument-failure rows without a note must be rejected"
+        );
+        record.row_reconciliations[1] =
+            RowReconciliationV1::PublishedButCandidateEvidenceUnavailable {
+                package: "allow-1".to_string(),
+                version: "0.2.0-rc.1".to_string(),
+                registry_checksum: checksum_a.clone(),
+                note: String::new(),
+            };
+        assert!(
+            record.validate().is_err(),
+            "unavailable-evidence rows without a note must be rejected"
+        );
+    }
+
+    #[test]
     fn posture_eligibility_and_limits_are_lawful() {
         let rows: Vec<RowReconciliationV1> = (0..8)
             .map(|index| exact_candidate_row(&format!("allow-{index}")))
