@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use allow_policy::extraction_parity::{ParityDisposition, parse_extraction_parity_registry};
+use allow_report::ReleaseVersionV1;
 use intent_model::parse_package_postures_v1;
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
@@ -669,8 +670,7 @@ fn published_release_versions_match_workspace() {
 
     assert!(
         workspace_version == PUBLISHED_RELEASE_VERSION
-            || workspace_version == CANDIDATE_RELEASE_VERSION
-            || workspace_version.starts_with("0.2.0"),
+            || on_candidate_release_line(&workspace_version),
         "workspace version should be the published ({PUBLISHED_RELEASE_VERSION}) or candidate ({CANDIDATE_RELEASE_VERSION}) release version, got {workspace_version}"
     );
     assert!(
@@ -1183,8 +1183,42 @@ fn package_table_value(manifest: &str, key: &str) -> Option<String> {
     None
 }
 
+/// True when the workspace version is a valid typed release identity on the
+/// 0.2.0 candidate line. Grammar and channel come from the typed authority;
+/// only the campaign line constant is local to this test module.
+fn on_candidate_release_line(workspace_version: &str) -> bool {
+    ReleaseVersionV1::parse(workspace_version)
+        .map(|parsed| parsed.core() == CANDIDATE_RELEASE_VERSION)
+        .unwrap_or(false)
+}
+
+#[test]
+fn candidate_line_classifier_follows_the_typed_grammar() {
+    for accepted in ["0.2.0", "0.2.0-rc.1", "0.2.0-rc.2"] {
+        assert!(
+            on_candidate_release_line(accepted),
+            "{accepted} should classify as the candidate release line"
+        );
+    }
+    for rejected in [
+        "0.1.11",
+        "0.1.10",
+        "0.3.0",
+        "1.2.0",
+        "0.2.0foo",
+        "0.2.0-beta.1",
+        "0.2.0+build.1",
+        "",
+    ] {
+        assert!(
+            !on_candidate_release_line(rejected),
+            "{rejected} should not classify as the candidate release line"
+        );
+    }
+}
+
 fn active_publish_order_doc(workspace_version: &str) -> &'static str {
-    if workspace_version == CANDIDATE_RELEASE_VERSION || workspace_version.starts_with("0.2.0") {
+    if on_candidate_release_line(workspace_version) {
         CANDIDATE_RELEASE_DOC
     } else {
         PUBLISHED_RELEASE_DOC

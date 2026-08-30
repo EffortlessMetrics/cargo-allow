@@ -1,0 +1,15 @@
+kind: Changed
+body: >-
+  Route the release-prep candidate-line classifier through the typed
+  release-identity authority (#3752 slice D). The cross-artifact release
+  contract tests classified the workspace version as on the 0.2.0
+  candidate line with a raw starts_with prefix test, which accepted
+  malformed forms like 0.2.0foo. A new on_candidate_release_line helper
+  parses the version through ReleaseVersionV1 (grammar and channel) and
+  compares only the authority-exposed validated core against the campaign
+  line constant; ReleaseVersionV1 gains a core() accessor with its own
+  unit test, and a parity test pins the accepted and rejected classes
+  (0.2.0, 0.2.0-rc.1, 0.2.0-rc.2 accepted; 0.1.11, 0.3.0, 0.2.0foo,
+  0.2.0-beta.1, build metadata rejected). The release-identity consumer
+  denominator moves the row from deferred-with-named-owner to
+  typed-consumer.
