@@ -610,6 +610,128 @@ mod tests {
     }
 
     #[test]
+    fn validation_law_rejects_each_violation() {
+        let rows: Vec<RowReconciliationV1> = (0..8)
+            .map(|index| exact_candidate_row(&format!("allow-{index}")))
+            .chain([
+                across_candidate_row("allow-diff"),
+                across_candidate_row("cargo-allow"),
+            ])
+            .collect();
+        let base = incident(rows);
+
+        let mut record = base.clone();
+        record.schema = "wrong.schema".to_string();
+        assert!(record.validate().is_err(), "wrong schema must be rejected");
+
+        let mut record = base.clone();
+        record.attempts.clear();
+        assert!(record.validate().is_err(), "no attempts must be rejected");
+
+        let mut record = base.clone();
+        record.attempts.push(record.attempts[0].clone());
+        assert!(
+            record.validate().is_err(),
+            "duplicate run ids must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.attempts[0].commit = "not-hex".to_string();
+        assert!(
+            record.validate().is_err(),
+            "malformed attempt commits must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.tag_observation.observation_limit = None;
+        assert!(
+            record.validate().is_err(),
+            "tag history without events or a limit must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.tag_observation.current_target_commit = "xyz".to_string();
+        assert!(
+            record.validate().is_err(),
+            "malformed tag target commits must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.row_reconciliations[8] = across_candidate_row("allow-0");
+        assert!(
+            record.validate().is_err(),
+            "duplicate package rows must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.row_reconciliations[0] = RowReconciliationV1::PublishedExactCandidate {
+            package: "allow-0".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
+            candidate_tree: "73e98378d9053445cde2adfbc806c11a6cad6a67".to_string(),
+            candidate_receipt_artifact_id: 9506518765,
+            expected_checksum: "sha256:short".to_string(),
+            observed_checksum: "sha256:short".to_string(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "malformed exact-candidate checksums must be rejected"
+        );
+
+        let bad_across = RowReconciliationV1::PublishedAcrossCandidateHistory {
+            package: "allow-diff".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            registry_checksum:
+                "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488"
+                    .to_string(),
+            retained_candidate_checksums: vec![
+                "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488"
+                    .to_string(),
+            ],
+            note: "registry matches a retained candidate".to_string(),
+        };
+        let mut record = base.clone();
+        record.row_reconciliations[8] = bad_across.clone();
+        assert!(
+            record.validate().is_err(),
+            "across-candidate rows whose registry bytes match a retained candidate must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.row_reconciliations[8] = RowReconciliationV1::PublishedAcrossCandidateHistory {
+            package: "allow-diff".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            registry_checksum:
+                "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488"
+                    .to_string(),
+            retained_candidate_checksums: Vec::new(),
+            note: "registry matches a retained candidate".to_string(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "across-candidate rows without retained comparisons must be rejected"
+        );
+
+        let mut record = base.clone();
+        record.row_reconciliations[8] = RowReconciliationV1::PublishedAcrossCandidateHistory {
+            package: "allow-diff".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            registry_checksum:
+                "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488"
+                    .to_string(),
+            retained_candidate_checksums: vec![
+                "sha256:86fe2512fda53f78468273d5829876cf16c9c55e2f39d41652644fdd2fb22afd"
+                    .to_string(),
+            ],
+            note: String::new(),
+        };
+        assert!(
+            record.validate().is_err(),
+            "across-candidate rows without a provenance note must be rejected"
+        );
+    }
+
+    #[test]
     fn posture_eligibility_and_limits_are_lawful() {
         let rows: Vec<RowReconciliationV1> = (0..8)
             .map(|index| exact_candidate_row(&format!("allow-{index}")))
