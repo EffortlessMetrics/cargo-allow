@@ -60,22 +60,49 @@ def exercise_shared_registry_preflight() -> None:
         receipt = {"incident_state": "none"}
         calls: list[str] = []
         PUBLISHER.registry_checksum = lambda name, _version: calls.append(name) or DIGEST
+        rows_with_expected = [
+            dict(r, expected_registry_checksum=CANONICAL) for r in shared_fixture_rows()
+        ]
         PUBLISHER.shared_registry_preflight(
-            shared_fixture_rows(), publish=True, receipt=receipt, receipt_path=ROOT / "unused"
+            rows_with_expected, publish=True, receipt=receipt, receipt_path=ROOT / "unused"
         )
         assert calls == [row["cargo_package_name"] for row in shared_fixture_rows()]
         assert receipt["shared_registry_preflight_complete"] is True
         assert all(item["state"] == "already_published_exact" for item in receipt["shared_registry_preflight"])
 
-        # Expected checksum matching
-        rows_with_expected = [
-            dict(r, expected_registry_checksum=CANONICAL) for r in shared_fixture_rows()
+        # A visible shared version without retained expected evidence is never
+        # labeled exact (#3744 negative control 5); a rehearsal records the
+        # evidence_unavailable state instead of failing.
+        receipt = {"incident_state": "none"}
+        PUBLISHER.shared_registry_preflight(
+            shared_fixture_rows(), publish=False, receipt=receipt, receipt_path=ROOT / "unused"
+        )
+        assert receipt["shared_registry_preflight_complete"] is True
+        assert all(item["state"] == "evidence_unavailable" for item in receipt["shared_registry_preflight"])
+
+        # A publishing run fails closed on missing retained evidence before any
+        # upload (#3744 negative control 2).
+        expect_failure(
+            lambda: PUBLISHER.shared_registry_preflight(
+                shared_fixture_rows(), publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
+            )
+        )
+
+        # A malformed retained expected checksum is evidence_unavailable, not a
+        # crash and not an exact match.
+        rows_malformed_expected = [
+            dict(r, expected_registry_checksum="sha256:sha256:") for r in shared_fixture_rows()
         ]
         receipt = {"incident_state": "none"}
         PUBLISHER.shared_registry_preflight(
-            rows_with_expected, publish=True, receipt=receipt, receipt_path=ROOT / "unused"
+            rows_malformed_expected, publish=False, receipt=receipt, receipt_path=ROOT / "unused"
         )
-        assert all(item["state"] == "already_published_exact" for item in receipt["shared_registry_preflight"])
+        assert all(item["state"] == "evidence_unavailable" for item in receipt["shared_registry_preflight"])
+        expect_failure(
+            lambda: PUBLISHER.shared_registry_preflight(
+                rows_malformed_expected, publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
+            )
+        )
 
         # Expected checksum conflict fails closed
         rows_with_conflict = [
