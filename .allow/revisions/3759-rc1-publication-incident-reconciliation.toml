@@ -56,3 +56,26 @@ change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:726c05be41ed83ca365348e3df7b808a4a542ede44c6f4119be5c8929553d624"
 reason = "Self-receipt for this revision note file, matching the ledger_change_note precedent: the note is a tracked non-Rust file and its own ledger entry is part of the authorized transition."
 
+[[records]]
+allow_ids = ["allow-0673"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1650047c65ce07dfdce1ac0bd8aa4b8c9bbebe2fde1790e0f9cee6474f5b9434"
+reason = "Test-only indexed row mutation in the incident contract coverage test (#3759); panics on out-of-range indices are unreachable for the fixed 10-row fixture."
+
+[[records]]
+allow_ids = ["allow-0674"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4f9c1f92124adfc68dde0d5661714cf279f9231970dede9d96830b5aa41a790b"
+reason = "Same indexed-row coverage mutation for the second exercised row state; test-only."
+
+[[records]]
+allow_ids = ["allow-0675"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:293c03a94b4c1089e81ce743f6eef15204b77e92777ef7256ab755b54e17be6b"
+reason = "Same indexed-row coverage mutation for the third exercised row state; test-only."
+
+[[records]]
+allow_ids = ["allow-0676"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:08eafa5c49459a9d9b4553a49f3b56665e6de8b91a8be7dd92e75b892a70088a"
+reason = "Same indexed-row coverage mutation for the fourth exercised row state; test-only."

@@ -14263,3 +14263,99 @@ glob = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0673"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the incident contract coverage test (#3759); panics on out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::every_row_state_carries_its_required_evidence"
+symbol = "record.row_reconciliations[3]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "3"
+normalized_snippet_hash = "fnv1a64:78d47393ec870f7e"
+
+[allow.last_seen]
+line = 572
+column = 35
+
+[[allow]]
+id = "allow-0674"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the incident contract coverage test (#3759); panics on out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::every_row_state_carries_its_required_evidence"
+symbol = "record.row_reconciliations[3]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "3"
+normalized_snippet_hash = "fnv1a64:bd8324fd0c27860b"
+
+[allow.last_seen]
+line = 581
+column = 35
+
+[[allow]]
+id = "allow-0675"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the incident contract coverage test (#3759); panics on out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::every_row_state_carries_its_required_evidence"
+symbol = "record.row_reconciliations[3]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "3"
+normalized_snippet_hash = "fnv1a64:f47098beb51bf011"
+
+[allow.last_seen]
+line = 591
+column = 35
+
+[[allow]]
+id = "allow-0676"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/rc_publication_incident_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed row mutation in the incident contract coverage test (#3759); panics on out-of-range indices are unreachable for the fixed 10-row fixture"
+evidence = ["issue:3759"]
+created = "2026-08-30"
+review_after = "2026-11-28"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::every_row_state_carries_its_required_evidence"
+symbol = "record.row_reconciliations[1]"
+receiver_fingerprint = "record.row_reconciliations"
+target_fingerprint = "1"
+normalized_snippet_hash = "fnv1a64:7a8a29d23c531d0d"
+
+[allow.last_seen]
+line = 599
+column = 35
