@@ -23,6 +23,7 @@ impl ReleaseChannelV1 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseVersionV1 {
     canonical: String,
+    core: String,
     channel: ReleaseChannelV1,
 }
 
@@ -54,12 +55,18 @@ impl ReleaseVersionV1 {
 
         Ok(Self {
             canonical: value.to_string(),
+            core: core.to_string(),
             channel,
         })
     }
 
     pub fn as_str(&self) -> &str {
         &self.canonical
+    }
+
+    /// The validated `major.minor.patch` core without any prerelease suffix.
+    pub fn core(&self) -> &str {
+        &self.core
     }
 
     pub const fn channel(&self) -> ReleaseChannelV1 {
@@ -305,6 +312,19 @@ fn parse_numeric_identifier(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn core_accessor_exposes_the_validated_release_line() -> Result<(), String> {
+        let rc = ReleaseVersionV1::parse("0.2.0-rc.1").map_err(|error| error.to_string())?;
+        if rc.core() != "0.2.0" || rc.as_str() != "0.2.0-rc.1" {
+            return Err(format!("core accessor lost identity: {rc:?}"));
+        }
+        let stable = ReleaseVersionV1::parse("0.1.11").map_err(|error| error.to_string())?;
+        if stable.core() != "0.1.11" {
+            return Err(format!("stable core accessor lost identity: {stable:?}"));
+        }
+        Ok(())
+    }
 
     #[test]
     fn stable_identity_binds_version_tag_and_release_state() -> Result<(), String> {
