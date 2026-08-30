@@ -115,8 +115,8 @@ fn per_row_reconciliation_reflects_retained_provenance() {
         (8, 2),
         "eight rows trace to the partial attempt's candidate; allow-diff and cargo-allow bytes match no retained candidate"
     );
-    assert_eq!(
-        record.github_release.prerelease, false,
+    assert!(
+        !record.github_release.prerelease,
         "the recorded GitHub release posture deviation (RC shipped as a stable release) must stay visible, not normalized"
     );
     assert!(

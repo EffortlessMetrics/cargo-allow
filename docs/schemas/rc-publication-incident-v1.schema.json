@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "cargo-allow.rc-publication-incident.v1",
-  "title": "RC publication incident reconciliation record",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/rc-publication-incident-v1.schema.json",
+  "title": "cargo-allow RcPublicationIncidentV1",
   "description": "Reconciles one moved-tag prerelease publication sequence against retained evidence and current registry state (#3759). Channel posture and final-candidate eligibility are fixed by the incident ruling and are not free fields.",
   "type": "object",
   "additionalProperties": false,

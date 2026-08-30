@@ -43,6 +43,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "isolated-install-receipt-v2"
                 && name != "exact-candidate-receipt-v2"
                 && name != "github-pr-check-v1"
+                && name != "rc-publication-incident-v1"
                 && name != "topology-publish-receipt"
                 && name != "shared-package-candidate.v1"
                 && name != "support-bundle"
