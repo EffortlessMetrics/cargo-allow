@@ -50,6 +50,12 @@
               "state": { "enum": ["already_published_exact", "checksum_conflict"] },
               "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
             }
+          },
+          {
+            "properties": {
+              "state": { "const": "evidence_unavailable" },
+              "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            }
           }
         ]
       }

@@ -156,6 +156,11 @@ def exercise_preflight_schema_contract() -> None:
         and branch["properties"]["registry_checksum"].get("type") == "string"
         for branch in branches
     )
+    assert any(
+        branch["properties"]["state"].get("const") == "evidence_unavailable"
+        and branch["properties"]["registry_checksum"].get("type") == "string"
+        for branch in branches
+    )
 
 
 def exercise_shared_topology_contract() -> None:
