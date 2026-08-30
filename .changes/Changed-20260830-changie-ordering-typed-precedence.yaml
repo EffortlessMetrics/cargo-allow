@@ -10,6 +10,9 @@ body: >-
   a hand-rolled stable-over-prerelease comparator. Malformed corpus names
   fail closed instead of silently sorting oldest, and the candidate batch
   version reads major/minor/patch from the validated projection before
-  the local patch bump. Additive projection field, byte-identical for
-  previously validated inputs; the corpus ordering it produces matches
-  the reviewed changelog layout.
+  the local patch bump. Additive projection field; the harness's derived
+  outputs (retained corpus order and batch version) are byte-identical
+  to the old comparator's on the current corpus, and the ordering the
+  typed key produces reproduces the reviewed changelog layout. The
+  changie-contract CI job gains the workspace toolchain with its own
+  cache lane since the ordering probes now require the authority.

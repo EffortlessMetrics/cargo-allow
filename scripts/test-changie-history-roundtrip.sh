@@ -99,8 +99,9 @@ count_yaml_fragments() {
 # semantics and belongs to the typed authority (#3752): each corpus
 # filename is validated through `cargo-allow release-identity`, and the
 # sort key is its validated precedence projection. Malformed corpus
-# names fail closed instead of silently sorting oldest. Runs before the
-# isolated checkout is entered so the workspace toolchain is available.
+# names fail closed instead of silently sorting oldest. Both helpers pin
+# cwd to ROOT (argv) so the workspace toolchain and ROOT corpus are used
+# regardless of the caller's working directory.
 corpus_versions() {
   "${PY}" - "${ROOT}" <<'PYEOF' | tr -d '\r'
 import json
@@ -121,7 +122,10 @@ for stem in stems:
         cwd=root, capture_output=True, text=True,
     )
     if probe.returncode != 0 or '"result": "validated"' not in probe.stdout:
-        sys.exit(f"typed release identity rejected corpus version file {stem}.md")
+        sys.exit(
+            "typed release identity rejected corpus version file "
+            f"{stem}.md: {probe.stderr.strip()}"
+        )
     precedence = json.loads(probe.stdout)["precedence"]
     entries.append((
         (precedence["major"], precedence["minor"], precedence["patch"],
@@ -149,7 +153,10 @@ probe = subprocess.run(
     cwd=root, capture_output=True, text=True,
 )
 if probe.returncode != 0 or '"result": "validated"' not in probe.stdout:
-    sys.exit(f"typed release identity rejected newest retained version {newest}")
+    sys.exit(
+        f"typed release identity rejected newest retained version "
+        f"{newest}: {probe.stderr.strip()}"
+    )
 precedence = json.loads(probe.stdout)["precedence"]
 print(f"{precedence['major']}.{precedence['minor']}.{precedence['patch'] + 1}")
 PYEOF
