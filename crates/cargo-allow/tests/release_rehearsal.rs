@@ -25,8 +25,19 @@ struct ReleaseRehearsalReceiptV1 {
     phases: std::collections::BTreeMap<String, String>,
     #[serde(default)]
     release_identity: Option<ReleaseIdentityRecordV1>,
+    #[serde(default)]
+    shared_prerequisites: Option<Vec<SharedPrerequisiteRowV1>>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SharedPrerequisiteRowV1 {
+    name: String,
+    version: String,
+    state: String,
+    registry_checksum: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -96,7 +107,9 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "characterization must not report Complete",
     )?;
     require(
-        receipt.claim_boundary.contains("Characterization only"),
+        receipt
+            .claim_boundary
+            .contains("cannot satisfy a release gate"),
         "claim boundary must retain the characterization limitation",
     )?;
     require(
@@ -132,12 +145,12 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
-    // The seven characterization-only phases can never manufacture
-    // completion; release_identity is a real typed phase (#3751 phase 1) and
-    // may report Complete when the typed authority validates the candidate.
+    // The six characterization-only phases can never manufacture
+    // completion; release_identity and shared_prerequisites are real typed
+    // phases (#3751 phases 1 and 3) and may report Complete when their
+    // typed proofs succeed.
     for required_phase in [
         "candidate_package_set",
-        "shared_prerequisites",
         "publisher_state_machine",
         "docs_and_support_identity",
         "manifest_and_assets",
@@ -182,6 +195,26 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         identity.github_prerelease == (identity.channel == "release_candidate"),
         "GitHub prerelease posture must follow the channel",
     )?;
+
+    let shared = receipt.shared_prerequisites.as_ref().ok_or_else(|| {
+        io::Error::other("a validated shared_prerequisites phase must record the preflight rows")
+    })?;
+    require(
+        shared.len() == 3,
+        "the shared preflight must record exactly three rows",
+    )?;
+    for row in shared {
+        require(
+            row.state == "already_published_exact",
+            "every shared prerequisite must be already_published_exact for the phase to prove",
+        )?;
+        require(
+            row.registry_checksum
+                .as_deref()
+                .is_some_and(|checksum| checksum.starts_with("sha256:")),
+            "an exact shared row must record its canonical registry checksum",
+        )?;
+    }
 
     Ok(())
 }

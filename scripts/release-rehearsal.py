@@ -153,8 +153,58 @@ def run_phase_candidate_package_set(_receipt: dict[str, Any]) -> str:
     return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
 
 
-def run_phase_shared_prerequisites(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
+def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
+    """Prove the three topology-selected shared rows against retained
+    namespace checksums through the read-only #3744 registry preflight.
+
+    The preflight queries crates.io anonymously (the sanitized environment
+    strips the publish token it must never see) and exits nonzero when any
+    shared row is not already_published_exact; the recorded rows carry each
+    row's observed state for diagnostics.
+    """
+    preflight_path = ROOT / "target/cargo-allow/rehearsal-shared-preflight.json"
+    try:
+        preflight_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [
+                sys.executable,
+                (ROOT / "scripts/release-topology-publisher.py").as_posix(),
+                "--mode", "cargo-allow",
+                "--registry-preflight",
+                "--receipt", str(preflight_path),
+            ],
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    rows: list[dict[str, Any]] = []
+    try:
+        preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+        rows = preflight.get("shared_registry_preflight", [])
+    except (OSError, json.JSONDecodeError):
+        if result.returncode == 0:
+            return PHASE_INSTRUMENT_FAILURE
+    receipt["shared_prerequisites"] = [
+        {
+            "name": row.get("name"),
+            "version": row.get("version"),
+            "state": row.get("state"),
+            "registry_checksum": row.get("registry_checksum"),
+        }
+        for row in rows
+    ]
+    if result.returncode != 0:
+        return PHASE_MISMATCH
+    if not rows or len(rows) != 3 or any(
+        row.get("state") != "already_published_exact" for row in rows
+    ):
+        return PHASE_MISMATCH
+    return PHASE_COMPLETE
 
 
 def run_phase_publisher_state_machine(_receipt: dict[str, Any]) -> str:
@@ -188,7 +238,6 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
 
 CHARACTERIZATION_PHASES = frozenset({
     "candidate_package_set",
-    "shared_prerequisites",
     "publisher_state_machine",
     "docs_and_support_identity",
     "manifest_and_assets",
@@ -256,8 +305,11 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
-            "Characterization only: current phases do not yet prove exact-subject "
-            "semantics or zero mutation and cannot satisfy a release gate."
+            "Phases release_identity and shared_prerequisites prove typed "
+            "semantics (typed identity validation; read-only shared registry "
+            "equality); the remaining phases are characterizations that do not "
+            "yet prove exact-subject semantics or zero mutation and cannot "
+            "satisfy a release gate."
         ),
     }
 

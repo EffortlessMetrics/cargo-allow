@@ -57,6 +57,14 @@ class TestReleaseRehearsal(unittest.TestCase):
                 "characterization-only phases cannot manufacture completion",
             )
 
+        shared = receipt.get("shared_prerequisites")
+        if phases["shared_prerequisites"] == "Complete":
+            self.assertIsInstance(shared, list)
+            self.assertEqual(len(shared), 3)
+            for row in shared:
+                self.assertEqual(row["state"], "already_published_exact")
+                self.assertTrue(row["registry_checksum"].startswith("sha256:"))
+
         identity = receipt.get("release_identity")
         self.assertIsInstance(identity, dict)
         self.assertEqual(identity["schema"], "cargo-allow.release-identity.v1")
