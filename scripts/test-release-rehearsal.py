@@ -69,6 +69,14 @@ class TestReleaseRehearsal(unittest.TestCase):
                 self.assertTrue(row["sha256"].startswith("sha256:"))
                 self.assertGreater(row["size_bytes"], 0)
 
+        machine = receipt.get("publisher_state_machine")
+        if phases["publisher_state_machine"] == "Complete":
+            self.assertIsInstance(machine, dict)
+            self.assertEqual(
+                machine["fixture_matrix"],
+                "scripts/test-release-topology-publisher.py",
+            )
+
         shared = receipt.get("shared_prerequisites")
         if phases["shared_prerequisites"] == "Complete":
             self.assertIsInstance(shared, list)
