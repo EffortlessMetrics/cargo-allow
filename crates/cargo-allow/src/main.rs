@@ -191,6 +191,8 @@ mod intent_engine_parity_tests;
 mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
+#[cfg(test)]
+mod review_packet_compiler_parity_tests;
 
 #[cfg(test)]
 #[path = "package_topology_enforcement_tests.rs"]

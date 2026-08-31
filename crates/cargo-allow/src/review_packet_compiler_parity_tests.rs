@@ -14,12 +14,12 @@ use std::path::Path;
 
 use allow_report::{ReleaseChannelV1, ReleaseIdentityV1};
 use intent_model::{
-    compile_review_packet, render_compiled_packet_json, render_compiled_packet_markdown,
-    BuilderNarrativeRefV1, CandidateIdentityInputV1, ClosureSurfaceKindV1, ClosureSurfaceV1,
+    BuilderNarrativeRefV1, CAPTURED_REVIEW_SCHEMA_GENERATION, CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1,
+    CandidateIdentityInputV1, CargoSuiteReviewProfileV1, ClosureSurfaceKindV1, ClosureSurfaceV1,
     EstablishedClaimV1, FalsifierV1, IntentCurrentnessV1, IntentEvidenceInputV1,
     NotEstablishedClaimV1, OldPathDispositionV1, PacketCompilationRequestV1, ProofEvidenceInputV1,
-    ProofOutcomeSummaryV1, ReviewLensV1, ReviewMapEntryV1, CAPTURED_REVIEW_SCHEMA_GENERATION,
-    CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1, CargoSuiteReviewProfileV1,
+    ProofOutcomeSummaryV1, ReviewLensV1, ReviewMapEntryV1, compile_review_packet,
+    render_compiled_packet_json, render_compiled_packet_markdown,
 };
 
 const RELEASE_VERSION: &str = "0.2.0-rc.1";
