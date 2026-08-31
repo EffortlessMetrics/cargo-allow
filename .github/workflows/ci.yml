@@ -513,7 +513,11 @@ jobs:
           # lines are the proper escaping here.
           echo "rows=$(cat "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
           echo "proof_rows=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["rows"]))' "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
-          echo "has_rows=$(python3 -c 'import json,sys; print("true" if json.load(open(sys.argv[1]))["rows"] else "false")' "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
+          # mode "all" counts as has_rows even when the router could not list
+          # IDs (unreadable/malformed projection): the wide-fail path must
+          # prove, never skip. With an empty CARGO_ALLOW_PROOF_ROWS the
+          # proof runs the full selected union.
+          echo "has_rows=$(python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); print("true" if data["rows"] or data["mode"]=="all" else "false")' "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
       - name: Routing self-test
         run: python3 scripts/test-feature-config-routing.py
       - uses: dtolnay/rust-toolchain@stable

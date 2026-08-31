@@ -48,16 +48,24 @@ def projection_path() -> Path:
 
 
 def rows_by_package() -> dict[str, list[str]] | None:
-    """Group configuration IDs by root package; None when unreadable."""
+    """Group configuration IDs by root package; None when unreadable.
+
+    A projection that parses but carries a row without a usable
+    ``configuration_id`` is malformed the same way an unparseable one is:
+    return None so the caller fails wide instead of silently under-proving
+    the malformed row (the drift guard in the always-on suite blocks such a
+    projection from merging, but routing must not trust that alone).
+    """
     try:
         data = json.loads(projection_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     grouped: dict[str, list[str]] = {}
     for row in data.get("rows", []):
-        grouped.setdefault(row.get("root_package_name", ""), []).append(
-            row["configuration_id"]
-        )
+        row_id = row.get("configuration_id")
+        if not isinstance(row_id, str) or not row_id:
+            return None
+        grouped.setdefault(row.get("root_package_name", ""), []).append(row_id)
     return grouped
 
 

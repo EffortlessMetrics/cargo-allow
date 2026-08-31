@@ -142,6 +142,21 @@ def main() -> int:
         "docs/ci.md\ncrates/allow-rust/src/lib.rs\n",
         {"mode": "rows", "rows": ALLOW_RUST_ROWS},
     )
+    check(
+        "near-miss crate prefix falls wide",
+        "crates/allow-rust-extra/src/lib.rs\n",
+        {"mode": "all", "rows": ALL_ROWS},
+    )
+    check(
+        "windows separators normalize before prefix match",
+        "crates\\allow-rust\\src\\lib.rs\n",
+        {"mode": "rows", "rows": ALLOW_RUST_ROWS},
+    )
+    check(
+        "surrounding whitespace is stripped from paths",
+        "  crates/allow-files/src/lib.rs  \n",
+        {"mode": "rows", "rows": ALLOW_FILES_ROWS},
+    )
     print(f"all routing self-tests passed ({len(ALL_ROWS)} matrix rows characterized)")
     return 0
 

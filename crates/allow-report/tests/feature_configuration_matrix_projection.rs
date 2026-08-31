@@ -34,7 +34,9 @@ fn projection_path() -> Result<PathBuf, String> {
 
 fn read_checked_in_projection() -> Result<String, String> {
     let path = projection_path()?;
-    std::fs::read_to_string(&path).map_err(|error| format!("read {}: {error}", path.display()))
+    std::fs::read_to_string(&path)
+        .map(|text| text.replace("\r\n", "\n"))
+        .map_err(|error| format!("read {}: {error}", path.display()))
 }
 
 fn render_fresh_matrix() -> Result<String, String> {
@@ -43,9 +45,11 @@ fn render_fresh_matrix() -> Result<String, String> {
 }
 
 /// Byte-equality law: the checked-in projection must stay the deterministic
-/// pretty-render of the fresh matrix. Trimmed comparison keeps the guard
-/// insensitive to checkout line-ending normalization only; any content drift
-/// fails with regeneration instructions naming the file.
+/// pretty-render of the fresh matrix. The read normalizes CRLF to LF first,
+/// so the guard stays insensitive to checkout line-ending smudging on
+/// autocrlf working trees (a bare `trim` would not: it cannot remove
+/// interior carriage returns); any content drift fails with regeneration
+/// instructions naming the file.
 #[test]
 fn checked_in_projection_matches_the_fresh_matrix_render() -> Result<(), String> {
     let checked_in = read_checked_in_projection()?;
