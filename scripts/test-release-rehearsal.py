@@ -50,7 +50,35 @@ class TestReleaseRehearsal(unittest.TestCase):
 
         phases = receipt["phases"]
         self.assertEqual(set(phases), set(REQUIRED_PHASES))
-        self.assertNotIn("Complete", phases.values())
+        for phase_name in REHEARSAL.CHARACTERIZATION_PHASES:
+            self.assertNotEqual(
+                phases[phase_name],
+                "Complete",
+                "characterization-only phases cannot manufacture completion",
+            )
+
+        shared = receipt.get("shared_prerequisites")
+        if phases["shared_prerequisites"] == "Complete":
+            self.assertIsInstance(shared, list)
+            self.assertEqual(len(shared), 3)
+            for row in shared:
+                self.assertEqual(row["state"], "already_published_exact")
+                self.assertTrue(row["registry_checksum"].startswith("sha256:"))
+
+        identity = receipt.get("release_identity")
+        self.assertIsInstance(identity, dict)
+        self.assertEqual(identity["schema"], "cargo-allow.release-identity.v1")
+        self.assertEqual(identity["result"] if "result" in identity else "validated", "validated")
+        self.assertTrue(identity["version"])
+        self.assertTrue(identity["tag"].startswith("v"))
+        self.assertIn(identity["channel"], {"stable", "release_candidate"})
+        self.assertIsInstance(identity["github_prerelease"], bool)
+        if identity["channel"] == "release_candidate":
+            self.assertTrue(identity["github_prerelease"])
+            self.assertIsNotNone(identity["rc_ordinal"])
+        else:
+            self.assertFalse(identity["github_prerelease"])
+            self.assertIsNone(identity["rc_ordinal"])
 
     def test_arbitrary_nonexistent_commit_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

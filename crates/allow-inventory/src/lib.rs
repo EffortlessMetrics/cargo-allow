@@ -3,7 +3,8 @@
 //! Inventory prefers explicit roots, Git-tracked files when available, and a
 //! filesystem fallback otherwise. The crate does not call `cargo metadata` or
 //! require a compilable project; Cargo manifests are just files in the scanned
-//! source tree.
+//! source tree. The unused-dependency module adds the advisory feature-aware
+//! inventory contracts (#3909) over caller-supplied manifest and source texts.
 
 use allow_core::{CargoAllowResult, source_tree_path_is_ignored};
 use std::path::{Path, PathBuf};
@@ -12,11 +13,23 @@ mod filesystem;
 mod git;
 mod options;
 mod root;
+mod unused_dependency;
 
 /// Git-backed file listing plus a locale-independent worktree metadata probe.
 pub use git::{git_ls_files, git_ls_files_include_untracked, git_worktree_metadata_present};
 pub use options::{Inventory, InventoryCompleteness, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
+pub use unused_dependency::{
+    INCOMPLETE_SCAN_EVIDENCE_MARKER, UNUSED_DEPENDENCY_ANALYZER_IDENTITY,
+    UNUSED_DEPENDENCY_CLAIM_BOUNDARY, UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID,
+    UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_VERSION, UnusedDependencyDependencyClassV1,
+    UnusedDependencyDispositionV1, UnusedDependencyExceptionV1, UnusedDependencyFindingV1,
+    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1,
+    UnusedDependencyManifestRowV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
+    UnusedDependencySourceInputV1, declared_absence_limitation, declared_unscanned_kinds,
+    empty_receipt, inventory_packages, inventory_unused_dependencies, receipt_scan_is_complete,
+    render_unused_dependency_receipt_v1, validate_exception, validate_receipt,
+};
 
 use filesystem::{existing_regular_files, recursive_files};
 

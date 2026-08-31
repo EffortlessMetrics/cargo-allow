@@ -1,0 +1,8 @@
+kind: Removed
+body: >-
+  Remove allow-policy's unused direct serde_json dependency (#3909 PR C):
+  the advisory unused-dependency inventory found zero use, path, or
+  extern-crate references across the crate, and the mandated compile check
+  (cargo check plus the full allow-policy test suite) passes without the
+  row. Published allow-policy packages no longer carry serde_json as a
+  direct dependency; nothing else changes.

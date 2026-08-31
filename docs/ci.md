@@ -56,6 +56,15 @@ Required lanes (gate cargo-allow patch and release):
   candidate package set, cutover build receipts, install journey.
 - **`test`**: rustfmt (workspace-wide, repo hygiene), release-set Clippy,
   tests, doc tests, docs, audit, no-new check, cutover status chain.
+- **`feature-configuration-proof`**: routed feature-configuration matrix
+  proof (#3905). Derives the affected configuration rows from the changed
+  files — wide by default — via `scripts/feature-config-routing.py` reading
+  the checked-in projection
+  `docs/assets/feature-configuration-matrix-v1.json`, then proves exactly
+  those rows through `allow-report`'s `#[ignore]`d recursive cargo proof
+  suite; docs-only changes select no rows. The weekly scheduled
+  **`feature-configuration-qualification`** workflow is the full selected
+  union backstop.
 - **`test-core-platforms`**: complete release-set suite on Linux, Windows,
   Apple Silicon macOS, and Intel macOS, including allow-rust's persistent
   scan-cache tests (#3915 PR C); a contract test drift-guards the rows

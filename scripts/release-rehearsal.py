@@ -87,16 +87,124 @@ def _run_characterization(command: list[str]) -> str:
     return PHASE_INCOMPLETE if result.returncode == 0 else PHASE_MISMATCH
 
 
-def run_phase_release_identity(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / "docs/support-matrix.toml")
+def _workspace_version() -> str:
+    """Read the exact workspace version. Source identity only: the grammar,
+    tag, and channel decisions belong to the typed authority invoked next."""
+    in_workspace_package = False
+    for line in (ROOT / "Cargo.toml").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_workspace_package = stripped == "[workspace.package]"
+            continue
+        if in_workspace_package and stripped.startswith("version"):
+            value = stripped.split("=", 1)[1].strip().strip('"')
+            if value:
+                return value
+    raise ValueError("Cargo.toml has no [workspace.package] version")
+
+
+def run_phase_release_identity(receipt: dict[str, Any]) -> str:
+    """Consume the typed release-identity projection for the workspace candidate.
+
+    The workspace version is read as the identity source and validated through
+    ``cargo-allow release-identity``; this phase records the validated fields
+    without re-deriving grammar, tag, or channel.
+    """
+    try:
+        version = _workspace_version()
+        result = subprocess.run(
+            [
+                "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+                "release-identity", "--version", version,
+            ],
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    if result.returncode != 0:
+        return PHASE_MISMATCH
+    try:
+        projection = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return PHASE_INSTRUMENT_FAILURE
+    if (
+        projection.get("schema") != "cargo-allow.release-identity.v1"
+        or projection.get("result") != "validated"
+    ):
+        return PHASE_MISMATCH
+    receipt["release_identity"] = {
+        "schema": projection["schema"],
+        "version": projection["version"],
+        "tag": projection["tag"],
+        "tag_source": projection["tag_source"],
+        "channel": projection["channel"],
+        "rc_ordinal": projection["rc_ordinal"],
+        "github_prerelease": projection["github_prerelease"],
+    }
+    return PHASE_COMPLETE
 
 
 def run_phase_candidate_package_set(_receipt: dict[str, Any]) -> str:
     return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
 
 
-def run_phase_shared_prerequisites(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
+def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
+    """Prove the three topology-selected shared rows against retained
+    namespace checksums through the read-only #3744 registry preflight.
+
+    The preflight queries crates.io anonymously (the sanitized environment
+    strips the publish token it must never see) and exits nonzero when any
+    shared row is not already_published_exact; the recorded rows carry each
+    row's observed state for diagnostics.
+    """
+    preflight_path = ROOT / "target/cargo-allow/rehearsal-shared-preflight.json"
+    try:
+        preflight_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [
+                sys.executable,
+                (ROOT / "scripts/release-topology-publisher.py").as_posix(),
+                "--mode", "cargo-allow",
+                "--registry-preflight",
+                "--receipt", str(preflight_path),
+            ],
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    rows: list[dict[str, Any]] = []
+    try:
+        preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+        rows = preflight.get("shared_registry_preflight", [])
+    except (OSError, json.JSONDecodeError):
+        if result.returncode == 0:
+            return PHASE_INSTRUMENT_FAILURE
+    receipt["shared_prerequisites"] = [
+        {
+            "name": row.get("name"),
+            "version": row.get("version"),
+            "state": row.get("state"),
+            "registry_checksum": row.get("registry_checksum"),
+        }
+        for row in rows
+    ]
+    if result.returncode != 0:
+        return PHASE_MISMATCH
+    if not rows or len(rows) != 3 or any(
+        row.get("state") != "already_published_exact" for row in rows
+    ):
+        return PHASE_MISMATCH
+    return PHASE_COMPLETE
 
 
 def run_phase_publisher_state_machine(_receipt: dict[str, Any]) -> str:
@@ -128,12 +236,25 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
     return _file_characterization(ROOT / ".github/workflows/release.yml")
 
 
+CHARACTERIZATION_PHASES = frozenset({
+    "candidate_package_set",
+    "publisher_state_machine",
+    "docs_and_support_identity",
+    "manifest_and_assets",
+    "authorization_boundary",
+    "workflow_graph_permissions",
+})
+
+
 def _aggregate_phase_status(phases: dict[str, str]) -> str:
-    """Return a fail-closed aggregate until real typed phase adapters exist."""
+    """Fail-closed aggregate: Complete only when every real phase proves and no
+    characterization-only phase can manufacture that status."""
     values = set(phases.values())
     if PHASE_INSTRUMENT_FAILURE in values:
         return PHASE_INSTRUMENT_FAILURE
     if PHASE_MISMATCH in values:
+        return PHASE_MISMATCH
+    if any(phases.get(name) == PHASE_COMPLETE for name in CHARACTERIZATION_PHASES):
         return PHASE_MISMATCH
     return PHASE_INCOMPLETE
 
@@ -184,8 +305,11 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
-            "Characterization only: current phases do not yet prove exact-subject "
-            "semantics or zero mutation and cannot satisfy a release gate."
+            "Phases release_identity and shared_prerequisites prove typed "
+            "semantics (typed identity validation; read-only shared registry "
+            "equality); the remaining phases are characterizations that do not "
+            "yet prove exact-subject semantics or zero mutation and cannot "
+            "satisfy a release gate."
         ),
     }
 

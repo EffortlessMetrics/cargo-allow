@@ -107,6 +107,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The documented graph markers exist; graph completeness is not established."
 
 [[surfaces]]
+id = "final-freeze-replay"
+owner_issue = 3919
+semantic_authority = "final freeze replay"
+path = "crates/cargo-allow/tests/final_freeze_replay.rs"
+subject = "CargoAllowFinalFreezeReplayV1"
+producer = "Rust integration test"
+consumer = "final freeze replay contract / #2501 verdict reconstruction"
+claimed_acceptance_row = "replay verdict behavior on retained input fixtures"
+assertion_mechanism = "typed retained-input fixtures and verdict assertions"
+evidence_class = "TypedModelValidation"
+disposition = "local typed-model validation"
+required_stronger_owner = "#3919"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The replay contract's verdicts are exercised on in-memory retained-input fixtures; the real #2501 custody set, retained artifact bytes, and provider observations are not read here, and no release gate is satisfied."
+
+[[surfaces]]
 id = "final-publication-plan"
 owner_issue = 2502
 semantic_authority = "final publication plan"

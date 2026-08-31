@@ -23,8 +23,33 @@ struct ReleaseRehearsalReceiptV1 {
     subject_topology_digest: String,
     zero_mutation_proof: ZeroMutationProof,
     phases: std::collections::BTreeMap<String, String>,
+    #[serde(default)]
+    release_identity: Option<ReleaseIdentityRecordV1>,
+    #[serde(default)]
+    shared_prerequisites: Option<Vec<SharedPrerequisiteRowV1>>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SharedPrerequisiteRowV1 {
+    name: String,
+    version: String,
+    state: String,
+    registry_checksum: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReleaseIdentityRecordV1 {
+    schema: String,
+    version: String,
+    tag: String,
+    tag_source: String,
+    channel: String,
+    rc_ordinal: Option<u32>,
+    github_prerelease: bool,
 }
 
 fn require(condition: bool, message: &str) -> Result<(), io::Error> {
@@ -82,7 +107,9 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "characterization must not report Complete",
     )?;
     require(
-        receipt.claim_boundary.contains("Characterization only"),
+        receipt
+            .claim_boundary
+            .contains("cannot satisfy a release gate"),
         "claim boundary must retain the characterization limitation",
     )?;
     require(
@@ -118,10 +145,12 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
+    // The six characterization-only phases can never manufacture
+    // completion; release_identity and shared_prerequisites are real typed
+    // phases (#3751 phases 1 and 3) and may report Complete when their
+    // typed proofs succeed.
     for required_phase in [
-        "release_identity",
         "candidate_package_set",
-        "shared_prerequisites",
         "publisher_state_machine",
         "docs_and_support_identity",
         "manifest_and_assets",
@@ -134,6 +163,56 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
                 .get(required_phase)
                 .is_some_and(|status| status != "Complete"),
             &format!("phase {required_phase} must exist and remain non-Complete"),
+        )?;
+    }
+    require(
+        receipt
+            .phases
+            .get("release_identity")
+            .is_some_and(|status| !status.is_empty()),
+        "the typed release_identity phase must report a status",
+    )?;
+    let identity = receipt.release_identity.as_ref().ok_or_else(|| {
+        io::Error::other("a validated release_identity phase must record the typed projection")
+    })?;
+    require(
+        identity.schema == "cargo-allow.release-identity.v1",
+        "the recorded identity must carry the typed schema identity",
+    )?;
+    require(
+        !identity.version.is_empty(),
+        "identity version must be recorded",
+    )?;
+    require(
+        identity.tag.starts_with('v'),
+        "the canonical tag must be recorded",
+    )?;
+    require(
+        (identity.channel == "stable") != (identity.channel == "release_candidate"),
+        "channel must be exactly one of stable or release_candidate",
+    )?;
+    require(
+        identity.github_prerelease == (identity.channel == "release_candidate"),
+        "GitHub prerelease posture must follow the channel",
+    )?;
+
+    let shared = receipt.shared_prerequisites.as_ref().ok_or_else(|| {
+        io::Error::other("a validated shared_prerequisites phase must record the preflight rows")
+    })?;
+    require(
+        shared.len() == 3,
+        "the shared preflight must record exactly three rows",
+    )?;
+    for row in shared {
+        require(
+            row.state == "already_published_exact",
+            "every shared prerequisite must be already_published_exact for the phase to prove",
+        )?;
+        require(
+            row.registry_checksum
+                .as_deref()
+                .is_some_and(|checksum| checksum.starts_with("sha256:")),
+            "an exact shared row must record its canonical registry checksum",
         )?;
     }
 

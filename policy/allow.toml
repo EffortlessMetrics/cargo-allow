@@ -71,6 +71,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11205"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+owner = "core/policy"
+classification = "resolved_config_component_schema"
+reason = "Defines the versioned reusable JSON component contract for the read-only source-exception configuration projection in issue #3875."
+evidence = ["issue:3875", "doc:docs/schemas/README.md", "test:resolved_config_contract"]
+created = "2026-08-30"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11206"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4049-resolved-config-v1.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the resolved-config v1 component-schema exception added by PR #4049."
+evidence = ["issue:3875", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-30"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4049-resolved-config-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4049-resolved-config-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11133"
 kind = "non_rust_file"
 family = "configuration"
@@ -14507,20 +14551,20 @@ column = 35
 [[allow]]
 id = "allow-11200"
 kind = "non_rust_file"
-family = "documentation"
-path = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-owner = "core/policy"
-classification = "resolved_config_component_schema"
-reason = "Defines the versioned reusable JSON component contract for the read-only source-exception configuration projection in issue #3875."
-evidence = ["issue:3875", "doc:docs/schemas/README.md", "test:resolved_config_contract"]
+family = "ci_declarative"
+path = ".github/workflows/feature-configuration-qualification.yml"
+owner = "core/ci"
+classification = "ci_configuration"
+reason = "Weekly scheduled qualification workflow proving the full selected feature-configuration union and the no-new guard (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
 created = "2026-08-30"
-review_after = "2027-02-28"
+review_after = "2027-03-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-target_fingerprint = "json"
-glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+symbol = ".github/workflows/feature-configuration-qualification.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/feature-configuration-qualification.yml"
 
 [allow.last_seen]
 line = 1
@@ -14529,20 +14573,152 @@ column = 1
 [[allow]]
 id = "allow-11201"
 kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4049-resolved-config-v1.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the resolved-config v1 component-schema exception added by PR #4049."
-evidence = ["issue:3875", "doc:docs/how-to/manage-an-exception.md"]
+family = "documentation"
+path = "docs/assets/feature-configuration-matrix-v1.json"
+owner = "core/ci"
+classification = "generated_matrix_projection"
+reason = "Deterministic serde projection of supported_feature_configuration_matrix(); the single JSON source CI routing reads for configuration row IDs (#3905 PR D)."
+evidence = ["issue:3905", "test:checked_in_projection_matches_the_fresh_matrix_render"]
 created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/assets/feature-configuration-matrix-v1.json"
+target_fingerprint = "json"
+glob = "docs/assets/feature-configuration-matrix-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11202"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/feature-config-routing.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Derives affected feature-configuration rows from changed files for the routed CI proof lane, failing wide on unknown impact (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/feature-config-routing.py"
+target_fingerprint = "py"
+glob = "scripts/feature-config-routing.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11203"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-feature-config-routing.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Self-test characterizing the feature-configuration routing contract on synthetic changed-file sets (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-feature-config-routing.py"
+target_fingerprint = "py"
+glob = "scripts/test-feature-config-routing.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11204"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3905-feature-configuration-routing.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3905 PR D revision note authorizing the routed-proof receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3905"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3905-feature-configuration-routing.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3905-feature-configuration-routing.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0688"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+owner = "core/release"
+classification = "dogfood_receipt_example"
+reason = "Committed line-free JSON of the #3909 PR B unused-dependency family inventory; drift-guarded by the allow-inventory dogfood test."
+evidence = ["issue:3909"]
+created = "2026-08-31"
 review_after = "2027-02-28"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/revisions/4049-resolved-config-v1.toml"
+symbol = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0689"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+owner = "core/release"
+classification = "dogfood_receipt_example"
+reason = "Committed human-readable table of the #3909 PR B unused-dependency family inventory; drift-guarded by the allow-inventory dogfood test."
+evidence = ["issue:3909"]
+created = "2026-08-31"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+target_fingerprint = "md"
+glob = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0690"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3909 PR B revision note authorizing the unused-dependency artifact receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3909", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-31"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
 target_fingerprint = "toml"
-glob = ".allow/revisions/4049-resolved-config-v1.toml"
+glob = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
 
 [allow.last_seen]
 line = 1

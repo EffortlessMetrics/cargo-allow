@@ -1,0 +1,316 @@
+{
+  "schema_id": "cargo-allow.supported-feature-configuration.v1",
+  "schema_version": 1,
+  "matrix_id": "CARGO-ALLOW-FEATURE-CONFIG-MATRIX-V1-0001",
+  "rows": [
+    {
+      "configuration_id": "allow-rust.default",
+      "product": "allow_rust",
+      "product_family": "cargo-allow-0.2",
+      "root_package_name": "allow-rust",
+      "root_package_version": "0.2.0-rc.1",
+      "default_features_selected": [
+        "syntax"
+      ],
+      "explicit_features": [],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "supported",
+      "enforcement": "blocking",
+      "expected_capabilities": [
+        "syntax-visible finding families: unsafe, panic-family, indexing/slicing, lint suppression",
+        "exact source-declared test inventory",
+        "tree-sitter Rust parser embedded via the syntax feature"
+      ],
+      "expected_assets": [
+        "crates/allow-rust/README.md"
+      ],
+      "known_exclusions": [
+        "no macro-expanded, type-aware, MIR-level, or build-aware behavior",
+        "no Cargo metadata, rustc, Clippy, or build-script execution"
+      ],
+      "claim_boundary": "current normal scanner surface at workspace MSRV; source-text scanning only"
+    },
+    {
+      "configuration_id": "allow-rust.minimal-model",
+      "product": "allow_rust",
+      "product_family": "cargo-allow-0.2",
+      "root_package_name": "allow-rust",
+      "root_package_version": "0.2.0-rc.1",
+      "default_features_selected": [],
+      "explicit_features": [],
+      "no_default_features": "no_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "compile_only",
+      "support_tier": "supported",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "data-model surface: finding models, scan results, scan-cache and test-subject model types",
+        "no tree-sitter dependency selected"
+      ],
+      "expected_assets": [
+        "crates/allow-rust/README.md"
+      ],
+      "known_exclusions": [
+        "tree-sitter and tree-sitter-rust must be absent from the resolved normal closure",
+        "parser-dependent public APIs must not compile or expose in this build"
+      ],
+      "claim_boundary": "minimal data-model build proven at compile level only; the syntax capability is deliberately absent"
+    },
+    {
+      "configuration_id": "allow-rust.syntax-explicit",
+      "product": "allow_rust",
+      "product_family": "cargo-allow-0.2",
+      "root_package_name": "allow-rust",
+      "root_package_version": "0.2.0-rc.1",
+      "default_features_selected": [],
+      "explicit_features": [
+        "syntax"
+      ],
+      "no_default_features": "no_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "supported",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "selected syntax capability equivalent to default",
+        "tree-sitter Rust parser embedded without default features"
+      ],
+      "expected_assets": [
+        "crates/allow-rust/README.md"
+      ],
+      "known_exclusions": [
+        "no macro-expanded, type-aware, MIR-level, or build-aware behavior"
+      ],
+      "claim_boundary": "explicitly selected syntax without default features; the selected syntax capability matches the default row, not a deeper surface"
+    },
+    {
+      "configuration_id": "allow-files.default",
+      "product": "allow_files",
+      "product_family": "cargo-allow-0.2",
+      "root_package_name": "allow-files",
+      "root_package_version": "0.2.0-rc.1",
+      "default_features_selected": [],
+      "explicit_features": [],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "supported",
+      "enforcement": "blocking",
+      "expected_capabilities": [
+        "non-Rust, generated, and workflow classification",
+        "FileFamilyRule classification with explicit ambiguity findings",
+        "workflow and dependency-surface projections without execution"
+      ],
+      "expected_assets": [
+        "crates/allow-files/README.md"
+      ],
+      "known_exclusions": [
+        "no macro-expanded, type-aware, MIR-level, or build-aware behavior",
+        "no Cargo metadata, rustc, Clippy, or build-script execution"
+      ],
+      "claim_boundary": "core non-Rust/generated/workflow classification; no yaml-rust2 dependency and no Changie sensor surface in this build"
+    },
+    {
+      "configuration_id": "allow-files.changie",
+      "product": "allow_files",
+      "product_family": "cargo-allow-0.2",
+      "root_package_name": "allow-files",
+      "root_package_version": "0.2.0-rc.1",
+      "default_features_selected": [],
+      "explicit_features": [
+        "changie"
+      ],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "supported",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "Changie 1.25 static parse slice with source ranges and duplicate-key order",
+        "static authoring contract lint (changie_lint)",
+        "yaml-rust2 parser embedded"
+      ],
+      "expected_assets": [
+        "crates/allow-files/README.md",
+        "CHANGIE_COMPATIBILITY_GENERATION = \"1.25\""
+      ],
+      "known_exclusions": [
+        "no Changie execution, no Go, no release mutation, no editor hosting",
+        "a clean parse says static contract satisfied only; the pinned upstream binary owns rendering"
+      ],
+      "claim_boundary": "base classification plus the static Changie sensor; enabling the feature proves parser inclusion and selected fixtures, never execution"
+    },
+    {
+      "configuration_id": "cargo-proof.default",
+      "product": "cargo_proof",
+      "product_family": "shared-0.1",
+      "root_package_name": "cargo-proof",
+      "root_package_version": "0.1.0",
+      "default_features_selected": [],
+      "explicit_features": [],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "experimental",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "product shell, renderer framework, and plan/dry-run wiring",
+        "empty provider registry: no provider code selected"
+      ],
+      "expected_assets": [
+        "crates/cargo-proof/README.md"
+      ],
+      "known_exclusions": [
+        "no built-in provider module selected; provider absence is the declared posture, not a failure"
+      ],
+      "claim_boundary": "default-empty provider set; shell identity and orchestration wiring only, experimental and advisory"
+    },
+    {
+      "configuration_id": "cargo-proof.provider-cargo-allow",
+      "product": "cargo_proof",
+      "product_family": "shared-0.1",
+      "root_package_name": "cargo-proof",
+      "root_package_version": "0.1.0",
+      "default_features_selected": [],
+      "explicit_features": [
+        "provider-cargo-allow"
+      ],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "experimental",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "provider-cargo-allow provider module and fixtures included in the build",
+        "provider-cargo-allow provider registered in the feature-selected registry"
+      ],
+      "expected_assets": [
+        "crates/cargo-proof/README.md"
+      ],
+      "known_exclusions": [
+        "provider-unavailable/unsupported posture is preserved: enabling the feature does not install, reach, or semantically qualify the external provider"
+      ],
+      "claim_boundary": "provider-cargo-allow proves code/package inclusion and selected fixtures only; the external provider stays unproven, experimental and advisory"
+    },
+    {
+      "configuration_id": "cargo-proof.provider-hawk",
+      "product": "cargo_proof",
+      "product_family": "shared-0.1",
+      "root_package_name": "cargo-proof",
+      "root_package_version": "0.1.0",
+      "default_features_selected": [],
+      "explicit_features": [
+        "provider-hawk"
+      ],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "experimental",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "provider-hawk provider module and fixtures included in the build",
+        "provider-hawk provider registered in the feature-selected registry"
+      ],
+      "expected_assets": [
+        "crates/cargo-proof/README.md"
+      ],
+      "known_exclusions": [
+        "provider-unavailable/unsupported posture is preserved: enabling the feature does not install, reach, or semantically qualify the external provider"
+      ],
+      "claim_boundary": "provider-hawk proves code/package inclusion and selected fixtures only; the external provider stays unproven, experimental and advisory"
+    },
+    {
+      "configuration_id": "cargo-proof.provider-ripr",
+      "product": "cargo_proof",
+      "product_family": "shared-0.1",
+      "root_package_name": "cargo-proof",
+      "root_package_version": "0.1.0",
+      "default_features_selected": [],
+      "explicit_features": [
+        "provider-ripr"
+      ],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "experimental",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "provider-ripr provider module and fixtures included in the build",
+        "provider-ripr provider registered in the feature-selected registry"
+      ],
+      "expected_assets": [
+        "crates/cargo-proof/README.md"
+      ],
+      "known_exclusions": [
+        "provider-unavailable/unsupported posture is preserved: enabling the feature does not install, reach, or semantically qualify the external provider"
+      ],
+      "claim_boundary": "provider-ripr proves code/package inclusion and selected fixtures only; the external provider stays unproven, experimental and advisory"
+    },
+    {
+      "configuration_id": "cargo-proof.all-providers",
+      "product": "cargo_proof",
+      "product_family": "shared-0.1",
+      "root_package_name": "cargo-proof",
+      "root_package_version": "0.1.0",
+      "default_features_selected": [],
+      "explicit_features": [
+        "all-providers"
+      ],
+      "no_default_features": "with_default_features",
+      "target_class": "host_workspace_msrv",
+      "rust_version": "1.95",
+      "proof_depth": "all_targets",
+      "support_tier": "experimental",
+      "enforcement": "advisory",
+      "expected_capabilities": [
+        "all three built-in provider modules selected in one build",
+        "full selected-union qualification row for routed CI"
+      ],
+      "expected_assets": [
+        "crates/cargo-proof/README.md"
+      ],
+      "known_exclusions": [
+        "selecting every provider proves code/package inclusion only; it does not prove any external provider is installed or semantically current"
+      ],
+      "claim_boundary": "all built-in providers compiled and fixture-proven together; provider availability and semantics remain external, experimental and advisory"
+    }
+  ],
+  "explicit_non_selections": [
+    {
+      "package_name": "cargo-proof",
+      "selected_features": [
+        "provider-cargo-allow",
+        "provider-hawk"
+      ],
+      "reason": "expressible pair combination deliberately unselected; not a supported configuration and must not be scheduled as one"
+    },
+    {
+      "package_name": "cargo-proof",
+      "selected_features": [
+        "provider-cargo-allow",
+        "provider-ripr"
+      ],
+      "reason": "expressible pair combination deliberately unselected; not a supported configuration and must not be scheduled as one"
+    },
+    {
+      "package_name": "cargo-proof",
+      "selected_features": [
+        "provider-hawk",
+        "provider-ripr"
+      ],
+      "reason": "expressible pair combination deliberately unselected; not a supported configuration and must not be scheduled as one"
+    }
+  ],
+  "claim_boundary": "exact finite proof for the package feature configurations the repository deliberately supports, at explicitly stated proof depths and product postures; no full powerset, no provider availability, and no semantic correctness beyond the selected fixtures and journeys"
+}

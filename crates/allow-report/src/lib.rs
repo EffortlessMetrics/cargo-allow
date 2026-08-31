@@ -187,9 +187,9 @@ pub use artifacts::{
     FeatureConfigurationRequestValidationV1, FeatureConfigurationSupportTierV1,
     FeatureConfigurationTargetClassV1, FeatureImplicationV1, NoDefaultFeaturesPostureV1,
     SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_ID,
-    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_VERSION, WORKSPACE_RUST_VERSION,
-    crate_feature_inventory, current_feature_configuration_gaps, effective_feature_set,
-    render_feature_configuration_proof_receipt_v1,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_VERSION, SupportedFeatureConfigurationV1,
+    WORKSPACE_RUST_VERSION, crate_feature_inventory, current_feature_configuration_gaps,
+    effective_feature_set, render_feature_configuration_proof_receipt_v1,
     render_feature_configuration_proof_receipt_v1_bytes,
     render_feature_configuration_proof_request_v1,
     render_supported_feature_configuration_matrix_v1,
@@ -381,4 +381,18 @@ pub use artifacts::{
     FinalReadinessRootDecisionV1, FinalReadinessRowKindV1, FinalReadinessRowV1,
     FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
     render_final_readiness_json, render_final_readiness_markdown,
+};
+
+// Root re-exports for the #3919 final-freeze replay contract.
+pub use artifacts::{
+    CargoAllowFinalFreezeReceiptV1, CargoAllowFinalFreezeReplayInputsV1,
+    CargoAllowFinalFreezeReplayV1, FINAL_FREEZE_EXPECTED_SHARED_ROWS_V1,
+    FINAL_FREEZE_EXPECTED_UPLOAD_ROWS_V1, FINAL_FREEZE_RECEIPT_SCHEMA_ID,
+    FINAL_FREEZE_RECEIPT_SCHEMA_VERSION, FINAL_FREEZE_REPLAY_SCHEMA_ID,
+    FINAL_FREEZE_REPLAY_SCHEMA_VERSION, FinalFreezeManifestBindingV1, FinalFreezeManifestResultV1,
+    FinalFreezeReceiptInitV1, FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1,
+    FinalFreezeReplayRowV1, ObservationFreshnessV1, ObservationReadingRowV1, ObservationReadingV1,
+    RefreshableObservationAdapterV1, RefreshableObservationKindV1, RefreshableObservationV1,
+    RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
+    render_final_freeze_replay_markdown, replay_final_freeze,
 };
