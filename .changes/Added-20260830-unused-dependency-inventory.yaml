@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Qualify the advisory unused-dependency inventory composition (#3909 PR A):
+  a bounded homegrown analyzer (toml manifest row parse plus textual
+  source-reference scan over caller-supplied inputs, with no external
+  analyzer binaries, no Cargo or rustc invocation, and no proc-macro
+  expansion) classifies every declared dependency row into the closed
+  disposition vocabulary (Used through Unsupported and InstrumentFailure),
+  emits receipts bound to exact package/configuration identity with pinned
+  analyzer identity and claim boundary, defines the row-scoped exception
+  schema whose validation demands a controlling issue, ordered dates, and a
+  non-transferable claim boundary, and pins the true-unused and
+  false-positive contract fixtures in-crate with no CI wiring.
