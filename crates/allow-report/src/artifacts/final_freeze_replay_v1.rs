@@ -17,7 +17,7 @@ use super::final_evidence_graph_v1::{
     FinalEvidencePackageSubjectV1, FinalEvidenceReleaseIdentityV1, evaluate_final_evidence_graph,
 };
 use super::frozen_candidate_custody_v1::{
-    CargoAllowFrozenCandidateCustodyV1, CustodyDispositionV1,
+    CargoAllowFrozenCandidateCustodyV1, CustodyDispositionV1, RetainedCustodyItemV1,
 };
 use super::release_artifact_transfer_v1::CargoAllowReleaseArtifactTransferV1;
 use super::release_identity_v1::{ReleaseChannelV1, ReleaseIdentityV1, ReleaseVersionV1};
@@ -1035,12 +1035,25 @@ fn replay_retained_bytes(
     digests: &BTreeMap<String, String>,
     rows: &mut Vec<FinalFreezeReplayRowV1>,
 ) {
-    let custody_items = inputs
-        .custody
-        .items
-        .iter()
-        .map(|item| (item.artifact_id.clone(), item))
-        .collect::<BTreeMap<_, _>>();
+    // Duplicate custody-item identities cannot be tolerated in the lookup
+    // map: a BTreeMap insert would silently keep only the last item, so two
+    // records for one artifact_id (one benign, one tampered) could satisfy
+    // every later digest check. Emit InstrumentFailure instead.
+    let mut custody_items = BTreeMap::<String, &RetainedCustodyItemV1>::new();
+    for item in &inputs.custody.items {
+        if custody_items
+            .insert(item.artifact_id.clone(), item)
+            .is_some()
+        {
+            push_row(
+                rows,
+                FinalFreezeReplayRowKindV1::InstrumentFailure,
+                Some(item.artifact_id.clone()),
+                "duplicate custody item identity: the retained custody set \
+                 is ambiguous and cannot be replayed",
+            );
+        }
+    }
 
     let mut retained_roles = BTreeMap::<&str, Vec<&RetainedExactArtifactV1>>::new();
     for artifact in &inputs.retained_artifacts {
@@ -2536,6 +2549,43 @@ mod tests {
             .contains("never tags, uploads, publishes, authorizes")
         {
             return Err("the replay claim boundary lost the no-mutation statement".to_string());
+        }
+        Ok(())
+    }
+    #[test]
+    fn duplicate_custody_item_ids_are_ambiguous_and_fail_closed() -> Result<(), String> {
+        // Two custody items sharing one artifact_id: a BTreeMap lookup would
+        // silently keep the benign last entry, so the replay must refuse the
+        // ambiguous custody set outright.
+        let mut fixture = fixture()?;
+        let first = fixture
+            .inputs
+            .custody
+            .items
+            .first()
+            .ok_or_else(|| "fixture lost its custody items".to_string())?
+            .clone();
+        let mut tampered = first.clone();
+        tampered.readback_sha256 = Some(digest(0xE1A5));
+        tampered.retention_expiry_utc = "2099-12-31T00:00:00Z".to_string();
+        tampered.storage_locator = "s3://release-custody-2026/tampered".to_string();
+        fixture.inputs.custody.items.push(tampered);
+
+        let replayed = replay_final_freeze(&fixture.inputs, &FixtureAdapter::current());
+        if replayed.result == FinalFreezeReplayResultV1::CompleteEquivalent {
+            return Err("an ambiguous custody set must not replay CompleteEquivalent".to_string());
+        }
+        if !replayed
+            .rows
+            .iter()
+            .any(|row| row.message.contains("duplicate custody item identity"))
+        {
+            return Err("the duplicate custody identity row is missing".to_string());
+        }
+        if replayed.retained_bytes_verified {
+            return Err(
+                "an ambiguous custody set must not leave retained bytes verified".to_string(),
+            );
         }
         Ok(())
     }
