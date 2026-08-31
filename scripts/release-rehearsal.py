@@ -149,8 +149,71 @@ def run_phase_release_identity(receipt: dict[str, Any]) -> str:
     return PHASE_COMPLETE
 
 
-def run_phase_candidate_package_set(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
+def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
+    """Package the ten cargo-allow candidate rows from the committed subject.
+
+    The publisher's --package-only mode validates exact release-coupled
+    internal requirements and packages the selected rows offline (no registry
+    reads, no compilation); this phase records each row's name, version,
+    release order, SHA-256, and archive size without any upload path.
+    """
+    preflight_path = ROOT / "target/cargo-allow/rehearsal-candidate-package-set.json"
+    try:
+        preflight_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [
+                sys.executable,
+                (ROOT / "scripts/release-topology-publisher.py").as_posix(),
+                "--mode", "cargo-allow",
+                "--package-only",
+                "--receipt", str(preflight_path),
+            ],
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    rows: list[dict[str, Any]] = []
+    try:
+        packaged = json.loads(preflight_path.read_text(encoding="utf-8"))
+        rows = packaged.get("rows", [])
+    except (OSError, json.JSONDecodeError):
+        if result.returncode == 0:
+            return PHASE_INSTRUMENT_FAILURE
+    recorded = []
+    for row in rows:
+        crate_path = Path(row["crate"])
+        if not crate_path.is_absolute():
+            crate_path = ROOT / crate_path
+        try:
+            size_bytes = crate_path.stat().st_size
+        except OSError:
+            size_bytes = None
+        recorded.append(
+            {
+                "name": row.get("name"),
+                "version": row.get("version"),
+                "release_order": row.get("release_order"),
+                "sha256": row.get("local_checksum"),
+                "size_bytes": size_bytes,
+            }
+        )
+    receipt["candidate_package_set"] = {"rows": recorded}
+    if result.returncode != 0:
+        return PHASE_MISMATCH
+    expected_version = (receipt.get("release_identity") or {}).get("version")
+    if (
+        len(recorded) != 10
+        or expected_version is None
+        or any(row.get("version") != expected_version for row in recorded)
+        or any(row.get("size_bytes") is None or row["size_bytes"] <= 0 for row in recorded)
+    ):
+        return PHASE_MISMATCH
+    return PHASE_COMPLETE
 
 
 def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
@@ -237,7 +300,6 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
 
 
 CHARACTERIZATION_PHASES = frozenset({
-    "candidate_package_set",
     "publisher_state_machine",
     "docs_and_support_identity",
     "manifest_and_assets",
@@ -305,11 +367,12 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
-            "Phases release_identity and shared_prerequisites prove typed "
-            "semantics (typed identity validation; read-only shared registry "
-            "equality); the remaining phases are characterizations that do not "
-            "yet prove exact-subject semantics or zero mutation and cannot "
-            "satisfy a release gate."
+            "Phases release_identity, candidate_package_set, and "
+            "shared_prerequisites prove typed semantics (typed identity "
+            "validation; offline candidate packaging with exact internal "
+            "requirements; read-only shared registry equality); the remaining "
+            "phases are characterizations that do not yet prove exact-subject "
+            "semantics or zero mutation and cannot satisfy a release gate."
         ),
     }
 

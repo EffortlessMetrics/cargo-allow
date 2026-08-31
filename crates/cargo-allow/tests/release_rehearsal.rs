@@ -27,8 +27,26 @@ struct ReleaseRehearsalReceiptV1 {
     release_identity: Option<ReleaseIdentityRecordV1>,
     #[serde(default)]
     shared_prerequisites: Option<Vec<SharedPrerequisiteRowV1>>,
+    #[serde(default)]
+    candidate_package_set: Option<CandidatePackageSetRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CandidatePackageSetRecordV1 {
+    rows: Vec<CandidatePackageRowV1>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CandidatePackageRowV1 {
+    name: String,
+    version: String,
+    release_order: u32,
+    sha256: String,
+    size_bytes: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -145,12 +163,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
-    // The six characterization-only phases can never manufacture
-    // completion; release_identity and shared_prerequisites are real typed
-    // phases (#3751 phases 1 and 3) and may report Complete when their
-    // typed proofs succeed.
+    // The five characterization-only phases can never manufacture
+    // completion; release_identity, candidate_package_set, and
+    // shared_prerequisites are real typed phases (#3751 phases 1-3) and may
+    // report Complete when their typed proofs succeed.
     for required_phase in [
-        "candidate_package_set",
         "publisher_state_machine",
         "docs_and_support_identity",
         "manifest_and_assets",
@@ -195,6 +212,29 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         identity.github_prerelease == (identity.channel == "release_candidate"),
         "GitHub prerelease posture must follow the channel",
     )?;
+
+    let packages = receipt.candidate_package_set.as_ref().ok_or_else(|| {
+        io::Error::other("a validated candidate_package_set phase must record the packaged rows")
+    })?;
+    require(
+        packages.rows.len() == 10,
+        "the candidate set must package exactly ten rows",
+    )?;
+    let identity_version = &identity.version;
+    for row in &packages.rows {
+        require(
+            &row.version == identity_version,
+            "every packaged row must carry the selected release identity version",
+        )?;
+        require(
+            row.sha256.starts_with("sha256:"),
+            "a packaged row must record a canonical sha256 digest",
+        )?;
+        require(
+            row.size_bytes > 0,
+            "a packaged row must record a positive size",
+        )?;
+    }
 
     let shared = receipt.shared_prerequisites.as_ref().ok_or_else(|| {
         io::Error::other("a validated shared_prerequisites phase must record the preflight rows")
