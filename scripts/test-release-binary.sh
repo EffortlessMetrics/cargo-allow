@@ -79,11 +79,12 @@ spec.loader.exec_module(publisher)
 rows = []
 with open(sys.argv[2], "rb") as source:
     candidate = tomllib.load(source)["crates"]
-for order, name in enumerate(candidate, 1):
+cargo_rows = [name for name in candidate if not name.startswith("effortless-")]
+for order, name in enumerate(cargo_rows, 1):
     rows.append({
         "logical_id": name,
         "name": name,
-        "version": "0.1.0" if name.startswith("effortless-") else "9.9.9",
+        "version": "9.9.9",
         "release_order": order,
         "local_checksum": publisher.receipt_checksum("a" * 64, field="fixture local checksum"),
         "registry_checksum": None,
@@ -122,11 +123,9 @@ with open(sys.argv[2], "rb") as source:
 assert manifest["payload"]["schema_id"] == "cargo-allow.release-manifest.v2"
 assert manifest["payload"]["authentication"] == "crates_io_api_token"
 rows = manifest["payload"]["package_rows"]
-assert [row["logical_id"] for row in rows] == candidate
-assert [row["package_version"] for row in rows] == [
-    "0.1.0" if name.startswith("effortless-") else "9.9.9"
-    for name in candidate
-]
+cargo_candidate = [name for name in candidate if not name.startswith("effortless-")]
+assert [row["logical_id"] for row in rows] == cargo_candidate
+assert [row["package_version"] for row in rows] == ["9.9.9" for name in cargo_candidate]
 assert manifest["instrument_diagnostics"]
 PY
 
@@ -182,6 +181,41 @@ expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9
   TOPOLOGY_RECEIPT="${build_metadata_receipt}" OUTPUT="${work}/build-metadata-manifest.json" \
   bash scripts/generate-release-manifest.sh
 printf 'ok typed authority rejects semver build metadata in manifest rows\n'
+
+# A verified_existing row whose registry bytes differ from the candidate's
+# local package must not masquerade as exact in the manifest (#3758/#3761).
+verified_existing_receipt="${work}/verified-existing-topology.receipt.json"
+cp "${published_receipt}" "${verified_existing_receipt}"
+python3 - "${verified_existing_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+row = receipt["rows"][0]
+row["state"] = "verified_existing"
+row["registry_checksum"] = "sha256:" + ("d" * 64)
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow   TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95   TOPOLOGY_RECEIPT="${verified_existing_receipt}" OUTPUT="${work}/verified-existing-manifest.json"   bash scripts/generate-release-manifest.sh
+printf 'ok verified_existing registry disagreement is rejected\n'
+
+# Every manifest row must carry the selected release identity version.
+version_mismatch_receipt="${work}/version-mismatch-topology.receipt.json"
+cp "${published_receipt}" "${version_mismatch_receipt}"
+python3 - "${version_mismatch_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["rows"][0]["version"] = "9.9.8"
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow   TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95   TOPOLOGY_RECEIPT="${version_mismatch_receipt}" OUTPUT="${work}/version-mismatch-manifest.json"   bash scripts/generate-release-manifest.sh
+printf 'ok manifest rows must carry the selected release identity version\n'
 
 checksum_conflict_receipt="${work}/checksum-conflict-topology.receipt.json"
 cp "${published_receipt}" "${checksum_conflict_receipt}"
@@ -272,7 +306,11 @@ import tomllib
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 with open(sys.argv[2], "rb") as source:
-    candidate = tomllib.load(source)["crates"]
+    candidate = [
+        name
+        for name in tomllib.load(source)["crates"]
+        if not name.startswith("effortless-")
+    ]
 assert manifest["payload"]["publication_posture"] == "unpublished"
 assert len(manifest["payload"]["package_rows"]) == len(candidate)
 PY

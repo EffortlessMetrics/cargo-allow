@@ -190,6 +190,10 @@ for raw in raw_rows:
         raise SystemExit(
             f"release-manifest: package version {raw['version']} for {raw['name']} is not a validated typed release identity"
         )
+    if raw["version"] != version:
+        raise SystemExit(
+            f"release-manifest: package version {raw['version']} for {raw['name']} is not the selected release identity {version}"
+        )
     name = raw["name"]
     order = int(raw["release_order"])
     if order <= 0 or name in seen_names or raw["logical_id"] in seen_logical_ids or order in seen_orders:
@@ -209,9 +213,12 @@ for raw in raw_rows:
             raise SystemExit(
                 f"release-manifest: registry checksum missing or malformed for published row {name}"
             )
-        if raw.get("state") == "published_verified" and registry_checksum != raw["local_checksum"]:
+        # Registry equality is required for every published row state: a
+        # verified_existing row whose registry bytes differ from this
+        # candidate's local package must not masquerade as exact (#3758/#3761).
+        if registry_checksum != raw["local_checksum"]:
             raise SystemExit(
-                f"release-manifest: registry checksum disagrees for published row {name}"
+                f"release-manifest: registry checksum disagrees with the candidate package for {name} ({raw.get('state')})"
             )
     row = {
         "logical_id": raw["logical_id"],

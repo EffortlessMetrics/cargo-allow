@@ -7,6 +7,7 @@ mod doctor;
 mod evaluation_artifact_set_v1;
 mod exact_candidate_receipt_v2;
 mod explain;
+mod feature_configuration_v1;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod final_freeze_replay_v1;
@@ -21,6 +22,7 @@ mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
+mod rc_publication_incident_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
 mod release_identity_v1;
@@ -52,6 +54,34 @@ pub use doctor::{
     FileFamilyConflictSummary, FileFamilyRuleSummary,
 };
 pub use explain::{EvidenceReference, ExplainReport};
+pub use feature_configuration_v1::{
+    CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_VERSION,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_VERSION, FeatureConfigurationCommandResultV1,
+    FeatureConfigurationCommandStatusV1, FeatureConfigurationEnforcementPostureV1,
+    FeatureConfigurationGapV1, FeatureConfigurationMatrixResultV1,
+    FeatureConfigurationMatrixValidationV1, FeatureConfigurationNonSelectionV1,
+    FeatureConfigurationProductV1, FeatureConfigurationProofDepthV1,
+    FeatureConfigurationProofOutcomeV1, FeatureConfigurationProofReceiptV1,
+    FeatureConfigurationProofRequestV1, FeatureConfigurationReceiptResultV1,
+    FeatureConfigurationReceiptValidationV1, FeatureConfigurationRequestResultV1,
+    FeatureConfigurationRequestValidationV1, FeatureConfigurationSupportTierV1,
+    FeatureConfigurationTargetClassV1, FeatureImplicationV1, NoDefaultFeaturesPostureV1,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_ID,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_VERSION, WORKSPACE_RUST_VERSION,
+    crate_feature_inventory, current_feature_configuration_gaps, effective_feature_set,
+    render_feature_configuration_proof_receipt_v1,
+    render_feature_configuration_proof_receipt_v1_bytes,
+    render_feature_configuration_proof_request_v1,
+    render_supported_feature_configuration_matrix_v1,
+    render_supported_feature_configuration_matrix_v1_bytes,
+    row_for_supported_feature_configuration, supported_feature_configuration_matrix,
+    supported_feature_configuration_rows, validate_feature_configuration_proof_receipt_v1,
+    validate_feature_configuration_proof_request_v1,
+    validate_supported_feature_configuration_matrix_v1,
+};
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
@@ -106,6 +136,12 @@ pub use github_pr_check_v1::{
     GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
     GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
     GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
+};
+
+pub use rc_publication_incident_v1::{
+    ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
+    ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
+    RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
 };
 
 pub use evaluation_artifact_set_v1::{

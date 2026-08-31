@@ -1,0 +1,18 @@
+kind: Fixed
+body: >-
+  Make the shared prerequisite preflight fail closed on missing or
+  malformed retained expected checksums (#3744). The cargo-allow rail's
+  shared preflight fell through to already_published_exact whenever a
+  topology row lacked expected_registry_checksum, so a visible shared
+  version with an arbitrary registry checksum could be labeled exact —
+  negative control 5 of the shared-prerequisite law. The retained
+  namespace authority is the topology row's reconciled
+  expected_registry_checksum (#3733/#3734 chain); a missing or malformed
+  expected value now records evidence_unavailable in the receipt, and a
+  publishing run fails before the first upload on any row whose state is
+  not already_published_exact, with the full offending set named in one
+  diagnostic after the complete batch is queried. Rehearsals keep
+  recording observations without failing. The topology receipt schema
+  gains the evidence_unavailable state, and the fixture contract suite
+  now proves the rehearsal and publish behaviors for missing, malformed,
+  conflicting, and absent-registry cases.

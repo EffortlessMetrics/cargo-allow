@@ -262,8 +262,8 @@ path = "scripts/test-release-binary.sh"
 role = "packaging/verify/manifest contract tests"
 disposition = "historical-fixture-only"
 marker_classes = []
-sites = ["if name.startswith(\"effortless-\")"]
-claim_boundary = "Hard-codes the two-channel version split (shared rows at 0.1.0 versus candidate rows) as fixture data; the split mirrors the topology denominator and must be updated with it."
+sites = ["cargo_rows = [name for name in candidate"]
+claim_boundary = "Fixture candidate receipts model the live producer shape: ten uniform-version cargo-allow rows (9.9.9 fixtures) with shared rows confined to the shared preflight, and the manifest script enforces per-row version identity against the selected release."
 
 [[consumers]]
 id = "release-topology-publisher"
