@@ -315,6 +315,53 @@ fn mirror_divergence_rejects_dangling_policy_link() -> std::io::Result<()> {
     result
 }
 
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_non_regular_policy_before_read() -> std::io::Result<()> {
+    if std::env::var_os("CARGO_ALLOW_FIFO_CHILD").is_some() {
+        let root = fixture_root_for_federation_test("fifo-mirror-link-child");
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        if !std::process::Command::new("mkfifo")
+            .arg(root.join(".allow/mirror/policy.toml"))
+            .status()?
+            .success()
+        {
+            return Err(std::io::Error::other("mkfifo failed"));
+        }
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences
+                .first()
+                .is_some_and(|record| record.mirror_fingerprint.is_none())
+        {
+            return Err(std::io::Error::other(format!(
+                "non-regular mirror target was not rejected: {divergences:?}"
+            )));
+        }
+        return Ok(());
+    }
+    let mut child = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "federation::tests::mirror_divergence_rejects_non_regular_policy_before_read", "--nocapture"])
+        .env("CARGO_ALLOW_FIFO_CHILD", "1")
+        .spawn()?;
+    for _ in 0..40 {
+        if let Some(status) = child.try_wait()? {
+            return status
+                .success()
+                .then_some(())
+                .ok_or_else(|| std::io::Error::other("FIFO child failed"));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    child.kill()?;
+    let _ = child.wait();
+    return Err(std::io::Error::other("FIFO probe exceeded deadline"));
+}
+
 #[test]
 fn validate_federation_config_reports_foreign_dialect_on_canonical() {
     let config = parse_validated(

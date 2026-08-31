@@ -657,6 +657,25 @@ enum SelectedPathContainment {
     RejectedParent,
 }
 
+fn unreadable_policy_observation(portable: PortableConfigPathV1) -> PolicyObservation {
+    PolicyObservation {
+        policy: Some(ResolvedPolicyV1 {
+            path: portable,
+            digest: None,
+            schema_version: None,
+            policy: None,
+            status: None,
+        }),
+        error: Some(ConfigDiagnosticV1 {
+            code: CargoAllowErrorKind::InvalidConfig.code().to_string(),
+            kind: CargoAllowErrorKind::InvalidConfig.as_str().to_string(),
+            message: "selected policy could not be read".to_string(),
+        }),
+        status_override: Some(ConfigResolutionStatusV1::Invalid),
+        ..PolicyObservation::default()
+    }
+}
+
 fn observe_policy(
     root: &Path,
     path: &Path,
@@ -699,25 +718,23 @@ fn observe_policy(
             ..PolicyObservation::default()
         };
     }
+    // Do not pass directories, FIFOs, sockets, or devices to the text reader.
+    // `read_text_file_capped` opens its input synchronously and a non-regular
+    // target (notably a FIFO) could otherwise block the whole resolution.
+    match std::fs::metadata(path) {
+        Ok(metadata) if metadata.is_file() => {}
+        Ok(_) => {
+            return unreadable_policy_observation(portable);
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(_) => {
+            return unreadable_policy_observation(portable);
+        }
+    }
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
         Err(_) => {
-            return PolicyObservation {
-                policy: Some(ResolvedPolicyV1 {
-                    path: portable,
-                    digest: None,
-                    schema_version: None,
-                    policy: None,
-                    status: None,
-                }),
-                error: Some(ConfigDiagnosticV1 {
-                    code: CargoAllowErrorKind::InvalidConfig.code().to_string(),
-                    kind: CargoAllowErrorKind::InvalidConfig.as_str().to_string(),
-                    message: "selected policy could not be read".to_string(),
-                }),
-                status_override: Some(ConfigResolutionStatusV1::Invalid),
-                ..PolicyObservation::default()
-            };
+            return unreadable_policy_observation(portable);
         }
     };
     let digest = sha256_v1_bytes(text.as_bytes());

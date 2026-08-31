@@ -1322,6 +1322,40 @@ fn resolved_cargo_allow_config_rejects_explicit_policy_beneath_dangling_parent()
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_non_regular_explicit_policy() -> TestResult {
+    if std::env::var_os("CARGO_ALLOW_FIFO_CHILD").is_some() {
+        let fixture = Fixture::new("fifo-cli-policy-child")?;
+        std::process::Command::new("mkfifo")
+            .arg(fixture.path().join("policy.fifo"))
+            .status()?
+            .success()
+            .then_some(())
+            .ok_or("mkfifo failed")?;
+        let resolved = resolve_cargo_allow_config_v1(
+            fixture.path(),
+            Some(Path::new("policy.fifo")),
+            "subject:fifo-cli-policy",
+        )?;
+        ensure_eq(resolved.status, ConfigResolutionStatusV1::Invalid, "status")?;
+        return Ok(());
+    }
+    let mut child = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "resolved_config::tests::resolved_cargo_allow_config_rejects_non_regular_explicit_policy", "--nocapture"])
+        .env("CARGO_ALLOW_FIFO_CHILD", "1")
+        .spawn()?;
+    for _ in 0..40 {
+        if let Some(status) = child.try_wait()? {
+            return status.success().then_some(()).ok_or("FIFO child failed".into());
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    child.kill()?;
+    let _ = child.wait();
+    Err("FIFO probe exceeded deadline".into())
+}
+
 #[test]
 fn resolved_cargo_allow_config_selects_only_the_winning_source_for_a_shared_path() -> TestResult {
     let fixture = Fixture::new("shared-candidate-path")?;
