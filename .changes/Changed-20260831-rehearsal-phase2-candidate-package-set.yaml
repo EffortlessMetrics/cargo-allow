@@ -1,0 +1,17 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real candidate-package-set phase (#3751
+  phase 2). The zero-upload rehearsal harness's candidate_package_set
+  phase was a file-existence characterization; it now runs the
+  publisher's offline --package-only mode — which validates exact
+  release-coupled internal requirements, packages the ten selected
+  cargo-allow rows with no registry reads and no compilation — and
+  records each row's name, version, release order, canonical SHA-256,
+  and archive size in the receipt. Complete requires exactly ten rows
+  all carrying the selected release identity version with positive
+  recorded sizes; packaging or requirement violations report Mismatch
+  with rows preserved for diagnostics, and missing toolchain reports
+  InstrumentFailure. The characterization set shrinks to five phases,
+  and the rehearsal is bound to the committed subject (a dirty worktree
+  fails cargo packaging by construction). The python and Rust rehearsal
+  tests bind the recorded rows to the uniform-version and digest laws.

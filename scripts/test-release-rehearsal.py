@@ -57,6 +57,7 @@ class TestReleaseRehearsal(unittest.TestCase):
                 "characterization-only phases cannot manufacture completion",
             )
 
+        identity = receipt.get("release_identity")
         packages = receipt.get("candidate_package_set")
         if phases["candidate_package_set"] == "Complete":
             self.assertIsInstance(packages, dict)
@@ -76,7 +77,6 @@ class TestReleaseRehearsal(unittest.TestCase):
                 self.assertEqual(row["state"], "already_published_exact")
                 self.assertTrue(row["registry_checksum"].startswith("sha256:"))
 
-        identity = receipt.get("release_identity")
         self.assertIsInstance(identity, dict)
         self.assertEqual(identity["schema"], "cargo-allow.release-identity.v1")
         self.assertEqual(identity["result"] if "result" in identity else "validated", "validated")
