@@ -74,7 +74,10 @@ pub const UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_VERSION: u32 = 1;
 pub const UNUSED_DEPENDENCY_ANALYZER_IDENTITY: &str = "cargo-allow.unused-dependency-inventory.v1: \
      bounded homegrown composition (toml manifest row parse + textual \
      source-reference scan over caller-supplied inputs); no external analyzer \
-     binaries, no Cargo/rustc invocation, no proc-macro expansion";
+     binaries, no Cargo/rustc invocation, no proc-macro expansion; dependency \
+     [lib] name remaps are modeled through caller-supplied identities, and \
+     dependencies without a supplied identity are scanned under the folded \
+     package name only";
 
 /// Claim boundary carried by every receipt this module renders.
 pub const UNUSED_DEPENDENCY_CLAIM_BOUNDARY: &str = "advisory feature-aware inventory only: an \
@@ -239,6 +242,18 @@ pub struct UnusedDependencyManifestRowV1 {
     pub features_selected: Vec<String>,
 }
 
+/// A dependency package's Rust lib identity when it differs from the folded
+/// package name: a manifest may rename the crate root with
+/// `[lib] name = "..."`, and references then use the lib spelling, not the
+/// folded package name. The caller supplies these identities where it can
+/// observe them (workspace member manifests); dependencies without a
+/// supplied identity are scanned under the folded package name only.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct UnusedDependencyLibIdentityV1 {
+    pub package_name: String,
+    pub lib_name: String,
+}
+
 /// Exact request identity for one package/configuration inspection.
 ///
 /// The caller supplies the exact manifest text, package identity, selected
@@ -258,6 +273,11 @@ pub struct UnusedDependencyRequestV1 {
     /// Whether the package declares a build script (its generated use is
     /// then outside the scanned inputs).
     pub build_script_present: bool,
+    /// Lib identities for dependency packages whose crate root is renamed
+    /// via `[lib] name`. Absent identities are scanned under the folded
+    /// package name (declared limitation for unobserved registry deps).
+    #[serde(default)]
+    pub dependency_lib_identities: Vec<UnusedDependencyLibIdentityV1>,
 }
 
 /// One classified dependency row with exact evidence and limitations.

@@ -14613,3 +14613,69 @@ glob = ".allow/revisions/3905-feature-configuration-routing.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0688"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+owner = "core/release"
+classification = "dogfood_receipt_example"
+reason = "Committed line-free JSON of the #3909 PR B unused-dependency family inventory; drift-guarded by the allow-inventory dogfood test."
+evidence = ["issue:3909"]
+created = "2026-08-31"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/unused-dependency-inventory-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0689"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+owner = "core/release"
+classification = "dogfood_receipt_example"
+reason = "Committed human-readable table of the #3909 PR B unused-dependency family inventory; drift-guarded by the allow-inventory dogfood test."
+evidence = ["issue:3909"]
+created = "2026-08-31"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+target_fingerprint = "md"
+glob = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0690"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3909 PR B revision note authorizing the unused-dependency artifact receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3909", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-31"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

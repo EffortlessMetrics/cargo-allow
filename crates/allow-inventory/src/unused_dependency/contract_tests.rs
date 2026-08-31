@@ -10,8 +10,8 @@
 use super::{
     UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID, UnusedDependencyDependencyClassV1,
     UnusedDependencyDispositionV1, UnusedDependencyExceptionV1, UnusedDependencyFindingV1,
-    UnusedDependencyInstrumentPostureV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
-    UnusedDependencySourceInputV1, empty_receipt, inventory_packages,
+    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1,
+    UnusedDependencyRequestV1, UnusedDependencySourceInputV1, empty_receipt, inventory_packages,
     inventory_unused_dependencies, render_unused_dependency_receipt_v1, validate_exception,
 };
 
@@ -48,6 +48,7 @@ fn request(
         manifest_text: manifest,
         source_inputs,
         build_script_present,
+        dependency_lib_identities: Vec::new(),
     }
 }
 
@@ -784,5 +785,61 @@ fn non_optional_dep_activator_only_is_unsupported() -> Result<(), String> {
             .iter()
             .any(|entry| entry.contains("dep:serde_json")),
         "the evidence must name the dep: activator",
+    )
+}
+
+/// The false-unused class this contract exists to prevent: a dependency
+/// package whose crate root is renamed via `[lib] name` is referenced under
+/// the lib spelling, so a caller-supplied lib identity must make the row
+/// classify Used (the intent-compiler -> intent_engine and
+/// proof-orchestrator -> proof_engine remaps hid live use before this was
+/// modeled).
+#[test]
+fn lib_identity_supplied_dependency_is_used_via_lib_name() -> Result<(), String> {
+    let manifest = package_manifest("intent-compiler = \"0.1.0\"");
+    let sources = vec![source(
+        "src/lib.rs",
+        &["use intent_engine::compile;", "pub fn nothing() {}"],
+    )];
+    let mut probe = request("sample", manifest, sources, false);
+    probe.dependency_lib_identities = vec![UnusedDependencyLibIdentityV1 {
+        package_name: "intent-compiler".to_string(),
+        lib_name: "intent_engine".to_string(),
+    }];
+    let receipt = inventory_unused_dependencies(&probe)?;
+    let finding = first_finding(&receipt)?;
+    require(
+        finding.disposition == UnusedDependencyDispositionV1::Used,
+        "a lib-renamed dependency referenced by its lib name must classify Used",
+    )?;
+    require(
+        finding
+            .evidence
+            .iter()
+            .any(|entry| entry.contains("intent_engine")),
+        "the evidence must name the matched lib identity",
+    )
+}
+
+/// The declared residual limitation: without a supplied identity, references
+/// under a renamed lib spelling are invisible and the row renders advisory
+/// ApparentlyUnused with the absence limitations attached — never Used, and
+/// never more than an advisory candidate.
+#[test]
+fn lib_identity_absent_renaming_stays_advisory_absence() -> Result<(), String> {
+    let manifest = package_manifest("intent-compiler = \"0.1.0\"");
+    let sources = vec![source(
+        "src/lib.rs",
+        &["use intent_engine::compile;", "pub fn nothing() {}"],
+    )];
+    let receipt = inventory_unused_dependencies(&request("sample", manifest, sources, false))?;
+    let finding = first_finding(&receipt)?;
+    require(
+        finding.disposition == UnusedDependencyDispositionV1::ApparentlyUnused,
+        "without a supplied lib identity the renaming reference is invisible and          the row stays advisory ApparentlyUnused",
+    )?;
+    require(
+        !finding.limitations.is_empty(),
+        "absence findings must carry the composition limitations",
     )
 }

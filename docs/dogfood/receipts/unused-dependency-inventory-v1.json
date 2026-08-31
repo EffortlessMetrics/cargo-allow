@@ -1,0 +1,948 @@
+{
+  "schema_id": "cargo-allow.unused-dependency-family-inventory.v1",
+  "schema_version": 1,
+  "analyzer_identity": "cargo-allow.unused-dependency-inventory.v1: bounded homegrown composition (toml manifest row parse + textual source-reference scan over caller-supplied inputs); no external analyzer binaries, no Cargo/rustc invocation, no proc-macro expansion; dependency [lib] name remaps are modeled through caller-supplied identities, and dependencies without a supplied identity are scanned under the folded package name only",
+  "family_definition_note": "the cargo-allow release-set lane package list from .github/workflows/ci.yml (release-set clippy step) plus the cargo-proof product package from the #3905 shared product line (14 packages); each package is inspected under its default configuration: allow-rust.default, allow-files.default, and cargo-proof.default are the #3905 matrix default rows, the other <package>.default ids are the featureless default configurations outside the #3905 matrix, and the deeper matrix rows are separate scopes reserved for later PRs",
+  "packages": [
+    {
+      "package_name": "allow-core",
+      "configuration_id": "allow-core.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "proptest",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "unicode-normalization",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-diff",
+      "configuration_id": "allow-diff.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-files",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-rust",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-repo-snapshot",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proptest",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-files",
+      "configuration_id": "allow-files.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "yaml-rust2",
+          "class": "optional_normal",
+          "optional": true,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-inventory",
+      "configuration_id": "allow-inventory.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "rayon",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-match",
+      "configuration_id": "allow-match.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-rust",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proptest",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-policy",
+      "configuration_id": "allow-policy.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proptest",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "remove",
+          "inventory_verdict": "apparently_unused",
+          "note": "no use/path/extern-crate reference exists in the scanned inputs (src/ and tests/), and serde_json's lib name is the folded package name, so no lib identity can hide a reference; absence is still not proof of non-use, so PR C must re-verify with a compile check before removal; remove candidate for PR C"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-policy-legacy",
+      "configuration_id": "allow-policy-legacy.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-files",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-match",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-report",
+      "configuration_id": "allow-report.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "unicode-segmentation",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "unicode-width",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "allow-rust",
+      "configuration_id": "allow-rust.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proptest",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "rayon",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "same-file",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "tree-sitter",
+          "class": "optional_normal",
+          "optional": true,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "tree-sitter-rust",
+          "class": "optional_normal",
+          "optional": true,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "cargo-allow",
+      "configuration_id": "cargo-allow.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "allow-core",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-diff",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-files",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-inventory",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-match",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-policy-legacy",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-report",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "allow-rust",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "clap",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "clap_complete",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-repo-edit",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-repo-protocol",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-repo-snapshot",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-rust-source-index",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "intent-compiler",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "intent-model",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "intent-protocol",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "jsonschema",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "regex",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "terminal_size",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "cargo-proof",
+      "configuration_id": "cargo-proof.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "clap",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-repo-protocol",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "effortless-rust-source-index",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "intent-protocol",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proof-orchestrator",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "proof-protocol",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "effortless-repo-edit",
+      "configuration_id": "effortless-repo-edit.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "effortless-repo-protocol",
+      "configuration_id": "effortless-repo-protocol.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde_json",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    },
+    {
+      "package_name": "effortless-repo-snapshot",
+      "configuration_id": "effortless-repo-snapshot.default",
+      "packages_inspected": 1,
+      "instrument_posture": "complete",
+      "findings": [
+        {
+          "dependency_name": "effortless-repo-protocol",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "serde",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "sha2",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "toml",
+          "class": "normal",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        }
+      ]
+    }
+  ]
+}

@@ -23,10 +23,11 @@ pub use unused_dependency::{
     UNUSED_DEPENDENCY_ANALYZER_IDENTITY, UNUSED_DEPENDENCY_CLAIM_BOUNDARY,
     UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID, UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_VERSION,
     UnusedDependencyDependencyClassV1, UnusedDependencyDispositionV1, UnusedDependencyExceptionV1,
-    UnusedDependencyFindingV1, UnusedDependencyInstrumentPostureV1, UnusedDependencyManifestRowV1,
-    UnusedDependencyReceiptV1, UnusedDependencyRequestV1, UnusedDependencySourceInputV1,
-    declared_absence_limitation, declared_unscanned_kinds, empty_receipt, inventory_packages,
-    inventory_unused_dependencies, render_unused_dependency_receipt_v1, validate_exception,
+    UnusedDependencyFindingV1, UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1,
+    UnusedDependencyManifestRowV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
+    UnusedDependencySourceInputV1, declared_absence_limitation, declared_unscanned_kinds,
+    empty_receipt, inventory_packages, inventory_unused_dependencies,
+    render_unused_dependency_receipt_v1, validate_exception,
 };
 
 use filesystem::{existing_regular_files, recursive_files};

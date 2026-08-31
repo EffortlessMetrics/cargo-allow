@@ -1,0 +1,24 @@
+# Revision note for #3909 PR B: receipts for the committed unused-dependency
+# family-inventory artifacts (docs/dogfood/receipts/unused-dependency-inventory-v1.json
+# and .md). The advisory artifacts are the retained evidence surface of the
+# allow-inventory dogfood test and are drift-guarded against the live
+# inventory; the receipts cover the new tracked non-Rust evidence files only
+# and weaken no existing exception.
+
+[[records]]
+allow_ids = ["allow-0688"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7d8ad219b44332b87d486e647ea79a38fd44f531c85a2000d2df03a0f2c766b8"
+reason = "receipt for docs/dogfood/receipts/unused-dependency-inventory-v1.json, the line-free machine artifact of the #3909 PR B family inventory"
+
+[[records]]
+allow_ids = ["allow-0689"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:de30c4bf9dcbb183d51970427a12c76be84799e56d17c16374d6f2b46f272fe4"
+reason = "receipt for docs/dogfood/receipts/unused-dependency-inventory-v1.md, the human table artifact of the #3909 PR B family inventory"
+
+[[records]]
+allow_ids = ["allow-0690"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:78d638963561edda2aadd5e3d9d4b5b413c7c39d059c36a09afe2859c2487b5e"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
