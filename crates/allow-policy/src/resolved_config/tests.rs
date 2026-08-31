@@ -1347,7 +1347,10 @@ fn resolved_cargo_allow_config_rejects_non_regular_explicit_policy() -> TestResu
         .spawn()?;
     for _ in 0..40 {
         if let Some(status) = child.try_wait()? {
-            return status.success().then_some(()).ok_or("FIFO child failed".into());
+            return status
+                .success()
+                .then_some(())
+                .ok_or("FIFO child failed".into());
         }
         std::thread::sleep(std::time::Duration::from_millis(50));
     }

@@ -240,7 +240,10 @@ fn load_contained_policy(root: &Path, candidate: &Path) -> Option<AllowConfig> {
     let canonical_root = root.canonicalize().ok()?;
     let canonical_candidate = candidate.canonicalize().ok()?;
     canonical_candidate.strip_prefix(canonical_root).ok()?;
-    std::fs::metadata(&canonical_candidate).ok()?.is_file().then_some(())?;
+    std::fs::metadata(&canonical_candidate)
+        .ok()?
+        .is_file()
+        .then_some(())?;
     load_policy(canonical_candidate).ok()
 }
 

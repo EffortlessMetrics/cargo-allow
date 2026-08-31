@@ -345,7 +345,11 @@ fn mirror_divergence_rejects_non_regular_policy_before_read() -> std::io::Result
         return Ok(());
     }
     let mut child = std::process::Command::new(std::env::current_exe()?)
-        .args(["--exact", "federation::tests::mirror_divergence_rejects_non_regular_policy_before_read", "--nocapture"])
+        .args([
+            "--exact",
+            "federation::tests::mirror_divergence_rejects_non_regular_policy_before_read",
+            "--nocapture",
+        ])
         .env("CARGO_ALLOW_FIFO_CHILD", "1")
         .spawn()?;
     for _ in 0..40 {
