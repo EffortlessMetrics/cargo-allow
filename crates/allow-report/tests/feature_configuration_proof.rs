@@ -249,10 +249,11 @@ fn every_executable_matrix_row_proves_green() -> Result<(), String> {
             }
             continue;
         }
-        if let Some(selected) = &selected {
-            if !selected.iter().any(|id| id == &row.configuration_id) {
-                continue;
-            }
+        let in_scope = selected
+            .as_ref()
+            .is_none_or(|selected| selected.iter().any(|id| id == &row.configuration_id));
+        if !in_scope {
+            continue;
         }
         run_proof(&row.configuration_id)?;
     }
