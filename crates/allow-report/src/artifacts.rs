@@ -7,8 +7,10 @@ mod doctor;
 mod evaluation_artifact_set_v1;
 mod exact_candidate_receipt_v2;
 mod explain;
+mod feature_configuration_v1;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
+mod final_freeze_replay_v1;
 mod final_readiness_v1;
 mod frozen_candidate_custody_v1;
 mod github_pr_check_v1;
@@ -52,11 +54,51 @@ pub use doctor::{
     FileFamilyConflictSummary, FileFamilyRuleSummary,
 };
 pub use explain::{EvidenceReference, ExplainReport};
+pub use feature_configuration_v1::{
+    CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_VERSION,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_VERSION, FeatureConfigurationCommandResultV1,
+    FeatureConfigurationCommandStatusV1, FeatureConfigurationEnforcementPostureV1,
+    FeatureConfigurationGapV1, FeatureConfigurationMatrixResultV1,
+    FeatureConfigurationMatrixValidationV1, FeatureConfigurationNonSelectionV1,
+    FeatureConfigurationProductV1, FeatureConfigurationProofDepthV1,
+    FeatureConfigurationProofOutcomeV1, FeatureConfigurationProofReceiptV1,
+    FeatureConfigurationProofRequestV1, FeatureConfigurationReceiptResultV1,
+    FeatureConfigurationReceiptValidationV1, FeatureConfigurationRequestResultV1,
+    FeatureConfigurationRequestValidationV1, FeatureConfigurationSupportTierV1,
+    FeatureConfigurationTargetClassV1, FeatureImplicationV1, NoDefaultFeaturesPostureV1,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_ID,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_VERSION, WORKSPACE_RUST_VERSION,
+    crate_feature_inventory, current_feature_configuration_gaps, effective_feature_set,
+    render_feature_configuration_proof_receipt_v1,
+    render_feature_configuration_proof_receipt_v1_bytes,
+    render_feature_configuration_proof_request_v1,
+    render_supported_feature_configuration_matrix_v1,
+    render_supported_feature_configuration_matrix_v1_bytes,
+    row_for_supported_feature_configuration, supported_feature_configuration_matrix,
+    supported_feature_configuration_rows, validate_feature_configuration_proof_receipt_v1,
+    validate_feature_configuration_proof_request_v1,
+    validate_supported_feature_configuration_matrix_v1,
+};
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
 };
 pub use final_evidence_graph_v1::*;
+pub use final_freeze_replay_v1::{
+    CargoAllowFinalFreezeReceiptV1, CargoAllowFinalFreezeReplayInputsV1,
+    CargoAllowFinalFreezeReplayV1, FINAL_FREEZE_EXPECTED_SHARED_ROWS_V1,
+    FINAL_FREEZE_EXPECTED_UPLOAD_ROWS_V1, FINAL_FREEZE_RECEIPT_SCHEMA_ID,
+    FINAL_FREEZE_RECEIPT_SCHEMA_VERSION, FINAL_FREEZE_REPLAY_SCHEMA_ID,
+    FINAL_FREEZE_REPLAY_SCHEMA_VERSION, FinalFreezeManifestBindingV1, FinalFreezeManifestResultV1,
+    FinalFreezeReceiptInitV1, FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1,
+    FinalFreezeReplayRowV1, ObservationFreshnessV1, ObservationReadingRowV1, ObservationReadingV1,
+    RefreshableObservationAdapterV1, RefreshableObservationKindV1, RefreshableObservationV1,
+    RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
+    render_final_freeze_replay_markdown, replay_final_freeze,
+};
 pub use final_readiness_v1::{
     CargoAllowFinalReadinessV1, FINAL_READINESS_SCHEMA_ID, FINAL_READINESS_SCHEMA_VERSION,
     FinalReadinessClaimNarrowingV1, FinalReadinessCustodyPostureV1, FinalReadinessDecisionInputsV1,
