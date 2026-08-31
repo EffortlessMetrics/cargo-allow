@@ -100,7 +100,9 @@ fn single_row<'a>(
     package: &str,
 ) -> &'a DependencyGraphDeltaRowV1 {
     rows_for(receipt, kind, package).first().unwrap_or_else(|| {
-        panic!("expected exactly one {kind:?} row for {package}; rows: {receipt:?}")
+        std::panic::panic_any(format!(
+            "expected exactly one {kind:?} row for {package}; rows: {receipt:?}"
+        ))
     })
 }
 
@@ -393,36 +395,55 @@ fn dependency_graph_delta_fixtures_issue_2036_toml_downgrade_is_visible() {
 
 #[test]
 fn dependency_graph_delta_fixtures_direct_requirement_added_removed_raised() {
+    // The raise must keep each side's lock inside its own house caret
+    // ceiling: base "2.0" accepts [2.0.0, 2.1.0) and head "2.4" accepts
+    // [2.4.0, 2.5.0), so the sides carry per-side locks instead of one shared
+    // lock that could not satisfy both bounds.
     let base_manifest =
         manifest_with_dependencies("bitflags = \"2.0\"\nserde = \"1.0\"\ntempfile = \"3.0\"\n");
     let head_manifest =
         manifest_with_dependencies("anyhow = \"1.0\"\nbitflags = \"2.4\"\nserde = \"1.0\"\n");
-    let mut lock = String::from("version = 4\n");
-    lock.push_str(&lock_package("anyhow", "1.0.0", Some(CRATES_IO), None, &[]));
-    lock.push_str(&lock_package(
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package(
         "bitflags",
-        "2.4.0",
+        "2.0.5",
         Some(CRATES_IO),
         None,
         &[],
     ));
-    lock.push_str(&lock_package(
+    base_lock.push_str(&lock_package(
         "serde",
         "1.0.219",
         Some(CRATES_IO),
         None,
         &[],
     ));
-    lock.push_str(&lock_package(
+    base_lock.push_str(&lock_package(
         "tempfile",
         "3.0.0",
         Some(CRATES_IO),
         None,
         &[],
     ));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package("anyhow", "1.0.0", Some(CRATES_IO), None, &[]));
+    head_lock.push_str(&lock_package(
+        "bitflags",
+        "2.4.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    head_lock.push_str(&lock_package(
+        "serde",
+        "1.0.219",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
     let receipt = dependency_graph_delta(&request(
-        side("b", &[("Cargo.toml", base_manifest)], Some(lock.clone())),
-        side("h", &[("Cargo.toml", head_manifest)], Some(lock)),
+        side("b", &[("Cargo.toml", base_manifest)], Some(base_lock)),
+        side("h", &[("Cargo.toml", head_manifest)], Some(head_lock)),
     ));
 
     assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
@@ -708,7 +729,15 @@ fn dependency_graph_delta_fixtures_manifest_git_source_change_is_visible() {
         "serde-json = { package = \"serde_json\", git = \"https://example.com/serde-json\", rev = \"bbbbbbbb\" }\n",
     );
     let mut lock = String::from("version = 4\n");
-    lock.push_str(&lock_package("serde_json", "1.0.0", None, None, &[]));
+    // The git requirement only agrees with a git-source lock record; a
+    // sourceless or registry lock would fail source-kind agreement.
+    lock.push_str(&lock_package(
+        "serde_json",
+        "1.0.0",
+        Some("git+https://example.com/serde-json?rev=aaaaaaaa"),
+        None,
+        &[],
+    ));
     let receipt = dependency_graph_delta(&request(
         side("b", &[("Cargo.toml", base_manifest)], Some(lock.clone())),
         side("h", &[("Cargo.toml", head_manifest)], Some(lock)),
@@ -944,6 +973,396 @@ fn dependency_graph_delta_fixtures_manifest_lock_mismatch_stale_lock() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Upper-bound ceilings and conjunctive bounds (PR #4053 review)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn dependency_graph_delta_fixtures_star_to_upper_bound_is_never_silent() {
+    // A starred requirement narrowed to an explicit upper bound changes the
+    // accepted range even when the lockfile still satisfies it. Under the
+    // ceiling model the canonical keys differ, so the movement row naming
+    // both texts is the correct pick; the ManifestLockMismatch pick is
+    // reserved for text changes whose canonical constraints tie.
+    let base_manifest = manifest_with_dependencies("libc = \"*\"\n");
+    let head_manifest = manifest_with_dependencies("libc = \"<1.0\"\n");
+    let mut lock = String::from("version = 4\n");
+    lock.push_str(&lock_package("libc", "0.2.171", Some(CRATES_IO), None, &[]));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", base_manifest)], Some(lock.clone())),
+        side("h", &[("Cargo.toml", head_manifest)], Some(lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        !has_kind(
+            &receipt,
+            DependencyGraphDeltaKindV1::NoSemanticGraphChange,
+            "fixture-product"
+        ),
+        "a starred-to-upper-bound requirement change must never classify clean; rows: {receipt:?}"
+    );
+    let narrowed = single_row(
+        &receipt,
+        DependencyGraphDeltaKindV1::RequirementRangeNarrowed,
+        "libc",
+    );
+    assert_eq!(narrowed.base_requirement.as_deref(), Some("*"));
+    assert_eq!(narrowed.head_requirement.as_deref(), Some("<1.0"));
+    assert!(
+        !has_kind(
+            &receipt,
+            DependencyGraphDeltaKindV1::ManifestLockMismatch,
+            "libc"
+        ),
+        "the unchanged lock 0.2.171 genuinely satisfies <1.0, so no mismatch; rows: {receipt:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_upper_bound_violating_lock_is_mismatch() {
+    // "<0.2" excludes the locked 0.2.171: the violated exclusive ceiling must
+    // surface as a ManifestLockMismatch instead of a green.
+    let base_manifest = manifest_with_dependencies("libc = \"0.2\"\n");
+    let head_manifest = manifest_with_dependencies("libc = \"<0.2\"\n");
+    let mut lock = String::from("version = 4\n");
+    lock.push_str(&lock_package("libc", "0.2.171", Some(CRATES_IO), None, &[]));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", base_manifest)], Some(lock.clone())),
+        side("h", &[("Cargo.toml", head_manifest)], Some(lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    let mismatch = single_row(
+        &receipt,
+        DependencyGraphDeltaKindV1::ManifestLockMismatch,
+        "libc",
+    );
+    assert_eq!(
+        mismatch.head_requirement.as_deref(),
+        Some("<0.2"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.head_version.as_deref(),
+        Some("0.2.171"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.detail, "requirement_unsatisfied_in_head_lockfile",
+        "rows: {receipt:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_caret_ceiling_satisfied_and_violated() {
+    // The caret ceiling for "1.0" is <1.1.0: 1.0.9 sits inside and stays
+    // clean; 1.1.4 exceeds it and must fail agreement visibly.
+    let manifest = manifest_with_dependencies("anyhow = \"1.0\"\n");
+    let mut satisfying_lock = String::from("version = 4\n");
+    satisfying_lock.push_str(&lock_package("anyhow", "1.0.9", Some(CRATES_IO), None, &[]));
+    let satisfying = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", manifest.clone())],
+            Some(satisfying_lock.clone()),
+        ),
+        side(
+            "h",
+            &[("Cargo.toml", manifest.clone())],
+            Some(satisfying_lock),
+        ),
+    ));
+    assert_eq!(satisfying.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        !satisfying
+            .rows
+            .iter()
+            .any(|row| row.kind != DependencyGraphDeltaKindV1::NoSemanticGraphChange),
+        "1.0.9 sits inside the caret ceiling <1.1.0; rows: {satisfying:?}"
+    );
+
+    let mut violating_lock = String::from("version = 4\n");
+    violating_lock.push_str(&lock_package("anyhow", "1.1.4", Some(CRATES_IO), None, &[]));
+    let violating = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", manifest.clone())],
+            Some(violating_lock.clone()),
+        ),
+        side("h", &[("Cargo.toml", manifest)], Some(violating_lock)),
+    ));
+    assert_eq!(violating.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        has_kind(
+            &violating,
+            DependencyGraphDeltaKindV1::ManifestLockMismatch,
+            "anyhow"
+        ),
+        "1.1.4 exceeds the caret ceiling <1.1.0 and must fail visibly; rows: {violating:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_conjunctive_upper_bound_is_enforced() {
+    // The full conjunction ">=0.8, <1.0" keeps its ceiling: a locked 1.0.1
+    // violates it and must mismatch, while 0.9.5 stays inside and clean.
+    let manifest = manifest_with_dependencies("libc = \">=0.8, <1.0\"\n");
+    let mut violating_lock = String::from("version = 4\n");
+    violating_lock.push_str(&lock_package("libc", "1.0.1", Some(CRATES_IO), None, &[]));
+    let violating = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", manifest.clone())],
+            Some(violating_lock.clone()),
+        ),
+        side(
+            "h",
+            &[("Cargo.toml", manifest.clone())],
+            Some(violating_lock),
+        ),
+    ));
+    assert_eq!(violating.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        violating.rows.iter().any(|row| {
+            row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch
+                && row.detail == "requirement_unsatisfied_in_base_lockfile"
+        }),
+        "1.0.1 violates the conjunctive ceiling <1.0 on the base side; rows: {violating:?}"
+    );
+    assert!(
+        violating.rows.iter().any(|row| {
+            row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch
+                && row.detail == "requirement_unsatisfied_in_head_lockfile"
+        }),
+        "1.0.1 violates the conjunctive ceiling <1.0 on the head side; rows: {violating:?}"
+    );
+
+    let mut satisfying_lock = String::from("version = 4\n");
+    satisfying_lock.push_str(&lock_package("libc", "0.9.5", Some(CRATES_IO), None, &[]));
+    let satisfying = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", manifest.clone())],
+            Some(satisfying_lock.clone()),
+        ),
+        side("h", &[("Cargo.toml", manifest)], Some(satisfying_lock)),
+    ));
+    assert_eq!(satisfying.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        !satisfying
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch),
+        "0.9.5 satisfies >=0.8, <1.0; rows: {satisfying:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_tilde_minor_bump_ceiling_is_enforced() {
+    // "~1.2" ceilings at <1.3.0: the locked 1.9.0 satisfies the old
+    // same-major-only check but must now fail head-side agreement.
+    let manifest = manifest_with_dependencies("libc = \"~1.2\"\n");
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package("libc", "1.2.3", Some(CRATES_IO), None, &[]));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package("libc", "1.9.0", Some(CRATES_IO), None, &[]));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", manifest.clone())], Some(base_lock)),
+        side("h", &[("Cargo.toml", manifest)], Some(head_lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    let mismatch = single_row(
+        &receipt,
+        DependencyGraphDeltaKindV1::ManifestLockMismatch,
+        "libc",
+    );
+    assert_eq!(
+        mismatch.detail, "requirement_unsatisfied_in_head_lockfile",
+        "the base lock 1.2.3 satisfies ~1.2, so only the head side fails; rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.head_requirement.as_deref(),
+        Some("~1.2"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.head_version.as_deref(),
+        Some("1.9.0"),
+        "rows: {receipt:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_tied_canonical_text_change_fails_visibly() {
+    // "1.0" and "^1.0" tie canonically (caret floor 1.0.0, ceiling <1.1.0).
+    // Design pick (PR #4053 review): tied canonical constraints with
+    // differing texts emit a ManifestLockMismatch naming both texts instead
+    // of a silent NoSemanticGraphChange.
+    let base_manifest = manifest_with_dependencies("serde = \"1.0\"\n");
+    let head_manifest = manifest_with_dependencies("serde = \"^1.0\"\n");
+    let mut lock = String::from("version = 4\n");
+    lock.push_str(&lock_package(
+        "serde",
+        "1.0.219",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", base_manifest)], Some(lock.clone())),
+        side("h", &[("Cargo.toml", head_manifest)], Some(lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert_eq!(
+        receipt.rows.len(),
+        1,
+        "no other movement accompanies the tied text change; rows: {receipt:?}"
+    );
+    let mismatch = single_row(
+        &receipt,
+        DependencyGraphDeltaKindV1::ManifestLockMismatch,
+        "serde",
+    );
+    assert_eq!(
+        mismatch.base_requirement.as_deref(),
+        Some("1.0"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.head_requirement.as_deref(),
+        Some("^1.0"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        mismatch.detail, "requirement_text_changed_canonical_constraints_tied",
+        "rows: {receipt:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Source-kind agreement (PR #4053 review)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn dependency_graph_delta_fixtures_source_kind_agreement_fails_closed() {
+    let git_manifest = manifest_with_dependencies(
+        "serde-json = { package = \"serde_json\", git = \"https://example.com/serde-json\", rev = \"aaaaaaaa\" }\n",
+    );
+    let path_manifest =
+        manifest_with_dependencies("local-dep = { path = \"../vendor/local-dep\" }\n");
+    let mut git_lock = String::from("version = 4\n");
+    git_lock.push_str(&lock_package(
+        "serde_json",
+        "1.0.0",
+        Some("git+https://example.com/serde-json?rev=aaaaaaaa"),
+        None,
+        &[],
+    ));
+    let mut registry_lock = String::from("version = 4\n");
+    registry_lock.push_str(&lock_package(
+        "serde_json",
+        "1.0.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let mut sourceless_lock = String::from("version = 4\n");
+    sourceless_lock.push_str(&lock_package("local-dep", "0.1.0", None, None, &[]));
+    let mut path_registry_lock = String::from("version = 4\n");
+    path_registry_lock.push_str(&lock_package(
+        "local-dep",
+        "0.1.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+
+    // A git requirement agrees with a git-source lock record.
+    let git_match = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", git_manifest.clone())],
+            Some(git_lock.clone()),
+        ),
+        side("h", &[("Cargo.toml", git_manifest.clone())], Some(git_lock)),
+    ));
+    assert_eq!(git_match.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        !git_match
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch),
+        "a git requirement must agree with a git-source lock record; rows: {git_match:?}"
+    );
+
+    // The same git requirement must not be satisfied by a registry lock.
+    let git_against_registry = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", git_manifest.clone())],
+            Some(registry_lock.clone()),
+        ),
+        side("h", &[("Cargo.toml", git_manifest)], Some(registry_lock)),
+    ));
+    assert_eq!(
+        git_against_registry.verdict,
+        DependencyGraphDeltaVerdictV1::Complete
+    );
+    assert!(
+        git_against_registry.rows.iter().any(|row| {
+            row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch
+                && row.detail == "requirement_source_kind_absent_from_base_lockfile"
+        }),
+        "a git requirement must not agree with a registry lock; rows: {git_against_registry:?}"
+    );
+
+    // A path edge agrees only with a sourceless lock record.
+    let path_match = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", path_manifest.clone())],
+            Some(sourceless_lock.clone()),
+        ),
+        side(
+            "h",
+            &[("Cargo.toml", path_manifest.clone())],
+            Some(sourceless_lock),
+        ),
+    ));
+    assert_eq!(path_match.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        !path_match
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch),
+        "a path edge must agree with a sourceless lock record; rows: {path_match:?}"
+    );
+
+    // A path edge must not be satisfied by a registry lock.
+    let path_against_registry = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", path_manifest.clone())],
+            Some(path_registry_lock.clone()),
+        ),
+        side(
+            "h",
+            &[("Cargo.toml", path_manifest)],
+            Some(path_registry_lock),
+        ),
+    ));
+    assert!(
+        path_against_registry.rows.iter().any(|row| {
+            row.kind == DependencyGraphDeltaKindV1::ManifestLockMismatch
+                && row.detail == "requirement_source_kind_absent_from_head_lockfile"
+        }),
+        "a path edge must not agree with a registry lock; rows: {path_against_registry:?}"
+    );
+}
+
 #[test]
 fn dependency_graph_delta_fixtures_duplicate_version_movement() {
     let manifest = manifest_with_dependencies("regex = \"1.5\"\n");
@@ -983,13 +1402,12 @@ fn dependency_graph_delta_fixtures_no_semantic_graph_change() {
         side("h", &[("Cargo.toml", commented)], Some(lock)),
     ));
 
-    eprintln!("DEBUG receipt: {receipt:?}");
     assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
     assert_eq!(receipt.rows.len(), 1, "rows: {receipt:?}");
     let only_row = receipt
         .rows
         .first()
-        .unwrap_or_else(|| panic!("expected one row"));
+        .unwrap_or_else(|| std::panic::panic_any("expected one row"));
     assert_eq!(
         only_row.kind,
         DependencyGraphDeltaKindV1::NoSemanticGraphChange
@@ -1331,9 +1749,11 @@ fn dependency_graph_delta_contract_json_projection_round_trips() {
     ));
 
     let rendered = serde_json::to_string(&receipt)
-        .unwrap_or_else(|error| panic!("receipt must serialize: {error}"));
-    let parsed: DependencyGraphDeltaReceiptV1 = serde_json::from_str(&rendered)
-        .unwrap_or_else(|error| panic!("receipt must deserialize: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("receipt must serialize: {error}")));
+    let parsed: DependencyGraphDeltaReceiptV1 =
+        serde_json::from_str(&rendered).unwrap_or_else(|error| {
+            std::panic::panic_any(format!("receipt must deserialize: {error}"))
+        });
     assert_eq!(parsed, receipt);
     assert!(
         rendered.contains("direct_requirement_lowered"),

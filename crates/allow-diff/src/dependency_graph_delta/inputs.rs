@@ -13,12 +13,28 @@ use toml::Value;
 /// Requirement constraint shape used for movement classification.
 ///
 /// Complex range semantics are approximated by an operator rank plus the
-/// requirement floor triple; the approximation is deterministic and the
-/// original requirement text stays attached to every row.
+/// requirement floor triple and an optional upper ceiling; the approximation
+/// is deterministic and the original requirement text stays attached to every
+/// row. Upper bounds are modeled so a narrowed or violated ceiling can never
+/// classify as a silent no-change row: when the ceiling cannot be derived the
+/// key degrades to floor-only, which stays visible through the display text.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct RequirementKey {
     pub operator: RequirementOperator,
     pub floor: (u64, u64, u64),
+    /// Exclusive or inclusive upper bound; `None` means no modeled ceiling.
+    pub ceiling: Option<CeilingBound>,
+}
+
+/// Upper bound of a requirement range.
+///
+/// The derived ordering is the strictness ordering: a smaller triple is a
+/// tighter bound, and for equal triples the exclusive bound is stricter than
+/// the inclusive one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct CeilingBound {
+    pub triple: (u64, u64, u64),
+    pub inclusive: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -78,7 +94,15 @@ pub(crate) fn canonical_label(canonical: &[RequirementKey]) -> String {
                 RequirementOperator::Tilde => "tilde",
                 RequirementOperator::Exact => "exact",
             };
-            format!("{operator}_{}_{}_{}", key.floor.0, key.floor.1, key.floor.2)
+            let mut label = format!("{operator}_{}_{}_{}", key.floor.0, key.floor.1, key.floor.2);
+            if let Some(ceiling) = key.ceiling {
+                let comparator = if ceiling.inclusive { "le" } else { "lt" };
+                label.push_str(&format!(
+                    "_{comparator}_{}_{}_{}",
+                    ceiling.triple.0, ceiling.triple.1, ceiling.triple.2
+                ));
+            }
+            label
         })
         .collect::<Vec<String>>()
         .join("+")
@@ -229,6 +253,7 @@ fn build_requirement(
         canonical.push(RequirementKey {
             operator: RequirementOperator::Star,
             floor: (0, 0, 0),
+            ceiling: None,
         });
     }
     canonical.sort();
@@ -360,66 +385,183 @@ fn resolve_workspace_inheritance(
 }
 
 /// Classification key for one requirement text.
+///
+/// Comma-separated conjunction segments (for example `">=0.8, <1.0"`) are
+/// modeled jointly: the floor comes from the first lower-bound segment
+/// (`>=`, `>`, `^`, `~`, `=`, or a bare caret bound) and every upper-bound
+/// segment (`<` exclusive, `<=` inclusive) contributes a ceiling, keeping the
+/// strictest one when several are present. Upper-bound-only requirements
+/// (`<X` / `<=X` alone) carry the zero floor plus their ceiling, so two
+/// different upper bounds never tie canonically. The full requirement text
+/// stays attached to rows for exact review either way.
 pub(crate) fn requirement_key(requirement: &str) -> RequirementKey {
     let trimmed = requirement.trim();
-    let body = trimmed.trim_start_matches('=');
-    let (operator, version_body) = if let Some(rest) = trimmed.strip_prefix(">=") {
-        (RequirementOperator::GreaterEqual, rest)
-    } else if trimmed.starts_with('>') {
-        (RequirementOperator::GreaterEqual, body)
-    } else if trimmed.starts_with('<') {
-        // Upper-bound-only constraints have no floor; they stay visible
-        // through their display text and compare as unconstrained floors.
-        (RequirementOperator::Star, trimmed)
-    } else if let Some(rest) = trimmed.strip_prefix('~') {
-        (RequirementOperator::Tilde, rest)
-    } else if trimmed.starts_with('=') {
-        (RequirementOperator::Exact, body)
-    } else if let Some(rest) = trimmed.strip_prefix('^') {
-        (RequirementOperator::Caret, rest)
-    } else {
-        (RequirementOperator::Caret, body)
-    };
-    if version_body.trim() == "*" || version_body.trim().is_empty() {
+    if trimmed == "*" || trimmed.is_empty() {
         return RequirementKey {
             operator: RequirementOperator::Star,
             floor: (0, 0, 0),
+            ceiling: None,
         };
     }
-    // Conjunction segments (">=0.8, <1.0") keep their first bound as the
-    // floor; the full text stays attached to rows for exact review.
-    let first_bound = version_body.split(',').next().unwrap_or(version_body);
+    let mut floor: Option<(u64, u64, u64)> = None;
+    let mut operator: Option<RequirementOperator> = None;
+    let mut ceiling: Option<CeilingBound> = None;
+    for segment in trimmed.split(',') {
+        let (segment_operator, segment_floor, segment_ceiling) = parse_bound_segment(segment);
+        // The first lower-bound segment fixes the operator and floor; later
+        // lower bounds only contribute when no bound was seen yet.
+        if floor.is_none() && segment_operator != RequirementOperator::Star {
+            floor = Some(segment_floor);
+            operator = Some(segment_operator);
+        }
+        ceiling = strictest_ceiling(ceiling, segment_ceiling);
+    }
     RequirementKey {
-        operator,
-        floor: version_floor(first_bound),
+        operator: operator.unwrap_or(RequirementOperator::Star),
+        floor: floor.unwrap_or((0, 0, 0)),
+        ceiling,
+    }
+}
+
+/// Parse one comma-separated comparison segment into its operator, floor, and
+/// optional ceiling. Caret and tilde bounds derive their ceiling at parse
+/// time; explicit `<X` / `<=X` segments become an exclusive/inclusive ceiling
+/// with no floor.
+fn parse_bound_segment(
+    segment: &str,
+) -> (RequirementOperator, (u64, u64, u64), Option<CeilingBound>) {
+    let segment = segment.trim();
+    if let Some(rest) = segment.strip_prefix(">=") {
+        (RequirementOperator::GreaterEqual, version_floor(rest), None)
+    } else if let Some(rest) = segment.strip_prefix("<=") {
+        (
+            RequirementOperator::Star,
+            (0, 0, 0),
+            Some(CeilingBound {
+                triple: version_floor(rest),
+                inclusive: true,
+            }),
+        )
+    } else if let Some(rest) = segment.strip_prefix("==") {
+        (RequirementOperator::Exact, version_floor(rest), None)
+    } else if let Some(rest) = segment.strip_prefix('=') {
+        (RequirementOperator::Exact, version_floor(rest), None)
+    } else if let Some(rest) = segment.strip_prefix('>') {
+        (RequirementOperator::GreaterEqual, version_floor(rest), None)
+    } else if let Some(rest) = segment.strip_prefix('<') {
+        // Upper-bound-only constraints have no floor; the ceiling carries the
+        // constraint so differing bounds never tie canonically.
+        (
+            RequirementOperator::Star,
+            (0, 0, 0),
+            Some(CeilingBound {
+                triple: version_floor(rest),
+                inclusive: false,
+            }),
+        )
+    } else if let Some(rest) = segment.strip_prefix('~') {
+        let (triple, specified) = version_triple_with_count(rest);
+        (
+            RequirementOperator::Tilde,
+            triple,
+            tilde_ceiling(triple, specified),
+        )
+    } else if let Some(rest) = segment.strip_prefix('^') {
+        let (triple, specified) = version_triple_with_count(rest);
+        (
+            RequirementOperator::Caret,
+            triple,
+            caret_ceiling(triple, specified),
+        )
+    } else {
+        // A bare requirement is a caret bound on the given components.
+        let (triple, specified) = version_triple_with_count(segment);
+        (
+            RequirementOperator::Caret,
+            triple,
+            caret_ceiling(triple, specified),
+        )
+    }
+}
+
+/// Keep the stricter of two optional ceilings; `None` means unconstrained.
+fn strictest_ceiling(
+    left: Option<CeilingBound>,
+    right: Option<CeilingBound>,
+) -> Option<CeilingBound> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (left, right) => left.or(right),
+    }
+}
+
+/// House caret ceiling law, derived from the number of specified components:
+/// only the major given bumps the major (`^1` -> `<2.0.0`, `^0` -> `<1.0.0`);
+/// the minor given bumps the minor (`^1.2` -> `<1.3.0`, `^1.2.3` -> `<1.3.0`,
+/// `^0.2.3` -> `<0.4.0`); a fully specified zero-major zero-minor version
+/// bumps the patch (`^0.0.3` -> `<0.0.4`). Unparseable bodies degrade to
+/// floor-only so garbage text keeps its previous unconstrained shape. The law
+/// is deliberately tighter than upstream caret for fully specified
+/// nonzero-minor versions, which can only surface more mismatch rows, never
+/// false greens.
+fn caret_ceiling(triple: (u64, u64, u64), specified: usize) -> Option<CeilingBound> {
+    let exclusive = |triple: (u64, u64, u64)| CeilingBound {
+        triple,
+        inclusive: false,
+    };
+    match specified {
+        0 => None,
+        1 => Some(exclusive((triple.0 + 1, 0, 0))),
+        2 => Some(exclusive((triple.0, triple.1 + 1, 0))),
+        _ if triple.0 == 0 && triple.1 == 0 => Some(exclusive((0, 0, triple.2 + 1))),
+        _ => Some(exclusive((triple.0, triple.1 + 1, 0))),
+    }
+}
+
+/// Tilde ceiling: bump the component after the last specified one
+/// (`~1` -> `<2.0.0`; `~1.2` and `~1.2.3` -> `<1.3.0`). Unparseable bodies
+/// degrade to floor-only.
+fn tilde_ceiling(triple: (u64, u64, u64), specified: usize) -> Option<CeilingBound> {
+    let exclusive = |triple: (u64, u64, u64)| CeilingBound {
+        triple,
+        inclusive: false,
+    };
+    match specified {
+        0 => None,
+        1 => Some(exclusive((triple.0 + 1, 0, 0))),
+        _ => Some(exclusive((triple.0, triple.1 + 1, 0))),
     }
 }
 
 fn version_floor(text: &str) -> (u64, u64, u64) {
+    version_triple_with_count(text).0
+}
+
+/// Parse a version body into its triple plus the number of specified
+/// components (`1` -> 1, `1.2` -> 2, `1.2.3` -> 3); unparseable text yields
+/// the zero triple with count 0. Pre-release and build metadata are ignored.
+fn version_triple_with_count(text: &str) -> ((u64, u64, u64), usize) {
     let core = text.trim().split(['-', '+']).next().unwrap_or(text);
-    let mut parts = core.trim().split('.');
-    let mut floor = (0u64, 0u64, 0u64);
-    let Some(major) = parts
-        .next()
-        .and_then(|part| part.trim().parse::<u64>().ok())
-    else {
-        return floor;
-    };
-    floor.0 = major;
-    let Some(minor) = parts
-        .next()
-        .and_then(|part| part.trim().parse::<u64>().ok())
-    else {
-        return floor;
-    };
-    floor.1 = minor;
-    if let Some(patch) = parts
-        .next()
-        .and_then(|part| part.trim().parse::<u64>().ok())
-    {
-        floor.2 = patch;
+    let mut triple = (0u64, 0u64, 0u64);
+    let mut specified = 0usize;
+    for (index, part) in core.trim().split('.').enumerate() {
+        match (index, part.trim().parse::<u64>()) {
+            (0, Ok(major)) => {
+                triple.0 = major;
+                specified = 1;
+            }
+            (1, Ok(minor)) => {
+                triple.1 = minor;
+                specified = 2;
+            }
+            (2, Ok(patch)) => {
+                triple.2 = patch;
+                specified = 3;
+            }
+            _ => break,
+        }
     }
-    floor
+    (triple, specified)
 }
 
 /// Full semver triple for lockfile versions. Lockfile versions are always
@@ -458,27 +600,35 @@ pub(crate) fn compare_lock_versions(left: &str, right: &str) -> std::cmp::Orderi
 /// Simplified requirement satisfaction used for manifest/lock agreement.
 ///
 /// Full range semantics arrive with bounded Cargo metadata; the check is
-/// deliberately conservative about caret, tilde, exact, and floor bounds so
-/// stale-lockfile shapes (manifest moved, lock untouched) fail visibly.
+/// deliberately conservative so stale-lockfile shapes (manifest moved, lock
+/// untouched) fail visibly. The floor must be met, a modeled ceiling must not
+/// be exceeded (exclusive or inclusive per [`CeilingBound`]), and exact pins
+/// require equality; caret and tilde shapes are fully encoded by their parsed
+/// floor and ceiling pair.
 pub(crate) fn requirement_satisfied(key: &RequirementKey, version: &str) -> bool {
     let Some(triple) = parse_semver_triple(version) else {
         return false;
     };
-    let at_least = triple >= key.floor;
-    match key.operator {
-        RequirementOperator::Star => true,
-        RequirementOperator::GreaterEqual => at_least,
-        RequirementOperator::Caret => {
-            let (major, minor, _patch) = key.floor;
-            if major >= 1 {
-                triple.0 == major && at_least
-            } else if minor >= 1 {
-                triple.0 == 0 && triple.1 == minor && at_least
-            } else {
-                triple.0 == 0 && triple.1 == 0 && at_least
-            }
+    if triple < key.floor {
+        return false;
+    }
+    if let Some(ceiling) = &key.ceiling {
+        let within_ceiling = if ceiling.inclusive {
+            triple <= ceiling.triple
+        } else {
+            triple < ceiling.triple
+        };
+        if !within_ceiling {
+            return false;
         }
-        RequirementOperator::Tilde => triple.0 == key.floor.0 && at_least,
+    }
+    match key.operator {
+        // Star accepts anything within (or absent) bounds; GreaterEqual,
+        // Caret, and Tilde are fully enforced by the floor and ceiling above.
+        RequirementOperator::Star
+        | RequirementOperator::GreaterEqual
+        | RequirementOperator::Caret
+        | RequirementOperator::Tilde => true,
         RequirementOperator::Exact => triple == key.floor,
     }
 }

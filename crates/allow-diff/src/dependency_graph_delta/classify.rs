@@ -5,8 +5,8 @@
 //! manifest key order or lockfile record order.
 
 use super::inputs::{
-    ParsedLockPackage, ParsedRequirement, RequirementKey, RequirementOperator, WorkspaceSpecs,
-    collect_workspace_specs, compare_lock_versions, parse_lockfile, parse_manifest,
+    CeilingBound, ParsedLockPackage, ParsedRequirement, RequirementKey, RequirementOperator,
+    WorkspaceSpecs, collect_workspace_specs, compare_lock_versions, parse_lockfile, parse_manifest,
     requirement_satisfied,
 };
 use super::{
@@ -131,10 +131,18 @@ fn parse_all_sides(
     request: &DependencyGraphDeltaRequestV1,
     rows: &mut Vec<DependencyGraphDeltaRowV1>,
 ) -> Option<ParsedSides> {
-    let base_requirements =
-        parse_side_requirements(SideLabel::Base, &request.base.manifests, rows)?;
-    let head_requirements =
-        parse_side_requirements(SideLabel::Head, &request.head.manifests, rows)?;
+    let base_requirements = parse_side_requirements(
+        SideLabel::Base,
+        &request.product,
+        &request.base.manifests,
+        rows,
+    )?;
+    let head_requirements = parse_side_requirements(
+        SideLabel::Head,
+        &request.product,
+        &request.head.manifests,
+        rows,
+    )?;
     let base_lock = parse_side_lockfile(
         SideLabel::Base,
         &request.product,
@@ -152,13 +160,14 @@ fn parse_all_sides(
 
 fn parse_side_requirements(
     label: SideLabel,
+    product: &str,
     manifests: &BTreeMap<String, String>,
     rows: &mut Vec<DependencyGraphDeltaRowV1>,
 ) -> Option<Vec<ParsedRequirement>> {
     let mut workspace_specs = WorkspaceSpecs::new();
     for (path, text) in manifests {
         if let Err(detail) = collect_workspace_specs(text, &mut workspace_specs) {
-            rows.push(failure_row("", detail, Some(path.clone())));
+            rows.push(failure_row(product, detail, Some(path.clone())));
             return None;
         }
     }
@@ -167,7 +176,7 @@ fn parse_side_requirements(
         match parse_manifest(path, text, &workspace_specs) {
             Ok(mut parsed) => requirements.append(&mut parsed),
             Err(detail) => {
-                rows.push(failure_row("", detail, Some(path.clone())));
+                rows.push(failure_row(product, detail, Some(path.clone())));
                 return None;
             }
         }
@@ -380,6 +389,23 @@ fn compare_requirements(
             head.canonical_label()
         );
         rows.push(moved);
+    } else if base.requirements != head.requirements {
+        // Design pick (PR #4053 review): when the requirement texts differ
+        // but every canonical constraint ties, no movement kind describes the
+        // change and the lockfile cannot witness which text is intended, so
+        // the pair fails visibly as a ManifestLockMismatch naming both texts
+        // instead of a silent NoSemanticGraphChange.
+        let mut mismatch = row(
+            DependencyGraphDeltaKindV1::ManifestLockMismatch,
+            &head.display_name,
+            head.class,
+            &head.target,
+        );
+        mismatch.manifest_path = Some(head.path.clone());
+        mismatch.base_requirement = Some(base.requirements.join(", "));
+        mismatch.head_requirement = Some(head.requirements.join(", "));
+        mismatch.detail = "requirement_text_changed_canonical_constraints_tied".to_string();
+        rows.push(mismatch);
     }
     if base.source_spec != head.source_spec {
         let mut changed = row(
@@ -485,6 +511,16 @@ fn single_requirement_movement_kind(
     }
 }
 
+/// Ceiling strictness with `None` (unconstrained) as the loosest bound:
+/// reports whether the head ceiling is tighter than the base ceiling.
+fn ceiling_is_tighter(base: Option<CeilingBound>, head: Option<CeilingBound>) -> bool {
+    match (base, head) {
+        (None, Some(_)) => true,
+        (Some(base_ceiling), Some(head_ceiling)) => head_ceiling < base_ceiling,
+        _ => false,
+    }
+}
+
 fn single_floor_movement_kind(
     base_key: RequirementKey,
     head_key: RequirementKey,
@@ -495,8 +531,18 @@ fn single_floor_movement_kind(
         Ordering::Equal => match head_key.operator.cmp(&base_key.operator) {
             Ordering::Greater => DependencyGraphDeltaKindV1::RequirementRangeNarrowed,
             Ordering::Less => DependencyGraphDeltaKindV1::RequirementRangeBroadened,
-            // Equal operators with equal floors cannot differ canonically.
-            Ordering::Equal => DependencyGraphDeltaKindV1::RequirementRangeBroadened,
+            // Equal operators with equal floors can still differ canonically
+            // through their modeled ceiling: a tighter head ceiling narrows
+            // the accepted range, a looser or dropped ceiling broadens it.
+            // `None` means unconstrained, so it is the loosest possible
+            // ceiling despite ordering first as an Option.
+            Ordering::Equal => {
+                if ceiling_is_tighter(base_key.ceiling, head_key.ceiling) {
+                    DependencyGraphDeltaKindV1::RequirementRangeNarrowed
+                } else {
+                    DependencyGraphDeltaKindV1::RequirementRangeBroadened
+                }
+            }
         },
     }
 }
@@ -563,7 +609,39 @@ fn strictest_operator(requirement: &ParsedRequirement) -> RequirementOperator {
         .unwrap_or(RequirementOperator::Star)
 }
 
-/// Every direct requirement must be satisfied by its side's lockfile.
+/// Source-kind matching rules between one manifest requirement and a lockfile
+/// package source (PR #4053 review: agreement must respect source identity):
+///
+/// - a `git+` requirement source spec requires a lock candidate whose source
+///   also starts with `git+`;
+/// - a `path+` requirement source spec (a path edge) requires a sourceless
+///   lock candidate, because path and workspace members carry no lock source;
+/// - an explicit `registry+` requirement source spec requires a lock
+///   candidate whose source also starts with `registry+`;
+/// - no requirement source spec (the plain crates-io default) accepts lock
+///   candidates that are sourceless or carry a `registry+` source.
+///
+/// The check fails closed: when no candidate matches the source kind there is
+/// no agreement and the pair surfaces as a ManifestLockMismatch rather than a
+/// green.
+fn lock_source_matches_manifest(
+    requirement: &ParsedRequirement,
+    lock_source: Option<&str>,
+) -> bool {
+    match requirement.source_spec.as_deref() {
+        Some(spec) if spec.starts_with("git+") => {
+            lock_source.is_some_and(|source| source.starts_with("git+"))
+        }
+        Some(spec) if spec.starts_with("path+") => lock_source.is_none(),
+        Some(spec) if spec.starts_with("registry+") => {
+            lock_source.is_some_and(|source| source.starts_with("registry+"))
+        }
+        _ => lock_source.is_none_or(|source| source.starts_with("registry+")),
+    }
+}
+
+/// Every direct requirement must be satisfied by its side's lockfile, both in
+/// version range and in source kind.
 fn check_manifest_lock_agreement(
     label: SideLabel,
     requirements: &[ParsedRequirement],
@@ -571,9 +649,26 @@ fn check_manifest_lock_agreement(
     rows: &mut Vec<DependencyGraphDeltaRowV1>,
 ) {
     for requirement in requirements {
-        let candidates: Vec<&ParsedLockPackage> = lock
+        let name_candidates: Vec<&ParsedLockPackage> = lock
             .iter()
             .filter(|package| package.name_key == requirement.package_key)
+            .collect();
+        if name_candidates.is_empty() {
+            let mut mismatch = row(
+                DependencyGraphDeltaKindV1::ManifestLockMismatch,
+                &requirement.display_name,
+                requirement.class,
+                &requirement.target,
+            );
+            mismatch.manifest_path = Some(requirement.path.clone());
+            push_side_requirement(&mut mismatch, label, &requirement.requirements.join(", "));
+            mismatch.detail = format!("package_absent_from_{}_lockfile", label.as_str());
+            rows.push(mismatch);
+            continue;
+        }
+        let candidates: Vec<&ParsedLockPackage> = name_candidates
+            .into_iter()
+            .filter(|package| lock_source_matches_manifest(requirement, package.source.as_deref()))
             .collect();
         if candidates.is_empty() {
             let mut mismatch = row(
@@ -584,7 +679,10 @@ fn check_manifest_lock_agreement(
             );
             mismatch.manifest_path = Some(requirement.path.clone());
             push_side_requirement(&mut mismatch, label, &requirement.requirements.join(", "));
-            mismatch.detail = format!("package_absent_from_{}_lockfile", label.as_str());
+            mismatch.detail = format!(
+                "requirement_source_kind_absent_from_{}_lockfile",
+                label.as_str()
+            );
             rows.push(mismatch);
             continue;
         }
