@@ -10,6 +10,6 @@ body: >-
   manifest row must carry the selected release identity version — a
   same-version registry row from another candidate or a stale-version
   row cannot enter the manifest. The release-binary fixture contract
-  suite gains negative fixtures for both, and the happy path holds: the
-  manifest's ten cargo-allow rows are exactly the selected candidate's
-  bytes.
+  suite gains negative fixtures for both and its candidate receipts are
+  aligned to the live producer shape (ten uniform-version cargo-allow
+  rows; shared rows live in the shared preflight, not the manifest).
