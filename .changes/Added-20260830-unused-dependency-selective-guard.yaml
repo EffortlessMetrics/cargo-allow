@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Land the selective no-new guard for the advisory unused-dependency
+  inventory (#3909 PR D): receipt validation enforces posture agreement
+  (InstrumentFailure receipts cannot carry classified rows), non-empty
+  limitations on Unsupported rows, and schema identity; scan completeness
+  is first-class, so absence findings over an empty input set are
+  review-visible noise instead of enforcement-grade; the disposition
+  coverage law fails only on complete-scan absence; and validate_exception
+  rejects impossible calendar dates. The always-on family-inventory test
+  supersedes the issue's routed-CI sketch, documented with the decision.

@@ -370,7 +370,7 @@ fn activator_evidence(context: &AnalysisContext, key: &str) -> Vec<String> {
 /// the receipt shows exactly what absence was measured over.
 fn scanned_set_evidence(context: &AnalysisContext) -> Vec<String> {
     if context.inputs.is_empty() {
-        return vec!["no_source_inputs_supplied".to_string()];
+        return vec![super::INCOMPLETE_SCAN_EVIDENCE_MARKER.to_string()];
     }
     context
         .inputs

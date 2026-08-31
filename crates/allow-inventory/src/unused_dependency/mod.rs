@@ -370,6 +370,91 @@ pub fn render_unused_dependency_receipt_v1(
     serde_json::to_string_pretty(receipt)
 }
 
+/// The evidence marker a finding carries when the caller supplied no source
+/// inputs: the scan then cannot distinguish use from absence, so such rows
+/// are incomplete-scan findings — review-visible, never enforcement-grade.
+pub const INCOMPLETE_SCAN_EVIDENCE_MARKER: &str = "no_source_inputs_supplied";
+
+/// Validation pass over a receipt, the prerequisite for any downstream
+/// enforcement to trust it (#3909 PR D). Laws:
+///
+/// - identity: schema id/version must match the module constants, and the
+///   package name must be non-empty;
+/// - posture agreement: a `Complete` receipt may not carry
+///   `InstrumentFailure` rows, and an `InstrumentFailure` receipt may not
+///   carry any row that looks clean (only `InstrumentFailure` dispositions);
+/// - limitations: every `Unsupported` finding carries non-empty limitations
+///   (an unexplained unsupported row can never be review-visible).
+///
+/// Absence of these violations is exactly what lets PR D's selective guard
+/// fail only on findings this composition can actually stand behind.
+pub fn validate_receipt(receipt: &UnusedDependencyReceiptV1) -> Result<(), String> {
+    if receipt.schema_id != UnusedDependencyReceiptV1::CURRENT_SCHEMA_ID {
+        return Err(format!(
+            "receipt schema id {} is not the module's {}",
+            receipt.schema_id,
+            UnusedDependencyReceiptV1::CURRENT_SCHEMA_ID
+        ));
+    }
+    if receipt.schema_version != UnusedDependencyReceiptV1::CURRENT_SCHEMA_VERSION {
+        return Err(format!(
+            "receipt schema version {} is not the module's {}",
+            receipt.schema_version,
+            UnusedDependencyReceiptV1::CURRENT_SCHEMA_VERSION
+        ));
+    }
+    if receipt.package_name.trim().is_empty() {
+        return Err("receipt package name must be non-empty".to_string());
+    }
+    for finding in &receipt.findings {
+        if finding.disposition == UnusedDependencyDispositionV1::InstrumentFailure
+            && receipt.instrument_posture != UnusedDependencyInstrumentPostureV1::InstrumentFailure
+        {
+            return Err(format!(
+                "receipt for {} is posture {:?} but carries an InstrumentFailure row; \
+                 posture and rows must agree",
+                receipt.package_name, receipt.instrument_posture
+            ));
+        }
+        if receipt.instrument_posture == UnusedDependencyInstrumentPostureV1::InstrumentFailure
+            && finding.disposition != UnusedDependencyDispositionV1::InstrumentFailure
+        {
+            return Err(format!(
+                "InstrumentFailure receipt for {} carries a {:?} row; failed \
+                 inspections must not render classified rows",
+                receipt.package_name, finding.disposition
+            ));
+        }
+        if finding.disposition == UnusedDependencyDispositionV1::Unsupported
+            && finding.limitations.is_empty()
+        {
+            return Err(format!(
+                "Unsupported finding for {} {} carries no limitations; an \
+                 unexplained unsupported row can never be review-visible",
+                finding.package_name, finding.manifest_row.dependency_name
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Whether a receipt's scan saw everything the composition needs to stand
+/// behind absence-based findings: posture must be `Complete` and no finding
+/// may carry the incomplete-scan evidence marker. Incomplete receipts are
+/// review-visible in the family inventory but are excluded from the
+/// selective no-new guard, because their absence-based rows would be noise.
+pub fn receipt_scan_is_complete(receipt: &UnusedDependencyReceiptV1) -> bool {
+    if receipt.instrument_posture != UnusedDependencyInstrumentPostureV1::Complete {
+        return false;
+    }
+    !receipt.findings.iter().any(|finding| {
+        finding
+            .evidence
+            .iter()
+            .any(|entry| entry == INCOMPLETE_SCAN_EVIDENCE_MARKER)
+    })
+}
+
 /// Inventory one package request into an advisory receipt.
 ///
 /// Malformed manifests produce an `InstrumentFailure` receipt whose rows are

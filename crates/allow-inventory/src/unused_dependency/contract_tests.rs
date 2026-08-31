@@ -12,7 +12,8 @@ use super::{
     UnusedDependencyDispositionV1, UnusedDependencyExceptionV1, UnusedDependencyFindingV1,
     UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1,
     UnusedDependencyRequestV1, UnusedDependencySourceInputV1, empty_receipt, inventory_packages,
-    inventory_unused_dependencies, render_unused_dependency_receipt_v1, validate_exception,
+    inventory_unused_dependencies, receipt_scan_is_complete, render_unused_dependency_receipt_v1,
+    validate_exception, validate_receipt,
 };
 
 fn require(condition: bool, message: &str) -> Result<(), String> {
@@ -841,5 +842,105 @@ fn lib_identity_absent_renaming_stays_advisory_absence() -> Result<(), String> {
     require(
         !finding.limitations.is_empty(),
         "absence findings must carry the composition limitations",
+    )
+}
+
+/// Receipt validation (the PR D selective-guard prerequisite): a Complete
+/// receipt passes, and an Unsupported row without limitations is rejected —
+/// an unexplained unsupported row can never be review-visible.
+#[test]
+fn validate_receipt_rejects_unsupported_without_limitations() -> Result<(), String> {
+    let manifest = package_manifest("serde_json = \"1\"");
+    let sources = vec![source("src/lib.rs", &["pub fn nothing() {}"])];
+    let receipt = inventory_unused_dependencies(&request("sample", manifest, sources, false))?;
+    validate_receipt(&receipt)?;
+    let mut unexplained = receipt;
+    let finding = unexplained
+        .findings
+        .first_mut()
+        .ok_or_else(|| "receipt lost its finding".to_string())?;
+    finding.disposition = UnusedDependencyDispositionV1::Unsupported;
+    finding.limitations = Vec::new();
+    require(
+        validate_receipt(&unexplained).is_err(),
+        "an Unsupported row without limitations must fail receipt validation",
+    )
+}
+
+/// Posture agreement: a receipt claiming InstrumentFailure posture while
+/// carrying classified rows is rejected — failed inspections must not
+/// render classified rows.
+#[test]
+fn validate_receipt_rejects_classified_rows_in_failed_receipts() -> Result<(), String> {
+    let manifest = package_manifest("serde_json = \"1\"");
+    let sources = vec![source("src/lib.rs", &["pub fn nothing() {}"])];
+    let mut receipt = inventory_unused_dependencies(&request("sample", manifest, sources, false))?;
+    require(
+        validate_receipt(&receipt).is_ok(),
+        "a live advisory receipt must pass receipt validation",
+    )?;
+    receipt.instrument_posture = UnusedDependencyInstrumentPostureV1::InstrumentFailure;
+    require(
+        validate_receipt(&receipt).is_err(),
+        "a receipt claiming InstrumentFailure posture with classified rows must fail          receipt validation",
+    )
+}
+
+/// Scan-completeness law: an empty input set is an incomplete scan, and a
+/// Complete-posture receipt over supplied inputs is complete. The selective
+/// guard grades only the former's absence findings as review-visible noise
+/// and the latter's as enforcement-grade.
+#[test]
+fn receipt_scan_is_complete_tracks_the_supplied_inputs() -> Result<(), String> {
+    let manifest = package_manifest("serde_json = \"1\"");
+    let with_inputs = inventory_unused_dependencies(&request(
+        "sample",
+        manifest.clone(),
+        vec![source("src/lib.rs", &["pub fn nothing() {}"])],
+        false,
+    ))?;
+    require(
+        receipt_scan_is_complete(&with_inputs),
+        "a receipt over supplied inputs is a complete scan",
+    )?;
+    let without_inputs =
+        inventory_unused_dependencies(&request("sample", manifest, Vec::new(), false))?;
+    require(
+        !receipt_scan_is_complete(&without_inputs),
+        "a receipt over zero inputs is an incomplete scan",
+    )
+}
+
+/// Date-impossibility tightening: validate_exception rejects a review_after
+/// naming a day the month does not have, while real dates keep validating.
+#[test]
+fn validate_exception_rejects_impossible_calendar_dates() -> Result<(), String> {
+    let mut exception = UnusedDependencyExceptionV1 {
+        package_name: "sample".to_string(),
+        manifest_dependency_name: "serde_json".to_string(),
+        class: UnusedDependencyDependencyClassV1::Normal,
+        target: None,
+        features_selected: Vec::new(),
+        owner: "release-eng".to_string(),
+        reason: "retained for the transitional extraction shim".to_string(),
+        use_evidence_or_limitation: "src/shim.rs:12: serde_json".to_string(),
+        controlling_issue: "#2607".to_string(),
+        created: "2026-01-31".to_string(),
+        review_after: "2026-02-28".to_string(),
+        expiry: None,
+        selected_configuration_ids: vec!["sample.default".to_string()],
+        claim_boundary: "one package's exception never retains another; this row-scoped              retention binds package sample and row serde_json only"
+            .to_string(),
+    };
+    validate_exception(&exception)?;
+    exception.review_after = "2026-02-30".to_string();
+    require(
+        validate_exception(&exception).is_err(),
+        "review_after 2026-02-30 must be rejected: February 2026 has 28 days",
+    )?;
+    exception.review_after = "2024-02-29".to_string();
+    require(
+        validate_exception(&exception).is_err(),
+        "review_after 2024-02-29 must be rejected as before created 2026-01-31 even in          a leap year",
     )
 }
