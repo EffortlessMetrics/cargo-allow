@@ -62,6 +62,21 @@ def sha256_file(path: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
+def sha256_file_lf_normalized(path: Path) -> str:
+    """Hash text artifacts over LF-normalized bytes.
+
+    Working-tree checkouts on Windows materialize CRLF for LF-blob files, so
+    a raw-byte digest would differ per platform and make the committed
+    baseline unreproducible. Normalizing to LF pins the digest to the
+    checked-in content regardless of checkout EOLs.
+    """
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(65536), b""):
+            digest.update(block.replace(b"\r\n", b"\n"))
+    return f"sha256:{digest.hexdigest()}"
+
+
 def git_identity(root: Path) -> tuple[str, str]:
     commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
@@ -292,10 +307,10 @@ def derive_payload(
         "schema_id": SCHEMA_ID,
         "schema_version": SCHEMA_VERSION,
         "topology_id": topology["topology_id"],
-        "topology_digest": sha256_file(topology_path),
+        "topology_digest": sha256_file_lf_normalized(topology_path),
         "repository_commit": git_identity(root)[0],
         "repository_tree": git_identity(root)[1],
-        "cargo_lock_digest": sha256_file(root / "Cargo.lock"),
+        "cargo_lock_digest": sha256_file_lf_normalized(root / "Cargo.lock"),
         "candidate_product_id": CANDIDATE_PRODUCT_ID,
         "root_logical_id": ROOT_LOGICAL_ID,
         "root_package_name": root_row["cargo_package_name"],
