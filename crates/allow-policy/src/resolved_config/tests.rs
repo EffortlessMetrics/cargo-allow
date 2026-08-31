@@ -1254,6 +1254,71 @@ fn resolved_cargo_allow_config_rejects_dangling_explicit_symlink() -> TestResult
         resolved.selected_policy.is_none(),
         "dangling link must not become a selected policy",
     )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::CliOverride
+                && candidate.disposition == ConfigCandidateDispositionV1::Selected
+        }),
+        "dangling leaf candidate should retain its existing selected disposition",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_preserves_missing_explicit_policy_selection() -> TestResult {
+    let fixture = Fixture::new("missing-cli-policy")?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("missing/policy.toml")),
+        "subject:missing-cli-policy",
+    )?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Invalid, "status")?;
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.path == "missing/policy.toml" && policy.digest.is_none()
+        }),
+        "ordinary missing CLI policy should retain its selected portable identity",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::CliOverride
+                && candidate.disposition == ConfigCandidateDispositionV1::Selected
+        }),
+        "ordinary missing CLI policy should retain selected disposition",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_cargo_allow_config_rejects_explicit_policy_beneath_dangling_parent() -> TestResult {
+    let fixture = Fixture::new("dangling-cli-parent")?;
+    std::os::unix::fs::symlink("missing-policy", fixture.path().join("policy"))?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/dangling.toml")),
+        "subject:dangling-cli-parent",
+    )?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Unsupported,
+        "status",
+    )?;
+    ensure(
+        resolved.selected_policy.is_none(),
+        "a policy beneath a dangling parent must not become selected",
+    )?;
+    ensure(
+        !resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::CliOverride
+                && candidate.disposition == ConfigCandidateDispositionV1::Selected
+        }),
+        "a CLI policy beneath a dangling parent must not have selected disposition",
+    )?;
     Ok(())
 }
 

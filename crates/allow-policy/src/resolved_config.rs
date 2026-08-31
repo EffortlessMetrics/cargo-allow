@@ -1,4 +1,5 @@
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
 use allow_core::{
@@ -358,7 +359,6 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         selection_source,
         input.root,
     );
-    sort_candidates(&mut candidates);
 
     let policy_observation = selected_path
         .as_deref()
@@ -376,6 +376,22 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
             )
         })
         .unwrap_or_default();
+    if selection_source == Some(ConfigCandidateSourceV1::CliOverride)
+        && policy_observation.reject_selected_candidate
+    {
+        for candidate in &mut candidates {
+            if candidate.source == ConfigCandidateSourceV1::CliOverride
+                && candidate.disposition == ConfigCandidateDispositionV1::Selected
+            {
+                candidate.disposition = ConfigCandidateDispositionV1::Invalid;
+                candidate.reason = policy_observation
+                    .error
+                    .as_ref()
+                    .map(|diagnostic| diagnostic.message.clone());
+            }
+        }
+    }
+    sort_candidates(&mut candidates);
     if let Some(error) = policy_observation.error.clone() {
         diagnostics.push(error);
     }
@@ -631,6 +647,14 @@ struct PolicyObservation {
     generated_scopes: Vec<String>,
     error: Option<ConfigDiagnosticV1>,
     status_override: Option<ConfigResolutionStatusV1>,
+    reject_selected_candidate: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SelectedPathContainment {
+    Contained,
+    Rejected,
+    RejectedParent,
 }
 
 fn observe_policy(
@@ -660,7 +684,8 @@ fn observe_policy(
             ..PolicyObservation::default()
         };
     };
-    if !selected_path_is_contained(root, path, &portable) {
+    let containment = selected_path_containment(root, path, &portable);
+    if containment != SelectedPathContainment::Contained {
         return PolicyObservation {
             error: Some(ConfigDiagnosticV1 {
                 code: CargoAllowErrorKind::Unsupported.code().to_string(),
@@ -669,6 +694,8 @@ fn observe_policy(
                     .to_string(),
             }),
             status_override: Some(ConfigResolutionStatusV1::Unsupported),
+            reject_selected_candidate:
+                containment == SelectedPathContainment::RejectedParent,
             ..PolicyObservation::default()
         };
     }
@@ -707,6 +734,7 @@ fn observe_policy(
             }),
             error: None,
             status_override: None,
+            reject_selected_candidate: false,
         },
         Err(error) => PolicyObservation {
             policy: Some(ResolvedPolicyV1 {
@@ -993,20 +1021,67 @@ fn root_relative_config_path(path: &str) -> PortableConfigPathV1 {
     }
 }
 
-fn selected_path_is_contained(root: &Path, path: &Path, portable: &PortableConfigPathV1) -> bool {
+fn selected_path_containment(
+    root: &Path,
+    path: &Path,
+    portable: &PortableConfigPathV1,
+) -> SelectedPathContainment {
     let mut anchor = root.to_path_buf();
     for _ in 0..portable.ancestor_depth {
         if !anchor.pop() {
-            return false;
+            return SelectedPathContainment::Rejected;
         }
     }
     match path.canonicalize() {
-        Ok(target) => anchor
-            .canonicalize()
-            .ok()
-            .and_then(|resolved_anchor| lexical_relative_path(&resolved_anchor, &target))
-            .is_some(),
-        Err(_) => fs::symlink_metadata(path).is_err(),
+        Ok(target) => {
+            if anchor
+                .canonicalize()
+                .ok()
+                .and_then(|resolved_anchor| lexical_relative_path(&resolved_anchor, &target))
+                .is_some()
+            {
+                SelectedPathContainment::Contained
+            } else {
+                SelectedPathContainment::Rejected
+            }
+        }
+        Err(_) => match fs::symlink_metadata(path) {
+            Ok(_) => SelectedPathContainment::Rejected,
+            Err(error) if error.kind() == ErrorKind::NotFound => {
+                if missing_selected_path_has_authorized_parent(&anchor, path) {
+                    SelectedPathContainment::Contained
+                } else {
+                    SelectedPathContainment::RejectedParent
+                }
+            }
+            Err(_) => SelectedPathContainment::Contained,
+        },
+    }
+}
+
+fn missing_selected_path_has_authorized_parent(anchor: &Path, path: &Path) -> bool {
+    let Some(mut current) = path.parent() else {
+        return false;
+    };
+    let Ok(resolved_anchor) = anchor.canonicalize() else {
+        return false;
+    };
+    loop {
+        match fs::symlink_metadata(current) {
+            Ok(_) => {
+                return current
+                    .canonicalize()
+                    .ok()
+                    .and_then(|resolved| lexical_relative_path(&resolved_anchor, &resolved))
+                    .is_some();
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(_) => return false,
+        }
+        let Some(parent) = current.parent() else {
+            return false;
+        };
+        current = parent;
     }
 }
 
