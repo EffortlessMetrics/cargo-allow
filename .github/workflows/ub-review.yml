@@ -147,6 +147,7 @@ jobs:
           minimax-api-key: ${{ secrets.MINIMAX_API_KEY }}
           base: origin/${{ github.base_ref }}
           head: HEAD
+          pr-head-sha: ${{ github.event.pull_request.head.sha }}
           out: target/ub-review
       - name: Upload review artifacts
         if: always()
