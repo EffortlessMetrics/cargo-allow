@@ -1,0 +1,31 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11200"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7886a2002a4d499c106f282d614f7b8d8841da92c7262c5f3b0002d41690439d"
+reason = "receipt for .github/workflows/feature-configuration-qualification.yml, the weekly full-union qualification workflow (#3905 PR D)"
+
+[[records]]
+allow_ids = ["allow-11201"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cbf4f8b15d8b62b635d25c2e9bd20ab7fbe1325a454a98dd577e33fae7297890"
+reason = "receipt for docs/assets/feature-configuration-matrix-v1.json, the checked-in matrix projection workflows read (#3905 PR D)"
+
+[[records]]
+allow_ids = ["allow-11202"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:16e51363eb7100dd60454d022b07a5d0b86183eec1652c8088257ab829bc35ed"
+reason = "receipt for scripts/feature-config-routing.py, the wide-by-default row router (#3905 PR D)"
+
+[[records]]
+allow_ids = ["allow-11203"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dca32e7cad616f063e106d321db3b5ca80b3291e61861d99a34c919bd36aa88f"
+reason = "receipt for scripts/test-feature-config-routing.py, the routing contract self-test (#3905 PR D)"
+
+[[records]]
+allow_ids = ["allow-11204"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:54a221453eabd91be098d8fe97479c6486867c205d8c33a26eab090996e7ff4b"
+reason = "self-receipt for this revision note file, matching the #3792/#3970 precedent"

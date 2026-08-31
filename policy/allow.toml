@@ -14503,3 +14503,113 @@ normalized_snippet_hash = "fnv1a64:d1bdfbac31c1005d"
 [allow.last_seen]
 line = 701
 column = 35
+
+[[allow]]
+id = "allow-11200"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/feature-configuration-qualification.yml"
+owner = "core/ci"
+classification = "ci_configuration"
+reason = "Weekly scheduled qualification workflow proving the full selected feature-configuration union and the no-new guard (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/feature-configuration-qualification.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/feature-configuration-qualification.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11201"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/assets/feature-configuration-matrix-v1.json"
+owner = "core/ci"
+classification = "generated_matrix_projection"
+reason = "Deterministic serde projection of supported_feature_configuration_matrix(); the single JSON source CI routing reads for configuration row IDs (#3905 PR D)."
+evidence = ["issue:3905", "test:checked_in_projection_matches_the_fresh_matrix_render"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/assets/feature-configuration-matrix-v1.json"
+target_fingerprint = "json"
+glob = "docs/assets/feature-configuration-matrix-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11202"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/feature-config-routing.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Derives affected feature-configuration rows from changed files for the routed CI proof lane, failing wide on unknown impact (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/feature-config-routing.py"
+target_fingerprint = "py"
+glob = "scripts/feature-config-routing.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11203"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-feature-config-routing.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Self-test characterizing the feature-configuration routing contract on synthetic changed-file sets (#3905 PR D)."
+evidence = ["issue:3905", "doc:docs/ci.md"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-feature-config-routing.py"
+target_fingerprint = "py"
+glob = "scripts/test-feature-config-routing.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11204"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3905-feature-configuration-routing.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3905 PR D revision note authorizing the routed-proof receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3905"]
+created = "2026-08-30"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3905-feature-configuration-routing.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3905-feature-configuration-routing.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Route the feature-configuration proof through CI: a checked-in matrix
+  projection (docs/assets/feature-configuration-matrix-v1.json) becomes the
+  single JSON source workflows read, a stdlib routing script derives the
+  affected configuration rows from changed files and fails wide when impact
+  is unknown, the recursive cargo proof suite is ignored out of the
+  always-on test job behind a CARGO_ALLOW_PROOF_ROWS row filter, a blocking
+  feature-configuration-proof lane proves exactly the affected rows, and a
+  weekly feature-configuration-qualification workflow proves the full
+  selected union as the drift backstop.

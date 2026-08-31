@@ -481,6 +481,51 @@ jobs:
           path: |
             target/cargo-allow/
 
+  # Routed feature-configuration proof (#3905 PR D): the recursive cargo
+  # proof suite behind allow-report's feature_configuration_proof test is
+  # #[ignore]d out of the always-on `test` job above. This blocking lane
+  # derives the affected matrix rows from the changed files (wide by
+  # default, per scripts/feature-config-routing.py) and proves exactly
+  # those rows. Docs-only changes select no rows and skip the prove step;
+  # the weekly feature-configuration-qualification workflow carries the
+  # full selected union. Self-contained on purpose: it computes its own
+  # merge base from a full-history checkout instead of waiting on
+  # shallow-diff-smoke, a characterization job that produces no inputs
+  # this job consumes.
+  feature-configuration-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Derive affected feature-configuration rows (#3905)
+        id: routing
+        run: |
+          BASE_REF="${{ github.base_ref || 'main' }}"
+          BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
+          git diff --name-only "$BASE_SHA" HEAD \
+            | python3 scripts/feature-config-routing.py > "$RUNNER_TEMP/routing-rows.json"
+          cat "$RUNNER_TEMP/routing-rows.json"
+          # The router always emits one single-line JSON object whose rows
+          # carry the concrete row IDs ("all" mode lists every ID), and the
+          # value contains no %, CR, or newline, so plain GITHUB_OUTPUT
+          # lines are the proper escaping here.
+          echo "rows=$(cat "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
+          echo "proof_rows=$(python3 -c 'import json,sys; print(",".join(json.load(open(sys.argv[1]))["rows"]))' "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
+          echo "has_rows=$(python3 -c 'import json,sys; print("true" if json.load(open(sys.argv[1]))["rows"] else "false")' "$RUNNER_TEMP/routing-rows.json")" >> "$GITHUB_OUTPUT"
+      - name: Routing self-test
+        run: python3 scripts/test-feature-config-routing.py
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: feature-configuration-proof
+      - name: Prove affected rows
+        if: steps.routing.outputs.has_rows == 'true'
+        env:
+          CARGO_ALLOW_PROOF_ROWS: ${{ steps.routing.outputs.proof_rows }}
+        run: cargo test -p allow-report --locked --test feature_configuration_proof -- --ignored
+
   # Cross-platform workspace test proof (#1825): run the workspace test suite
   # on Windows to guard the platform-specific code paths (path separators,
   # verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate from the main
