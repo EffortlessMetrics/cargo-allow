@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Disposition the live unused-dependency inventory over the cargo-allow
+  family (#3909 PR B): a dogfood integration test inventories all 14 family
+  packages (the release-set lane list plus cargo-proof) under their default
+  configurations from the real manifests and sources, requires Complete
+  instrument posture, and pins exactly one reviewed disposition per non-Used
+  finding with two-directional coverage enforcement — three remove candidates
+  (allow-policy/serde_json, cargo-allow/intent-compiler dev,
+  cargo-proof/proof-orchestrator) are recorded for a separately authorized
+  removal PR, nothing is removed. Deterministic line-free JSON and markdown
+  artifacts under docs/dogfood/receipts are guarded against drift with an
+  explicit --ignored regeneration path, and a probe over the real manifests
+  found no analyzer mis-parse, so the advisory inventory stays CI-free.
