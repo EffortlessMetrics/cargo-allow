@@ -1,0 +1,15 @@
+kind: Fixed
+body: >-
+  Close the verified_existing manifest masquerade (#3761, regressing
+  #3758). ReleaseManifestV2 construction checked registry-to-candidate
+  checksum equality only for published_verified rows, so a
+  verified_existing row whose registry bytes came from a different
+  candidate could contribute its unchecked observed checksum as the
+  manifest's public crate digest. Registry equality with the candidate's
+  local package is now required for every published row state, and every
+  manifest row must carry the selected release identity version — a
+  same-version registry row from another candidate or a stale-version
+  row cannot enter the manifest. The release-binary fixture contract
+  suite gains negative fixtures for both, and the happy path holds: the
+  manifest's ten cargo-allow rows are exactly the selected candidate's
+  bytes.

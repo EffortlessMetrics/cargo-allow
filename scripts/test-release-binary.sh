@@ -183,6 +183,45 @@ expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9
   bash scripts/generate-release-manifest.sh
 printf 'ok typed authority rejects semver build metadata in manifest rows\n'
 
+# A verified_existing row whose registry bytes differ from the candidate's
+# local package must not masquerade as exact in the manifest (#3758/#3761).
+verified_existing_receipt="${work}/verified-existing-topology.receipt.json"
+cp "${published_receipt}" "${verified_existing_receipt}"
+python3 - "${verified_existing_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+row = receipt["rows"][0]
+row["state"] = "verified_existing"
+row["registry_checksum"] = "sha256:" + ("d" * 64)
+path.write_text(json.dumps(receipt, indent=2) + "
+", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow   TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95   TOPOLOGY_RECEIPT="${verified_existing_receipt}" OUTPUT="${work}/verified-existing-manifest.json"   bash scripts/generate-release-manifest.sh
+printf 'ok verified_existing registry disagreement is rejected
+'
+
+# Every manifest row must carry the selected release identity version.
+version_mismatch_receipt="${work}/version-mismatch-topology.receipt.json"
+cp "${published_receipt}" "${version_mismatch_receipt}"
+python3 - "${version_mismatch_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["rows"][0]["version"] = "9.9.8"
+path.write_text(json.dumps(receipt, indent=2) + "
+", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow   TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95   TOPOLOGY_RECEIPT="${version_mismatch_receipt}" OUTPUT="${work}/version-mismatch-manifest.json"   bash scripts/generate-release-manifest.sh
+printf 'ok manifest rows must carry the selected release identity version
+'
+
 checksum_conflict_receipt="${work}/checksum-conflict-topology.receipt.json"
 cp "${published_receipt}" "${checksum_conflict_receipt}"
 python3 - "${checksum_conflict_receipt}" <<'PY'
