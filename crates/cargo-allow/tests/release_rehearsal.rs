@@ -23,8 +23,22 @@ struct ReleaseRehearsalReceiptV1 {
     subject_topology_digest: String,
     zero_mutation_proof: ZeroMutationProof,
     phases: std::collections::BTreeMap<String, String>,
+    #[serde(default)]
+    release_identity: Option<ReleaseIdentityRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReleaseIdentityRecordV1 {
+    schema: String,
+    version: String,
+    tag: String,
+    tag_source: String,
+    channel: String,
+    rc_ordinal: Option<u32>,
+    github_prerelease: bool,
 }
 
 fn require(condition: bool, message: &str) -> Result<(), io::Error> {
@@ -118,8 +132,10 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
+    // The seven characterization-only phases can never manufacture
+    // completion; release_identity is a real typed phase (#3751 phase 1) and
+    // may report Complete when the typed authority validates the candidate.
     for required_phase in [
-        "release_identity",
         "candidate_package_set",
         "shared_prerequisites",
         "publisher_state_machine",
@@ -136,6 +152,36 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
             &format!("phase {required_phase} must exist and remain non-Complete"),
         )?;
     }
+    require(
+        receipt
+            .phases
+            .get("release_identity")
+            .is_some_and(|status| !status.is_empty()),
+        "the typed release_identity phase must report a status",
+    )?;
+    let identity = receipt.release_identity.as_ref().ok_or_else(|| {
+        io::Error::other("a validated release_identity phase must record the typed projection")
+    })?;
+    require(
+        identity.schema == "cargo-allow.release-identity.v1",
+        "the recorded identity must carry the typed schema identity",
+    )?;
+    require(
+        !identity.version.is_empty(),
+        "identity version must be recorded",
+    )?;
+    require(
+        identity.tag.starts_with('v'),
+        "the canonical tag must be recorded",
+    )?;
+    require(
+        (identity.channel == "stable") != (identity.channel == "release_candidate"),
+        "channel must be exactly one of stable or release_candidate",
+    )?;
+    require(
+        identity.github_prerelease == (identity.channel == "release_candidate"),
+        "GitHub prerelease posture must follow the channel",
+    )?;
 
     Ok(())
 }
