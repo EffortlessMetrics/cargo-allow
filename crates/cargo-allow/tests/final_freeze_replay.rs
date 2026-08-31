@@ -15,6 +15,11 @@
 //! 8. RC.1 custody replayed as final is a `Mismatch`;
 //! 9. omitted remaining irreversible operations force `Incomplete`;
 //! 10. the replay exposes no tag/upload/release/authorization capability.
+//!
+//! Repair controls: a foreign-generation receipt schema fails closed even
+//! with a self-consistent retained-byte chain; a same-version transfer
+//! envelope produced from a different commit never counts as coverage; and
+//! an envelope set that omits a required artifact forces `MissingArtifact`.
 
 use allow_core::sha256_v1_bytes;
 use allow_report::{
@@ -702,6 +707,81 @@ fn final_freeze_replay_omitted_irreversible_operations_force_incomplete() -> Res
     require(
         row_with(&replayed, "records no remaining irreversible operations").is_some(),
         "the empty operation list was not flagged",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn final_freeze_replay_foreign_receipt_schema_fails_closed() -> Result<(), io::Error> {
+    // The schema customization lands before every derived digest is computed,
+    // so the retained-byte chain is fully self-consistent: only the declared
+    // schema generation may reject this receipt, and serde's willingness to
+    // deserialize an unknown generation into the V1 type must not help it.
+    let inputs = fixture_with(evidence_graph(), |receipt| {
+        receipt.schema_id = "cargo-allow.final-freeze-receipt.v2".to_string();
+    })?;
+    let replayed = replay_final_freeze(&inputs, &FixtureAdapter::current());
+    require(
+        replayed.result != FinalFreezeReplayResultV1::CompleteEquivalent,
+        "a foreign-generation receipt must not replay complete_equivalent, got {:?}",
+    )?;
+    require(
+        row_with(&replayed, "the replay only consumes schema").is_some(),
+        "the schema failure row is missing",
+    )?;
+    require(
+        !replayed.retained_bytes_verified,
+        "a schema failure must leave the retained bytes unverified",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn final_freeze_replay_same_version_envelope_from_other_commit_is_not_coverage()
+-> Result<(), io::Error> {
+    let mut inputs = fixture()?;
+    let envelope = match inputs.retained_transfers.first_mut() {
+        Some(envelope) => envelope,
+        None => return Err(io::Error::other("fixture lost its first envelope")),
+    };
+    // Correct release version, different build: producer identity must be
+    // bound to the frozen subject, so this envelope cannot supply coverage.
+    envelope.producer.commit_sha = "9999999999999999999999999999999999999999".to_string();
+    let replayed = replay_final_freeze(&inputs, &FixtureAdapter::current());
+    require(
+        replayed.result == FinalFreezeReplayResultV1::Mismatch,
+        "a same-version envelope from a different commit must mismatch, got {:?}",
+    )?;
+    require(
+        row_with(
+            &replayed,
+            "produced from a different commit than the frozen subject",
+        )
+        .is_some(),
+        "the commit binding row did not name the mismatch",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn final_freeze_replay_envelope_missing_required_artifact_is_missing() -> Result<(), io::Error> {
+    let mut inputs = fixture()?;
+    inputs
+        .retained_transfers
+        .retain(|envelope| envelope.stable_artifact_id != "allow-diff");
+    let replayed = replay_final_freeze(&inputs, &FixtureAdapter::current());
+    require(
+        replayed.result == FinalFreezeReplayResultV1::MissingArtifact,
+        "an envelope set that omits a required artifact must force missing_artifact, got {:?}",
+    )?;
+    require(
+        replayed.rows.iter().any(|row| {
+            row.subject.as_deref() == Some("allow-diff")
+                && row
+                    .message
+                    .contains("not covered by any retained transfer envelope")
+        }),
+        "the coverage row must name the uncovered artifact",
     )?;
     Ok(())
 }

@@ -20,7 +20,7 @@ use super::frozen_candidate_custody_v1::{
     CargoAllowFrozenCandidateCustodyV1, CustodyDispositionV1,
 };
 use super::release_artifact_transfer_v1::CargoAllowReleaseArtifactTransferV1;
-use super::release_identity_v1::{ReleaseChannelV1, ReleaseIdentityV1};
+use super::release_identity_v1::{ReleaseChannelV1, ReleaseIdentityV1, ReleaseVersionV1};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -251,6 +251,11 @@ pub struct FinalFreezeManifestBindingV1 {
 /// retained `FreezeReceipt` custody item and exact artifact.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CargoAllowFinalFreezeReceiptV1 {
+    /// Declared schema generation. The replay validates both fields against
+    /// [`CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_ID`] and
+    /// [`CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_VERSION`] up front and
+    /// fails closed on a foreign or future generation; serde alone would
+    /// otherwise deserialize an unknown-generation receipt into this V1 type.
     pub schema_id: String,
     pub schema_version: u32,
     pub freeze_id: String,
@@ -365,7 +370,11 @@ pub struct CargoAllowFinalFreezeReplayV1 {
     pub tree: String,
     pub cargo_lock_digest: String,
     pub topology_digest: String,
-    pub selected_channel: String,
+    /// The selected release channel, projected from a parsable receipt
+    /// identity. An unparsable identity leaves this absent — the replay never
+    /// defaults an unproven identity to `stable`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selected_channel: Option<String>,
     pub selected_upload_rows: u32,
     pub selected_shared_rows: u32,
     pub selected_package_rows: u32,
@@ -394,6 +403,10 @@ pub fn replay_final_freeze(
 ) -> CargoAllowFinalFreezeReplayV1 {
     let mut rows = Vec::new();
 
+    // Fail closed up front on a receipt whose declared schema generation the
+    // replay does not consume, before any retained-byte chain is evaluated.
+    replay_receipt_schema(inputs, &mut rows);
+
     let digests = retained_digest_map(&inputs.retained_artifacts, &mut rows);
     let custody_disposition = replay_custody_binding(inputs, &mut rows);
     replay_subject_binding(inputs, &mut rows);
@@ -421,19 +434,23 @@ pub fn replay_final_freeze(
             kind.forced_result()
         });
 
+    // Byte integrity is a false claim when any digest, identity, or custody
+    // binding row fired: a self-consistent-looking retained set with an
+    // instrument failure has not proven its bytes.
     let integrity_clean = !rows.iter().any(|row| {
         matches!(
             row.kind,
-            FinalFreezeReplayRowKindV1::Mismatch | FinalFreezeReplayRowKindV1::MissingArtifact
+            FinalFreezeReplayRowKindV1::Mismatch
+                | FinalFreezeReplayRowKindV1::MissingArtifact
+                | FinalFreezeReplayRowKindV1::InstrumentFailure
         )
     });
 
     let identity = &inputs.freeze_receipt.release_identity;
     let channel =
         ReleaseIdentityV1::parse(&identity.version, &identity.tag, identity.github_prerelease)
-            .map_or(ReleaseChannelV1::Stable, |parsed| {
-                parsed.version().channel()
-            });
+            .ok()
+            .map(|parsed| channel_label(parsed.version().channel()).to_string());
 
     let selected = &inputs.evidence_graph.selected_subject;
     CargoAllowFinalFreezeReplayV1 {
@@ -451,7 +468,7 @@ pub fn replay_final_freeze(
         tree: inputs.freeze_receipt.tree.clone(),
         cargo_lock_digest: selected.cargo_lock_digest.clone(),
         topology_digest: selected.topology_digest.clone(),
-        selected_channel: channel_label(channel).to_string(),
+        selected_channel: channel,
         selected_upload_rows: selected.expected_upload_rows,
         selected_shared_rows: selected.expected_shared_rows,
         selected_package_rows: selected.package_rows.len() as u32,
@@ -472,6 +489,35 @@ pub fn replay_final_freeze(
             && custody_disposition == CustodyDispositionV1::Complete,
         claim_boundary: REPLAY_CLAIM_BOUNDARY.to_string(),
     }
+}
+
+/// Validate the retained receipt's declared schema generation against the
+/// current constants before any replay binding runs. A future or foreign
+/// generation must fail closed as an instrument failure; serde alone would
+/// deserialize it into the V1 type and a self-consistent retained-byte chain
+/// would otherwise replay `CompleteEquivalent`.
+fn replay_receipt_schema(
+    inputs: &CargoAllowFinalFreezeReplayInputsV1,
+    rows: &mut Vec<FinalFreezeReplayRowV1>,
+) {
+    let receipt = &inputs.freeze_receipt;
+    if receipt.schema_id == CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_ID
+        && receipt.schema_version == CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_VERSION
+    {
+        return;
+    }
+    push_row(
+        rows,
+        FinalFreezeReplayRowKindV1::InstrumentFailure,
+        Some(receipt.freeze_id.clone()),
+        &format!(
+            "the retained freeze receipt declares schema {} v{}; the replay only consumes schema {} v{}",
+            receipt.schema_id,
+            receipt.schema_version,
+            CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_ID,
+            CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_VERSION,
+        ),
+    );
 }
 
 /// Render a replay result as JSON (machine projection).
@@ -504,7 +550,7 @@ pub fn render_final_freeze_replay_markdown(replay: &CargoAllowFinalFreezeReplayV
         "- Release identity: `{}` / `{}` (channel `{}`)\n",
         markdown_escape(&replay.release_identity.version),
         markdown_escape(&replay.release_identity.tag),
-        markdown_escape(&replay.selected_channel)
+        markdown_escape(replay.selected_channel.as_deref().unwrap_or("unknown"))
     ));
     output.push_str(&format!(
         "- Selected denominator: {} upload + {} shared = {} package rows\n",
@@ -918,8 +964,67 @@ fn replay_incident_handoff(
             Some(handoff_id.to_string()),
             "the retained incident handoff evidence row is missing from the evidence graph",
         );
+        return false;
     }
+    validate_rc1_exclusion_identity(inputs, handoff_id, rows);
     present
+}
+
+/// Cross-bind the receipt's excluded RC.1 identity to the retained incident
+/// handoff row. The exclusion is only honest when it names a retained,
+/// parsable release-candidate `rc1_version` that strictly precedes the frozen
+/// release identity; anything else is a blocking row bound to the handoff.
+fn validate_rc1_exclusion_identity(
+    inputs: &CargoAllowFinalFreezeReplayInputsV1,
+    handoff_id: &str,
+    rows: &mut Vec<FinalFreezeReplayRowV1>,
+) {
+    let receipt = &inputs.freeze_receipt;
+    let Some(rc1_version) = receipt
+        .rc1_version
+        .as_deref()
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+    else {
+        push_row(
+            rows,
+            FinalFreezeReplayRowKindV1::Incomplete,
+            Some(handoff_id.to_string()),
+            "the freeze receipt records the RC.1 exclusion without a retained rc1_version",
+        );
+        return;
+    };
+    let parsed_rc1 = ReleaseVersionV1::parse(rc1_version);
+    let parsed_frozen = ReleaseVersionV1::parse(&receipt.release_identity.version);
+    match (parsed_rc1, parsed_frozen) {
+        (Ok(rc1), Ok(frozen)) => {
+            if rc1.channel() == ReleaseChannelV1::Stable {
+                push_row(
+                    rows,
+                    FinalFreezeReplayRowKindV1::Mismatch,
+                    Some(handoff_id.to_string()),
+                    "the receipt rc1_version does not carry release-candidate channel identity",
+                );
+            }
+            if rc1.precedence() >= frozen.precedence() {
+                push_row(
+                    rows,
+                    FinalFreezeReplayRowKindV1::Mismatch,
+                    Some(handoff_id.to_string()),
+                    "the receipt's excluded rc1_version does not precede the frozen release identity",
+                );
+            }
+        }
+        (Err(_), _) => push_row(
+            rows,
+            FinalFreezeReplayRowKindV1::Incomplete,
+            Some(handoff_id.to_string()),
+            "the receipt rc1_version is malformed and cannot bind the incident handoff row",
+        ),
+        // The frozen identity's own parse failure is already reported by the
+        // subject binding; do not duplicate it here.
+        (Ok(_), Err(_)) => {}
+    }
 }
 
 /// Recompute every retained digest against its declared digest, its custody
@@ -1077,7 +1182,10 @@ fn replay_retained_bytes(
 }
 
 /// Bind every retained exact artifact to a retained transfer envelope with an
-/// exact file digest/size, and every envelope to a retained artifact.
+/// exact file digest/size, and every envelope to a retained artifact. Each
+/// envelope's producer identity is bound to the frozen subject: a same-version
+/// envelope produced from a different commit, tree, or repository is a
+/// `Mismatch` that names the mismatch, never coverage.
 fn replay_transfer_coverage(
     inputs: &CargoAllowFinalFreezeReplayInputsV1,
     digests: &BTreeMap<String, String>,
@@ -1090,6 +1198,30 @@ fn replay_transfer_coverage(
                 FinalFreezeReplayRowKindV1::Mismatch,
                 Some(envelope.transfer_id.clone()),
                 "a retained transfer envelope was produced for a different release version",
+            );
+        }
+        if envelope.producer.commit_sha != inputs.freeze_receipt.commit {
+            push_row(
+                rows,
+                FinalFreezeReplayRowKindV1::Mismatch,
+                Some(envelope.transfer_id.clone()),
+                "a retained transfer envelope was produced from a different commit than the frozen subject",
+            );
+        }
+        if envelope.producer.tree_sha != inputs.freeze_receipt.tree {
+            push_row(
+                rows,
+                FinalFreezeReplayRowKindV1::Mismatch,
+                Some(envelope.transfer_id.clone()),
+                "a retained transfer envelope was produced from a different git tree than the frozen subject",
+            );
+        }
+        if envelope.producer.repository != inputs.freeze_receipt.repository {
+            push_row(
+                rows,
+                FinalFreezeReplayRowKindV1::Mismatch,
+                Some(envelope.transfer_id.clone()),
+                "a retained transfer envelope was produced in a different repository than the frozen subject",
             );
         }
         if envelope.files.is_empty() {
@@ -1915,7 +2047,7 @@ mod tests {
         if first.selected_upload_rows != 10 || first.selected_shared_rows != 3 {
             return Err("the 10+3 denominator was not reconstructed".to_string());
         }
-        if first.selected_channel != "stable" {
+        if first.selected_channel.as_deref() != Some("stable") {
             return Err("the stable channel identity was not reconstructed".to_string());
         }
         if !first.incident_handoff_present || !first.rc1_excluded {
@@ -2197,6 +2329,191 @@ mod tests {
             return Err(
                 "the replay depended on something outside the retained input set".to_string(),
             );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn foreign_receipt_schema_generation_fails_closed() -> Result<(), String> {
+        // The customization lands before every derived digest is computed, so
+        // the whole retained-byte chain stays self-consistent: only the schema
+        // generation check may reject this receipt.
+        let bumped = fixture_with(evidence_graph(), |receipt| {
+            receipt.schema_version = CargoAllowFinalFreezeReceiptV1::CURRENT_SCHEMA_VERSION + 1;
+        })?;
+        let replayed = replay(&bumped);
+        if replayed.result != FinalFreezeReplayResultV1::InstrumentFailure {
+            return Err(format!(
+                "a future-generation receipt must fail closed, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(&replayed, "the replay only consumes schema").is_none() {
+            return Err("the schema generation failure row is missing".to_string());
+        }
+        if replayed.retained_bytes_verified {
+            return Err(
+                "instrument-failure rows must not leave the retained bytes verified".to_string(),
+            );
+        }
+
+        let foreign = fixture_with(evidence_graph(), |receipt| {
+            receipt.schema_id = "cargo-allow.final-freeze-receipt.v2".to_string();
+        })?;
+        let replayed = replay(&foreign);
+        if replayed.result != FinalFreezeReplayResultV1::InstrumentFailure {
+            return Err(format!(
+                "a foreign-schema receipt must fail closed, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(&replayed, "the replay only consumes schema").is_none() {
+            return Err("the foreign-schema failure row is missing".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn same_version_envelope_from_a_different_commit_is_not_coverage() -> Result<(), String> {
+        let mut fixture = fixture()?;
+        let envelope = fixture
+            .inputs
+            .retained_transfers
+            .first_mut()
+            .ok_or_else(|| "fixture lost its first envelope".to_string())?;
+        envelope.producer.commit_sha = "9999999999999999999999999999999999999999".to_string();
+        let replayed = replay(&fixture);
+        if replayed.result != FinalFreezeReplayResultV1::Mismatch {
+            return Err(format!(
+                "a same-version envelope from another commit must not count as coverage, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(
+            &replayed,
+            "produced from a different commit than the frozen subject",
+        )
+        .is_none()
+        {
+            return Err("the commit binding row did not name the mismatch".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn envelope_missing_a_required_artifact_forces_missing_artifact() -> Result<(), String> {
+        let mut fixture = fixture()?;
+        fixture
+            .inputs
+            .retained_transfers
+            .retain(|envelope| envelope.stable_artifact_id != "allow-report");
+        let replayed = replay(&fixture);
+        if replayed.result != FinalFreezeReplayResultV1::MissingArtifact {
+            return Err(format!(
+                "an envelope set that omits a required artifact must force missing_artifact, got {:?}",
+                replayed.result
+            ));
+        }
+        if !replayed.rows.iter().any(|row| {
+            row.subject.as_deref() == Some("allow-report")
+                && row
+                    .message
+                    .contains("not covered by any retained transfer envelope")
+        }) {
+            return Err("the coverage row did not name the uncovered artifact".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn envelope_files_that_bind_no_retained_bytes_are_a_mismatch() -> Result<(), String> {
+        let mut fixture = fixture()?;
+        let envelope = fixture
+            .inputs
+            .retained_transfers
+            .iter_mut()
+            .find(|envelope| envelope.stable_artifact_id == "allow-policy")
+            .ok_or_else(|| "fixture lost the allow-policy envelope".to_string())?;
+        let file = envelope
+            .files
+            .first_mut()
+            .ok_or_else(|| "fixture lost the allow-policy envelope file".to_string())?;
+        file.sha256 = digest(777);
+        let replayed = replay(&fixture);
+        if replayed.result != FinalFreezeReplayResultV1::Mismatch {
+            return Err(format!(
+                "an envelope whose file set binds no retained bytes must mismatch, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(
+            &replayed,
+            "no retained transfer envelope binds the recomputed retained-bytes digest",
+        )
+        .is_none()
+        {
+            return Err("the file-set incoherence was not reported".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rc1_exclusion_requires_a_release_candidate_version_before_the_freeze() -> Result<(), String>
+    {
+        let missing = fixture_with(evidence_graph(), |receipt| {
+            receipt.rc1_version = None;
+        })?;
+        let replayed = replay(&missing);
+        if replayed.result != FinalFreezeReplayResultV1::Incomplete {
+            return Err(format!(
+                "an RC.1 exclusion without rc1_version must stay incomplete, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(&replayed, "without a retained rc1_version").is_none() {
+            return Err("the missing rc1_version row is missing".to_string());
+        }
+
+        let stable = fixture_with(evidence_graph(), |receipt| {
+            receipt.rc1_version = Some("0.1.11".to_string());
+        })?;
+        let replayed = replay(&stable);
+        if replayed.result != FinalFreezeReplayResultV1::Mismatch {
+            return Err(format!(
+                "a stable rc1_version must mismatch, got {:?}",
+                replayed.result
+            ));
+        }
+        if row_with(
+            &replayed,
+            "does not carry release-candidate channel identity",
+        )
+        .is_none()
+        {
+            return Err("the rc1 channel identity row is missing".to_string());
+        }
+
+        let self_referential = fixture_with(evidence_graph(), |receipt| {
+            receipt.rc1_version = Some(VERSION.to_string());
+        })?;
+        let replayed = replay(&self_referential);
+        if row_with(&replayed, "does not precede the frozen release identity").is_none() {
+            return Err("the rc1 precedence row is missing".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_identity_leaves_the_selected_channel_unknown() -> Result<(), String> {
+        let fixture = fixture_with(evidence_graph(), |receipt| {
+            receipt.release_identity.version = "not-a-release".to_string();
+        })?;
+        let replayed = replay(&fixture);
+        if replayed.selected_channel.is_some() {
+            return Err("a malformed identity must not project a selected channel".to_string());
+        }
+        if row_with(&replayed, "is malformed and cannot be parsed").is_none() {
+            return Err("the malformed identity was not reported".to_string());
         }
         Ok(())
     }
