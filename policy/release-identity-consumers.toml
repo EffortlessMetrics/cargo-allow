@@ -275,14 +275,23 @@ sites = []
 claim_boundary = "Treats every version as an opaque exact string compared for equality; zero release-semantic parsing (guard-verified)."
 
 [[consumers]]
+id = "test-release-rehearsal"
+path = "scripts/test-release-rehearsal.py"
+role = "fail-closed tests for the release rehearsal harness"
+disposition = "historical-fixture-only"
+marker_classes = ["prerelease-posture"]
+sites = ["identity[\"github_prerelease\"]"]
+claim_boundary = "Asserts the recorded typed identity block's internal consistency (field presence, channel/posture agreement, RC ordinal pairing); the values themselves are produced by the typed authority, never inferred here."
+
+[[consumers]]
 id = "release-rehearsal"
 path = "scripts/release-rehearsal.py"
 role = "zero-upload release rehearsal harness"
 disposition = "deferred-with-named-owner"
 owner = "#3751"
-marker_classes = []
-sites = []
-claim_boundary = "The rehearsal identity phase is currently a file-existence characterization; typed ReleaseIdentityV1 consumption arrives with the #3751 rehearsal phases."
+marker_classes = ["workspace-reader", "prerelease-posture"]
+sites = ["\"release-identity\", \"--version\""]
+claim_boundary = "The rehearsal identity phase (phase 1 of #3751) now consumes the typed authority: the workspace version is read as the identity source (workspace-reader marker) and validated through `cargo-allow release-identity`, and the validated projection - including github_prerelease posture - is recorded without re-deriving grammar, tag, or channel. The remaining phases are still file-existence or bounded-command characterizations under #3751."
 
 [[consumers]]
 id = "release-install-smoke"
