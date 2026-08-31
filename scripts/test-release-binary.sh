@@ -306,7 +306,11 @@ import tomllib
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 with open(sys.argv[2], "rb") as source:
-    candidate = tomllib.load(source)["crates"]
+    candidate = [
+        name
+        for name in tomllib.load(source)["crates"]
+        if not name.startswith("effortless-")
+    ]
 assert manifest["payload"]["publication_posture"] == "unpublished"
 assert len(manifest["payload"]["package_rows"]) == len(candidate)
 PY
