@@ -8,12 +8,12 @@
 //! panic-family macros: failures flow through `require` messages.
 
 use super::{
-    UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID, UnusedDependencyDependencyClassV1,
-    UnusedDependencyDispositionV1, UnusedDependencyExceptionV1, UnusedDependencyFindingV1,
-    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1,
-    UnusedDependencyRequestV1, UnusedDependencySourceInputV1, empty_receipt, inventory_packages,
-    inventory_unused_dependencies, receipt_scan_is_complete, render_unused_dependency_receipt_v1,
-    validate_exception, validate_receipt,
+    INCOMPLETE_SCAN_EVIDENCE_MARKER, UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID,
+    UnusedDependencyDependencyClassV1, UnusedDependencyDispositionV1, UnusedDependencyExceptionV1,
+    UnusedDependencyFindingV1, UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1,
+    UnusedDependencyReceiptV1, UnusedDependencyRequestV1, UnusedDependencySourceInputV1,
+    empty_receipt, inventory_packages, inventory_unused_dependencies, receipt_scan_is_complete,
+    render_unused_dependency_receipt_v1, validate_exception, validate_receipt,
 };
 
 fn require(condition: bool, message: &str) -> Result<(), String> {
@@ -746,7 +746,7 @@ fn zero_source_inputs_stay_advisory() -> Result<(), String> {
         finding
             .evidence
             .iter()
-            .any(|entry| entry == "no_source_inputs_supplied"),
+            .any(|entry| entry == INCOMPLETE_SCAN_EVIDENCE_MARKER),
         "the evidence must name the empty scanned set",
     )
 }
@@ -941,6 +941,16 @@ fn validate_exception_rejects_impossible_calendar_dates() -> Result<(), String> 
     exception.review_after = "2024-02-29".to_string();
     require(
         validate_exception(&exception).is_err(),
-        "review_after 2024-02-29 must be rejected as before created 2026-01-31 even in          a leap year",
+        "review_after 2024-02-29 must be rejected as before created 2026-01-31          even in a leap year",
+    )?;
+    // Pin the leap-day ACCEPTANCE branch: with a created date ordering the
+    // same year, a real February 29 must parse and validate.
+    exception.created = "2024-02-28".to_string();
+    exception.review_after = "2024-02-29".to_string();
+    validate_exception(&exception)?;
+    exception.review_after = "2024-02-30".to_string();
+    require(
+        validate_exception(&exception).is_err(),
+        "review_after 2024-02-30 must be rejected: 2024 is a leap year but          February has no 30th",
     )
 }
