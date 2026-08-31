@@ -294,15 +294,6 @@
           "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
         },
         {
-          "dependency_name": "serde_json",
-          "class": "normal",
-          "optional": false,
-          "target": null,
-          "disposition": "remove",
-          "inventory_verdict": "apparently_unused",
-          "note": "no use/path/extern-crate reference exists in the scanned inputs (src/ and tests/), and serde_json's lib name is the folded package name, so no lib identity can hide a reference; absence is still not proof of non-use, so PR C must re-verify with a compile check before removal; remove candidate for PR C"
-        },
-        {
           "dependency_name": "sha2",
           "class": "normal",
           "optional": false,

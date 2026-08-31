@@ -3,9 +3,9 @@
   "schema_version": 2,
   "topology_id": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001",
   "topology_digest": "sha256:72d06a5883e2a35a136575ebd53e003649c89724a5fc2eba489f63eb66af2929",
-  "repository_commit": "0951266c924288ebc78bcb9cb270fe28fddc1b81",
-  "repository_tree": "7bba275fdf9443f4c168bd109358098082c72952",
-  "cargo_lock_digest": "sha256:5577b8ade3da35da92e9d2f55b177c8aedfd0291d6e43573339f05aae35d7b53",
+  "repository_commit": "7154d0f5ebc115b14425418d4f14469d249e9f66",
+  "repository_tree": "3d57ca44aa4ca32ad9dd59fa2cd376305141fa97",
+  "cargo_lock_digest": "sha256:5cf57046081405cfb517b589dc29196a22a68f6424832a4ccac6584a2f841905",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
   "root_package_name": "cargo-allow",
@@ -61,11 +61,6 @@
         },
         {
           "package_name": "serde",
-          "package_version": "workspace",
-          "dependency_kind": "external"
-        },
-        {
-          "package_name": "serde_json",
           "package_version": "workspace",
           "dependency_kind": "external"
         },
