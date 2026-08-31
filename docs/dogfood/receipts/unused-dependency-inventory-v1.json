@@ -294,6 +294,15 @@
           "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
         },
         {
+          "dependency_name": "serde_json",
+          "class": "dev",
+          "optional": false,
+          "target": null,
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
           "dependency_name": "sha2",
           "class": "normal",
           "optional": false,
