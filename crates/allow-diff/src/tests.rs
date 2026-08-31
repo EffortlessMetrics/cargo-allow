@@ -4,6 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use support::*;
 
+mod dependency_graph_delta;
 mod finding_posture;
 mod policy_entry;
 mod policy_evidence;

@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Add the read-only CargoAllowFinalFreezeReplayV1 contract (#3919): the
+  Complete final-freeze verdict (#2501) is reconstructed from retained
+  inputs alone — the frozen candidate custody, the final evidence graph,
+  the typed freeze receipt, retained transfer envelopes, exact retained
+  artifact bytes, and explicitly refreshable provider/control
+  observations — recomputing every semantic and exact-artifact digest
+  from retained bytes. The replay fails closed on a receipt whose schema
+  generation it does not consume, binds every envelope producer identity
+  (commit, tree, repository) and its file set to the frozen subject, and
+  cross-binds the RC.1 exclusion to a parsable release-candidate
+  rc1_version that precedes the frozen identity. Instrument-failure rows
+  now falsify retained_bytes_verified, and an unparsable release identity
+  no longer projects a stable channel. It proves the frozen subject
+  survived custody; it does not authorize or publish it.
