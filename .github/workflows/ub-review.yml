@@ -146,7 +146,7 @@ jobs:
           fail-on-gate: 'false'
           minimax-api-key: ${{ secrets.MINIMAX_API_KEY }}
           base: origin/${{ github.base_ref }}
-          head: HEAD
+          head: ${{ github.event.pull_request.head.sha }}
           pr-head-sha: ${{ github.event.pull_request.head.sha }}
           out: target/ub-review
       - name: Upload review artifacts
