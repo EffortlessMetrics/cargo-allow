@@ -363,7 +363,7 @@ fn mirror_divergence_rejects_non_regular_policy_before_read() -> std::io::Result
     }
     child.kill()?;
     let _ = child.wait();
-    return Err(std::io::Error::other("FIFO probe exceeded deadline"));
+    Err(std::io::Error::other("FIFO probe exceeded deadline"))
 }
 
 #[test]
