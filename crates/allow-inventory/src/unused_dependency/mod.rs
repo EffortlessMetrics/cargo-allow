@@ -364,11 +364,17 @@ pub fn inventory_unused_dependencies(
 /// Inventory a batch of package requests; callers compose the per-package
 /// receipts. One request never influences another package's evidence
 /// (#3909: one product's use does not retain another package's dependency).
+/// A caller-level composition failure for one package renders that package
+/// as an `InstrumentFailure` receipt — packages are never silently dropped
+/// from the batch.
 pub fn inventory_packages(
     requests: &[UnusedDependencyRequestV1],
 ) -> Vec<UnusedDependencyReceiptV1> {
     requests
         .iter()
-        .filter_map(|request| analysis::inventory(request).ok())
+        .map(|request| {
+            analysis::inventory(request)
+                .unwrap_or_else(|failure| analysis::instrument_failure_receipt(request, failure))
+        })
         .collect()
 }

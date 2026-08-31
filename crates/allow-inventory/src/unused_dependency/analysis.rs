@@ -100,7 +100,7 @@ pub(crate) fn inventory(
 
 /// Malformed manifest: the receipt keeps its package identity but every row
 /// is restricted to one failure description. Nothing renders clean.
-fn instrument_failure_receipt(
+pub(super) fn instrument_failure_receipt(
     request: &UnusedDependencyRequestV1,
     failure: String,
 ) -> UnusedDependencyReceiptV1 {

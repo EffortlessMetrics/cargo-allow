@@ -748,3 +748,41 @@ fn zero_source_inputs_stay_advisory() -> Result<(), String> {
         "the evidence must name the empty scanned set",
     )
 }
+
+/// Negative control 7: a non-optional row whose only evidence is `dep:`
+/// feature activators is a manifest shape Cargo rejects and the composition
+/// cannot attribute — it must render Unsupported with non-empty
+/// limitations, never clean or used (pins the disposition so the contract
+/// update law protects it).
+#[test]
+fn non_optional_dep_activator_only_is_unsupported() -> Result<(), String> {
+    let manifest = lines(&[
+        "[package]",
+        "name = \"sample\"",
+        "version = \"0.1.0\"",
+        "",
+        "[dependencies]",
+        "serde_json = \"1\"",
+        "",
+        "[features]",
+        "payload = [\"dep:serde_json\"]",
+    ]);
+    let sources = vec![source("src/lib.rs", &["pub fn nothing() {}"])];
+    let receipt = inventory_unused_dependencies(&request("sample", manifest, sources, false))?;
+    let finding = first_finding(&receipt)?;
+    require(
+        finding.disposition == UnusedDependencyDispositionV1::Unsupported,
+        "a non-optional dep:-activated row must render Unsupported",
+    )?;
+    require(
+        !finding.limitations.is_empty(),
+        "Unsupported findings must carry non-empty limitations",
+    )?;
+    require(
+        finding
+            .evidence
+            .iter()
+            .any(|entry| entry.contains("dep:serde_json")),
+        "the evidence must name the dep: activator",
+    )
+}
