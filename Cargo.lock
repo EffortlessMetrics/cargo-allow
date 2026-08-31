@@ -92,6 +92,7 @@ dependencies = [
  "allow-core",
  "proptest",
  "serde",
+ "serde_json",
  "sha2",
  "toml",
 ]
