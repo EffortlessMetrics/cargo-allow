@@ -1,26 +1,25 @@
 //! #3919 contract tests: the final freeze replays from retained artifacts
 //! alone, without moving or reading `main`.
 //!
-//! Controls proven here:
-//! 1. a removed archive stays `MissingArtifact` even though current source
-//!    could rebuild it;
-//! 2. a modified retained receipt is caught by digest recomputation;
-//! 3. an earlier custody aggregate with the same version is rejected;
-//! 4. altered evidence-graph edges are caught even with leaf bytes preserved;
-//! 5. an expired registry observation forces `Stale`, never
-//!    `CompleteEquivalent`;
-//! 6.+7. the source checkout and ambient caches can never satisfy a missing
-//!    retained artifact because the replay consumes no input outside its
-//!    retained set;
-//! 8. RC.1 custody replayed as final is a `Mismatch`;
-//! 9. omitted remaining irreversible operations force `Incomplete`;
-//! 10. the replay exposes no tag/upload/release/authorization capability.
+//! Controls proven here: a removed archive stays `MissingArtifact` even
+//! though current source could rebuild it; a modified retained receipt is
+//! caught by digest recomputation; an earlier custody aggregate with the
+//! same version is rejected; altered evidence-graph edges are caught even
+//! with leaf bytes preserved; an expired registry observation forces
+//! `Stale`, never `CompleteEquivalent`; the source checkout and ambient
+//! caches can never satisfy a missing retained artifact because the replay
+//! consumes no input outside its retained set; RC.1 custody replayed as
+//! final is a `Mismatch`; omitted remaining irreversible operations force
+//! `Incomplete`; and the replay exposes no tag/upload/release/authorization
+//! capability.
 //!
 //! Repair controls: a foreign-generation receipt schema fails closed even
 //! with a self-consistent retained-byte chain; a same-version transfer
 //! envelope produced from a different commit never counts as coverage; and
 //! an envelope set that omits a required artifact forces `MissingArtifact`.
-
+//!
+//! The numbered-control fixtures live in the module doc of
+//! `final_freeze_replay_v1.rs`.
 use allow_core::sha256_v1_bytes;
 use allow_report::{
     ArtifactTransferFileV1, ArtifactTransferInitV1, CandidateCustodyInitV1,
