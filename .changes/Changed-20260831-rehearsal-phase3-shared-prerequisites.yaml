@@ -1,0 +1,17 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real shared-prerequisites phase (#3751
+  phase 3). The zero-upload rehearsal harness's shared_prerequisites
+  phase was a file-existence characterization; it now runs the read-only
+  #3744 registry preflight (anonymous crates.io reads; the sanitized
+  environment strips the publish token it must never see) and records
+  the three topology-selected shared rows' observed states and registry
+  checksums. The phase proves Complete only when the preflight exits
+  clean with all three rows already_published_exact against the
+  topology's retained expected checksums; preflight rejection reports
+  Mismatch, missing toolchain or unreadable receipts report
+  InstrumentFailure. The characterization set shrinks to six phases, the
+  receipt claim boundary now names which phases prove typed semantics,
+  and the rehearsal tests (python and Rust) bind the recorded rows to
+  the exact/equality law. A dirty worktree fails cargo packaging and
+  therefore the phase - the rehearsal is bound to the committed subject.
