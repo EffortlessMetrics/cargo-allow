@@ -2,10 +2,10 @@
   "schema_id": "cargo-allow.package-candidate.v2",
   "schema_version": 2,
   "topology_id": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001",
-  "topology_digest": "sha256:72d06a5883e2a35a136575ebd53e003649c89724a5fc2eba489f63eb66af2929",
-  "repository_commit": "dcacfa3ef36d691c1aebbd15e934f328cc84d2b7",
-  "repository_tree": "cb95f938a944fc4bf03ef442e5559d70d135c047",
-  "cargo_lock_digest": "sha256:8ba457ab7287789b1ac003fae8019ac18b612c44a730ce73894b01d3df4b319a",
+  "topology_digest": "sha256:4e26e3fd39e54081820d811ac24b28f4f4ce8d5edb4ea065ea5dbe2c9854aeb2",
+  "repository_commit": "7f03d08b918b17c52c43e2e913ff3d04c9aef204",
+  "repository_tree": "4afb7f8d3411e8006dd817bd6c6ecb63fb5e9f46",
+  "cargo_lock_digest": "sha256:6186ee9d6c7d8786a28b1cccf1b68e6b5a0295d8658cde12ede0a24009f4dd2b",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
   "root_package_name": "cargo-allow",
@@ -415,7 +415,17 @@
           "dependency_kind": "internal"
         },
         {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
           "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "toml",
           "package_version": "workspace",
           "dependency_kind": "external"
         }
