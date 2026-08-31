@@ -404,7 +404,17 @@ fn classify_row(
     row: &UnusedDependencyManifestRowV1,
     context: &AnalysisContext,
 ) -> UnusedDependencyFindingV1 {
-    let ident = reference_ident(row);
+    let mut idents = vec![reference_ident(row)];
+    let lib_identity = request
+        .dependency_lib_identities
+        .iter()
+        .find(|identity| identity.package_name == row.dependency_name)
+        .map(|identity| identity.lib_name.replace('-', "_"));
+    for lib_ident in &lib_identity {
+        if !idents.contains(lib_ident) {
+            idents.push(lib_ident.clone());
+        }
+    }
     let mut direct_refs = Vec::new();
     let mut gated_refs = Vec::new();
     let mut build_input_refs = Vec::new();
@@ -412,14 +422,17 @@ fn classify_row(
     let mut non_fixture_reference_seen = false;
     for input in &context.inputs {
         for (index, line) in input.lines.iter().enumerate() {
-            if !line_references_ident(line, &ident) {
+            let Some(matched) = idents
+                .iter()
+                .find(|ident| line_references_ident(line, ident))
+            else {
                 continue;
-            }
+            };
             reference_seen = true;
             if input.kind != InputKind::Fixture {
                 non_fixture_reference_seen = true;
             }
-            let evidence = format!("{}:{}: {}", input.path, index + 1, ident);
+            let evidence = format!("{}:{}: {}", input.path, index + 1, matched);
             if input.kind == InputKind::BuildScript {
                 build_input_refs.push(evidence.clone());
             }

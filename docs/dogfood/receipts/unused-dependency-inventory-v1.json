@@ -1,7 +1,7 @@
 {
   "schema_id": "cargo-allow.unused-dependency-family-inventory.v1",
   "schema_version": 1,
-  "analyzer_identity": "cargo-allow.unused-dependency-inventory.v1: bounded homegrown composition (toml manifest row parse + textual source-reference scan over caller-supplied inputs); no external analyzer binaries, no Cargo/rustc invocation, no proc-macro expansion",
+  "analyzer_identity": "cargo-allow.unused-dependency-inventory.v1: bounded homegrown composition (toml manifest row parse + textual source-reference scan over caller-supplied inputs); no external analyzer binaries, no Cargo/rustc invocation, no proc-macro expansion; dependency [lib] name remaps are modeled through caller-supplied identities, and dependencies without a supplied identity are scanned under the folded package name only",
   "family_definition_note": "the cargo-allow release-set lane package list from .github/workflows/ci.yml (release-set clippy step) plus the cargo-proof product package from the #3905 shared product line (14 packages); each package is inspected under its default configuration: allow-rust.default, allow-files.default, and cargo-proof.default are the #3905 matrix default rows, the other <package>.default ids are the featureless default configurations outside the #3905 matrix, and the deeper matrix rows are separate scopes reserved for later PRs",
   "packages": [
     {
@@ -300,7 +300,7 @@
           "target": null,
           "disposition": "remove",
           "inventory_verdict": "apparently_unused",
-          "note": "no use/path/extern-crate reference exists in the scanned inputs (src/ and tests/); absence is not proof of non-use, so PR C must re-verify before removal; remove candidate for PR C"
+          "note": "no use/path/extern-crate reference exists in the scanned inputs (src/ and tests/), and serde_json's lib name is the folded package name, so no lib identity can hide a reference; absence is still not proof of non-use, so PR C must re-verify with a compile check before removal; remove candidate for PR C"
         },
         {
           "dependency_name": "sha2",
@@ -654,9 +654,9 @@
           "class": "dev",
           "optional": false,
           "target": null,
-          "disposition": "remove",
-          "inventory_verdict": "apparently_unused",
-          "note": "dev-dependency whose every textual mention in the scanned inputs is a string literal or comment naming the package, never a use/path reference; remove candidate for PR C"
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
         },
         {
           "dependency_name": "intent-model",
@@ -779,9 +779,9 @@
           "class": "normal",
           "optional": false,
           "target": null,
-          "disposition": "remove",
-          "inventory_verdict": "apparently_unused",
-          "note": "workspace-inherited row with no use/path/extern-crate reference in the scanned inputs (src/ and tests/); absence is not proof of non-use, so PR C must re-verify before removal; remove candidate for PR C"
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
         },
         {
           "dependency_name": "proof-protocol",

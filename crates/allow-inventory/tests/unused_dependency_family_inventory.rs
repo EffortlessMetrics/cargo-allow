@@ -65,8 +65,8 @@ use std::path::{Path, PathBuf};
 use allow_inventory::{
     UNUSED_DEPENDENCY_ANALYZER_IDENTITY, UNUSED_DEPENDENCY_CLAIM_BOUNDARY,
     UnusedDependencyDependencyClassV1, UnusedDependencyDispositionV1, UnusedDependencyFindingV1,
-    UnusedDependencyInstrumentPostureV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
-    UnusedDependencySourceInputV1, inventory_packages,
+    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1,
+    UnusedDependencyRequestV1, UnusedDependencySourceInputV1, inventory_packages,
 };
 use serde::Serialize;
 
@@ -171,35 +171,24 @@ struct DispositionRow {
 /// an unlisted finding fails with instructions and a stale row fails too.
 /// `Used` findings need no rows (Used == implicit retain with evidence).
 /// PR B removes nothing: every `Remove` row is a candidate for PR C.
-const DISPOSITIONS: [DispositionRow; 3] = [
-    DispositionRow {
-        package: "allow-policy",
-        dependency: "serde_json",
-        class: UnusedDependencyDependencyClassV1::Normal,
-        verdict: DispositionVerdict::Remove,
-        note: "no use/path/extern-crate reference exists in the scanned inputs (src/ and \
-             tests/); absence is not proof of non-use, so PR C must re-verify before removal; \
-             remove candidate for PR C",
-    },
-    DispositionRow {
-        package: "cargo-allow",
-        dependency: "intent-compiler",
-        class: UnusedDependencyDependencyClassV1::Dev,
-        verdict: DispositionVerdict::Remove,
-        note: "dev-dependency whose every textual mention in the scanned inputs is a string \
-             literal or comment naming the package, never a use/path reference; remove \
-             candidate for PR C",
-    },
-    DispositionRow {
-        package: "cargo-proof",
-        dependency: "proof-orchestrator",
-        class: UnusedDependencyDependencyClassV1::Normal,
-        verdict: DispositionVerdict::Remove,
-        note: "workspace-inherited row with no use/path/extern-crate reference in the scanned \
-             inputs (src/ and tests/); absence is not proof of non-use, so PR C must \
-             re-verify before removal; remove candidate for PR C",
-    },
-];
+///
+/// Repair note (review finding on this PR's first push): cargo-allow /
+/// intent-compiler and cargo-proof / proof-orchestrator were briefly
+/// dispositioned Remove, but both packages rename their crate root via
+/// `[lib] name` (intent_engine, proof_engine) and are used pervasively
+/// under those spellings. The analyzer now models lib identities through
+/// caller-supplied `dependency_lib_identities`, so both rows classify Used
+/// and their Remove rows are gone.
+const DISPOSITIONS: [DispositionRow; 1] = [DispositionRow {
+    package: "allow-policy",
+    dependency: "serde_json",
+    class: UnusedDependencyDependencyClassV1::Normal,
+    verdict: DispositionVerdict::Remove,
+    note: "no use/path/extern-crate reference exists in the scanned inputs (src/ and \
+         tests/), and serde_json's lib name is the folded package name, so no lib \
+         identity can hide a reference; absence is still not proof of non-use, so PR C \
+         must re-verify with a compile check before removal; remove candidate for PR C",
+}];
 
 fn require(condition: bool, message: &str) -> Result<(), String> {
     if condition {
@@ -335,6 +324,7 @@ fn build_family_requests() -> Result<Vec<UnusedDependencyRequestV1>, String> {
         &fs::read_to_string(root.join("Cargo.toml"))
             .map_err(|error| format!("read workspace manifest: {error}"))?,
     );
+    let lib_identities = workspace_lib_identities(&root)?;
     let mut requests = Vec::new();
     for (package, directory) in FAMILY_PACKAGES {
         let package_dir = root.join("crates").join(directory);
@@ -351,9 +341,58 @@ fn build_family_requests() -> Result<Vec<UnusedDependencyRequestV1>, String> {
             manifest_text,
             source_inputs,
             build_script_present,
+            dependency_lib_identities: lib_identities.clone(),
         });
     }
     Ok(requests)
+}
+
+/// Resolve workspace lib identities: every crates/ member that renames its
+/// crate root via `[lib] name` contributes one identity, so dependency rows
+/// naming that package are also scanned under the real lib spelling. The
+/// analyzer folds only the package name on its own, which is exactly how a
+/// used dependency can look unused (the intent-compiler -> intent_engine
+/// and proof-orchestrator -> proof_engine remaps both hid live use).
+fn workspace_lib_identities(root: &Path) -> Result<Vec<UnusedDependencyLibIdentityV1>, String> {
+    let crates_dir = root.join("crates");
+    let mut entries: Vec<std::fs::DirEntry> = fs::read_dir(&crates_dir)
+        .map_err(|error| format!("read crates dir: {error}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| format!("read crates dir entry: {error}"))?;
+    entries.sort_by_key(|entry| entry.file_name());
+    let mut identities = Vec::new();
+    for entry in entries {
+        let manifest_path = entry.path().join("Cargo.toml");
+        if !manifest_path.is_file() {
+            continue;
+        }
+        let manifest_text = normalize_text(
+            &fs::read_to_string(&manifest_path)
+                .map_err(|error| format!("read {}: {error}", manifest_path.display()))?,
+        );
+        let manifest: toml::Value = toml::from_str(&manifest_text)
+            .map_err(|error| format!("parse {}: {error}", manifest_path.display()))?;
+        let package_name = manifest
+            .get("package")
+            .and_then(|package| package.get("name"))
+            .and_then(|name| name.as_str())
+            .ok_or_else(|| format!("{} has no package name", manifest_path.display()))?
+            .to_string();
+        let lib_name = manifest
+            .get("lib")
+            .and_then(|lib| lib.get("name"))
+            .and_then(|name| name.as_str())
+            .map(str::to_string);
+        if let Some(lib_name) = lib_name {
+            if lib_name != package_name.replace('-', "_") {
+                identities.push(UnusedDependencyLibIdentityV1 {
+                    package_name,
+                    lib_name,
+                });
+            }
+        }
+    }
+    Ok(identities)
 }
 
 /// Inventory the whole family, receipts sorted by package name for stable
