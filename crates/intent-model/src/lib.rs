@@ -13,6 +13,7 @@ extern crate self as allow_core;
 mod agentic_candidate;
 mod agentic_reservation;
 mod agentic_reservation_gh;
+mod agentic_review_packet_compiler;
 mod agentic_review_profile;
 mod error;
 mod governance_v2;
@@ -34,6 +35,14 @@ pub use agentic_reservation::{
     validate_object_id,
 };
 pub use agentic_reservation_gh::{GH_PROGRAM, GhCandidateRefTransport};
+pub use agentic_review_packet_compiler::{
+    BeforeAfterFactsV1, BuilderNarrativeRefV1, CandidateIdentityInputV1, CompiledReviewPacketV1,
+    EstablishedClaimV1, FalsifierV1, IntentCurrentnessV1, IntentEvidenceInputV1,
+    LensEvidenceStatusV1, NotEstablishedClaimV1, OldPathDispositionV1, OldPathStatusV1,
+    PacketCompilationRequestV1, PacketReadinessV1, ProofEvidenceInputV1, ProofOutcomeSummaryV1,
+    compile_review_packet, packet_parity_rows, render_compiled_packet_json,
+    render_compiled_packet_markdown,
+};
 pub use agentic_review_profile::{
     AGENT_REVIEW_FINDING_SCHEMA_V1, AGENT_REVIEW_PACKET_SCHEMA_V1,
     CAPTURED_REVIEW_SCHEMA_GENERATION, CAPTURED_REVIEW_SCHEMA_SECTIONS,

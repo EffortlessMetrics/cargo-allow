@@ -32,11 +32,44 @@ use crate::agentic_candidate::ClaimRefV1;
 use crate::stable_hash_hex;
 
 /// Field separator inside canonical identity payloads, matching the
-/// [`ClaimRefV1`] identity convention.
-const FIELD_SEPARATOR: &str = "\u{1f}";
+/// [`ClaimRefV1`] identity convention. Because the canonical identity encoding
+/// joins raw field values with these separators, every string that
+/// participates in an identity must stay free of them and of every other C0
+/// control character: the profile validator rejects such values outright
+/// (see [`reject_identity_control_characters`]) so two distinct profiles can
+/// never collapse into one canonical stream.
+pub(crate) const FIELD_SEPARATOR: &str = "\u{1f}";
 
-/// Separator between ordered list items inside canonical identity payloads.
-const LIST_SEPARATOR: &str = "\u{1e}";
+/// Separator between ordered list items inside canonical identity payloads,
+/// reserved by the same rejection rule as [`FIELD_SEPARATOR`].
+pub(crate) const LIST_SEPARATOR: &str = "\u{1e}";
+
+/// Reject C0 control characters (U+0000..=U+001F, which include the reserved
+/// [`FIELD_SEPARATOR`] U+001F and [`LIST_SEPARATOR`] U+001E) and DEL (U+007F)
+/// in any human-authored string that participates in a canonical identity.
+/// These fields are claims written by people, not arbitrary data, so
+/// rejecting the character class is simpler and more honest than
+/// length-prefixing the canonical payload; the check keeps the separator-based
+/// identity encoding injective: without it, `limitations = ["a", "b"]` and
+/// `limitations = ["a\u{1f}b"]` (and the scalar pair
+/// `intent_boundary = "a\u{1f}b"` / `intent_result = "c"` versus
+/// `intent_boundary = "a"` / `intent_result = "b\u{1f}c"`) would hash to one
+/// identity. It runs inside `CargoSuiteReviewProfileV1::validate` and
+/// `ClaimRefV1::validate`, which every identity derivation calls first, so
+/// each identity inherits it exactly once.
+pub(crate) fn reject_identity_control_characters(name: &str, value: &str) -> Result<(), String> {
+    for character in value.chars() {
+        let code = character as u32;
+        if code <= 0x1f || code == 0x7f {
+            return Err(format!(
+                "{name} must not contain C0 control characters (U+0000..=U+001F) or DEL \
+                 (U+007F), found U+{code:04X}; the canonical identity encoding reserves these \
+                 code points so distinct identity inputs cannot collide"
+            ));
+        }
+    }
+    Ok(())
+}
 
 /// External authority that owns the shared review-packet contracts.
 pub const SHARED_REVIEW_PACKET_AUTHORITY: &str = "EffortlessMetrics/perl-lsp-swarm#10881";
@@ -351,7 +384,10 @@ impl CargoSuiteReviewProfileV1 {
     /// Validate the profile contract. The schema id must be the cargo-suite
     /// profile id (never a private review-packet family), the repository must
     /// match the ClaimRef, required lenses must come from the shared base
-    /// vocabulary without duplicates, and every declared row must be explicit.
+    /// vocabulary without duplicates, every declared row must be explicit, the
+    /// review map must assign at least one reviewer question, and every
+    /// identity-participating string must stay free of the reserved separator
+    /// and control-character class so the canonical identity stays injective.
     pub fn validate(&self) -> Result<(), String> {
         if self.profile_schema != CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1 {
             return Err(format!(
@@ -361,6 +397,7 @@ impl CargoSuiteReviewProfileV1 {
         }
         self.claim.validate()?;
         reject_if_unnamed("repository", &self.repository)?;
+        reject_identity_control_characters("repository", &self.repository)?;
         if self.repository != self.claim.repository {
             return Err(format!(
                 "repository must match the ClaimRef repository {}, got {}",
@@ -377,6 +414,7 @@ impl CargoSuiteReviewProfileV1 {
             ("claim_boundary", &self.claim_boundary),
         ] {
             reject_if_unnamed(name, value)?;
+            reject_identity_control_characters(name, value)?;
         }
         if self.required_lenses.is_empty() {
             return Err(
@@ -432,10 +470,22 @@ impl CargoSuiteReviewProfileV1 {
         }
         for surface in &self.required_closure_surfaces {
             reject_if_unnamed("closure surface subject", &surface.subject)?;
+            reject_identity_control_characters("closure surface subject", &surface.subject)?;
             reject_if_unnamed(
                 "closure surface inclusion_reason",
                 &surface.inclusion_reason,
             )?;
+            reject_identity_control_characters(
+                "closure surface inclusion_reason",
+                &surface.inclusion_reason,
+            )?;
+        }
+        if self.review_map.is_empty() {
+            return Err(
+                "review_map must assign at least one reviewer question; a profile that assigns \
+                 no reviewer question to any required closure surface is not a review profile"
+                    .into(),
+            );
         }
         let mut map_surfaces: Vec<&str> = self
             .review_map
@@ -448,13 +498,20 @@ impl CargoSuiteReviewProfileV1 {
         }
         for entry in &self.review_map {
             reject_if_unnamed("review map surface", &entry.surface)?;
+            reject_identity_control_characters("review map surface", &entry.surface)?;
             reject_if_unnamed("review map reviewer_question", &entry.reviewer_question)?;
+            reject_identity_control_characters(
+                "review map reviewer_question",
+                &entry.reviewer_question,
+            )?;
         }
         for limitation in &self.limitations {
             reject_if_unnamed("limitation", limitation)?;
+            reject_identity_control_characters("limitation", limitation)?;
         }
         for reference in &self.overflow_refs {
             reject_if_unnamed("overflow ref", reference)?;
+            reject_identity_control_characters("overflow ref", reference)?;
         }
         Ok(())
     }
@@ -867,6 +924,102 @@ mod tests {
         ];
         let error = profile.validate().err().ok_or("expected map rejection")?;
         assert!(error.contains("review_map must not repeat one surface"));
+        Ok(())
+    }
+
+    #[test]
+    fn separator_collision_pair_from_review_4047_is_rejected() -> Result<(), String> {
+        // The #4047 collision pair: before the control-character rejection
+        // these two profiles produced the same canonical stream
+        // ("a" U+001F "b" U+001F "c") and therefore the same identity.
+        let mut first = profile()?;
+        first.intent_boundary = "a\u{1f}b".into();
+        first.intent_result = "c".into();
+        let mut second = profile()?;
+        second.intent_boundary = "a".into();
+        second.intent_result = "b\u{1f}c".into();
+        let first_error = first
+            .validate()
+            .err()
+            .ok_or("expected first separator-collision rejection")?;
+        let second_error = second
+            .validate()
+            .err()
+            .ok_or("expected second separator-collision rejection")?;
+        assert!(first_error.contains("C0 control characters"));
+        assert!(first_error.contains("U+001F"));
+        assert!(second_error.contains("C0 control characters"));
+        Ok(())
+    }
+
+    #[test]
+    fn list_separator_collision_in_limitations_is_rejected() -> Result<(), String> {
+        // The #4047 list variant: limitations ["a", "b"] and ["a\u{1f}b"]
+        // collapsed to one identity before the rejection rule.
+        let mut joined = profile()?;
+        joined.limitations = vec!["a\u{1f}b".into()];
+        let error = joined
+            .validate()
+            .err()
+            .ok_or("expected limitation separator rejection")?;
+        assert!(error.contains("limitation"));
+        assert!(error.contains("U+001F"));
+        Ok(())
+    }
+
+    #[test]
+    fn composite_surface_and_map_strings_reject_separators() -> Result<(), String> {
+        let mut surface = profile()?;
+        let first_surface = surface
+            .required_closure_surfaces
+            .first_mut()
+            .ok_or("expected a closure surface fixture")?;
+        first_surface.subject = "crates/intent-model\u{1e}private".into();
+        let surface_error = surface
+            .validate()
+            .err()
+            .ok_or("expected surface subject rejection")?;
+        assert!(surface_error.contains("closure surface subject"));
+        assert!(surface_error.contains("U+001E"));
+
+        let mut map = profile()?;
+        let first_entry = map
+            .review_map
+            .first_mut()
+            .ok_or("expected a review map fixture")?;
+        first_entry.reviewer_question = "question?\u{7f}".into();
+        let map_error = map
+            .validate()
+            .err()
+            .ok_or("expected reviewer question rejection")?;
+        assert!(map_error.contains("review map reviewer_question"));
+        assert!(map_error.contains("U+007F"));
+        Ok(())
+    }
+
+    #[test]
+    fn legitimate_profile_without_control_characters_stays_valid_and_stable() -> Result<(), String>
+    {
+        let profile = profile()?;
+        profile.validate()?;
+        assert_eq!(profile.identity()?, profile.identity()?);
+        Ok(())
+    }
+
+    #[test]
+    fn empty_review_map_is_rejected_and_single_entry_is_accepted() -> Result<(), String> {
+        let mut profile = profile()?;
+        profile.review_map.clear();
+        let error = profile
+            .validate()
+            .err()
+            .ok_or("expected empty review_map rejection")?;
+        assert!(error.contains("assigns no reviewer question"));
+        profile.review_map = vec![ReviewMapEntryV1 {
+            surface: "crates/intent-model/src/lib.rs".into(),
+            reviewer_question: "are exports limited to the profile contract?".into(),
+        }];
+        profile.validate()?;
         Ok(())
     }
 

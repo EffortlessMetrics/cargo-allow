@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **112**
+- Entries: **113**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -17,7 +17,7 @@
 - `CutoverCurrent`: **15**
 - `CutoverOutstanding`: **5**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **91**
+- `TargetRatified`: **92**
 
 ### Disposition counts
 
@@ -28,7 +28,7 @@
 - `MoveToCargoProofApp`: **2**
 - `MoveToIntentEdit`: **7**
 - `MoveToIntentEngine`: **12**
-- `MoveToIntentModel`: **15**
+- `MoveToIntentModel`: **16**
 - `MoveToIntentProtocol`: **4**
 - `MoveToProofAdapter`: **9**
 - `MoveToProofEngine`: **9**
@@ -83,6 +83,17 @@
 - Removal: Retain while the gh reservation adapter is supported
 - Next: #3984 consumes the same canonical exclusion point through the transport boundary.
 - Deletion output: No compatibility deletion; this is a new intent-model adapter.
+
+### `ADD-INTENT-MODEL-AGENTIC-REVIEW-PACKET-COMPILER`
+
+- Current: Three-product review packet compiler: typed candidate identity, intent guidance, proof/gate/provider, established and refused claim, falsifier, old-path, and builder-narrative inputs compile into a deterministic CompiledReviewPacketV1 with readiness laws and parity-locked human and JSON renders
+- Target: `cargo-intent / intent-model::agentic_review_packet_compiler`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Fold into the shared packet producer once direct consumption replaces the capture (#3976 deletion condition)
+- Next: PR C consumes the compiled packet for cross-repository conformance.
+- Deletion output: No compatibility deletion; PR B adds the compiler only; cross-repository conformance (PR C) remains future work.
 
 ### `ADD-INTENT-MODEL-AGENTIC-REVIEW-PROFILE`
 

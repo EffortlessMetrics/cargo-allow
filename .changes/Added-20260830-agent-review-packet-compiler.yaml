@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Compile the three-product agent review packet in intent-model (#3976 PR B):
+  typed candidate, intent, proof, claim, falsifier, old-path, and
+  builder-narrative inputs compile into a deterministic review packet with
+  parity-locked human and JSON renders, readiness laws, and verbatim
+  contradiction rows; review profile identity now rejects reserved separator
+  control characters and empty review maps (#4047 follow-ups).
