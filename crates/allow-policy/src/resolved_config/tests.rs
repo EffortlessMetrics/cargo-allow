@@ -1541,7 +1541,9 @@ fn resolved_cargo_allow_config_rejects_literal_backslash_filename_identity() -> 
     Ok(())
 }
 
-#[cfg(unix)]
+// APFS rejects this invalid byte sequence before cargo-allow can observe it;
+// Linux provides the concrete filesystem witness for the portable-path rule.
+#[cfg(target_os = "linux")]
 #[test]
 fn resolved_cargo_allow_config_rejects_non_utf8_filename_identity() -> TestResult {
     use std::ffi::OsString;
