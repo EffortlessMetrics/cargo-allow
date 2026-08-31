@@ -60,6 +60,7 @@ pub struct FederationConfig {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FederationDiagnosticKind {
+    EmptyLedgerId,
     DuplicateId,
     DuplicatePath,
     DuplicateCanonicalLane,
@@ -79,6 +80,7 @@ pub enum FederationDiagnosticKind {
 impl FederationDiagnosticKind {
     pub fn as_str(self) -> &'static str {
         match self {
+            Self::EmptyLedgerId => "empty_ledger_id",
             Self::DuplicateId => "duplicate_id",
             Self::DuplicatePath => "duplicate_path",
             Self::DuplicateCanonicalLane => "duplicate_canonical_lane",

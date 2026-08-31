@@ -72,6 +72,29 @@ error, the selected discovery source remains visible while precedence is
 omitted. Provenance describes how the path was selected; it does not validate
 the policy contents or imply Cargo workspace metadata was executed.
 
+`ResolvedCargoAllowConfigV1` is the versioned read-only component for making
+that current selection auditable across future consumers. Its adapter retains
+the selected portable policy identity and digest, candidate and
+skip provenance, the higher-order error that caused a legacy fallback,
+federation/profile participation, completeness, limitations, and the exact
+opaque source subject supplied by the caller. Source subjects use portable
+ASCII identity characters (`A-Z`, `a-z`, `0-9`, `.`, `_`, `:`, `@`, `+`, and
+`-`) so they cannot carry checkout-local paths. Configuration paths carry a
+`resolved_repository_root` or `discovery_ancestor` anchor, an ancestor depth,
+and a safe relative path. This preserves intentional upward discovery without
+serializing `..` or checkout-local absolute paths; existing symlink targets are
+contained under their authorized anchor before policy bytes are read. The
+portable projection uses `.` for the requested and resolved repository root.
+When a Cargo manifest cannot be read or parsed far enough to distinguish
+package from workspace metadata, the skipped attempt uses the honest generic
+`cargo_metadata` source rather than being mislabeled as legacy discovery.
+The initial adapter intentionally reports partial completeness
+because current discovery stops after its winner and still performs multiple
+reads. The initial adapter also receives the caller's already-resolved root, so
+its requested-root and repository-root identities are both `.`; retaining a
+distinct invocation root remains part of the broader #3875 contract. Command
+cutover and single-resolution authority remain #3876.
+
 ### Spec-system profile
 
 `--profile spec-system` has its own resolver. Unless an explicit profile config

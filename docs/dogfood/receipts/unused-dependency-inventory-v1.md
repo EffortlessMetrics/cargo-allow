@@ -36,6 +36,7 @@
 | allow-policy | allow-policy.default | allow-core | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-policy | allow-policy.default | proptest | dev | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-policy | allow-policy.default | serde | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
+| allow-policy | allow-policy.default | serde_json | dev | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-policy | allow-policy.default | sha2 | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-policy | allow-policy.default | toml | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-policy-legacy | allow-policy-legacy.default | allow-core | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |

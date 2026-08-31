@@ -9,6 +9,7 @@ use super::config::{
 
 pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederationConfig {
     let mut diagnostics = Vec::new();
+    diagnostics.extend(detect_empty_ledger_ids(&config.ledgers));
     diagnostics.extend(detect_duplicate_ids(&config.ledgers));
     diagnostics.extend(detect_duplicate_paths(&config.ledgers));
     diagnostics.extend(detect_mirror_targets(&config.ledgers));
@@ -28,6 +29,22 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
         diagnostics,
         valid,
     }
+}
+
+fn detect_empty_ledger_ids(ledgers: &[LedgerEntry]) -> Vec<FederationDiagnostic> {
+    ledgers
+        .iter()
+        .enumerate()
+        .filter(|(_, ledger)| ledger.id.trim().is_empty())
+        .map(|(index, ledger)| FederationDiagnostic {
+            kind: FederationDiagnosticKind::EmptyLedgerId,
+            message: format!(
+                "federation ledger id must be non-empty at ledgers[{index}] path `{}`",
+                ledger.path
+            ),
+            ledger_ids: Vec::new(),
+        })
+        .collect()
 }
 
 impl FederationDiagnostic {

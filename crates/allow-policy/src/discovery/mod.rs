@@ -4,6 +4,9 @@ use allow_core::read_text_file_capped;
 use serde::Deserialize;
 
 use crate::policy_header::{SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS};
+use crate::source_tree_file::{
+    SourceTreeFilePosture, SourceTreeFileRejection, source_tree_file_posture,
+};
 use crate::toml_de::option_schema_version;
 
 /// Relative paths searched in order when discovering a cargo-allow policy ledger.
@@ -22,12 +25,16 @@ pub const NATIVE_LEDGER_REL_PATH: &str = "policy/cargo-allow.toml";
 pub const SOURCE_PACKAGE_METADATA: &str = "package_metadata";
 /// Provenance label for a config selected from workspace metadata.
 pub const SOURCE_WORKSPACE_METADATA: &str = "workspace_metadata";
+/// Provenance label for a Cargo manifest metadata attempt whose package or
+/// workspace origin could not be distinguished.
+pub const SOURCE_CARGO_METADATA: &str = "cargo_metadata";
 /// Provenance label for a config selected from a conventional path.
 pub const SOURCE_CONVENTIONAL_PATH: &str = "conventional_path";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkippedPolicyCandidate {
     pub path: PathBuf,
+    pub source: &'static str,
     pub reason: String,
 }
 
@@ -67,38 +74,54 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
         }
         for rel in DISCOVERY_REL_PATHS {
             let candidate = dir.join(rel);
-            if !candidate.exists() {
-                continue;
-            }
-            match classify_candidate(&candidate, rel == NATIVE_LEDGER_REL_PATH) {
-                CandidateClass::Accept => {
-                    // Warn if the native ledger (cargo-allow.toml) shadows a
-                    // conventional allow.toml at the same directory level (#3232).
-                    // The native path wins on discovery precedence, but an
-                    // operator who just ran `init` (which writes allow.toml)
-                    // may be confused that their new file is ignored.
-                    if rel == NATIVE_LEDGER_REL_PATH {
-                        let shadowed = dir.join("policy/allow.toml");
-                        if shadowed.exists() && shadowed != candidate {
-                            eprintln!(
-                                "warning: {} is shadowed by the native ledger {} on the discovery path; \
-                                 only {} will be used (#3232)",
-                                shadowed.display(),
-                                candidate.display(),
-                                candidate.display(),
-                            );
-                        }
-                    }
-                    return DiscoverConfigResult {
-                        selected: Some(candidate),
-                        selected_source: Some(SOURCE_CONVENTIONAL_PATH),
-                        skipped,
-                    };
+            match candidate_target_posture(&dir, &candidate) {
+                CandidateTargetPosture::Missing => continue,
+                CandidateTargetPosture::Rejected(reason) => {
+                    skipped.push(SkippedPolicyCandidate {
+                        path: candidate,
+                        source: SOURCE_CONVENTIONAL_PATH,
+                        reason,
+                    });
+                    continue;
                 }
-                CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
-                    path: candidate,
-                    reason,
-                }),
+                CandidateTargetPosture::Contained(read_path) => {
+                    match classify_candidate(&read_path, rel == NATIVE_LEDGER_REL_PATH) {
+                        CandidateClass::Accept => {
+                            // Warn if the native ledger (cargo-allow.toml) shadows a
+                            // conventional allow.toml at the same directory level (#3232).
+                            // The native path wins on discovery precedence, but an
+                            // operator who just ran `init` (which writes allow.toml)
+                            // may be confused that their new file is ignored.
+                            if rel == NATIVE_LEDGER_REL_PATH {
+                                let shadowed = dir.join("policy/allow.toml");
+                                if matches!(
+                                    candidate_target_posture(&dir, &shadowed),
+                                    CandidateTargetPosture::Contained(_)
+                                ) && shadowed != candidate
+                                {
+                                    eprintln!(
+                                        "warning: {} is shadowed by the native ledger {} on the discovery path; \
+                                         only {} will be used (#3232)",
+                                        shadowed.display(),
+                                        candidate.display(),
+                                        candidate.display(),
+                                    );
+                                }
+                            }
+                            return DiscoverConfigResult {
+                                selected: Some(candidate),
+                                selected_source: Some(SOURCE_CONVENTIONAL_PATH),
+                                skipped,
+                            };
+                        }
+                        CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
+                            path: candidate,
+                            source: SOURCE_CONVENTIONAL_PATH,
+                            reason,
+                        }),
+                    }
+                    continue;
+                }
             }
         }
         if !dir.pop() {
@@ -144,14 +167,24 @@ fn discover_cargo_metadata_config(
     skipped: &mut Vec<SkippedPolicyCandidate>,
 ) -> Option<(PathBuf, &'static str)> {
     let manifest_path = dir.join("Cargo.toml");
-    if !manifest_path.exists() {
-        return None;
-    }
-    let text = match read_text_file_capped(&manifest_path) {
+    let manifest_read_path = match candidate_target_posture(dir, &manifest_path) {
+        CandidateTargetPosture::Missing => return None,
+        CandidateTargetPosture::Rejected(reason) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: manifest_path,
+                source: SOURCE_CARGO_METADATA,
+                reason: format!("cargo-allow metadata {reason}"),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Contained(path) => path,
+    };
+    let text = match read_text_file_capped(&manifest_read_path) {
         Ok(text) => text,
         Err(err) => {
             skipped.push(SkippedPolicyCandidate {
                 path: manifest_path,
+                source: SOURCE_CARGO_METADATA,
                 reason: format!("cargo-allow metadata could not be read: {err}"),
             });
             return None;
@@ -159,10 +192,11 @@ fn discover_cargo_metadata_config(
     };
     let manifest = match toml::from_str::<CargoManifestProbe>(&text) {
         Ok(manifest) => manifest,
-        Err(err) => {
+        Err(_) => {
             skipped.push(SkippedPolicyCandidate {
                 path: manifest_path,
-                reason: format!("cargo-allow metadata could not be parsed: {err}"),
+                source: SOURCE_CARGO_METADATA,
+                reason: "cargo-allow metadata could not be parsed".to_string(),
             });
             return None;
         }
@@ -190,29 +224,70 @@ fn discover_cargo_metadata_config(
     {
         skipped.push(SkippedPolicyCandidate {
             path: manifest_path,
-            reason: format!(
-                "cargo-allow metadata config `{config}` must be a non-empty relative path without `..`"
-            ),
+            source,
+            reason: "cargo-allow metadata config must be a non-empty source-tree-relative path without parent traversal"
+                .to_string(),
         });
         return None;
     }
     let candidate = dir.join(config_path);
-    if !candidate.exists() {
-        skipped.push(SkippedPolicyCandidate {
-            path: candidate,
-            reason: "cargo-allow metadata config path does not exist".to_string(),
-        });
-        return None;
-    }
-    match classify_candidate(&candidate, true) {
+    let candidate_read_path = match candidate_target_posture(dir, &candidate) {
+        CandidateTargetPosture::Missing => {
+            skipped.push(SkippedPolicyCandidate {
+                path: candidate,
+                source,
+                reason: "cargo-allow metadata config path does not exist".to_string(),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Rejected(reason) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: candidate,
+                source,
+                reason: format!("cargo-allow metadata config {reason}"),
+            });
+            return None;
+        }
+        CandidateTargetPosture::Contained(path) => path,
+    };
+    match classify_candidate(&candidate_read_path, true) {
         CandidateClass::Accept => Some((candidate, source)),
         CandidateClass::Skip(reason) => {
             skipped.push(SkippedPolicyCandidate {
                 path: candidate,
+                source,
                 reason: format!("cargo-allow metadata config {reason}"),
             });
             None
         }
+    }
+}
+
+enum CandidateTargetPosture {
+    Missing,
+    Contained(PathBuf),
+    Rejected(String),
+}
+
+fn candidate_target_posture(anchor: &Path, candidate: &Path) -> CandidateTargetPosture {
+    match source_tree_file_posture(anchor, candidate) {
+        SourceTreeFilePosture::Missing => CandidateTargetPosture::Missing,
+        SourceTreeFilePosture::RegularFile(path) => CandidateTargetPosture::Contained(path),
+        SourceTreeFilePosture::Rejected(reason) => {
+            CandidateTargetPosture::Rejected(discovery_rejection_reason(reason).to_string())
+        }
+    }
+}
+
+fn discovery_rejection_reason(reason: SourceTreeFileRejection) -> &'static str {
+    match reason {
+        SourceTreeFileRejection::AnchorUnresolved => {
+            "candidate discovery anchor could not be resolved"
+        }
+        SourceTreeFileRejection::ExternalTarget | SourceTreeFileRejection::ExternalComponent => {
+            "candidate target resolves outside its discovery anchor"
+        }
+        _ => reason.source_tree_reason(),
     }
 }
 
@@ -224,41 +299,38 @@ enum CandidateClass {
 fn classify_candidate(path: &Path, native: bool) -> CandidateClass {
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
-        Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to read policy config: {err})"
-            ));
+        Err(_) => {
+            return CandidateClass::Skip(
+                "not cargo-allow dialect (policy config could not be read)".to_string(),
+            );
         }
     };
     let header = match toml::from_str::<PolicyHeaderProbe>(&text) {
         Ok(header) => header,
-        Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to parse policy header: {err})"
-            ));
+        Err(_) => {
+            return CandidateClass::Skip(
+                "not cargo-allow dialect (policy header could not be parsed)".to_string(),
+            );
         }
     };
     if !supported_schema_version(header.schema_version.as_deref()) {
-        let version = header
-            .schema_version
-            .unwrap_or_else(|| "<missing>".to_string());
-        return CandidateClass::Skip(format!(
-            "not cargo-allow dialect (unsupported schema_version `{version}`)"
-        ));
+        return CandidateClass::Skip(
+            "not cargo-allow dialect (missing or unsupported schema_version)".to_string(),
+        );
     }
     if native {
         return match header.policy.as_deref() {
             None | Some("cargo-allow") => CandidateClass::Accept,
-            Some(policy) => CandidateClass::Skip(format!(
-                "not cargo-allow dialect (unsupported policy `{policy}`)"
-            )),
+            Some(_) => CandidateClass::Skip(
+                "not cargo-allow dialect (unsupported policy marker)".to_string(),
+            ),
         };
     }
     match header.policy.as_deref() {
         Some("cargo-allow") => CandidateClass::Accept,
-        Some(policy) => CandidateClass::Skip(format!(
-            "not cargo-allow dialect (unsupported policy `{policy}`)"
-        )),
+        Some(_) => {
+            CandidateClass::Skip("not cargo-allow dialect (unsupported policy marker)".to_string())
+        }
         None if header.schema_version.is_none()
             || header.schema_version.as_deref() == Some(SUPPORTED_SCHEMA_VERSION) =>
         {

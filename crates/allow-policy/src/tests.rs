@@ -1,5 +1,8 @@
 use super::*;
 
+#[cfg(unix)]
+type FederationSymlinkTestResult = Result<(), Box<dyn std::error::Error>>;
+
 #[test]
 fn parses_policy_with_allow() {
     let cfg = parse_policy(
@@ -432,6 +435,90 @@ fn load_federation_config_rejects_non_utf8_config() -> std::io::Result<()> {
     assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     assert!(err.to_string().contains("not valid UTF-8"));
     Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn load_federation_config_accepts_internal_registry_symlink() -> FederationSymlinkTestResult {
+    let root = TempRoot::new("federation-internal-link")?;
+    let actual_path = root.path().join(".allow/actual.toml");
+    if let Some(parent) = actual_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&actual_path, valid_federation_config("internal-policy"))?;
+    std::os::unix::fs::symlink("actual.toml", root.path().join(".allow/config.toml"))?;
+
+    let loaded = load_federation_config(root.path())?;
+    if !loaded.is_valid()
+        || loaded.path != ".allow/config.toml"
+        || loaded
+            .validated()
+            .and_then(|validated| validated.config.ledgers.first())
+            .map(|ledger| ledger.id.as_str())
+            != Some("internal-policy")
+    {
+        return Err("internal federation registry link was not retained safely".into());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn load_federation_config_rejects_external_registry_symlink() -> FederationSymlinkTestResult {
+    let root = TempRoot::new("federation-external-link")?;
+    let external = TempRoot::new("federation-external-target")?;
+    let external_path = external.path().join("config.toml");
+    std::fs::write(&external_path, valid_federation_config("external-policy"))?;
+    std::fs::create_dir_all(root.path().join(".allow"))?;
+    std::os::unix::fs::symlink(&external_path, root.path().join(".allow/config.toml"))?;
+
+    let error = load_federation_config(root.path()).err().ok_or_else(|| {
+        std::io::Error::other("external federation registry link should fail closed")
+    })?;
+    let message = error.to_string();
+    if error.kind() != allow_core::CargoAllowErrorKind::InvalidConfig
+        || !message.contains(".allow/config.toml")
+        || message.contains(&external.path().display().to_string())
+        || message.contains("external-policy")
+    {
+        return Err(format!("unexpected external registry diagnostic: {message}").into());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn load_federation_config_rejects_dangling_registry_symlink() -> FederationSymlinkTestResult {
+    let root = TempRoot::new("federation-dangling-link")?;
+    std::fs::create_dir_all(root.path().join(".allow"))?;
+    std::os::unix::fs::symlink("missing.toml", root.path().join(".allow/config.toml"))?;
+
+    let error = load_federation_config(root.path()).err().ok_or_else(|| {
+        std::io::Error::other("dangling federation registry link should fail closed")
+    })?;
+    if error.kind() != allow_core::CargoAllowErrorKind::InvalidConfig
+        || !error.to_string().contains(".allow/config.toml")
+    {
+        return Err(format!("unexpected dangling registry diagnostic: {error}").into());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn valid_federation_config(id: &str) -> String {
+    format!(
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "{id}"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#
+    )
 }
 
 #[test]

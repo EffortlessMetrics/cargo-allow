@@ -232,9 +232,17 @@ fn discover_config_skips_unsafe_metadata_path_and_falls_back() -> io::Result<()>
     )?;
 
     let result = discover_config(root.path());
-    assert_eq!(result.selected, Some(conventional.canonicalize()?));
-    assert_eq!(result.skipped.len(), 1);
-    assert!(result.skipped[0].reason.contains("without `..`"));
+    if result.selected != Some(conventional.canonicalize()?)
+        || result.skipped.len() != 1
+        || !result
+            .skipped
+            .first()
+            .is_some_and(|candidate| candidate.reason.contains("without parent traversal"))
+    {
+        return Err(io::Error::other(format!(
+            "unsafe metadata path did not produce bounded fallback: {result:?}"
+        )));
+    }
     Ok(())
 }
 
@@ -316,5 +324,119 @@ fn discover_config_falls_back_on_malformed_manifest() -> io::Result<()> {
     assert_eq!(result.selected, Some(conventional.canonicalize()?));
     assert_eq!(result.skipped.len(), 1);
     assert!(result.skipped[0].reason.contains("could not be parsed"));
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn discover_config_skips_external_conventional_symlink_before_probe() -> io::Result<()> {
+    let root = TempRoot::new("external-conventional-link")?;
+    let external = TempRoot::new("external-conventional-target")?;
+    let canonical_root = root.path().canonicalize()?;
+    write_policy(
+        &external.path().join("outside.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    std::fs::create_dir_all(root.path().join("policy"))?;
+    std::os::unix::fs::symlink(
+        external.path().join("outside.toml"),
+        root.path().join("policy/allow.toml"),
+    )?;
+    write_policy(
+        &root.path().join(".cargo/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+
+    let result = discover_config(root.path());
+    if result.selected != Some(canonical_root.join(".cargo/allow.toml"))
+        || !result.skipped.iter().any(|candidate| {
+            candidate.path == canonical_root.join("policy/allow.toml")
+                && candidate.reason.contains("outside its discovery anchor")
+        })
+    {
+        return Err(io::Error::other(format!(
+            "external conventional link should be skipped before probing: {result:?}"
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn discover_config_skips_external_manifest_symlink_before_probe() -> io::Result<()> {
+    let root = TempRoot::new("external-manifest-link")?;
+    let external = TempRoot::new("external-manifest-target")?;
+    let canonical_root = root.path().canonicalize()?;
+    write_policy(
+        &root.path().join("policy/metadata.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(
+        &root.path().join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(
+        &external.path().join("Cargo.toml"),
+        "[workspace.metadata.cargo-allow]\nconfig = \"policy/metadata.toml\"\n",
+    )?;
+    std::os::unix::fs::symlink(
+        external.path().join("Cargo.toml"),
+        root.path().join("Cargo.toml"),
+    )?;
+
+    let result = discover_config(root.path());
+    if result.selected != Some(canonical_root.join("policy/allow.toml"))
+        || !result.skipped.iter().any(|candidate| {
+            candidate.path == canonical_root.join("Cargo.toml")
+                && candidate.source == SOURCE_CARGO_METADATA
+                && candidate.reason.contains("outside its discovery anchor")
+        })
+    {
+        return Err(io::Error::other(format!(
+            "external manifest link should be skipped before probing: {result:?}"
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn discover_config_skips_external_metadata_policy_symlink_before_probe() -> io::Result<()> {
+    let root = TempRoot::new("external-metadata-policy-link")?;
+    let external = TempRoot::new("external-metadata-policy-target")?;
+    let canonical_root = root.path().canonicalize()?;
+    write_policy(
+        &root.path().join("Cargo.toml"),
+        "[package.metadata.cargo-allow]\nconfig = \"policy/metadata.toml\"\n",
+    )?;
+    write_policy(
+        &external.path().join("outside.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    std::fs::create_dir_all(root.path().join("policy"))?;
+    std::os::unix::fs::symlink(
+        external.path().join("outside.toml"),
+        root.path().join("policy/metadata.toml"),
+    )?;
+    write_policy(
+        &root.path().join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+
+    let result = discover_config(root.path());
+    if result.selected != Some(canonical_root.join("policy/allow.toml"))
+        || !result.skipped.iter().any(|candidate| {
+            candidate.path == canonical_root.join("policy/metadata.toml")
+                && candidate.source == SOURCE_PACKAGE_METADATA
+                && candidate.reason.contains("outside its discovery anchor")
+                && !candidate
+                    .reason
+                    .contains(&external.path().display().to_string())
+        })
+    {
+        return Err(io::Error::other(format!(
+            "external metadata policy link should be skipped before probing: {result:?}"
+        )));
+    }
     Ok(())
 }

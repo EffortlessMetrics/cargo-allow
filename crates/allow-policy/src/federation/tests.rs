@@ -30,6 +30,39 @@ lanes = ["spec-system"]
 priority = 20
 "#;
 
+#[cfg(unix)]
+const MIRROR_DRAIN_CONFIG: &str = r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "source-policy"
+lanes = ["source-exception"]
+priority = 15
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "containment test"
+review_after = "2026-09-01"
+expiry = "9999-12-31"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#;
+
+#[cfg(unix)]
+const MINIMAL_POLICY: &str = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n";
+
 fn parse_validated(input: &str) -> ValidatedFederationConfig {
     let parsed = parse_federation_config(input)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse federation config: {err}")));
@@ -125,6 +158,212 @@ priority = 20
         "expected duplicate_id diagnostic: {:?}",
         config.diagnostics
     );
+}
+
+#[test]
+fn validate_federation_config_rejects_empty_ledger_id() -> std::io::Result<()> {
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = ""
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    );
+    if config.valid
+        || !config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::EmptyLedgerId
+                && diagnostic.message.contains("ledgers[0]")
+                && diagnostic.message.contains("policy/allow.toml")
+        })
+    {
+        return Err(std::io::Error::other(format!(
+            "empty federation identity was not rejected: {config:?}"
+        )));
+    }
+    Ok(())
+}
+
+#[test]
+fn evaluate_source_exception_policy_omits_invalid_registry_provenance() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("invalid-id-provenance");
+    std::fs::create_dir_all(root.join(".allow"))?;
+    std::fs::create_dir_all(root.join("policy"))?;
+    std::fs::write(
+        root.join(".allow/config.toml"),
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "   "
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#,
+    )?;
+    std::fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n")?;
+
+    let (path, evaluation) = super::evaluate::evaluate_source_exception_policy(&root, None)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    if path != root.join("policy/allow.toml").canonicalize()?
+        || evaluation.precedence_applied != super::evaluate::PrecedenceTier::DiscoveryFallback
+        || evaluation.active_provenance.is_some()
+        || !evaluation.ledger_contributors.is_empty()
+    {
+        cleanup_fixture_root(&root);
+        return Err(std::io::Error::other(format!(
+            "invalid registry supplied selection or provenance: {path:?} {evaluation:?}"
+        )));
+    }
+    cleanup_fixture_root(&root);
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_external_policy_link_before_read() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("external-mirror-link");
+    let external = fixture_root_for_federation_test("external-mirror-target");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::fs::write(external.join("policy.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink(
+            external.join("policy.toml"),
+            root.join(".allow/mirror/policy.toml"),
+        )?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences.first().is_some_and(|record| {
+                record.mirror_fingerprint.is_none()
+                    && record.message.contains("unavailable or invalid")
+            })
+        {
+            return Err(std::io::Error::other(format!(
+                "external mirror target was not contained: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    cleanup_fixture_root(&external);
+    result
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_accepts_internal_policy_link() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("internal-mirror-link");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink(
+            "../../policy/allow.toml",
+            root.join(".allow/mirror/policy.toml"),
+        )?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if !divergences.is_empty() {
+            return Err(std::io::Error::other(format!(
+                "contained internal mirror link should compare normally: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    result
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_dangling_policy_link() -> std::io::Result<()> {
+    let root = fixture_root_for_federation_test("dangling-mirror-link");
+    let result = (|| -> std::io::Result<()> {
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        std::os::unix::fs::symlink("missing.toml", root.join(".allow/mirror/policy.toml"))?;
+
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences
+                .first()
+                .is_some_and(|record| record.mirror_fingerprint.is_none())
+        {
+            return Err(std::io::Error::other(format!(
+                "dangling mirror link should remain unavailable: {divergences:?}"
+            )));
+        }
+        Ok(())
+    })();
+    cleanup_fixture_root(&root);
+    result
+}
+
+#[cfg(unix)]
+#[test]
+fn mirror_divergence_rejects_non_regular_policy_before_read() -> std::io::Result<()> {
+    if std::env::var_os("CARGO_ALLOW_FIFO_CHILD").is_some() {
+        let root = fixture_root_for_federation_test("fifo-mirror-link-child");
+        std::fs::create_dir_all(root.join("policy"))?;
+        std::fs::create_dir_all(root.join(".allow/mirror"))?;
+        std::fs::write(root.join("policy/allow.toml"), MINIMAL_POLICY)?;
+        if !std::process::Command::new("mkfifo")
+            .arg(root.join(".allow/mirror/policy.toml"))
+            .status()?
+            .success()
+        {
+            return Err(std::io::Error::other("mkfifo failed"));
+        }
+        let validated = parse_validated(MIRROR_DRAIN_CONFIG);
+        let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        if divergences.len() != 1
+            || !divergences
+                .first()
+                .is_some_and(|record| record.mirror_fingerprint.is_none())
+        {
+            return Err(std::io::Error::other(format!(
+                "non-regular mirror target was not rejected: {divergences:?}"
+            )));
+        }
+        return Ok(());
+    }
+    let mut child = std::process::Command::new(std::env::current_exe()?)
+        .args([
+            "--exact",
+            "federation::tests::mirror_divergence_rejects_non_regular_policy_before_read",
+            "--nocapture",
+        ])
+        .env("CARGO_ALLOW_FIFO_CHILD", "1")
+        .spawn()?;
+    for _ in 0..40 {
+        if let Some(status) = child.try_wait()? {
+            return status
+                .success()
+                .then_some(())
+                .ok_or_else(|| std::io::Error::other("FIFO child failed"));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    child.kill()?;
+    let _ = child.wait();
+    Err(std::io::Error::other("FIFO probe exceeded deadline"))
 }
 
 #[test]

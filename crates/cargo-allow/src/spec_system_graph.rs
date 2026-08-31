@@ -81,6 +81,9 @@ fn federation_diagnostic_kind(
     kind: allow_policy::federation::FederationDiagnosticKind,
 ) -> &'static str {
     match kind {
+        allow_policy::federation::FederationDiagnosticKind::EmptyLedgerId => {
+            "federation_config_invalid"
+        }
         allow_policy::federation::FederationDiagnosticKind::DuplicateId => "duplicate_id",
         allow_policy::federation::FederationDiagnosticKind::DuplicatePath
         | allow_policy::federation::FederationDiagnosticKind::DuplicateCanonicalLane

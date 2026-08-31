@@ -4,6 +4,19 @@ These schemas describe machine-readable cargo-allow artifacts. They are local
 contracts for source-tree policy scans; they do not imply build, type,
 macro-expansion, or proof-level coverage.
 
+## Reusable component contracts
+
+| Component | Schema ID | Producer |
+|---|---|---|
+| [Resolved source-exception configuration](resolved-cargo-allow-config-v1.schema.json) | `cargo-allow.resolved-config.v1` | `allow_policy::resolve_cargo_allow_config_v1`, rendered by `allow_report::render_resolved_cargo_allow_config_json` |
+
+The resolved-config component is intentionally not a standalone command
+artifact and is therefore not registered in `ARTIFACT_CONTRACTS`. It gives
+future command artifacts one portable, versioned configuration subject without
+claiming that current command consumers have already been cut over. The v1
+adapter retains the current fallback and marks its multi-pass observation as
+partial; #3876 owns single-resolution command consumption.
+
 | Artifact | Schema ID | Producer |
 |---|---|---|
 | Core adoption plan | `cargo-allow.core-adoption-plan.v1` | `cargo-allow adopt --format json` |

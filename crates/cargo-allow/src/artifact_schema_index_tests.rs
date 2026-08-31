@@ -2,6 +2,8 @@ use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use serde_json::Value;
 use std::{collections::BTreeSet, fs, path::Path};
 
+const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
+
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {
     text.replace("\r\n", "\n")
@@ -53,15 +55,40 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "allow-files-changie-package-admission"
         })
         .collect::<BTreeSet<_>>();
-    let registered = schema_contracts()
+    let mut governed = schema_contracts()
         .into_iter()
         .map(|contract| contract.name.to_string())
         .collect::<BTreeSet<_>>();
+    governed.extend(
+        REUSABLE_COMPONENT_SCHEMA_NAMES
+            .iter()
+            .map(|name| (*name).to_string()),
+    );
 
     assert_eq!(
-        registered, documented,
-        "every docs/schemas/*.schema.json file should be registered for shared contract tests"
+        governed, documented,
+        "every docs/schemas/*.schema.json file should be governed as an artifact or reusable component contract"
     );
+}
+
+#[test]
+fn schema_index_covers_reusable_component_contracts() -> Result<(), String> {
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
+    if !index.contains("## Reusable component contracts") {
+        return Err(
+            "schema index should distinguish reusable components from command artifacts"
+                .to_string(),
+        );
+    }
+    for name in REUSABLE_COMPONENT_SCHEMA_NAMES {
+        let schema_file = format!("{name}.schema.json");
+        if !index.contains(&schema_file) {
+            return Err(format!(
+                "schema index should link reusable component {schema_file}"
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[test]

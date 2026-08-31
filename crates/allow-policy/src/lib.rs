@@ -36,8 +36,10 @@ mod render_last_seen;
 mod render_sections;
 mod render_selector;
 mod render_toml;
+mod resolved_config;
 mod scope_validation;
 mod selector_validation;
+mod source_tree_file;
 mod source_tree_scope;
 #[doc(hidden)]
 pub mod spec_system;
@@ -73,6 +75,15 @@ pub use ledger_self_receipt::{
 };
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;
+pub use resolved_config::{
+    ConfigCandidateDispositionV1, ConfigCandidateSourceV1, ConfigCandidateV1, ConfigCompletenessV1,
+    ConfigDiagnosticV1, ConfigFallbackV1, ConfigFederationParticipationV1,
+    ConfigFederationPostureV1, ConfigPathAnchorV1, ConfigPrecedenceTierV1,
+    ConfigProfileParticipationV1, ConfigResolutionStatusV1, PortableConfigPathV1,
+    RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY, RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID,
+    RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION, ResolvedCargoAllowConfigV1, ResolvedPolicyV1,
+    resolve_cargo_allow_config_v1,
+};
 pub use starter::starter_policy;
 pub use validation::validate_policy;
 
@@ -98,8 +109,8 @@ pub use import_roots::{
 };
 
 pub use discovery::{
-    DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA,
-    SOURCE_WORKSPACE_METADATA, SkippedPolicyCandidate, discover_config,
+    DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SOURCE_CARGO_METADATA, SOURCE_CONVENTIONAL_PATH,
+    SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA, SkippedPolicyCandidate, discover_config,
 };
 
 pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {

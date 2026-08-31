@@ -89,6 +89,7 @@ mod refresh;
 mod refresh_tests;
 mod report_json;
 mod report_text;
+mod resolved_config;
 mod sarif;
 #[cfg(test)]
 mod sarif_tests;
@@ -298,6 +299,7 @@ pub use report_json::{render_json, render_json_with_context, render_json_with_co
 pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,
 };
+pub use resolved_config::render_resolved_cargo_allow_config_json;
 pub use sarif::{render_sarif, render_sarif_with_context};
 pub use spec_system_render::{
     SpecSystemRenderFormat, filter_spec_system_report_for_artifact, json_escape,
