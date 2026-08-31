@@ -46,8 +46,8 @@ pub struct UnusedDependencyExceptionV1 {
     pub expiry: Option<String>,
     /// Configuration IDs (#3905) the exception applies to; never empty.
     pub selected_configuration_ids: Vec<String>,
-    /// Must state non-transferability by containing
-    /// [`NON_TRANSFERABILITY_PHRASE`].
+    /// Must state non-transferability by containing the phrase
+    /// `one package's exception never retains another`.
     pub claim_boundary: String,
 }
 
