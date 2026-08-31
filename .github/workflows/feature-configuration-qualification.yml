@@ -1,0 +1,39 @@
+name: Feature configuration qualification
+
+# #3905 PR D: weekly backstop proving the FULL selected feature-configuration
+# union (every harness-provable matrix row) plus the no-new source-tree
+# guard. The PR-routed feature-configuration-proof job in ci.yml proves only
+# the rows derived from changed files; this scheduled lane is the drift
+# backstop for rows no pull request touched, and it proves the workspace
+# still qualifies as a whole.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feature-configuration-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  feature-configuration-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: feature-configuration-qualification
+      - name: Full feature-configuration proof union (#3905)
+        # No CARGO_ALLOW_PROOF_ROWS: with the env unset the proof exercises
+        # every harness-provable row of the checked-in matrix.
+        run: cargo test -p allow-report --locked --test feature_configuration_proof -- --ignored
+      - name: No-new source-tree guard
+        run: cargo run -p cargo-allow --locked -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md

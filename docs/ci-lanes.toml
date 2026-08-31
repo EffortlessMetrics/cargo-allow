@@ -54,6 +54,13 @@ scope = "cargo-allow-release-set"
 note = "fmt stays workspace-wide (repo hygiene); clippy, tests, and docs are release-set scoped"
 
 [[lane]]
+id = "feature-configuration-proof"
+product = "cargo-allow"
+posture = "required"
+scope = "workspace"
+note = "routed feature-configuration matrix proof (#3905): derives the affected matrix rows from changed files (wide by default) and proves exactly those; the scheduled feature-configuration-qualification workflow proves the full selected union"
+
+[[lane]]
 id = "test-core-platforms"
 product = "cargo-allow"
 posture = "required"
