@@ -110,6 +110,7 @@ fn parity_request(identity: &ReleaseIdentityV1) -> Result<PacketCompilationReque
             outcome: ProofOutcomeSummaryV1::Passed,
             currentness: IntentCurrentnessV1::Current,
             contradictions: Vec::new(),
+            covers: vec![intent_model::ProofObligationKindV1::ProofReceipt],
         }],
         established: vec![EstablishedClaimV1 {
             statement: "the release identity authority maps onto the compiler candidate \

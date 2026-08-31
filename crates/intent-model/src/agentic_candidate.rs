@@ -2,9 +2,18 @@
 //!
 //! This module deliberately owns observations and decisions only. It performs
 //! no repository, GitHub, filesystem, Cursor, or reservation operations.
+//!
+//! [`ClaimRefV1`] identity joins its free-form fields with the reserved
+//! U+001F separator, so [`ClaimRefV1::validate`] rejects every C0 control
+//! character and DEL in those fields (reusing the shared
+//! [`reject_identity_control_characters`] rule). Without the rejection two
+//! distinct claims — `change = "a\u{1f}b"` with `semantic_route = "c"` versus
+//! `change = "a"` with `semantic_route = "b\u{1f}c"` — would both validate and
+//! collapse into one identity.
 
 use serde::{Deserialize, Serialize};
 
+use crate::agentic_review_profile::reject_identity_control_characters;
 use crate::stable_hash_hex;
 
 pub const CLAIM_REF_SCHEMA_V1: &str = "cargo-allow.claim-ref.v1";
@@ -35,6 +44,10 @@ impl ClaimRefV1 {
             if value.trim().is_empty() {
                 return Err(format!("{name} must be non-empty"));
             }
+            // The identity encoding joins these fields with U+001F, so every
+            // control character (including both reserved separators) and DEL
+            // is rejected to keep the claim identity injective.
+            reject_identity_control_characters(name, value)?;
         }
         if self.controlling_issue == 0 {
             return Err("controlling_issue must be non-zero".into());
@@ -349,6 +362,84 @@ mod tests {
         let mut second = claim();
         second.claim_boundary = "same semantic boundary".into();
         assert_ne!(first, second.identity()?);
+        Ok(())
+    }
+
+    #[test]
+    fn clean_claim_ref_still_validates() -> Result<(), String> {
+        let clean = claim();
+        clean.validate()?;
+        assert!(clean.identity()?.starts_with("fnv1a64:"));
+        Ok(())
+    }
+
+    #[test]
+    fn nested_separator_collision_pair_in_claim_ref_is_rejected() -> Result<(), String> {
+        // The #3976 PR B review collision pair: `ClaimRefV1::identity` joins
+        // change/semantic_route with U+001F, so before the control-character
+        // rejection these two claims both validated and shared one identity
+        // (the canonical stream "a" U+001F "b" U+001F "c").
+        let mut first = claim();
+        first.change = "a\u{1f}b".into();
+        first.semantic_route = "c".into();
+        let mut second = claim();
+        second.change = "a".into();
+        second.semantic_route = "b\u{1f}c".into();
+        let first_error = first
+            .validate()
+            .err()
+            .ok_or("expected first claim-ref separator rejection")?;
+        let second_error = second
+            .validate()
+            .err()
+            .ok_or("expected second claim-ref separator rejection")?;
+        assert!(
+            first_error.contains("change") && first_error.contains("U+001F"),
+            "the rejection must name the field and the reserved code point: {first_error}"
+        );
+        assert!(
+            second_error.contains("C0 control characters"),
+            "the rejection must name the character class: {second_error}"
+        );
+        assert!(first.identity().is_err());
+        assert!(second.identity().is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn list_separator_and_del_in_claim_ref_fields_are_rejected() -> Result<(), String> {
+        let mut joined = claim();
+        joined.claim_boundary = "boundary\u{1e}private".into();
+        let joined_error = joined
+            .validate()
+            .err()
+            .ok_or("expected claim_boundary U+001E rejection")?;
+        assert!(
+            joined_error.contains("claim_boundary") && joined_error.contains("U+001E"),
+            "the rejection must name the field and the reserved code point: {joined_error}"
+        );
+
+        let mut del = claim();
+        del.writer_key = "writer\u{7f}key".into();
+        let del_error = del
+            .validate()
+            .err()
+            .ok_or("expected writer_key DEL rejection")?;
+        assert!(
+            del_error.contains("writer_key") && del_error.contains("U+007F"),
+            "the rejection must name the field and DEL: {del_error}"
+        );
+
+        let mut newline = claim();
+        newline.claim = "claim\u{a}with newline".into();
+        let newline_error = newline
+            .validate()
+            .err()
+            .ok_or("expected claim newline rejection")?;
+        assert!(
+            newline_error.contains("claim must not contain C0 control characters"),
+            "newlines are C0 control characters and must be rejected: {newline_error}"
+        );
         Ok(())
     }
 }

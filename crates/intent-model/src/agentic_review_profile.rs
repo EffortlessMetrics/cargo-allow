@@ -54,8 +54,9 @@ pub(crate) const LIST_SEPARATOR: &str = "\u{1e}";
 /// `limitations = ["a\u{1f}b"]` (and the scalar pair
 /// `intent_boundary = "a\u{1f}b"` / `intent_result = "c"` versus
 /// `intent_boundary = "a"` / `intent_result = "b\u{1f}c"`) would hash to one
-/// identity. It runs inside `CargoSuiteReviewProfileV1::validate`, which every
-/// identity derivation calls first, so each identity inherits it exactly once.
+/// identity. It runs inside `CargoSuiteReviewProfileV1::validate` and
+/// `ClaimRefV1::validate`, which every identity derivation calls first, so
+/// each identity inherits it exactly once.
 pub(crate) fn reject_identity_control_characters(name: &str, value: &str) -> Result<(), String> {
     for character in value.chars() {
         let code = character as u32;
@@ -63,7 +64,7 @@ pub(crate) fn reject_identity_control_characters(name: &str, value: &str) -> Res
             return Err(format!(
                 "{name} must not contain C0 control characters (U+0000..=U+001F) or DEL \
                  (U+007F), found U+{code:04X}; the canonical identity encoding reserves these \
-                 code points so distinct profiles cannot collide"
+                 code points so distinct identity inputs cannot collide"
             ));
         }
     }
