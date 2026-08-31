@@ -456,6 +456,9 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 error: None,
             },
             FederationLoadOutcome::Parsed(validated) => {
+                let has_non_portable_ledger_id = validated.config.ledgers.iter().any(|ledger| {
+                    !ledger.id.trim().is_empty() && !is_portable_ledger_identity(&ledger.id)
+                });
                 let source_exception_path = validated
                     .valid
                     .then(|| {
@@ -479,7 +482,7 @@ fn observe_federation(root: &Path) -> FederationObservation {
                 FederationObservation {
                     participation: ConfigFederationParticipationV1 {
                         config_path: root_relative_config_path(&loaded.path),
-                        posture: if validated.valid {
+                        posture: if validated.valid && !has_non_portable_ledger_id {
                             ConfigFederationPostureV1::Valid
                         } else {
                             ConfigFederationPostureV1::Invalid
@@ -489,13 +492,16 @@ fn observe_federation(root: &Path) -> FederationObservation {
                             .config
                             .ledgers
                             .iter()
-                            .filter(|ledger| !ledger.id.trim().is_empty())
+                            .filter(|ledger| is_portable_ledger_identity(&ledger.id))
                             .map(|ledger| ledger.id.clone())
                             .collect(),
                         diagnostics: validated
                             .diagnostics
                             .iter()
                             .map(|diagnostic| diagnostic.kind.as_str().to_string())
+                            .chain(
+                                has_non_portable_ledger_id.then(|| "invalid_ledger_id".to_string()),
+                            )
                             .collect(),
                     },
                     source_exception_path,
@@ -729,11 +735,11 @@ struct ResolutionStatusInput<'a> {
 }
 
 fn resolution_status(input: ResolutionStatusInput<'_>) -> ConfigResolutionStatusV1 {
-    if input.ambiguous {
-        return ConfigResolutionStatusV1::Ambiguous;
-    }
     if let Some(status) = input.status_override {
         return status;
+    }
+    if input.ambiguous {
+        return ConfigResolutionStatusV1::Ambiguous;
     }
     if let Some(kind) = input.evaluation_error {
         if input.fallback_selected {
@@ -836,7 +842,6 @@ fn portable_joined_path(
 }
 
 fn validate_source_subject(root: &Path, source_subject: &str) -> CargoAllowResult<()> {
-    const MAX_SOURCE_SUBJECT_CHARS: usize = 1_024;
     let root_text = root.display().to_string();
     let normalized_root = normalize_path(root);
     let embeds_private_root = if root.is_absolute() && cfg!(windows) {
@@ -847,12 +852,7 @@ fn validate_source_subject(root: &Path, source_subject: &str) -> CargoAllowResul
         root.is_absolute()
             && (source_subject.contains(&root_text) || source_subject.contains(&normalized_root))
     };
-    if source_subject.is_empty()
-        || source_subject.chars().count() > MAX_SOURCE_SUBJECT_CHARS
-        || !source_subject.chars().all(|character| {
-            character.is_ascii_alphanumeric()
-                || matches!(character, '-' | '_' | '.' | ':' | '@' | '+')
-        })
+    if !is_portable_opaque_identity(source_subject)
         || Path::new(source_subject).is_absolute()
         || embeds_private_root
     {
@@ -862,6 +862,25 @@ fn validate_source_subject(root: &Path, source_subject: &str) -> CargoAllowResul
         ));
     }
     Ok(())
+}
+
+fn is_portable_opaque_identity(value: &str) -> bool {
+    const MAX_PORTABLE_IDENTITY_CHARS: usize = 1_024;
+    !value.is_empty()
+        && value.chars().count() <= MAX_PORTABLE_IDENTITY_CHARS
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric()
+                || matches!(character, '-' | '_' | '.' | ':' | '@' | '+')
+        })
+}
+
+fn is_portable_ledger_identity(value: &str) -> bool {
+    const MAX_PORTABLE_IDENTITY_CHARS: usize = 1_024;
+    !value.is_empty()
+        && value.chars().count() <= MAX_PORTABLE_IDENTITY_CHARS
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.' | '@' | '+')
+        })
 }
 
 fn portable_config_path(

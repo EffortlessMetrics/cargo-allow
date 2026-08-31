@@ -142,6 +142,59 @@ fn resolved_cargo_allow_config_marks_invalid_discovery_fallback_invalid() -> Tes
 }
 
 #[test]
+fn resolved_cargo_allow_config_preserves_invalid_policy_ahead_of_ambiguity() -> TestResult {
+    let fixture = Fixture::new("invalid-policy-and-ambiguous-federation")?;
+    fixture.write(
+        "policy/allow.toml",
+        &valid_policy().replace("status = \"active\"", "status = \"bogus\""),
+    )?;
+    fixture.write("policy/other.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "first"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "second"
+path = "policy/other.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#,
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        None,
+        "subject:invalid-policy-and-ambiguous-federation",
+    )?;
+
+    ensure_eq(
+        resolved.status,
+        ConfigResolutionStatusV1::Invalid,
+        "invalid selected policy must take precedence over registry ambiguity",
+    )?;
+    ensure(
+        resolved
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == "invalid_policy"),
+        "invalid selected policy diagnostic should remain typed",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn resolved_cargo_allow_config_keeps_federation_and_conventional_candidates_distinct() -> TestResult
 {
     let fixture = Fixture::new("federation-winner")?;
@@ -435,6 +488,85 @@ fn resolved_cargo_allow_config_redacts_malformed_federation_source() -> TestResu
         !rendered.contains(private_path),
         "federation parser source text must not leak through diagnostics",
     )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_rejects_path_shaped_federation_identity() -> TestResult {
+    let fixture = Fixture::new("path-shaped-federation-id")?;
+    let private_id = "/home/alice/private/customer";
+    fixture.write("policy/allow.toml", valid_policy())?;
+    fixture.write("policy/federated.toml", valid_policy())?;
+    fixture.write(
+        ".allow/config.toml",
+        &format!(
+            r#"schema_version = "1.0"
+
+[[ledgers]]
+id = "{private_id}"
+path = "policy/federated.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+priority = 10
+"#
+        ),
+    )?;
+
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:path-shaped-id")?;
+    let rendered = serde_json::to_string(&resolved)?;
+
+    ensure_eq(resolved.status, ConfigResolutionStatusV1::Partial, "status")?;
+    ensure(
+        resolved.federation.configured_ledgers.is_empty()
+            && resolved.federation.selected_for_source_exception,
+        "invalid federation identity must be omitted without changing current selection",
+    )?;
+    ensure(
+        resolved.selected_policy.as_ref().is_some_and(|policy| {
+            policy.path.path == "policy/federated.toml" && policy.digest.is_some()
+        }),
+        "projection hardening must preserve the policy selected by current federation behavior",
+    )?;
+    ensure(
+        resolved
+            .federation
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic == "invalid_ledger_id"),
+        "invalid federation identity should retain a typed diagnostic",
+    )?;
+    ensure(
+        !rendered.contains(private_id),
+        "path-shaped federation identity must not leak through the artifact",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn portable_ledger_identity_grammar_covers_contract_boundaries() -> TestResult {
+    let max = "a".repeat(1_024);
+    let oversized = "a".repeat(1_025);
+    for allowed in ["a", "Team_1.release@owner+next", max.as_str()] {
+        ensure(
+            is_portable_ledger_identity(allowed),
+            &format!("portable ledger identity should be accepted: {allowed}"),
+        )?;
+    }
+    for rejected in [
+        "",
+        " ",
+        "team/source",
+        r"team\source",
+        "C:private",
+        "équipe",
+        oversized.as_str(),
+    ] {
+        ensure(
+            !is_portable_ledger_identity(rejected),
+            &format!("non-portable ledger identity should be rejected: {rejected}"),
+        )?;
+    }
     Ok(())
 }
 

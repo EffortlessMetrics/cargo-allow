@@ -160,6 +160,54 @@ priority = 10
     )
 }
 
+#[test]
+fn resolved_config_schema_rejects_path_shaped_configured_ledger_ids() -> TestResult {
+    let fixture = Fixture::new("schema-ledger-id-negative")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:ledger-id")?;
+    let mut instance: serde_json::Value =
+        serde_json::from_str(&render_resolved_cargo_allow_config_json(&resolved)?)?;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+    ))?;
+    let validator = jsonschema::validator_for(&schema)?;
+
+    for rejected in [
+        "",
+        " ",
+        "team/source",
+        r"team\source",
+        "C:private",
+        "équipe",
+    ] {
+        set_configured_ledger_id(&mut instance, rejected)?;
+        ensure(
+            !validator.is_valid(&instance),
+            &format!("schema should reject non-portable ledger identity: {rejected}"),
+        )?;
+    }
+    set_configured_ledger_id(&mut instance, &"a".repeat(1_025))?;
+    ensure(
+        !validator.is_valid(&instance),
+        "schema should reject oversized ledger identity",
+    )?;
+    set_configured_ledger_id(&mut instance, "Team_1.release@owner+next")?;
+    ensure(
+        validator.is_valid(&instance),
+        "schema should accept the producer's portable punctuation grammar",
+    )
+}
+
+fn set_configured_ledger_id(instance: &mut serde_json::Value, value: &str) -> TestResult {
+    let configured = instance
+        .pointer_mut("/federation/configured_ledgers")
+        .and_then(serde_json::Value::as_array_mut)
+        .ok_or("configured_ledgers array missing from produced artifact")?;
+    configured.clear();
+    configured.push(serde_json::Value::String(value.to_string()));
+    Ok(())
+}
+
 fn valid_policy() -> &'static str {
     r#"schema_version = "0.1"
 policy = "cargo-allow"

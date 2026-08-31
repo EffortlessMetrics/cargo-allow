@@ -56,7 +56,7 @@ mirror_ledger = "source-policy-mirror"
 drain_owner = "repo-infra"
 drain_reason = "containment test"
 review_after = "2026-09-01"
-expiry = "2027-12-31"
+expiry = "9999-12-31"
 linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
 "#;
 
