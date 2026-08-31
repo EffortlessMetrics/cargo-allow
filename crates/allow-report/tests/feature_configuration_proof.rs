@@ -244,13 +244,21 @@ fn unknown_configuration_ids_are_absent_from_the_matrix() -> Result<(), String> 
 }
 
 /// Every deliberately unselected feature combination must stay unscheduled:
-/// no selected row may carry exactly that feature set (#3905 matrix law).
+/// no selected row of the same package may carry that feature set in any
+/// order (#3905 matrix law).
 #[test]
 fn non_selected_combinations_are_never_scheduled_rows() -> Result<(), String> {
     let matrix = supported_feature_configuration_matrix();
     for non_selection in &matrix.explicit_non_selections {
+        let mut combo = non_selection.selected_features.clone();
+        combo.sort();
         for row in &matrix.rows {
-            if row.explicit_features == non_selection.selected_features.as_slice() {
+            if row.root_package_name != non_selection.package_name {
+                continue;
+            }
+            let mut selected = row.explicit_features.clone();
+            selected.sort();
+            if selected == combo {
                 return Err(format!(
                     "non-selected combination {:?} on {} must not appear as row {}",
                     non_selection.selected_features,
