@@ -410,11 +410,10 @@ fn classify_row(
         .iter()
         .find(|identity| identity.package_name == row.dependency_name)
         .map(|identity| identity.lib_name.replace('-', "_"));
-    for lib_ident in &lib_identity {
-        if !idents.contains(lib_ident) {
-            idents.push(lib_ident.clone());
-        }
+    if let Some(lib_ident) = lib_identity {
+        idents.push(lib_ident);
     }
+    idents.dedup();
     let mut direct_refs = Vec::new();
     let mut gated_refs = Vec::new();
     let mut build_input_refs = Vec::new();
