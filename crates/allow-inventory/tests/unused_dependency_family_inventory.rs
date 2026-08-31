@@ -170,25 +170,16 @@ struct DispositionRow {
 /// live non-`Used` finding — the coverage test enforces both directions, so
 /// an unlisted finding fails with instructions and a stale row fails too.
 /// `Used` findings need no rows (Used == implicit retain with evidence).
-/// PR B removes nothing: every `Remove` row is a candidate for PR C.
 ///
-/// Repair note (review finding on this PR's first push): cargo-allow /
-/// intent-compiler and cargo-proof / proof-orchestrator were briefly
-/// dispositioned Remove, but both packages rename their crate root via
-/// `[lib] name` (intent_engine, proof_engine) and are used pervasively
-/// under those spellings. The analyzer now models lib identities through
-/// caller-supplied `dependency_lib_identities`, so both rows classify Used
-/// and their Remove rows are gone.
-const DISPOSITIONS: [DispositionRow; 1] = [DispositionRow {
-    package: "allow-policy",
-    dependency: "serde_json",
-    class: UnusedDependencyDependencyClassV1::Normal,
-    verdict: DispositionVerdict::Remove,
-    note: "no use/path/extern-crate reference exists in the scanned inputs (src/ and \
-         tests/), and serde_json's lib name is the folded package name, so no lib \
-         identity can hide a reference; absence is still not proof of non-use, so PR C \
-         must re-verify with a compile check before removal; remove candidate for PR C",
-}];
+/// History: the PR B inventory listed three Remove candidates. Two
+/// (cargo-allow/intent-compiler, cargo-proof/proof-orchestrator) were false
+/// — both packages rename their crate root via `[lib] name` and are used
+/// under those spellings — and were reclassified Used by the lib-identity
+/// repair. The third (allow-policy/serde_json) was removed in #3909 PR C
+/// after the mandated compile check (cargo check + 526 allow-policy tests
+/// green without the row), so the table is currently empty: an unused
+/// dependency that is truly unused has no row to carry.
+const DISPOSITIONS: [DispositionRow; 0] = [];
 
 fn require(condition: bool, message: &str) -> Result<(), String> {
     if condition {
