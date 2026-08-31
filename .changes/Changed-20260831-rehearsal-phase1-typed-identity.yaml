@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real typed identity phase (#3751 phase
+  1). The zero-upload rehearsal harness's release_identity phase was a
+  file-existence characterization; it now reads the workspace version as
+  the identity source, validates it through cargo-allow release-identity,
+  and records the validated projection - canonical tag, channel, RC
+  ordinal, and GitHub prerelease posture - in the receipt without
+  re-deriving grammar or channel. Phase statuses stay fail-closed: a
+  CHARACTERIZATION_PHASES set pins which phases cannot manufacture
+  Complete, the aggregate can only go Complete when every phase is real
+  and green, and the harness test asserts the new identity block's
+  channel/posture consistency. Validation failures report Mismatch;
+  missing toolchain or unreadable input reports InstrumentFailure.
