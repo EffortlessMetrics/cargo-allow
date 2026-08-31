@@ -20,14 +20,15 @@ pub use git::{git_ls_files, git_ls_files_include_untracked, git_worktree_metadat
 pub use options::{Inventory, InventoryCompleteness, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
 pub use unused_dependency::{
-    UNUSED_DEPENDENCY_ANALYZER_IDENTITY, UNUSED_DEPENDENCY_CLAIM_BOUNDARY,
-    UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID, UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_VERSION,
-    UnusedDependencyDependencyClassV1, UnusedDependencyDispositionV1, UnusedDependencyExceptionV1,
-    UnusedDependencyFindingV1, UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1,
+    INCOMPLETE_SCAN_EVIDENCE_MARKER, UNUSED_DEPENDENCY_ANALYZER_IDENTITY,
+    UNUSED_DEPENDENCY_CLAIM_BOUNDARY, UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_ID,
+    UNUSED_DEPENDENCY_RECEIPT_V1_SCHEMA_VERSION, UnusedDependencyDependencyClassV1,
+    UnusedDependencyDispositionV1, UnusedDependencyExceptionV1, UnusedDependencyFindingV1,
+    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1,
     UnusedDependencyManifestRowV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
     UnusedDependencySourceInputV1, declared_absence_limitation, declared_unscanned_kinds,
-    empty_receipt, inventory_packages, inventory_unused_dependencies,
-    render_unused_dependency_receipt_v1, validate_exception,
+    empty_receipt, inventory_packages, inventory_unused_dependencies, receipt_scan_is_complete,
+    render_unused_dependency_receipt_v1, validate_exception, validate_receipt,
 };
 
 use filesystem::{existing_regular_files, recursive_files};

@@ -120,7 +120,8 @@ pub fn validate_exception(exception: &UnusedDependencyExceptionV1) -> Result<(),
 
 /// Parse a strict `YYYY-MM-DD` date into a comparable triple. No external
 /// date dependency: four-digit year, two-digit month (1-12), two-digit day
-/// (1-31), nothing else.
+/// that exists in that month (leap years honored), nothing else. Impossible
+/// dates like `2026-02-31` are rejected rather than merely bounded.
 fn parse_iso_date(value: &str) -> Option<(u32, u32, u32)> {
     let mut parts = value.split('-');
     let year_text = parts.next()?;
@@ -138,8 +139,22 @@ fn parse_iso_date(value: &str) -> Option<(u32, u32, u32)> {
     }
     let year = year_text.parse::<u32>().ok()?;
     let month = bounded_two_digits(month_text, 1, 12)?;
-    let day = bounded_two_digits(day_text, 1, 31)?;
+    let day = bounded_two_digits(day_text, 1, days_in_month(year, month)?)?;
     Some((year, month, day))
+}
+
+/// Days in one month of one year, or `None` for a non-leap February 29
+/// attempt: the leap rule is divisibility by 4, excluding centuries unless
+/// divisible by 400.
+fn days_in_month(year: u32, month: u32) -> Option<u32> {
+    let leap = year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
+    match month {
+        1 | 3 | 5 | 7 | 8 | 10 | 12 => Some(31),
+        4 | 6 | 9 | 11 => Some(30),
+        2 if leap => Some(29),
+        2 => Some(28),
+        _ => None,
+    }
 }
 
 fn bounded_two_digits(text: &str, minimum: u32, maximum: u32) -> Option<u32> {

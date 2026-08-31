@@ -12,6 +12,31 @@
 //! wires any CI enforcement: the dispositions table is advisory evidence for
 //! a separately authorized follow-up (PR C owns any removal).
 //!
+//! ## Routing decision (#3909 PR D)
+//!
+//! The issue sketched PR D as routed CI: derive affected package rows from
+//! changed files and run only those on ordinary PRs, with a scheduled full
+//! lane. This test supersedes that sketch, deliberately. The whole 14-package
+//! inventory runs in about eight seconds inside the always-on `test` job
+//! (no analyzer binary, no Cargo invocation — the composition is a pure
+//! function of the repository's own files), so routing would save nothing
+//! measurable while adding a job, a drift surface, and a completeness gate
+//! of its own. The always-on lane is also strictly stronger than routing:
+//! every pull request proves the entire family, not just the rows its
+//! files touch, and the coverage law fails on any unlisted non-`Used`
+//! finding, which is the no-new guard the issue asked PR D to build — now
+//! with the PR D severity split below.
+//!
+//! ## Guard severity split (#3909 PR D)
+//!
+//! Enforcement grades only complete-scan absence: a non-`Used` finding over
+//! supplied inputs without a disposition row fails the suite. Findings from
+//! incomplete scans (evidence carries
+//! [`INCOMPLETE_SCAN_EVIDENCE_MARKER`](allow_inventory::INCOMPLETE_SCAN_EVIDENCE_MARKER))
+//! are review-visible in the artifacts but exempt from coverage, because
+//! their absence is noise; `receipt_scan_is_complete` and `validate_receipt`
+//! are the module-level primitives, and the contract fixtures pin them.
+//!
 //! ## Family denominator
 //!
 //! The family is the exact release-set package list from the
@@ -63,10 +88,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use allow_inventory::{
-    UNUSED_DEPENDENCY_ANALYZER_IDENTITY, UNUSED_DEPENDENCY_CLAIM_BOUNDARY,
-    UnusedDependencyDependencyClassV1, UnusedDependencyDispositionV1, UnusedDependencyFindingV1,
-    UnusedDependencyInstrumentPostureV1, UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1,
-    UnusedDependencyRequestV1, UnusedDependencySourceInputV1, inventory_packages,
+    INCOMPLETE_SCAN_EVIDENCE_MARKER, UNUSED_DEPENDENCY_ANALYZER_IDENTITY,
+    UNUSED_DEPENDENCY_CLAIM_BOUNDARY, UnusedDependencyDependencyClassV1,
+    UnusedDependencyDispositionV1, UnusedDependencyFindingV1, UnusedDependencyInstrumentPostureV1,
+    UnusedDependencyLibIdentityV1, UnusedDependencyReceiptV1, UnusedDependencyRequestV1,
+    UnusedDependencySourceInputV1, inventory_packages, receipt_scan_is_complete, validate_receipt,
 };
 use serde::Serialize;
 
@@ -402,8 +428,12 @@ fn row_matches_finding(row: &DispositionRow, finding: &UnusedDependencyFindingV1
 }
 
 /// Live findings that require a reviewed disposition: everything except
-/// `Used` (implicit retain) and `InstrumentFailure` (a failure description
-/// with no dependency identity; the posture test blocks those separately).
+/// `Used` (implicit retain), `InstrumentFailure` (a failure description
+/// with no dependency identity; the posture test blocks those separately),
+/// and incomplete-scan findings (rows whose evidence is the
+/// `no_source_inputs_supplied` marker — the scan saw nothing, so absence
+/// there is noise; those stay review-visible in the artifacts instead,
+/// which is the #3909 PR D severity split).
 fn dispositionable_findings(
     receipts: &[UnusedDependencyReceiptV1],
 ) -> Vec<&UnusedDependencyFindingV1> {
@@ -417,17 +447,41 @@ fn dispositionable_findings(
                     | UnusedDependencyDispositionV1::InstrumentFailure
             )
         })
+        .filter(|finding| {
+            !finding
+                .evidence
+                .iter()
+                .any(|entry| entry == INCOMPLETE_SCAN_EVIDENCE_MARKER)
+        })
         .collect()
 }
 
 /// The reviewed (verdict, note) for one finding: the matching disposition
-/// row for non-`Used` findings (exactly one row required), or the implicit
-/// retain for `Used` findings.
+/// row for non-`Used` findings (exactly one row required), the implicit
+/// retain for `Used` findings, and — for incomplete-scan findings (#3909
+/// PR D severity split) — the fixed review-visible verdict with no
+/// disposition row required. Incomplete-scan findings are exempt from
+/// coverage in BOTH directions: no row is demanded of them, and no row can
+/// match them (the stale-row law checks `dispositionable_findings`, which
+/// excludes them), so an incomplete scan always has a legal artifact.
 fn reviewed_disposition(finding: &UnusedDependencyFindingV1) -> Result<(String, String), String> {
     if finding.disposition == UnusedDependencyDispositionV1::Used {
         return Ok((
             DispositionVerdict::RetainWithEvidence.as_str().to_string(),
             IMPLICIT_RETAIN_NOTE.to_string(),
+        ));
+    }
+    if finding
+        .evidence
+        .iter()
+        .any(|entry| entry == INCOMPLETE_SCAN_EVIDENCE_MARKER)
+    {
+        return Ok((
+            "review_visible".to_string(),
+            "incomplete-scan finding, exempt from enforcement: the scan saw no \
+             inputs, so absence here is noise; keep it visible and re-scan before \
+             judging"
+                .to_string(),
         ));
     }
     let matches: Vec<&DispositionRow> = DISPOSITIONS
@@ -687,6 +741,80 @@ fn dispositions_cover_the_live_inventory_exactly() -> Result<(), String> {
             ),
         )?;
     }
+    Ok(())
+}
+
+/// (2b) Review-visibility law (#3909 PR D): findings from incomplete scans
+/// (evidence carries the `no_source_inputs_supplied` marker) are exempt
+/// from the disposition-coverage law above in BOTH directions — no row is
+/// demanded of them and no row may match them — so an incomplete scan
+/// always has a legal artifact state. The law is pinned on a synthetic
+/// incomplete scan (the live family currently has zero marker findings, so
+/// a live-only probe would be vacuous): the synthetic finding must render
+/// review-visible, must be excluded from coverage, and the receipt must
+/// still validate.
+#[test]
+fn incomplete_scan_findings_stay_review_visible_without_enforcement() -> Result<(), String> {
+    let request = UnusedDependencyRequestV1 {
+        package_name: "synthetic".to_string(),
+        package_version: "0.1.0".to_string(),
+        configuration_id: "synthetic.default".to_string(),
+        manifest_text: [
+            "[package]",
+            "name = \"synthetic\"",
+            "version = \"0.1.0\"",
+            "",
+            "[dependencies]",
+            "proptest = \"1\"",
+        ]
+        .join("\n"),
+        source_inputs: Vec::new(),
+        build_script_present: false,
+        dependency_lib_identities: Vec::new(),
+    };
+    let receipts = [inventory_packages(std::slice::from_ref(&request))];
+    let receipt = receipts
+        .first()
+        .and_then(|batch| batch.first())
+        .ok_or_else(|| "the synthetic batch lost its receipt".to_string())?;
+    require(
+        !receipt_scan_is_complete(receipt),
+        "a receipt over zero inputs is an incomplete scan",
+    )?;
+    let marker_findings: Vec<&UnusedDependencyFindingV1> = receipt
+        .findings
+        .iter()
+        .filter(|finding| {
+            finding
+                .evidence
+                .iter()
+                .any(|entry| entry == INCOMPLETE_SCAN_EVIDENCE_MARKER)
+        })
+        .collect();
+    require(
+        marker_findings.len() == 1,
+        "the synthetic incomplete scan must carry exactly the proptest marker finding",
+    )?;
+    let finding = marker_findings
+        .first()
+        .ok_or_else(|| "the synthetic scan lost its marker finding".to_string())?;
+    let excluded = dispositionable_findings(std::slice::from_ref(receipt))
+        .iter()
+        .all(|live| !std::ptr::eq(*live, *finding));
+    require(
+        excluded,
+        "incomplete-scan findings must be exempt from the disposition coverage law",
+    )?;
+    let (verdict, note) = reviewed_disposition(finding)?;
+    require(
+        verdict == "review_visible",
+        "an incomplete-scan finding must render the review_visible verdict",
+    )?;
+    require(
+        note.contains("exempt from enforcement"),
+        "the rendered note must state the enforcement exemption",
+    )?;
+    validate_receipt(receipt)?;
     Ok(())
 }
 
