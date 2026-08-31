@@ -382,14 +382,13 @@ fn workspace_lib_identities(root: &Path) -> Result<Vec<UnusedDependencyLibIdenti
             .get("lib")
             .and_then(|lib| lib.get("name"))
             .and_then(|name| name.as_str())
-            .map(str::to_string);
+            .map(str::to_string)
+            .filter(|lib_name| *lib_name != package_name.replace('-', "_"));
         if let Some(lib_name) = lib_name {
-            if lib_name != package_name.replace('-', "_") {
-                identities.push(UnusedDependencyLibIdentityV1 {
-                    package_name,
-                    lib_name,
-                });
-            }
+            identities.push(UnusedDependencyLibIdentityV1 {
+                package_name,
+                lib_name,
+            });
         }
     }
     Ok(identities)
