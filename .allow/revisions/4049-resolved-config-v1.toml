@@ -13,3 +13,15 @@ allow_ids = ["allow-11201"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:07ed387cff85d7a51678a30d138ee3118e09e629b34d16ddc43aa880df72e532"
 reason = "Self-receipt for this revision note file, following the repository's existing ledger-change-note precedent."
+
+[[records]]
+allow_ids = ["allow-11205"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aaf8e969882c983e2e93cf40f7273a2c72554772f9a48b6bd63481c86e6a612f"
+reason = "Receipts the resolved-config component schema exception added for issue #3875."
+
+[[records]]
+allow_ids = ["allow-11206"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:664a4f301ed9f5d04dd119146228faae5343b09643ab6c96677d9053b3bebc554"
+reason = "Receipts this revision note's own policy exception for issue #3875."
