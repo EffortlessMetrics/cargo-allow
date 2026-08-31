@@ -6,8 +6,11 @@
 //! identity is independent of unstaged worktree bytes. Candidate parsing uses
 //! checked extraction rather than panic-prone indexing. The crate works from
 //! repository text and Git object contents; it does not invoke Cargo metadata,
-//! rustc, Clippy, build scripts, proc macros, or evidence tools.
+//! rustc, Clippy, build scripts, proc macros, or evidence tools. The dependency
+//! graph delta contracts compare caller-supplied manifest and lockfile texts
+//! into a closed movement vocabulary without invoking Cargo.
 
+mod dependency_graph_delta;
 mod finding;
 mod movement;
 mod policy;
@@ -32,6 +35,13 @@ mod result;
 mod revision;
 mod revision_git;
 
+pub use dependency_graph_delta::{
+    DEPENDENCY_GRAPH_DELTA_V1_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_V1_SCHEMA_VERSION,
+    DependencyGraphDeltaKindV1, DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRequestV1,
+    DependencyGraphDeltaRowV1, DependencyGraphDeltaVerdictV1, DependencyGraphEdgeClassV1,
+    DependencyGraphSideIdentityV1, DependencyGraphSideInputV1, dependency_graph_delta,
+    side_identity,
+};
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
 };

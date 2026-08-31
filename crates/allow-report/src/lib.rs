@@ -170,6 +170,36 @@ pub use artifacts::{
     PostMergeReconciliationResultV1, ReconciliationDispositionV1,
 };
 
+// Supported feature-configuration matrix and proof contracts (#3905 PR A).
+pub use artifacts::{
+    CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_RECEIPT_V1_SCHEMA_VERSION,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_ID,
+    FEATURE_CONFIGURATION_PROOF_REQUEST_V1_SCHEMA_VERSION, FeatureConfigurationCommandResultV1,
+    FeatureConfigurationCommandStatusV1, FeatureConfigurationEnforcementPostureV1,
+    FeatureConfigurationGapV1, FeatureConfigurationMatrixResultV1,
+    FeatureConfigurationMatrixValidationV1, FeatureConfigurationNonSelectionV1,
+    FeatureConfigurationProductV1, FeatureConfigurationProofDepthV1,
+    FeatureConfigurationProofOutcomeV1, FeatureConfigurationProofReceiptV1,
+    FeatureConfigurationProofRequestV1, FeatureConfigurationReceiptResultV1,
+    FeatureConfigurationReceiptValidationV1, FeatureConfigurationRequestResultV1,
+    FeatureConfigurationRequestValidationV1, FeatureConfigurationSupportTierV1,
+    FeatureConfigurationTargetClassV1, FeatureImplicationV1, NoDefaultFeaturesPostureV1,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_ID,
+    SUPPORTED_FEATURE_CONFIGURATION_V1_SCHEMA_VERSION, WORKSPACE_RUST_VERSION,
+    crate_feature_inventory, current_feature_configuration_gaps, effective_feature_set,
+    render_feature_configuration_proof_receipt_v1,
+    render_feature_configuration_proof_receipt_v1_bytes,
+    render_feature_configuration_proof_request_v1,
+    render_supported_feature_configuration_matrix_v1,
+    render_supported_feature_configuration_matrix_v1_bytes,
+    row_for_supported_feature_configuration, supported_feature_configuration_matrix,
+    supported_feature_configuration_rows, validate_feature_configuration_proof_receipt_v1,
+    validate_feature_configuration_proof_request_v1,
+    validate_supported_feature_configuration_matrix_v1,
+};
+
 // Root re-exports for the four release-artifact modules that #4007 dropped
 // from `artifacts.rs` while switching `final_evidence_graph_v1` to a glob
 // export. The modules and their contents were never removed, only unwired,
