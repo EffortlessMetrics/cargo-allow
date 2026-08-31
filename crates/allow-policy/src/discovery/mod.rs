@@ -1,11 +1,12 @@
-use std::fs;
-use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
 use allow_core::read_text_file_capped;
 use serde::Deserialize;
 
 use crate::policy_header::{SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS};
+use crate::source_tree_file::{
+    SourceTreeFilePosture, SourceTreeFileRejection, source_tree_file_posture,
+};
 use crate::toml_de::option_schema_version;
 
 /// Relative paths searched in order when discovering a cargo-allow policy ledger.
@@ -269,39 +270,24 @@ enum CandidateTargetPosture {
 }
 
 fn candidate_target_posture(anchor: &Path, candidate: &Path) -> CandidateTargetPosture {
-    match fs::symlink_metadata(candidate) {
-        Ok(_) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => {
-            return CandidateTargetPosture::Missing;
-        }
-        Err(_) => {
-            return CandidateTargetPosture::Rejected(
-                "candidate metadata could not be inspected".to_string(),
-            );
+    match source_tree_file_posture(anchor, candidate) {
+        SourceTreeFilePosture::Missing => CandidateTargetPosture::Missing,
+        SourceTreeFilePosture::RegularFile(path) => CandidateTargetPosture::Contained(path),
+        SourceTreeFilePosture::Rejected(reason) => {
+            CandidateTargetPosture::Rejected(discovery_rejection_reason(reason).to_string())
         }
     }
-    let target = match candidate.canonicalize() {
-        Ok(path) => path,
-        Err(_) => {
-            return CandidateTargetPosture::Rejected(
-                "candidate target could not be resolved".to_string(),
-            );
+}
+
+fn discovery_rejection_reason(reason: SourceTreeFileRejection) -> &'static str {
+    match reason {
+        SourceTreeFileRejection::AnchorUnresolved => {
+            "candidate discovery anchor could not be resolved"
         }
-    };
-    let resolved_anchor = match anchor.canonicalize() {
-        Ok(path) => path,
-        Err(_) => {
-            return CandidateTargetPosture::Rejected(
-                "candidate discovery anchor could not be resolved".to_string(),
-            );
+        SourceTreeFileRejection::ExternalTarget | SourceTreeFileRejection::ExternalComponent => {
+            "candidate target resolves outside its discovery anchor"
         }
-    };
-    if target.strip_prefix(resolved_anchor).is_ok() {
-        CandidateTargetPosture::Contained(target)
-    } else {
-        CandidateTargetPosture::Rejected(
-            "candidate target resolves outside its discovery anchor".to_string(),
-        )
+        _ => reason.source_tree_reason(),
     }
 }
 

@@ -1,5 +1,3 @@
-use std::fs;
-use std::io::ErrorKind;
 use std::path::Path;
 
 use allow_core::{
@@ -8,6 +6,9 @@ use allow_core::{
 
 use super::config::{ValidatedFederationConfig, parse_federation_config_at};
 use super::validate::validate_federation_config;
+use crate::source_tree_file::{
+    SourceTreeFilePosture, SourceTreeFileRejection, source_tree_file_posture,
+};
 
 pub const FEDERATION_CONFIG_REL_PATH: &str = ".allow/config.toml";
 
@@ -51,42 +52,30 @@ impl FederationLoadResult {
 
 pub fn load_federation_config(root: &Path) -> CargoAllowResult<FederationLoadResult> {
     let path = root.join(FEDERATION_CONFIG_REL_PATH);
-    match fs::symlink_metadata(&path) {
-        Ok(_) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => {
+    let canonical_path = match source_tree_file_posture(root, &path) {
+        SourceTreeFilePosture::Missing => {
             return Ok(FederationLoadResult {
                 path: FEDERATION_CONFIG_REL_PATH.to_string(),
                 outcome: FederationLoadOutcome::Missing,
             });
         }
-        Err(error) => {
+        SourceTreeFilePosture::RegularFile(path) => path,
+        SourceTreeFilePosture::Rejected(SourceTreeFileRejection::NonRegular) => {
+            return Err(CargoAllowError::from(std::io::Error::other(
+                "candidate target is not a regular file",
+            ))
+            .with_message_prefix(format!("failed to read {FEDERATION_CONFIG_REL_PATH}: ")));
+        }
+        SourceTreeFilePosture::Rejected(reason) => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
-                format!("failed to inspect {FEDERATION_CONFIG_REL_PATH}"),
-            )
-            .with_cause(&error));
+                format!(
+                    "failed to inspect {FEDERATION_CONFIG_REL_PATH}: {}",
+                    reason.source_tree_reason()
+                ),
+            ));
         }
-    }
-    let canonical_root = root.canonicalize().map_err(|error| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            "failed to resolve federation source-tree root",
-        )
-        .with_cause(&error)
-    })?;
-    let canonical_path = path.canonicalize().map_err(|error| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            format!("failed to resolve {FEDERATION_CONFIG_REL_PATH}"),
-        )
-        .with_cause(&error)
-    })?;
-    if canonical_path.strip_prefix(&canonical_root).is_err() {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            format!("{FEDERATION_CONFIG_REL_PATH} resolves outside the source-tree root"),
-        ));
-    }
+    };
     let text = read_text_file_capped(&canonical_path).map_err(|err| match err {
         CappedReadError::Io(source) => CargoAllowError::from(source)
             .with_message_prefix(format!("failed to read {FEDERATION_CONFIG_REL_PATH}: ")),

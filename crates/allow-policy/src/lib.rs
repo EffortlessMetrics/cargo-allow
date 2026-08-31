@@ -39,6 +39,7 @@ mod render_toml;
 mod resolved_config;
 mod scope_validation;
 mod selector_validation;
+mod source_tree_file;
 mod source_tree_scope;
 #[doc(hidden)]
 pub mod spec_system;

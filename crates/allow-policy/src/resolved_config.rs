@@ -933,29 +933,51 @@ fn lexical_relative_path(anchor: &Path, path: &Path) -> Option<String> {
         return None;
     }
     if let Ok(relative) = path.strip_prefix(anchor) {
-        return is_safe_relative_path(relative).then(|| normalize_path(relative));
+        return lossless_relative_path(relative);
+    }
+    if !cfg!(windows) {
+        return None;
     }
 
-    let normalized_anchor = normalize_path(anchor);
-    let normalized_path = normalize_path(path);
-    let comparable_anchor = if cfg!(windows) {
-        normalized_anchor.to_lowercase()
-    } else {
-        normalized_anchor.clone()
-    };
-    let comparable_path = if cfg!(windows) {
-        normalized_path.to_lowercase()
-    } else {
-        normalized_path.clone()
-    };
-    if comparable_path == comparable_anchor {
-        return Some(String::new());
+    let anchor_components = anchor.components().collect::<Vec<_>>();
+    let path_components = path.components().collect::<Vec<_>>();
+    if path_components.len() < anchor_components.len()
+        || !anchor_components
+            .iter()
+            .zip(&path_components)
+            .all(|(anchor, path)| {
+                anchor
+                    .as_os_str()
+                    .to_str()
+                    .zip(path.as_os_str().to_str())
+                    .is_some_and(|(anchor, path)| anchor.to_lowercase() == path.to_lowercase())
+            })
+    {
+        return None;
     }
-    let prefix = format!("{}/", comparable_anchor.trim_end_matches('/'));
-    comparable_path
-        .strip_prefix(&prefix)
-        .and_then(|_| normalized_path.get(prefix.len()..))
-        .map(ToString::to_string)
+    let relative = path_components.iter().skip(anchor_components.len()).fold(
+        PathBuf::new(),
+        |mut relative, component| {
+            relative.push(component.as_os_str());
+            relative
+        },
+    );
+    lossless_relative_path(&relative)
+}
+
+fn lossless_relative_path(path: &Path) -> Option<String> {
+    if !is_safe_relative_path(path) {
+        return None;
+    }
+    let mut parts = Vec::new();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => parts.push(part.to_str()?),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+    Some(parts.join("/"))
 }
 
 fn root_relative_config_path(path: &str) -> PortableConfigPathV1 {

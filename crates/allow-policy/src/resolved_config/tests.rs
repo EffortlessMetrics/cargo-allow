@@ -960,6 +960,77 @@ fn resolved_cargo_allow_config_rejects_in_root_symlink_to_external_policy() -> T
 
 #[cfg(unix)]
 #[test]
+fn resolved_cargo_allow_config_rejects_dangling_discovery_parent_component() -> TestResult {
+    let fixture = Fixture::new("dangling-discovery-parent")?;
+    std::os::unix::fs::symlink("missing-policy", fixture.path().join("policy"))?;
+    fixture.write(".cargo/allow.toml", valid_policy())?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:dangling-discovery-parent")?;
+
+    ensure(
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == ".cargo/allow.toml"),
+        "safe fallback should win after a dangling discovery parent is rejected",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::ConventionalPath
+                && candidate.disposition == ConfigCandidateDispositionV1::Skipped
+                && candidate
+                    .path
+                    .as_ref()
+                    .is_some_and(|path| path.path == "policy/allow.toml")
+                && candidate
+                    .reason
+                    .as_deref()
+                    .is_some_and(|reason| reason.contains("unresolved symlink component"))
+        }),
+        "dangling discovery parent must remain visible as a rejected candidate",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn resolved_cargo_allow_config_rejects_non_regular_fallback_before_reading() -> TestResult {
+    let fixture = Fixture::new("non-regular-fallback")?;
+    fixture.write("policy/cli.toml", valid_policy())?;
+    fs::create_dir_all(fixture.path().join("policy/allow.toml"))?;
+
+    let resolved = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new("policy/cli.toml")),
+        "subject:non-regular-fallback",
+    )?;
+
+    ensure(
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == "policy/cli.toml"),
+        "explicit regular-file policy should remain selected",
+    )?;
+    ensure(
+        resolved.candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::ConventionalPath
+                && candidate
+                    .path
+                    .as_ref()
+                    .is_some_and(|path| path.path == "policy/allow.toml")
+                && candidate
+                    .reason
+                    .as_deref()
+                    .is_some_and(|reason| reason.contains("not a regular file"))
+        }),
+        "non-regular fallback must be rejected before the read boundary",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn resolved_cargo_allow_config_accepts_internal_symlink_with_lexical_identity() -> TestResult {
     let fixture = Fixture::new("internal-symlink")?;
     fixture.write("policy/actual.toml", valid_policy())?;
@@ -1110,6 +1181,35 @@ fn resolved_cargo_allow_config_rejects_dangling_federation_registry_symlink() ->
 
 #[cfg(unix)]
 #[test]
+fn resolved_cargo_allow_config_rejects_dangling_federation_parent_component() -> TestResult {
+    let fixture = Fixture::new("dangling-federation-parent")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    std::os::unix::fs::symlink("missing-allow", fixture.path().join(".allow"))?;
+
+    let resolved =
+        resolve_cargo_allow_config_v1(fixture.path(), None, "subject:dangling-federation-parent")?;
+
+    ensure_eq(
+        resolved.federation.posture,
+        ConfigFederationPostureV1::Unreadable,
+        "federation posture",
+    )?;
+    ensure(
+        resolved.federation.configured_ledgers.is_empty(),
+        "dangling federation parent must not produce configured ledgers",
+    )?;
+    ensure(
+        resolved
+            .selected_policy
+            .as_ref()
+            .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
+        "safe conventional policy should remain the bounded fallback",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
 fn resolved_cargo_allow_config_accepts_absolute_cli_through_directory_alias() -> TestResult {
     let fixture = Fixture::new("aliased-root")?;
     let alias_holder = Fixture::new("alias-holder")?;
@@ -1223,6 +1323,17 @@ fn resolved_cargo_allow_config_accepts_absolute_cli_paths_inside_the_root() -> T
                 && candidate.disposition == ConfigCandidateDispositionV1::Selected
         }),
         "absolute in-root CLI path should remain selected and portable",
+    )?;
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn lexical_relative_path_preserves_unicode_case_insensitive_windows_matching() -> TestResult {
+    ensure_eq(
+        lexical_relative_path(Path::new(r"C:\Répo"), Path::new(r"c:\répo\missing.toml")),
+        Some("missing.toml".to_string()),
+        "Unicode case-insensitive Windows relative path",
     )?;
     Ok(())
 }
@@ -1596,6 +1707,65 @@ fn resolved_cargo_allow_config_rejects_non_utf8_filename_identity() -> TestResul
     ensure(
         !rendered.contains("policy-�.toml"),
         "non-UTF-8 identity must not collide with a replacement-character filename",
+    )?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn resolved_cargo_allow_config_preserves_distinct_unicode_filename_spellings() -> TestResult {
+    let fixture = Fixture::new("unicode-spelling")?;
+    let decomposed = "policy/cafe\u{301}.toml";
+    let composed = "policy/caf\u{e9}.toml";
+    fixture.write(decomposed, &format!("{}\n# decomposed", valid_policy()))?;
+    fixture.write(composed, &format!("{}\n# composed", valid_policy()))?;
+
+    let decomposed_resolution = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new(decomposed)),
+        "subject:unicode-decomposed",
+    )?;
+    let composed_resolution = resolve_cargo_allow_config_v1(
+        fixture.path(),
+        Some(Path::new(composed)),
+        "subject:unicode-composed",
+    )?;
+    let decomposed_policy = decomposed_resolution
+        .selected_policy
+        .as_ref()
+        .ok_or("decomposed policy should be selected")?;
+    let composed_policy = composed_resolution
+        .selected_policy
+        .as_ref()
+        .ok_or("composed policy should be selected")?;
+
+    ensure_eq(
+        decomposed_resolution.status,
+        ConfigResolutionStatusV1::Complete,
+        "decomposed status",
+    )?;
+    ensure_eq(
+        composed_resolution.status,
+        ConfigResolutionStatusV1::Complete,
+        "composed status",
+    )?;
+    ensure_eq(
+        decomposed_policy.path.path.as_str(),
+        decomposed,
+        "decomposed path spelling",
+    )?;
+    ensure_eq(
+        composed_policy.path.path.as_str(),
+        composed,
+        "composed path spelling",
+    )?;
+    ensure(
+        decomposed_policy.path.path != composed_policy.path.path,
+        "distinct filesystem spellings must retain distinct portable identities",
+    )?;
+    ensure(
+        decomposed_policy.digest != composed_policy.digest,
+        "distinct policy bytes must retain distinct digests",
     )?;
     Ok(())
 }
