@@ -10,6 +10,7 @@ mod explain;
 mod feature_configuration_v1;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
+mod final_freeze_replay_v1;
 mod final_readiness_v1;
 mod frozen_candidate_custody_v1;
 mod github_pr_check_v1;
@@ -86,6 +87,18 @@ pub use federation::{
     FederationReportContext, LedgerContributorSummary,
 };
 pub use final_evidence_graph_v1::*;
+pub use final_freeze_replay_v1::{
+    CargoAllowFinalFreezeReceiptV1, CargoAllowFinalFreezeReplayInputsV1,
+    CargoAllowFinalFreezeReplayV1, FINAL_FREEZE_EXPECTED_SHARED_ROWS_V1,
+    FINAL_FREEZE_EXPECTED_UPLOAD_ROWS_V1, FINAL_FREEZE_RECEIPT_SCHEMA_ID,
+    FINAL_FREEZE_RECEIPT_SCHEMA_VERSION, FINAL_FREEZE_REPLAY_SCHEMA_ID,
+    FINAL_FREEZE_REPLAY_SCHEMA_VERSION, FinalFreezeManifestBindingV1, FinalFreezeManifestResultV1,
+    FinalFreezeReceiptInitV1, FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1,
+    FinalFreezeReplayRowV1, ObservationFreshnessV1, ObservationReadingRowV1, ObservationReadingV1,
+    RefreshableObservationAdapterV1, RefreshableObservationKindV1, RefreshableObservationV1,
+    RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
+    render_final_freeze_replay_markdown, replay_final_freeze,
+};
 pub use final_readiness_v1::{
     CargoAllowFinalReadinessV1, FINAL_READINESS_SCHEMA_ID, FINAL_READINESS_SCHEMA_VERSION,
     FinalReadinessClaimNarrowingV1, FinalReadinessCustodyPostureV1, FinalReadinessDecisionInputsV1,
