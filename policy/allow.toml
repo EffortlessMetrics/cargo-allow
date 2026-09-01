@@ -14880,3 +14880,25 @@ normalized_snippet_hash = "fnv1a64:3e73816a0c6341c0"
 [allow.last_seen]
 line = 320
 column = 59
+
+[[allow]]
+id = "allow-0700"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3761-reconciled-publication.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the added_allow receipts for the reconciled-publication construction lane (#3761)."
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3761-reconciled-publication.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3761-reconciled-publication.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
