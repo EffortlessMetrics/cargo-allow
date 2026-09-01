@@ -448,9 +448,11 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
     let mut limitations = vec![
         CURRENT_ADAPTER_LIMITATION.to_string(),
         CANDIDATE_ENUMERATION_LIMITATION.to_string(),
-        SENSOR_OBSERVATION_LIMITATION.to_string(),
         EXTERNAL_CLI_LIMITATION.to_string(),
     ];
+    if policy_observation.inventory_mode.is_none() {
+        limitations.push(SENSOR_OBSERVATION_LIMITATION.to_string());
+    }
     match input.requested_root_relation {
         Some(ConfigRootRelationV1::Same) => {
             limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string())
