@@ -18,7 +18,7 @@ pub(crate) use adoption_args::AdoptionArgs;
 use crate::policy_config::discover_config_path;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, HumanJsonFormat, InventoryFacts, RootArgs,
-    current_dir, emit_text, load_world_with_evidence_mode, report_config,
+    current_dir, emit_text, report_config,
 };
 
 const COMMAND: &str = "adopt";
@@ -199,6 +199,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         .map(|config| resolve_config_path(&root, config))
         .transpose()?;
     let discovery = discover_config_path(&root, explicit_config.as_deref());
+    let has_explicit_config = explicit_config.is_some();
     // `discover_config_path` is the sole read-selection authority. Do not
     // rescan conventional paths here after it has classified candidates;
     // doing so could make `adopt` select a different policy than the central
@@ -226,13 +227,17 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         limitations.push("foreign policy candidates were skipped during discovery".to_string());
     }
 
-    let (cfg, policy_state, policy_diagnostic) = match policy_path.as_deref() {
+    let (cfg, policy_digest, mut policy_state, mut policy_diagnostic) = match policy_path.as_deref()
+    {
         Some(path) => {
-            match crate::load_policy_at_path(path.to_path_buf(), EvidenceValidationMode::ReportOnly)
-            {
-                Ok(cfg) => (cfg, allow_report::PolicyState::Valid, None),
+            match crate::policy_config::load_policy_at_path_with_digest(
+                path.to_path_buf(),
+                EvidenceValidationMode::ReportOnly,
+            ) {
+                Ok((cfg, digest)) => (cfg, Some(digest), allow_report::PolicyState::Valid, None),
                 Err(error) => (
                     AllowConfig::empty(),
+                    None,
                     allow_report::PolicyState::Invalid,
                     Some(sanitize_diagnostic(&root, &error.to_string())),
                 ),
@@ -240,10 +245,18 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         }
         None => (
             AllowConfig::empty(),
+            None,
             allow_report::PolicyState::Absent,
             None,
         ),
     };
+    if !has_explicit_config && discovery.federation_evaluation_failed {
+        policy_state = allow_report::PolicyState::Invalid;
+        policy_diagnostic = Some(
+            "source-exception federation evaluation failed; conventional fallback was not trusted"
+                .to_string(),
+        );
+    }
     let options = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -312,13 +325,16 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             crate::world::default_federation_evaluation(),
         ))
     } else {
-        load_world_with_evidence_mode(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            policy_state == allow_report::PolicyState::Valid,
-            None,
+        let federation = discovery
+            .federation
+            .clone()
+            .unwrap_or_else(crate::world::default_federation_evaluation);
+        crate::world::load_world_from_resolved_policy(
+            &root,
+            cfg.clone(),
+            policy_digest.clone(),
+            federation,
             args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
         )
     };
     let (scan_root, scanned_cfg, findings, inventory_facts, federation, instrument_failure) =
@@ -369,7 +385,6 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         &outcomes,
         evidence_files.as_ref(),
     );
-    let mut policy_diagnostic = policy_diagnostic;
     let invalid_match_count = outcomes
         .iter()
         .filter(|outcome| {
@@ -386,10 +401,6 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             "{invalid_match_count} policy match outcome(s) require policy repair"
         ));
     }
-    let policy_digest = policy_path
-        .as_deref()
-        .and_then(|path| fs::read(path).ok())
-        .map(|bytes: Vec<u8>| sha256_v1_bytes(&bytes));
     let facts = adoption_facts(AdoptionFactInputs {
         root: &root,
         inventory: Some(&inventory),

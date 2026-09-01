@@ -37,6 +37,10 @@ pub(crate) struct ConfigDiscovery {
     pub skipped: Vec<SkippedPolicyCandidate>,
     pub source: Option<&'static str>,
     pub precedence: Option<PrecedenceTier>,
+    pub federation: Option<allow_policy::federation::FederationEvaluation>,
+    /// True when federation evaluation failed before conventional fallback.
+    /// This is distinct from a successful evaluation with no federation.
+    pub federation_evaluation_failed: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,6 +150,8 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 skipped,
                 source,
                 precedence: Some(evaluation.precedence_applied),
+                federation: Some(evaluation),
+                federation_evaluation_failed: false,
             }
         }
         Err(_) => {
@@ -155,9 +161,32 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 skipped: discovery.skipped,
                 source: discovery.selected_source,
                 precedence: None,
+                federation: None,
+                federation_evaluation_failed: federation_config_observed(root),
             }
         }
     }
+}
+
+fn federation_config_observed(root: &Path) -> bool {
+    let config_path = root.join(allow_policy::federation::FEDERATION_CONFIG_REL_PATH);
+    if std::fs::symlink_metadata(&config_path).is_ok() {
+        return true;
+    }
+    let parent = root.join(".allow");
+    std::fs::symlink_metadata(&parent)
+        .map(|metadata| {
+            metadata.file_type().is_symlink()
+                && parent
+                    .canonicalize()
+                    .map(|target| {
+                        root.canonicalize()
+                            .map(|root| !target.starts_with(root) || !target.is_dir())
+                            .unwrap_or(true)
+                    })
+                    .unwrap_or(true)
+        })
+        .unwrap_or(false)
 }
 
 fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {

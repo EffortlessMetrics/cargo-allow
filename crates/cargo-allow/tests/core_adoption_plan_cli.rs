@@ -222,6 +222,29 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn adopt_does_not_trust_conventional_policy_after_federation_failure() -> Result<(), String> {
+    let root = temp_root("adoption-federation-failure")?;
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ndefault_mode = \"no-new\"\n",
+    )
+        .map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+    fs::write(root.join(".allow/config.toml"), "not valid = [toml\n")
+        .map_err(|error| error.to_string())?;
+
+    let result = run_adopt(&root, &["--format", "json", "--strict"])?;
+    require(
+        !result.status.success(),
+        "strict adoption must fail closed when federation evaluation fails",
+    )?;
+    remove_temp_root(root)?;
+    Ok(())
+}
+
 #[test]
 fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Result<(), String> {
     let invalid_root = temp_root("adoption-invalid-policy")?;
