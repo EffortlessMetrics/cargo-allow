@@ -7,7 +7,10 @@
 //! policy_discovery convention) and does not pull in the shared tests/support
 //! module.
 
-use allow_policy::{ConfigCandidateSourceV1, ConfigPathAnchorV1, resolve_cargo_allow_config_v1};
+use allow_policy::{
+    ConfigCandidateSourceV1, ConfigPathAnchorV1, ConfigResolutionStatusV1,
+    resolve_cargo_allow_config_v1,
+};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -281,5 +284,125 @@ fn central_resolution_matches_command_policy_identity() -> Result<(), String> {
         "doctor should preserve explicit CLI provenance",
     )?;
     remove_temp_root(root);
+    Ok(())
+}
+
+/// Small data-driven current-behavior matrix for #3875-D. It records central
+/// status and the command-facing `doctor` projection for explicit, absent, and
+/// malformed policies without changing selection.
+#[test]
+fn current_selection_matrix_preserves_status_and_presence() -> Result<(), String> {
+    for case in [
+        "explicit",
+        "missing",
+        "malformed",
+        "package_metadata",
+        "workspace_metadata",
+        "conventional",
+        "federation",
+        "foreign",
+    ] {
+        let root = temp_root(&format!("resolved-config-matrix-{case}"));
+        let cli = match case {
+            "explicit" => {
+                write_conflict_policy(&root);
+                Some("policy/allow.toml")
+            }
+            "malformed" => {
+                fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+                fs::write(root.join("policy/allow.toml"), "not = [valid")
+                    .map_err(|error| error.to_string())?;
+                Some("policy/allow.toml")
+            }
+            "package_metadata" => {
+                write_conflict_policy(&root);
+                fs::write(
+                    root.join("Cargo.toml"),
+                    "[package]\nname = \"matrix\"\nversion = \"0.1.0\"\n[package.metadata.cargo-allow]\nconfig = \"policy/allow.toml\"\n",
+                )
+                .map_err(|error| error.to_string())?;
+                None
+            }
+            "workspace_metadata" => {
+                write_conflict_policy(&root);
+                fs::write(
+                    root.join("Cargo.toml"),
+                    "[workspace]\nmembers = []\n[workspace.metadata.cargo-allow]\nconfig = \"policy/allow.toml\"\n",
+                )
+                .map_err(|error| error.to_string())?;
+                None
+            }
+            "conventional" => {
+                write_conflict_policy(&root);
+                None
+            }
+            "federation" => {
+                write_conflict_policy(&root);
+                fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+                fs::write(
+                    root.join(".allow/config.toml"),
+                    "schema_version = \"1.0\"\n[[ledgers]]\nid = \"source-policy\"\npath = \"policy/allow.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\nmode = \"blocking\"\npriority = 10\n",
+                )
+                .map_err(|error| error.to_string())?;
+                None
+            }
+            "foreign" => {
+                fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+                fs::write(
+                    root.join("policy/allow.toml"),
+                    "schema_version = \"1.0\"\nproduct = \"other-tool\"\n",
+                )
+                .map_err(|error| error.to_string())?;
+                None
+            }
+            "missing" => None,
+            _ => return Err(format!("unknown matrix case: {case}")),
+        };
+        let resolved = resolve_cargo_allow_config_v1(
+            &root,
+            cli.map(std::path::Path::new),
+            "test:current-selection-matrix",
+        )
+        .map_err(|error| format!("resolve {case}: {error}"))?;
+        let expected_status = match case {
+            "explicit" | "malformed" | "package_metadata" | "workspace_metadata"
+            | "conventional" | "federation" => ConfigResolutionStatusV1::Invalid,
+            "missing" => ConfigResolutionStatusV1::NoPolicy,
+            "foreign" => ConfigResolutionStatusV1::Invalid,
+            _ => return Err(format!("unknown matrix case: {case}")),
+        };
+        require(
+            resolved.status == expected_status,
+            &format!("central status mismatch for {case}: {:?}", resolved.status),
+        )?;
+        let root_text = root.to_str().ok_or("root is not UTF-8")?;
+        let mut command = cargo_allow_command();
+        command.args(["doctor", "--root", root_text, "--format", "json"]);
+        if let Some(config) = cli {
+            command.args(["--config", config]);
+        }
+        let doctor = command
+            .output()
+            .map_err(|error| format!("doctor {case}: {error}"))?;
+        let artifact: Value = serde_json::from_slice(&doctor.stdout)
+            .map_err(|error| format!("doctor JSON {case}: {error}"))?;
+        let found = artifact.pointer("/config/found").and_then(Value::as_bool);
+        require(
+            found.is_some(),
+            &format!("doctor presence missing for {case}: {artifact}"),
+        )?;
+        let expected_found = !matches!(case, "missing" | "foreign");
+        require(
+            found == Some(expected_found),
+            &format!("doctor presence mismatch for {case}: {artifact}"),
+        )?;
+        if let Some(valid) = artifact.pointer("/config/valid").and_then(Value::as_bool) {
+            require(
+                !valid,
+                &format!("doctor validity mismatch for {case}: {artifact}"),
+            )?;
+        }
+        remove_temp_root(root);
+    }
     Ok(())
 }
