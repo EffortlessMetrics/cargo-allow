@@ -1175,6 +1175,40 @@ mod tests {
     }
 
     #[test]
+    fn canonical_policy_identity_is_repo_relative_and_fail_closed() -> Result<(), String> {
+        let root = fixture_dir();
+        let policy = root.join("policy/allow.toml");
+        fs::create_dir_all(policy.parent().ok_or("policy parent missing")?)
+            .map_err(|err| format!("policy dir: {err}"))?;
+        fs::write(&policy, "version = 1\n").map_err(|err| format!("policy: {err}"))?;
+
+        let identity = canonical_policy_identity(&root, &policy)
+            .ok_or("contained policy should have a portable identity")?;
+        if identity != "policy/allow.toml" {
+            return Err(format!("unexpected policy identity: {identity}"));
+        }
+
+        let missing = canonical_policy_identity(&root, &root.join("policy/missing.toml"));
+        if missing.is_some() {
+            return Err("missing policy must not receive an identity".to_string());
+        }
+
+        let outside = root
+            .parent()
+            .ok_or("fixture parent missing")?
+            .join("outside-policy.toml");
+        fs::write(&outside, "version = 1\n").map_err(|err| format!("outside policy: {err}"))?;
+        let outside_identity = canonical_policy_identity(&root, &outside);
+        if outside_identity.is_some() {
+            return Err("outside policy must not receive an identity".to_string());
+        }
+
+        fs::remove_file(outside).map_err(|err| format!("remove outside policy: {err}"))?;
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
+        Ok(())
+    }
+
+    #[test]
     fn load_world_abort_rejects_untracked_local_evidence_by_default() {
         let root = fixture_dir();
         write_policy_with_untracked_evidence(&root);
