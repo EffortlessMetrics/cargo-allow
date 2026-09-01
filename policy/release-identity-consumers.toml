@@ -284,6 +284,24 @@ sites = ["identity[\"github_prerelease\"]"]
 claim_boundary = "Asserts the recorded typed identity block's internal consistency (field presence, channel/posture agreement, RC ordinal pairing); the values themselves are produced by the typed authority, never inferred here."
 
 [[consumers]]
+id = "final-package-docs"
+path = "scripts/final-package-docs.py"
+role = "final package-docs receipt producer"
+disposition = "typed-consumer"
+marker_classes = ["workspace-reader", "prerelease-posture"]
+sites = ["\"release-identity\": basis[\"release_identity\"]"]
+claim_boundary = "The final-basis identity is validated against the stable-only ReleaseIdentityV1 law (version/tag/channel/prerelease agreement) with rc-line bases rejected as final authority; the workspace version source is read only to select the packaging closure, and per-row binding uses the basis identity."
+
+[[consumers]]
+id = "test-final-package-docs"
+path = "scripts/test-final-package-docs.py"
+role = "fail-closed fixture tests for the final package-docs receipt"
+disposition = "historical-fixture-only"
+marker_classes = ["prerelease-posture"]
+sites = ["\"github_prerelease\": prerelease"]
+claim_boundary = "Fixture bases carry the typed identity vocabulary (including prerelease posture fixtures for the rc-line rejection control); all versions are fixture data, never a release authority."
+
+[[consumers]]
 id = "release-rehearsal"
 path = "scripts/release-rehearsal.py"
 role = "zero-upload release rehearsal harness"

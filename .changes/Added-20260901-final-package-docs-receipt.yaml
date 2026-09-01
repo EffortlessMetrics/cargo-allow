@@ -1,0 +1,26 @@
+kind: Added
+body: >-
+  Add the checked final package-docs receipt for the ten-package 0.2.0
+  candidate (#3773). scripts/final-package-docs.py consumes one exact
+  prospective final basis — commit/tree, Cargo.lock digest, topology
+  digest bound to the live file, and a stable-only ReleaseIdentityV1
+  (0.2.0 / v0.2.0 / stable / prerelease=false; rc-line bases are
+  rejected as final authority per the #3759 exclusion law) — then binds
+  the basis to the topology's ten cargo-allow rows and three selected
+  0.1.0 shared prerequisites, packages the candidate offline through the
+  publisher's validated seam (cargo package --locked --no-verify; zero
+  uploads), and audits each normalized packaged manifest: identity
+  fields, exact =0.2.0 internal requirements, independently versioned
+  0.1.0 shared requirements, no checkout-relative sources, README and
+  crate-docs posture (allow-policy-legacy compatibility/migration
+  visibility), with normalized-manifest digest, packaged file-list
+  digest, crate SHA-256, and size retained per row. Channel law binds
+  getting-started to all three channel identities and the support
+  matrix to the product posture. The fixture contract suite
+  (test-final-package-docs.py, wired into the package-smoke lane)
+  proves the ten-row Complete receipt plus negative controls: rc-line
+  basis, stale candidate row, moved shared row, stale topology,
+  malformed basis digest, missing packaged README. JSON schema under
+  docs/schemas with the catalog row; evidence-surface scope unchanged
+  (the suite is a scripts-side contract, outside the crates tests/*
+  discovery law).
