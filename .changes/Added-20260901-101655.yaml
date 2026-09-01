@@ -1,0 +1,29 @@
+kind: Added
+body: >-
+  Add the CI cache experiment contract and measurement laws (#3963):
+  `CiCacheExperimentV1` and `CacheRunRecordV1` type the hosted Linux
+  cache evidence set with exact source, workflow, pinned-action, runner,
+  toolchain, manifest, lane-namespace, trust, and posture identities, a
+  caller-asserted cold/warm/partial_hit/miss/corrupt/disabled/fallback/
+  provider_unavailable posture vocabulary, and a volatile
+  `envelope_queue_seconds_ms` kept separate from compile/test time by
+  construction. The laws are executable: run validation pins identity,
+  the trust/save boundary (reusable saves restricted to trusted
+  default-branch runs), the disabled-runs-restore-nothing rule, and the
+  provider-outage limitation rule; the semantic equality law forces
+  `Rejected` when postures of one lane namespace disagree on the claimed
+  proof receipt or share a receipt across incompatible lock, toolchain,
+  manifest, profile, feature, or platform identities; verdict
+  derivation demands full cold/warm/partial/corrupt/disabled/fallback
+  coverage over one proof lane with at least two warm runs, grades thin
+  evidence `NeedsMoreData`, and grades an empty denominator or an
+  execution-skipping run `InstrumentFailure`; nearest-rank p50/p90
+  duration percentiles group by proof lane so materially different
+  lanes never merge; and the attribution note scopes cache reuse
+  claims to compile/test deltas while explicitly excluding envelope
+  queue time. All twelve negative controls from the issue are pinned as
+  contract fixtures, rendering is deterministic pretty JSON, and the
+  claim boundary is performance-only: a restore, hit, or save is never
+  release or proof identity, and no Linux result authorizes Windows
+  reuse. Hosted evidence accumulation over the 12-run denominator is a
+  follow-up activity this contract grades.
