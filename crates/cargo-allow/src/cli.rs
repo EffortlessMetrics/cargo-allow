@@ -10,6 +10,7 @@ use crate::{
     reference, refresh, vocabulary, why, worklist,
 };
 
+mod reconcile_package_publication_command;
 mod release_identity_command;
 
 #[derive(Debug, Parser)]
@@ -111,6 +112,11 @@ pub(crate) enum CargoAllowCommand {
     ExtractionParity(extraction_parity_command::ParityArgs),
     /// Run the Rust-native Changie static sensor over one exact source subject.
     Changie(changie::ChangieArgs),
+    /// Classify one package publication for manifest construction.
+    #[command(hide = true)]
+    ReconcilePackagePublication(
+        reconcile_package_publication_command::ReconcilePackagePublicationArgs,
+    ),
     /// Validate and project release identity for repository automation.
     #[command(hide = true)]
     ReleaseIdentity(release_identity_command::ReleaseIdentityArgs),
@@ -204,6 +210,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
         CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(&args),
         CargoAllowCommand::Changie(args) => changie::cmd_changie(&args.clone()),
+        CargoAllowCommand::ReconcilePackagePublication(args) => {
+            reconcile_package_publication_command::cmd_reconcile_package_publication(&args)
+        }
         CargoAllowCommand::ReleaseIdentity(args) => {
             release_identity_command::cmd_release_identity(&args)
         }
