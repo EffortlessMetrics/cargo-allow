@@ -1,10 +1,11 @@
 schema_version = 1
 # Revision note for #3761 slice 3: typed classification wiring in the manifest generator.
 
-# This diff adds three source-exception entries for the test-only fail-closed
+# This diff adds four source-exception entries for the test-only fail-closed
 # expects in the reconcile-package-publication CLI projection tests
-# (allow-0703, allow-0704, allow-0705); expect on constructed fixtures is the
-# established test idiom and assert/assert_eq findings are covered by the
+# (allow-0703, allow-0704, allow-0705, allow-0706); expect and expect_err on
+# constructed fixtures are the established test idiom (the scanner matches the
+# expect_err callee family) and assert/assert_eq findings are covered by the
 # retained test-assert entries. No existing exception is weakened, no expiry
 # is extended, and no scope is broadened: every record below is an addition.
 # policy/allow.toml keeps its CRLF line-ending contract; the net transition
@@ -28,3 +29,9 @@ allow_ids = ["allow-0705"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:b3002d90a225a40f669c31ff00dcb664510703791fb95ddf8d25d1f09d821037"
 reason = "Test-only expect_err in the CLI rejection test (#3761); the scanner matches the expect_err callee family, so the rejection idiom is receipted like its sibling expects."
+
+[[records]]
+allow_ids = ["allow-0706"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e061c9c0d03f3670b081eff809c06562ef3d7960d7c93dd830f853880eb3459c"
+reason = "Test-only expect_err in the provider-unavailable projection test (#3761); same receipted expect_err callee family."
