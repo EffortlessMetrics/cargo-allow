@@ -199,13 +199,27 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         .map(|config| resolve_config_path(&root, config))
         .transpose()?;
     let discovery = discover_config_path(&root, explicit_config.as_deref());
+    // `discover_config_path` is the sole read-selection authority. Do not
+    // rescan conventional paths here after it has classified candidates;
+    // doing so could make `adopt` select a different policy than the central
+    // resolver for the same repository state.
     let policy_path = explicit_config
         .or_else(|| discovery.path.clone())
         .or_else(|| {
-            allow_policy::DISCOVERY_REL_PATHS
+            // Preserve the established fail-closed InvalidPolicy posture when
+            // discovery observed a conventional candidate but rejected it during
+            // parsing. This reuses the central candidate record rather than
+            // probing the filesystem a second time; foreign candidates remain
+            // absent and continue to produce the existing no-policy posture.
+            discovery
+                .skipped
                 .iter()
-                .map(|relative| root.join(relative))
-                .find(|candidate| candidate.exists())
+                .find(|candidate| {
+                    candidate.source == allow_policy::SOURCE_CONVENTIONAL_PATH
+                        && (candidate.reason.contains("invalid")
+                            || candidate.reason.contains("parse"))
+                })
+                .map(|candidate| candidate.path.clone())
         });
     let mut limitations = Vec::new();
     if !discovery.skipped.is_empty() {
