@@ -1549,7 +1549,11 @@ fn resolved_cargo_allow_config_reports_unavailable_roots_as_instrument_failure()
         resolved.selected_policy.is_none(),
         "policy should be unavailable",
     )?;
-    ensure_eq(resolved.requested_root, "unknown", "requested root")?;
+    ensure_eq(
+        resolved.requested_root,
+        "unknown".to_string(),
+        "requested root",
+    )?;
     ensure(
         resolved.limitations.iter().any(|limitation| {
             limitation == "requested_root_relationship_could_not_be_represented_portably"
