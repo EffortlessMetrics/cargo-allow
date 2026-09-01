@@ -14789,3 +14789,25 @@ glob = "scripts/test-final-package-docs.py"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0696"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3773-final-package-docs-receipt.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the added_allow receipts for the final package-docs receipt lane (#3773)."
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3773-final-package-docs-receipt.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3773-final-package-docs-receipt.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
