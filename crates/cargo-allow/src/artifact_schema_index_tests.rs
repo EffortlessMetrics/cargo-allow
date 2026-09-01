@@ -1,7 +1,9 @@
 use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use serde_json::Value;
 use std::{
-    collections::BTreeSet, fs, path::{Path, PathBuf},
+    collections::BTreeSet,
+    fs,
+    path::{Path, PathBuf},
 };
 
 const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
@@ -43,6 +45,7 @@ const REVIEW_PACKET_FAMILY_MARKERS: &[&str] = &[
     "review-finding",
     "review-profile",
     "closure_projection",
+    "closure-projection",
 ];
 
 fn is_review_packet_family_token(token: &str) -> bool {
@@ -54,8 +57,10 @@ fn is_review_packet_family_token(token: &str) -> bool {
 /// Extract the review-packet-family schema-id const declarations of one Rust
 /// source file as `"<relative path>: <NAME> = <value>"` rows. Only single-line
 /// `pub const` / `const` declarations whose name carries `SCHEMA` and whose
-/// quoted value ends in `.v1` are considered; rejection-fixture literals and
-/// prose never declare consts and therefore never match.
+/// quoted value contains a period-versioned suffix (`.v<digits>` — any
+/// version, so a `.v2` fork cannot evade) and a family marker are
+/// considered; rejection-fixture literals and prose never declare consts
+/// and therefore never match.
 fn review_packet_schema_const_rows(rel_path: &str, source: &str) -> Vec<String> {
     let mut rows = Vec::new();
     for line in normalize_lf(source).lines() {
@@ -74,7 +79,7 @@ fn review_packet_schema_const_rows(rel_path: &str, source: &str) -> Vec<String> 
         let Some(value) = trimmed.split('"').nth(1) else {
             continue;
         };
-        if !value.ends_with(".v1") || !is_review_packet_family_token(value) {
+        if !is_versioned_schema_value(value) || !is_review_packet_family_token(value) {
             continue;
         }
         rows.push(format!(
@@ -85,9 +90,19 @@ fn review_packet_schema_const_rows(rel_path: &str, source: &str) -> Vec<String> 
     rows
 }
 
+/// A schema value with a period-versioned suffix such as `.v1` or `.v2`:
+/// version-agnostic, so a bumped-version fork cannot evade the scan.
+fn is_versioned_schema_value(value: &str) -> bool {
+    let Some((_, version)) = value.rsplit_once(".v") else {
+        return false;
+    };
+    !version.is_empty() && version.chars().all(|character| character.is_ascii_digit())
+}
+
 /// Recursively collect `.rs` files under one directory.
 fn collect_rust_sources(dir: &Path, sources: &mut Vec<PathBuf>) -> Result<(), String> {
-    let entries = fs::read_dir(dir).map_err(|error| format!("read dir {}: {error}", dir.display()))?;
+    let entries =
+        fs::read_dir(dir).map_err(|error| format!("read dir {}: {error}", dir.display()))?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
