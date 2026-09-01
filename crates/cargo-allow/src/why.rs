@@ -133,8 +133,8 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let selected_policy_path = scoped_world
         .6
         .as_deref()
-        .and_then(|path| crate::git_relative_config_path(&scoped_world.0, Some(path)).ok())
-        .map(|path| normalize_path(&path));
+        .map(|path| selected_policy_identity(&scoped_world.0, path))
+        .transpose()?;
     let locality_reasons =
         crate::world::scoped_locality_reasons(&scoped_world.1, scoped_finding, &scoped_world.4);
     let evaluation = if locality_reasons.is_empty() {
@@ -444,6 +444,36 @@ fn output_path_resolution_error(
         format!("failed to resolve output path {}: {source}", path.display()),
     )
     .with_cause(source)
+}
+
+fn selected_policy_identity(
+    root: &std::path::Path,
+    policy: &std::path::Path,
+) -> CargoAllowResult<String> {
+    let canonical_root = root.canonicalize().map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("failed to canonicalize {}: {error}", root.display()),
+        )
+    })?;
+    let canonical_policy = policy.canonicalize().map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "failed to canonicalize selected policy {}: {error}",
+                policy.display()
+            ),
+        )
+    })?;
+    let relative = canonical_policy
+        .strip_prefix(&canonical_root)
+        .map_err(|_| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                "selected policy is outside the source tree",
+            )
+        })?;
+    Ok(normalize_path(relative))
 }
 
 fn resolve_output_path_result(
