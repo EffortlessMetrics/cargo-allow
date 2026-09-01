@@ -438,7 +438,7 @@ type ScopedWorldLoadResult = CargoAllowResult<(
     InventoryFacts,
     FederationEvaluation,
     Option<allow_rust::RustFileScanOutcome>,
-    Option<PathBuf>,
+    Option<String>,
 )>;
 
 pub(crate) fn load_world(
@@ -668,7 +668,7 @@ pub(crate) fn load_world_for_path(
         }
         Err(err) => return Err(err),
     };
-    let selected_policy_path = policy_path.clone();
+    let selected_policy_identity = canonical_policy_identity(&root, &policy_path);
     let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
         policy_path,
         EvidenceValidationMode::ReportOnly,
@@ -753,8 +753,15 @@ pub(crate) fn load_world_for_path(
         inventory_facts,
         federation,
         target_scan,
-        Some(selected_policy_path),
+        selected_policy_identity,
     ))
+}
+
+fn canonical_policy_identity(root: &Path, policy: &Path) -> Option<String> {
+    let canonical_root = root.canonicalize().ok()?;
+    let canonical_policy = policy.canonicalize().ok()?;
+    let relative = canonical_policy.strip_prefix(canonical_root).ok()?;
+    Some(normalize_path(relative))
 }
 
 /// Explain why the target finding cannot safely use the one-file evaluator.
