@@ -45,6 +45,27 @@ pub struct DiscoverConfigResult {
     pub skipped: Vec<SkippedPolicyCandidate>,
 }
 
+/// Return conventional candidate paths that are known from the discovery
+/// search space without opening policy bodies. This is used to describe
+/// candidates below the current winner without changing selection semantics.
+pub fn unobserved_conventional_candidates(start: impl AsRef<Path>) -> Vec<PathBuf> {
+    let Ok(mut dir) = start.as_ref().canonicalize() else {
+        return Vec::new();
+    };
+    let mut candidates = Vec::new();
+    loop {
+        candidates.extend(
+            DISCOVERY_REL_PATHS
+                .iter()
+                .map(|relative| dir.join(relative)),
+        );
+        if !dir.pop() {
+            break;
+        }
+    }
+    candidates
+}
+
 #[derive(Debug, Default, Deserialize)]
 struct PolicyHeaderProbe {
     #[serde(default, deserialize_with = "option_schema_version")]

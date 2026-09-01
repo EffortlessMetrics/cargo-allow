@@ -8,7 +8,7 @@ use allow_core::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::discovery::DiscoverConfigResult;
+use crate::discovery::{DiscoverConfigResult, unobserved_conventional_candidates};
 use crate::federation::{
     FEDERATION_CONFIG_REL_PATH, FederationEvaluation, FederationLoadOutcome, LedgerRole,
     PrecedenceTier, SOURCE_EXCEPTION_LANE, load_federation_config,
@@ -80,6 +80,14 @@ pub enum ConfigCandidateDispositionV1 {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum ConfigCandidateObservationV1 {
+    ContentRead,
+    MetadataOnly,
+    Unobserved,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConfigPrecedenceTierV1 {
     CliOverride,
     FederationRegistry,
@@ -126,6 +134,10 @@ pub struct ConfigCandidateV1 {
     pub path: Option<PortableConfigPathV1>,
     pub disposition: ConfigCandidateDispositionV1,
     pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation: Option<ConfigCandidateObservationV1>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observation_position: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -379,6 +391,8 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
                 .diagnostics
                 .first()
                 .cloned(),
+            observation: Some(ConfigCandidateObservationV1::MetadataOnly),
+            observation_position: None,
         });
     }
     federation.selected_for_source_exception =
@@ -627,6 +641,8 @@ fn candidates_from_discovery(
             reason: portable.is_none().then(|| {
                 "selected current winner is outside the portable repository boundary".to_string()
             }),
+            observation: Some(ConfigCandidateObservationV1::ContentRead),
+            observation_position: None,
         });
     }
     candidates.extend(discovery.skipped.iter().map(|candidate| ConfigCandidateV1 {
@@ -635,7 +651,29 @@ fn candidates_from_discovery(
         path: portable_config_path(root, &candidate.path, true),
         disposition: ConfigCandidateDispositionV1::Skipped,
         reason: Some(portable_message(root, &candidate.reason)),
+        observation: Some(ConfigCandidateObservationV1::MetadataOnly),
+        observation_position: None,
     }));
+    let known_paths = unobserved_conventional_candidates(root);
+    for path in known_paths {
+        if candidates.iter().any(|candidate| {
+            candidate.source == ConfigCandidateSourceV1::ConventionalPath
+                && candidate.path == portable_config_path(root, &path, true)
+        }) {
+            continue;
+        }
+        candidates.push(ConfigCandidateV1 {
+            source: ConfigCandidateSourceV1::ConventionalPath,
+            path: portable_config_path(root, &path, true),
+            disposition: ConfigCandidateDispositionV1::Skipped,
+            reason: Some(
+                "candidate was not read because discovery stopped after a higher-precedence result"
+                    .to_string(),
+            ),
+            observation: Some(ConfigCandidateObservationV1::MetadataOnly),
+            observation_position: None,
+        });
+    }
     candidates
 }
 
@@ -655,6 +693,12 @@ fn candidate_from_cli(root: &Path, config: &Path, cli_selected: bool) -> ConfigC
         },
         reason: (!is_safe)
             .then(|| "CLI path cannot be represented as a portable identity".to_string()),
+        observation: Some(if cli_selected {
+            ConfigCandidateObservationV1::ContentRead
+        } else {
+            ConfigCandidateObservationV1::MetadataOnly
+        }),
+        observation_position: None,
     }
 }
 
@@ -676,35 +720,8 @@ fn mark_selected_candidate(
 }
 
 fn sort_candidates(candidates: &mut [ConfigCandidateV1]) {
-    candidates.sort_by(|left, right| {
-        candidate_source_key(left.source)
-            .cmp(&candidate_source_key(right.source))
-            .then_with(|| left.path.cmp(&right.path))
-            .then_with(|| {
-                candidate_disposition_key(left.disposition)
-                    .cmp(&candidate_disposition_key(right.disposition))
-            })
-    });
-}
-
-fn candidate_source_key(source: ConfigCandidateSourceV1) -> u8 {
-    match source {
-        ConfigCandidateSourceV1::CliOverride => 0,
-        ConfigCandidateSourceV1::FederationRegistry => 1,
-        ConfigCandidateSourceV1::PackageMetadata => 2,
-        ConfigCandidateSourceV1::WorkspaceMetadata => 3,
-        ConfigCandidateSourceV1::CargoMetadata => 4,
-        ConfigCandidateSourceV1::ConventionalPath => 5,
-        ConfigCandidateSourceV1::LegacyDiscovery => 6,
-    }
-}
-
-fn candidate_disposition_key(disposition: ConfigCandidateDispositionV1) -> u8 {
-    match disposition {
-        ConfigCandidateDispositionV1::Selected => 0,
-        ConfigCandidateDispositionV1::Available => 1,
-        ConfigCandidateDispositionV1::Skipped => 2,
-        ConfigCandidateDispositionV1::Invalid => 3,
+    for (position, candidate) in candidates.iter_mut().enumerate() {
+        candidate.observation_position = Some(position as u32);
     }
 }
 

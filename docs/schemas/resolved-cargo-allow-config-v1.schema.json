@@ -159,7 +159,11 @@
           ]
         },
         "disposition": { "enum": ["selected", "available", "skipped", "invalid"] },
-        "reason": { "type": ["string", "null"] }
+        "reason": { "type": ["string", "null"] },
+        "observation": {
+          "enum": ["content_read", "metadata_only", "unobserved", null]
+        },
+        "observation_position": { "type": ["integer", "null"], "minimum": 0 }
       }
     },
     "diagnostic": {
