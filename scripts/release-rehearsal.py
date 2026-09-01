@@ -270,8 +270,37 @@ def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
     return PHASE_COMPLETE
 
 
-def run_phase_publisher_state_machine(_receipt: dict[str, Any]) -> str:
-    return _run_characterization(
+def _run_proof(command: list[str]) -> str:
+    """Run a bounded fixture proof: exit zero proves, nonzero mismatches."""
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    return PHASE_COMPLETE if result.returncode == 0 else PHASE_MISMATCH
+
+
+def run_phase_publisher_state_machine(receipt: dict[str, Any]) -> str:
+    """Exercise the publisher state machine fixture matrix (#3751 phase 4).
+
+    The bounded fixture suite proves the upload state machine without any real
+    publication: missing/existing-exact/conflicting rows, post-upload checksum
+    conflicts, recovery exactness, malformed and unavailable provider
+    responses, the shared prerequisite preflight matrix, and the
+    shared-preflight-before-upload source law. No fixture calls real
+    ``cargo publish`` or touches a token.
+    """
+    receipt["publisher_state_machine"] = {
+        "fixture_matrix": "scripts/test-release-topology-publisher.py"
+    }
+    return _run_proof(
         [sys.executable, str(ROOT / "scripts/test-release-topology-publisher.py")]
     )
 
@@ -300,7 +329,6 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
 
 
 CHARACTERIZATION_PHASES = frozenset({
-    "publisher_state_machine",
     "docs_and_support_identity",
     "manifest_and_assets",
     "authorization_boundary",
@@ -367,12 +395,14 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
-            "Phases release_identity, candidate_package_set, and "
-            "shared_prerequisites prove typed semantics (typed identity "
-            "validation; offline candidate packaging with exact internal "
-            "requirements; read-only shared registry equality); the remaining "
-            "phases are characterizations that do not yet prove exact-subject "
-            "semantics or zero mutation and cannot satisfy a release gate."
+            "Phases release_identity, candidate_package_set, "
+            "shared_prerequisites, and publisher_state_machine prove typed "
+            "semantics (typed identity validation; offline candidate packaging "
+            "with exact internal requirements; read-only shared registry "
+            "equality; the publisher fixture state-machine matrix); the "
+            "remaining phases are characterizations that do not yet prove "
+            "exact-subject semantics or zero mutation and cannot satisfy a "
+            "release gate."
         ),
     }
 

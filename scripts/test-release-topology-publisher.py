@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -391,22 +392,33 @@ def exercise_cargo_allow_checksum_equality() -> None:
             ]
             expect_failure(lambda: PUBLISHER.main())
 
-        # Newly published row with conflicting post-upload checksum -> fails closed
+        # Newly published row with conflicting post-upload checksum -> fails closed.
+        # A fixture token satisfies the publisher's upload gate so the upload seam
+        # (first irreversible row, stubbed publish, post-upload checksum
+        # verification) genuinely executes; run() and wait_for_checksum are
+        # stubbed below, so nothing leaves the machine.
         PUBLISHER.registry_checksum = lambda _name, _version: None
         PUBLISHER.wait_for_checksum = lambda _name, _version: "b" * 64
-        with tempfile.TemporaryDirectory() as directory:
-            receipt = Path(directory) / "topology.json"
-            sys.argv = [
-                str(PUBLISHER_PATH),
-                "--mode",
-                "cargo-allow",
-                "--publish",
-                "--authorization",
-                "issue:3760",
-                "--receipt",
-                str(receipt),
-            ]
-            expect_failure(lambda: PUBLISHER.main())
+        os.environ["CARGO_REGISTRY_TOKEN"] = "fixture-token"
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                receipt = Path(directory) / "topology.json"
+                sys.argv = [
+                    str(PUBLISHER_PATH),
+                    "--mode",
+                    "cargo-allow",
+                    "--publish",
+                    "--authorization",
+                    "issue:3760",
+                    "--receipt",
+                    str(receipt),
+                ]
+                expect_failure(lambda: PUBLISHER.main())
+                data = json.loads(receipt.read_text(encoding="utf-8"))
+                assert data["first_irreversible_row"] == 100
+                assert data["incident_state"] == "partial"
+        finally:
+            os.environ.pop("CARGO_REGISTRY_TOKEN", None)
     finally:
         sys.argv = original_argv
         for name, value in original.items():

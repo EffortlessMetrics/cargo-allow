@@ -29,8 +29,16 @@ struct ReleaseRehearsalReceiptV1 {
     shared_prerequisites: Option<Vec<SharedPrerequisiteRowV1>>,
     #[serde(default)]
     candidate_package_set: Option<CandidatePackageSetRecordV1>,
+    #[serde(default)]
+    publisher_state_machine: Option<PublisherStateMachineRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PublisherStateMachineRecordV1 {
+    fixture_matrix: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -163,12 +171,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
-    // The five characterization-only phases can never manufacture
-    // completion; release_identity, candidate_package_set, and
-    // shared_prerequisites are real typed phases (#3751 phases 1-3) and may
-    // report Complete when their typed proofs succeed.
+    // The four characterization-only phases can never manufacture
+    // completion; release_identity, candidate_package_set,
+    // shared_prerequisites, and publisher_state_machine are real phases
+    // (#3751 phases 1-4) and may report Complete when their proofs succeed.
     for required_phase in [
-        "publisher_state_machine",
         "docs_and_support_identity",
         "manifest_and_assets",
         "authorization_boundary",
@@ -235,6 +242,22 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
             "a packaged row must record a positive size",
         )?;
     }
+
+    let machine_status = receipt
+        .phases
+        .get("publisher_state_machine")
+        .ok_or_else(|| io::Error::other("publisher_state_machine phase must exist"))?;
+    require(
+        machine_status == "Complete",
+        "the offline publisher state-machine fixture matrix must prove Complete",
+    )?;
+    let machine = receipt.publisher_state_machine.as_ref().ok_or_else(|| {
+        io::Error::other("a proven publisher_state_machine phase must record its fixture matrix")
+    })?;
+    require(
+        machine.fixture_matrix == "scripts/test-release-topology-publisher.py",
+        "the fixture matrix provenance must name the publisher contract suite",
+    )?;
 
     let shared = receipt.shared_prerequisites.as_ref().ok_or_else(|| {
         io::Error::other("a validated shared_prerequisites phase must record the preflight rows")
