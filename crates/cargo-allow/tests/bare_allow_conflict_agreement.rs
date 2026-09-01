@@ -253,11 +253,23 @@ fn central_resolution_matches_command_policy_identity() -> Result<(), String> {
         .map_err(|error| format!("run doctor: {error}"))?;
     let artifact: Value = serde_json::from_slice(&doctor.stdout)
         .map_err(|error| format!("parse doctor JSON: {error}"))?;
+    let doctor_path = artifact
+        .pointer("/config/path")
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("doctor should report a config path: {artifact}"))?;
+    let expected_path = root
+        .join("policy/allow.toml")
+        .canonicalize()
+        .map_err(|error| format!("canonicalize expected policy: {error}"))?;
+    let observed_path = std::path::Path::new(doctor_path)
+        .canonicalize()
+        .map_err(|error| format!("canonicalize doctor policy: {error}"))?;
     require(
-        artifact
-            .pointer("/config/path")
-            .and_then(Value::as_str)
-            .is_some_and(|path| path.ends_with("/policy/allow.toml") || path.ends_with("\\policy\\allow.toml")),
+        observed_path == expected_path
+            && resolved
+                .selected_policy
+                .as_ref()
+                .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
         &format!("doctor should report the same explicit policy identity: {artifact}"),
     )?;
     require(
