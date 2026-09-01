@@ -1,7 +1,5 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
-use allow_report::{
-    PackageRowClassV1, PublicationStateV1, ReconciledPackagePublicationV1,
-};
+use allow_report::{PackageRowClassV1, PublicationStateV1, ReconciledPackagePublicationV1};
 use clap::Parser;
 use serde::Serialize;
 
@@ -112,8 +110,7 @@ fn cmd(args: &ReconcilePackagePublicationArgs) -> CargoAllowResult<Reconciliatio
         row_class: args.row_class.clone(),
         state: args.state.clone(),
         classification: classification_name(classification).to_string(),
-        manifest_ready: classification
-            == allow_report::PublicationClassificationV1::CompleteExact,
+        manifest_ready: classification == allow_report::PublicationClassificationV1::CompleteExact,
     })
 }
 

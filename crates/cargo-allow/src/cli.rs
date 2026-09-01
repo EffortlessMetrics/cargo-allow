@@ -412,5 +412,6 @@ impl CargoAllowCommand {
         "extraction-parity",
         "changie",
         "release-identity",
+        "reconcile-package-publication",
     ];
 }
