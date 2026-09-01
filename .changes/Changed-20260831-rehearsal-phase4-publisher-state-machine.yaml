@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real publisher-state-machine phase (#3751
+  phase 4). The zero-upload rehearsal harness's publisher_state_machine
+  phase was a bounded characterization; it now proves the offline fixture
+  matrix in scripts/test-release-topology-publisher.py —
+  missing/existing-exact/conflicting rows, post-upload checksum
+  conflicts, recovery exactness, malformed and unavailable provider
+  responses, the shared prerequisite preflight matrix, and the
+  shared-preflight-before-upload source law — with no real cargo publish
+  and no token exposure. Complete requires the full fixture suite green,
+  the recorded receipt names the fixture-matrix provenance, and the
+  characterization set shrinks to four phases. The python and Rust
+  rehearsal tests bind the recorded provenance to the Complete status.
