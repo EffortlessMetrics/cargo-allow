@@ -374,22 +374,165 @@ def run_phase_manifest_and_assets(receipt: dict[str, Any]) -> str:
     )
 
 
-def run_phase_authorization_boundary(_receipt: dict[str, Any]) -> str:
-    try:
-        if os.environ.get(CARGO_TOKEN_ENV):
-            return PHASE_INSTRUMENT_FAILURE
-        return PHASE_INCOMPLETE
-    except OSError:
+AUTHORIZATION_ARTIFACT = "release/authorize-v0.2.0.json"
+AUTHORIZATION_SCHEMA = "cargo-allow.release-authorization.v1"
+
+
+def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
+    """Prove the token-free rehearsal posture and bind the checked
+    authorization artifact's identity (#3751 phase: authorization boundary).
+
+    The rehearsal never consumes authorization: a publish token in the
+    environment is an instrument failure, and the checked
+    CargoAllowReleaseAuthorizationV1 artifact is read only to record which
+    release identity would gate the authorized run. The phase deliberately
+    stays Incomplete — only the authorized run (#3760/#2502) can claim
+    authorization.
+    """
+    if os.environ.get(CARGO_TOKEN_ENV):
         return PHASE_INSTRUMENT_FAILURE
+    try:
+        artifact = json.loads(
+            (ROOT / AUTHORIZATION_ARTIFACT).read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return PHASE_MISMATCH
+    release = artifact.get("release")
+    commit = artifact.get("candidate_parent_commit")
+    tree = artifact.get("candidate_parent_tree")
+    lock = artifact.get("cargo_lock_sha256")
+    hex_ok = lambda value: (
+        isinstance(value, str)
+        and len(value) in (40, 64)
+        and all(char in "0123456789abcdef" for char in value)
+    )
+    # The checked artifact stores the lock digest in its own bare-hex form
+    # (no sha256: prefix); the phase validates that stored form rather than
+    # imposing the receipt convention or re-deriving the value.
+    lock_ok = lambda value: (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+    if (
+        artifact.get("schema_id") != AUTHORIZATION_SCHEMA
+        or not isinstance(release, str)
+        or not release.startswith("v")
+        or not hex_ok(commit)
+        or not hex_ok(tree)
+        or not lock_ok(lock)
+    ):
+        return PHASE_MISMATCH
+    receipt["authorization_boundary"] = {
+        "authorization_artifact": AUTHORIZATION_ARTIFACT,
+        "schema": AUTHORIZATION_SCHEMA,
+        "named_release": release,
+        "candidate_commit": commit,
+        "token_present": False,
+        "phase_status_note": (
+            "deliberately Incomplete: the rehearsal never consumes "
+            "authorization; #3760/#2502 gate the authorized run"
+        ),
+    }
+    return PHASE_INCOMPLETE
 
 
-def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / ".github/workflows/release.yml")
+def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
+    """Parse one workflow manifest with PyYAML; None when unavailable."""
+    try:
+        import yaml
+    except ImportError:
+        return None
+    try:
+        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"error": f"YAML parse error: {exc}"}
+    if not isinstance(parsed, dict) or "jobs" not in parsed:
+        return {"error": "workflow is not a mapping with jobs"}
+    jobs = {
+        job_name: {
+            "permissions": job.get("permissions"),
+            "runs_on": job.get("runs-on"),
+        }
+        for job_name, job in parsed["jobs"].items()
+        if isinstance(job, dict)
+    }
+    return {"top_level_permissions": parsed.get("permissions"), "jobs": jobs}
+
+
+def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
+    """Bind the release workflow graph's permission surface (#3751 phase).
+
+    Enforces the least-privilege law — top-level ``actions: read`` and
+    ``contents: write``, with ``github-release`` as the write/OIDC-scoped
+    job and the authorized namespace workflow in namespace mode — and
+    records the proof. PyYAML is used when available; otherwise the same
+    law is checked on the pinned manifest strings.
+    """
+    release_path = ROOT / ".github/workflows/release.yml"
+    authorized_path = ROOT / ".github/workflows/release-authorized.yml"
+    try:
+        release_text = release_path.read_text(encoding="utf-8")
+        authorized_text = authorized_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return PHASE_MISMATCH
+
+    parsed = _yaml_workflow_inventory(release_path)
+    if parsed is not None and "error" in parsed:
+        return PHASE_MISMATCH
+
+    authorized_namespace_mode = "--mode namespace" in authorized_text
+    if parsed is None:
+        proof = {
+            "mode": "text",
+            "release_jobs": [],
+            "privileged_jobs": [],
+            "top_level_read_scoped": "actions: read" in release_text,
+            "top_level_write_scoped": "contents: write" in release_text,
+            "github_release_scoped": "id-token: write" in release_text,
+            "authorized_namespace_mode": authorized_namespace_mode,
+        }
+    else:
+        jobs = parsed["jobs"]
+        if not isinstance(jobs, dict) or not jobs:
+            return PHASE_MISMATCH
+        privileged = sorted(
+            job_name
+            for job_name, job in jobs.items()
+            if isinstance(job.get("permissions"), dict)
+        )
+        proof = {
+            "mode": "yaml",
+            "release_jobs": sorted(jobs),
+            "privileged_jobs": privileged,
+            "top_level_read_scoped": parsed.get("top_level_permissions", {}).get(
+                "actions"
+            )
+            == "read",
+            "top_level_write_scoped": parsed.get("top_level_permissions", {}).get(
+                "contents"
+            )
+            == "write",
+            "github_release_scoped": jobs.get("github-release", {}).get(
+                "permissions", {}
+            ).get("id-token")
+            == "write",
+            "authorized_namespace_mode": authorized_namespace_mode,
+        }
+
+    if not (
+        proof["top_level_read_scoped"]
+        and proof["top_level_write_scoped"]
+        and proof["github_release_scoped"]
+        and proof["authorized_namespace_mode"]
+    ):
+        return PHASE_MISMATCH
+    receipt["workflow_graph_permissions"] = proof
+    return PHASE_COMPLETE
 
 
 CHARACTERIZATION_PHASES = frozenset({
     "authorization_boundary",
-    "workflow_graph_permissions",
 })
 
 
@@ -459,10 +602,12 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
             "with exact internal requirements; read-only shared registry "
             "equality; the publisher fixture state-machine matrix; "
             "changelog-corpus identity plus exact release-record/note and "
-            "support-doc binding; the manifest/asset surface fixture matrix). "
-            "The remaining phases are characterizations that do not yet prove "
-            "exact-subject semantics or zero mutation and cannot satisfy a "
-            "release gate."
+            "support-doc binding; the manifest/asset surface fixture matrix; "
+            "the release workflow graph permission inventory). The "
+            "authorization_boundary phase deliberately stays Incomplete: the "
+            "rehearsal proves the token-free posture and records the checked "
+            "authorization artifact's identity but never consumes "
+            "authorization, so the aggregate cannot satisfy a release gate."
         ),
     }
 

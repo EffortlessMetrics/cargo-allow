@@ -65,6 +65,21 @@ class TestReleaseRehearsal(unittest.TestCase):
                 "scripts/test-final-packaged-surface.py",
             )
 
+        workflow = receipt.get("workflow_graph_permissions")
+        if phases["workflow_graph_permissions"] == "Complete":
+            self.assertIsInstance(workflow, dict)
+            self.assertIn(workflow["mode"], {"yaml", "text"})
+            self.assertTrue(workflow["top_level_read_scoped"])
+            self.assertTrue(workflow["top_level_write_scoped"])
+            self.assertTrue(workflow["github_release_scoped"])
+            self.assertTrue(workflow["authorized_namespace_mode"])
+
+        authorization = receipt.get("authorization_boundary")
+        self.assertEqual(phases["authorization_boundary"], "Incomplete")
+        self.assertIsInstance(authorization, dict)
+        self.assertEqual(authorization["named_release"], "v0.2.0")
+        self.assertFalse(authorization["token_present"])
+
         identity = receipt.get("release_identity")
         docs = receipt.get("docs_and_support_identity")
         if phases["docs_and_support_identity"] == "Complete":
