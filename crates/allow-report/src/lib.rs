@@ -157,14 +157,15 @@ pub use artifacts::{
     ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation, ReleaseVersionV1,
     RendererFormatV1, RowReconciliationV1, TagObservationV1, WhyCandidateEntry, WhyProofPlan,
     WhyReport, WhyTargetScan, WhyTargetScanReport, WorklistFilters, WorklistItem, WritePosture,
-    project_github_pr_check, recommend_core_adoption_plan, render_evaluation_artifact_set_v1,
-    render_evaluation_artifact_set_v1_bytes, render_exact_candidate_v2,
-    render_exact_candidate_v2_bytes, render_isolated_install_v2, render_isolated_install_v2_bytes,
-    render_package_candidate_v2, render_package_candidate_v2_bytes,
-    render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
-    render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
-    validate_exact_candidate_v2, validate_github_pr_check_v1, validate_isolated_install_v2,
-    validate_package_candidate_v2, validate_release_manifest_v2,
+    manifest_rows_from_reconciled, project_github_pr_check, recommend_core_adoption_plan,
+    render_evaluation_artifact_set_v1, render_evaluation_artifact_set_v1_bytes,
+    render_exact_candidate_v2, render_exact_candidate_v2_bytes, render_isolated_install_v2,
+    render_isolated_install_v2_bytes, render_package_candidate_v2,
+    render_package_candidate_v2_bytes, render_release_manifest_v2_envelope,
+    render_release_manifest_v2_envelope_bytes, render_release_manifest_v2_payload,
+    render_release_manifest_v2_payload_bytes, validate_exact_candidate_v2,
+    validate_github_pr_check_v1, validate_isolated_install_v2, validate_package_candidate_v2,
+    validate_release_manifest_v2,
 };
 
 pub use artifacts::{
