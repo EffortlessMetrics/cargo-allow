@@ -162,13 +162,20 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 source: discovery.selected_source,
                 precedence: None,
                 federation: None,
-                federation_evaluation_failed: std::fs::symlink_metadata(
-                    root.join(allow_policy::federation::FEDERATION_CONFIG_REL_PATH),
-                )
-                .is_ok(),
+                federation_evaluation_failed: federation_config_observed(root),
             }
         }
     }
+}
+
+fn federation_config_observed(root: &Path) -> bool {
+    let config_path = root.join(allow_policy::federation::FEDERATION_CONFIG_REL_PATH);
+    if std::fs::symlink_metadata(&config_path).is_ok() {
+        return true;
+    }
+    std::fs::symlink_metadata(root.join(".allow"))
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
 }
 
 fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
