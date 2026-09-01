@@ -61,6 +61,7 @@ fn create_valid_envelope() -> ReleaseManifestEnvelopeV2 {
         support_posture: ReleaseManifestSupportPostureV2::Supported,
         limitations: vec![],
         claim_boundary: "Verified cargo-allow 0.2.0 release candidate manifest.".to_string(),
+        consumed_evidence: Vec::new(),
     };
 
     ReleaseManifestEnvelopeV2 {

@@ -81,6 +81,20 @@ pub struct ReleaseManifestPayloadV2 {
     pub support_posture: ReleaseManifestSupportPostureV2,
     pub limitations: Vec<String>,
     pub claim_boundary: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub consumed_evidence: Vec<ConsumedEvidenceV1>,
+}
+
+/// One consumed receipt's retained evidence identity (#3761
+/// evidence-reference law).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConsumedEvidenceV1 {
+    pub schema_id: String,
+    pub path: String,
+    pub sha256: String,
+    pub producer: String,
+    pub result_class: String,
 }
 
 /// Non-semantic execution metadata. Changing this must not change payload bytes.
@@ -98,6 +112,10 @@ pub struct ReleaseManifestEnvelopeV2 {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub github_ref: Option<String>,
     pub artifact_references: Vec<String>,
+    /// Typed evidence for the receipts this manifest consumed (#3761
+    /// evidence-reference law): schema identity, canonical digest, producer,
+    /// and semantic result class per artifact. Absent on manifests produced
+    /// before this field existed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authorization_reference: Option<String>,
     pub instrument_diagnostics: Vec<String>,
@@ -159,6 +177,34 @@ pub fn validate_release_manifest_v2(
 ) -> ReleaseManifestV2Validation {
     let payload = &envelope.payload;
     let mut gaps = Vec::new();
+
+    // Evidence-reference law (#3761): every consumed receipt must retain its
+    // schema identity, canonical digest, producer, and a non-empty result
+    // class; digests are the canonical sha256 form.
+    for evidence in &payload.consumed_evidence {
+        if evidence.schema_id.is_empty() || evidence.producer.is_empty() {
+            gaps.push(format!(
+                "consumed evidence for {} lacks schema identity or producer",
+                evidence.path
+            ));
+        }
+        let digest = evidence
+            .sha256
+            .strip_prefix("sha256:")
+            .unwrap_or(&evidence.sha256);
+        if digest.len() != 64 || !digest.chars().all(|c| c.is_ascii_hexdigit()) {
+            gaps.push(format!(
+                "consumed evidence for {} carries a malformed digest",
+                evidence.path
+            ));
+        }
+        if evidence.result_class.is_empty() {
+            gaps.push(format!(
+                "consumed evidence for {} lacks a result class",
+                evidence.path
+            ));
+        }
+    }
 
     if payload.schema_id != RELEASE_MANIFEST_V2_SCHEMA_ID
         || payload.schema_version != RELEASE_MANIFEST_V2_SCHEMA_VERSION
@@ -347,6 +393,92 @@ mod tests {
         }
     }
 
+    #[test]
+    fn malformed_consumed_evidence_fails_validation() {
+        let mut candidate = envelope();
+        candidate.payload.consumed_evidence = vec![ConsumedEvidenceV1 {
+            schema_id: "cargo-allow.topology-publish-receipt.v1".to_string(),
+            path: "artifact/topology-publish.receipt.json".to_string(),
+            sha256: "not-a-digest".to_string(),
+            producer: "scripts/release-topology-publisher.py".to_string(),
+            result_class: "complete".to_string(),
+        }];
+        let validation = validate_release_manifest_v2(&candidate);
+        assert!(
+            validation
+                .gaps
+                .iter()
+                .any(|gap| gap.contains("malformed digest")),
+            "malformed consumed-evidence digest must be named: {:?}",
+            validation.gaps
+        );
+    }
+
+    #[test]
+    fn consumed_evidence_gaps_are_named_per_branch() {
+        let mut candidate = envelope();
+        candidate.payload.consumed_evidence = vec![
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.topology-publish-receipt.v1".to_string(),
+                path: "artifact/topology-publish.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "e".repeat(64)),
+                producer: "scripts/release-topology-publisher.py".to_string(),
+                result_class: "complete".to_string(),
+            },
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.release-binary-package.v1".to_string(),
+                path: "artifact/release-binary.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "f".repeat(64)),
+                producer: "scripts/package-release-binary.sh".to_string(),
+                result_class: "verified".to_string(),
+            },
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.release-binary-install.v1".to_string(),
+                path: "artifact/release-binary-install.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "9".repeat(64)),
+                producer: "scripts/verify-release-binary.sh".to_string(),
+                result_class: "verified".to_string(),
+            },
+        ];
+        let validation = validate_release_manifest_v2(&candidate);
+        assert!(
+            validation.gaps.is_empty(),
+            "well-formed consumed evidence must pass: {:?}",
+            validation.gaps
+        );
+
+        let mut missing_producer = candidate.clone();
+        missing_producer.payload.consumed_evidence[0].producer = String::new();
+        let gaps = validate_release_manifest_v2(&missing_producer);
+        assert!(
+            gaps.gaps
+                .iter()
+                .any(|gap| gap.contains("lacks schema identity or producer")),
+            "empty producer must be named: {:?}",
+            gaps.gaps
+        );
+
+        let mut empty_class = candidate.clone();
+        empty_class.payload.consumed_evidence[1].result_class = String::new();
+        let gaps = validate_release_manifest_v2(&empty_class);
+        assert!(
+            gaps.gaps
+                .iter()
+                .any(|gap| gap.contains("lacks a result class")),
+            "empty result class must be named: {:?}",
+            gaps.gaps
+        );
+
+        let mut bad_digest = candidate.clone();
+        bad_digest.payload.consumed_evidence[2].sha256 = "sha256:short".to_string();
+        let gaps = validate_release_manifest_v2(&bad_digest);
+        assert!(
+            gaps.gaps.iter().any(|gap| gap.contains("malformed digest")),
+            "malformed digest must be named: {:?}",
+            gaps.gaps
+        );
+    }
+
     fn envelope() -> ReleaseManifestEnvelopeV2 {
         ReleaseManifestEnvelopeV2 {
             payload: ReleaseManifestPayloadV2 {
@@ -369,6 +501,7 @@ mod tests {
                 support_posture: ReleaseManifestSupportPostureV2::Experimental,
                 limitations: vec!["publication is not performed by this contract".to_string()],
                 claim_boundary: "contract-only release identity".to_string(),
+                consumed_evidence: Vec::new(),
             },
             generated_at: "2026-08-10T00:00:00Z".to_string(),
             workflow_path: ".github/workflows/release.yml".to_string(),

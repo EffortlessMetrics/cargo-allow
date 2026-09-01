@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Retain per-artifact consumed evidence in ReleaseManifestV2 payloads
+  (#3761 evidence-reference law). The envelope gains an optional
+  consumed_evidence array; each entry carries the consumed receipt's
+  schema identity, bounded artifact reference, canonical sha256 digest,
+  producer, and semantic result class (complete/incomplete/verified or
+  attestation-unverified). generate-release-manifest.sh emits it for the
+  topology receipt and, when present, the binary package and install
+  receipts. Additive field; validation names malformed digests, missing
+  schema identity or producer, and empty result classes; older manifests
+  without the field stay valid.

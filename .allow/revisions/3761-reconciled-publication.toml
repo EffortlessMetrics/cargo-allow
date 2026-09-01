@@ -1,37 +1,34 @@
 schema_version = 1
-# Revision note for #3761 slice 3: typed classification wiring in the manifest generator.
+# Revision note for #3761 slice 2/3: manifest rows from classified publications.
 
-# This diff adds four source-exception entries for the test-only fail-closed
-# expects in the reconcile-package-publication CLI projection tests
-# (allow-0703, allow-0704, allow-0705, allow-0706); expect and expect_err on
-# constructed fixtures are the established test idiom (the scanner matches the
-# expect_err callee family) and assert/assert_eq findings are covered by the
-# retained test-assert entries. No existing exception is weakened, no expiry
-# is extended, and no scope is broadened: every record below is an addition.
+# This diff adds source-exception entries covering the typed
+# reconciliation-construction work and the crate-docs proof wiring that rides
+# this lane: allow-0697..allow-0699 receipt the test-only fail-closed expects
+# in the reconciled-publication construction tests; allow-0700 is the
+# self-receipt for the earlier revision note iteration; allow-0703..allow-0705
+# receipt the crate-docs proof script, its changie fragment, and the
+# test-only expects in its CLI projection tests; allow-0709..allow-0711
+# receipt the indexed consumed-evidence mutations in the validation-branch
+# coverage test. No existing exception is weakened, no expiry is extended,
+# and no scope is broadened: every record below is an addition.
 # policy/allow.toml keeps its CRLF line-ending contract; the net transition
 # is append-only.
 
 
 [[records]]
-allow_ids = ["allow-0703"]
+allow_ids = ["allow-0709"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:e16cfb49cd54d707160aa350b8388a910aca60d31eb133bdd71acf224da832c9"
-reason = "Test-only expect in the reconcile-package-publication CLI projection tests (#3761); expect on well-formed constructed args is the established test idiom."
+after_fingerprint = "sha256:v1:1153818afe48f240c20b14bed878bf6955aa878ec99a57c7b5d424240fc15980"
+reason = "Test-only indexed consumed-evidence mutation in the validation-branch coverage test (#3761); out-of-range indices are unreachable for the fixed three-row fixture."
 
 [[records]]
-allow_ids = ["allow-0704"]
+allow_ids = ["allow-0710"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:e8bb25f11d43dff2c201c90e33a711fcd31fdd2781e5a073f6a012bf5b0719c9"
-reason = "Test-only expect on the conflicting-shared projection (#3761); test-only fail-closed helper."
+after_fingerprint = "sha256:v1:4fb4c4a6b7c1162a26297719fbc7a60390c42244c1e5482fdd25790a9e766a95"
+reason = "Same indexed-row coverage mutation for the second exercised row state; test-only."
 
 [[records]]
-allow_ids = ["allow-0705"]
+allow_ids = ["allow-0711"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:b3002d90a225a40f669c31ff00dcb664510703791fb95ddf8d25d1f09d821037"
-reason = "Test-only expect_err in the CLI rejection test (#3761); the scanner matches the expect_err callee family, so the rejection idiom is receipted like its sibling expects."
-
-[[records]]
-allow_ids = ["allow-0706"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:e061c9c0d03f3670b081eff809c06562ef3d7960d7c93dd830f853880eb3459c"
-reason = "Test-only expect_err in the provider-unavailable projection test (#3761); same receipted expect_err callee family."
+after_fingerprint = "sha256:v1:969cd4e7cc7ccff5e43b9f6a5ddc05330b99cc24ed72dca1a11fe7215391fc04"
+reason = "Same indexed-row coverage mutation for the third exercised row state; test-only."
