@@ -1087,12 +1087,18 @@ pub fn validate_experiment(experiment: &CiCacheExperimentV1) -> Result<(), Strin
                 .to_string(),
         );
     }
-    let mut seen_run_ids: Vec<&str> = Vec::new();
+    let mut seen_run_ids: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     for run in &experiment.runs {
-        if seen_run_ids.contains(&run.run_id.as_str()) {
+        if run.repository != experiment.repository {
+            return Err(format!(
+                "run {} records repository {} but the experiment declares {}; every run in \
+                     an experiment inspects the experiment's repository",
+                run.run_id, run.repository, experiment.repository
+            ));
+        }
+        if !seen_run_ids.insert(run.run_id.as_str()) {
             return Err(format!("duplicate run id {} in the experiment", run.run_id));
         }
-        seen_run_ids.push(run.run_id.as_str());
         validate_run_record(run).map_err(|err| format!("run {}: {err}", run.run_id))?;
     }
     let (derived, _) = derive_verdict_with_reasons(&experiment.runs);
@@ -2024,7 +2030,19 @@ mod contract_tests {
         }?;
         /// One identity-field emptying mutation plus the field's law name.
         type EmptyIdentity = fn(&mut CacheRunRecordV1);
-        let emptied: [(EmptyIdentity, &str); 9] = [
+        let emptied: [(EmptyIdentity, &str); 12] = [
+            (
+                |record: &mut CacheRunRecordV1| record.run_id = String::new(),
+                "run_id",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.repository = String::new(),
+                "repository",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.selected_targets = String::new(),
+                "selected_targets",
+            ),
             (
                 |record: &mut CacheRunRecordV1| record.base_commit = String::new(),
                 "base_commit",
@@ -2171,6 +2189,54 @@ mod contract_tests {
             Err(message) => require(
                 message.contains("measurement reasons"),
                 "the error must name the measurement-reasons law",
+            ),
+        }
+    }
+    /// Validation re-pins run/repository agreement: a deserialized artifact
+    /// whose run names a different repository than the experiment declares
+    /// must fail validation naming the agreement law (compilation enforces
+    /// the same law, but a mutated artifact skips compilation).
+    #[test]
+    fn validate_experiment_repins_run_repository_agreement() -> Result<(), String> {
+        let mut experiment =
+            compile_experiment(&acceptance_lane(), "cache-exp-agreement", "#3835")?;
+        require(
+            validate_experiment(&experiment).is_ok(),
+            "the clean compiled experiment must validate before the mutation",
+        )?;
+        let foreign = experiment
+            .runs
+            .first_mut()
+            .ok_or_else(|| "the experiment lost its first run".to_string())?;
+        foreign.repository = "EffortlessMetrics/perl-lsp-swarm".to_string();
+        match validate_experiment(&experiment) {
+            Ok(()) => Err(
+                "an experiment whose run names a foreign repository must not validate".to_string(),
+            ),
+            Err(message) => require(
+                message.contains("records repository"),
+                "the error must name the repository agreement law",
+            ),
+        }
+    }
+
+    /// Validation executes the duplicate-id law on an artifact that skips
+    /// compilation: post-compile mutation to a duplicated run id must fail
+    /// validation naming the duplicate.
+    #[test]
+    fn validate_experiment_repins_duplicate_run_ids() -> Result<(), String> {
+        let mut experiment = compile_experiment(&acceptance_lane(), "cache-exp-dup", "#3835")?;
+        let replay = experiment
+            .runs
+            .first()
+            .ok_or_else(|| "the experiment lost its first run".to_string())?
+            .clone();
+        experiment.runs.push(replay);
+        match validate_experiment(&experiment) {
+            Ok(()) => Err("a validation set with duplicate run ids must not validate".to_string()),
+            Err(message) => require(
+                message.contains("duplicate run id"),
+                "the error must name the duplicate-id law",
             ),
         }
     }
