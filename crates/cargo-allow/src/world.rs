@@ -568,6 +568,29 @@ pub(crate) fn load_world_from_resolved_policy(
     federation: FederationEvaluation,
     include_untracked: bool,
 ) -> WorldLoadResult {
+    load_world_from_resolved_policy_with_options(
+        root,
+        cfg,
+        policy_digest,
+        federation,
+        include_untracked,
+        None,
+        true,
+    )
+}
+
+/// Load a world from an already observed policy while varying only scan
+/// options. The policy/configuration and federation provenance are reused;
+/// callers must not invoke configuration selection again for a broader scan.
+pub(crate) fn load_world_from_resolved_policy_with_options(
+    root: &Path,
+    cfg: AllowConfig,
+    policy_digest: Option<String>,
+    federation: FederationEvaluation,
+    include_untracked: bool,
+    kind_filter: Option<&str>,
+    persistent_cache: bool,
+) -> WorldLoadResult {
     let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -579,7 +602,7 @@ pub(crate) fn load_world_from_resolved_policy(
         inventory_facts.with_policy_digest(digest)
     });
     let files = inventory.files;
-    let rust_scan = scan_rust_files_with_cache_mode(root, &files, true)?;
+    let rust_scan = scan_rust_files_with_cache_mode(root, &files, persistent_cache)?;
     let mut findings = rust_scan.findings;
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -591,6 +614,10 @@ pub(crate) fn load_world_from_resolved_policy(
     ));
     let companion_findings = canonical_companion_findings(root, &cfg, &files)?;
     extend_unique_findings(&mut findings, companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|finding| parsed.matches_finding(finding));
+    }
     if let Some(provenance) = federation.active_provenance.clone() {
         for finding in &mut findings {
             finding.ledger = Some(provenance.clone());

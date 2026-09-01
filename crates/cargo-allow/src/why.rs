@@ -6,9 +6,8 @@ use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 use allow_rust::RustFileScanOutcome;
 
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
-    load_world_for_path, load_world_with_evidence_mode, parse_kind_filter,
-    resolve_source_tree_root,
+    HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text, load_world_for_path,
+    load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
 };
 
 #[path = "why_args.rs"]
@@ -154,13 +153,14 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             scoped_world.4,
         )
     } else {
-        load_world_with_evidence_mode(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            true,
-            Some(args.kind.as_str()),
+        load_world_from_resolved_policy_with_options(
+            &scoped_world.0,
+            scoped_world.1.clone(),
+            None,
+            scoped_world.4.clone(),
             args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
+            Some(args.kind.as_str()),
+            true,
         )?
     };
     let (finding_index, finding) =
