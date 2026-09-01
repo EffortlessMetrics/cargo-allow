@@ -129,6 +129,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let scoped_finding =
         crate::add::select_add_finding(&scoped_world.2, parsed_kind, &target_repo_path, args.line)?
             .1;
+    let selected_policy_digest = scoped_world.3.policy_digest_text();
     let locality_reasons =
         crate::world::scoped_locality_reasons(&scoped_world.1, scoped_finding, &scoped_world.4);
     let evaluation = if locality_reasons.is_empty() {
@@ -156,7 +157,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         load_world_from_resolved_policy_with_options(
             &scoped_world.0,
             scoped_world.1.clone(),
-            None,
+            selected_policy_digest.clone(),
             scoped_world.4.clone(),
             args.include_untracked,
             Some(args.kind.as_str()),
@@ -191,6 +192,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             root: &root,
             config: args.config.as_deref(),
             cfg: &cfg,
+            expected_policy_digest: selected_policy_digest.as_deref(),
             include_untracked: args.include_untracked,
             source_context: &source_context,
             evaluation,

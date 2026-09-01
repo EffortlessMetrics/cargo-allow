@@ -76,7 +76,7 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    extend_unique_findings, load_policy_at_path, parse_kind_filter,
+    extend_unique_findings, parse_kind_filter,
 };
 
 type StagedRustInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
@@ -667,7 +667,10 @@ pub(crate) fn load_world_for_path(
         }
         Err(err) => return Err(err),
     };
-    let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
+    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+        policy_path,
+        EvidenceValidationMode::ReportOnly,
+    )?;
     let inventory = inventory(
         &root,
         &inventory_options_with_tool_cache_ignore(InventoryOptions {
@@ -737,6 +740,7 @@ pub(crate) fn load_world_for_path(
         }
     }
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
+        .with_policy_digest(policy_digest)
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
