@@ -173,9 +173,20 @@ fn federation_config_observed(root: &Path) -> bool {
     if std::fs::symlink_metadata(&config_path).is_ok() {
         return true;
     }
-    std::fs::symlink_metadata(root.join(".allow"))
-        .map(|metadata| metadata.file_type().is_symlink())
-        .unwrap_or(false)
+    let parent = root.join(".allow");
+    let Ok(metadata) = std::fs::symlink_metadata(&parent) else {
+        return false;
+    };
+    if !metadata.file_type().is_symlink() {
+        return false;
+    }
+    let Ok(target) = parent.canonicalize() else {
+        return true;
+    };
+    let Ok(root) = root.canonicalize() else {
+        return true;
+    };
+    !target.starts_with(root) || !target.is_dir()
 }
 
 fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
