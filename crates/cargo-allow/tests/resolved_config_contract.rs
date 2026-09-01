@@ -65,6 +65,32 @@ fn producer_distinguishes_requested_subdirectory_from_repository_root() -> TestR
 }
 
 #[test]
+fn producer_retains_effective_inventory_and_sensor_facts() -> TestResult {
+    let fixture = Fixture::new("effective-facts")?;
+    fixture.write(
+        "policy/allow.toml",
+        r#"
+[workspace]
+inventory = "git-tracked"
+[[workspace.file_family]]
+id = "models"
+family = "ml_model"
+glob = "models/**/*.onnx"
+reason = "tracked models"
+"#,
+    )?;
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:effective-facts")?;
+    ensure(
+        resolved.inventory_mode.as_deref() == Some("git-tracked"),
+        "effective inventory mode should be retained",
+    )?;
+    ensure(
+        resolved.selected_sensor_families == ["ml_model", "non_rust_file", "rust_source"],
+        "built-in and configured sensor families should be retained",
+    )
+}
+
+#[test]
 fn producer_marks_unrepresentable_requested_root_without_claiming_repository_root() -> TestResult {
     let fixture = Fixture::new("requested-root-unknown")?;
     fixture.write("policy/allow.toml", valid_policy())?;

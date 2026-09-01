@@ -448,9 +448,11 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
     let mut limitations = vec![
         CURRENT_ADAPTER_LIMITATION.to_string(),
         CANDIDATE_ENUMERATION_LIMITATION.to_string(),
-        SENSOR_OBSERVATION_LIMITATION.to_string(),
         EXTERNAL_CLI_LIMITATION.to_string(),
     ];
+    if policy_observation.inventory_mode.is_none() {
+        limitations.push(SENSOR_OBSERVATION_LIMITATION.to_string());
+    }
     match input.requested_root_relation {
         Some(ConfigRootRelationV1::Same) => {
             limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string())
@@ -487,10 +489,10 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
             selected_profile: None,
             reason: "profile resolution is a separate current consumer".to_string(),
         },
-        inventory_mode: None,
+        inventory_mode: policy_observation.inventory_mode,
         ignored_scopes: policy_observation.ignored_scopes,
         generated_scopes: policy_observation.generated_scopes,
-        selected_sensor_families: Vec::new(),
+        selected_sensor_families: policy_observation.selected_sensor_families,
         diagnostics,
         limitations,
         claim_boundary: RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY.to_string(),
@@ -709,8 +711,10 @@ fn candidate_disposition_key(disposition: ConfigCandidateDispositionV1) -> u8 {
 #[derive(Default)]
 struct PolicyObservation {
     policy: Option<ResolvedPolicyV1>,
+    inventory_mode: Option<String>,
     ignored_scopes: Vec<String>,
     generated_scopes: Vec<String>,
+    selected_sensor_families: Vec<String>,
     error: Option<ConfigDiagnosticV1>,
     status_override: Option<ConfigResolutionStatusV1>,
     reject_selected_candidate: bool,
@@ -805,20 +809,35 @@ fn observe_policy(
     };
     let digest = sha256_v1_bytes(text.as_bytes());
     match parse_policy_with_reportable_evidence_at(path, &text) {
-        Ok(policy) => PolicyObservation {
-            ignored_scopes: policy.workspace.ignored.clone(),
-            generated_scopes: policy.workspace.generated.clone(),
-            policy: Some(ResolvedPolicyV1 {
-                path: portable,
-                digest: Some(digest),
-                schema_version: Some(policy.schema_version),
-                policy: Some(policy.policy),
-                status: policy.status,
-            }),
-            error: None,
-            status_override: None,
-            reject_selected_candidate: false,
-        },
+        Ok(policy) => {
+            let mut selected_sensor_families =
+                vec!["rust_source".to_string(), "non_rust_file".to_string()];
+            selected_sensor_families.extend(
+                policy
+                    .workspace
+                    .file_families
+                    .iter()
+                    .map(|family| family.family.clone()),
+            );
+            selected_sensor_families.sort();
+            selected_sensor_families.dedup();
+            PolicyObservation {
+                inventory_mode: Some(policy.workspace.inventory.clone()),
+                ignored_scopes: policy.workspace.ignored.clone(),
+                generated_scopes: policy.workspace.generated.clone(),
+                selected_sensor_families,
+                policy: Some(ResolvedPolicyV1 {
+                    path: portable,
+                    digest: Some(digest),
+                    schema_version: Some(policy.schema_version),
+                    policy: Some(policy.policy),
+                    status: policy.status,
+                }),
+                error: None,
+                status_override: None,
+                reject_selected_candidate: false,
+            }
+        }
         Err(error) => PolicyObservation {
             policy: Some(ResolvedPolicyV1 {
                 path: portable,

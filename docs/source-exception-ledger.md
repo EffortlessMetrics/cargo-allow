@@ -99,8 +99,8 @@ because current discovery stops after its winner and still performs multiple
 reads. The adapter now preserves an explicitly supplied in-repository
 requested-root identity while keeping the resolved repository root at `.`;
 unknown and external relationships remain explicit and portable. Candidate
-completeness, effective configuration facts, and command cutover remain part
-of the broader #3875/#3876 work.
+completeness and current-behaviour characterization remain part of #3875;
+command cutover remains #3876.
 
 ### Spec-system profile
 
