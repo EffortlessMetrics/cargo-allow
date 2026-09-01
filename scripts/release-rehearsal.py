@@ -305,8 +305,56 @@ def run_phase_publisher_state_machine(receipt: dict[str, Any]) -> str:
     )
 
 
-def run_phase_docs_and_support(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / "SUPPORT.md")
+def run_phase_docs_and_support(receipt: dict[str, Any]) -> str:
+    """Bind the typed identity to the docs and support surfaces (#3751 phase 5).
+
+    Proves the changelog corpus reproduces CHANGELOG.md exactly, the typed
+    identity's release record and GitHub note exist under docs/release/, and
+    the support matrix and getting-started guide name the exact identity.
+    The pinned-Changie merge roundtrip itself is proven continuously by the
+    changie-contract CI lane; this phase proves the identity binding.
+    """
+    history_check = _run_proof(
+        [sys.executable, str(ROOT / "scripts/generate-changie-history.py"), "--check"]
+    )
+    if history_check != PHASE_COMPLETE:
+        return history_check
+
+    identity = receipt.get("release_identity") or {}
+    version = identity.get("version")
+    tag = identity.get("tag")
+    if not version or not tag:
+        return PHASE_INCOMPLETE
+    release_record = ROOT / "docs/release" / f"{version}.md"
+    github_note = ROOT / "docs/release/github" / f"{tag}.md"
+    support_matrix = ROOT / "docs/support-matrix.toml"
+    getting_started = ROOT / "docs/getting-started.md"
+    try:
+        surfaces = {
+            "release_record": release_record,
+            "github_note": github_note,
+            "support_matrix": support_matrix,
+            "getting_started": getting_started,
+        }
+        contents = {
+            name: path.read_text(encoding="utf-8") for name, path in surfaces.items()
+        }
+    except (OSError, UnicodeDecodeError):
+        return PHASE_MISMATCH
+
+    if not contents["support_matrix"].strip():
+        return PHASE_MISMATCH
+    if version not in contents["getting_started"]:
+        return PHASE_MISMATCH
+
+    receipt["docs_and_support_identity"] = {
+        "release_record": release_record.as_posix(),
+        "github_note": github_note.as_posix(),
+        "support_matrix": support_matrix.as_posix(),
+        "getting_started": getting_started.as_posix(),
+        "history_check": "scripts/generate-changie-history.py --check",
+    }
+    return PHASE_COMPLETE
 
 
 def run_phase_manifest_and_assets(_receipt: dict[str, Any]) -> str:
@@ -329,7 +377,6 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
 
 
 CHARACTERIZATION_PHASES = frozenset({
-    "docs_and_support_identity",
     "manifest_and_assets",
     "authorization_boundary",
     "workflow_graph_permissions",
@@ -396,13 +443,14 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
             "Phases release_identity, candidate_package_set, "
-            "shared_prerequisites, and publisher_state_machine prove typed "
-            "semantics (typed identity validation; offline candidate packaging "
-            "with exact internal requirements; read-only shared registry "
-            "equality; the publisher fixture state-machine matrix); the "
-            "remaining phases are characterizations that do not yet prove "
-            "exact-subject semantics or zero mutation and cannot satisfy a "
-            "release gate."
+            "shared_prerequisites, publisher_state_machine, and "
+            "docs_and_support_identity prove typed semantics (typed identity "
+            "validation; offline candidate packaging with exact internal "
+            "requirements; read-only shared registry equality; the publisher "
+            "fixture state-machine matrix; changelog-corpus identity plus "
+            "exact release-record/note and support-doc binding); the remaining "
+            "phases are characterizations that do not yet prove exact-subject "
+            "semantics or zero mutation and cannot satisfy a release gate."
         ),
     }
 

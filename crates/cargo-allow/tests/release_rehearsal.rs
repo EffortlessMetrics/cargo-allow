@@ -31,8 +31,20 @@ struct ReleaseRehearsalReceiptV1 {
     candidate_package_set: Option<CandidatePackageSetRecordV1>,
     #[serde(default)]
     publisher_state_machine: Option<PublisherStateMachineRecordV1>,
+    #[serde(default)]
+    docs_and_support_identity: Option<DocsAndSupportIdentityRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DocsAndSupportIdentityRecordV1 {
+    release_record: String,
+    github_note: String,
+    support_matrix: String,
+    getting_started: String,
+    history_check: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -171,12 +183,12 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
-    // The four characterization-only phases can never manufacture
+    // The three characterization-only phases can never manufacture
     // completion; release_identity, candidate_package_set,
-    // shared_prerequisites, and publisher_state_machine are real phases
-    // (#3751 phases 1-4) and may report Complete when their proofs succeed.
+    // shared_prerequisites, publisher_state_machine, and
+    // docs_and_support_identity are real phases (#3751 phases 1-5) and may
+    // report Complete when their proofs succeed.
     for required_phase in [
-        "docs_and_support_identity",
         "manifest_and_assets",
         "authorization_boundary",
         "workflow_graph_permissions",
@@ -257,6 +269,28 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     require(
         machine.fixture_matrix == "scripts/test-release-topology-publisher.py",
         "the fixture matrix provenance must name the publisher contract suite",
+    )?;
+
+    let docs_status = receipt
+        .phases
+        .get("docs_and_support_identity")
+        .ok_or_else(|| io::Error::other("docs_and_support_identity phase must exist"))?;
+    require(
+        docs_status == "Complete",
+        "the docs/support identity binding must prove Complete",
+    )?;
+    let docs = receipt.docs_and_support_identity.as_ref().ok_or_else(|| {
+        io::Error::other("a proven docs_and_support_identity phase must record its surfaces")
+    })?;
+    require(
+        docs.release_record
+            .ends_with(&format!("/{}.md", identity.version)),
+        "the release record must be bound to the typed identity version",
+    )?;
+    require(
+        docs.github_note
+            .ends_with(&format!("/github/{}.md", identity.tag)),
+        "the GitHub note must be bound to the typed identity tag",
     )?;
 
     let shared = receipt.shared_prerequisites.as_ref().ok_or_else(|| {

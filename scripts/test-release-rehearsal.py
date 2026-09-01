@@ -58,6 +58,18 @@ class TestReleaseRehearsal(unittest.TestCase):
             )
 
         identity = receipt.get("release_identity")
+        docs = receipt.get("docs_and_support_identity")
+        if phases["docs_and_support_identity"] == "Complete":
+            self.assertIsInstance(docs, dict)
+            self.assertTrue(docs["release_record"].endswith(f"/{identity['version']}.md"))
+            self.assertTrue(
+                docs["github_note"].endswith(f"/github/{identity['tag']}.md")
+            )
+            self.assertEqual(
+                docs["history_check"],
+                "scripts/generate-changie-history.py --check",
+            )
+
         packages = receipt.get("candidate_package_set")
         if phases["candidate_package_set"] == "Complete":
             self.assertIsInstance(packages, dict)
