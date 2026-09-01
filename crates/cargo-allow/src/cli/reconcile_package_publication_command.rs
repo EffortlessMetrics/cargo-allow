@@ -167,6 +167,39 @@ mod tests {
     }
 
     #[test]
+    fn unknown_state_fails_closed() {
+        let args = ReconcilePackagePublicationArgs {
+            logical_id: "x".to_string(),
+            package_name: "x".to_string(),
+            package_version: "0.1.0".to_string(),
+            release_order: 1,
+            row_class: "cargo_allow_candidate".to_string(),
+            state: "mystery".to_string(),
+            expected_checksum: "sha256:a".to_string(),
+            observed_registry_checksum: None,
+        };
+        let error = cmd(&args).expect_err("unknown state must fail");
+        assert!(error.to_string().contains("unknown publication state"));
+    }
+
+    #[test]
+    fn missing_observation_with_provider_unavailable_projects_unavailable() {
+        let args = ReconcilePackagePublicationArgs {
+            logical_id: "effortless-repo-edit".to_string(),
+            package_name: "effortless-repo-edit".to_string(),
+            package_version: "0.1.0".to_string(),
+            release_order: 120,
+            row_class: "published_shared_prerequisite".to_string(),
+            state: "provider_unavailable".to_string(),
+            expected_checksum: format!("sha256:{}", "a".repeat(64)),
+            observed_registry_checksum: None,
+        };
+        let projection = cmd(&args).expect("well-formed input must project");
+        assert_eq!(projection.classification, "provider_unavailable");
+        assert!(!projection.manifest_ready);
+    }
+
+    #[test]
     fn unknown_row_class_fails_closed() {
         let args = ReconcilePackagePublicationArgs {
             logical_id: "x".to_string(),
