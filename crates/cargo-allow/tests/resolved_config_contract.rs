@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use allow_policy::resolve_cargo_allow_config_v1;
+use allow_policy::{
+    ResolvedCargoAllowConfigV1, resolve_cargo_allow_config_v1,
+    resolve_cargo_allow_config_v1_with_requested_root,
+};
 use allow_report::render_resolved_cargo_allow_config_json;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -21,6 +24,89 @@ fn produced_resolved_config_validates_against_the_published_component_schema() -
     ensure(
         validator.is_valid(&instance),
         "producer output should validate against the component schema",
+    )
+}
+
+#[test]
+fn producer_distinguishes_requested_subdirectory_from_repository_root() -> TestResult {
+    let fixture = Fixture::new("requested-root")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let requested = fixture.path().join("crates/example");
+    fs::create_dir_all(&requested)?;
+    let resolved = resolve_cargo_allow_config_v1_with_requested_root(
+        &requested,
+        fixture.path(),
+        None,
+        "subject:requested-root",
+    )?;
+
+    ensure(
+        resolved.requested_root == "crates/example",
+        "requested root should retain its repository-relative identity",
+    )?;
+    ensure(
+        resolved.resolved_repository_root == ".",
+        "resolved repository root should remain the portable anchor",
+    )?;
+    ensure(
+        resolved.requested_root_relation == Some(allow_policy::ConfigRootRelationV1::Descendant),
+        "requested-root relationship should identify a repository descendant",
+    )?;
+    let instance: serde_json::Value =
+        serde_json::from_str(&render_resolved_cargo_allow_config_json(&resolved)?)?;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+    ))?;
+    ensure(
+        jsonschema::validator_for(&schema)?.is_valid(&instance),
+        "requested-root projection should remain schema-valid",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn producer_marks_unrepresentable_requested_root_without_claiming_repository_root() -> TestResult {
+    let fixture = Fixture::new("requested-root-unknown")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let requested = fixture.path().join("missing/requested");
+    let resolved = resolve_cargo_allow_config_v1_with_requested_root(
+        &requested,
+        fixture.path(),
+        None,
+        "subject:requested-root-unknown",
+    )?;
+
+    ensure(
+        resolved.requested_root == "unknown",
+        "unresolvable requested root must not collapse to repository root",
+    )?;
+    ensure(
+        resolved.limitations.iter().any(|limitation| {
+            limitation == "requested_root_relationship_could_not_be_represented_portably"
+        }),
+        "unknown requested-root relationship should remain explicit",
+    )?;
+    ensure(
+        resolved.requested_root_relation == Some(allow_policy::ConfigRootRelationV1::Unknown),
+        "unresolvable requested root should carry an unknown relationship",
+    )
+}
+
+#[test]
+fn legacy_resolved_config_omits_absent_optional_root_relation_on_reserialize() -> TestResult {
+    let fixture = Fixture::new("legacy-root-relation")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:legacy")?;
+    let mut legacy = serde_json::to_value(&resolved)?;
+    legacy
+        .as_object_mut()
+        .ok_or("resolved config should serialize as an object")?
+        .remove("requested_root_relation");
+    let parsed: ResolvedCargoAllowConfigV1 = serde_json::from_value(legacy)?;
+    let reserialized = serde_json::to_value(parsed)?;
+    ensure(
+        reserialized.get("requested_root_relation").is_none(),
+        "legacy payloads should not reserialize an absent optional field as null",
     )
 }
 

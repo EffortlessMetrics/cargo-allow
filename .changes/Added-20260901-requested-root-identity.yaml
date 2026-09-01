@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Preserve the caller-requested repository subdirectory in the resolved
+  cargo-allow configuration contract while keeping the resolved repository
+  root portable. Unknown or external root relationships remain explicit
+  instead of being represented as the repository root (#3875).

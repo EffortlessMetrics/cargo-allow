@@ -113,6 +113,7 @@ mod tests {
             producer_generation: 1,
             source_subject: "sha256:v1:subject".to_string(),
             requested_root: ".".to_string(),
+            requested_root_relation: Some(allow_policy::ConfigRootRelationV1::Same),
             resolved_repository_root: ".".to_string(),
             status: ConfigResolutionStatusV1::Complete,
             completeness: ConfigCompletenessV1::Partial,
