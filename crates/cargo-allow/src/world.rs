@@ -438,6 +438,7 @@ type ScopedWorldLoadResult = CargoAllowResult<(
     InventoryFacts,
     FederationEvaluation,
     Option<allow_rust::RustFileScanOutcome>,
+    Option<PathBuf>,
 )>;
 
 pub(crate) fn load_world(
@@ -663,10 +664,11 @@ pub(crate) fn load_world_for_path(
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
             )?;
-            return Ok((root, cfg, findings, facts, federation, None));
+            return Ok((root, cfg, findings, facts, federation, None, None));
         }
         Err(err) => return Err(err),
     };
+    let selected_policy_path = policy_path.clone();
     let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
         policy_path,
         EvidenceValidationMode::ReportOnly,
@@ -751,6 +753,7 @@ pub(crate) fn load_world_for_path(
         inventory_facts,
         federation,
         target_scan,
+        Some(selected_policy_path),
     ))
 }
 

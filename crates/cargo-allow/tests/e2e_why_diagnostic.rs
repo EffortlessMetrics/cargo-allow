@@ -287,6 +287,11 @@ callee = "unwrap"
             .and_then(Value::as_str),
         Some("global_dependency")
     );
+    assert_eq!(
+        report.pointer("/finding/kind").and_then(Value::as_str),
+        Some("panic"),
+        "full fallback must preserve the requested kind filter",
+    );
     assert!(
         report
             .pointer("/evaluation/reasons/0")

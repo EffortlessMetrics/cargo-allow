@@ -17,6 +17,7 @@ pub(super) struct AddFindingPlanInput<'a> {
     pub root: &'a Path,
     pub config: Option<&'a Path>,
     pub expected_policy_digest: Option<&'a str>,
+    pub expected_policy_path: Option<&'a str>,
     pub cfg: &'a AllowConfig,
     pub include_untracked: bool,
     pub source_context: &'a SourceTreeReportContext,
@@ -32,6 +33,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         root,
         config,
         expected_policy_digest,
+        expected_policy_path,
         cfg,
         include_untracked,
         source_context,
@@ -52,6 +54,14 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidPolicy,
             "selected policy changed while preparing the add-finding plan; rerun why",
+        ));
+    }
+    if let Some(expected) = expected_policy_path
+        && bindings.policy_path != expected
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            "selected policy path changed while preparing the add-finding plan; rerun why",
         ));
     }
     let root_text = source_context.source_tree_root().to_string();
