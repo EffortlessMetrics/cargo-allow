@@ -33,8 +33,16 @@ struct ReleaseRehearsalReceiptV1 {
     publisher_state_machine: Option<PublisherStateMachineRecordV1>,
     #[serde(default)]
     docs_and_support_identity: Option<DocsAndSupportIdentityRecordV1>,
+    #[serde(default)]
+    manifest_and_assets: Option<ManifestAndAssetsRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ManifestAndAssetsRecordV1 {
+    fixture_matrix: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -183,16 +191,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         "unproven zero-mutation facts must remain false",
     )?;
 
-    // The three characterization-only phases can never manufacture
-    // completion; release_identity, candidate_package_set,
-    // shared_prerequisites, publisher_state_machine, and
-    // docs_and_support_identity are real phases (#3751 phases 1-5) and may
-    // report Complete when their proofs succeed.
-    for required_phase in [
-        "manifest_and_assets",
-        "authorization_boundary",
-        "workflow_graph_permissions",
-    ] {
+    // The two characterization-only phases can never manufacture
+    // completion; release_identity through manifest_and_assets are real
+    // phases (#3751 phases 1-6) and may report Complete when their proofs
+    // succeed.
+    for required_phase in ["authorization_boundary", "workflow_graph_permissions"] {
         require(
             receipt
                 .phases
@@ -269,6 +272,22 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     require(
         machine.fixture_matrix == "scripts/test-release-topology-publisher.py",
         "the fixture matrix provenance must name the publisher contract suite",
+    )?;
+
+    let assets_status = receipt
+        .phases
+        .get("manifest_and_assets")
+        .ok_or_else(|| io::Error::other("manifest_and_assets phase must exist"))?;
+    require(
+        assets_status == "Complete",
+        "the offline manifest/asset fixture matrix must prove Complete",
+    )?;
+    let assets = receipt.manifest_and_assets.as_ref().ok_or_else(|| {
+        io::Error::other("a proven manifest_and_assets phase must record its fixture matrix")
+    })?;
+    require(
+        assets.fixture_matrix == "scripts/test-final-packaged-surface.py",
+        "the fixture matrix provenance must name the surface contract suite",
     )?;
 
     let docs_status = receipt

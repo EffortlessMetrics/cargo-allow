@@ -1,0 +1,15 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real manifest-and-assets phase (#3751
+  phase 6). The zero-upload rehearsal harness's manifest_and_assets
+  phase was a bounded characterization; it now proves the offline
+  fixture matrix in test-final-packaged-surface.py — archive digest and
+  size binding on actual crate bytes, missing declared assets
+  reconciling to Incomplete, per-crate identity via the CLI, prerelease
+  and hyphenated identity preservation, and unexpected-archive
+  rejection — with no real publication. Complete requires the full
+  fixture suite green; the recorded receipt names the fixture-matrix
+  provenance. The characterization set shrinks to two phases
+  (authorization boundary, workflow graph permissions). The python and
+  Rust rehearsal tests bind the recorded provenance to the Complete
+  status.
