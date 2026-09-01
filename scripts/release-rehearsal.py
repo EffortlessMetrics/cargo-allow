@@ -406,14 +406,21 @@ def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
         and len(value) in (40, 64)
         and all(char in "0123456789abcdef" for char in value)
     )
+    # The checked artifact stores the lock digest in its own bare-hex form
+    # (no sha256: prefix); the phase validates that stored form rather than
+    # imposing the receipt convention or re-deriving the value.
+    lock_ok = lambda value: (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
     if (
         artifact.get("schema_id") != AUTHORIZATION_SCHEMA
         or not isinstance(release, str)
         or not release.startswith("v")
         or not hex_ok(commit)
         or not hex_ok(tree)
-        or not isinstance(lock, str)
-        or not lock.startswith("sha256:")
+        or not lock_ok(lock)
     ):
         return PHASE_MISMATCH
     receipt["authorization_boundary"] = {

@@ -35,8 +35,32 @@ struct ReleaseRehearsalReceiptV1 {
     docs_and_support_identity: Option<DocsAndSupportIdentityRecordV1>,
     #[serde(default)]
     manifest_and_assets: Option<ManifestAndAssetsRecordV1>,
+    #[serde(default)]
+    workflow_graph_permissions: Option<WorkflowGraphPermissionsRecordV1>,
+    #[serde(default)]
+    authorization_boundary: Option<AuthorizationBoundaryRecordV1>,
     aggregate_status: String,
     claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WorkflowGraphPermissionsRecordV1 {
+    release_jobs: Vec<String>,
+    privileged_jobs: Vec<String>,
+    top_level_permissions: std::collections::BTreeMap<String, String>,
+    authorized_workflow_jobs: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AuthorizationBoundaryRecordV1 {
+    authorization_artifact: String,
+    schema: String,
+    named_release: String,
+    candidate_commit: String,
+    token_present: bool,
+    phase_status_note: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -195,7 +219,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     // completion; release_identity through manifest_and_assets are real
     // phases (#3751 phases 1-6) and may report Complete when their proofs
     // succeed.
-    for required_phase in ["authorization_boundary", "workflow_graph_permissions"] {
+    // The authorization_boundary phase deliberately stays Incomplete: the
+    // rehearsal never consumes authorization (#3760/#2502 gate the real
+    // run). workflow_graph_permissions is a real phase (#3751 phase 7) and
+    // may report Complete when its proof succeeds.
+    for required_phase in ["authorization_boundary"] {
         require(
             receipt
                 .phases
@@ -288,6 +316,36 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     require(
         assets.fixture_matrix == "scripts/test-final-packaged-surface.py",
         "the fixture matrix provenance must name the surface contract suite",
+    )?;
+
+    let workflow_status = receipt
+        .phases
+        .get("workflow_graph_permissions")
+        .ok_or_else(|| io::Error::other("workflow_graph_permissions phase must exist"))?;
+    require(
+        workflow_status == "Complete",
+        "the workflow graph permission inventory must prove Complete",
+    )?;
+    let workflow = receipt.workflow_graph_permissions.as_ref().ok_or_else(|| {
+        io::Error::other("a proven workflow_graph_permissions phase must record its inventory")
+    })?;
+    require(
+        workflow
+            .privileged_jobs
+            .iter()
+            .any(|job| job == "github-release"),
+        "the github-release job must be recorded as permission-scoped",
+    )?;
+    let authorization = receipt.authorization_boundary.as_ref().ok_or_else(|| {
+        io::Error::other("the authorization boundary phase must record the checked artifact")
+    })?;
+    require(
+        !authorization.token_present,
+        "the rehearsal must prove the publish token was absent",
+    )?;
+    require(
+        authorization.named_release.starts_with('v'),
+        "the checked authorization artifact must name its release",
     )?;
 
     let docs_status = receipt
