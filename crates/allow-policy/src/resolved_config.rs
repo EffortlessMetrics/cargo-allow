@@ -32,6 +32,8 @@ const SENSOR_OBSERVATION_LIMITATION: &str =
     "sensor_and_inventory_selection_not_observed_by_policy_adapter";
 const ROOT_RELATIONSHIP_LIMITATION: &str =
     "requested_and_repository_root_share_the_callers_resolved_root_input";
+const ROOT_RELATIONSHIP_UNKNOWN_LIMITATION: &str =
+    "requested_root_relationship_could_not_be_represented_portably";
 const EXTERNAL_CLI_LIMITATION: &str =
     "external_cli_policy_identity_is_redacted_and_reported_unsupported";
 
@@ -237,9 +239,12 @@ pub fn resolve_cargo_allow_config_v1_with_requested_root(
     let federation_observation = observe_federation(&resolved_root);
     let evaluation = evaluate_source_exception_policy(&resolved_root, cli_config);
 
+    let (requested_root_identity, requested_root_equal) =
+        portable_root_identity(requested_root, &resolved_root);
     Ok(compile_resolution(CompileResolutionInput {
         root: &resolved_root,
-        requested_root_identity: portable_root_identity(requested_root, &resolved_root),
+        requested_root_identity,
+        requested_root_equal,
         cli_config,
         source_subject,
         discovery,
@@ -258,6 +263,7 @@ struct FederationObservation {
 struct CompileResolutionInput<'a> {
     root: &'a Path,
     requested_root_identity: String,
+    requested_root_equal: Option<bool>,
     cli_config: Option<&'a Path>,
     source_subject: &'a str,
     discovery: DiscoverConfigResult,
@@ -434,8 +440,10 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         SENSOR_OBSERVATION_LIMITATION.to_string(),
         EXTERNAL_CLI_LIMITATION.to_string(),
     ];
-    if input.requested_root_identity == "." {
-        limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string());
+    match input.requested_root_equal {
+        Some(true) => limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string()),
+        None => limitations.push(ROOT_RELATIONSHIP_UNKNOWN_LIMITATION.to_string()),
+        Some(false) => {}
     }
 
     ResolvedCargoAllowConfigV1 {
@@ -473,23 +481,26 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
     }
 }
 
-fn portable_root_identity(requested_root: &Path, resolved_root: &Path) -> String {
+fn portable_root_identity(requested_root: &Path, resolved_root: &Path) -> (String, Option<bool>) {
     let requested = requested_root.canonicalize().ok();
     let resolved = resolved_root.canonicalize().ok();
-    requested
-        .as_deref()
-        .zip(resolved.as_deref())
-        .and_then(|(requested, resolved)| lexical_relative_path(resolved, requested))
-        .map_or_else(
-            || ".".to_string(),
-            |relative| {
-                if relative.is_empty() {
-                    ".".to_string()
-                } else {
-                    relative
-                }
+    let Some((requested, resolved)) = requested.as_deref().zip(resolved.as_deref()) else {
+        return ("unknown".to_string(), None);
+    };
+    if requested == resolved {
+        return (".".to_string(), Some(true));
+    }
+    if let Some(relative) = lexical_relative_path(resolved, requested) {
+        return (
+            if relative.is_empty() {
+                ".".to_string()
+            } else {
+                relative
             },
-        )
+            Some(false),
+        );
+    }
+    ("external".to_string(), Some(false))
 }
 
 fn observe_federation(root: &Path) -> FederationObservation {

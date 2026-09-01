@@ -60,6 +60,30 @@ fn producer_distinguishes_requested_subdirectory_from_repository_root() -> TestR
 }
 
 #[test]
+fn producer_marks_unrepresentable_requested_root_without_claiming_repository_root() -> TestResult {
+    let fixture = Fixture::new("requested-root-unknown")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let requested = fixture.path().join("missing/requested");
+    let resolved = resolve_cargo_allow_config_v1_with_requested_root(
+        &requested,
+        fixture.path(),
+        None,
+        "subject:requested-root-unknown",
+    )?;
+
+    ensure(
+        resolved.requested_root == "unknown",
+        "unresolvable requested root must not collapse to repository root",
+    )?;
+    ensure(
+        resolved.limitations.iter().any(|limitation| {
+            limitation == "requested_root_relationship_could_not_be_represented_portably"
+        }),
+        "unknown requested-root relationship should remain explicit",
+    )
+}
+
+#[test]
 fn resolved_config_schema_rejects_non_portable_repository_paths() -> TestResult {
     let fixture = Fixture::new("schema-negative")?;
     fixture.write("policy/allow.toml", valid_policy())?;
