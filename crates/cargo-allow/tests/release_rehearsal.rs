@@ -223,15 +223,13 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     // rehearsal never consumes authorization (#3760/#2502 gate the real
     // run). workflow_graph_permissions is a real phase (#3751 phase 7) and
     // may report Complete when its proof succeeds.
-    for required_phase in ["authorization_boundary"] {
-        require(
-            receipt
-                .phases
-                .get(required_phase)
-                .is_some_and(|status| status != "Complete"),
-            &format!("phase {required_phase} must exist and remain non-Complete"),
-        )?;
-    }
+    require(
+        receipt
+            .phases
+            .get("authorization_boundary")
+            .is_some_and(|status| status != "Complete"),
+        "phase authorization_boundary must exist and remain non-Complete",
+    )?;
     require(
         receipt
             .phases
