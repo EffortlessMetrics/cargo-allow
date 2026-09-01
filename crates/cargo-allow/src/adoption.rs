@@ -7,6 +7,7 @@ use allow_inventory::{
     resolve_source_tree_root,
 };
 use allow_match::{CheckMode, evaluate};
+use allow_policy::federation::evaluate_source_exception_policy;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -18,7 +19,7 @@ pub(crate) use adoption_args::AdoptionArgs;
 use crate::policy_config::discover_config_path;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, HumanJsonFormat, InventoryFacts, RootArgs,
-    current_dir, emit_text, load_world_with_evidence_mode, report_config,
+    current_dir, emit_text, report_config,
 };
 
 const COMMAND: &str = "adopt";
@@ -226,13 +227,16 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         limitations.push("foreign policy candidates were skipped during discovery".to_string());
     }
 
-    let (cfg, policy_state, policy_diagnostic) = match policy_path.as_deref() {
+    let (cfg, policy_digest, policy_state, policy_diagnostic) = match policy_path.as_deref() {
         Some(path) => {
-            match crate::load_policy_at_path(path.to_path_buf(), EvidenceValidationMode::ReportOnly)
-            {
-                Ok(cfg) => (cfg, allow_report::PolicyState::Valid, None),
+            match crate::policy_config::load_policy_at_path_with_digest(
+                path.to_path_buf(),
+                EvidenceValidationMode::ReportOnly,
+            ) {
+                Ok((cfg, digest)) => (cfg, Some(digest), allow_report::PolicyState::Valid, None),
                 Err(error) => (
                     AllowConfig::empty(),
+                    None,
                     allow_report::PolicyState::Invalid,
                     Some(sanitize_diagnostic(&root, &error.to_string())),
                 ),
@@ -240,6 +244,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         }
         None => (
             AllowConfig::empty(),
+            None,
             allow_report::PolicyState::Absent,
             None,
         ),
@@ -312,13 +317,19 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             crate::world::default_federation_evaluation(),
         ))
     } else {
-        load_world_with_evidence_mode(
-            Some(&root),
-            policy_path.as_deref(),
-            policy_state == allow_report::PolicyState::Valid,
-            None,
+        let federation = if args.config.is_some() {
+            crate::world::cli_federation_evaluation()
+        } else {
+            evaluate_source_exception_policy(&root, None)
+                .map(|(_, evaluation)| evaluation)
+                .unwrap_or_else(|_| crate::world::default_federation_evaluation())
+        };
+        crate::world::load_world_from_resolved_policy(
+            &root,
+            cfg.clone(),
+            policy_digest.clone(),
+            federation,
             args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
         )
     };
     let (scan_root, scanned_cfg, findings, inventory_facts, federation, instrument_failure) =
@@ -386,10 +397,6 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             "{invalid_match_count} policy match outcome(s) require policy repair"
         ));
     }
-    let policy_digest = policy_path
-        .as_deref()
-        .and_then(|path| fs::read(path).ok())
-        .map(|bytes: Vec<u8>| sha256_v1_bytes(&bytes));
     let facts = adoption_facts(AdoptionFactInputs {
         root: &root,
         inventory: Some(&inventory),

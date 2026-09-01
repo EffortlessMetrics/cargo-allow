@@ -560,6 +560,54 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     ))
 }
 
+/// Load a world from an already observed policy/configuration selection.
+pub(crate) fn load_world_from_resolved_policy(
+    root: &Path,
+    cfg: AllowConfig,
+    policy_digest: Option<String>,
+    federation: FederationEvaluation,
+    include_untracked: bool,
+) -> WorldLoadResult {
+    let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked,
+    });
+    let inventory = inventory(root, &opts)?;
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    let inventory_facts = policy_digest.map_or(inventory_facts, |digest| {
+        inventory_facts.with_policy_digest(digest)
+    });
+    let files = inventory.files;
+    let rust_scan = scan_rust_files_with_cache_mode(root, &files, true)?;
+    let mut findings = rust_scan.findings;
+    findings.extend(allow_files::scan_files_with_options(
+        &files,
+        &allow_files::FileScanOptions {
+            generated: opts.generated.clone(),
+            file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
+        },
+    ));
+    let companion_findings = canonical_companion_findings(root, &cfg, &files)?;
+    extend_unique_findings(&mut findings, companion_findings);
+    if let Some(provenance) = federation.active_provenance.clone() {
+        for finding in &mut findings {
+            finding.ledger = Some(provenance.clone());
+        }
+    }
+    Ok((
+        root.to_path_buf(),
+        cfg,
+        findings,
+        inventory_facts
+            .with_rust_files_considered(rust_scan.files_considered)
+            .with_rust_files_skipped(rust_scan.files_skipped)
+            .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
+        federation,
+    ))
+}
+
 /// Load the full policy but scan only the single file at `target_path` instead
 /// of the entire source tree. Used by `why` (advisory, read-only) so a
 /// one-finding question does not parse every file in the repository.
@@ -848,6 +896,10 @@ fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluati
 
 pub(crate) fn default_federation_evaluation() -> FederationEvaluation {
     empty_federation_evaluation(PrecedenceTier::DiscoveryFallback)
+}
+
+pub(crate) fn cli_federation_evaluation() -> FederationEvaluation {
+    empty_federation_evaluation(PrecedenceTier::CliOverride)
 }
 
 #[cfg(test)]
