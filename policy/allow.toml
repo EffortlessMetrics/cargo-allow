@@ -71,6 +71,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9258"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/source-of-truth/cargo-allow-current-config-selection.md"
+owner = "core/policy"
+classification = "current_configuration_selection_record"
+reason = "Source-of-truth characterization for current cargo-allow configuration selection before command consumer migration in issue #3875."
+evidence = ["issue:3875", "doc:docs/source-of-truth/cargo-allow-current-config-selection.md"]
+created = "2026-09-01"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/source-of-truth/cargo-allow-current-config-selection.md"
+target_fingerprint = "md"
+glob = "docs/source-of-truth/cargo-allow-current-config-selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9259"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3875-d-current-behavior.toml"
+owner = "core/policy"
+classification = "configuration_selection_revision_note"
+reason = "Revision receipt for the #3875-D current configuration-selection source-of-truth artifact."
+evidence = ["issue:3875", "doc:docs/source-of-truth/cargo-allow-current-config-selection.md"]
+created = "2026-09-01"
+review_after = "2027-03-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3875-d-current-behavior.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3875-d-current-behavior.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11205"
 kind = "non_rust_file"
 family = "documentation"

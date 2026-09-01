@@ -89,6 +89,9 @@ governance profile model around it.
 - [Source-of-truth stack](source-of-truth/README.md): opt-in governance graph
   for proposals, specs, ADRs, plans, goals, support tiers, policy ledgers, and
   closeouts.
+- [Current cargo-allow configuration selection](source-of-truth/cargo-allow-current-config-selection.md):
+  current selection precedence, federation diagnostics, and the command-parity
+  boundary before consumer migration.
 - [Doc artifact ledger](source-of-truth/doc-artifact-ledger.md): advisory
   registry for governed proposal/spec artifacts in the source-of-truth graph.
 - [Source-of-truth templates](templates/proposal.md): starter templates for
