@@ -375,6 +375,9 @@ pub fn validate_run_record(run: &CacheRunRecordV1) -> Result<(), String> {
     let identity_fields = [
         ("run_id", run.run_id.as_str()),
         ("repository", run.repository.as_str()),
+        ("base_commit", run.base_commit.as_str()),
+        ("head_commit", run.head_commit.as_str()),
+        ("workflow_ref", run.workflow_ref.as_str()),
         ("cache_lane_namespace", run.cache_lane_namespace.as_str()),
         ("cache_key_identity", run.cache_key_identity.as_str()),
         (
@@ -391,6 +394,12 @@ pub fn validate_run_record(run: &CacheRunRecordV1) -> Result<(), String> {
         if value.trim().is_empty() {
             return Err(format!("run identity field {field} must be non-empty"));
         }
+    }
+    if run.action_ref != PINNED_RUST_CACHE_ACTION_REF {
+        return Err(format!(
+            "run {} records action ref {} but the experiment qualifies the pinned policy {}",
+            run.run_id, run.action_ref, PINNED_RUST_CACHE_ACTION_REF
+        ));
     }
     if run.compile_test_seconds_ms == 0 {
         return Err(format!(
@@ -682,6 +691,11 @@ struct LaneEvaluation {
     namespaces: Vec<String>,
     /// Distinct `head_commit` values in the lane, sorted.
     heads: Vec<String>,
+    /// Distinct normalized `runner_os` values in the lane, sorted. The
+    /// experiment qualifies the LINUX cache policy, so a lane whose runs
+    /// are not uniformly Linux can never qualify (issue identity law: no
+    /// non-Linux result authorizes or substitutes for Linux reuse).
+    runner_systems: Vec<String>,
     warm_p50: Option<u64>,
     cold_p50: Option<u64>,
 }
@@ -716,6 +730,12 @@ fn evaluate_lane(lane: &str, runs: &[CacheRunRecordV1]) -> LaneEvaluation {
     let mut heads: Vec<String> = runs.iter().map(|run| run.head_commit.clone()).collect();
     heads.sort();
     heads.dedup();
+    let mut runner_systems: Vec<String> = runs
+        .iter()
+        .map(|run| run.runner_os.trim().to_ascii_lowercase())
+        .collect();
+    runner_systems.sort();
+    runner_systems.dedup();
     LaneEvaluation {
         lane: lane.to_string(),
         covered,
@@ -724,6 +744,7 @@ fn evaluate_lane(lane: &str, runs: &[CacheRunRecordV1]) -> LaneEvaluation {
         uniform: digests.len() == 1,
         namespaces,
         heads,
+        runner_systems,
         warm_p50: duration_percentiles(runs, CachePostureV1::Warm).map(|(p50, _)| p50),
         cold_p50: duration_percentiles(runs, CachePostureV1::Cold).map(|(p50, _)| p50),
     }
@@ -753,8 +774,13 @@ fn lane_qualifies(evaluation: &LaneEvaluation) -> bool {
         && evaluation.uniform
         && evaluation.namespaces.len() == 1
         && evaluation.heads.len() == 1
+        && evaluation.runner_systems.as_slice() == [LINUX_RUNNER_OS_MARKER.to_string()].as_slice()
         && lane_improvement(evaluation).is_some()
 }
+
+/// The runner-OS marker a qualifying lane's records must carry uniformly:
+/// the experiment qualifies the LINUX cache policy only.
+const LINUX_RUNNER_OS_MARKER: &str = "linux";
 
 /// Derive the experiment verdict with the law's reasons, in precedence order:
 ///
@@ -883,6 +909,20 @@ pub fn derive_verdict_with_reasons(
                  states",
             best.lane,
             best.heads.join(", ")
+        ));
+    }
+    let non_linux: Vec<&str> = best
+        .runner_systems
+        .iter()
+        .map(String::as_str)
+        .filter(|system| *system != LINUX_RUNNER_OS_MARKER)
+        .collect();
+    if !non_linux.is_empty() {
+        reasons.push(format!(
+            "lane {} runs on non-Linux runner systems ({}); the experiment qualifies the \
+                 Linux cache policy, so no non-Linux result substitutes for Linux reuse",
+            best.lane,
+            non_linux.join(", ")
         ));
     }
     match (best.warm_p50, best.cold_p50) {
@@ -1047,7 +1087,12 @@ pub fn validate_experiment(experiment: &CiCacheExperimentV1) -> Result<(), Strin
                 .to_string(),
         );
     }
+    let mut seen_run_ids: Vec<&str> = Vec::new();
     for run in &experiment.runs {
+        if seen_run_ids.contains(&run.run_id.as_str()) {
+            return Err(format!("duplicate run id {} in the experiment", run.run_id));
+        }
+        seen_run_ids.push(run.run_id.as_str());
         validate_run_record(run).map_err(|err| format!("run {}: {err}", run.run_id))?;
     }
     let (derived, _) = derive_verdict_with_reasons(&experiment.runs);
@@ -1061,6 +1106,14 @@ pub fn validate_experiment(experiment: &CiCacheExperimentV1) -> Result<(), Strin
     if experiment.verdict != ExperimentVerdictV1::Accepted && experiment.verdict_reasons.is_empty()
     {
         return Err("a non-Accepted verdict must carry its reasons".to_string());
+    }
+    if experiment.verdict == ExperimentVerdictV1::Accepted && experiment.verdict_reasons.is_empty()
+    {
+        return Err(
+            "an Accepted experiment must state its measurement reasons; a bare verdict is \
+                 not reviewable evidence"
+                .to_string(),
+        );
     }
     Ok(())
 }
@@ -1971,7 +2024,19 @@ mod contract_tests {
         }?;
         /// One identity-field emptying mutation plus the field's law name.
         type EmptyIdentity = fn(&mut CacheRunRecordV1);
-        let emptied: [(EmptyIdentity, &str); 6] = [
+        let emptied: [(EmptyIdentity, &str); 9] = [
+            (
+                |record: &mut CacheRunRecordV1| record.base_commit = String::new(),
+                "base_commit",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.head_commit = String::new(),
+                "head_commit",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.workflow_ref = String::new(),
+                "workflow_ref",
+            ),
             (
                 |record: &mut CacheRunRecordV1| record.cache_key_identity = String::new(),
                 "cache_key_identity",
@@ -2034,5 +2099,79 @@ mod contract_tests {
             validate_experiment(&experiment).is_ok(),
             "an experiment carrying the note validates",
         )
+    }
+    /// The experiment qualifies the PINNED cache action: a run recorded
+    /// against a different action ref is rejected (the action ref is part
+    /// of what the evidence is evidence OF).
+    #[test]
+    fn action_ref_must_match_the_pinned_policy() -> Result<(), String> {
+        let mut run = warm("warm-1");
+        run.action_ref = "Swatinem/rust-cache@0000000000000000000000000000000000000000".to_string();
+        match validate_run_record(&run) {
+            Ok(()) => Err("a run with a foreign action ref must not validate".to_string()),
+            Err(message) => require(
+                message.contains("qualifies the pinned policy"),
+                "the action-ref error must name the pinned policy law",
+            ),
+        }
+    }
+
+    /// The Linux-experiment qualification law: a uniformly non-Linux lane
+    /// with full coverage, uniform digests, two warm runs, and improvement
+    /// still does not qualify — no non-Linux result substitutes for Linux
+    /// cache reuse.
+    #[test]
+    fn a_uniformly_non_linux_lane_never_qualifies() -> Result<(), String> {
+        let mut runs = acceptance_lane_with_warm_duration(500);
+        for run in &mut runs {
+            run.runner_os = "windows".to_string();
+            run.runner_image_class = "windows-latest".to_string();
+            run.cache_lane_namespace = "lint-windows".to_string();
+            run.cache_key_identity =
+                "cargo-allow-cache-v1-windows-x64-stable-cargolock-0001+lint-windows".to_string();
+        }
+        let experiment = compile_experiment(&runs, "cache-exp-nonlinux", "#3835")?;
+        require(
+            experiment.verdict != ExperimentVerdictV1::Accepted,
+            "a uniformly non-Linux lane must not reach Accepted",
+        )?;
+        require(
+            experiment
+                .verdict_reasons
+                .iter()
+                .any(|reason| reason.contains("Linux cache policy")),
+            "the reasons must name the Linux qualification law",
+        )
+    }
+
+    /// Validation re-pins what compilation enforces: duplicate run ids and
+    /// a bare Accepted verdict are rejected at the validation pass too.
+    #[test]
+    fn validate_experiment_repins_duplicate_ids_and_accepted_reasons() -> Result<(), String> {
+        let mut runs = acceptance_lane();
+        let replay = runs
+            .first()
+            .ok_or_else(|| "the acceptance lane lost its first run".to_string())?
+            .clone();
+        runs.push(replay);
+        let experiment = compile_experiment(&runs, "cache-exp-dup", "#3835");
+        require(
+            experiment.is_err(),
+            "compilation must reject duplicate run ids",
+        )?;
+        let mut valid = acceptance_lane();
+        let second = valid
+            .get_mut(1)
+            .ok_or_else(|| "the acceptance lane lost its second run".to_string())?;
+        second.run_id = "warm-2-distinct".to_string();
+        let mut experiment = compile_experiment(&valid, "cache-exp-reasons", "#3835")?;
+        experiment.verdict_reasons = Vec::new();
+        match validate_experiment(&experiment) {
+            Ok(()) => Err("an Accepted experiment without reasons must not validate".to_string()),
+            Err(message) => require(
+                message.contains("measurement reasons"),
+                "the error must name the measurement-reasons law",
+            ),
+        }
     }
 }
