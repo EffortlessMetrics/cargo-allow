@@ -10,6 +10,8 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use allow_policy::{ConfigCandidateSourceV1, resolve_cargo_allow_config_v1};
+use serde_json::Value;
 
 fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
@@ -35,6 +37,10 @@ fn remove_temp_root(root: PathBuf) {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
         Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
+}
+
+fn require(condition: bool, message: &str) -> Result<(), String> {
+    condition.then_some(()).ok_or_else(|| message.to_string())
 }
 
 /// A policy that mixes `allow_bare_allow_attributes = false` with a
@@ -213,4 +219,52 @@ fn no_conflict_when_bare_allows_explicitly_allowed() {
     );
 
     remove_temp_root(root);
+}
+
+/// The central resolved-config adapter and the diagnostic command must identify
+/// the same explicit policy candidate. This characterizes current behavior
+/// without changing selection.
+#[test]
+fn central_resolution_matches_command_policy_identity() -> Result<(), String> {
+    let root = temp_root("resolved-config-command-characterization");
+    write_conflict_policy(&root);
+    let resolved = resolve_cargo_allow_config_v1(
+        &root,
+        Some(std::path::Path::new("policy/allow.toml")),
+        "test:resolved-config-command-characterization",
+    )
+    .map_err(|error| format!("resolve config: {error}"))?;
+    require(
+        resolved.selection_source == Some(ConfigCandidateSourceV1::CliOverride),
+        "central resolver should select the explicit CLI candidate",
+    )?;
+    let root_text = root.to_str().ok_or("root is not UTF-8")?;
+    let doctor = cargo_allow_command()
+        .args([
+            "doctor",
+            "--root",
+            root_text,
+            "--config",
+            "policy/allow.toml",
+            "--format",
+            "json",
+        ])
+        .output()
+        .map_err(|error| format!("run doctor: {error}"))?;
+    let artifact: Value = serde_json::from_slice(&doctor.stdout)
+        .map_err(|error| format!("parse doctor JSON: {error}"))?;
+    require(
+        artifact
+            .pointer("/config/path")
+            .and_then(Value::as_str)
+            .is_some_and(|path| path.ends_with("/policy/allow.toml") || path.ends_with("\\policy\\allow.toml")),
+        &format!("doctor should report the same explicit policy identity: {artifact}"),
+    )?;
+    require(
+        artifact.pointer("/config/provenance/source").and_then(Value::as_str)
+            == Some("cli_override"),
+        "doctor should preserve explicit CLI provenance",
+    )?;
+    remove_temp_root(root);
+    Ok(())
 }
