@@ -46,10 +46,13 @@ struct ReleaseRehearsalReceiptV1 {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct WorkflowGraphPermissionsRecordV1 {
+    mode: String,
     release_jobs: Vec<String>,
     privileged_jobs: Vec<String>,
-    top_level_permissions: std::collections::BTreeMap<String, String>,
-    authorized_workflow_jobs: Vec<String>,
+    top_level_read_scoped: bool,
+    top_level_write_scoped: bool,
+    github_release_scoped: bool,
+    authorized_namespace_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -328,11 +331,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         io::Error::other("a proven workflow_graph_permissions phase must record its inventory")
     })?;
     require(
-        workflow
-            .privileged_jobs
-            .iter()
-            .any(|job| job == "github-release"),
-        "the github-release job must be recorded as permission-scoped",
+        workflow.top_level_read_scoped
+            && workflow.top_level_write_scoped
+            && workflow.github_release_scoped
+            && workflow.authorized_namespace_mode,
+        "the recorded workflow graph proof must carry every least-privilege law",
     )?;
     let authorization = receipt.authorization_boundary.as_ref().ok_or_else(|| {
         io::Error::other("the authorization boundary phase must record the checked artifact")

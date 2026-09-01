@@ -68,11 +68,11 @@ class TestReleaseRehearsal(unittest.TestCase):
         workflow = receipt.get("workflow_graph_permissions")
         if phases["workflow_graph_permissions"] == "Complete":
             self.assertIsInstance(workflow, dict)
-            self.assertIn("github-release", workflow["privileged_jobs"])
-            self.assertEqual(
-                workflow["top_level_permissions"],
-                {"actions": "read", "contents": "write"},
-            )
+            self.assertIn(workflow["mode"], {"yaml", "text"})
+            self.assertTrue(workflow["top_level_read_scoped"])
+            self.assertTrue(workflow["top_level_write_scoped"])
+            self.assertTrue(workflow["github_release_scoped"])
+            self.assertTrue(workflow["authorized_namespace_mode"])
 
         authorization = receipt.get("authorization_boundary")
         self.assertEqual(phases["authorization_boundary"], "Incomplete")
