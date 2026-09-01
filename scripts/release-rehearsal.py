@@ -374,22 +374,137 @@ def run_phase_manifest_and_assets(receipt: dict[str, Any]) -> str:
     )
 
 
-def run_phase_authorization_boundary(_receipt: dict[str, Any]) -> str:
-    try:
-        if os.environ.get(CARGO_TOKEN_ENV):
-            return PHASE_INSTRUMENT_FAILURE
-        return PHASE_INCOMPLETE
-    except OSError:
+AUTHORIZATION_ARTIFACT = "release/authorize-v0.2.0.json"
+AUTHORIZATION_SCHEMA = "cargo-allow.release-authorization.v1"
+
+
+def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
+    """Prove the token-free rehearsal posture and bind the checked
+    authorization artifact's identity (#3751 phase: authorization boundary).
+
+    The rehearsal never consumes authorization: a publish token in the
+    environment is an instrument failure, and the checked
+    CargoAllowReleaseAuthorizationV1 artifact is read only to record which
+    release identity would gate the authorized run. The phase deliberately
+    stays Incomplete — only the authorized run (#3760/#2502) can claim
+    authorization.
+    """
+    if os.environ.get(CARGO_TOKEN_ENV):
         return PHASE_INSTRUMENT_FAILURE
+    try:
+        artifact = json.loads(
+            (ROOT / AUTHORIZATION_ARTIFACT).read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return PHASE_MISMATCH
+    release = artifact.get("release")
+    commit = artifact.get("candidate_parent_commit")
+    tree = artifact.get("candidate_parent_tree")
+    lock = artifact.get("cargo_lock_sha256")
+    hex_ok = lambda value: (
+        isinstance(value, str)
+        and len(value) in (40, 64)
+        and all(char in "0123456789abcdef" for char in value)
+    )
+    if (
+        artifact.get("schema_id") != AUTHORIZATION_SCHEMA
+        or not isinstance(release, str)
+        or not release.startswith("v")
+        or not hex_ok(commit)
+        or not hex_ok(tree)
+        or not isinstance(lock, str)
+        or not lock.startswith("sha256:")
+    ):
+        return PHASE_MISMATCH
+    receipt["authorization_boundary"] = {
+        "authorization_artifact": AUTHORIZATION_ARTIFACT,
+        "schema": AUTHORIZATION_SCHEMA,
+        "named_release": release,
+        "candidate_commit": commit,
+        "token_present": False,
+        "phase_status_note": (
+            "deliberately Incomplete: the rehearsal never consumes "
+            "authorization; #3760/#2502 gate the authorized run"
+        ),
+    }
+    return PHASE_INCOMPLETE
 
 
-def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
-    return _file_characterization(ROOT / ".github/workflows/release.yml")
+def _workflow_inventory(path: Path) -> dict[str, Any]:
+    """Parse one workflow manifest and record its permission surface."""
+    try:
+        import yaml
+    except ImportError:
+        return {"error": "PyYAML unavailable; workflow graph cannot be parsed"}
+    try:
+        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"error": f"YAML parse error: {exc}"}
+    if not isinstance(parsed, dict) or "jobs" not in parsed:
+        return {"error": "workflow is not a mapping with jobs"}
+    inventory: dict[str, Any] = {
+        "top_level_permissions": parsed.get("permissions"),
+        "jobs": {},
+    }
+    for job_name, job in parsed["jobs"].items():
+        if not isinstance(job, dict):
+            continue
+        inventory["jobs"][job_name] = {
+            "permissions": job.get("permissions"),
+            "runs_on": job.get("runs-on"),
+        }
+    return inventory
+
+
+def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
+    """Bind the release workflow graph's permission surface (#3751 phase).
+
+    Records the parsed permission inventory of the tag-triggered release
+    workflow and the one-shot authorized namespace workflow, and enforces the
+    least-privilege law: the release workflow's least-privileged jobs stay
+    read-scoped and only the publishing jobs carry write or OIDC scopes.
+    """
+    release_workflow = ROOT / ".github/workflows/release.yml"
+    authorized_workflow = ROOT / ".github/workflows/release-authorized.yml"
+    release_inventory = _workflow_inventory(release_workflow)
+    if "error" in release_inventory:
+        return PHASE_MISMATCH
+    authorized_inventory = _workflow_inventory(authorized_workflow)
+    if "error" in authorized_inventory:
+        return PHASE_MISMATCH
+    release_jobs = release_inventory["jobs"]
+    if not isinstance(release_jobs, dict) or not release_jobs:
+        return PHASE_MISMATCH
+    if release_inventory.get("top_level_permissions") != {
+        "actions": "read",
+        "contents": "write",
+    }:
+        return PHASE_MISMATCH
+    privileged = {
+        job_name
+        for job_name, job in release_jobs.items()
+        if isinstance(job, dict) and job.get("permissions")
+    }
+    if not privileged or "github-release" not in privileged:
+        return PHASE_MISMATCH
+    github_release_permissions = release_jobs["github-release"].get("permissions")
+    if github_release_permissions != {
+        "contents": "write",
+        "attestations": "write",
+        "id-token": "write",
+    }:
+        return PHASE_MISMATCH
+    receipt["workflow_graph_permissions"] = {
+        "release_jobs": sorted(release_jobs),
+        "privileged_jobs": sorted(privileged),
+        "top_level_permissions": release_inventory.get("top_level_permissions"),
+        "authorized_workflow_jobs": sorted(authorized_inventory["jobs"]),
+    }
+    return PHASE_COMPLETE
 
 
 CHARACTERIZATION_PHASES = frozenset({
     "authorization_boundary",
-    "workflow_graph_permissions",
 })
 
 
@@ -459,10 +574,12 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
             "with exact internal requirements; read-only shared registry "
             "equality; the publisher fixture state-machine matrix; "
             "changelog-corpus identity plus exact release-record/note and "
-            "support-doc binding; the manifest/asset surface fixture matrix). "
-            "The remaining phases are characterizations that do not yet prove "
-            "exact-subject semantics or zero mutation and cannot satisfy a "
-            "release gate."
+            "support-doc binding; the manifest/asset surface fixture matrix; "
+            "the release workflow graph permission inventory). The "
+            "authorization_boundary phase deliberately stays Incomplete: the "
+            "rehearsal proves the token-free posture and records the checked "
+            "authorization artifact's identity but never consumes "
+            "authorization, so the aggregate cannot satisfy a release gate."
         ),
     }
 
