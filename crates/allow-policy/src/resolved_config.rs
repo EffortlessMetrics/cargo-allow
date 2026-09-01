@@ -180,7 +180,7 @@ pub struct ResolvedCargoAllowConfigV1 {
     pub producer_generation: u32,
     pub source_subject: String,
     pub requested_root: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_root_relation: Option<ConfigRootRelationV1>,
     pub resolved_repository_root: String,
     pub status: ConfigResolutionStatusV1,
@@ -1227,7 +1227,7 @@ fn unavailable_resolution(
         schema_version: RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION,
         producer_generation: 1,
         source_subject: source_subject.to_string(),
-        requested_root: ".".to_string(),
+        requested_root: "unknown".to_string(),
         requested_root_relation: Some(ConfigRootRelationV1::Unknown),
         resolved_repository_root: ".".to_string(),
         status: ConfigResolutionStatusV1::InstrumentFailure,
@@ -1259,7 +1259,10 @@ fn unavailable_resolution(
         generated_scopes: Vec::new(),
         selected_sensor_families: Vec::new(),
         diagnostics: vec![diagnostic],
-        limitations: vec![CURRENT_ADAPTER_LIMITATION.to_string()],
+        limitations: vec![
+            CURRENT_ADAPTER_LIMITATION.to_string(),
+            ROOT_RELATIONSHIP_UNKNOWN_LIMITATION.to_string(),
+        ],
         claim_boundary: RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY.to_string(),
     }
 }

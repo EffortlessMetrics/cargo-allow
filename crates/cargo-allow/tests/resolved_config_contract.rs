@@ -2,7 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use allow_policy::{
-    resolve_cargo_allow_config_v1, resolve_cargo_allow_config_v1_with_requested_root,
+    ResolvedCargoAllowConfigV1, resolve_cargo_allow_config_v1,
+    resolve_cargo_allow_config_v1_with_requested_root,
 };
 use allow_report::render_resolved_cargo_allow_config_json;
 
@@ -88,6 +89,24 @@ fn producer_marks_unrepresentable_requested_root_without_claiming_repository_roo
     ensure(
         resolved.requested_root_relation == Some(allow_policy::ConfigRootRelationV1::Unknown),
         "unresolvable requested root should carry an unknown relationship",
+    )
+}
+
+#[test]
+fn legacy_resolved_config_omits_absent_optional_root_relation_on_reserialize() -> TestResult {
+    let fixture = Fixture::new("legacy-root-relation")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let resolved = resolve_cargo_allow_config_v1(fixture.path(), None, "subject:legacy")?;
+    let mut legacy = serde_json::to_value(&resolved)?;
+    legacy
+        .as_object_mut()
+        .ok_or("resolved config should serialize as an object")?
+        .remove("requested_root_relation");
+    let parsed: ResolvedCargoAllowConfigV1 = serde_json::from_value(legacy)?;
+    let reserialized = serde_json::to_value(parsed)?;
+    ensure(
+        reserialized.get("requested_root_relation").is_none(),
+        "legacy payloads should not reserialize an absent optional field as null",
     )
 }
 

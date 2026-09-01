@@ -96,10 +96,11 @@ package from workspace metadata, the skipped attempt uses the honest generic
 `cargo_metadata` source rather than being mislabeled as legacy discovery.
 The initial adapter intentionally reports partial completeness
 because current discovery stops after its winner and still performs multiple
-reads. The initial adapter also receives the caller's already-resolved root, so
-its requested-root and repository-root identities are both `.`; retaining a
-distinct invocation root remains part of the broader #3875 contract. Command
-cutover and single-resolution authority remain #3876.
+reads. The adapter now preserves an explicitly supplied in-repository
+requested-root identity while keeping the resolved repository root at `.`;
+unknown and external relationships remain explicit and portable. Candidate
+completeness, effective configuration facts, and command cutover remain part
+of the broader #3875/#3876 work.
 
 ### Spec-system profile
 
