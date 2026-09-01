@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Resolved cargo-allow configuration now reports the effective inventory mode
+  and selected source-tree sensor families from the parsed policy observation
+  (#3875).
