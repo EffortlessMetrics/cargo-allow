@@ -71,28 +71,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11205"
-kind = "non_rust_file"
-family = "documentation"
-path = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-owner = "core/policy"
-classification = "resolved_config_component_schema"
-reason = "Defines the versioned reusable JSON component contract for the read-only source-exception configuration projection in issue #3875."
-evidence = ["issue:3875", "doc:docs/schemas/README.md", "test:resolved_config_contract"]
-created = "2026-08-30"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-target_fingerprint = "json"
-glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9258"
 kind = "non_rust_file"
 family = "documentation"
@@ -131,6 +109,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3875-d-current-behavior.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3875-d-current-behavior.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11205"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+owner = "core/policy"
+classification = "resolved_config_component_schema"
+reason = "Defines the versioned reusable JSON component contract for the read-only source-exception configuration projection in issue #3875."
+evidence = ["issue:3875", "doc:docs/schemas/README.md", "test:resolved_config_contract"]
+created = "2026-08-30"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
 
 [allow.last_seen]
 line = 1
@@ -14763,6 +14763,94 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0693"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/final-package-docs.v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "JSON schema for the final package-docs receipt contract (#3773)"
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/final-package-docs.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/final-package-docs.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0694"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/final-package-docs.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Checked final package-docs receipt producer binding the ten-package 0.2.0 candidate to the normalized-manifest, docs-posture, channel-law, and rc-line-exclusion audits (#3773)"
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/final-package-docs.py"
+target_fingerprint = "py"
+glob = "scripts/final-package-docs.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0695"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-final-package-docs.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Fixture contract suite proving the final package-docs receipt law with six negative controls (#3773)"
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-final-package-docs.py"
+target_fingerprint = "py"
+glob = "scripts/test-final-package-docs.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0696"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3773-final-package-docs-receipt.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the added_allow receipts for the final package-docs receipt lane (#3773)."
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3773-final-package-docs-receipt.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3773-final-package-docs-receipt.toml"
 
 [allow.last_seen]
 line = 1
