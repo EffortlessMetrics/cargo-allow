@@ -1508,11 +1508,25 @@ ast_kind = "tracked_file"
 }
 
 fn remove_doctor_fixture_dir(path: std::path::PathBuf) {
-    match fs::remove_dir_all(&path) {
-        Ok(()) => {}
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => {
-            std::panic::panic_any(format!("remove doctor fixture {}: {err}", path.display()))
+    // Under parallel suite load (notably on Windows), fixture files can be
+    // held open momentarily and removal fails with a transient sharing
+    // violation. Retry with a short backoff before giving up: a leaked
+    // fixture directory is unique to this test process and preferable to
+    // failing an otherwise green suite run.
+    const ATTEMPTS: usize = 8;
+    for attempt in 0..ATTEMPTS {
+        match fs::remove_dir_all(&path) {
+            Ok(()) => return,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return,
+            Err(err) => {
+                if attempt + 1 == ATTEMPTS {
+                    std::panic::panic_any(format!(
+                        "remove doctor fixture {}: {err}",
+                        path.display()
+                    ));
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50 * (attempt as u64 + 1)));
+            }
         }
     }
 }
