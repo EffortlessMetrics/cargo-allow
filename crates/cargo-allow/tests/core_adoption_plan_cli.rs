@@ -227,7 +227,10 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
 fn adopt_does_not_trust_conventional_policy_after_federation_failure() -> Result<(), String> {
     let root = temp_root("adoption-federation-failure")?;
     fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
-    fs::write(root.join("policy/allow.toml"), "schema_version = \"1.0\"\n")
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ndefault_mode = \"no-new\"\n",
+    )
         .map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
     fs::write(root.join(".allow/config.toml"), "not valid = [toml\n")
