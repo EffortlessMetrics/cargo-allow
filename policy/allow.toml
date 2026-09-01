@@ -15038,3 +15038,25 @@ normalized_snippet_hash = "fnv1a64:cf5403c940379e2d"
 [allow.last_seen]
 line = 214
 column = 50
+
+[[allow]]
+id = "allow-0707"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-crate-docs.sh"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Checked rustdoc warning-clean proof for the selected release closure (#3773): RUSTDOCFLAGS=-D warnings cargo doc per candidate crate, fail-closed, with a versioned receipt"
+evidence = ["issue:3773"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-crate-docs.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-crate-docs.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

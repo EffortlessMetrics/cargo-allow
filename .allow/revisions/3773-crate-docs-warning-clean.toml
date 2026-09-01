@@ -1,0 +1,17 @@
+schema_version = 1
+# Revision note for #3773: checked rustdoc warning-clean proof.
+
+# This diff adds the changie-fragment receipt entry for the crate-docs
+# warning-clean lane: the proof script, its earlier fragment, and the
+# package-smoke wiring already merged with #4090's sibling receipts; only
+# this fragment's own receipt is new here. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened.
+# policy/allow.toml keeps its CRLF line-ending contract; the net transition
+# is append-only.
+
+
+[[records]]
+allow_ids = ["allow-0707"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8610ca00cc1a02e02f5803371d282103282041e42c07dd05b4cfdfc7917d6395"
+reason = "Receipts the changie fragment declaring the crate-docs warning-clean proof addition (#3773)."
