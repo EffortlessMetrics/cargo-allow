@@ -142,6 +142,7 @@ pub use github_pr_check_v1::{
 pub use reconciled_package_publication_v1::{
     PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
     RECONCILED_PACKAGE_PUBLICATION_SCHEMA, ReconciledPackagePublicationV1,
+    manifest_rows_from_reconciled,
 };
 
 pub use rc_publication_incident_v1::{
