@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Prove installed/cross-repository conformance for the agent review packet,
+  PR C of #3976: the same compiler compiles a realistic cargo-allow change
+  (routed feature-configuration proof narrative) and a foreign
+  perl-lsp-swarm candidate into packets bound to the identical captured
+  agent_review_packet.v1 generation and captured section vocabulary with
+  distinct candidate, claim, profile, and packet identities, and recurrence
+  guards now reject private duplicate review schemas — an in-crate law test
+  pins the review-packet schema const family to exactly the three shared
+  authority names plus the sanctioned cargo-suite profile and compiled-packet
+  render schemas, and repository-wide scans fail on any family schema-id
+  const outside the sanctioned set or any family fork token in
+  docs/schemas.

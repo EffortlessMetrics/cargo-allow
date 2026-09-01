@@ -85,6 +85,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::agentic_candidate::ClaimRefV1;
+
+/// Render envelope schema of the compiled packet's JSON render. This is the
+/// sanctioned cargo-suite render envelope only: the packet contract itself
+/// stays `agent_review_packet.v1` through the captured fixture, and this id
+/// never replaces, extends, or forks the shared review-packet family.
+const PACKET_JSON_RENDER_SCHEMA_V1: &str = "cargo-allow.compiled-review-packet-json-render.v1";
 use crate::agentic_review_profile::{
     AGENT_REVIEW_PACKET_SCHEMA_V1, CargoSuiteReviewProfileV1, ClosureSurfaceV1, FIELD_SEPARATOR,
     LIST_SEPARATOR, ProofObligationKindV1, ReviewMapEntryV1, SHARED_REVIEW_PACKET_AUTHORITY,
@@ -1207,7 +1213,7 @@ pub fn render_compiled_packet_json(packet: &CompiledReviewPacketV1) -> Result<St
         }
     }
     let render = PacketJsonRenderV1 {
-        render_schema: "cargo-allow.compiled-review-packet-json-render.v1",
+        render_schema: PACKET_JSON_RENDER_SCHEMA_V1,
         packet,
         parity_sections,
     };
@@ -1246,7 +1252,11 @@ pub fn render_compiled_packet_markdown(packet: &CompiledReviewPacketV1) -> Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::agentic_review_profile::CAPTURED_REVIEW_SCHEMA_SECTIONS;
+    use crate::agentic_review_profile::{
+        AGENT_REVIEW_FINDING_SCHEMA_V1, CAPTURED_REVIEW_SCHEMA_GENERATION,
+        CAPTURED_REVIEW_SCHEMA_SECTIONS, CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1,
+        ClosureSurfaceKindV1, ReviewLensV1, STAGE_CLOSURE_PROJECTION_SCHEMA_V1,
+    };
 
     const CLAIM_STATEMENT: &str = "packet compiler keeps human and machine renders in parity";
     const FALSIFIER_DESCRIPTION: &str = "a parity row missing from one render";
@@ -1954,6 +1964,553 @@ mod tests {
             }),
             "recheck must name non-current proof currentness: {recheck_rows:?}"
         );
+        Ok(())
+    }
+
+    // === #3976 PR C: installed/cross-repository conformance ===
+    //
+    // Two synthetic fixtures prove the SAME adapter machinery compiles packets
+    // for different repositories and products without forking the shared
+    // contract: one realistic cargo-allow change (narrative flavor from the
+    // historical #4068 routed feature-configuration proof) and one foreign
+    // perl-lsp-swarm candidate whose ClaimRef repository is the shared
+    // authority host. Both are inline-string fixtures; no external fetch,
+    // repository access, or live cross-repo operation happens here — the
+    // issue's "installed/cross-repository" law is that the contract is
+    // exercisable for foreign repositories, and #2257/#3829 dogfood remains
+    // out of scope.
+
+    const CONFORMANCE_CARGO_REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
+    const CONFORMANCE_FOREIGN_REPOSITORY: &str = "EffortlessMetrics/perl-lsp-swarm";
+    const CONFORMANCE_CARGO_ACCEPTED_BASE: &str = "12c499df0123456789abcdef0123456789abcdef";
+    const CONFORMANCE_CARGO_BASE_COMMIT: &str = "9bddd66f0123456789abcdef0123456789abcdef";
+    const CONFORMANCE_CARGO_HEAD_COMMIT: &str = "4068fedc0123456789abcdef0123456789abcdef";
+    const CONFORMANCE_FOREIGN_ACCEPTED_BASE: &str = "1a2b3c4d0123456789abcdef0123456789abcdef";
+    const CONFORMANCE_FOREIGN_BASE_COMMIT: &str = "aaaaaaaa0123456789abcdef0123456789abcdef";
+    const CONFORMANCE_FOREIGN_HEAD_COMMIT: &str = "bbbbbbbb0123456789abcdef0123456789abcdef";
+
+    /// Scenario 1 profile: a realistic cargo-allow change whose claim carries
+    /// the routed feature-configuration proof (#4068) narrative.
+    fn conformance_cargo_profile() -> CargoSuiteReviewProfileV1 {
+        CargoSuiteReviewProfileV1 {
+            profile_schema: CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1.into(),
+            repository: CONFORMANCE_CARGO_REPOSITORY.into(),
+            claim: ClaimRefV1 {
+                repository: CONFORMANCE_CARGO_REPOSITORY.into(),
+                controlling_issue: 4068,
+                change: "feature-configuration-routing".into(),
+                semantic_route: "ci.feature_configuration_row_routing".into(),
+                claim: "the routed feature-configuration proof lands row-aware CI".into(),
+                writer_key: "feature-configuration-routing".into(),
+                accepted_base: CONFORMANCE_CARGO_ACCEPTED_BASE.into(),
+                claim_boundary: "row-aware CI routing of one proof only".into(),
+            },
+            shared_schema_generation: CAPTURED_REVIEW_SCHEMA_GENERATION.into(),
+            profile_generation: "cargo-suite-review-profile-generation-1".into(),
+            adapter_generation: "review-packet-compiler-generation-1".into(),
+            intent_boundary: "cargo-intent accepted change authority".into(),
+            intent_result: "Accepted".into(),
+            claim_ceiling: "one reviewed semantic transition".into(),
+            required_closure_surfaces: vec![
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Owned,
+                    subject: ".github/workflows/feature-configuration-qualification.yml".into(),
+                    inclusion_reason:
+                        "the row-aware qualification workflow the proof routes through".into(),
+                },
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Owned,
+                    subject: "scripts/feature-config-routing.py".into(),
+                    inclusion_reason: "the routing script that derives the proof rows".into(),
+                },
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Support,
+                    subject: "docs/ci.md".into(),
+                    inclusion_reason: "the documented CI lane contract the routing must match"
+                        .into(),
+                },
+            ],
+            required_proof_obligations: vec![
+                ProofObligationKindV1::IntentGuidance,
+                ProofObligationKindV1::ProofGate,
+                ProofObligationKindV1::ProofReceipt,
+            ],
+            required_lenses: vec![
+                ReviewLensV1::SemanticCorrectness,
+                ReviewLensV1::SubjectEvidenceIdentity,
+                ReviewLensV1::SpecTestDocsClaimConsistency,
+            ],
+            review_map: vec![
+                ReviewMapEntryV1 {
+                    surface: ".github/workflows/feature-configuration-qualification.yml".into(),
+                    reviewer_question: "does every qualification row carry its owning proof \
+                                        receipt?"
+                        .into(),
+                },
+                ReviewMapEntryV1 {
+                    surface: "scripts/feature-config-routing.py".into(),
+                    reviewer_question: "does the routing keep each proof row's outcome \
+                                        unflattened?"
+                        .into(),
+                },
+                ReviewMapEntryV1 {
+                    surface: "docs/ci.md".into(),
+                    reviewer_question: "does the documented lane contract match the routed \
+                                        workflow?"
+                        .into(),
+                },
+            ],
+            limitations: vec![
+                "synthetic conformance fixture; narrative flavor from #4068 only".into(),
+            ],
+            overflow_refs: vec![
+                "EffortlessMetrics/cargo-allow#4068".into(),
+                "EffortlessMetrics/cargo-allow#3905".into(),
+            ],
+            claim_boundary: "row-aware CI routing conformance only".into(),
+        }
+    }
+
+    /// Scenario 1 request: current intent evidence, Passed+Current proofs
+    /// covering every required obligation kind, evidenced established claims,
+    /// falsifiers, and old-path dispositions.
+    fn conformance_cargo_request() -> PacketCompilationRequestV1 {
+        PacketCompilationRequestV1 {
+            profile: conformance_cargo_profile(),
+            candidate: CandidateIdentityInputV1 {
+                repository: CONFORMANCE_CARGO_REPOSITORY.into(),
+                claim_ref: "EffortlessMetrics/cargo-allow#4068".into(),
+                candidate_release_channel: "release_candidate_1".into(),
+                candidate_release_version: "0.2.0-rc.1".into(),
+                base_commit: CONFORMANCE_CARGO_BASE_COMMIT.into(),
+                head_commit: CONFORMANCE_CARGO_HEAD_COMMIT.into(),
+                tree_digest: "tree-digest:4068-feature-configuration-routing".into(),
+                diff_summary_ref: "diff-summary:4068-feature-configuration-routing".into(),
+            },
+            intent: IntentEvidenceInputV1 {
+                guidance_ref: "intent-guidance:3905-pr-d".into(),
+                guidance_generation: "guidance-generation-1".into(),
+                boundary_summary: "feature-configuration proof routing only".into(),
+                result_summary: "Accepted".into(),
+                currentness: IntentCurrentnessV1::Current,
+            },
+            proofs: vec![
+                passed_proof(
+                    "proof-plan:3905-feature-configuration",
+                    vec![
+                        ProofObligationKindV1::IntentGuidance,
+                        ProofObligationKindV1::ProofGate,
+                    ],
+                    Vec::new(),
+                ),
+                ProofEvidenceInputV1 {
+                    plan_ref: "proof-plan:3905-routing-tests".into(),
+                    gate_ref: "proof-gate:3905-routing-tests".into(),
+                    receipt_ref: "proof-receipt:3905-routing-tests".into(),
+                    provider_name: "github-actions".into(),
+                    outcome: ProofOutcomeSummaryV1::Passed,
+                    currentness: IntentCurrentnessV1::Current,
+                    contradictions: Vec::new(),
+                    covers: vec![ProofObligationKindV1::ProofReceipt],
+                },
+            ],
+            established: vec![
+                EstablishedClaimV1 {
+                    statement: "the feature-configuration proof routes through row-aware CI".into(),
+                    evidence_refs: vec!["proof-receipt:3905-feature-configuration".into()],
+                },
+                EstablishedClaimV1 {
+                    statement: "every qualification row keeps its owning proof receipt".into(),
+                    evidence_refs: vec!["proof-receipt:3905-routing-tests".into()],
+                },
+            ],
+            not_established: vec![NotEstablishedClaimV1 {
+                statement: "row-aware CI proves semantic correctness of the scanner".into(),
+                exclusion_reason: "CI rows prove execution, not semantics".into(),
+            }],
+            falsifiers: vec![
+                FalsifierV1 {
+                    description: "a qualification row passes with no owning proof receipt".into(),
+                    control_ref: "proof-receipt:3905-feature-configuration".into(),
+                },
+                FalsifierV1 {
+                    description: "a routed lane fails while the row summary reports passed".into(),
+                    control_ref: "docs/ci.md row-aware summary law".into(),
+                },
+            ],
+            old_paths: vec![
+                OldPathDispositionV1 {
+                    path_description: "single-column qualification summary without per-row \
+                                      receipts"
+                        .into(),
+                    status: OldPathStatusV1::Retired,
+                    controlling_ref: "EffortlessMetrics/cargo-allow#4068".into(),
+                },
+                OldPathDispositionV1 {
+                    path_description: "hand-assembled proof tables in PR descriptions".into(),
+                    status: OldPathStatusV1::StillLive,
+                    controlling_ref: "EffortlessMetrics/cargo-allow#3905".into(),
+                },
+            ],
+            builder_narrative: BuilderNarrativeRefV1 {
+                reference: "builder-summary:4068-feature-configuration-routing".into(),
+            },
+        }
+    }
+
+    /// Scenario 2 profile: a foreign perl-lsp-swarm candidate. The compiler
+    /// requires no cargo-allow-specific vocabulary: the repository, claim,
+    /// closure surfaces, review map, and provider names all come from the
+    /// caller, and the profile schema stays the sanctioned cargo-suite id
+    /// bound to the same captured shared generation.
+    fn conformance_foreign_profile() -> CargoSuiteReviewProfileV1 {
+        CargoSuiteReviewProfileV1 {
+            profile_schema: CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1.into(),
+            repository: CONFORMANCE_FOREIGN_REPOSITORY.into(),
+            claim: ClaimRefV1 {
+                repository: CONFORMANCE_FOREIGN_REPOSITORY.into(),
+                controlling_issue: 10881,
+                change: "parser-upgrade-rec-descent-fallback".into(),
+                semantic_route: "perl-lsp.parser_upgrade".into(),
+                claim: "the parser upgrade removes the rec descent fallback".into(),
+                writer_key: "perl-lsp-swarm-10881-parser-upgrade".into(),
+                accepted_base: CONFORMANCE_FOREIGN_ACCEPTED_BASE.into(),
+                claim_boundary: "parser fallback removal only".into(),
+            },
+            shared_schema_generation: CAPTURED_REVIEW_SCHEMA_GENERATION.into(),
+            profile_generation: "cargo-suite-review-profile-generation-1".into(),
+            adapter_generation: "review-packet-compiler-generation-1".into(),
+            intent_boundary: "accepted change authority of the shared review-packet host".into(),
+            intent_result: "Accepted".into(),
+            claim_ceiling: "one reviewed semantic transition".into(),
+            required_closure_surfaces: vec![
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Owned,
+                    subject: "lib/Perl/LSP/Parser.pm".into(),
+                    inclusion_reason: "the parser module whose rec descent fallback is removed"
+                        .into(),
+                },
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Owned,
+                    subject: "t/parser_fallback.t".into(),
+                    inclusion_reason: "the fixture proving the fallback is gone".into(),
+                },
+                ClosureSurfaceV1 {
+                    kind: ClosureSurfaceKindV1::Shared,
+                    subject: "lib/Perl/LSP/Lexer.pm".into(),
+                    inclusion_reason: "the token-stream contract the table parser consumes".into(),
+                },
+            ],
+            required_proof_obligations: vec![
+                ProofObligationKindV1::IntentGuidance,
+                ProofObligationKindV1::ProofGate,
+            ],
+            required_lenses: vec![
+                ReviewLensV1::SemanticCorrectness,
+                ReviewLensV1::PlatformRuntimePortability,
+            ],
+            review_map: vec![
+                ReviewMapEntryV1 {
+                    surface: "lib/Perl/LSP/Parser.pm".into(),
+                    reviewer_question: "is the rec descent fallback unreachable for every \
+                                        grammar input?"
+                        .into(),
+                },
+                ReviewMapEntryV1 {
+                    surface: "t/parser_fallback.t".into(),
+                    reviewer_question: "does the fixture trip when the fallback re-enters?".into(),
+                },
+                ReviewMapEntryV1 {
+                    surface: "lib/Perl/LSP/Lexer.pm".into(),
+                    reviewer_question: "does the token-stream contract still satisfy the table \
+                                        parser?"
+                        .into(),
+                },
+            ],
+            limitations: vec![
+                "synthetic cross-repository fixture; no live perl-lsp-swarm access".into(),
+            ],
+            overflow_refs: vec!["EffortlessMetrics/perl-lsp-swarm#10881".into()],
+            claim_boundary: "parser fallback removal only".into(),
+        }
+    }
+
+    /// Scenario 2 request: a claim ref whose repository is the foreign one,
+    /// foreign closure surfaces, and a foreign CI provider.
+    fn conformance_foreign_request() -> PacketCompilationRequestV1 {
+        PacketCompilationRequestV1 {
+            profile: conformance_foreign_profile(),
+            candidate: CandidateIdentityInputV1 {
+                repository: CONFORMANCE_FOREIGN_REPOSITORY.into(),
+                claim_ref: "EffortlessMetrics/perl-lsp-swarm#10881".into(),
+                candidate_release_channel: "stable".into(),
+                candidate_release_version: "0.42.0".into(),
+                base_commit: CONFORMANCE_FOREIGN_BASE_COMMIT.into(),
+                head_commit: CONFORMANCE_FOREIGN_HEAD_COMMIT.into(),
+                tree_digest: "tree-digest:10881-parser-upgrade".into(),
+                diff_summary_ref: "diff-summary:10881-parser-upgrade".into(),
+            },
+            intent: IntentEvidenceInputV1 {
+                guidance_ref: "perl-lsp-intent-guidance:10881".into(),
+                guidance_generation: "guidance-generation-1".into(),
+                boundary_summary: "parser upgrade only".into(),
+                result_summary: "Accepted".into(),
+                currentness: IntentCurrentnessV1::Current,
+            },
+            proofs: vec![ProofEvidenceInputV1 {
+                plan_ref: "proof-plan:10881-parser-upgrade".into(),
+                gate_ref: "perl-lsp-ci:parser-upgrade".into(),
+                receipt_ref: "receipt:10881-parser-upgrade".into(),
+                provider_name: "perl-lsp-swarm-ci".into(),
+                outcome: ProofOutcomeSummaryV1::Passed,
+                currentness: IntentCurrentnessV1::Current,
+                contradictions: Vec::new(),
+                covers: vec![
+                    ProofObligationKindV1::IntentGuidance,
+                    ProofObligationKindV1::ProofGate,
+                ],
+            }],
+            established: vec![EstablishedClaimV1 {
+                statement: "the recursive-descent fallback path is removed from the parser".into(),
+                evidence_refs: vec!["receipt:10881-parser-upgrade".into()],
+            }],
+            not_established: vec![NotEstablishedClaimV1 {
+                statement: "parse performance parity is proven".into(),
+                exclusion_reason: "no benchmark evidence was supplied".into(),
+            }],
+            falsifiers: vec![FalsifierV1 {
+                description: "a grammar the table parser rejects silently re-enters the rec \
+                              descent path"
+                    .into(),
+                control_ref: "t/parser_fallback.t".into(),
+            }],
+            old_paths: vec![OldPathDispositionV1 {
+                path_description: "recursive-descent fallback parser".into(),
+                status: OldPathStatusV1::Retired,
+                controlling_ref: "EffortlessMetrics/perl-lsp-swarm#10881".into(),
+            }],
+            builder_narrative: BuilderNarrativeRefV1 {
+                reference: "builder-summary:10881-parser-upgrade".into(),
+            },
+        }
+    }
+
+    #[test]
+    fn cargo_allow_change_scenario_compiles_ready_in_captured_vocabulary() -> Result<(), String> {
+        let profile = conformance_cargo_profile();
+        profile
+            .bind_to_captured_schema(&captured_review_schema_fixture())
+            .map_err(|error| {
+                format!("cargo-allow profile must bind the captured schema: {error}")
+            })?;
+        let packet = compile_review_packet(conformance_cargo_request())?;
+        assert_eq!(
+            packet.readiness,
+            PacketReadinessV1::ReadyForFormalReview,
+            "the fully evidenced cargo-allow change packet must be ready: {:?}",
+            packet.readiness
+        );
+        assert_eq!(packet.packet_schema, AGENT_REVIEW_PACKET_SCHEMA_V1);
+        assert_eq!(
+            packet.shared_schema_generation,
+            CAPTURED_REVIEW_SCHEMA_GENERATION
+        );
+        let rows = packet_parity_rows(&packet);
+        if rows.is_empty() {
+            return Err("the cargo-allow conformance packet must emit parity rows".into());
+        }
+        for (section, _) in &rows {
+            assert!(
+                CAPTURED_REVIEW_SCHEMA_SECTIONS.contains(&section.as_str()),
+                "cargo-allow scenario emitted section {section} outside the captured shared \
+                 vocabulary"
+            );
+        }
+        assert!(
+            packet.claim.claim.contains("feature-configuration"),
+            "the scenario claim must carry the #4068 routed feature-configuration narrative: {}",
+            packet.claim.claim
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn foreign_repository_scenario_compiles_on_the_same_captured_contract() -> Result<(), String> {
+        let cargo_packet = compile_review_packet(conformance_cargo_request())?;
+        let foreign_profile = conformance_foreign_profile();
+        foreign_profile
+            .bind_to_captured_schema(&captured_review_schema_fixture())
+            .map_err(|error| format!("foreign profile must bind the captured schema: {error}"))?;
+        let foreign = compile_review_packet(conformance_foreign_request())?;
+        assert_eq!(
+            foreign.readiness,
+            PacketReadinessV1::ReadyForFormalReview,
+            "the fully evidenced foreign packet must be ready: {:?}",
+            foreign.readiness
+        );
+
+        // Model neutrality: the sole contract carries no cargo-allow
+        // vocabulary. The foreign packet binds the same shared packet schema
+        // and the same captured generation — no private fork appeared.
+        assert_eq!(foreign.packet_schema, AGENT_REVIEW_PACKET_SCHEMA_V1);
+        assert_eq!(foreign.packet_schema, cargo_packet.packet_schema);
+        assert_eq!(
+            foreign.shared_schema_generation,
+            cargo_packet.shared_schema_generation
+        );
+        assert_eq!(
+            foreign.shared_schema_generation,
+            CAPTURED_REVIEW_SCHEMA_GENERATION
+        );
+        assert!(
+            !foreign.packet_schema.contains("cargo-allow"),
+            "the shared packet schema must stay model-neutral: {}",
+            foreign.packet_schema
+        );
+        assert!(
+            !foreign.shared_schema_generation.contains("cargo"),
+            "the captured generation must stay model-neutral: {}",
+            foreign.shared_schema_generation
+        );
+        for (section, _) in packet_parity_rows(&foreign) {
+            assert!(
+                CAPTURED_REVIEW_SCHEMA_SECTIONS.contains(&section.as_str()),
+                "foreign scenario emitted section {section} outside the captured shared \
+                 vocabulary"
+            );
+        }
+        assert!(
+            foreign
+                .authority_rows
+                .iter()
+                .any(|row| row.contains(SHARED_REVIEW_PACKET_AUTHORITY)),
+            "the foreign packet must carry the shared authority row: {:?}",
+            foreign.authority_rows
+        );
+
+        // Different candidates must compile to different identities while both
+        // stay bound to the SAME captured schema generation (proven above).
+        assert_ne!(
+            foreign.packet_identity, cargo_packet.packet_identity,
+            "distinct repository candidates must not share one packet identity"
+        );
+        assert_ne!(foreign.profile_identity, cargo_packet.profile_identity);
+        assert_ne!(foreign.claim_identity, cargo_packet.claim_identity);
+        assert_ne!(foreign.candidate_identity, cargo_packet.candidate_identity);
+        Ok(())
+    }
+
+    // === #3976 PR C: recurrence check against private duplicate schemas ===
+
+    /// Extract `(name, value)` pairs from single-line `pub const NAME: &str =
+    /// "value";` / `const NAME: &str = "value";` declarations whose name
+    /// carries `SCHEMA` and whose literal value ends in `.v1`. Any other
+    /// declaration shape (arrays, non-literal values, non-schema names) is
+    /// ignored on purpose: the recurrence law below enumerates the schema-id
+    /// constants of the review-packet family.
+    fn schema_const_declarations(source: &str) -> Vec<(String, String)> {
+        let mut declarations = Vec::new();
+        for line in source.lines() {
+            let trimmed = line.trim();
+            let name = if trimmed.starts_with("pub const ") {
+                trimmed.split_whitespace().nth(2)
+            } else if trimmed.starts_with("const ") {
+                trimmed.split_whitespace().nth(1)
+            } else {
+                None
+            };
+            let Some(name) = name else { continue };
+            if !name.contains("SCHEMA") {
+                continue;
+            }
+            let Some(value) = trimmed.split('"').nth(1) else {
+                continue;
+            };
+            if !value.ends_with(".v1") {
+                continue;
+            }
+            declarations.push((name.trim_end_matches(':').to_string(), value.to_string()));
+        }
+        declarations
+    }
+
+    #[test]
+    fn review_packet_schema_family_is_exactly_the_sanctioned_set() -> Result<(), String> {
+        let mut declared =
+            schema_const_declarations(include_str!("agentic_review_packet_compiler.rs"));
+        declared.extend(schema_const_declarations(include_str!(
+            "agentic_review_profile.rs"
+        )));
+        declared.sort();
+        let expected = vec![
+            (
+                "AGENT_REVIEW_FINDING_SCHEMA_V1".to_string(),
+                AGENT_REVIEW_FINDING_SCHEMA_V1.to_string(),
+            ),
+            (
+                "AGENT_REVIEW_PACKET_SCHEMA_V1".to_string(),
+                AGENT_REVIEW_PACKET_SCHEMA_V1.to_string(),
+            ),
+            (
+                "CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1".to_string(),
+                CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1.to_string(),
+            ),
+            (
+                "PACKET_JSON_RENDER_SCHEMA_V1".to_string(),
+                PACKET_JSON_RENDER_SCHEMA_V1.to_string(),
+            ),
+            (
+                "STAGE_CLOSURE_PROJECTION_SCHEMA_V1".to_string(),
+                STAGE_CLOSURE_PROJECTION_SCHEMA_V1.to_string(),
+            ),
+        ];
+        assert_eq!(
+            declared,
+            expected,
+            "the review-packet schema family changed: a schema const was added to, removed \
+             from, or renamed in the review profile/compiler modules. Do not fork the shared \
+             contract — bind the captured fixture instead. The sanctioned set is the three \
+             shared authority names from {SHARED_REVIEW_PACKET_AUTHORITY} \
+             (agent_review_packet.v1, agent_review_finding.v1, stage_closure_projection.v1) \
+             plus the sanctioned cargo-suite profile schema and compiled-packet render schema, \
+             both bound to captured generation {CAPTURED_REVIEW_SCHEMA_GENERATION}. \
+             Deletion condition: {}",
+            crate::agentic_review_profile::CAPTURED_SCHEMA_DELETION_CONDITION
+        );
+
+        // Each sanctioned id must classify exactly one way: the three shared
+        // authority names carry no cargo-allow namespace, and the two
+        // sanctioned cargo-suite schemas do.
+        for (name, value) in &declared {
+            let shared = matches!(
+                value.as_str(),
+                AGENT_REVIEW_PACKET_SCHEMA_V1
+                    | AGENT_REVIEW_FINDING_SCHEMA_V1
+                    | STAGE_CLOSURE_PROJECTION_SCHEMA_V1
+            );
+            let sanctioned = matches!(
+                value.as_str(),
+                CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1 | PACKET_JSON_RENDER_SCHEMA_V1
+            );
+            assert!(
+                shared || sanctioned,
+                "{name} = {value} is neither a shared authority schema nor a sanctioned \
+                 cargo-suite schema"
+            );
+            if shared {
+                assert!(
+                    !value.starts_with("cargo-allow."),
+                    "shared authority schemas must not carry the cargo-allow namespace: {name} \
+                     = {value}"
+                );
+            } else {
+                assert!(
+                    value.starts_with("cargo-allow."),
+                    "sanctioned cargo-suite schemas must carry the cargo-allow namespace: {name} \
+                     = {value}"
+                );
+            }
+        }
         Ok(())
     }
 }

@@ -86,14 +86,14 @@
 
 ### `ADD-INTENT-MODEL-AGENTIC-REVIEW-PACKET-COMPILER`
 
-- Current: Three-product review packet compiler: typed candidate identity, intent guidance, proof/gate/provider, established and refused claim, falsifier, old-path, and builder-narrative inputs compile into a deterministic CompiledReviewPacketV1 with readiness laws and parity-locked human and JSON renders
+- Current: Three-product review packet compiler: typed candidate identity, intent guidance, proof/gate/provider, established and refused claim, falsifier, old-path, and builder-narrative inputs compile into a deterministic CompiledReviewPacketV1 with readiness laws and parity-locked human and JSON renders; cross-repository conformance fixtures (a cargo-allow change and a foreign perl-lsp-swarm candidate) prove both compile on the same captured contract, and recurrence guards reject private duplicate review schemas in crate source and docs/schemas
 - Target: `cargo-intent / intent-model::agentic_review_packet_compiler`
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: Fold into the shared packet producer once direct consumption replaces the capture (#3976 deletion condition)
-- Next: PR C consumes the compiled packet for cross-repository conformance.
-- Deletion output: No compatibility deletion; PR B adds the compiler only; cross-repository conformance (PR C) remains future work.
+- Next: PR C landed: conformance fixtures and recurrence checks live beside the compiler and the schema index (#3976).
+- Deletion output: No compatibility deletion; PR B adds the compiler and PR C adds test-only conformance and recurrence guards.
 
 ### `ADD-INTENT-MODEL-AGENTIC-REVIEW-PROFILE`
 
@@ -103,8 +103,8 @@
 - Stage/status: `IntentModel` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: Delete the capture and bind the shared package once it becomes directly consumable (#3976 deletion condition)
-- Next: PR B compiles ClaimRef, intent guidance, and proof facts into the shared packet through this profile.
-- Deletion output: No compatibility deletion; PR A adds the profile contract only; candidate compilation (PR B) and cross-repository conformance (PR C) remain future work.
+- Next: PR B compiled ClaimRef, intent guidance, and proof facts into the shared packet; PR C proved the same captured contract compiles foreign-repository candidates without a fork.
+- Deletion output: No compatibility deletion; PR A adds the profile contract; candidate compilation (PR B) and cross-repository conformance with the recurrence guard (PR C) are landed.
 
 ### `INVENTORY-CARGO_INTENT-SRC`
 
