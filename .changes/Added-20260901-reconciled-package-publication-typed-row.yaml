@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Add the typed ReconciledPackagePublicationV1 row for ReleaseManifestV2
+  construction (#3761). Each manifest package row must be built from a
+  reconciled publication result, never from a state string alone: the row
+  class (CargoAllowCandidate | PublishedSharedPrerequisite) selects the
+  expected-checksum authority — candidate-local bytes for cargo-allow
+  rows, the retained #3744 namespace registry checksum for shared
+  prerequisites — and classification derives from expected/observed
+  equality plus the observed state. A candidate row whose version matches
+  but whose registry bytes predate the candidate classifies Stale; a
+  shared row with divergent registry bytes classifies Conflict;
+  present-but-malformed observed checksums classify Mismatch; absent
+  observations classify Missing or Unavailable per the provider state.
+  Only CompleteExact rows may enter a manifest. Typed tests cover exact,
+  stale, conflict, missing, unavailable, and malformed classifications.
