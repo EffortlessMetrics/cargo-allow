@@ -199,6 +199,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         .map(|config| resolve_config_path(&root, config))
         .transpose()?;
     let discovery = discover_config_path(&root, explicit_config.as_deref());
+    let has_explicit_config = explicit_config.is_some();
     // `discover_config_path` is the sole read-selection authority. Do not
     // rescan conventional paths here after it has classified candidates;
     // doing so could make `adopt` select a different policy than the central
@@ -226,7 +227,8 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         limitations.push("foreign policy candidates were skipped during discovery".to_string());
     }
 
-    let (cfg, policy_digest, policy_state, policy_diagnostic) = match policy_path.as_deref() {
+    let (cfg, policy_digest, mut policy_state, mut policy_diagnostic) = match policy_path.as_deref()
+    {
         Some(path) => {
             match crate::policy_config::load_policy_at_path_with_digest(
                 path.to_path_buf(),
@@ -248,6 +250,13 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             None,
         ),
     };
+    if !has_explicit_config && discovery.federation_evaluation_failed {
+        policy_state = allow_report::PolicyState::Invalid;
+        policy_diagnostic = Some(
+            "source-exception federation evaluation failed; conventional fallback was not trusted"
+                .to_string(),
+        );
+    }
     let options = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -376,7 +385,6 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         &outcomes,
         evidence_files.as_ref(),
     );
-    let mut policy_diagnostic = policy_diagnostic;
     let invalid_match_count = outcomes
         .iter()
         .filter(|outcome| {

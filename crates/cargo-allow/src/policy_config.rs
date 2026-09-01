@@ -38,6 +38,9 @@ pub(crate) struct ConfigDiscovery {
     pub source: Option<&'static str>,
     pub precedence: Option<PrecedenceTier>,
     pub federation: Option<allow_policy::federation::FederationEvaluation>,
+    /// True when federation evaluation failed before conventional fallback.
+    /// This is distinct from a successful evaluation with no federation.
+    pub federation_evaluation_failed: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -148,6 +151,7 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 source,
                 precedence: Some(evaluation.precedence_applied),
                 federation: Some(evaluation),
+                federation_evaluation_failed: false,
             }
         }
         Err(_) => {
@@ -158,6 +162,10 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 source: discovery.selected_source,
                 precedence: None,
                 federation: None,
+                federation_evaluation_failed: std::fs::symlink_metadata(
+                    root.join(allow_policy::federation::FEDERATION_CONFIG_REL_PATH),
+                )
+                .is_ok(),
             }
         }
     }
