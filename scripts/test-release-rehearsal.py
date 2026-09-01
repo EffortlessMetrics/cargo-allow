@@ -57,6 +57,14 @@ class TestReleaseRehearsal(unittest.TestCase):
                 "characterization-only phases cannot manufacture completion",
             )
 
+        assets = receipt.get("manifest_and_assets")
+        if phases["manifest_and_assets"] == "Complete":
+            self.assertIsInstance(assets, dict)
+            self.assertEqual(
+                assets["fixture_matrix"],
+                "scripts/test-final-packaged-surface.py",
+            )
+
         identity = receipt.get("release_identity")
         docs = receipt.get("docs_and_support_identity")
         if phases["docs_and_support_identity"] == "Complete":

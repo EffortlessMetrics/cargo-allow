@@ -357,8 +357,19 @@ def run_phase_docs_and_support(receipt: dict[str, Any]) -> str:
     return PHASE_COMPLETE
 
 
-def run_phase_manifest_and_assets(_receipt: dict[str, Any]) -> str:
-    return _run_characterization(
+def run_phase_manifest_and_assets(receipt: dict[str, Any]) -> str:
+    """Prove the manifest/asset surface tooling fixture matrix (#3751 phase 6).
+
+    The bounded fixture suite proves final-packaged-surface reconciliation on
+    actual crate bytes: archive digest and size binding, missing declared
+    assets reconciling to Incomplete, per-crate identity via the CLI,
+    prerelease and hyphenated identity preservation, and unexpected-archive
+    rejection — all offline, with no real publication.
+    """
+    receipt["manifest_and_assets"] = {
+        "fixture_matrix": "scripts/test-final-packaged-surface.py"
+    }
+    return _run_proof(
         [sys.executable, str(ROOT / "scripts/test-final-packaged-surface.py")]
     )
 
@@ -377,7 +388,6 @@ def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
 
 
 CHARACTERIZATION_PHASES = frozenset({
-    "manifest_and_assets",
     "authorization_boundary",
     "workflow_graph_permissions",
 })
@@ -443,14 +453,16 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
             "Phases release_identity, candidate_package_set, "
-            "shared_prerequisites, publisher_state_machine, and "
-            "docs_and_support_identity prove typed semantics (typed identity "
-            "validation; offline candidate packaging with exact internal "
-            "requirements; read-only shared registry equality; the publisher "
-            "fixture state-machine matrix; changelog-corpus identity plus "
-            "exact release-record/note and support-doc binding); the remaining "
-            "phases are characterizations that do not yet prove exact-subject "
-            "semantics or zero mutation and cannot satisfy a release gate."
+            "shared_prerequisites, publisher_state_machine, "
+            "docs_and_support_identity, and manifest_and_assets prove typed "
+            "semantics (typed identity validation; offline candidate packaging "
+            "with exact internal requirements; read-only shared registry "
+            "equality; the publisher fixture state-machine matrix; "
+            "changelog-corpus identity plus exact release-record/note and "
+            "support-doc binding; the manifest/asset surface fixture matrix). "
+            "The remaining phases are characterizations that do not yet prove "
+            "exact-subject semantics or zero mutation and cannot satisfy a "
+            "release gate."
         ),
     }
 
