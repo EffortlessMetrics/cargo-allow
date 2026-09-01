@@ -131,7 +131,6 @@ pub(super) fn cmd_reconcile_package_publication(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::CommandFactory;
 
     #[test]
     fn exact_candidate_projection_is_manifest_ready() {
