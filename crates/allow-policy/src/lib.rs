@@ -79,10 +79,11 @@ pub use resolved_config::{
     ConfigCandidateDispositionV1, ConfigCandidateSourceV1, ConfigCandidateV1, ConfigCompletenessV1,
     ConfigDiagnosticV1, ConfigFallbackV1, ConfigFederationParticipationV1,
     ConfigFederationPostureV1, ConfigPathAnchorV1, ConfigPrecedenceTierV1,
-    ConfigProfileParticipationV1, ConfigResolutionStatusV1, PortableConfigPathV1,
-    RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY, RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID,
-    RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION, ResolvedCargoAllowConfigV1, ResolvedPolicyV1,
-    resolve_cargo_allow_config_v1, resolve_cargo_allow_config_v1_with_requested_root,
+    ConfigProfileParticipationV1, ConfigResolutionStatusV1, ConfigRootRelationV1,
+    PortableConfigPathV1, RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY,
+    RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID, RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION,
+    ResolvedCargoAllowConfigV1, ResolvedPolicyV1, resolve_cargo_allow_config_v1,
+    resolve_cargo_allow_config_v1_with_requested_root,
 };
 pub use starter::starter_policy;
 pub use validation::validate_policy;

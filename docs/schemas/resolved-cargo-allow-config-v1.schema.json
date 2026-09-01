@@ -11,6 +11,7 @@
     "producer_generation",
     "source_subject",
     "requested_root",
+    "requested_root_relation",
     "resolved_repository_root",
     "status",
     "completeness",
@@ -41,7 +42,10 @@
       "pattern": "^[A-Za-z0-9._:@+\\-]+$"
     },
     "requested_root": { "$ref": "#/$defs/repository_path" },
-    "resolved_repository_root": { "$ref": "#/$defs/repository_path" },
+    "requested_root_relation": {
+      "enum": ["same", "descendant", "external", "unknown"]
+    },
+    "resolved_repository_root": { "const": "." },
     "status": {
       "enum": [
         "complete",

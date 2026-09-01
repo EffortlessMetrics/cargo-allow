@@ -102,6 +102,15 @@ pub enum ConfigPathAnchorV1 {
     DiscoveryAncestor,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ConfigRootRelationV1 {
+    Same,
+    Descendant,
+    External,
+    Unknown,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PortableConfigPathV1 {
@@ -171,6 +180,7 @@ pub struct ResolvedCargoAllowConfigV1 {
     pub producer_generation: u32,
     pub source_subject: String,
     pub requested_root: String,
+    pub requested_root_relation: ConfigRootRelationV1,
     pub resolved_repository_root: String,
     pub status: ConfigResolutionStatusV1,
     pub completeness: ConfigCompletenessV1,
@@ -239,12 +249,12 @@ pub fn resolve_cargo_allow_config_v1_with_requested_root(
     let federation_observation = observe_federation(&resolved_root);
     let evaluation = evaluate_source_exception_policy(&resolved_root, cli_config);
 
-    let (requested_root_identity, requested_root_equal) =
+    let (requested_root_identity, requested_root_relation) =
         portable_root_identity(requested_root, &resolved_root);
     Ok(compile_resolution(CompileResolutionInput {
         root: &resolved_root,
         requested_root_identity,
-        requested_root_equal,
+        requested_root_relation,
         cli_config,
         source_subject,
         discovery,
@@ -263,7 +273,7 @@ struct FederationObservation {
 struct CompileResolutionInput<'a> {
     root: &'a Path,
     requested_root_identity: String,
-    requested_root_equal: Option<bool>,
+    requested_root_relation: ConfigRootRelationV1,
     cli_config: Option<&'a Path>,
     source_subject: &'a str,
     discovery: DiscoverConfigResult,
@@ -440,10 +450,12 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         SENSOR_OBSERVATION_LIMITATION.to_string(),
         EXTERNAL_CLI_LIMITATION.to_string(),
     ];
-    match input.requested_root_equal {
-        Some(true) => limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string()),
-        None => limitations.push(ROOT_RELATIONSHIP_UNKNOWN_LIMITATION.to_string()),
-        Some(false) => {}
+    match input.requested_root_relation {
+        ConfigRootRelationV1::Same => limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string()),
+        ConfigRootRelationV1::Unknown => {
+            limitations.push(ROOT_RELATIONSHIP_UNKNOWN_LIMITATION.to_string())
+        }
+        ConfigRootRelationV1::Descendant | ConfigRootRelationV1::External => {}
     }
 
     ResolvedCargoAllowConfigV1 {
@@ -452,6 +464,7 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         producer_generation: 1,
         source_subject: input.source_subject.to_string(),
         requested_root: input.requested_root_identity.clone(),
+        requested_root_relation: input.requested_root_relation,
         resolved_repository_root: ".".to_string(),
         status,
         completeness: ConfigCompletenessV1::Partial,
@@ -481,14 +494,17 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
     }
 }
 
-fn portable_root_identity(requested_root: &Path, resolved_root: &Path) -> (String, Option<bool>) {
+fn portable_root_identity(
+    requested_root: &Path,
+    resolved_root: &Path,
+) -> (String, ConfigRootRelationV1) {
     let requested = requested_root.canonicalize().ok();
     let resolved = resolved_root.canonicalize().ok();
     let Some((requested, resolved)) = requested.as_deref().zip(resolved.as_deref()) else {
-        return ("unknown".to_string(), None);
+        return ("unknown".to_string(), ConfigRootRelationV1::Unknown);
     };
     if requested == resolved {
-        return (".".to_string(), Some(true));
+        return (".".to_string(), ConfigRootRelationV1::Same);
     }
     if let Some(relative) = lexical_relative_path(resolved, requested) {
         return (
@@ -497,10 +513,10 @@ fn portable_root_identity(requested_root: &Path, resolved_root: &Path) -> (Strin
             } else {
                 relative
             },
-            Some(false),
+            ConfigRootRelationV1::Descendant,
         );
     }
-    ("external".to_string(), Some(false))
+    ("external".to_string(), ConfigRootRelationV1::External)
 }
 
 fn observe_federation(root: &Path) -> FederationObservation {
@@ -1209,6 +1225,7 @@ fn unavailable_resolution(
         producer_generation: 1,
         source_subject: source_subject.to_string(),
         requested_root: ".".to_string(),
+        requested_root_relation: ConfigRootRelationV1::Unknown,
         resolved_repository_root: ".".to_string(),
         status: ConfigResolutionStatusV1::InstrumentFailure,
         completeness: ConfigCompletenessV1::Unavailable,
