@@ -4,7 +4,7 @@ use allow_match::{CheckMode, evaluate};
 use crate::evidence_inventory::current_evidence_source_tree_files;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext, emit_text,
-    load_world_with_evidence_mode, report_config, spec_system,
+    load_read_only_world, report_config, spec_system,
 };
 
 #[path = "worklist_actions.rs"]
@@ -73,14 +73,15 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts, federation) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, federation) = load_read_only_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
-    )?;
+    )?
+    .into_parts();
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let filters = worklist_filters(args);

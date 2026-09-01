@@ -353,6 +353,84 @@ type WorldLoadResult = CargoAllowResult<(
     FederationEvaluation,
 )>;
 
+/// Named read-only world context for commands participating in #3876.
+/// This wraps the existing tuple result without changing selection semantics.
+pub(crate) struct LoadedWorld {
+    pub(crate) root: PathBuf,
+    pub(crate) cfg: AllowConfig,
+    pub(crate) findings: Vec<Finding>,
+    pub(crate) inventory_facts: InventoryFacts,
+    pub(crate) federation: FederationEvaluation,
+}
+
+impl LoadedWorld {
+    pub(crate) fn into_parts(
+        self,
+    ) -> (
+        PathBuf,
+        AllowConfig,
+        Vec<Finding>,
+        InventoryFacts,
+        FederationEvaluation,
+    ) {
+        (
+            self.root,
+            self.cfg,
+            self.findings,
+            self.inventory_facts,
+            self.federation,
+        )
+    }
+}
+
+pub(crate) fn load_read_only_world(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+) -> CargoAllowResult<LoadedWorld> {
+    load_read_only_world_and_cache(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        true,
+    )
+}
+
+pub(crate) fn load_read_only_world_and_cache(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+    persistent_cache: bool,
+) -> CargoAllowResult<LoadedWorld> {
+    load_world_with_evidence_mode_and_cache(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        persistent_cache,
+    )
+    .map(
+        |(root, cfg, findings, inventory_facts, federation)| LoadedWorld {
+            root,
+            cfg,
+            findings,
+            inventory_facts,
+            federation,
+        },
+    )
+}
+
 type ScopedWorldLoadResult = CargoAllowResult<(
     PathBuf,
     AllowConfig,
