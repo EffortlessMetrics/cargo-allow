@@ -14811,3 +14811,72 @@ glob = ".allow/revisions/3773-final-package-docs-receipt.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0697"
+kind = "panic"
+family = "expect"
+path = "crates/allow-report/src/artifacts/reconciled_package_publication_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed expect in the reconciled-publication classification tests (#3761); expect on constructed fixtures is the established test idiom"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::manifest_rows_admit_only_exact_publications"
+callee = "expect"
+receiver_fingerprint = "exact.manifest_row()"
+normalized_snippet_hash = "fnv1a64:9d37bc63806bcc9c"
+
+[allow.last_seen]
+line = 287
+column = 40
+
+[[allow]]
+id = "allow-0698"
+kind = "panic"
+family = "expect"
+path = "crates/allow-report/src/artifacts/reconciled_package_publication_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed expect in the reconciled-publication classification tests (#3761); expect on constructed fixtures is the established test idiom"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::manifest_rows_admit_only_exact_publications"
+callee = "expect"
+receiver_fingerprint = "shared_exact .manifest_row()"
+normalized_snippet_hash = "fnv1a64:92a60c01781bd9e5"
+
+[allow.last_seen]
+line = 305
+column = 14
+
+[[allow]]
+id = "allow-0699"
+kind = "panic"
+family = "expect"
+path = "crates/allow-report/src/artifacts/reconciled_package_publication_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fail-closed expect in the reconciled-publication classification tests (#3761); expect on constructed fixtures is the established test idiom"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::manifest_rows_admit_only_exact_publications"
+callee = "expect"
+receiver_fingerprint = "manifest_rows_from_reconciled(&batch)"
+normalized_snippet_hash = "fnv1a64:3e73816a0c6341c0"
+
+[allow.last_seen]
+line = 320
+column = 59
