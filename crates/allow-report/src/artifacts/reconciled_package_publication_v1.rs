@@ -132,6 +132,54 @@ impl ReconciledPackagePublicationV1 {
     pub fn is_manifest_ready(&self) -> bool {
         self.classify() == PublicationClassificationV1::CompleteExact
     }
+
+    /// Build the manifest row for this publication. Only `CompleteExact`
+    /// rows are admitted; every other classification is refused with the
+    /// classification named, so manifest construction inherits the
+    /// reconciled evidence instead of re-reading state strings.
+    pub fn manifest_row(
+        &self,
+    ) -> Result<crate::artifacts::release_manifest_v2::ReleaseManifestPackageRowV2, String> {
+        let classification = self.classify();
+        if classification != PublicationClassificationV1::CompleteExact {
+            return Err(format!(
+                "{} {}:{}: {}",
+                self.package_name,
+                self.package_version,
+                self.logical_id,
+                classification_name(classification)
+            ));
+        }
+        Ok(
+            crate::artifacts::release_manifest_v2::ReleaseManifestPackageRowV2 {
+                logical_id: self.logical_id.clone(),
+                package_name: self.package_name.clone(),
+                package_version: self.package_version.clone(),
+                release_order: self.release_order,
+                crate_digest: Some(self.expected_checksum.clone()),
+                registry_checksum: self.observed_registry_checksum.clone(),
+            },
+        )
+    }
+}
+
+fn classification_name(classification: PublicationClassificationV1) -> &'static str {
+    match classification {
+        PublicationClassificationV1::CompleteExact => "complete_exact",
+        PublicationClassificationV1::Missing => "missing",
+        PublicationClassificationV1::Conflict => "checksum_conflict",
+        PublicationClassificationV1::Unavailable => "provider_unavailable",
+        PublicationClassificationV1::Stale => "stale_candidate",
+        PublicationClassificationV1::Mismatch => "evidence_mismatch",
+    }
+}
+
+/// Build manifest rows from reconciled publications, refusing the batch
+/// unless every row classifies as exact. The first refused row is named.
+pub fn manifest_rows_from_reconciled(
+    rows: &[ReconciledPackagePublicationV1],
+) -> Result<Vec<crate::artifacts::release_manifest_v2::ReleaseManifestPackageRowV2>, String> {
+    rows.iter().map(|row| row.manifest_row()).collect()
 }
 
 #[cfg(test)]
@@ -226,6 +274,51 @@ mod tests {
             unavailable.classify(),
             PublicationClassificationV1::Unavailable
         );
+    }
+
+    #[test]
+    fn manifest_rows_admit_only_exact_publications() {
+        let exact = candidate(
+            "0.2.0-rc.1",
+            PublicationStateV1::PublishedVerified,
+            CANONICAL,
+            Some(CANONICAL),
+        );
+        let row = exact.manifest_row().expect("exact row must build");
+        assert_eq!(row.logical_id, "cargo-allow");
+        assert_eq!(row.crate_digest.as_deref(), Some(CANONICAL));
+        assert_eq!(row.registry_checksum.as_deref(), Some(CANONICAL));
+
+        let stale = candidate(
+            "0.2.0-rc.1",
+            PublicationStateV1::VerifiedExisting,
+            CANONICAL,
+            Some(CONFLICTING),
+        );
+        let error = stale.manifest_row().expect_err("stale must be refused");
+        assert!(error.contains("stale_candidate"), "{error}");
+        assert!(error.contains("cargo-allow"), "{error}");
+
+        let shared_exact = shared(Some(CANONICAL));
+        let shared_row = shared_exact
+            .manifest_row()
+            .expect("shared exact must build");
+        assert_eq!(shared_row.package_name, "effortless-repo-edit");
+        assert_eq!(shared_row.crate_digest.as_deref(), Some(CANONICAL));
+
+        let batch = vec![exact, shared_exact, shared(Some(CONFLICTING))];
+        assert!(manifest_rows_from_reconciled(&batch).is_err());
+        let batch = vec![
+            candidate(
+                "0.2.0-rc.1",
+                PublicationStateV1::PublishedVerified,
+                CANONICAL,
+                Some(CANONICAL),
+            ),
+            shared(Some(CANONICAL)),
+        ];
+        let built = manifest_rows_from_reconciled(&batch).expect("exact batch must build");
+        assert_eq!(built.len(), 2);
     }
 
     #[test]
