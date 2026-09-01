@@ -129,6 +129,7 @@ runtime, reachability, or semantic analysis.
 | [Topology candidate receipt](topology-publish-receipt.schema.json) | `cargo-allow.topology-publish-receipt.v1` | `scripts/release-topology-publisher.py` |
 | Shared package candidate receipt | `cargo-allow.shared-package-candidate.v1` | `scripts/release-topology-publisher.py --mode shared --package-only` |
 | [RC publication incident reconciliation](rc-publication-incident-v1.schema.json) | `cargo-allow.rc-publication-incident.v1` | retained evidence record (`docs/release/evidence/`), typed `allow-report` contract (#3759) |
+| [Final package-docs receipt](final-package-docs.v1.schema.json) | `cargo-allow.final-package-docs.v1` | `scripts/final-package-docs.py` (#3773) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
 OIDC authentication) was retired with its schema: no release ever attached a V1

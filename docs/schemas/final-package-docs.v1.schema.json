@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/final-package-docs.v1.schema.json",
+  "title": "cargo-allow FinalPackageDocsReceiptV1",
+  "description": "Checked final package-documentation receipt for the ten-package 0.2.0 candidate (#3773): normalized-manifest and packaged-file audits, docs posture, channel law, and rc-line exclusion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "basis",
+    "rows",
+    "shared_prerequisites",
+    "rc_line_inputs_excluded",
+    "channel_law",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema": { "const": "cargo-allow.final-package-docs.v1" },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tree", "cargo_lock_sha256", "topology_sha256", "release_identity"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-fA-F]{40,64}$" },
+        "tree": { "type": "string", "pattern": "^[0-9a-fA-F]{40,64}$" },
+        "cargo_lock_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "topology_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "release_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "tag", "channel", "github_prerelease"],
+          "properties": {
+            "version": { "const": "0.2.0" },
+            "tag": { "const": "v0.2.0" },
+            "channel": { "const": "stable" },
+            "github_prerelease": { "const": false }
+          }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name", "version", "release_order", "normalized_manifest_sha256",
+          "file_list_digest", "crate_sha256", "size_bytes", "readme_present",
+          "docs_posture", "result"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "const": "0.2.0" },
+          "release_order": { "type": "integer" },
+          "normalized_manifest_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "file_list_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "crate_sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 1 },
+          "readme_present": { "const": true },
+          "docs_posture": {
+            "enum": ["product_cli", "library", "compatibility_migration"]
+          },
+          "result": { "const": "Complete" }
+        }
+      }
+    },
+    "shared_prerequisites": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version", "expected_registry_checksum"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "const": "0.1.0" },
+          "expected_registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "rc_line_inputs_excluded": { "const": true },
+    "channel_law": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["getting_started", "support_matrix", "channel_identities"],
+      "properties": {
+        "getting_started": { "type": "string" },
+        "support_matrix": { "type": "string" },
+        "channel_identities": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  }
+}

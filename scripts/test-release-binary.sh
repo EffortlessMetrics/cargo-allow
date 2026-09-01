@@ -62,6 +62,7 @@ expect_failure() {
 }
 
 python3 scripts/test-release-topology-publisher.py
+python3 scripts/test-final-package-docs.py
 
 topology_receipt="${work}/topology-publish.receipt.json"
 python3 - "${topology_receipt}" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" "${ROOT}/scripts/release-topology-publisher.py" <<'PY'
