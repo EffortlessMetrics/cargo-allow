@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  Wire the manifest generator's row entry to the typed reconciliation
+  classification (#3761 slice 3). generate-release-manifest.sh now
+  classifies every published row through the typed
+  reconcile-package-publication CLI (cached per distinct inputs) and
+  admits a row only when its classification is complete_exact; non-exact
+  classifications fail the run naming the row and class. This moves the
+  entry decision from the script's ad-hoc state checks to the typed
+  ReconciledPackagePublicationV1 authority while retaining the
+  structural checks (state whitelist, canonical digests, duplicate and
+  order validation) and the registry-to-candidate equality law from the
+  earlier slice. Fixture receipts classify complete_exact, so all
+  existing happy-path and negative behaviors are preserved.

@@ -14946,3 +14946,95 @@ glob = ".allow/revisions/3761-reconciled-publication.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0703"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/reconcile_package_publication_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expect in the reconcile-package-publication CLI projection tests (#3761); expect on well-formed constructed args is the established test idiom"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::exact_candidate_projection_is_manifest_ready"
+callee = "expect"
+receiver_fingerprint = "cmd(&args)"
+normalized_snippet_hash = "fnv1a64:02ac9b993b56c0c1"
+
+[allow.last_seen]
+line = 147
+column = 37
+
+[[allow]]
+id = "allow-0704"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/reconcile_package_publication_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expect in the reconcile-package-publication CLI projection tests (#3761); expect on well-formed constructed args is the established test idiom"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::conflicting_shared_projection_is_not_manifest_ready"
+callee = "expect"
+receiver_fingerprint = "cmd(&args)"
+normalized_snippet_hash = "fnv1a64:e610c2cf67b3dd23"
+
+[allow.last_seen]
+line = 164
+column = 37
+
+[[allow]]
+id = "allow-0705"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/reconcile_package_publication_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expect_err in the reconcile-package-publication CLI rejection test (#3761); the scanner matches the expect_err callee family, so the rejection idiom is receipted like its sibling expects"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::missing_observation_with_provider_unavailable_projects_unavailable"
+callee = "expect"
+receiver_fingerprint = "cmd(&args)"
+normalized_snippet_hash = "fnv1a64:e610c2cf67b3dd23"
+
+[allow.last_seen]
+line = 197
+column = 37
+
+[[allow]]
+id = "allow-0706"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/reconcile_package_publication_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expect_err in the reconcile-package-publication provider-unavailable projection test (#3761); the scanner matches the expect_err callee family, so this rejection idiom is receipted like its sibling expects"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::cmd_wrapper_prints_the_projection"
+callee = "expect"
+receiver_fingerprint = "cmd_reconcile_package_publication(&args)"
+normalized_snippet_hash = "fnv1a64:cf5403c940379e2d"
+
+[allow.last_seen]
+line = 214
+column = 50

@@ -142,6 +142,36 @@ def valid_unprefixed_digest(value):
 
 
 @functools.lru_cache(maxsize=None)
+def typed_publication_ready(row_class: str, state: str, expected: str,
+                            observed: str) -> tuple[bool, str]:
+    """Manifest-entry law via the typed authority (#3761): a publication is
+    manifest-ready only when its classification is complete_exact."""
+    probe = subprocess.run(
+        [
+            "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+            "reconcile-package-publication",
+            "--logical-id", "manifest-row",
+            "--package-name", "manifest-row",
+            "--package-version", "0.0.0",
+            "--release-order", "1",
+            "--row-class", row_class,
+            "--state", state,
+            "--expected-checksum", expected,
+            "--observed-registry-checksum", observed,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        return False, "projection failed"
+    projection = json.loads(probe.stdout)
+    return (
+        bool(projection["manifest_ready"]),
+        projection["classification"],
+    )
+
+
+@functools.lru_cache(maxsize=None)
 def typed_release_version_accepted(value):
     # Release-version grammar is owned by the typed Rust authority (#3752);
     # the manifest never accepts a form the authority rejects, including
@@ -213,12 +243,23 @@ for raw in raw_rows:
             raise SystemExit(
                 f"release-manifest: registry checksum missing or malformed for published row {name}"
             )
-        # Registry equality is required for every published row state: a
-        # verified_existing row whose registry bytes differ from this
-        # candidate's local package must not masquerade as exact (#3758/#3761).
+        # Registry equality is required for every published row state, and
+        # the entry law is the typed reconciliation classification (#3761):
+        # a row enters the manifest only as complete_exact.
         if registry_checksum != raw["local_checksum"]:
             raise SystemExit(
                 f"release-manifest: registry checksum disagrees with the candidate package for {name} ({raw.get('state')})"
+            )
+        ready, classification = typed_publication_ready(
+            "cargo_allow_candidate",
+            raw.get("state", ""),
+            raw["local_checksum"],
+            registry_checksum,
+        )
+        if not ready:
+            raise SystemExit(
+                f"release-manifest: row {name} classified {classification}; "
+                "only complete_exact publications may enter the manifest"
             )
     row = {
         "logical_id": raw["logical_id"],
