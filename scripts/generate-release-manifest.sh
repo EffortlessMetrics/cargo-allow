@@ -346,6 +346,41 @@ if package_path and install_path:
         ],
     })
 
+consumed_evidence = [
+    {
+        "schema_id": topology.get("schema_id"),
+        "path": artifact_reference(topology_file),
+        "sha256": file_digest(topology_file),
+        "producer": "scripts/release-topology-publisher.py",
+        "result_class": (
+            "complete" if topology.get("complete") is True else "incomplete"
+        ),
+    },
+]
+if package_path and install_path:
+    consumed_evidence.extend(
+        [
+            {
+                "schema_id": package["schema_id"],
+                "path": artifact_reference(package_file),
+                "sha256": file_digest(package_file),
+                "producer": "scripts/package-release-binary.sh",
+                "result_class": "verified",
+            },
+            {
+                "schema_id": install["schema_id"],
+                "path": artifact_reference(install_file),
+                "sha256": file_digest(install_file),
+                "producer": "scripts/verify-release-binary.sh",
+                "result_class": (
+                    "verified"
+                    if install.get("attestation_verified") is True
+                    else "attestation_unverified"
+                ),
+            },
+        ]
+    )
+
 if auth_source != "crates_io_api_token":
     raise SystemExit("release-manifest: only crates_io_api_token is supported")
 manifest = {
@@ -366,6 +401,7 @@ manifest = {
         "support_posture": "experimental",
         "limitations": LIMITATIONS,
         "claim_boundary": CLAIM_BOUNDARY,
+        "consumed_evidence": consumed_evidence,
     },
     "generated_at": generated_at,
     "workflow_path": ".github/workflows/release.yml",
