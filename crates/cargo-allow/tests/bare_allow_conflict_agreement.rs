@@ -7,11 +7,11 @@
 //! policy_discovery convention) and does not pull in the shared tests/support
 //! module.
 
+use allow_policy::{ConfigCandidateSourceV1, resolve_cargo_allow_config_v1};
+use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use allow_policy::{ConfigCandidateSourceV1, resolve_cargo_allow_config_v1};
-use serde_json::Value;
 
 fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
@@ -273,7 +273,9 @@ fn central_resolution_matches_command_policy_identity() -> Result<(), String> {
         &format!("doctor should report the same explicit policy identity: {artifact}"),
     )?;
     require(
-        artifact.pointer("/config/provenance/source").and_then(Value::as_str)
+        artifact
+            .pointer("/config/provenance/source")
+            .and_then(Value::as_str)
             == Some("cli_override"),
         "doctor should preserve explicit CLI provenance",
     )?;
