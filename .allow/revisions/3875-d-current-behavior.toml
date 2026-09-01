@@ -1,0 +1,15 @@
+# Revision note for #3875-D: current configuration-selection characterization.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-9258"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d9565c5acd9121e0efff85069c827421aae92c4981758ad05e8a933c2a82020c"
+reason = "Receipts the source-of-truth configuration-selection document exception for issue #3875."
+
+[[records]]
+allow_ids = ["allow-9259"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3a99bc59a7635fe0ad820542aa93e18154f5739c68df6285d3b5ec180e86d005"
+reason = "Receipts this revision note's own policy exception for issue #3875."
