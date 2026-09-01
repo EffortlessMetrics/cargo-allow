@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Add the checked rustdoc warning-clean proof for the selected release
+  closure (#3773 crate-docs law). scripts/check-crate-docs.sh packages
+  docs for every crate in docs/dogfood/fixtures/release/
+  candidate-crate-set.toml with RUSTDOCFLAGS=-D warnings under
+  cargo doc --no-deps --locked, fails closed on any doc warning, and
+  emits cargo-allow.crate-docs.v1 with per-crate results, the resolved
+  commit, and a claim boundary (registry state, unpacked-package
+  execution, and docs.rs rendering are not proven here). The crate-name
+  handoff from python to bash writes binary stdout so Windows text-mode
+  CR translation cannot poison crate names. Wired into the
+  package-smoke lane; fail-closed behavior proven live (a warning
+  batch yields exit 1 and result doc_warnings).
