@@ -11,7 +11,6 @@
     "producer_generation",
     "source_subject",
     "requested_root",
-    "requested_root_relation",
     "resolved_repository_root",
     "status",
     "completeness",

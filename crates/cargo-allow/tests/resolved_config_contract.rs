@@ -48,7 +48,7 @@ fn producer_distinguishes_requested_subdirectory_from_repository_root() -> TestR
         "resolved repository root should remain the portable anchor",
     )?;
     ensure(
-        resolved.requested_root_relation == allow_policy::ConfigRootRelationV1::Descendant,
+        resolved.requested_root_relation == Some(allow_policy::ConfigRootRelationV1::Descendant),
         "requested-root relationship should identify a repository descendant",
     )?;
     let instance: serde_json::Value =
@@ -86,7 +86,7 @@ fn producer_marks_unrepresentable_requested_root_without_claiming_repository_roo
         "unknown requested-root relationship should remain explicit",
     )?;
     ensure(
-        resolved.requested_root_relation == allow_policy::ConfigRootRelationV1::Unknown,
+        resolved.requested_root_relation == Some(allow_policy::ConfigRootRelationV1::Unknown),
         "unresolvable requested root should carry an unknown relationship",
     )
 }

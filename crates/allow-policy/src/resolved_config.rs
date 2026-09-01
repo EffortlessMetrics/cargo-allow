@@ -180,7 +180,8 @@ pub struct ResolvedCargoAllowConfigV1 {
     pub producer_generation: u32,
     pub source_subject: String,
     pub requested_root: String,
-    pub requested_root_relation: ConfigRootRelationV1,
+    #[serde(default)]
+    pub requested_root_relation: Option<ConfigRootRelationV1>,
     pub resolved_repository_root: String,
     pub status: ConfigResolutionStatusV1,
     pub completeness: ConfigCompletenessV1,
@@ -254,7 +255,7 @@ pub fn resolve_cargo_allow_config_v1_with_requested_root(
     Ok(compile_resolution(CompileResolutionInput {
         root: &resolved_root,
         requested_root_identity,
-        requested_root_relation,
+        requested_root_relation: Some(requested_root_relation),
         cli_config,
         source_subject,
         discovery,
@@ -273,7 +274,7 @@ struct FederationObservation {
 struct CompileResolutionInput<'a> {
     root: &'a Path,
     requested_root_identity: String,
-    requested_root_relation: ConfigRootRelationV1,
+    requested_root_relation: Option<ConfigRootRelationV1>,
     cli_config: Option<&'a Path>,
     source_subject: &'a str,
     discovery: DiscoverConfigResult,
@@ -451,11 +452,13 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         EXTERNAL_CLI_LIMITATION.to_string(),
     ];
     match input.requested_root_relation {
-        ConfigRootRelationV1::Same => limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string()),
-        ConfigRootRelationV1::Unknown => {
+        Some(ConfigRootRelationV1::Same) => {
+            limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string())
+        }
+        None | Some(ConfigRootRelationV1::Unknown) => {
             limitations.push(ROOT_RELATIONSHIP_UNKNOWN_LIMITATION.to_string())
         }
-        ConfigRootRelationV1::Descendant | ConfigRootRelationV1::External => {}
+        Some(ConfigRootRelationV1::Descendant | ConfigRootRelationV1::External) => {}
     }
 
     ResolvedCargoAllowConfigV1 {
@@ -1225,7 +1228,7 @@ fn unavailable_resolution(
         producer_generation: 1,
         source_subject: source_subject.to_string(),
         requested_root: ".".to_string(),
-        requested_root_relation: ConfigRootRelationV1::Unknown,
+        requested_root_relation: Some(ConfigRootRelationV1::Unknown),
         resolved_repository_root: ".".to_string(),
         status: ConfigResolutionStatusV1::InstrumentFailure,
         completeness: ConfigCompletenessV1::Unavailable,
