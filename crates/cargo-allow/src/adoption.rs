@@ -7,7 +7,6 @@ use allow_inventory::{
     resolve_source_tree_root,
 };
 use allow_match::{CheckMode, evaluate};
-use allow_policy::federation::evaluate_source_exception_policy;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -317,13 +316,10 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
             crate::world::default_federation_evaluation(),
         ))
     } else {
-        let federation = if args.config.is_some() {
-            crate::world::cli_federation_evaluation()
-        } else {
-            evaluate_source_exception_policy(&root, None)
-                .map(|(_, evaluation)| evaluation)
-                .unwrap_or_else(|_| crate::world::default_federation_evaluation())
-        };
+        let federation = discovery
+            .federation
+            .clone()
+            .unwrap_or_else(crate::world::default_federation_evaluation);
         crate::world::load_world_from_resolved_policy(
             &root,
             cfg.clone(),

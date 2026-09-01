@@ -37,6 +37,7 @@ pub(crate) struct ConfigDiscovery {
     pub skipped: Vec<SkippedPolicyCandidate>,
     pub source: Option<&'static str>,
     pub precedence: Option<PrecedenceTier>,
+    pub federation: Option<allow_policy::federation::FederationEvaluation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -146,6 +147,7 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 skipped,
                 source,
                 precedence: Some(evaluation.precedence_applied),
+                federation: Some(evaluation),
             }
         }
         Err(_) => {
@@ -155,6 +157,7 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 skipped: discovery.skipped,
                 source: discovery.selected_source,
                 precedence: None,
+                federation: None,
             }
         }
     }

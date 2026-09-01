@@ -898,10 +898,6 @@ pub(crate) fn default_federation_evaluation() -> FederationEvaluation {
     empty_federation_evaluation(PrecedenceTier::DiscoveryFallback)
 }
 
-pub(crate) fn cli_federation_evaluation() -> FederationEvaluation {
-    empty_federation_evaluation(PrecedenceTier::CliOverride)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
