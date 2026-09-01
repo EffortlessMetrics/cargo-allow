@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Wire ReleaseManifestV2 row construction to the typed reconciliation
+  law (#3761 slice 2). ReconciledPackagePublicationV1 gains manifest_row
+  / manifest_rows_from_reconciled: construction admits only rows whose
+  classification is CompleteExact, builds the ReleaseManifestPackageRowV2
+  with crate_digest and registry_checksum both bound to the proven
+  equal checksum, and refuses any other classification naming the row
+  and its class. Batch construction fails closed naming the first
+  refused row, so a manifest can no longer be assembled from rows that
+  did not reconcile exact.
