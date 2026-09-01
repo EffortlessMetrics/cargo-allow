@@ -1193,10 +1193,8 @@ mod tests {
             return Err("missing policy must not receive an identity".to_string());
         }
 
-        let outside = root
-            .parent()
-            .ok_or("fixture parent missing")?
-            .join("outside-policy.toml");
+        let outside_root = fixture_dir();
+        let outside = outside_root.join("outside-policy.toml");
         fs::write(&outside, "version = 1\n").map_err(|err| format!("outside policy: {err}"))?;
         let outside_identity = canonical_policy_identity(&root, &outside);
         if outside_identity.is_some() {
@@ -1204,6 +1202,7 @@ mod tests {
         }
 
         fs::remove_file(outside).map_err(|err| format!("remove outside policy: {err}"))?;
+        fs::remove_dir_all(outside_root).map_err(|err| format!("remove outside fixture: {err}"))?;
         fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
         Ok(())
     }
