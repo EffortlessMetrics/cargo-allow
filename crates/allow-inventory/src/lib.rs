@@ -4,11 +4,14 @@
 //! filesystem fallback otherwise. The crate does not call `cargo metadata` or
 //! require a compilable project; Cargo manifests are just files in the scanned
 //! source tree. The unused-dependency module adds the advisory feature-aware
-//! inventory contracts (#3909) over caller-supplied manifest and source texts.
+//! inventory contracts (#3909) over caller-supplied manifest and source texts,
+//! and the CI cache experiment module adds the typed contract and measurement
+//! laws the hosted Linux cache evidence is graded against (#3963).
 
 use allow_core::{CargoAllowResult, source_tree_path_is_ignored};
 use std::path::{Path, PathBuf};
 
+mod ci_cache_experiment;
 mod filesystem;
 mod git;
 mod options;
@@ -16,6 +19,16 @@ mod root;
 mod unused_dependency;
 
 /// Git-backed file listing plus a locale-independent worktree metadata probe.
+pub use ci_cache_experiment::{
+    CI_CACHE_EXPERIMENT_V1_CLAIM_BOUNDARY, CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE,
+    CI_CACHE_EXPERIMENT_V1_SCHEMA_ID, CI_CACHE_EXPERIMENT_V1_SCHEMA_VERSION, CachePostureV1,
+    CacheRunRecordV1, CacheSaveAuthorityV1, CacheTrustClassV1, CiCacheExperimentV1,
+    ExperimentVerdictV1, PINNED_RUST_CACHE_ACTION_REF, REQUIRED_ACCEPTANCE_POSTURES,
+    compile_experiment, declared_experiment_limitations, derive_verdict,
+    derive_verdict_with_reasons, duration_percentiles, group_runs_by_proof_lane,
+    improvement_attribution_note, proof_divergences, render_ci_cache_experiment_v1,
+    untrusted_save_violations, validate_experiment, validate_run_record,
+};
 pub use git::{git_ls_files, git_ls_files_include_untracked, git_worktree_metadata_present};
 pub use options::{Inventory, InventoryCompleteness, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
