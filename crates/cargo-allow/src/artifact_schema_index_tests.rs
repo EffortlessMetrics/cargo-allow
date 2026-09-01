@@ -1,12 +1,117 @@
 use crate::artifact_schema_support::{parse_schema, schema_contracts};
 use serde_json::Value;
-use std::{collections::BTreeSet, fs, path::Path};
+use std::{
+    collections::BTreeSet,
+    fs,
+    path::{Path, PathBuf},
+};
 
 const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {
     text.replace("\r\n", "\n")
+}
+
+/// Sanctioned review-packet-family schema ids (#3976 PR C recurrence law):
+/// the three shared authority names owned by the external authority plus the
+/// two sanctioned cargo-suite schemas (the review profile and the compiled
+/// packet JSON render envelope), both bound to the captured shared generation.
+const SANCTIONED_REVIEW_PACKET_SCHEMA_IDS: &[&str] = &[
+    "agent_review_packet.v1",
+    "agent_review_finding.v1",
+    "stage_closure_projection.v1",
+    "cargo-allow.cargo-suite-review-profile.v1",
+    "cargo-allow.compiled-review-packet-json-render.v1",
+];
+
+/// The exact sanctioned schema-id const declarations of the review-packet
+/// family across every crate source tree. A new, removed, or relocated
+/// declaration fails the recurrence test below with instructions.
+const EXPECTED_REVIEW_PACKET_SCHEMA_DECLARATIONS: &[&str] = &[
+    "crates/intent-model/src/agentic_review_packet_compiler.rs: PACKET_JSON_RENDER_SCHEMA_V1 = cargo-allow.compiled-review-packet-json-render.v1",
+    "crates/intent-model/src/agentic_review_profile.rs: AGENT_REVIEW_FINDING_SCHEMA_V1 = agent_review_finding.v1",
+    "crates/intent-model/src/agentic_review_profile.rs: AGENT_REVIEW_PACKET_SCHEMA_V1 = agent_review_packet.v1",
+    "crates/intent-model/src/agentic_review_profile.rs: CARGO_SUITE_REVIEW_PROFILE_SCHEMA_V1 = cargo-allow.cargo-suite-review-profile.v1",
+    "crates/intent-model/src/agentic_review_profile.rs: STAGE_CLOSURE_PROJECTION_SCHEMA_V1 = stage_closure_projection.v1",
+];
+
+/// Substrings that mark a string token as belonging to the review-packet
+/// schema family.
+const REVIEW_PACKET_FAMILY_MARKERS: &[&str] = &[
+    "review_packet",
+    "review-packet",
+    "review_finding",
+    "review-finding",
+    "review-profile",
+    "closure_projection",
+    "closure-projection",
+];
+
+fn is_review_packet_family_token(token: &str) -> bool {
+    REVIEW_PACKET_FAMILY_MARKERS
+        .iter()
+        .any(|marker| token.contains(marker))
+}
+
+/// Extract the review-packet-family schema-id const declarations of one Rust
+/// source file as `"<relative path>: <NAME> = <value>"` rows. Only single-line
+/// `pub const` / `const` declarations whose name carries `SCHEMA` and whose
+/// quoted value contains a period-versioned suffix (`.v<digits>` — any
+/// version, so a `.v2` fork cannot evade) and a family marker are
+/// considered; rejection-fixture literals and prose never declare consts
+/// and therefore never match.
+fn review_packet_schema_const_rows(rel_path: &str, source: &str) -> Vec<String> {
+    let mut rows = Vec::new();
+    for line in normalize_lf(source).lines() {
+        let trimmed = line.trim();
+        let name = if trimmed.starts_with("pub const ") {
+            trimmed.split_whitespace().nth(2)
+        } else if trimmed.starts_with("const ") {
+            trimmed.split_whitespace().nth(1)
+        } else {
+            None
+        };
+        let Some(name) = name else { continue };
+        if !name.contains("SCHEMA") {
+            continue;
+        }
+        let Some(value) = trimmed.split('"').nth(1) else {
+            continue;
+        };
+        if !is_versioned_schema_value(value) || !is_review_packet_family_token(value) {
+            continue;
+        }
+        rows.push(format!(
+            "{rel_path}: {} = {value}",
+            name.trim_end_matches(':')
+        ));
+    }
+    rows
+}
+
+/// A schema value with a period-versioned suffix such as `.v1` or `.v2`:
+/// version-agnostic, so a bumped-version fork cannot evade the scan.
+fn is_versioned_schema_value(value: &str) -> bool {
+    let Some((_, version)) = value.rsplit_once(".v") else {
+        return false;
+    };
+    !version.is_empty() && version.chars().all(|character| character.is_ascii_digit())
+}
+
+/// Recursively collect `.rs` files under one directory.
+fn collect_rust_sources(dir: &Path, sources: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries =
+        fs::read_dir(dir).map_err(|error| format!("read dir {}: {error}", dir.display()))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rust_sources(&path, sources)?;
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+            sources.push(path);
+        }
+    }
+    Ok(())
 }
 
 #[test]
@@ -362,4 +467,89 @@ fn schema_files_keep_document_metadata_aligned_with_contracts() {
             contract.name
         );
     }
+}
+
+#[test]
+fn review_packet_schema_family_consts_are_exactly_sanctioned() -> Result<(), String> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let crates_dir = root.join("crates");
+    let crate_entries =
+        fs::read_dir(&crates_dir).map_err(|error| format!("read crates dir: {error}"))?;
+    let mut declarations: Vec<String> = Vec::new();
+    for entry in crate_entries.flatten() {
+        let src_dir = entry.path().join("src");
+        if !src_dir.is_dir() {
+            continue;
+        }
+        let mut sources = Vec::new();
+        collect_rust_sources(&src_dir, &mut sources)?;
+        for source in &sources {
+            let rel = source
+                .strip_prefix(&root)
+                .map_err(|error| error.to_string())?
+                .to_string_lossy()
+                .replace('\\', "/");
+            let text = fs::read_to_string(source)
+                .map_err(|error| format!("read source {}: {error}", source.display()))?;
+            declarations.extend(review_packet_schema_const_rows(&rel, &text));
+        }
+    }
+    declarations.sort();
+    let mut expected: Vec<String> = EXPECTED_REVIEW_PACKET_SCHEMA_DECLARATIONS
+        .iter()
+        .map(|row| (*row).to_string())
+        .collect();
+    expected.sort();
+    assert_eq!(
+        declarations, expected,
+        "the review-packet schema family changed at the repository level: a family schema-id \
+         const was added, removed, or moved outside the sanctioned set. Do not fork the shared \
+         contract — bind the captured fixture instead. The sanctioned set is the three shared \
+         authority names from EffortlessMetrics/perl-lsp-swarm#10881 (agent_review_packet.v1, \
+         agent_review_finding.v1, stage_closure_projection.v1) plus the sanctioned \
+         cargo-allow.cargo-suite-review-profile.v1 and \
+         cargo-allow.compiled-review-packet-json-render.v1 schemas, both bound to the captured \
+         shared generation. See intent-model CAPTURED_SCHEMA_DELETION_CONDITION: never \
+         stabilize a private fork."
+    );
+    for row in &declarations {
+        let value = row.split(" = ").last().unwrap_or_default();
+        assert!(
+            SANCTIONED_REVIEW_PACKET_SCHEMA_IDS.contains(&value),
+            "review-packet-family schema value {value} is not a sanctioned id: {row}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn review_packet_schema_family_never_forks_in_docs_schemas() -> Result<(), String> {
+    let schema_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../docs/schemas");
+    let entries =
+        fs::read_dir(&schema_dir).map_err(|error| format!("read schema directory: {error}"))?;
+    let mut violations: Vec<String> = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let text = fs::read_to_string(&path)
+            .map_err(|error| format!("read schema file {name}: {error}"))?;
+        for token in normalize_lf(&text).split('"') {
+            if is_review_packet_family_token(token)
+                && !SANCTIONED_REVIEW_PACKET_SCHEMA_IDS.contains(&token)
+            {
+                violations.push(format!("{name}: {token}"));
+            }
+        }
+    }
+    assert!(
+        violations.is_empty(),
+        "docs/schemas must not carry a private review-packet schema fork; violations: \
+         {violations:?}. The sole packet contract is the captured agent_review_packet.v1 \
+         fixture (authority EffortlessMetrics/perl-lsp-swarm#10881); sanctioned ids are \
+         {SANCTIONED_REVIEW_PACKET_SCHEMA_IDS:?}; never stabilize a private fork."
+    );
+    Ok(())
 }
