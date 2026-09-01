@@ -132,6 +132,8 @@ mod tests {
                 path: Some(root_path("policy/allow.toml")),
                 disposition: ConfigCandidateDispositionV1::Selected,
                 reason: None,
+                observation: Some(allow_policy::ConfigCandidateObservationV1::ContentRead),
+                observation_position: Some(0),
             }],
             fallback: ConfigFallbackV1 {
                 considered: false,

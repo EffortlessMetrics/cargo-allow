@@ -1883,6 +1883,28 @@ fn resolved_cargo_allow_config_preserves_distinct_unicode_filename_spellings() -
     Ok(())
 }
 
+#[test]
+fn resolved_config_candidates_retain_projection_order() -> TestResult {
+    let fixture = Fixture::new("candidate-order")?;
+    let root = fixture.path();
+    fixture.write(
+        "policy/allow.toml",
+        "schema_version = \"1\"\npolicy = \"other\"\n",
+    )?;
+    let resolved = resolve_cargo_allow_config_v1(root, None, "subject")?;
+    let positions: Vec<u32> = resolved
+        .candidates
+        .iter()
+        .map(|candidate| candidate.observation_position.ok_or("missing position"))
+        .collect::<Result<_, _>>()?;
+    ensure_eq(
+        positions,
+        (0..resolved.candidates.len() as u32).collect::<Vec<_>>(),
+        "candidate projection order",
+    )?;
+    Ok(())
+}
+
 fn valid_policy() -> &'static str {
     r#"schema_version = "0.1"
 policy = "cargo-allow"
