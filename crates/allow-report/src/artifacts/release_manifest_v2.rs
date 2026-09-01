@@ -414,6 +414,71 @@ mod tests {
         );
     }
 
+    #[test]
+    fn consumed_evidence_gaps_are_named_per_branch() {
+        let mut candidate = envelope();
+        candidate.payload.consumed_evidence = vec![
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.topology-publish-receipt.v1".to_string(),
+                path: "artifact/topology-publish.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "e".repeat(64)),
+                producer: "scripts/release-topology-publisher.py".to_string(),
+                result_class: "complete".to_string(),
+            },
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.release-binary-package.v1".to_string(),
+                path: "artifact/release-binary.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "f".repeat(64)),
+                producer: "scripts/package-release-binary.sh".to_string(),
+                result_class: "verified".to_string(),
+            },
+            ConsumedEvidenceV1 {
+                schema_id: "cargo-allow.release-binary-install.v1".to_string(),
+                path: "artifact/release-binary-install.receipt.json".to_string(),
+                sha256: format!("sha256:{}", "9".repeat(64)),
+                producer: "scripts/verify-release-binary.sh".to_string(),
+                result_class: "verified".to_string(),
+            },
+        ];
+        let validation = validate_release_manifest_v2(&candidate);
+        assert!(
+            validation.gaps.is_empty(),
+            "well-formed consumed evidence must pass: {:?}",
+            validation.gaps
+        );
+
+        let mut missing_producer = candidate.clone();
+        missing_producer.payload.consumed_evidence[0].producer = String::new();
+        let gaps = validate_release_manifest_v2(&missing_producer);
+        assert!(
+            gaps.gaps
+                .iter()
+                .any(|gap| gap.contains("lacks schema identity or producer")),
+            "empty producer must be named: {:?}",
+            gaps.gaps
+        );
+
+        let mut empty_class = candidate.clone();
+        empty_class.payload.consumed_evidence[1].result_class = String::new();
+        let gaps = validate_release_manifest_v2(&empty_class);
+        assert!(
+            gaps.gaps
+                .iter()
+                .any(|gap| gap.contains("lacks a result class")),
+            "empty result class must be named: {:?}",
+            gaps.gaps
+        );
+
+        let mut bad_digest = candidate.clone();
+        bad_digest.payload.consumed_evidence[2].sha256 = "sha256:short".to_string();
+        let gaps = validate_release_manifest_v2(&bad_digest);
+        assert!(
+            gaps.gaps.iter().any(|gap| gap.contains("malformed digest")),
+            "malformed digest must be named: {:?}",
+            gaps.gaps
+        );
+    }
+
     fn envelope() -> ReleaseManifestEnvelopeV2 {
         ReleaseManifestEnvelopeV2 {
             payload: ReleaseManifestPayloadV2 {
