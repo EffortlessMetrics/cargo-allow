@@ -204,6 +204,17 @@ pub fn resolve_cargo_allow_config_v1(
     cli_config: Option<&Path>,
     source_subject: &str,
 ) -> CargoAllowResult<ResolvedCargoAllowConfigV1> {
+    resolve_cargo_allow_config_v1_with_requested_root(root, root, cli_config, source_subject)
+}
+
+/// Resolve configuration when the caller's requested root is distinct from
+/// the repository root selected by its surrounding command.
+pub fn resolve_cargo_allow_config_v1_with_requested_root(
+    requested_root: &Path,
+    root: &Path,
+    cli_config: Option<&Path>,
+    source_subject: &str,
+) -> CargoAllowResult<ResolvedCargoAllowConfigV1> {
     validate_source_subject(root, source_subject)?;
     let resolved_root = match root.canonicalize() {
         Ok(path) => path,
@@ -228,6 +239,7 @@ pub fn resolve_cargo_allow_config_v1(
 
     Ok(compile_resolution(CompileResolutionInput {
         root: &resolved_root,
+        requested_root_identity: portable_root_identity(requested_root, &resolved_root),
         cli_config,
         source_subject,
         discovery,
@@ -245,6 +257,7 @@ struct FederationObservation {
 
 struct CompileResolutionInput<'a> {
     root: &'a Path,
+    requested_root_identity: String,
     cli_config: Option<&'a Path>,
     source_subject: &'a str,
     discovery: DiscoverConfigResult,
@@ -415,12 +428,22 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         diagnostics: &diagnostics,
     });
 
+    let mut limitations = vec![
+        CURRENT_ADAPTER_LIMITATION.to_string(),
+        CANDIDATE_ENUMERATION_LIMITATION.to_string(),
+        SENSOR_OBSERVATION_LIMITATION.to_string(),
+        EXTERNAL_CLI_LIMITATION.to_string(),
+    ];
+    if input.requested_root_identity == "." {
+        limitations.push(ROOT_RELATIONSHIP_LIMITATION.to_string());
+    }
+
     ResolvedCargoAllowConfigV1 {
         schema_id: RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_ID.to_string(),
         schema_version: RESOLVED_CARGO_ALLOW_CONFIG_SCHEMA_VERSION,
         producer_generation: 1,
         source_subject: input.source_subject.to_string(),
-        requested_root: ".".to_string(),
+        requested_root: input.requested_root_identity.clone(),
         resolved_repository_root: ".".to_string(),
         status,
         completeness: ConfigCompletenessV1::Partial,
@@ -445,15 +468,28 @@ fn compile_resolution(input: CompileResolutionInput<'_>) -> ResolvedCargoAllowCo
         generated_scopes: policy_observation.generated_scopes,
         selected_sensor_families: Vec::new(),
         diagnostics,
-        limitations: vec![
-            CURRENT_ADAPTER_LIMITATION.to_string(),
-            CANDIDATE_ENUMERATION_LIMITATION.to_string(),
-            SENSOR_OBSERVATION_LIMITATION.to_string(),
-            ROOT_RELATIONSHIP_LIMITATION.to_string(),
-            EXTERNAL_CLI_LIMITATION.to_string(),
-        ],
+        limitations,
         claim_boundary: RESOLVED_CARGO_ALLOW_CONFIG_CLAIM_BOUNDARY.to_string(),
     }
+}
+
+fn portable_root_identity(requested_root: &Path, resolved_root: &Path) -> String {
+    let requested = requested_root.canonicalize().ok();
+    let resolved = resolved_root.canonicalize().ok();
+    requested
+        .as_deref()
+        .zip(resolved.as_deref())
+        .and_then(|(requested, resolved)| lexical_relative_path(resolved, requested))
+        .map_or_else(
+            || ".".to_string(),
+            |relative| {
+                if relative.is_empty() {
+                    ".".to_string()
+                } else {
+                    relative
+                }
+            },
+        )
 }
 
 fn observe_federation(root: &Path) -> FederationObservation {

@@ -40,8 +40,8 @@
       "maxLength": 1024,
       "pattern": "^[A-Za-z0-9._:@+\\-]+$"
     },
-    "requested_root": { "const": "." },
-    "resolved_repository_root": { "const": "." },
+    "requested_root": { "$ref": "#/$defs/repository_path" },
+    "resolved_repository_root": { "$ref": "#/$defs/repository_path" },
     "status": {
       "enum": [
         "complete",

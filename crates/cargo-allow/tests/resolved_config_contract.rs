@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use allow_policy::resolve_cargo_allow_config_v1;
+use allow_policy::{
+    resolve_cargo_allow_config_v1, resolve_cargo_allow_config_v1_with_requested_root,
+};
 use allow_report::render_resolved_cargo_allow_config_json;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -22,6 +24,39 @@ fn produced_resolved_config_validates_against_the_published_component_schema() -
         validator.is_valid(&instance),
         "producer output should validate against the component schema",
     )
+}
+
+#[test]
+fn producer_distinguishes_requested_subdirectory_from_repository_root() -> TestResult {
+    let fixture = Fixture::new("requested-root")?;
+    fixture.write("policy/allow.toml", valid_policy())?;
+    let requested = fixture.path().join("crates/example");
+    fs::create_dir_all(&requested)?;
+    let resolved = resolve_cargo_allow_config_v1_with_requested_root(
+        &requested,
+        fixture.path(),
+        None,
+        "subject:requested-root",
+    )?;
+
+    ensure(
+        resolved.requested_root == "crates/example",
+        "requested root should retain its repository-relative identity",
+    )?;
+    ensure(
+        resolved.resolved_repository_root == ".",
+        "resolved repository root should remain the portable anchor",
+    )?;
+    let instance: serde_json::Value =
+        serde_json::from_str(&render_resolved_cargo_allow_config_json(&resolved)?)?;
+    let schema: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/resolved-cargo-allow-config-v1.schema.json"
+    ))?;
+    ensure(
+        jsonschema::validator_for(&schema)?.is_valid(&instance),
+        "requested-root projection should remain schema-valid",
+    )?;
+    Ok(())
 }
 
 #[test]

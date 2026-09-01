@@ -84,7 +84,10 @@ ASCII identity characters (`A-Z`, `a-z`, `0-9`, `.`, `_`, `:`, `@`, `+`, and
 and a safe relative path. This preserves intentional upward discovery without
 serializing `..` or checkout-local absolute paths; existing symlink targets are
 contained under their authorized anchor before policy bytes are read. The
-portable projection uses `.` for the requested and resolved repository root.
+portable projection uses `.` for the resolved repository root and preserves an
+in-repository requested-root identity when the caller supplies one. The legacy
+adapter entry point passes the same root for both values and therefore
+continues to emit `.` for each.
 When a Cargo manifest cannot be read or parsed far enough to distinguish
 package from workspace metadata, the skipped attempt uses the honest generic
 `cargo_metadata` source rather than being mislabeled as legacy discovery.
