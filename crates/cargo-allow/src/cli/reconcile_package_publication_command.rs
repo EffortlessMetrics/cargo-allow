@@ -200,6 +200,21 @@ mod tests {
     }
 
     #[test]
+    fn cmd_wrapper_prints_the_projection() {
+        let args = ReconcilePackagePublicationArgs {
+            logical_id: "cargo-allow".to_string(),
+            package_name: "cargo-allow".to_string(),
+            package_version: "0.2.0-rc.1".to_string(),
+            release_order: 100,
+            row_class: "cargo_allow_candidate".to_string(),
+            state: "published_verified".to_string(),
+            expected_checksum: format!("sha256:{}", "a".repeat(64)),
+            observed_registry_checksum: Some(format!("sha256:{}", "a".repeat(64))),
+        };
+        cmd_reconcile_package_publication(&args).expect("a well-formed projection must print");
+    }
+
+    #[test]
     fn unknown_row_class_fails_closed() {
         let args = ReconcilePackagePublicationArgs {
             logical_id: "x".to_string(),
