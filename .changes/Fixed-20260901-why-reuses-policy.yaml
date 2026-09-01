@@ -2,5 +2,5 @@ kind: Fixed
 body: >-
   `cargo allow why` now reuses the selected policy and federation observation
   when escalating from a scoped target scan to full fallback evaluation, and
-  rejects policy-byte drift before writing an add-finding plan. This prevents a
-  single invocation from mixing configuration generations.
+  rejects policy-byte or policy-path drift before writing an add-finding plan.
+  This prevents a single invocation from mixing configuration generations.
