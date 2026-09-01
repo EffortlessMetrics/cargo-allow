@@ -16,9 +16,27 @@
 //! ## Measurement laws
 //!
 //! - Identity: every run record carries non-empty run, repository, lane
-//!   namespace, cache key, and semantic receipt identities, and the observed
-//!   runner image class (negative control 11: moving hosted-runner image
-//!   facts may not be omitted from a load-bearing comparison).
+//!   namespace, cache key, semantic receipt, Cargo.lock, toolchain, proof
+//!   lane, selected target, and runner image class identities (negative
+//!   control 11: moving hosted-runner image facts may not be omitted from a
+//!   load-bearing comparison).
+//! - Real-run law: a record reporting `compile_test_seconds_ms` 0 is not a
+//!   real selected run and fails run validation.
+//! - Distinct-run law: a compiled experiment rejects duplicate `run_id`
+//!   values before derivation, and every count and percentile is over
+//!   distinct runs; replaying a row must never double-count it.
+//! - Uniform coverage law: a proof lane qualifies for acceptance only when
+//!   all of its records share one `cache_lane_namespace` and one
+//!   `head_commit`; coverage never pools across namespaces or source states.
+//! - Improvement law: acceptance additionally requires a measured
+//!   warm-over-cold improvement — the qualifying lane's Warm p50 of
+//!   `compile_test_seconds_ms` must be strictly below its Cold p50. A lane
+//!   whose warm p50 is not below its cold p50 does not qualify even with
+//!   full coverage; the verdict is
+//!   [`ExperimentVerdictV1::NeedsMoreData`] naming the missing improvement.
+//!   Every compiled experiment carries the attribution note (see
+//!   [`improvement_attribution_note`]) scoping attribution to
+//!   `compile_test_seconds_ms` alone.
 //! - Trust and save law (negative control 6): only
 //!   [`CacheTrustClassV1::TrustedDefaultBranch`] runs may hold
 //!   [`CacheSaveAuthorityV1::TrustedSavePermitted`]; repository PR and
@@ -27,11 +45,12 @@
 //! - Semantic equality law (negative controls 4, 8, 12): within one cache
 //!   lane namespace, every cache posture must report the identical
 //!   `semantic_receipt_digest`, and records that share a claimed digest may
-//!   not disagree on any compatibility input (runner OS/architecture,
-//!   toolchain, Cargo.lock, workspace manifest, build profile, features).
-//!   Any divergence forces [`ExperimentVerdictV1::Rejected`]: a cache
-//!   posture either reproduces the exact same semantic proof or the
-//!   experiment is an exact non-clean result.
+//!   not disagree on any compatibility input (runner OS/architecture, toolchain,
+//!   Cargo.lock, workspace manifest, build profile, features, selected
+//!   targets, head/base commits, workflow ref, action ref, cargo version, or
+//!   runner image class). Any divergence forces
+//!   [`ExperimentVerdictV1::Rejected`]: a cache posture either reproduces the
+//!   exact same semantic proof or the experiment is an exact non-clean result.
 //! - Proof-preservation law (negative controls 7, 9): acceptance requires
 //!   cold, warm, partial-hit, corrupt, disabled, and fallback postures over
 //!   the same proof lane with at least 2 warm runs, and any run that records
@@ -45,6 +64,10 @@
 //!   [`ExperimentVerdictV1::InstrumentFailure`]; an empty experiment is
 //!   never a clean result, and the zero-run artifact intentionally fails
 //!   [`validate_experiment`].
+//! - Experiment envelope law: the rollback route is pinned to
+//!   [`CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE`] and the declared
+//!   limitations are carried; a compiled experiment may never quietly weaken
+//!   either.
 //!
 //! ## Purity
 //!
@@ -63,7 +86,7 @@
 //! follow-up activity; this module lands the contract that will grade it.
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Schema identity for the CI cache experiment family.
 pub const CI_CACHE_EXPERIMENT_V1_SCHEMA_ID: &str = "cargo-allow.ci-cache-experiment.v1";
@@ -242,6 +265,11 @@ pub struct CacheRunRecordV1 {
     pub workspace_manifest_digest: String,
     pub build_profile: String,
     pub selected_features: String,
+    /// The exact cargo target selection the run compiled for (for example
+    /// the target triple). Part of run identity and of the compatibility
+    /// inputs a shared semantic receipt digest binds (negative control 4).
+    #[serde(default)]
+    pub selected_targets: String,
     /// The proof purpose the run serves; percentile grouping never merges
     /// materially different proof lanes.
     pub proof_lane: String,
@@ -295,6 +323,11 @@ pub struct CiCacheExperimentV1 {
     pub runs: Vec<CacheRunRecordV1>,
     pub verdict: ExperimentVerdictV1,
     pub verdict_reasons: Vec<String>,
+    /// The attribution guard note carried with the compiled experiment (see
+    /// [`improvement_attribution_note`]): cache reuse attribution applies
+    /// only to `compile_test_seconds_ms` deltas and never to volatile
+    /// envelope queue time.
+    pub improvement_attribution_note: String,
     pub rollback_route: String,
     pub limitations: Vec<String>,
     /// Pinned claim boundary; see [`CI_CACHE_EXPERIMENT_V1_CLAIM_BOUNDARY`].
@@ -324,7 +357,10 @@ pub fn declared_experiment_limitations() -> Vec<&'static str> {
 /// Validate one run record against the run-level laws:
 ///
 /// - identity: run id, repository, cache lane namespace, cache key identity,
-///   semantic receipt digest, and runner image class are non-empty;
+///   semantic receipt digest, runner image class, toolchain, Cargo.lock
+///   digest, proof lane, and selected targets are non-empty;
+/// - real-run law: `compile_test_seconds_ms` is strictly positive; a
+///   zero-duration compile/test is not a real selected run;
 /// - trust and save law (negative control 6): only trusted default-branch
 ///   runs may hold `TrustedSavePermitted`; repository PR and untrusted fork
 ///   runs must be save-restricted;
@@ -346,11 +382,22 @@ pub fn validate_run_record(run: &CacheRunRecordV1) -> Result<(), String> {
             run.semantic_receipt_digest.as_str(),
         ),
         ("runner_image_class", run.runner_image_class.as_str()),
+        ("rust_toolchain", run.rust_toolchain.as_str()),
+        ("cargo_lock_digest", run.cargo_lock_digest.as_str()),
+        ("proof_lane", run.proof_lane.as_str()),
+        ("selected_targets", run.selected_targets.as_str()),
     ];
     for (field, value) in identity_fields {
         if value.trim().is_empty() {
             return Err(format!("run identity field {field} must be non-empty"));
         }
+    }
+    if run.compile_test_seconds_ms == 0 {
+        return Err(format!(
+            "run {} reports compile_test_seconds_ms 0; a zero-duration compile/test is not a \
+                 real selected run and cannot carry an improvement comparison",
+            run.run_id
+        ));
     }
     let trusted_save_possible = run.trust_class == CacheTrustClassV1::TrustedDefaultBranch;
     if !trusted_save_possible && run.save_authority == CacheSaveAuthorityV1::TrustedSavePermitted {
@@ -388,11 +435,13 @@ pub fn validate_run_record(run: &CacheRunRecordV1) -> Result<(), String> {
 ///   non-clean result);
 /// - within a cache lane namespace, runs that share a claimed digest but
 ///   disagree on a compatibility input (runner OS or architecture,
-///   toolchain, Cargo.lock, workspace manifest, build profile, or selected
-///   features) (negative control 4: incompatible lock, toolchain, target,
-///   or profile objects must never be restored as current, and a shared
-///   label never gives two materially different lanes shared object
-///   authority).
+///   toolchain, Cargo.lock, workspace manifest, build profile, selected
+///   features, selected targets, head or base commit, workflow ref, action
+///   ref, cargo version, or runner image class) (negative control 4:
+///   incompatible lock, toolchain, target, or profile objects must never be
+///   restored as current, a shared label never gives two materially
+///   different lanes shared object authority, and a shared digest never
+///   papers over a moved source state).
 pub fn proof_divergences(records: &[CacheRunRecordV1]) -> Vec<String> {
     let mut rows: Vec<String> = Vec::new();
     let mut lanes: BTreeMap<&str, Vec<&CacheRunRecordV1>> = BTreeMap::new();
@@ -474,6 +523,41 @@ pub fn proof_divergences(records: &[CacheRunRecordV1]) -> Vec<String> {
                         "selected_features",
                         first.selected_features.as_str(),
                         record.selected_features.as_str(),
+                    ),
+                    (
+                        "selected_targets",
+                        first.selected_targets.as_str(),
+                        record.selected_targets.as_str(),
+                    ),
+                    (
+                        "head_commit",
+                        first.head_commit.as_str(),
+                        record.head_commit.as_str(),
+                    ),
+                    (
+                        "base_commit",
+                        first.base_commit.as_str(),
+                        record.base_commit.as_str(),
+                    ),
+                    (
+                        "workflow_ref",
+                        first.workflow_ref.as_str(),
+                        record.workflow_ref.as_str(),
+                    ),
+                    (
+                        "action_ref",
+                        first.action_ref.as_str(),
+                        record.action_ref.as_str(),
+                    ),
+                    (
+                        "runner_image_class",
+                        first.runner_image_class.as_str(),
+                        record.runner_image_class.as_str(),
+                    ),
+                    (
+                        "cargo_version",
+                        first.cargo_version.as_str(),
+                        record.cargo_version.as_str(),
                     ),
                 ];
                 for (field, left, right) in compatibility_inputs {
@@ -573,6 +657,105 @@ pub fn untrusted_save_violations(records: &[CacheRunRecordV1]) -> Vec<String> {
     rows
 }
 
+/// The distinct-run law: collapse the run set to distinct runs by `run_id`,
+/// keeping the first occurrence in input order. Every count and percentile
+/// downstream is over distinct runs; a replayed row must never double-count.
+fn distinct_run_records(records: &[CacheRunRecordV1]) -> Vec<CacheRunRecordV1> {
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    let mut distinct: Vec<CacheRunRecordV1> = Vec::new();
+    for record in records {
+        if seen.insert(record.run_id.as_str()) {
+            distinct.push(record.clone());
+        }
+    }
+    distinct
+}
+
+/// One proof lane's evaluation under the qualifying-lane laws.
+struct LaneEvaluation {
+    lane: String,
+    covered: usize,
+    missing: Vec<CachePostureV1>,
+    warm: u64,
+    uniform: bool,
+    /// Distinct `cache_lane_namespace` values in the lane, sorted.
+    namespaces: Vec<String>,
+    /// Distinct `head_commit` values in the lane, sorted.
+    heads: Vec<String>,
+    warm_p50: Option<u64>,
+    cold_p50: Option<u64>,
+}
+
+/// Evaluate one proof lane's coverage, uniformity, and measured durations.
+fn evaluate_lane(lane: &str, runs: &[CacheRunRecordV1]) -> LaneEvaluation {
+    let mut missing: Vec<CachePostureV1> = Vec::new();
+    let mut covered: usize = 0;
+    for posture in REQUIRED_ACCEPTANCE_POSTURES {
+        if runs.iter().any(|run| run.posture == posture) {
+            covered += 1;
+        } else {
+            missing.push(posture);
+        }
+    }
+    let warm = runs
+        .iter()
+        .filter(|run| run.posture == CachePostureV1::Warm)
+        .count() as u64;
+    let mut digests: Vec<&str> = runs
+        .iter()
+        .map(|run| run.semantic_receipt_digest.as_str())
+        .collect();
+    digests.sort();
+    digests.dedup();
+    let mut namespaces: Vec<String> = runs
+        .iter()
+        .map(|run| run.cache_lane_namespace.clone())
+        .collect();
+    namespaces.sort();
+    namespaces.dedup();
+    let mut heads: Vec<String> = runs.iter().map(|run| run.head_commit.clone()).collect();
+    heads.sort();
+    heads.dedup();
+    LaneEvaluation {
+        lane: lane.to_string(),
+        covered,
+        missing,
+        warm,
+        uniform: digests.len() == 1,
+        namespaces,
+        heads,
+        warm_p50: duration_percentiles(runs, CachePostureV1::Warm).map(|(p50, _)| p50),
+        cold_p50: duration_percentiles(runs, CachePostureV1::Cold).map(|(p50, _)| p50),
+    }
+}
+
+/// The measured warm-over-cold improvement of a lane: `Some` exactly when
+/// both warm and cold p50 of `compile_test_seconds_ms` exist and the warm
+/// p50 is strictly below the cold p50 (improvement law; envelope queue time
+/// is excluded from this comparison by construction).
+fn lane_improvement(evaluation: &LaneEvaluation) -> Option<(u64, u64)> {
+    let (Some(warm_p50), Some(cold_p50)) = (evaluation.warm_p50, evaluation.cold_p50) else {
+        return None;
+    };
+    if warm_p50 < cold_p50 {
+        Some((warm_p50, cold_p50))
+    } else {
+        None
+    }
+}
+
+/// A lane qualifies for acceptance only under full posture coverage, at
+/// least 2 warm runs, uniform receipt digests, one cache lane namespace,
+/// one head commit, and a measured warm-over-cold improvement.
+fn lane_qualifies(evaluation: &LaneEvaluation) -> bool {
+    evaluation.missing.is_empty()
+        && evaluation.warm >= 2
+        && evaluation.uniform
+        && evaluation.namespaces.len() == 1
+        && evaluation.heads.len() == 1
+        && lane_improvement(evaluation).is_some()
+}
+
 /// Derive the experiment verdict with the law's reasons, in precedence order:
 ///
 /// 1. zero runs or any run recording no selected commands is
@@ -580,11 +763,17 @@ pub fn untrusted_save_violations(records: &[CacheRunRecordV1]) -> Vec<String> {
 ///    proof-preservation law);
 /// 2. any [`proof_divergences`] row forces [`ExperimentVerdictV1::Rejected`]
 ///    (semantic equality law);
-/// 3. otherwise acceptance requires one proof lane covering every posture in
-///    [`REQUIRED_ACCEPTANCE_POSTURES`] with uniform semantic receipt digests
-///    and at least 2 warm runs (negative control 2: one warm run is not an
-///    acceptance result); anything less is
-///    [`ExperimentVerdictV1::NeedsMoreData`] with the exact gap named.
+/// 3. otherwise acceptance requires one proof lane whose distinct runs cover
+///    every posture in [`REQUIRED_ACCEPTANCE_POSTURES`] with uniform semantic
+///    receipt digests, at least 2 warm runs, one `cache_lane_namespace`, one
+///    `head_commit`, and a measured warm-over-cold improvement (warm p50 of
+///    `compile_test_seconds_ms` strictly below the lane's cold p50; negative
+///    control 2: one warm run is not an acceptance result); anything less is
+///    [`ExperimentVerdictV1::NeedsMoreData`] with the exact gap named,
+///    including namespace or head-commit mixing and a missing improvement.
+///
+/// All counting is over distinct runs by `run_id`; a replayed row never
+/// double-counts.
 pub fn derive_verdict_with_reasons(
     records: &[CacheRunRecordV1],
 ) -> (ExperimentVerdictV1, Vec<String>) {
@@ -597,7 +786,8 @@ pub fn derive_verdict_with_reasons(
         );
         return (ExperimentVerdictV1::InstrumentFailure, reasons);
     }
-    let without_commands: Vec<&str> = records
+    let distinct = distinct_run_records(records);
+    let without_commands: Vec<&str> = distinct
         .iter()
         .filter(|record| record.selected_commands.is_empty())
         .map(|record| record.run_id.as_str())
@@ -610,7 +800,7 @@ pub fn derive_verdict_with_reasons(
         ));
         return (ExperimentVerdictV1::InstrumentFailure, reasons);
     }
-    let divergences = proof_divergences(records);
+    let divergences = proof_divergences(&distinct);
     if !divergences.is_empty() {
         reasons.push(format!(
             "{} semantic receipt or compatibility divergence row(s) force Rejected: a cache \
@@ -620,72 +810,98 @@ pub fn derive_verdict_with_reasons(
         reasons.extend(divergences.iter().cloned());
         return (ExperimentVerdictV1::Rejected, reasons);
     }
-    let lanes = group_runs_by_proof_lane(records);
-    let mut best_lane: Option<String> = None;
-    let mut best_missing: Vec<CachePostureV1> = Vec::new();
-    let mut best_warm: u64 = 0;
-    let mut best_uniform = false;
-    let mut best_covered: usize = 0;
-    for (lane, runs) in &lanes {
-        let mut missing: Vec<CachePostureV1> = Vec::new();
-        let mut covered: usize = 0;
-        for posture in REQUIRED_ACCEPTANCE_POSTURES {
-            if runs.iter().any(|run| run.posture == posture) {
-                covered += 1;
-            } else {
-                missing.push(posture);
-            }
+    let lanes = group_runs_by_proof_lane(&distinct);
+    let evaluations: Vec<LaneEvaluation> = lanes
+        .iter()
+        .map(|(lane, runs)| evaluate_lane(lane, runs))
+        .collect();
+    for evaluation in &evaluations {
+        if !lane_qualifies(evaluation) {
+            continue;
         }
-        let warm = runs
-            .iter()
-            .filter(|run| run.posture == CachePostureV1::Warm)
-            .count() as u64;
-        let mut digests: Vec<&str> = runs
-            .iter()
-            .map(|run| run.semantic_receipt_digest.as_str())
-            .collect();
-        digests.sort();
-        digests.dedup();
-        let uniform = digests.len() == 1;
-        if best_lane.is_none() || covered > best_covered {
-            best_lane = Some(lane.clone());
-            best_missing = missing;
-            best_warm = warm;
-            best_uniform = uniform;
-            best_covered = covered;
+        if let Some((warm_p50, cold_p50)) = lane_improvement(evaluation) {
+            reasons.push(format!(
+                "lane {} covers every required posture (cold, warm, partial_hit, corrupt, \
+                     disabled, fallback) with uniform semantic receipt digests, {} warm runs, \
+                     one cache lane namespace and one head commit, and a measured \
+                     warm-over-cold improvement: warm p50 {warm_p50} ms is below cold p50 \
+                     {cold_p50} ms",
+                evaluation.lane, evaluation.warm
+            ));
+            return (ExperimentVerdictV1::Accepted, reasons);
         }
     }
-    let Some(lane) = best_lane else {
+    let mut best: Option<&LaneEvaluation> = None;
+    for evaluation in &evaluations {
+        let replace = match best {
+            None => true,
+            Some(current) => evaluation.covered > current.covered,
+        };
+        if replace {
+            best = Some(evaluation);
+        }
+    }
+    let Some(best) = best else {
         return (ExperimentVerdictV1::NeedsMoreData, reasons);
     };
-    if best_missing.is_empty() && best_uniform && best_warm >= 2 {
-        reasons.push(format!(
-            "lane {lane} covers every required posture (cold, warm, partial_hit, corrupt, \
-                 disabled, fallback) with uniform semantic receipt digests and {best_warm} warm \
-                 runs"
-        ));
-        return (ExperimentVerdictV1::Accepted, reasons);
-    }
-    if !best_missing.is_empty() {
-        let names: Vec<&str> = best_missing
+    if !best.missing.is_empty() {
+        let names: Vec<&str> = best
+            .missing
             .iter()
             .map(|posture| posture.as_str())
             .collect();
         reasons.push(format!(
-            "lane {lane} is missing required postures: {}",
+            "lane {} is missing required postures: {}",
+            best.lane,
             names.join(", ")
         ));
     }
-    if best_warm < 2 {
+    if best.warm < 2 {
         reasons.push(format!(
-            "lane {lane} records {best_warm} warm run(s); at least 2 are required because one \
-                 warm run is not an acceptance result"
+            "lane {} records {} warm run(s); at least 2 are required because one warm run is \
+                 not an acceptance result",
+            best.lane, best.warm
         ));
     }
-    if !best_uniform {
+    if !best.uniform {
         reasons.push(format!(
-            "lane {lane} reports mixed semantic receipt digests across its runs"
+            "lane {} reports mixed semantic receipt digests across its runs",
+            best.lane
         ));
+    }
+    if best.namespaces.len() > 1 {
+        reasons.push(format!(
+            "lane {} mixes cache lane namespaces ({}); acceptance coverage may not pool \
+                 across namespaces because each namespace is its own key and proof grouping",
+            best.lane,
+            best.namespaces.join(", ")
+        ));
+    }
+    if best.heads.len() > 1 {
+        reasons.push(format!(
+            "lane {} mixes head commits ({}); acceptance coverage may not pool across source \
+                 states",
+            best.lane,
+            best.heads.join(", ")
+        ));
+    }
+    match (best.warm_p50, best.cold_p50) {
+        (Some(warm_p50), Some(cold_p50)) if warm_p50 >= cold_p50 => reasons.push(format!(
+            "lane {} records no measured warm-over-cold improvement: warm p50 {warm_p50} ms \
+                 is not below cold p50 {cold_p50} ms",
+            best.lane
+        )),
+        (Some(_), None) => reasons.push(format!(
+            "lane {} records no measured warm-over-cold improvement: no cold runs measured in \
+                 the lane",
+            best.lane
+        )),
+        (None, _) => reasons.push(format!(
+            "lane {} records no measured warm-over-cold improvement: no warm runs measured in \
+                 the lane",
+            best.lane
+        )),
+        (Some(_), Some(_)) => {}
     }
     (ExperimentVerdictV1::NeedsMoreData, reasons)
 }
@@ -695,9 +911,11 @@ pub fn derive_verdict(records: &[CacheRunRecordV1]) -> ExperimentVerdictV1 {
     derive_verdict_with_reasons(records).0
 }
 
-/// Compile the experiment: validate every run record, derive the verdict
-/// under the measurement laws (including the divergence-forced rejection),
-/// and fill the schema, rollback route, limitations, and claim boundary from
+/// Compile the experiment: validate every run record, reject duplicate
+/// `run_id` values before derivation (the distinct-run law), derive the
+/// verdict under the measurement laws (including the divergence-forced
+/// rejection and the improvement-gated acceptance), and fill the schema,
+/// attribution note, rollback route, limitations, and claim boundary from
 /// the module constants.
 ///
 /// A zero-run slice compiles to an `InstrumentFailure` experiment with an
@@ -717,6 +935,16 @@ pub fn compile_experiment(
     for run in runs {
         validate_run_record(run).map_err(|err| format!("run {}: {err}", run.run_id))?;
     }
+    let mut seen: BTreeSet<&str> = BTreeSet::new();
+    for run in runs {
+        if !seen.insert(run.run_id.as_str()) {
+            return Err(format!(
+                "duplicate run_id {}: every run in the experiment must be a distinct run; \
+                     replaying a row would double-count it",
+                run.run_id
+            ));
+        }
+    }
     let repository = runs
         .first()
         .map(|run| run.repository.clone())
@@ -730,6 +958,14 @@ pub fn compile_experiment(
             ));
         }
     }
+    let warm_count = runs
+        .iter()
+        .filter(|run| run.posture == CachePostureV1::Warm)
+        .count() as u64;
+    let cold_count = runs
+        .iter()
+        .filter(|run| run.posture == CachePostureV1::Cold)
+        .count() as u64;
     let (verdict, verdict_reasons) = derive_verdict_with_reasons(runs);
     Ok(CiCacheExperimentV1 {
         schema_id: CiCacheExperimentV1::CURRENT_SCHEMA_ID.to_string(),
@@ -740,6 +976,7 @@ pub fn compile_experiment(
         runs: runs.to_vec(),
         verdict,
         verdict_reasons,
+        improvement_attribution_note: improvement_attribution_note(warm_count, cold_count),
         rollback_route: CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE.to_string(),
         limitations: declared_experiment_limitations()
             .into_iter()
@@ -751,9 +988,12 @@ pub fn compile_experiment(
 
 /// Validate a compiled experiment: schema identity must match the module
 /// constants, identity fields are non-empty, the claim boundary is pinned to
-/// the module constant (it may never be quietly weakened), every run record
-/// validates, and the recorded verdict must equal the law-derived verdict
-/// over the runs. A non-Accepted verdict must carry reasons.
+/// the module constant (it may never be quietly weakened), the rollback
+/// route is pinned to [`CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE`], the
+/// declared limitations and the improvement attribution note are carried,
+/// every run record validates, and the recorded verdict must equal the
+/// law-derived verdict over the runs. A non-Accepted verdict must carry
+/// reasons.
 pub fn validate_experiment(experiment: &CiCacheExperimentV1) -> Result<(), String> {
     if experiment.schema_id != CiCacheExperimentV1::CURRENT_SCHEMA_ID {
         return Err(format!(
@@ -783,6 +1023,27 @@ pub fn validate_experiment(experiment: &CiCacheExperimentV1) -> Result<(), Strin
         return Err(
             "the experiment claim boundary is pinned to the module constant and may not be \
                  replaced"
+                .to_string(),
+        );
+    }
+    if experiment.rollback_route != CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE {
+        return Err(
+            "the experiment rollback route is pinned to the module constant and may not be \
+                 replaced"
+                .to_string(),
+        );
+    }
+    if experiment.limitations.is_empty() {
+        return Err(
+            "the experiment must carry its declared limitations; an experiment without \
+                 limitations is never clean"
+                .to_string(),
+        );
+    }
+    if experiment.improvement_attribution_note.trim().is_empty() {
+        return Err(
+            "the experiment must carry the improvement attribution note; cache reuse \
+                 attribution may never silently include volatile envelope queue time"
                 .to_string(),
         );
     }
@@ -822,11 +1083,12 @@ mod contract_tests {
     //! autocrlf checkout smudging can never change what the laws see.
 
     use super::{
-        CachePostureV1, CacheRunRecordV1, CacheSaveAuthorityV1, CacheTrustClassV1,
-        CiCacheExperimentV1, ExperimentVerdictV1, PINNED_RUST_CACHE_ACTION_REF, compile_experiment,
-        derive_verdict_with_reasons, duration_percentiles, group_runs_by_proof_lane,
-        improvement_attribution_note, proof_divergences, render_ci_cache_experiment_v1,
-        untrusted_save_violations, validate_experiment, validate_run_record,
+        CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE, CachePostureV1, CacheRunRecordV1,
+        CacheSaveAuthorityV1, CacheTrustClassV1, CiCacheExperimentV1, ExperimentVerdictV1,
+        PINNED_RUST_CACHE_ACTION_REF, compile_experiment, derive_verdict_with_reasons,
+        duration_percentiles, group_runs_by_proof_lane, improvement_attribution_note,
+        proof_divergences, render_ci_cache_experiment_v1, untrusted_save_violations,
+        validate_experiment, validate_run_record,
     };
 
     fn require(condition: bool, message: &str) -> Result<(), String> {
@@ -860,6 +1122,7 @@ mod contract_tests {
             workspace_manifest_digest: "sha256:manifest-0001".to_string(),
             build_profile: "dev".to_string(),
             selected_features: "default".to_string(),
+            selected_targets: "x86_64-unknown-linux-gnu".to_string(),
             proof_lane: "lint".to_string(),
             cache_lane_namespace: "lint-linux".to_string(),
             cache_key_identity: "cargo-allow-cache-v1-linux-x64-stable-cargolock-0001+lint-linux"
@@ -890,14 +1153,21 @@ mod contract_tests {
     }
 
     /// The full acceptance-denominator lane: every required posture with the
-    /// two warm runs the acceptance law demands, uniform receipt digest.
+    /// two warm runs the acceptance law demands, uniform receipt digest, and
+    /// a warm p50 strictly below the cold p50 of 600 ms (improvement law).
     fn acceptance_lane() -> Vec<CacheRunRecordV1> {
+        acceptance_lane_with_warm_duration(500)
+    }
+
+    /// The acceptance lane with each warm run's compile/test duration set to
+    /// the given value; used to prove the improvement law bites.
+    fn acceptance_lane_with_warm_duration(compile_test_seconds_ms: u64) -> Vec<CacheRunRecordV1> {
         let mut disabled = run_record("disabled-1", CachePostureV1::Disabled);
         disabled.bytes_restored = None;
         vec![
             run_record("cold-1", CachePostureV1::Cold),
-            warm("warm-1"),
-            warm("warm-2"),
+            warm_with_duration("warm-1", compile_test_seconds_ms),
+            warm_with_duration("warm-2", compile_test_seconds_ms),
             run_record("partial-1", CachePostureV1::PartialHit),
             run_record("corrupt-1", CachePostureV1::Corrupt),
             disabled,
@@ -1509,6 +1779,260 @@ mod contract_tests {
                 .iter()
                 .any(|note| note.contains("follow-up activity")),
             "the follow-up evidence limitation travels with the experiment",
+        )
+    }
+
+    /// Real-run law: a zero-duration compile/test is not a real selected
+    /// run, because it could never carry a warm-over-cold comparison.
+    #[test]
+    fn zero_duration_compile_test_is_not_a_selected_run() -> Result<(), String> {
+        let mut instant = warm("instant-1");
+        instant.compile_test_seconds_ms = 0;
+        match validate_run_record(&instant) {
+            Ok(()) => Err("a zero-duration compile/test must not validate".to_string()),
+            Err(message) => require(
+                message.contains("compile_test_seconds_ms"),
+                "the real-run error must name the zero duration",
+            ),
+        }
+    }
+
+    /// Improvement law: a lane whose warm p50 is not below its cold p50
+    /// never qualifies for acceptance, even with full coverage; the same
+    /// lane with a strict warm-over-cold improvement is accepted.
+    #[test]
+    fn acceptance_requires_measured_warm_over_cold_improvement() -> Result<(), String> {
+        let no_improvement = acceptance_lane_with_warm_duration(900);
+        let (verdict, reasons) = derive_verdict_with_reasons(&no_improvement);
+        require(
+            verdict == ExperimentVerdictV1::NeedsMoreData,
+            "a warm p50 of 900 ms against a cold p50 of 600 ms is not acceptance",
+        )?;
+        require(
+            reasons
+                .iter()
+                .any(|reason| reason.contains("no measured warm-over-cold improvement")),
+            "the verdict must name the missing warm-over-cold improvement",
+        )?;
+        let improved = compile_experiment(&acceptance_lane(), "exp-improve", "#3835")?;
+        require(
+            improved.verdict == ExperimentVerdictV1::Accepted,
+            "warm p50 500 ms strictly below cold p50 600 ms with full coverage is accepted",
+        )?;
+        require(
+            improved
+                .verdict_reasons
+                .iter()
+                .any(|reason| reason.contains("warm p50 500") && reason.contains("cold p50 600")),
+            "the acceptance reason names the measured improvement",
+        )
+    }
+
+    /// Uniform coverage law (the review's exploit shape): a lane split
+    /// across two cache lane namespaces never pools its coverage into
+    /// acceptance, even with every posture, uniform digests, and two warm
+    /// runs; the verdict names the namespace mixing.
+    #[test]
+    fn coverage_does_not_pool_across_cache_lane_namespaces() -> Result<(), String> {
+        let mut runs = vec![
+            run_record("cold-1", CachePostureV1::Cold),
+            warm_with_duration("warm-1", 500),
+        ];
+        let mut moved = [
+            warm_with_duration("warm-2", 500),
+            run_record("partial-1", CachePostureV1::PartialHit),
+            run_record("corrupt-1", CachePostureV1::Corrupt),
+            run_record("disabled-1", CachePostureV1::Disabled),
+            run_record("fallback-1", CachePostureV1::Fallback),
+        ];
+        for record in moved.iter_mut() {
+            record.cache_lane_namespace = "lint-windows".to_string();
+            if record.run_id == "disabled-1" {
+                record.bytes_restored = None;
+            }
+        }
+        runs.extend(moved);
+        let experiment = compile_experiment(&runs, "exp-exploit", "#3835")?;
+        require(
+            experiment.verdict == ExperimentVerdictV1::NeedsMoreData,
+            "a lane split across two cache lane namespaces must not be accepted",
+        )?;
+        require(
+            experiment
+                .verdict_reasons
+                .iter()
+                .any(|reason| reason.contains("mixes cache lane namespaces")),
+            "the verdict must name the namespace mixing as the non-qualification",
+        )
+    }
+
+    /// Semantic equality extension: runs that share a claimed receipt digest
+    /// may not disagree on the head commit they proved; the divergence row
+    /// names the moved head and forces rejection.
+    #[test]
+    fn head_commit_mixing_in_a_shared_digest_group_diverges() -> Result<(), String> {
+        let mut moved_head = warm("warm-2");
+        moved_head.head_commit = "deadbeef00000000000000000000000000000000".to_string();
+        let divergences = proof_divergences(&[warm("warm-1"), moved_head.clone()]);
+        require(
+            divergences.iter().any(|row| row.contains("head_commit")),
+            "a shared receipt digest across different head commits must be a divergence row",
+        )?;
+        let experiment = compile_experiment(&[warm("warm-1"), moved_head], "exp-head", "#3835")?;
+        require(
+            experiment.verdict == ExperimentVerdictV1::Rejected,
+            "a moved head inside a shared digest group rejects the experiment",
+        )
+    }
+
+    /// Distinct-run law: replaying one warm record twice is rejected before
+    /// derivation and names the duplicate, while two distinct warm run ids
+    /// count as two warm runs toward acceptance.
+    #[test]
+    fn duplicate_run_ids_are_rejected_and_counts_are_distinct() -> Result<(), String> {
+        let replayed = warm("warm-1");
+        let replay = warm("warm-1");
+        match compile_experiment(&[replayed, replay], "exp-replay", "#3835") {
+            Ok(_) => Err("replaying one warm record twice must be rejected".to_string()),
+            Err(message) => require(
+                message.contains("duplicate run_id") && message.contains("warm-1"),
+                "the duplicate error must name the replayed run id",
+            ),
+        }?;
+        let (verdict, reasons) = derive_verdict_with_reasons(&acceptance_lane());
+        require(
+            verdict == ExperimentVerdictV1::Accepted,
+            "two distinct warm run ids count as two warm runs toward acceptance",
+        )?;
+        require(
+            reasons.iter().any(|reason| reason.contains("2 warm runs")),
+            "the acceptance reason counts two distinct warm runs",
+        )
+    }
+
+    /// Semantic equality extension: runs that share a claimed receipt digest
+    /// may not disagree on the selected cargo targets they compiled for.
+    #[test]
+    fn selected_targets_divergence_is_a_compatibility_row() -> Result<(), String> {
+        let mut moved_targets = warm("targets-b");
+        moved_targets.selected_targets = "x86_64-unknown-linux-musl".to_string();
+        let divergences = proof_divergences(&[warm("targets-a"), moved_targets]);
+        require(
+            divergences
+                .iter()
+                .any(|row| row.contains("selected_targets")),
+            "a shared receipt digest across different selected targets must be a divergence row",
+        )
+    }
+
+    /// Experiment envelope law: the rollback route is pinned to the module
+    /// constant and the declared limitations are carried; replacing either
+    /// fails validation.
+    #[test]
+    fn experiment_pins_rollback_route_and_limitations() -> Result<(), String> {
+        let mut experiment = compile_experiment(&acceptance_lane(), "exp-envelope", "#3835")?;
+        require(
+            validate_experiment(&experiment).is_ok(),
+            "the compiled experiment carries the pinned envelope",
+        )?;
+        experiment.rollback_route = "roll back by yanking the published crate".to_string();
+        match validate_experiment(&experiment) {
+            Ok(()) => Err("a replaced rollback route must not validate".to_string()),
+            Err(message) => require(
+                message.contains("rollback route is pinned"),
+                "the rollback error must name the pinned constant",
+            ),
+        }?;
+        experiment.rollback_route = CI_CACHE_EXPERIMENT_V1_DEFAULT_ROLLBACK_ROUTE.to_string();
+        experiment.limitations = Vec::new();
+        match validate_experiment(&experiment) {
+            Ok(()) => Err("an experiment without limitations must not validate".to_string()),
+            Err(message) => require(
+                message.contains("declared limitations"),
+                "the limitations error must name the declared limitations",
+            ),
+        }
+    }
+
+    /// The previously unpinned run-level laws are pinned: a Disabled run
+    /// with restored bytes and every emptied identity field are one-line
+    /// rejections naming the violated law.
+    #[test]
+    fn run_level_laws_are_pinned() -> Result<(), String> {
+        let mut disabled = warm("disabled-1");
+        disabled.posture = CachePostureV1::Disabled;
+        disabled.bytes_restored = Some(100);
+        match validate_run_record(&disabled) {
+            Ok(()) => Err("a Disabled run with restored bytes must not validate".to_string()),
+            Err(message) => require(
+                message.contains("restores nothing"),
+                "the disabled-law error must name the restore prohibition",
+            ),
+        }?;
+        /// One identity-field emptying mutation plus the field's law name.
+        type EmptyIdentity = fn(&mut CacheRunRecordV1);
+        let emptied: [(EmptyIdentity, &str); 6] = [
+            (
+                |record: &mut CacheRunRecordV1| record.cache_key_identity = String::new(),
+                "cache_key_identity",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.semantic_receipt_digest = String::new(),
+                "semantic_receipt_digest",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.cargo_lock_digest = String::new(),
+                "cargo_lock_digest",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.rust_toolchain = String::new(),
+                "rust_toolchain",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.proof_lane = String::new(),
+                "proof_lane",
+            ),
+            (
+                |record: &mut CacheRunRecordV1| record.cache_lane_namespace = String::new(),
+                "cache_lane_namespace",
+            ),
+        ];
+        for (mutate, field) in emptied {
+            let mut record = warm("pinned-1");
+            mutate(&mut record);
+            match validate_run_record(&record) {
+                Ok(()) => return Err(format!("an empty {field} must not validate")),
+                Err(message) => require(
+                    message.contains(field),
+                    "the identity error must name the emptied field",
+                )?,
+            }
+        }
+        Ok(())
+    }
+
+    /// The attribution note is a real consumer output: every compiled
+    /// experiment carries it, it scopes attribution to compile/test time,
+    /// and it excludes envelope queue time.
+    #[test]
+    fn compiled_experiment_carries_the_attribution_note() -> Result<(), String> {
+        let experiment = compile_experiment(&acceptance_lane(), "exp-note", "#3835")?;
+        require(
+            experiment
+                .improvement_attribution_note
+                .contains("compile_test_seconds_ms"),
+            "the carried note scopes attribution to compile/test time",
+        )?;
+        require(
+            experiment
+                .improvement_attribution_note
+                .contains("envelope_queue_seconds_ms")
+                && experiment.improvement_attribution_note.contains("excluded"),
+            "the carried note excludes envelope queue time from attribution",
+        )?;
+        require(
+            validate_experiment(&experiment).is_ok(),
+            "an experiment carrying the note validates",
         )
     }
 }
