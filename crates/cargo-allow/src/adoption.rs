@@ -313,8 +313,8 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         ))
     } else {
         load_world_with_evidence_mode(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
+            Some(&root),
+            policy_path.as_deref(),
             policy_state == allow_report::PolicyState::Valid,
             None,
             args.include_untracked,
