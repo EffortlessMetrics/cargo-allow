@@ -131,7 +131,12 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             .1;
     let selected_policy_digest = scoped_world.3.policy_digest_text();
     let selected_policy_path = if args.plan.is_some() {
-        scoped_world.6.clone()
+        Some(scoped_world.6.clone().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                "selected policy identity could not be observed; rerun why",
+            )
+        })?)
     } else {
         None
     };
