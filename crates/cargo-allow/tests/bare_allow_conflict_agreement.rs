@@ -7,7 +7,7 @@
 //! policy_discovery convention) and does not pull in the shared tests/support
 //! module.
 
-use allow_policy::{ConfigCandidateSourceV1, resolve_cargo_allow_config_v1};
+use allow_policy::{ConfigCandidateSourceV1, ConfigPathAnchorV1, resolve_cargo_allow_config_v1};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -266,10 +266,11 @@ fn central_resolution_matches_command_policy_identity() -> Result<(), String> {
         .map_err(|error| format!("canonicalize doctor policy: {error}"))?;
     require(
         observed_path == expected_path
-            && resolved
-                .selected_policy
-                .as_ref()
-                .is_some_and(|policy| policy.path.path == "policy/allow.toml"),
+            && resolved.selected_policy.as_ref().is_some_and(|policy| {
+                policy.path.path == "policy/allow.toml"
+                    && policy.path.anchor == ConfigPathAnchorV1::ResolvedRepositoryRoot
+                    && policy.path.ancestor_depth == 0
+            }),
         &format!("doctor should report the same explicit policy identity: {artifact}"),
     )?;
     require(
