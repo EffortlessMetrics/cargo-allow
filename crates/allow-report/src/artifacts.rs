@@ -23,6 +23,7 @@ mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
 mod rc_publication_incident_v1;
+mod reconciled_package_publication_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
 mod release_identity_v1;
@@ -136,6 +137,11 @@ pub use github_pr_check_v1::{
     GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
     GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
     GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
+};
+
+pub use reconciled_package_publication_v1::{
+    PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
+    RECONCILED_PACKAGE_PUBLICATION_SCHEMA, ReconciledPackagePublicationV1,
 };
 
 pub use rc_publication_incident_v1::{
