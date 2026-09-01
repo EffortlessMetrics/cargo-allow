@@ -1,0 +1,16 @@
+kind: Changed
+body: >-
+  Give the release rehearsal a real docs-and-support-identity phase
+  (#3751 phase 5). The zero-upload rehearsal harness's
+  docs_and_support_identity phase was a file-existence
+  characterization; it now proves the changelog corpus reproduces
+  CHANGELOG.md exactly (generate-changie-history.py --check), the typed
+  identity's release record and GitHub note exist under docs/release/,
+  and the support matrix and getting-started guide name the exact
+  identity. Complete requires every binding green; missing or
+  identity-mismatched surfaces report Mismatch and instrument failures
+  report InstrumentFailure. The characterization set shrinks to three
+  phases (manifest/assets, authorization boundary, workflow graph
+  permissions). The pinned-Changie merge roundtrip itself stays proven
+  continuously by the changie-contract CI lane; the rehearsal phase
+  proves the identity binding rather than re-running Changie.
