@@ -15082,3 +15082,75 @@ glob = ".allow/revisions/3773-crate-docs-warning-clean.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0709"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/release_manifest_v2.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed consumed-evidence mutation in the validation-branch coverage test (#3761); out-of-range indices are unreachable for the fixed three-row fixture"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::consumed_evidence_gaps_are_named_per_branch"
+symbol = "missing_producer.payload.consumed_evidence[0]"
+receiver_fingerprint = "missing_producer.payload.consumed_evidence"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:dcd845a7c6add642"
+
+[allow.last_seen]
+line = 451
+column = 51
+
+[[allow]]
+id = "allow-0710"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/release_manifest_v2.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed consumed-evidence mutation in the validation-branch coverage test (#3761); out-of-range indices are unreachable for the fixed three-row fixture"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::consumed_evidence_gaps_are_named_per_branch"
+symbol = "empty_class.payload.consumed_evidence[1]"
+receiver_fingerprint = "empty_class.payload.consumed_evidence"
+target_fingerprint = "1"
+normalized_snippet_hash = "fnv1a64:4e43e89329a61c42"
+
+[allow.last_seen]
+line = 462
+column = 46
+
+[[allow]]
+id = "allow-0711"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/release_manifest_v2.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only indexed consumed-evidence mutation in the validation-branch coverage test (#3761); out-of-range indices are unreachable for the fixed three-row fixture"
+evidence = ["issue:3761"]
+created = "2026-09-01"
+review_after = "2026-11-30"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "tests::consumed_evidence_gaps_are_named_per_branch"
+symbol = "bad_digest.payload.consumed_evidence[2]"
+receiver_fingerprint = "bad_digest.payload.consumed_evidence"
+target_fingerprint = "2"
+normalized_snippet_hash = "fnv1a64:6d5a975167df65e3"
+
+[allow.last_seen]
+line = 473
+column = 45
