@@ -12,7 +12,7 @@ use crate::{
     },
     emit_text,
     evidence_inventory::current_evidence_source_tree_files,
-    load_world_with_evidence_mode,
+    load_read_only_world,
 };
 
 #[path = "list_args.rs"]
@@ -50,14 +50,15 @@ use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchOutcome};
 use std::path::PathBuf;
 
 pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
+    let (root, cfg, findings, inventory_facts, _federation) = load_read_only_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
-    )?;
+    )?
+    .into_parts();
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);

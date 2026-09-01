@@ -40,8 +40,8 @@ use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
     SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
-    evidence_inventory::current_evidence_source_tree_files, load_compat_world, load_staged_world,
-    load_world_with_evidence_mode_and_cache, policy_baseline_debt_entries, print_report,
+    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
+    load_read_only_world_and_cache, load_staged_world, policy_baseline_debt_entries, print_report,
     report_config, spec_precommit, spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
@@ -197,7 +197,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             crate::world::default_federation_evaluation(),
         )
     } else {
-        load_world_with_evidence_mode_and_cache(
+        load_read_only_world_and_cache(
             args.root.root.as_deref(),
             args.config.as_deref(),
             true,
@@ -206,6 +206,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             EvidenceValidationMode::ReportOnly,
             persistent_cache,
         )?
+        .into_parts()
     };
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
