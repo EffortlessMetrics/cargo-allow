@@ -121,17 +121,6 @@ pub struct ReleaseManifestEnvelopeV2 {
     pub instrument_diagnostics: Vec<String>,
 }
 
-/// One consumed receipt's retained evidence identity.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ConsumedEvidenceRefV1 {
-    pub schema_id: String,
-    pub path: String,
-    pub sha256: String,
-    pub producer: String,
-    pub result_class: String,
-}
-
 /// Closed validation vocabulary for current V2 release evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
