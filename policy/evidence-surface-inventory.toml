@@ -428,4 +428,3 @@ required_stronger_owner = "#3759"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "The retained record is checked against the typed contract and its internal consistency; external receipt bytes were byte-verified during the reconciliation observation and by independent review, not continuously re-verified here."
-

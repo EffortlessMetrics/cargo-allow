@@ -288,9 +288,9 @@ id = "final-package-docs"
 path = "scripts/final-package-docs.py"
 role = "final package-docs receipt producer"
 disposition = "typed-consumer"
-marker_classes = ["workspace-reader", "prerelease-posture"]
-sites = ["\"release-identity\": basis[\"release_identity\"]"]
-claim_boundary = "The final-basis identity is validated against the stable-only ReleaseIdentityV1 law (version/tag/channel/prerelease agreement) with rc-line bases rejected as final authority; the workspace version source is read only to select the packaging closure, and per-row binding uses the basis identity."
+marker_classes = ["prerelease-posture"]
+sites = ["\"release_identity\": basis[\"release_identity\"]"]
+claim_boundary = "The final-basis identity is validated against the stable-only ReleaseIdentityV1 law (version/tag/channel/prerelease agreement) with rc-line bases rejected as final authority; per-row binding uses the basis identity, so the producer never reads the workspace manifest."
 
 [[consumers]]
 id = "test-final-package-docs"

@@ -1,0 +1,32 @@
+schema_version = 1
+# Revision note for #3773: checked final package-docs receipt.
+
+# This diff adds three source-exception entries, all in service of the
+# checked final package-docs receipt for the ten-package 0.2.0 candidate.
+# allow-0693 receipts the JSON schema, allow-0694 the producer script
+# (normalized-manifest audit, docs posture, channel law, rc-line
+# exclusion), and allow-0695 the fixture contract suite with its six
+# negative controls. No existing exception is weakened, no expiry is
+# extended, and no scope is broadened: every record below is an addition
+# making the final candidate's package-docs evidence more visible.
+# policy/allow.toml keeps its CRLF line-ending contract; the net
+# transition is append-only.
+
+
+[[records]]
+allow_ids = ["allow-0693"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cfb174529cf2c265a2c800b51c3cb00ca6984fb354b0b1aebddc696cdbd568d1"
+reason = "Receipts the JSON schema for the final package-docs receipt contract, giving external consumers a structural description of the record."
+
+[[records]]
+allow_ids = ["allow-0694"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9e53738cb042235758d3d9c8c8cc8a477b5ca1d7434554483edb2dab602b9112"
+reason = "Receipts the final package-docs receipt producer: the checked ten-package normalized-manifest audit, docs-posture checks, channel law, and rc-line exclusion for #3773."
+
+[[records]]
+allow_ids = ["allow-0695"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7345ce7f053dd89260d9726f6bd02fc2373a6cff735d8b987d5433194f120906"
+reason = "Receipts the fixture contract suite proving the producer's law with six negative controls (rc-line basis, stale row, moved shared row, stale topology, malformed digest, missing README)."
