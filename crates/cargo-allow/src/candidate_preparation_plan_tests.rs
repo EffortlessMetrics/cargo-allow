@@ -1856,3 +1856,33 @@ fn asset_roots_parser_reads_all_declared_roots() {
     .expect("no roots is fine");
     assert!(empty.is_empty());
 }
+
+/// A corrupted topology authority fails the projection loudly: invalid
+/// UTF-8 hits the decode arm, broken TOML hits the parse arm, and both
+/// produce a structured invalid-config error (#3832 staging law).
+#[test]
+fn candidate_preparation_corrupted_topology_fails_loudly() {
+    let root = fixture_apply_repo("corrupt-topology");
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        vec![0xff, 0xfe, 0x00],
+    )
+    .expect("write bytes");
+    let error = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect_err("invalid UTF-8 topology must fail");
+    assert!(error.to_string().contains("decode"), "{error}");
+
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        "[[package]\nlogical_id = \"broken\"\n",
+    )
+    .expect("write broken toml");
+    let error = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect_err("broken topology must fail");
+    assert!(error.to_string().contains("parse"), "{error}");
+    let _ = std::fs::remove_dir_all(&root);
+}
