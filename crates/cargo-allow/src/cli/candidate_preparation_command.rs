@@ -255,6 +255,9 @@ fn instrument_failure_result(reasons: Vec<String>) -> CandidatePreparationResult
     }
 }
 
+/// CWD-bound projection entry point; production commands bind the root
+/// explicitly, so this convenience wrapper is test-only today.
+#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn build_preparation_result(
     target_version: &str,
     policy_plan: Option<&Path>,

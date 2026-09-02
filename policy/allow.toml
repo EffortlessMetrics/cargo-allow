@@ -17255,3 +17255,72 @@ normalized_snippet_hash = "fnv1a64:ecbe4427e8d8be0a"
 [allow.last_seen]
 line = 1470
 column = 63
+
+[[allow]]
+id = "allow-0804"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper or coverage assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_planless_result_is_a_conflict"
+callee = "expect"
+receiver_fingerprint = "_preparation_command::build_preparation_result_for_root( &root, \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:55143c232b62b096"
+
+[allow.last_seen]
+line = 1611
+column = 6
+
+[[allow]]
+id = "allow-0805"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper or coverage assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_surface_gather_reports_missing_declared_files"
+callee = "expect"
+receiver_fingerprint = "std::fs::remove_file(root.join(\"docs/getting-started.md\"))"
+normalized_snippet_hash = "fnv1a64:b287051f5b97eaab"
+
+[allow.last_seen]
+line = 1665
+column = 64
+
+[[allow]]
+id = "allow-0806"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper or coverage assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_surface_gather_reports_missing_declared_files"
+callee = "expect"
+receiver_fingerprint = "_preparation_command::build_preparation_result_for_root( &root, \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:843e9b598b81bf1c"
+
+[allow.last_seen]
+line = 1669
+column = 6
