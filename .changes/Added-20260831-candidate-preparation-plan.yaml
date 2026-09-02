@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Pure typed candidate-preparation projection (#3831 evidence-reference
+  law for #3750). New hidden read-only `cargo-allow prep-candidate plan
+  --version <v>` command binds one exact input identity (git facts with a
+  dirty-state class, Cargo.lock / workspace / member manifest digests,
+  topology generation and digest, typed source release identity digest,
+  support-matrix digest, Changie config and history corpus digests,
+  target release-record and GitHub-note sources, source-exception policy
+  identity) and projects the exact final transition from the V2 topology
+  and typed release identity: ten product rows to the target line, every
+  release-coupled internal requirement exact `=<target>`, three shared
+  prerequisites held at 0.1.0, intent/proof outside the closure, and
+  structural decisions (frozen basis #2501, publication authorization
+  #3760) surfaced as DecisionRequired. Non-ready classes
+  (stale/conflict/unsupported/instrument_failure) stay explicit typed
+  results. Registration includes the plan model in `allow-report`, the
+  `candidate-preparation-plan-v1` schema, and 12 negative controls plus
+  live acceptance checks. No repository or external mutation occurs.

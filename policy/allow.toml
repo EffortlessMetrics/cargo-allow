@@ -11063,7 +11063,7 @@ container = "run"
 normalized_snippet_hash = "fnv1a64:2944683783674e0a"
 
 [allow.last_seen]
-line = 162
+line = 172
 column = 9
 
 [[allow]]
@@ -15154,3 +15154,246 @@ normalized_snippet_hash = "fnv1a64:6d5a975167df65e3"
 [allow.last_seen]
 line = 473
 column = 45
+
+[[allow]]
+id = "allow-0712"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/artifacts/candidate_preparation_plan_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-fixture and invariant-guarded expects in the candidate-preparation plan model (#3831); every guarded invariant (single source line, non-empty collections, canonical serialization) is established by immediately preceding validation in the same function"
+evidence = ["issue:3831"]
+occurrence_limit = 9
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/artifacts/candidate_preparation_plan_v1.rs"
+
+[[allow]]
+id = "allow-0713"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Negative-control and acceptance tests for the candidate-preparation plan (#3831); expects run against fully controlled fixtures and the read-only live projection"
+evidence = ["issue:3831"]
+occurrence_limit = 20
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+
+[[allow]]
+id = "allow-0714"
+kind = "panic"
+family = "panic_macro"
+path = "crates/allow-report/src/artifacts/candidate_preparation_plan_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Canonicalization failure guard in the input-identity digest (#3831); serde JSON serialization of this typed identity struct is total, so the panic arm is unreachable"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "CandidatePreparationInputIdentityV1::identity_digest"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:838f1b0201f26e7a"
+
+[allow.last_seen]
+line = 99
+column = 13
+
+[[allow]]
+id = "allow-0715"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Workspace-root discovery failure fires only when the test process starts outside the repository (#3831)"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "workspace_root"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:9b2e8e3a45bfc205"
+
+[allow.last_seen]
+line = 23
+column = 13
+
+[[allow]]
+id = "allow-0716"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Corpus-path containment guard in the read-only gather path (#3831); paths are collected under the repository root so strip_prefix cannot fail"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "source_release_identity_digest"
+callee = "expect"
+receiver_fingerprint = "source_versions.keys().next()"
+normalized_snippet_hash = "fnv1a64:d295ef93d8fd174e"
+
+[allow.last_seen]
+line = 384
+column = 56
+
+[[allow]]
+id = "allow-0717"
+kind = "panic"
+family = "string_slice"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "ASCII-boundary slicing after a literal find anchor in the workspace-members parser (#3831); offsets come from find on ASCII markers so slice boundaries are char-safe"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "parse_workspace_members"
+symbol = "text[start..]"
+receiver_fingerprint = "text"
+target_fingerprint = "start.."
+normalized_snippet_hash = "fnv1a64:8ed0c3ce5b5a66df"
+
+[allow.last_seen]
+line = 527
+column = 19
+
+[[allow]]
+id = "allow-0718"
+kind = "panic"
+family = "string_slice"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "ASCII-boundary slicing after a literal find anchor in the workspace-members parser (#3831); offsets come from find on ASCII markers so slice boundaries are char-safe"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "parse_workspace_members"
+symbol = "text[start..end]"
+receiver_fingerprint = "text"
+target_fingerprint = "start..end"
+normalized_snippet_hash = "fnv1a64:b1824276415e08ca"
+
+[allow.last_seen]
+line = 531
+column = 23
+
+[[allow]]
+id = "allow-0719"
+kind = "panic"
+family = "string_slice"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "ASCII-boundary slicing after a literal find anchor in the workspace-dependencies parser (#3831); offsets come from find on ASCII markers so slice boundaries are char-safe"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "parse_workspace_requirements"
+symbol = "text[section_start + \"[workspace.dependencies]\".len()..]"
+receiver_fingerprint = "text"
+target_fingerprint = "art + \"[workspace.dependencies]\".len().."
+normalized_snippet_hash = "fnv1a64:b047e735cc03905d"
+
+[allow.last_seen]
+line = 622
+column = 24
+
+[[allow]]
+id = "allow-0720"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/candidate-preparation-plan-v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Contract documentation for the candidate-preparation result schema (#3831); machine-readable contract for the read-only prep-candidate projection"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/candidate-preparation-plan-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/candidate-preparation-plan-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0721"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3831-candidate-preparation-plan.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-receipt for the #3831 revision note record; the note documents the added_allow transition for the candidate-preparation receipts"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3831-candidate-preparation-plan.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3831-candidate-preparation-plan.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0722"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-report/src/artifacts/candidate_preparation_plan_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded product-row indexing in the closure projection (#3831); the preceding empty-closure conflict check guarantees product_rows is non-empty before [0] is read"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "prepare_candidate_plan"
+symbol = "product_rows[0]"
+receiver_fingerprint = "product_rows"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:710cad1e45a362e5"
+
+[allow.last_seen]
+line = 515
+column = 44
