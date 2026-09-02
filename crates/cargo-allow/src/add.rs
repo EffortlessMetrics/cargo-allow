@@ -114,6 +114,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         }
         Err(error) => return Err(error),
     };
+    crate::policy_config::assert_path_within_root(&mutation_root, &selected_policy_path)?;
     let (selected_cfg, selected_policy_digest) =
         crate::policy_config::load_policy_at_path_with_digest(
             selected_policy_path.clone(),
