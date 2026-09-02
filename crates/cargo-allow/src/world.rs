@@ -345,7 +345,7 @@ fn reject_unsupported_staged_federation(
     Ok(())
 }
 
-type WorldLoadResult = CargoAllowResult<(
+pub(crate) type WorldLoadResult = CargoAllowResult<(
     PathBuf,
     AllowConfig,
     Vec<Finding>,
@@ -937,6 +937,25 @@ fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluati
 
 pub(crate) fn default_federation_evaluation() -> FederationEvaluation {
     empty_federation_evaluation(PrecedenceTier::DiscoveryFallback)
+}
+
+/// Load the policy-less world after an optional selection attempt has already
+/// established that no policy is available. Callers must pass the original
+/// root and scan options so this path does not perform a second selection.
+pub(crate) fn load_world_without_policy_after_selection(
+    root: &Path,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+) -> WorldLoadResult {
+    load_world_without_policy_and_cache(
+        root,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+        true,
+    )
 }
 
 #[cfg(test)]

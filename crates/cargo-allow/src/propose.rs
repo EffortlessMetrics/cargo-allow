@@ -1,6 +1,7 @@
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
-    current_dir, emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
+    emit_stderr_text, load_world_from_resolved_policy_with_options,
+    load_world_without_policy_after_selection, portable_relative_under_root,
     require_json_summary_output,
 };
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
@@ -92,16 +93,21 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         }
     });
     let mutation_root = crate::resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let selection =
+        crate::policy_config::select_policy_path(&mutation_root, args.config.as_deref());
+    let selected_policy_path = selection.as_ref().ok().map(|(path, _)| path.clone());
+    if let Some(path) = &selected_policy_path {
+        crate::policy_config::assert_path_within_root(&mutation_root, path)?;
+    }
     if let Some(target) = &write_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
-    let live_config = config_path(&mutation_root, args.config.as_deref());
     let mut collision_targets = Vec::new();
     if let Some(target) = write_target.as_deref() {
         collision_targets.push(target);
     }
-    if let Some(target) = live_config.as_deref() {
-        collision_targets.push(target);
+    if let Some(path) = selected_policy_path.as_deref() {
+        collision_targets.push(path);
     }
     crate::command_support::reject_legacy_summary_output_collision(
         &mutation_root,
@@ -116,14 +122,32 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         })
         .transpose()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        false,
-        args.kind.as_deref(),
-        args.include_untracked,
-        EvidenceValidationMode::ReportOnly,
-    )?;
+    let (root, cfg, findings, inventory_facts, _federation) = match selection {
+        Ok((policy_path, federation)) => {
+            let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+                policy_path,
+                EvidenceValidationMode::ReportOnly,
+            )?;
+            load_world_from_resolved_policy_with_options(
+                &mutation_root,
+                cfg,
+                Some(policy_digest),
+                federation,
+                args.include_untracked,
+                args.kind.as_deref(),
+                true,
+            )?
+        }
+        Err(error) if crate::policy_config::is_missing_policy_config_error(&error) => {
+            load_world_without_policy_after_selection(
+                &mutation_root,
+                args.kind.as_deref(),
+                args.include_untracked,
+                EvidenceValidationMode::ReportOnly,
+            )?
+        }
+        Err(error) => return Err(error),
+    };
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let new_findings_total = outcomes
         .iter()
@@ -248,7 +272,10 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         .map(|entry| Some(allow_core::allow_entry_content_fingerprint(entry)))
         .collect::<Vec<_>>();
     let repo_root = root.display().to_string();
-    let config_source = crate::policy_config::config_path(&root, args.config.as_deref())
+    let config_source = selected_policy_path
+        .as_deref()
+        .map(|path| crate::policy_config::git_relative_selected_config_path(&root, path))
+        .transpose()?
         .map(|path| path.display().to_string());
     let write_path = write_target
         .as_ref()
