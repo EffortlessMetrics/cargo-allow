@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  `cargo allow doctor --require-clean` now treats an invalid federation
+  configuration as non-clean even when a conventional policy fallback is
+  available. Doctor keeps the existing diagnostic and reporting surfaces while
+  preserving one selected policy observation for the invocation.
