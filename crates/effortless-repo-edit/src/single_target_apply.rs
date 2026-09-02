@@ -66,7 +66,7 @@ impl SingleTargetApplyResponse {
 
 /// Apply `contents` to `target` under `repository_root`, emitting a generic receipt.
 pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTargetApplyResponse {
-    apply_single_target_inner(request, None, None)
+    apply_single_target_inner(request, None, None, None)
 }
 
 /// Apply a target while rechecking the canonical identity held by its lock.
@@ -77,13 +77,28 @@ pub fn apply_single_target_with_target(
     request: SingleTargetApplyRequest<'_>,
     held_target: &crate::mutation_target::MutationTarget,
 ) -> SingleTargetApplyResponse {
-    apply_single_target_inner(request, Some(held_target), None)
+    apply_single_target_inner(request, Some(held_target), None, None)
+}
+
+/// Apply a held target only when its bytes still match the caller's preimage.
+pub fn apply_single_target_with_target_and_expected_digest(
+    request: SingleTargetApplyRequest<'_>,
+    held_target: &crate::mutation_target::MutationTarget,
+    expected_before_digest: &str,
+) -> SingleTargetApplyResponse {
+    apply_single_target_inner(
+        request,
+        Some(held_target),
+        None,
+        Some(expected_before_digest),
+    )
 }
 
 fn apply_single_target_inner(
     request: SingleTargetApplyRequest<'_>,
     held_target: Option<&crate::mutation_target::MutationTarget>,
     pre_write_hook: Option<&mut dyn FnMut()>,
+    expected_before_digest: Option<&str>,
 ) -> SingleTargetApplyResponse {
     let tool_version = env!("CARGO_PKG_VERSION").to_string();
     let repository_root = portable_path(request.repository_root, request.repository_root);
@@ -192,6 +207,25 @@ fn apply_single_target_inner(
         }
     };
 
+    if let Some(expected_before_digest) = expected_before_digest
+        && bytes_before_digest.as_deref() != Some(expected_before_digest)
+    {
+        return failed_response(FailedApplyContext {
+            tool_version,
+            repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+            repository_root,
+            target_requested,
+            target_canonical,
+            operation: ApplyOperation::Replace,
+            preconditions_checked: preconditions,
+            bytes_before_digest,
+            caller_reference: request.caller_reference.map(str::to_string),
+            lock_identity: request.lock_identity,
+            limitations,
+            error_detail: "target bytes changed after policy observation".to_string(),
+        });
+    }
+
     let operation = if bytes_before_digest.is_some() {
         ApplyOperation::Replace
     } else {
@@ -276,6 +310,44 @@ fn apply_single_target_inner(
             limitations,
             error_detail: error.to_string(),
         });
+    }
+
+    if let Some(expected_before_digest) = expected_before_digest {
+        let current_digest = match fs::read(&joined) {
+            Ok(bytes) => sha256_v1_bytes(&bytes),
+            Err(error) => {
+                return failed_response(FailedApplyContext {
+                    tool_version,
+                    repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+                    repository_root,
+                    target_requested,
+                    target_canonical,
+                    operation,
+                    preconditions_checked: preconditions,
+                    bytes_before_digest,
+                    caller_reference: request.caller_reference.map(str::to_string),
+                    lock_identity: request.lock_identity,
+                    limitations,
+                    error_detail: format!("failed to re-read target before apply: {error}"),
+                });
+            }
+        };
+        if current_digest != expected_before_digest {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation,
+                preconditions_checked: preconditions,
+                bytes_before_digest,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: "target bytes changed before write".to_string(),
+            });
+        }
     }
 
     // A lock-bound caller must write the path whose identity it held, not a
@@ -725,6 +797,113 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn held_target_rejects_stale_before_digest() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-stale-before-digest")?;
+        let target = root.path().join("policy/allow.toml");
+        fs::create_dir_all(target.parent().ok_or("target needs a parent")?)?;
+        fs::write(&target, "newer bytes\n")?;
+        let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
+        let _lock = MutationLock::acquire_for_target(&held)?;
+
+        let response = apply_single_target_with_target_and_expected_digest(
+            SingleTargetApplyRequest {
+                repository_root: root.path(),
+                target: Path::new("policy/allow.toml"),
+                contents: "stale replacement\n",
+                caller_reference: Some("test:stale-before-digest"),
+                lock_identity: Some(held.repo_relative_display().to_string()),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            &held,
+            &sha256_v1_bytes(b"older bytes\n"),
+        );
+        (!response.receipt.applied())
+            .then_some(())
+            .ok_or("stale target was applied")?;
+        response
+            .receipt
+            .error_detail
+            .as_deref()
+            .filter(|detail| detail.contains("bytes changed"))
+            .ok_or("stale target error was not reported")?;
+        let actual = fs::read_to_string(target)?;
+        if actual != "newer bytes\n" {
+            return Err(format!("target changed unexpectedly: {actual:?}").into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn held_target_accepts_matching_before_digest() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-matching-before-digest")?;
+        let target = root.path().join("policy/allow.toml");
+        fs::create_dir_all(target.parent().ok_or("target needs a parent")?)?;
+        fs::write(&target, "current bytes\n")?;
+        let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
+        let _lock = MutationLock::acquire_for_target(&held)?;
+        let response = apply_single_target_with_target_and_expected_digest(
+            SingleTargetApplyRequest {
+                repository_root: root.path(),
+                target: Path::new("policy/allow.toml"),
+                contents: "replacement\n",
+                caller_reference: Some("test:matching-before-digest"),
+                lock_identity: Some(held.repo_relative_display().to_string()),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            &held,
+            &sha256_v1_bytes(b"current bytes\n"),
+        );
+        response
+            .receipt
+            .applied()
+            .then_some(())
+            .ok_or_else(|| response.receipt.error_detail.clone().unwrap_or_default())?;
+        if fs::read_to_string(target)? != "replacement\n" {
+            return Err("matching target was not replaced".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn held_target_rejects_change_at_write_boundary() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-write-boundary")?;
+        let target = root.path().join("policy/allow.toml");
+        fs::create_dir_all(target.parent().ok_or("target needs a parent")?)?;
+        fs::write(&target, "before\n")?;
+        let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
+        let _lock = MutationLock::acquire_for_target(&held)?;
+        let mut mutate = || {
+            let _ = fs::write(&target, "concurrent edit\n");
+        };
+        let response = super::apply_single_target_inner(
+            SingleTargetApplyRequest {
+                repository_root: root.path(),
+                target: Path::new("policy/allow.toml"),
+                contents: "stale replacement\n",
+                caller_reference: Some("test:write-boundary"),
+                lock_identity: Some(held.repo_relative_display().to_string()),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            Some(&held),
+            Some(&mut mutate),
+            Some(&sha256_v1_bytes(b"before\n")),
+        );
+        if response.receipt.applied() {
+            return Err("write boundary accepted a concurrent edit".into());
+        }
+        response
+            .receipt
+            .error_detail
+            .as_deref()
+            .filter(|detail| detail.contains("bytes changed"))
+            .ok_or("write-boundary mismatch was not reported")?;
+        if fs::read_to_string(target)? != "concurrent edit\n" {
+            return Err("concurrent edit was overwritten".into());
+        }
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn held_create_rejects_parent_retarget_without_touching_in_tree_sentinel()
@@ -761,6 +940,7 @@ mod tests {
             },
             Some(&held),
             Some(&mut retarget),
+            None,
         );
         if let Some(error) = hook_error {
             return Err(error.into());

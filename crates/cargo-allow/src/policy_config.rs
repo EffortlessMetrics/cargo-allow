@@ -25,6 +25,7 @@ pub(crate) fn missing_plan_policy_config_error() -> CargoAllowError {
     )
 }
 
+#[cfg(test)]
 pub(crate) fn missing_plan_update_policy_config_error() -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
@@ -156,6 +157,15 @@ pub(crate) fn load_policy_at_path_with_digest(
 
 pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
     discover_config_path(root, config).path
+}
+
+/// Select one policy using the canonical precedence evaluator without the
+/// report-oriented fallback behavior of [`discover_config_path`].
+pub(crate) fn select_policy_path(
+    root: &Path,
+    config: Option<&Path>,
+) -> CargoAllowResult<(PathBuf, allow_policy::federation::FederationEvaluation)> {
+    evaluate_source_exception_policy(root, config)
 }
 
 pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> ConfigDiscovery {
@@ -333,6 +343,16 @@ pub(crate) fn git_relative_config_path(
     let path = discovery
         .path
         .ok_or_else(|| missing_config_error(&discovery.skipped))?;
+    git_relative_selected_config_path(root, &path)
+}
+
+/// Relativize an already selected policy path without performing discovery.
+/// Callers that have loaded a world from a specific observation use this form
+/// to keep subsequent identity and mutation steps bound to that same path.
+pub(crate) fn git_relative_selected_config_path(
+    root: &Path,
+    path: &Path,
+) -> CargoAllowResult<PathBuf> {
     let root = root.canonicalize().map_err(|e| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Inventory,
