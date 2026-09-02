@@ -85,7 +85,7 @@ fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> 
     fs::create_dir_all(root.join("src"))?;
     fs::write(
         root.join("policy/allow.toml"),
-        "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+        "policy = \"cargo-allow\"\n\n[[allow]]\nid = \"why-context\"\nkind = \"panic\"\nfamily = \"unwrap\"\nglob = \"src/**/*.rs\"\nowner = \"test\"\nclassification = \"fixture\"\nreason = \"why context fixture\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"call_expression\"\nglob = \"src/**/*.rs\"\n\n[workspace]\nignored = []\ngenerated = []\n",
     )?;
     fs::write(
         root.join("src/lib.rs"),
