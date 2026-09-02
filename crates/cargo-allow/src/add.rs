@@ -144,6 +144,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         args.summary_output.as_deref(),
         &collision_targets,
     )?;
+    crate::core_command_router::reject_configured_summary_output_collision(
+        &mutation_root,
+        &collision_targets,
+        "--command-summary-output must differ from the selected policy output",
+    )?;
     // #2487: use canonical MutationTarget identity for lock key so path
     // aliases share one lock file.
     let resolved_mutation_target = mutation_target
