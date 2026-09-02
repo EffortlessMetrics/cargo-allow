@@ -36,7 +36,7 @@ use crate::{
     resolve_source_tree_root,
 };
 use effortless_repo_edit::{
-    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target,
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
     apply_single_target_with_target_and_expected_digest,
 };
 
@@ -417,18 +417,26 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         } else {
             SingleTargetApplyMode::CreateNewOnly
         };
-        apply_single_target(SingleTargetApplyRequest {
-            repository_root: &mutation_root,
-            target: &target,
-            contents: &rendered,
-            caller_reference: Some("cargo-allow:add"),
-            lock_identity: Some(
-                target
-                    .to_string_lossy()
-                    .replace(std::path::MAIN_SEPARATOR, "/"),
-            ),
-            mode,
-        })
+        apply_single_target_with_target(
+            SingleTargetApplyRequest {
+                repository_root: &mutation_root,
+                target: &target,
+                contents: &rendered,
+                caller_reference: Some("cargo-allow:add"),
+                lock_identity: Some(
+                    target
+                        .to_string_lossy()
+                        .replace(std::path::MAIN_SEPARATOR, "/"),
+                ),
+                mode,
+            },
+            resolved_mutation_target.as_ref().ok_or_else(|| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    "internal error: add mutation target was not resolved",
+                )
+            })?,
+        )
         .into_result()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     } else {
