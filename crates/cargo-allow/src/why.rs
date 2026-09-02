@@ -32,6 +32,31 @@ use why_render::{render_why_json, render_why_text_styled};
 
 const MAX_CANDIDATES: usize = 8;
 
+fn broaden_context(
+    scoped: &crate::world::CoreWorldContext,
+    policy_digest: Option<String>,
+    include_untracked: bool,
+    kind_filter: Option<&str>,
+) -> CargoAllowResult<crate::world::CoreWorldContext> {
+    let (root, cfg, findings, inventory_facts, federation) =
+        load_world_from_resolved_policy_with_options(
+            &scoped.root,
+            scoped.cfg.clone(),
+            policy_digest,
+            scoped.federation.clone(),
+            include_untracked,
+            kind_filter,
+            true,
+        )?;
+    Ok(crate::world::CoreWorldContext {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+    })
+}
+
 fn missing_evaluation_outcome_error(path: &std::path::Path, line: u32) -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::Internal,
@@ -167,23 +192,12 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let selected_context = if locality_reasons.is_empty() {
         scoped_world.0.clone()
     } else {
-        let (root, cfg, findings, inventory_facts, federation) =
-            load_world_from_resolved_policy_with_options(
-                &scoped_world.0.root,
-                scoped_world.0.cfg.clone(),
-                selected_policy_digest.clone(),
-                scoped_world.0.federation.clone(),
-                args.include_untracked,
-                Some(args.kind.as_str()),
-                true,
-            )?;
-        crate::world::CoreWorldContext {
-            root,
-            cfg,
-            findings,
-            inventory_facts,
-            federation,
-        }
+        broaden_context(
+            &scoped_world.0,
+            selected_policy_digest.clone(),
+            args.include_untracked,
+            Some(args.kind.as_str()),
+        )?
     };
     let crate::world::CoreWorldContext {
         root,

@@ -123,6 +123,23 @@ fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> 
             output: Some(root.join("why.json")),
             plan: None,
         };
+        let scoped = crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            true,
+            Some("panic"),
+            false,
+            &root.join("src/lib.rs"),
+        )?;
+        let broadened = broaden_context(
+            &scoped.0,
+            scoped.0.inventory_facts.policy_digest_text(),
+            false,
+            Some("panic"),
+        )?;
+        if broadened.findings.is_empty() {
+            return Err("broadened why context lost the fixture finding".into());
+        }
         cmd_why(&args)?;
         Ok(())
     })();
