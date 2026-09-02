@@ -1280,6 +1280,7 @@ fn candidate_preparation_faults_mid_commit_rolls_back_completely() {
             after_commit: Some(2),
             corrupt_staged: false,
             mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
         },
     );
     assert_eq!(
@@ -1329,6 +1330,7 @@ fn candidate_preparation_faults_corrupt_staged_abort_without_writes() {
             after_commit: None,
             corrupt_staged: true,
             mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
         },
     );
     assert_eq!(
@@ -1508,6 +1510,7 @@ fn candidate_preparation_faults_post_lock_mutation_is_a_mismatch() {
             after_commit: None,
             corrupt_staged: false,
             mutate_target_after_lock: true,
+            remove_first_target_before_rollback: false,
         },
     );
     assert_eq!(
@@ -1523,5 +1526,155 @@ fn candidate_preparation_faults_post_lock_mutation_is_a_mismatch() {
             .all(|operation| operation.result != "applied")
     );
     assert!(before.contains("0.2.0-rc.1"));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// An incomplete rollback surfaces as an explicit bounded
+/// RecoveryRequired state instead of a silent green (transaction law).
+#[test]
+fn candidate_preparation_faults_incomplete_rollback_is_recovery_required() {
+    let root = fixture_apply_repo("recovery");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: Some(1),
+            corrupt_staged: false,
+            mutate_target_after_lock: false,
+            remove_first_target_before_rollback: true,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::RecoveryRequired,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(receipt.rollback_result.starts_with("incomplete"));
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "recovery_required")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A receipt path that collides with an operation target is a Conflict
+/// before any write (control 5).
+#[test]
+fn candidate_preparation_apply_receipt_path_collision_is_a_conflict() {
+    let root = fixture_apply_repo("receipt-collide");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        Some(&root.join("Cargo.toml")),
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    assert!(
+        receipt
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("collides with the operation target"))
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Applying a result that carries no projected plan (the repository has
+/// already reached the target line) is an explicit Conflict, not a write.
+#[test]
+fn candidate_preparation_apply_planless_result_is_a_conflict() {
+    let root = fixture_apply_repo("planless");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    // Post-apply, the repository no longer projects a transition.
+    let planless = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("result builds");
+    assert!(planless.plan.is_none());
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &planless,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The plan command maps hard non-ready classes to a structured error
+/// while still rendering the typed result (exit-mapping coverage).
+#[test]
+fn candidate_preparation_plan_command_maps_stale_to_error() {
+    let root = fixture_apply_repo("plan-exit");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    let stale_args = crate::cli::candidate_preparation_command::PrepCandidatePlanArgs {
+        version: "0.2.0".to_string(),
+        format: crate::cli::candidate_preparation_command::PrepOutputFormat::Text,
+        policy_plan: None,
+    };
+    let error = crate::cli::candidate_preparation_command::cmd_prep_candidate_plan_for_root(
+        &root,
+        &stale_args,
+    )
+    .expect_err("a stale projection must map to a non-zero exit");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A missing version-derived reference makes the surface gather fail
+/// explicitly rather than silently dropping the surface.
+#[test]
+fn candidate_preparation_surface_gather_reports_missing_declared_files() {
+    let root = fixture_apply_repo("gather-gap");
+    std::fs::remove_file(root.join("docs/getting-started.md")).expect("remove reference");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("result renders");
+    assert!(
+        result
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("operation compilation unavailable")),
+        "reasons: {:?}",
+        result.reasons
+    );
+    assert!(result.operations.is_none());
     let _ = std::fs::remove_dir_all(&root);
 }

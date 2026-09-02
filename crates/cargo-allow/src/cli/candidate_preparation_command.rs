@@ -72,7 +72,7 @@ pub(crate) struct PrepCandidateApplyArgs {
 
 /// Output rendering for the preparation result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum PrepOutputFormat {
+pub(crate) enum PrepOutputFormat {
     Json,
     Text,
 }
@@ -84,10 +84,10 @@ pub(crate) struct PrepCandidatePlanArgs {
     pub(crate) version: String,
     /// Output rendering. Both derive from the same typed result.
     #[arg(long, value_enum, default_value_t = PrepOutputFormat::Json)]
-    format: PrepOutputFormat,
+    pub(crate) format: PrepOutputFormat,
     /// Optional add-finding plan supplying governed policy changes.
     #[arg(long)]
-    policy_plan: Option<PathBuf>,
+    pub(crate) policy_plan: Option<PathBuf>,
 }
 
 pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<()> {
@@ -178,7 +178,22 @@ fn receipt_human_summary(receipt: &allow_report::CandidateApplyReceiptV1) -> Str
 }
 
 fn cmd_prep_candidate_plan(args: &PrepCandidatePlanArgs) -> CargoAllowResult<()> {
-    let result = build_preparation_result(&args.version, args.policy_plan.as_deref())?;
+    let root = git_root().map_err(|reason| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("plan requires a git worktree: {reason}"),
+        )
+    })?;
+    cmd_prep_candidate_plan_for_root(&root, args)
+}
+
+/// Root-parameterized plan command (fixture tests bind an explicit root).
+pub(crate) fn cmd_prep_candidate_plan_for_root(
+    root: &Path,
+    args: &PrepCandidatePlanArgs,
+) -> CargoAllowResult<()> {
+    let result =
+        build_preparation_result_for_root(root, &args.version, args.policy_plan.as_deref())?;
     let rendered = match args.format {
         PrepOutputFormat::Json => serde_json::to_string_pretty(&result).map_err(|error| {
             CargoAllowError::with_kind(
@@ -1517,6 +1532,9 @@ pub(crate) struct ApplyFault {
     /// Simulate another writer flipping a target after the locks are held
     /// but before the per-target recheck.
     pub(crate) mutate_target_after_lock: bool,
+    /// Simulate rollback failure: the first committed target cannot be
+    /// restored, producing the bounded RecoveryRequired state.
+    pub(crate) remove_first_target_before_rollback: bool,
 }
 
 impl ApplyFault {
@@ -1525,6 +1543,7 @@ impl ApplyFault {
             after_commit: None,
             corrupt_staged: false,
             mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
         }
     }
 }
@@ -1979,7 +1998,22 @@ pub(crate) fn apply_candidate_plan(
     if let Some((state, reason)) = abort {
         receipt.transaction_result = reason.clone();
         let mut rollback_failures: Vec<String> = Vec::new();
+        let mut first_restored = false;
         for path in committed.iter().rev() {
+            if fault.remove_first_target_before_rollback && !first_restored {
+                first_restored = true;
+                rollback_failures.push(format!(
+                    "{path}: injected rollback failure leaves the file in the prospective state"
+                ));
+                if let Some(record) = receipt
+                    .operations
+                    .iter_mut()
+                    .find(|record| &record.path == path)
+                {
+                    record.result = "recovery_required".to_string();
+                }
+                continue;
+            }
             let Some((_, preimage)) = preimages.iter().find(|(p, _)| p == path) else {
                 rollback_failures.push(format!("{path}: no preimage"));
                 continue;
