@@ -1,7 +1,8 @@
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
-    emit_stderr_text, load_world_from_resolved_policy_with_options, load_world_with_evidence_mode,
-    portable_relative_under_root, require_json_summary_output,
+    emit_stderr_text, load_world_from_resolved_policy_with_options,
+    load_world_without_policy_after_selection, portable_relative_under_root,
+    require_json_summary_output,
 };
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
@@ -134,13 +135,11 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
                 federation,
                 args.include_untracked,
                 args.kind.as_deref(),
-                false,
+                true,
             )?
         }
-        Err(_) => load_world_with_evidence_mode(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            false,
+        Err(_) => load_world_without_policy_after_selection(
+            &mutation_root,
             args.kind.as_deref(),
             args.include_untracked,
             EvidenceValidationMode::ReportOnly,
