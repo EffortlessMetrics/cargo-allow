@@ -441,6 +441,7 @@ type ScopedWorldLoadResult = CargoAllowResult<(
     Option<String>,
 )>;
 
+#[cfg(test)]
 pub(crate) fn load_world(
     explicit_root: Option<&Path>,
     config: Option<&Path>,

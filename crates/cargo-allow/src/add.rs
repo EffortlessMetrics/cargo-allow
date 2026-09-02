@@ -27,15 +27,18 @@ use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summa
 pub(super) use add_types::AddContext;
 
 use crate::{
-    HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path, current_dir,
-    emit_stderr_text, emit_text,
+    HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
+    emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    git_relative_config_path, load_world, parse_kind_filter, portable_relative_under_root,
-    require_json_summary_output, resolve_source_tree_root,
+    parse_kind_filter, portable_relative_under_root, require_json_summary_output,
+    resolve_source_tree_root,
 };
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target,
+    apply_single_target_with_target_and_expected_digest,
+};
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
@@ -97,13 +100,25 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     // no-policy error mentions --update explicitly (matching add_from_plan's
     // message at add_from_plan.rs:127), instead of the generic load_world
     // error that doesn't reference the update operation.
-    if args.update && config_path(&mutation_root, args.config.as_deref()).is_none() {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            "no policy config found to update; run `cargo-allow init` or pass --config",
-        ));
-    }
-    let live_config = config_path(&mutation_root, args.config.as_deref());
+    let selection =
+        crate::policy_config::select_policy_path(&mutation_root, args.config.as_deref());
+    let (selected_policy_path, federation) = match selection {
+        Ok(value) => value,
+        Err(error)
+            if args.update && crate::policy_config::is_missing_policy_config_error(&error) =>
+        {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                "no policy config found to update; run `cargo-allow init` or pass --config",
+            ));
+        }
+        Err(error) => return Err(error),
+    };
+    let (selected_cfg, selected_policy_digest) =
+        crate::policy_config::load_policy_at_path_with_digest(
+            selected_policy_path.clone(),
+            crate::EvidenceValidationMode::Abort,
+        )?;
     let write_target = args.write.as_deref().map(|path| {
         if path.is_absolute() {
             path.to_path_buf()
@@ -111,7 +126,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             cwd.join(path)
         }
     });
-    let mutation_target = write_target.clone().or_else(|| live_config.clone());
+    let mutation_target = write_target
+        .clone()
+        .or_else(|| Some(selected_policy_path.clone()));
     // #2487: assert the mutation target is within the source-tree root
     // before acquiring the lock, preventing out-of-tree writes.
     if let Some(target) = &mutation_target {
@@ -121,9 +138,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(target) = write_target.as_deref() {
         collision_targets.push(target);
     }
-    if let Some(target) = live_config.as_deref() {
-        collision_targets.push(target);
-    }
+    collision_targets.push(&selected_policy_path);
     crate::command_support::reject_legacy_summary_output_collision(
         &mutation_root,
         args.summary_output.as_deref(),
@@ -131,36 +146,44 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     )?;
     // #2487: use canonical MutationTarget identity for lock key so path
     // aliases share one lock file.
-    let _mutation_lock = mutation_target
+    let resolved_mutation_target = mutation_target
         .as_ref()
         .map(|target| {
             let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
-            MutationLock::acquire_for_target(&resolved)
+            Ok::<_, effortless_repo_edit::RepoEditError>(resolved)
         })
         .transpose()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        true,
-        declared_kind.as_deref(),
-        args.include_untracked,
-    )?;
+    let _mutation_lock = resolved_mutation_target
+        .as_ref()
+        .map(MutationLock::acquire_for_target)
+        .transpose()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let (root, mut cfg, findings, inventory_facts, _federation) =
+        crate::load_world_from_resolved_policy_with_options(
+            &mutation_root,
+            selected_cfg,
+            Some(selected_policy_digest.clone()),
+            federation,
+            args.include_untracked,
+            declared_kind.as_deref(),
+            true,
+        )?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
     ensure_unique_allow_id(cfg.allow.iter().map(|entry| entry.id.as_str()), &id)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
         repo_root: Some(allow_report::source_tree_path_text(&root)),
-        config_source: config_path(&root, args.config.as_deref())
-            .map(|path| allow_report::source_tree_path_text(&path)),
+        config_source: Some(allow_report::source_tree_path_text(&selected_policy_path)),
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;
     // otherwise stdout (None).
     let policy_output: Option<String> = if args.update {
-        config_path(&root, args.config.as_deref())
-            .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
+        Some(allow_core::strip_win32_verbatim_prefix(
+            &selected_policy_path.display().to_string(),
+        ))
     } else {
         args.write
             .as_deref()
@@ -335,10 +358,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
-    let live_policy_target = args
-        .update
-        .then(|| git_relative_config_path(&root, args.config.as_deref()))
-        .transpose()?;
+    let live_policy_target = args.update.then_some(selected_policy_path.clone());
     let common_write_path = live_policy_target
         .as_deref()
         .or(mutation_target.as_deref())
@@ -360,18 +380,27 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 "internal error: live add target was not resolved",
             )
         })?;
-        apply_single_target(SingleTargetApplyRequest {
-            repository_root: &root,
-            target: policy_target,
-            contents: &rendered,
-            caller_reference: Some("cargo-allow:add"),
-            lock_identity: Some(
-                policy_target
-                    .to_string_lossy()
-                    .replace(std::path::MAIN_SEPARATOR, "/"),
-            ),
-            mode: SingleTargetApplyMode::AtomicReplace,
-        })
+        apply_single_target_with_target_and_expected_digest(
+            SingleTargetApplyRequest {
+                repository_root: &root,
+                target: policy_target,
+                contents: &rendered,
+                caller_reference: Some("cargo-allow:add"),
+                lock_identity: Some(
+                    policy_target
+                        .to_string_lossy()
+                        .replace(std::path::MAIN_SEPARATOR, "/"),
+                ),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            resolved_mutation_target.as_ref().ok_or_else(|| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    "internal error: add mutation target was not resolved",
+                )
+            })?,
+            &selected_policy_digest,
+        )
         .into_result()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     } else if args.write.is_some() {
