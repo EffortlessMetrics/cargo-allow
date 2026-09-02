@@ -115,11 +115,6 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         Err(error) => return Err(error),
     };
     crate::policy_config::assert_path_within_root(&mutation_root, &selected_policy_path)?;
-    let (selected_cfg, selected_policy_digest) =
-        crate::policy_config::load_policy_at_path_with_digest(
-            selected_policy_path.clone(),
-            crate::EvidenceValidationMode::Abort,
-        )?;
     let write_target = args.write.as_deref().map(|path| {
         if path.is_absolute() {
             path.to_path_buf()
@@ -165,6 +160,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         .map(MutationLock::acquire_for_target)
         .transpose()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let (selected_cfg, selected_policy_digest) =
+        crate::policy_config::load_policy_at_path_with_digest(
+            selected_policy_path.clone(),
+            crate::EvidenceValidationMode::Abort,
+        )?;
     let (root, mut cfg, findings, inventory_facts, _federation) =
         crate::load_world_from_resolved_policy_with_options(
             &mutation_root,
