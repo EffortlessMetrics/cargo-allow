@@ -12,15 +12,20 @@ use std::process::Command;
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_report::{
-    CandidateCorpusSourceV1, CandidateExternalObservationV1, CandidatePackageRowV1,
+    CandidateCollisionResultV1, CandidateContentStateV1, CandidateCorpusSourceV1,
+    CandidateExternalObservationV1, CandidateOperationCompilerInput, CandidatePackageRowV1,
     CandidatePreparationDirtyStateV1, CandidatePreparationInputIdentityV1,
     CandidatePreparationReadinessV1, CandidatePreparationResultV1, CandidateProjectionInput,
-    CandidateReleaseIdentityProjectionV1, ReleaseVersionV1, prepare_candidate_plan,
+    CandidateReleaseIdentityProjectionV1, CandidateSurfaceDecisionV1, CandidateSurfaceInputV1,
+    ReleaseVersionV1, compile_candidate_operations, prepare_candidate_plan,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 
 const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
 const SUPPORT_MATRIX_PATH: &str = "policy/product-support-matrix.toml";
+/// The candidate/channel projection surface (distinct from the policy
+/// posture matrix, which is digest-bound input only).
+const CANDIDATE_SUPPORT_PATH: &str = "docs/support-matrix.toml";
 const ALLOW_POLICY_PATH: &str = "policy/allow.toml";
 const CARGO_LOCK_PATH: &str = "Cargo.lock";
 const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
@@ -64,6 +69,9 @@ pub(crate) struct PrepCandidatePlanArgs {
     /// Output rendering. Both derive from the same typed result.
     #[arg(long, value_enum, default_value_t = PrepOutputFormat::Json)]
     format: PrepOutputFormat,
+    /// Optional add-finding plan supplying governed policy changes.
+    #[arg(long)]
+    policy_plan: Option<PathBuf>,
 }
 
 pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<()> {
@@ -73,7 +81,7 @@ pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<(
 }
 
 fn cmd_prep_candidate_plan(args: &PrepCandidatePlanArgs) -> CargoAllowResult<()> {
-    let result = build_preparation_result(&args.version)?;
+    let result = build_preparation_result(&args.version, args.policy_plan.as_deref())?;
     let rendered = match args.format {
         PrepOutputFormat::Json => serde_json::to_string_pretty(&result).map_err(|error| {
             CargoAllowError::with_kind(
@@ -130,12 +138,14 @@ fn instrument_failure_result(reasons: Vec<String>) -> CandidatePreparationResult
         reasons,
         input_identity: None,
         plan: None,
+        operations: None,
         human_summary: "candidate preparation inputs could not be trusted".to_string(),
     }
 }
 
 pub(crate) fn build_preparation_result(
     target_version: &str,
+    policy_plan: Option<&Path>,
 ) -> CargoAllowResult<CandidatePreparationResultV1> {
     let root = match git_root() {
         Ok(root) => root,
@@ -339,14 +349,40 @@ pub(crate) fn build_preparation_result(
         });
     }
 
-    Ok(prepare_candidate_plan(CandidateProjectionInput {
+    let mut result = prepare_candidate_plan(CandidateProjectionInput {
         target_version_text: target_version,
         input_identity: identity,
         topology_rows: &projected_rows,
         support_matrix_postures,
         internal_requirements,
         external_observations,
-    }))
+    });
+
+    // Compile the file-operation plan for every projected semantic plan.
+    if let Some(plan) = &result.plan
+        && let Ok(target) = ReleaseVersionV1::parse(target_version)
+    {
+        let source_version = plan.source_release_identity.version.clone();
+        match gather_surface_inputs(&root, &source_version, &target, policy_plan) {
+            Ok(mut surfaces) => {
+                let warnings = resolve_surface_collisions(&root, &mut surfaces);
+                let compiled =
+                    compile_candidate_operations(CandidateOperationCompilerInput { surfaces });
+                for warning in warnings {
+                    result
+                        .reasons
+                        .push(format!("operation compilation: {warning}"));
+                }
+                result.operations = Some(compiled);
+            }
+            Err(reason) => {
+                result
+                    .reasons
+                    .push(format!("operation compilation unavailable: {reason}"));
+            }
+        }
+    }
+    Ok(result)
 }
 
 /// Digest over the typed source release identity projected from the
@@ -418,7 +454,7 @@ struct TopologyPackageToml {
 }
 
 /// Parse the topology's `[[package]]` rows into the plan vocabulary.
-fn parse_topology_rows(text: &str) -> Fact<Vec<CandidatePackageRowV1>> {
+pub(crate) fn parse_topology_rows(text: &str) -> Fact<Vec<CandidatePackageRowV1>> {
     let file: TopologyFileToml = toml::from_str(text).map_err(|error| format!("toml: {error}"))?;
     Ok(file
         .package
@@ -728,6 +764,468 @@ pub(crate) fn collect_corpus_files(dir: &Path, depth: usize, files: &mut Vec<Pat
     Ok(())
 }
 
+/// The declared version-derivation scan set: files and directories whose
+/// content functionally derives from the workspace version. Token hits
+/// outside this set (history, evidence, fixtures) are never rewritten.
+const VERSION_DERIVED_FILES: &[&str] = &["docs/getting-started.md"];
+
+/// Compile the surface inputs for the operation plan from live authorities
+/// and the #3831 projection. Every required owner class is represented;
+/// generated bytes are deterministic token-level rewrites, and everything
+/// judgment-bearing becomes an explicit decision row.
+pub(crate) fn gather_surface_inputs(
+    root: &Path,
+    source_version: &str,
+    target: &ReleaseVersionV1,
+    policy_plan: Option<&Path>,
+) -> Fact<Vec<CandidateSurfaceInputV1>> {
+    let mut surfaces: Vec<CandidateSurfaceInputV1> = Vec::new();
+    let source_token = source_version.to_string();
+    let target_token = target.as_str().to_string();
+
+    // Root workspace manifest: [workspace.package] version plus the exact
+    // internal requirement rows.
+    let workspace_bytes = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
+    let requirements = parse_workspace_requirements(&Ok(workspace_bytes.clone()));
+    let requirement_hits = requirements
+        .values()
+        .filter(|requirement| *requirement == &format!("={source_token}"))
+        .count();
+    let workspace_prospective = render_token_swap(
+        &workspace_bytes,
+        &source_token,
+        &target_token,
+        1 + requirement_hits,
+        WORKSPACE_MANIFEST_PATH,
+    )?;
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "workspace_manifest".to_string(),
+        role: "package_version_and_requirements".to_string(),
+        path: WORKSPACE_MANIFEST_PATH.to_string(),
+        current: CandidateContentStateV1::from_bytes(&workspace_bytes),
+        prospective_bytes: Some(workspace_prospective),
+        judgment: None,
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: vec!["no-new-guard".to_string()],
+    });
+
+    // Member manifests: those carrying their own version token move with the
+    // line; the rest are explicit NoOps (their identity derives from the
+    // root via `version.workspace = true`).
+    let members = parse_workspace_members(&workspace_bytes)?;
+    for member in members {
+        let manifest_path = format!("{member}/Cargo.toml");
+        let bytes = read_repo_file(root, &manifest_path)?;
+        let prospective = if contains_token(&bytes, &source_token) {
+            Some(render_token_swap(
+                &bytes,
+                &source_token,
+                &target_token,
+                1,
+                &manifest_path,
+            )?)
+        } else {
+            Some(bytes.clone())
+        };
+        surfaces.push(CandidateSurfaceInputV1 {
+            owner: "member_manifest".to_string(),
+            role: "manifest_identity".to_string(),
+            path: manifest_path,
+            current: CandidateContentStateV1::from_bytes(&bytes),
+            prospective_bytes: prospective,
+            judgment: None,
+            collision: CandidateCollisionResultV1::Clear,
+            rollback_source: Some("current-content-digest".to_string()),
+            validation_obligations: Vec::new(),
+        });
+    }
+
+    // Cargo.lock cannot be projected without executing cargo; the apply
+    // slice regenerates it and binds the digest.
+    let lock_bytes = read_repo_file(root, CARGO_LOCK_PATH)?;
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "cargo_lock".to_string(),
+        role: "lockfile_regeneration".to_string(),
+        path: CARGO_LOCK_PATH.to_string(),
+        current: CandidateContentStateV1::from_bytes(&lock_bytes),
+        prospective_bytes: None,
+        judgment: Some(CandidateSurfaceDecisionV1 {
+            decision_id: "cargo-lock-regeneration".to_string(),
+            question: "Regenerate Cargo.lock against the target line at apply and bind its digest; the plan cannot execute cargo.".to_string(),
+            owner: "release-operator".to_string(),
+            affected_operations: Vec::new(),
+            missing_inputs: vec!["prospective lock bytes".to_string()],
+        }),
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: vec!["full-binary-suite".to_string()],
+    });
+
+    // Topology rows: every product row moves to the target line.
+    let topology_bytes = read_repo_file(root, TOPOLOGY_PATH)?;
+    let product_pattern = format!("package_version = \"{source_token}\"");
+    let product_hits = std::str::from_utf8(&topology_bytes)
+        .map_err(|error| format!("topology encoding: {error}"))?
+        .matches(&product_pattern)
+        .count();
+    let topology_prospective = render_token_swap(
+        &topology_bytes,
+        &product_pattern,
+        &format!("package_version = \"{target_token}\""),
+        product_hits,
+        TOPOLOGY_PATH,
+    )?;
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "package_topology".to_string(),
+        role: "package_version_rows".to_string(),
+        path: TOPOLOGY_PATH.to_string(),
+        current: CandidateContentStateV1::from_bytes(&topology_bytes),
+        prospective_bytes: Some(topology_prospective),
+        judgment: None,
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: vec!["no-new-guard".to_string()],
+    });
+
+    // Support matrix candidate fields.
+    let matrix_bytes = read_repo_file(root, CANDIDATE_SUPPORT_PATH)?;
+    let matrix_pattern = format!("candidate_version = \"{source_token}\"");
+    let matrix_prospective = render_token_swap(
+        &matrix_bytes,
+        &matrix_pattern,
+        &format!("candidate_version = \"{target_token}\""),
+        1,
+        CANDIDATE_SUPPORT_PATH,
+    )?;
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "support_matrix".to_string(),
+        role: "candidate_fields".to_string(),
+        path: CANDIDATE_SUPPORT_PATH.to_string(),
+        current: CandidateContentStateV1::from_bytes(&matrix_bytes),
+        prospective_bytes: Some(matrix_prospective),
+        judgment: None,
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: Vec::new(),
+    });
+
+    // Release corpus: prose and change framing are maintainer-owned. An
+    // existing record is never silently replaced (control 4).
+    let release_record_path = format!("docs/release/{}.md", target.as_str());
+    surfaces.push(corpus_surface(
+        "release_record",
+        &release_record_path,
+        root,
+        "release-record-authoring",
+        "Author the final release record for the target identity; existing bytes, if any, are preserved as the preimage and never silently replaced.",
+    )?);
+    let github_note_path = format!("docs/release/github/{}.md", target.tag());
+    surfaces.push(corpus_surface(
+        "github_release_note",
+        &github_note_path,
+        root,
+        "github-note-authoring",
+        "Author the default GitHub release note projected from the final release record.",
+    )?);
+
+    // Changie target corpus: which fragments constitute the final section
+    // is a maintainer judgment.
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "changie_corpus".to_string(),
+        role: "target_entries".to_string(),
+        path: CHANGES_DIR.to_string(),
+        current: CandidateContentStateV1::absent(),
+        prospective_bytes: None,
+        judgment: Some(CandidateSurfaceDecisionV1 {
+            decision_id: "changie-target-entries".to_string(),
+            question: "Reconcile the Changie target entries for the final section before the record is finalized; the plan does not author change framing.".to_string(),
+            owner: "repository-maintainer".to_string(),
+            affected_operations: Vec::new(),
+            missing_inputs: vec!["final-section fragment selection".to_string()],
+        }),
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-corpus-digest".to_string()),
+        validation_obligations: Vec::new(),
+    });
+
+    // Version-derived surfaces: authority-declared files and asset roots.
+    for declared in VERSION_DERIVED_FILES {
+        surfaces.push(version_derived_surface(
+            root,
+            declared,
+            &source_token,
+            &target_token,
+        )?);
+    }
+    for asset_root in asset_roots_from_topology(&topology_bytes)? {
+        let dir = root.join(&asset_root);
+        if !dir.exists() {
+            continue;
+        }
+        let mut files = Vec::new();
+        collect_corpus_files(&dir, 0, &mut files)?;
+        for file in files {
+            let relative = file
+                .strip_prefix(root)
+                .map_err(|_| "asset path escapes the repository root".to_string())?
+                .to_string_lossy()
+                .replace('\\', "/");
+            if !matches!(
+                file.extension().and_then(|extension| extension.to_str()),
+                Some("md") | Some("json") | Some("toml") | Some("yaml") | Some("yml")
+            ) {
+                continue;
+            }
+            surfaces.push(version_derived_surface(
+                root,
+                &relative,
+                &source_token,
+                &target_token,
+            )?);
+        }
+    }
+
+    // Governed policy updates ride the normal add-finding plan contract.
+    let policy_plan_note = match policy_plan {
+        Some(path) => format!(
+            "Policy plan attached at {}: it executes through the add --from-plan contract at apply; owner/reason/evidence come from the plan, never from this projection.",
+            path.display()
+        ),
+        None => "Attach a policy plan with --policy-plan if this candidate requires ledger changes; otherwise mark this row not-applicable at apply.".to_string(),
+    };
+    surfaces.push(CandidateSurfaceInputV1 {
+        owner: "governed_policy_plan".to_string(),
+        role: "source_exception_policy".to_string(),
+        path: ALLOW_POLICY_PATH.to_string(),
+        current: CandidateContentStateV1::from_bytes(&read_repo_file(root, ALLOW_POLICY_PATH)?),
+        prospective_bytes: None,
+        judgment: Some(CandidateSurfaceDecisionV1 {
+            decision_id: "policy-plan".to_string(),
+            question: policy_plan_note,
+            owner: "repository-maintainer".to_string(),
+            affected_operations: Vec::new(),
+            missing_inputs: Vec::new(),
+        }),
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: vec!["change-note-gate".to_string()],
+    });
+
+    Ok(surfaces)
+}
+
+/// Deterministic token-level rewrite. Fails the surface (and the plan)
+/// when the expected occurrence count is absent, so a drifted authority
+/// can never compile into a silently wrong operation.
+fn render_token_swap(
+    bytes: &[u8],
+    from: &str,
+    to: &str,
+    expected_occurrences: usize,
+    path: &str,
+) -> Fact<Vec<u8>> {
+    let text = std::str::from_utf8(bytes).map_err(|error| format!("{path} encoding: {error}"))?;
+    let occurrences = text.matches(from).count();
+    if occurrences != expected_occurrences {
+        return Err(format!(
+            "{path} carries {occurrences} occurrences of `{from}`; the projection expects exactly {expected_occurrences}"
+        ));
+    }
+    Ok(text.replace(from, to).into_bytes())
+}
+
+/// Swap every occurrence of a token in a version-derived file.
+fn render_token_swap_all(bytes: &[u8], from: &str, to: &str, path: &str) -> Fact<Vec<u8>> {
+    let text = std::str::from_utf8(bytes).map_err(|error| format!("{path} encoding: {error}"))?;
+    if !text.contains(from) {
+        return Err(format!("{path} stopped carrying `{from}`"));
+    }
+    Ok(text.replace(from, to).into_bytes())
+}
+
+fn contains_token(bytes: &[u8], token: &str) -> bool {
+    std::str::from_utf8(bytes)
+        .map(|text| text.contains(token))
+        .unwrap_or(false)
+}
+
+fn corpus_surface(
+    owner: &str,
+    relative: &str,
+    root: &Path,
+    decision_id: &str,
+    question: &str,
+) -> Fact<CandidateSurfaceInputV1> {
+    let current = if root.join(relative).exists() {
+        CandidateContentStateV1::from_bytes(&read_repo_file(root, relative)?)
+    } else {
+        CandidateContentStateV1::absent()
+    };
+    Ok(CandidateSurfaceInputV1 {
+        owner: owner.to_string(),
+        role: "release_corpus".to_string(),
+        path: relative.to_string(),
+        current,
+        prospective_bytes: None,
+        judgment: Some(CandidateSurfaceDecisionV1 {
+            decision_id: decision_id.to_string(),
+            question: question.to_string(),
+            owner: "repository-maintainer".to_string(),
+            affected_operations: Vec::new(),
+            missing_inputs: vec!["final prose".to_string()],
+        }),
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: Vec::new(),
+    })
+}
+
+fn version_derived_surface(
+    root: &Path,
+    relative: &str,
+    source_token: &str,
+    target_token: &str,
+) -> Fact<CandidateSurfaceInputV1> {
+    let bytes = read_repo_file(root, relative)?;
+    let carries_source = contains_token(&bytes, source_token);
+    let prospective = if carries_source {
+        // A version-derived reference moves every occurrence of the
+        // candidate line together; one is the floor, not the cap.
+        Some(render_token_swap_all(
+            &bytes,
+            source_token,
+            target_token,
+            relative,
+        )?)
+    } else {
+        Some(bytes.clone())
+    };
+    Ok(CandidateSurfaceInputV1 {
+        owner: "version_derived_surface".to_string(),
+        role: "reference_or_fixture".to_string(),
+        path: relative.to_string(),
+        current: CandidateContentStateV1::from_bytes(&bytes),
+        prospective_bytes: prospective,
+        judgment: None,
+        collision: CandidateCollisionResultV1::Clear,
+        rollback_source: Some("current-content-digest".to_string()),
+        validation_obligations: Vec::new(),
+    })
+}
+
+/// Parse the `asset_roots` lists out of the topology file text.
+fn asset_roots_from_topology(topology: &[u8]) -> Fact<Vec<String>> {
+    let text =
+        std::str::from_utf8(topology).map_err(|error| format!("topology encoding: {error}"))?;
+    let mut roots = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("asset_roots = [") {
+            let inner = rest.trim_end_matches(']');
+            for entry in inner.split(',') {
+                let entry = entry.trim().trim_matches('"');
+                if !entry.is_empty() {
+                    roots.push(entry.to_string());
+                }
+            }
+        }
+    }
+    Ok(roots)
+}
+
+/// Resolve collisions across the compiled surface set through the shared
+/// mutation-target authority: repository escape, aliasing, duplicate
+/// destinations, case collisions, and symlinked destinations.
+pub(crate) fn resolve_surface_collisions(
+    root: &Path,
+    surfaces: &mut [CandidateSurfaceInputV1],
+) -> Vec<String> {
+    use effortless_repo_edit::MutationTargetOwnership;
+
+    let mut warnings: Vec<String> = Vec::new();
+    let mut resolved: Vec<(String, String, String)> = Vec::new();
+    for surface in surfaces.iter_mut() {
+        let requested = root.join(&surface.path);
+        match effortless_repo_edit::resolve_mutation_target(&requested, root) {
+            Ok(target) => {
+                if target.ownership() != MutationTargetOwnership::SourceTreeOwned {
+                    surface.collision = CandidateCollisionResultV1::Escape {
+                        detail: format!("{} resolves outside the repository root", surface.path),
+                    };
+                    continue;
+                }
+                if std::fs::symlink_metadata(root.join(&surface.path))
+                    .map(|metadata| metadata.file_type().is_symlink())
+                    .unwrap_or(false)
+                {
+                    surface.collision = CandidateCollisionResultV1::SymlinkCollision {
+                        detail: format!("{} is a symbolic link", surface.path),
+                    };
+                    continue;
+                }
+                resolved.push((
+                    surface.path.clone(),
+                    target.repo_relative_display().to_string(),
+                    target.target_fingerprint().to_string(),
+                ));
+            }
+            Err(error) => {
+                warnings.push(format!(
+                    "mutation-target resolution failed for {}: {error}",
+                    surface.path
+                ));
+            }
+        }
+    }
+
+    // Alias and duplicate detection over resolved identities.
+    for index in 0..resolved.len() {
+        let (path_a, display_a, fingerprint_a) = resolved[index].clone();
+        for (path_b, display_b, fingerprint_b) in resolved.iter().skip(index + 1) {
+            if path_a == *path_b {
+                for surface in surfaces.iter_mut().filter(|surface| surface.path == path_a) {
+                    if surface.collision.is_clear() {
+                        surface.collision = CandidateCollisionResultV1::DuplicateDestination {
+                            detail: format!("two operations target {path_a}"),
+                        };
+                    }
+                }
+                continue;
+            }
+            if fingerprint_a == *fingerprint_b && display_a != *display_b {
+                for path in [&path_a, path_b] {
+                    let surface = surfaces
+                        .iter_mut()
+                        .find(|surface| &surface.path == path)
+                        .expect("surface exists");
+                    if surface.collision.is_clear() {
+                        surface.collision = CandidateCollisionResultV1::PathAlias {
+                            detail: format!("{path_a} and {path_b} resolve to one target"),
+                        };
+                    }
+                }
+                continue;
+            }
+            let fold = |value: &str| -> String { value.replace('\\', "/").to_lowercase() };
+            if fold(&display_a) == fold(display_b) {
+                for path in [&path_a, path_b] {
+                    let surface = surfaces
+                        .iter_mut()
+                        .find(|surface| &surface.path == path)
+                        .expect("surface exists");
+                    if surface.collision.is_clear() {
+                        surface.collision = CandidateCollisionResultV1::CaseCollision {
+                            detail: format!("{path_a} and {path_b} collide case-insensitively"),
+                        };
+                    }
+                }
+            }
+        }
+    }
+    warnings
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -838,8 +1336,9 @@ extraction_destination = \"cargo-allow\"
         assert!(rendered.contains("inputs could not be trusted"));
         assert!(rendered.contains("reason: repository identity: missing"));
 
-        let live = crate::cli::candidate_preparation_command::build_preparation_result("0.2.0")
-            .expect("live projection builds");
+        let live =
+            crate::cli::candidate_preparation_command::build_preparation_result("0.2.0", None)
+                .expect("live projection builds");
         let rendered = render_text_summary(&live);
         let plan = live.plan.as_ref().expect("plan projects");
         assert!(rendered.contains(&plan.plan_digest));
@@ -852,12 +1351,14 @@ extraction_destination = \"cargo-allow\"
         let ready = PrepCandidatePlanArgs {
             version: "0.2.0".to_string(),
             format: PrepOutputFormat::Text,
+            policy_plan: None,
         };
         cmd_prep_candidate_plan(&ready).expect("decision-required plan exits ready");
 
         let unsupported = PrepCandidatePlanArgs {
             version: "0.2.0-beta.9".to_string(),
             format: PrepOutputFormat::Json,
+            policy_plan: None,
         };
         let error =
             cmd_prep_candidate_plan(&unsupported).expect_err("unsupported target fails closed");

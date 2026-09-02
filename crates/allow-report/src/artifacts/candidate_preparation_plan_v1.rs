@@ -274,6 +274,10 @@ pub struct CandidatePreparationResultV1 {
     pub reasons: Vec<String>,
     pub input_identity: Option<CandidatePreparationInputIdentityV1>,
     pub plan: Option<CandidatePreparationPlanV1>,
+    /// The compiled file-operation and decision plan (#3832), present when
+    /// the semantic plan projected and the caller gathered surfaces.
+    #[serde(default)]
+    pub operations: Option<super::candidate_preparation_operations_v1::CandidateOperationPlanV1>,
     pub human_summary: String,
 }
 
@@ -385,6 +389,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
         reasons,
         input_identity: Some(input.input_identity.clone()),
         plan: None,
+        operations: None,
         human_summary: "candidate preparation is unsupported for the requested inputs".to_string(),
     };
 
@@ -421,6 +426,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
             )],
             input_identity: Some(input.input_identity.clone()),
             plan: None,
+            operations: None,
             human_summary: "candidate preparation is unsupported for the requested inputs"
                 .to_string(),
         };
@@ -432,6 +438,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
         reasons,
         input_identity: Some(input.input_identity.clone()),
         plan: None,
+        operations: None,
         human_summary: "candidate preparation inputs could not be trusted".to_string(),
     };
 
@@ -450,6 +457,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
         reasons,
         input_identity: Some(input.input_identity.clone()),
         plan: None,
+        operations: None,
         human_summary: "candidate preparation found conflicting authorities".to_string(),
     };
 
@@ -550,6 +558,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
             )],
             input_identity: Some(input.input_identity.clone()),
             plan: None,
+            operations: None,
             human_summary: "candidate preparation is stale for the requested inputs".to_string(),
         };
     }
@@ -887,6 +896,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
         reasons,
         input_identity: Some(input.input_identity),
         plan: Some(plan),
+        operations: None,
         human_summary,
     }
 }
