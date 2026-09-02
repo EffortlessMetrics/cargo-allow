@@ -1809,3 +1809,19 @@ fn candidate_preparation_apply_command_dispatch_and_error_mapping() {
     assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+/// The staged renderer refuses a drifted authority: an unexpected
+/// occurrence count fails the surface instead of compiling a wrong
+/// operation (drift control for the generated-byte law).
+#[test]
+fn render_token_swap_rejects_drifted_occurrence_counts() {
+    use crate::cli::candidate_preparation_command::render_token_swap;
+    let bytes = b"version = \"0.2.0-rc.1\"\nversion = \"0.2.0-rc.1\"\n";
+    let error = render_token_swap(bytes, "0.2.0-rc.1", "0.2.0", 3, "probe")
+        .expect_err("the drift must be rejected");
+    assert!(error.contains("expects exactly 3"), "{error}");
+    let ok = render_token_swap(bytes, "0.2.0-rc.1", "0.2.0", 2, "probe")
+        .expect("matching count renders");
+    let text = String::from_utf8(ok).expect("utf-8");
+    assert!(!text.contains("0.2.0-rc.1"));
+}

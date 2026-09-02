@@ -17692,3 +17692,95 @@ normalized_snippet_hash = "fnv1a64:f260d3f2579b4d2f"
 [allow.last_seen]
 line = 1475
 column = 14
+
+[[allow]]
+id = "allow-0823"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only drift-rejection assertion for the staged renderer (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "render_token_swap_rejects_drifted_occurrence_counts"
+callee = "expect"
+receiver_fingerprint = "render_token_swap(bytes, \"0.2.0-rc.1\", \"0.2.0\", 2, \"probe\")"
+normalized_snippet_hash = "fnv1a64:a46c078d0238b76b"
+
+[allow.last_seen]
+line = 1824
+column = 10
+
+[[allow]]
+id = "allow-0824"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only matching-count render assertion for the staged renderer (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "render_token_swap_rejects_drifted_occurrence_counts"
+callee = "expect"
+receiver_fingerprint = "String::from_utf8(ok)"
+normalized_snippet_hash = "fnv1a64:e0f895a2b04db4e5"
+
+[allow.last_seen]
+line = 1825
+column = 38
+
+[[allow]]
+id = "allow-0825"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only drift rejection expectation for the staged renderer (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "apply_candidate_plan"
+callee = "expect"
+receiver_fingerprint = "surface.prospective_bytes.as_ref()"
+normalized_snippet_hash = "fnv1a64:a5000bdb2f615731"
+
+[allow.last_seen]
+line = 1840
+column = 56
+
+[[allow]]
+id = "allow-0826"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only matching-count expectation for the staged renderer (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "apply_candidate_plan"
+callee = "expect"
+receiver_fingerprint = "std::str::from_utf8(bytes)"
+normalized_snippet_hash = "fnv1a64:5c727f91c09c4f3c"
+
+[allow.last_seen]
+line = 1842
+column = 14

@@ -386,3 +386,27 @@ allow_ids = ["allow-0822"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:f4406cc31d97de4c808df18769ff63d131b1392c356e47fc066d279135392b32"
 reason = "Test-only live-root resolution or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1475 in the candidate-preparation suite (#3833); the expected side is the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0823"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:538c785d2457ff2c753ac50408cbe12db9098e456f51c293c27b70c71ade4fb9"
+reason = "Test-only drift-rejection or render assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1824 for the staged renderer's occurrence-count law (#3833)."
+
+[[records]]
+allow_ids = ["allow-0824"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2aac24b0fbb1bf5146869f9a9fdd5e7ff995e80384a0b83c1ebad30f43033b14"
+reason = "Test-only drift-rejection or render assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1825 for the staged renderer's occurrence-count law (#3833)."
+
+[[records]]
+allow_ids = ["allow-0825"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6f8fb1d9557eaf71f90e5c3805423a1039bb7bb91c55739129a91dbe8cdb7a63"
+reason = "Test-only drift-rejection or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1840 for the staged renderer's occurrence-count law (#3833)."
+
+[[records]]
+allow_ids = ["allow-0826"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9a7f4793d0d14074d347e7f64d24e1cc6c0d1fdd5eae741eeeea01a03fd42f2c"
+reason = "Test-only drift-rejection or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1842 for the staged renderer's occurrence-count law (#3833)."
