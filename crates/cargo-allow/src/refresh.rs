@@ -66,6 +66,12 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let (policy_path, federation) =
         crate::policy_config::select_policy_path(&root, args.config.as_deref())?;
     crate::policy_config::assert_path_within_root(&root, &policy_path)?;
+    crate::command_support::reject_output_collision(
+        &root,
+        args.output.as_deref(),
+        &[policy_path.as_path()],
+        "--output must differ from the selected policy output",
+    )?;
     let (resolved_mutation_target, mutation_lock) = if args.write {
         let target = effortless_repo_edit::resolve_mutation_target(&policy_path, &root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
