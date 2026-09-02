@@ -669,12 +669,15 @@ fn parse_workspace_requirements(workspace: &Fact<Vec<u8>>) -> BTreeMap<String, S
             continue;
         };
         let requirement = after_version
+            .split('}')
+            .next()
+            .unwrap_or_default()
             .trim()
-            .trim_start_matches(',')
-            .trim()
-            .trim_matches('"');
-        let requirement = requirement.strip_suffix("}").unwrap_or(requirement).trim();
-        requirements.insert(key, requirement.to_string());
+            .trim_matches('"')
+            .trim();
+        if !requirement.is_empty() {
+            requirements.insert(key, requirement.to_string());
+        }
     }
     requirements
 }
@@ -723,4 +726,146 @@ fn collect_corpus_files(dir: &Path, depth: usize, files: &mut Vec<PathBuf>) -> F
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workspace_member_parser_extracts_paths_and_rejects_breakage() {
+        let ok = parse_workspace_members(b"members = [\n  \"crates/a\",\n  \"crates/b\",\n]")
+            .expect("members parse");
+        assert_eq!(ok, vec!["crates/a".to_string(), "crates/b".to_string()]);
+        assert!(parse_workspace_members(b"edition = \"2024\"").is_err());
+        assert!(parse_workspace_members(b"members = [\"unterminated\"").is_err());
+    }
+
+    #[test]
+    fn workspace_requirement_parser_reads_path_dependencies_only() {
+        let workspace = b"\
+[workspace.dependencies]
+allow-core = { path = \"crates/allow-core\", version = \"=0.2.0-rc.1\" }
+serde = { version = \"1\" }
+[profile.release]
+";
+        let requirements = parse_workspace_requirements(&Ok(workspace.to_vec()));
+        assert_eq!(
+            requirements.get("allow-core").map(String::as_str),
+            Some("=0.2.0-rc.1")
+        );
+        assert!(!requirements.contains_key("serde"));
+        assert!(parse_workspace_requirements(&Err("missing".to_string())).is_empty());
+    }
+
+    #[test]
+    fn support_matrix_parser_pairs_products_with_postures() {
+        let matrix = b"\
+[[product]]
+product_id = \"cargo-allow\"
+posture = \"CargoAllowSupported\"
+[[product]]
+product_id = \"cargo-intent\"
+posture = \"CargoIntentExperimental\"
+";
+        let postures = parse_support_matrix_postures(&Ok(matrix.to_vec()));
+        assert_eq!(
+            postures.get("cargo-allow").map(String::as_str),
+            Some("CargoAllowSupported")
+        );
+        assert_eq!(
+            postures.get("cargo-intent").map(String::as_str),
+            Some("CargoIntentExperimental")
+        );
+        assert!(parse_support_matrix_postures(&Err("missing".to_string())).is_empty());
+    }
+
+    #[test]
+    fn topology_generation_parser_reads_the_header_or_fails_explicitly() {
+        let ok = parse_topology_generation(&Ok(b"authority_generation = 2\n".to_vec()))
+            .expect("generation parses");
+        assert_eq!(ok, 2);
+        assert!(parse_topology_generation(&Ok(b"schema_version = \"2.0\"\n".to_vec())).is_err());
+        assert!(
+            parse_topology_generation(&Ok(b"authority_generation = \"x\"\n".to_vec())).is_err()
+        );
+        assert!(parse_topology_generation(&Err("missing".to_string())).is_err());
+    }
+
+    #[test]
+    fn policy_schema_version_parser_reads_the_header_or_fails_explicitly() {
+        let ok = parse_policy_schema_version(&Ok(b"schema_version = \"0.1\"\n".to_vec()))
+            .expect("schema version parses");
+        assert_eq!(ok, "0.1");
+        assert!(parse_policy_schema_version(&Ok(b"policy = \"cargo-allow\"\n".to_vec())).is_err());
+        assert!(parse_policy_schema_version(&Err("missing".to_string())).is_err());
+    }
+
+    #[test]
+    fn topology_row_mirror_copies_fields_and_tolerates_extras() {
+        let text = "\
+[[package]]
+logical_id = \"allow-core\"
+cargo_package_name = \"allow-core\"
+version_line = \"cargo-allow-0.2\"
+product_family = \"cargo-allow\"
+posture = \"CargoAllowSupported\"
+package_version = \"0.2.0-rc.1\"
+expected_registry_checksum = \"sha256:v1:ff\"
+version_source = \"WorkspaceProduct\"
+publication_state = \"UnpublishedInternal\"
+publish = true
+candidate_inclusion = true
+release_order = 10
+ci_lane = \"test\"
+support_tier = \"supported\"
+asset_roots = []
+extraction_destination = \"cargo-allow\"
+";
+        let rows = parse_topology_rows(text).expect("rows parse");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].cargo_package_name, "allow-core");
+        assert_eq!(rows[0].package_version, "0.2.0-rc.1");
+        assert!(rows[0].candidate_inclusion && rows[0].publish);
+        assert!(parse_topology_rows("not = [ toml").is_err());
+        assert!(parse_topology_rows("[[package]]\nlogical_id = \"x\"\n").is_err());
+    }
+
+    #[test]
+    fn text_summary_renders_reasons_decisions_and_digest_from_one_plan() {
+        let failure = instrument_failure_result(vec!["repository identity: missing".to_string()]);
+        let rendered = render_text_summary(&failure);
+        assert!(rendered.contains("inputs could not be trusted"));
+        assert!(rendered.contains("reason: repository identity: missing"));
+
+        let live = crate::cli::candidate_preparation_command::build_preparation_result("0.2.0")
+            .expect("live projection builds");
+        let rendered = render_text_summary(&live);
+        let plan = live.plan.as_ref().expect("plan projects");
+        assert!(rendered.contains(&plan.plan_digest));
+        assert!(rendered.contains("decision required [confirm-frozen-candidate-basis]"));
+        assert!(rendered.contains(plan.claim_boundary));
+    }
+
+    #[test]
+    fn repository_identity_parses_owner_and_repo_from_remote_forms() {
+        let parsed = |url: &str| {
+            let url = url.trim().trim_end_matches(".git");
+            let mut segments = url.split(['/', ':']).filter(|segment| !segment.is_empty());
+            let (repo, owner) = match (segments.next_back(), segments.next_back()) {
+                (Some(repo), Some(owner)) => (repo, owner),
+                _ => return String::new(),
+            };
+            format!("{owner}/{repo}")
+        };
+        assert_eq!(
+            parsed("https://github.com/EffortlessMetrics/cargo-allow.git"),
+            "EffortlessMetrics/cargo-allow"
+        );
+        assert_eq!(
+            parsed("git@github.com:EffortlessMetrics/cargo-allow.git"),
+            "EffortlessMetrics/cargo-allow"
+        );
+        assert_eq!(parsed("bare"), "");
+    }
 }

@@ -80,3 +80,39 @@ allow_ids = ["allow-0722"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:de26d37cbe928a2f2988144d3bab01615026d6c9aa7a5601e925578d75b7852b"
 reason = "Invariant-guarded product-row indexing in the closure projection (#3831); the preceding empty-closure conflict check guarantees product_rows is non-empty before the first row is read."
+
+[[records]]
+allow_ids = ["allow-0723"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5aaf1f3c22055222d7af96abfff7f2f78dd4ce6ec550b9090abb75a4b03ca692"
+reason = "Test-only workspace-members parser assertion in the command's module-local test unit (#3831); the expected side is fully controlled test input."
+
+[[records]]
+allow_ids = ["allow-0724"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:90ac2572d67066ad7d776083c73df0d996e383d67b0af82c48a29d6850f1d3b5"
+reason = "Same test-only assertion law for the topology generation header parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0725"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:061fc994e1c7ceb7ac66009da664dd5cb28ef25220444d7ff89f0ee8acdcfb67"
+reason = "Same test-only assertion law for the source-exception policy schema-version parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0726"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43c15c8433300b99b5c6ebc4dc612086238ceb5a54d9841e9929b2fb62e93386"
+reason = "Same test-only assertion law for the topology-row mirror parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0727"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43310a39b6e28bdf46bef7131a8c3ffc3fe5d9c901cefcc6170711aee4d1690c"
+reason = "Same test-only assertion law for the live projection build in the render-summary test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0728"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:15dc560c21b6250543b503ae895a0ea0682b127125d84d067e38144eced92b2d"
+reason = "Same test-only assertion law for the plan access in the render-summary test (#3831)."

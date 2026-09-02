@@ -234,6 +234,81 @@ fn control_6_closure_shape_is_enforced() {
     let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &disagreeing));
     assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
     assert!(result.reasons[0].contains("disagree on the source line"));
+
+    // A non-publishable row may not ride the closure.
+    let unpublished = vec![CandidatePackageRowV1 {
+        publish: false,
+        ..fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1")
+    }];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &unpublished));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("not publishable"));
+
+    // An older or equal-precedence target is not a preparation transition.
+    let rows = vec![fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1")];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.1.11", &rows));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("does not outrank"));
+
+    // Shared prerequisites must stay exact stable lines.
+    let mixed = vec![
+        fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+        CandidatePackageRowV1 {
+            package_version: "0.1.0-rc.1".to_string(),
+            ..fixture_row("effortless-repo-protocol", "shared", 80, "0.1.0-rc.1")
+        },
+    ];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &mixed));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("non-stable"));
+
+    // A malformed shared version is a conflict, not a silent hold.
+    let malformed = vec![
+        fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+        CandidatePackageRowV1 {
+            package_version: "0.1".to_string(),
+            ..fixture_row("effortless-repo-protocol", "shared", 80, "0.1")
+        },
+    ];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &malformed));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("malformed version"));
+
+    // An empty closure is a conflict, not a vacuous plan.
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &[]));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("empty release closure"));
+
+    // The support matrix may not name a product whose family has no rows.
+    let mut missing_family = fixture_input("0.2.0", &rows);
+    missing_family.support_matrix_postures.insert(
+        "cargo-proof".to_string(),
+        "CargoProofExperimental".to_string(),
+    );
+    let result = allow_report::prepare_candidate_plan(missing_family);
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("binds no `cargo-proof` rows"));
+
+    // A version_line disagreement inside the product family is a conflict.
+    let mixed_lines = vec![
+        fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+        CandidatePackageRowV1 {
+            version_line: "cargo-allow-0.3".to_string(),
+            ..fixture_row("allow-policy", "cargo-allow", 20, "0.2.0-rc.1")
+        },
+    ];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &mixed_lines));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("version_line"));
+
+    // A non-typed source line is a conflict through the typed authority.
+    let untyped = vec![CandidatePackageRowV1 {
+        package_version: "not.a.version".to_string(),
+        ..fixture_row("allow-core", "cargo-allow", 10, "not.a.version")
+    }];
+    let result = allow_report::prepare_candidate_plan(fixture_input("0.2.0", &untyped));
+    assert_eq!(result.readiness, CandidatePreparationReadinessV1::Conflict);
+    assert!(result.reasons[0].contains("typed release identity"));
 }
 
 /// Control 7: stale or conflicting topology, support, and identity

@@ -15397,3 +15397,141 @@ normalized_snippet_hash = "fnv1a64:710cad1e45a362e5"
 [allow.last_seen]
 line = 515
 column = 44
+
+[[allow]]
+id = "allow-0723"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::workspace_member_parser_extracts_paths_and_rejects_breakage"
+callee = "expect"
+receiver_fingerprint = "parse_workspace_members(b\"members = [\\n \\\"crates/a\\\",\\n \\\"crates/b\\\",\\n]\")"
+normalized_snippet_hash = "fnv1a64:7d0b89f0dc505350"
+
+[allow.last_seen]
+line = 738
+column = 14
+
+[[allow]]
+id = "allow-0724"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::topology_generation_parser_reads_the_header_or_fails_explicitly"
+callee = "expect"
+receiver_fingerprint = "parse_topology_generation(&Ok(b\"authority_generation = 2\\n\".to_vec()))"
+normalized_snippet_hash = "fnv1a64:7e4bd330e956354a"
+
+[allow.last_seen]
+line = 786
+column = 14
+
+[[allow]]
+id = "allow-0725"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::policy_schema_version_parser_reads_the_header_or_fails_explicitly"
+callee = "expect"
+receiver_fingerprint = "parse_policy_schema_version(&Ok(b\"schema_version = \\\"0.1\\\"\\n\".to_vec()))"
+normalized_snippet_hash = "fnv1a64:f4d100e45a954973"
+
+[allow.last_seen]
+line = 798
+column = 14
+
+[[allow]]
+id = "allow-0726"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::topology_row_mirror_copies_fields_and_tolerates_extras"
+callee = "expect"
+receiver_fingerprint = "parse_topology_rows(text)"
+normalized_snippet_hash = "fnv1a64:6a0e7215e5a170e6"
+
+[allow.last_seen]
+line = 825
+column = 46
+
+[[allow]]
+id = "allow-0727"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "crate::cli::candidate_preparation_command::build_preparation_result(\"0.2.0\")"
+normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
+
+[allow.last_seen]
+line = 842
+column = 14
+
+[[allow]]
+id = "allow-0728"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only parser and render assertions in the command's module-local test unit (#3831); the expected side of each assertion is fully controlled test input"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "live.plan.as_ref()"
+normalized_snippet_hash = "fnv1a64:9a8999a501b92942"
+
+[allow.last_seen]
+line = 844
+column = 39
