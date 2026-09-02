@@ -954,7 +954,7 @@ pub(crate) fn load_world_without_policy_after_selection(
         include_untracked,
         evidence_validation,
         empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
-        false,
+        true,
     )
 }
 
