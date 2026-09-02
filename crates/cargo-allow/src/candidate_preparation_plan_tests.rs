@@ -1825,3 +1825,34 @@ fn render_token_swap_rejects_drifted_occurrence_counts() {
     let text = String::from_utf8(ok).expect("utf-8");
     assert!(!text.contains("0.2.0-rc.1"));
 }
+
+/// The swap-all renderer refuses a file that stopped carrying the token
+/// instead of silently emitting identical bytes.
+#[test]
+fn render_token_swap_all_rejects_missing_token() {
+    use crate::cli::candidate_preparation_command::render_token_swap_all;
+    let error = render_token_swap_all(b"no token here", "0.2.0-rc.1", "0.2.0", "probe")
+        .expect_err("a missing token must be rejected");
+    assert!(error.contains("stopped carrying"), "{error}");
+    let ok = render_token_swap_all(b"a 0.2.0-rc.1 b 0.2.0-rc.1", "0.2.0-rc.1", "0.2.0", "probe")
+        .expect("token present");
+    assert_eq!(String::from_utf8(ok).expect("utf-8"), "a 0.2.0 b 0.2.0");
+}
+
+/// The topology asset-root parser reads every declared root.
+#[test]
+fn asset_roots_parser_reads_all_declared_roots() {
+    let roots = crate::cli::candidate_preparation_command::asset_roots_from_topology(
+        b"asset_roots = [\"docs/schemas\", \"examples\"]\n".as_ref(),
+    )
+    .expect("roots parse");
+    assert_eq!(
+        roots,
+        vec!["docs/schemas".to_string(), "examples".to_string()]
+    );
+    let empty = crate::cli::candidate_preparation_command::asset_roots_from_topology(
+        b"publish = true\n".as_ref(),
+    )
+    .expect("no roots is fine");
+    assert!(empty.is_empty());
+}

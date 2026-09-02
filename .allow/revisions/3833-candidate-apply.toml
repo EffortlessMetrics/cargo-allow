@@ -422,3 +422,21 @@ allow_ids = ["allow-0828"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:4e52898f2c8769aeee803db34fa04b46970330484c1e58f2277bfa64edfb2f44"
 reason = "Guarded staging-loop expectations at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1855 in the apply engine (#3833); the re-render derives from the same validated authorities the reviewed plan bound, so these arms are unreachable in practice."
+
+[[records]]
+allow_ids = ["allow-0829"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7bd853a99fc211e35a8a11e341910ce0709be219dee19d0b23b7445d14759031"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input."
+
+[[records]]
+allow_ids = ["allow-0830"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8e874a10e3d41a4101871e3f2dd93a1419306ad4791b702aca27ea511cf5b58f"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input."
+
+[[records]]
+allow_ids = ["allow-0831"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0227ccb9487bb23c2cc1d01247f90292bee295582c522bcada456f382a7e0de8"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input."

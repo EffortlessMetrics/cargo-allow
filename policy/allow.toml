@@ -17830,3 +17830,72 @@ normalized_snippet_hash = "fnv1a64:7eb354976ab3e189"
 [allow.last_seen]
 line = 1855
 column = 56
+
+[[allow]]
+id = "allow-0829"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "render_token_swap_all_rejects_missing_token"
+callee = "expect"
+receiver_fingerprint = "der_token_swap_all(b\"a 0.2.0-rc.1 b 0.2.0-rc.1\", \"0.2.0-rc.1\", \"0.2.0\", \"probe\")"
+normalized_snippet_hash = "fnv1a64:bf2ef230c42c02ce"
+
+[allow.last_seen]
+line = 1838
+column = 10
+
+[[allow]]
+id = "allow-0830"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "asset_roots_parser_reads_all_declared_roots"
+callee = "expect"
+receiver_fingerprint = "s_from_topology( b\"asset_roots = [\\\"docs/schemas\\\", \\\"examples\\\"]\\n\".as_ref(), )"
+normalized_snippet_hash = "fnv1a64:32bbc81e12d73ec6"
+
+[allow.last_seen]
+line = 1848
+column = 6
+
+[[allow]]
+id = "allow-0831"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "asset_roots_parser_reads_all_declared_roots"
+callee = "expect"
+receiver_fingerprint = "_preparation_command::asset_roots_from_topology( b\"publish = true\\n\".as_ref(), )"
+normalized_snippet_hash = "fnv1a64:3c4c64d608146e5e"
+
+[allow.last_seen]
+line = 1856
+column = 6

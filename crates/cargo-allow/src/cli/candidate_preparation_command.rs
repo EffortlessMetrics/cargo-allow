@@ -1150,7 +1150,12 @@ fn append_byte(bytes: &[u8]) -> Vec<u8> {
 }
 
 /// Swap every occurrence of a token in a version-derived file.
-fn render_token_swap_all(bytes: &[u8], from: &str, to: &str, path: &str) -> Fact<Vec<u8>> {
+pub(crate) fn render_token_swap_all(
+    bytes: &[u8],
+    from: &str,
+    to: &str,
+    path: &str,
+) -> Fact<Vec<u8>> {
     let text = std::str::from_utf8(bytes).map_err(|error| format!("{path} encoding: {error}"))?;
     if !text.contains(from) {
         return Err(format!("{path} stopped carrying `{from}`"));
@@ -1229,7 +1234,7 @@ fn version_derived_surface(
 }
 
 /// Parse the `asset_roots` lists out of the topology file text.
-fn asset_roots_from_topology(topology: &[u8]) -> Fact<Vec<String>> {
+pub(crate) fn asset_roots_from_topology(topology: &[u8]) -> Fact<Vec<String>> {
     let text =
         std::str::from_utf8(topology).map_err(|error| format!("topology encoding: {error}"))?;
     let mut roots = Vec::new();
