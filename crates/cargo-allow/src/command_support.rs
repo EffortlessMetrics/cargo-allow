@@ -29,7 +29,7 @@ pub(crate) use crate::selector::selector_from_finding;
 pub(crate) use crate::world::{
     load_read_only_world, load_read_only_world_and_cache, load_staged_world, load_world,
     load_world_for_path, load_world_from_resolved_policy_with_options,
-    load_world_with_evidence_mode,
+    load_world_with_evidence_mode, load_world_without_policy_after_selection,
 };
 pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;
