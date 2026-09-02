@@ -16242,3 +16242,878 @@ glob = ".allow/revisions/3832-candidate-operations.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0760"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only panic in the dispatch parse guard for the apply subcommand (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "command_dispatch_parses_through_the_real_cli"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:a8e202059c9abc8d"
+
+[allow.last_seen]
+line = 608
+column = 9
+
+[[allow]]
+id = "allow-0761"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\"crates/allow-core\"))"
+normalized_snippet_hash = "fnv1a64:cfd77eff53d3be9e"
+
+[allow.last_seen]
+line = 1012
+column = 61
+
+[[allow]]
+id = "allow-0762"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\"policy\"))"
+normalized_snippet_hash = "fnv1a64:ba8220c40471f8f7"
+
+[allow.last_seen]
+line = 1013
+column = 50
+
+[[allow]]
+id = "allow-0763"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\"docs\"))"
+normalized_snippet_hash = "fnv1a64:be17e3ac2c0a3e53"
+
+[allow.last_seen]
+line = 1014
+column = 48
+
+[[allow]]
+id = "allow-0764"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\".changes\"))"
+normalized_snippet_hash = "fnv1a64:ca9336d52b0bd0a7"
+
+[allow.last_seen]
+line = 1015
+column = 52
+
+[[allow]]
+id = "allow-0765"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "\\nallow-core = { path = \\\"crates/allow-core\\\", version = \\\"=0.2.0-rc.1\\\" }\\n\", )"
+normalized_snippet_hash = "fnv1a64:72d91d18091e1637"
+
+[allow.last_seen]
+line = 1021
+column = 6
+
+[[allow]]
+id = "allow-0766"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "/Cargo.toml\"), \"[package]\\nname = \\\"allow-core\\\"\\nversion.workspace = true\\n\", )"
+normalized_snippet_hash = "fnv1a64:13f5aeaed97e2a09"
+
+[allow.last_seen]
+line = 1026
+column = 6
+
+[[allow]]
+id = "allow-0767"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(root.join(\"Cargo.lock\"), \"version = 4\\n\")"
+normalized_snippet_hash = "fnv1a64:fb5049d8a8d0f7ee"
+
+[allow.last_seen]
+line = 1027
+column = 62
+
+[[allow]]
+id = "allow-0768"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "-stabilizing\\\"\\nasset_roots = []\\nextraction_destination = \\\"cargo-allow\\\"\\n\", )"
+normalized_snippet_hash = "fnv1a64:93b2fef899616b43"
+
+[allow.last_seen]
+line = 1032
+column = 6
+
+[[allow]]
+id = "allow-0769"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "write( root.join(\"policy/product-support-matrix.toml\"), policy_support_matrix, )"
+normalized_snippet_hash = "fnv1a64:584f308ba7366b1a"
+
+[allow.last_seen]
+line = 1038
+column = 6
+
+[[allow]]
+id = "allow-0770"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "\"0.1.11\\\"\\ncandidate_version = \\\"0.2.0-rc.1\\\"\\ncandidate_published = false\\n\", )"
+normalized_snippet_hash = "fnv1a64:9bd8a16b539a38ad"
+
+[allow.last_seen]
+line = 1043
+column = 6
+
+[[allow]]
+id = "allow-0771"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(root.join(\"policy/allow.toml\"), \"schema_version = \\\"0.1\\\"\\n\")"
+normalized_snippet_hash = "fnv1a64:ba3f293cd032ec35"
+
+[allow.last_seen]
+line = 1044
+column = 82
+
+[[allow]]
+id = "allow-0772"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(root.join(\".changie.yaml\"), \"changes: []\\n\")"
+normalized_snippet_hash = "fnv1a64:c919f02899a98149"
+
+[allow.last_seen]
+line = 1045
+column = 65
+
+[[allow]]
+id = "allow-0773"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(root.join(\".changes/one.md\"), \"fragment\\n\")"
+normalized_snippet_hash = "fnv1a64:9477edaa29d462d2"
+
+[allow.last_seen]
+line = 1046
+column = 64
+
+[[allow]]
+id = "allow-0774"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "t.join(\"docs/getting-started.md\"), \"Install the 0.2.0-rc.1 candidate line.\\n\", )"
+normalized_snippet_hash = "fnv1a64:04560a01cf593793"
+
+[allow.last_seen]
+line = 1051
+column = 6
+
+[[allow]]
+id = "allow-0775"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "Process::new(\"git\") .arg(\"-C\") .arg(&root) .args(args) .output()"
+normalized_snippet_hash = "fnv1a64:76f15e4c8b2f4316"
+
+[allow.last_seen]
+line = 1059
+column = 14
+
+[[allow]]
+id = "allow-0776"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_plan"
+callee = "expect"
+receiver_fingerprint = "e_preparation_command::build_preparation_result_for_root( root, \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:3c6b46da9997ffd8"
+
+[allow.last_seen]
+line = 1085
+column = 6
+
+[[allow]]
+id = "allow-0777"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_decisions"
+callee = "expect"
+receiver_fingerprint = "result.plan.as_ref()"
+normalized_snippet_hash = "fnv1a64:d9592fd75ea41833"
+
+[allow.last_seen]
+line = 1090
+column = 37
+
+[[allow]]
+id = "allow-0778"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_applies_the_deterministic_set"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:ce4a21d12f2e0c32"
+
+[allow.last_seen]
+line = 1131
+column = 69
+
+[[allow]]
+id = "allow-0779"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_applies_the_deterministic_set"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"policy/product-package-topology-v2.toml\"))"
+normalized_snippet_hash = "fnv1a64:93b2fef899616b43"
+
+[allow.last_seen]
+line = 1136
+column = 10
+
+[[allow]]
+id = "allow-0780"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_applies_the_deterministic_set"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"docs/getting-started.md\"))"
+normalized_snippet_hash = "fnv1a64:b31c1d88e9453420"
+
+[allow.last_seen]
+line = 1145
+column = 71
+
+[[allow]]
+id = "allow-0781"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_applies_the_deterministic_set"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.lock\"))"
+normalized_snippet_hash = "fnv1a64:4ba64b7db3ec658f"
+
+[allow.last_seen]
+line = 1156
+column = 65
+
+[[allow]]
+id = "allow-0782"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_requires_decision_acknowledgements"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:3bcd5cb13aeec3c8"
+
+[allow.last_seen]
+line = 1167
+column = 67
+
+[[allow]]
+id = "allow-0783"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_requires_decision_acknowledgements"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:8f0663608f7ca1f3"
+
+[allow.last_seen]
+line = 1180
+column = 66
+
+[[allow]]
+id = "allow-0784"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_detects_stale_plans"
+callee = "expect"
+receiver_fingerprint = "d::fs::write( root.join(\"docs/getting-started.md\"), \"drifted past the plan\\n\", )"
+normalized_snippet_hash = "fnv1a64:a42bb3bc88fe4761"
+
+[allow.last_seen]
+line = 1195
+column = 6
+
+[[allow]]
+id = "allow-0785"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_detects_stale_plans"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"docs/getting-started.md\"))"
+normalized_snippet_hash = "fnv1a64:b31c1d88e9453420"
+
+[allow.last_seen]
+line = 1209
+column = 71
+
+[[allow]]
+id = "allow-0786"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_second_run_is_stale_without_writes"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:ce4a21d12f2e0c32"
+
+[allow.last_seen]
+line = 1247
+column = 69
+
+[[allow]]
+id = "allow-0787"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_mid_commit_rolls_back_completely"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:914cf3f2bb74159e"
+
+[allow.last_seen]
+line = 1260
+column = 76
+
+[[allow]]
+id = "allow-0788"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_mid_commit_rolls_back_completely"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"policy/product-package-topology-v2.toml\"))"
+normalized_snippet_hash = "fnv1a64:93b2fef899616b43"
+
+[allow.last_seen]
+line = 1263
+column = 14
+
+[[allow]]
+id = "allow-0789"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_mid_commit_rolls_back_completely"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"docs/support-matrix.toml\"))"
+normalized_snippet_hash = "fnv1a64:a0f8e40b7ddb4dcf"
+
+[allow.last_seen]
+line = 1265
+column = 72
+
+[[allow]]
+id = "allow-0790"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_corrupt_staged_abort_without_writes"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:3bcd5cb13aeec3c8"
+
+[allow.last_seen]
+line = 1310
+column = 67
+
+[[allow]]
+id = "allow-0791"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_tampered_plan_fails_before_writes"
+callee = "expect"
+receiver_fingerprint = "serde_json::to_value(&plan)"
+normalized_snippet_hash = "fnv1a64:ef3974f8089979f7"
+
+[allow.last_seen]
+line = 1347
+column = 52
+
+[[allow]]
+id = "allow-0792"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_tampered_plan_fails_before_writes"
+callee = "expect"
+receiver_fingerprint = "tampered .pointer_mut(\"/operations/operations/0/path\")"
+normalized_snippet_hash = "fnv1a64:82ee3d3810bcd0d4"
+
+[allow.last_seen]
+line = 1350
+column = 10
+
+[[allow]]
+id = "allow-0793"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_tampered_plan_fails_before_writes"
+callee = "expect"
+receiver_fingerprint = "serde_json::from_value(tampered)"
+normalized_snippet_hash = "fnv1a64:eea764b0bf28efea"
+
+[allow.last_seen]
+line = 1353
+column = 42
+
+[[allow]]
+id = "allow-0794"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_preserves_unrelated_dirty_files"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(root.join(\"unrelated.txt\"), \"operator scratch\\n\")"
+normalized_snippet_hash = "fnv1a64:52b73fcc39e0f1cf"
+
+[allow.last_seen]
+line = 1382
+column = 70
+
+[[allow]]
+id = "allow-0795"
+kind = "panic"
+family = "indexing"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Guarded staged-buffer read under the CorruptStaged fault injection (#3833); the buffer is non-empty by construction immediately before the indexed byte is read"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "apply_candidate_plan"
+symbol = "bytes[0]"
+receiver_fingerprint = "bytes"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:0a64f368d49e983a"
+
+[allow.last_seen]
+line = 1807
+column = 37
+
+[[allow]]
+id = "allow-0796"
+kind = "panic"
+family = "indexing"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Guarded staged-buffer corruption write under the CorruptStaged fault injection (#3833); the written byte only feeds the digest check that must fail closed"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "apply_candidate_plan"
+symbol = "bytes[0]"
+receiver_fingerprint = "bytes"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:f7644a6ebcdf7445"
+
+[allow.last_seen]
+line = 1808
+column = 22
+
+[[allow]]
+id = "allow-0797"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3833-candidate-apply.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-receipt for the #3833 revision note record; the note documents the added_allow transition for the candidate-apply receipt set"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3833-candidate-apply.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3833-candidate-apply.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

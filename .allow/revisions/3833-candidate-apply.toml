@@ -1,0 +1,238 @@
+schema_version = 1
+# Revision note for the #3833 candidate-apply slice.
+
+# This diff adds the bounded intermediate apply receipt model, the hidden
+# stale-safe `prep-candidate apply` command, and its fixture-driven
+# transaction and fault-injection controls. The additions below receipt
+# only the syntax-visible panicking constructs the new code introduces.
+# No existing exception is weakened, no expiry is extended, and no scope
+# is broadened: every record is an addition. policy/allow.toml keeps its
+# CRLF line-ending contract.
+
+[[records]]
+allow_ids = ["allow-0760"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5ac75a7a92bf153c2f875f5babf315ab0416cea75231de77fafb7bf7f7be1cb2"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0761"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d76c0a1381122b956137e8be82c8600ef25f9857002881d462506c08c3b50ec2"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0762"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9a7ef1842eb378bf20875e4e98baa1728f8c3c733f8e25f65bd17d65ff07e5f0"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0763"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1ed70feb37d953fdacd3f3186d97510472098cb9716635b6a7612a01ecf951ec"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0764"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d5481d05f05256a40306a8762febd27962da2704e1815a3b00ccc2fd64baad48"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0765"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3eb7f1d8ef48975fb0c854d40f548976c414b7ecc1b7ab1b213e297605e7c5ec"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0766"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:304090352821c22f2c13763949f4d2657d167ea99081adb8e9f375ef91d24eb9"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0767"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:baac69ef869549fd1e4bf861ff880e0fa4e943a5ed01a3acef01f9c931103ef2"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0768"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d404d1c67d7b8f960865d90141f5991355b4318e0e8bdac24547a0a2f5a3923d"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0769"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f94d511c3848dd93e6de62e7369dfca7894b718615018e91be3eee97af8034ac"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0770"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ca186eb1070b8bdbe63ef9dfab19978b51fee69b95a2f0157102711181d101b0"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0771"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c19ff7de921c3559fd2d7d336e29294deff02a7def75099289bedb690c80d109"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0772"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8c4bd82a7f700257b02252b00851887d6565e8988f2f0639066a489c3820a282"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0773"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cf32d82dfadb28ad1b501a07ce995b4fa8484fa4e4078b26e494616ae1711f98"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0774"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d5a1febc004ab053e1527aa7daa013904f6b84d19fc14c55b0b831bf0b9af8f7"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0775"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b6c7c21eb7338aa3338bc0ed83498e55f86e47eca35dbeef229a03c79f6f87ac"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0776"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:68e18cb392c996dd63b57ab604e28db5a0d9bf3d6557a8eb4fc5dbbd9f0e18c3"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0777"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:25f8c56a3d3d1295184b8edcc5e3b21ba33ad9aaad6e595cc6438b40c398d0df"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0778"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c17b5b302a183a2eaba4b01ff1cb5f636c5cd7e35bb78f4f212ed9cac7f598c2"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0779"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4513fa38b55c09b099c4a7b89b04f4ae40ec8c9249a0ab0de35d63bd1ac949d4"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0780"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:da5c6151cec4327ca37cf8ad3eeac8754f382bfa31793133a925c9cb572288a0"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0781"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:07eae3ae011368cdc3d0d2abc47ad8313bd4e4bc5750bfc142e788aaea3bd7d9"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0782"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:675389115dd68eb838cb00fc658f6688dbdf68254d9640d78cfaec732f01e595"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0783"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:77ffe07cd297ba95c699d32113e908e8dda85acc00e49081512696444a2ca1cb"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0784"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b5c83671864896ff33078f9d69eb42e27db77bdf238d53c52598e482528c2c78"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0785"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:817ffc83b348b0a53ce7ee747f80f38210e0464941e9954e457d50e08492721b"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0786"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:258ee4684b26b201400ffbf21b8b4ed39dc61e4ea22cfdc3cdd6f9d79dc44dce"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0787"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9faa6131714bacf22803c473f468c3ebda580508b204efcc481b675323907e30"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0788"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:89a654157d1a15d8c04fe192202011bee9c341ef4e8a088fd502f648cbc272d5"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0789"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:82a75613b4d66ca0dda6208d075d9d3d20556a0880a0af76c2f40539e6c24046"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0790"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8c134f422fade0bd3d79054890608c7522e92ba1ba2dc72ddeb0d1cedd1dad59"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0791"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:26cc0275f5cee10467bf1f3bffa1b7aa965c39ae3a7ea96ab63e1a384c11acf9"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0792"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a1d05b42cd2f42445da66b34e5c80f3e1d6e5b5e4293887525e71d96bd9b8783"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0793"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aff2f7b92cd2a3f29dcecc72bd447fce3cb8ef1c0e84ccc940e21a7300cc8954"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0794"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d44d6926d630ed5ff542d9d7b8464f55e7b6d9dafc40ec53d37c9ba8b00c302b"
+reason = "Test-only apply-engine control, fault-injection, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0795"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:51da6727cdd84f7043c4b421b78f873b33da4f7dc98ee3b95e158189140ba83e"
+reason = "Receipted construct at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1807 in the candidate-preparation apply engine or its command tests (#3833); the panicking construct is guarded by immediately preceding validation or is test-only."
+
+[[records]]
+allow_ids = ["allow-0796"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:97693b76ccabedf892e9480ddf51a59aac1f761125c202628a6df17c3aa624cf"
+reason = "Receipted construct at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1808 in the candidate-preparation apply engine or its command tests (#3833); the panicking construct is guarded by immediately preceding validation or is test-only."
+
+[[records]]
+allow_ids = ["allow-0797"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0331d2340d7234d5b130578dfdaeb67190b2fc90ece77371f78284487d94fe7f"
+reason = "Self-receipt for this revision note record (#3833); the note documents the added_allow transition for the candidate-apply receipt set."

@@ -1,0 +1,23 @@
+kind: Added
+body: >-
+  Stale-safe atomic application of one exact reviewed candidate-
+  preparation plan (#3833 on the #3750 train). New hidden
+  `cargo-allow prep-candidate apply --from-plan <file> --receipt
+  <file> [--acknowledge-decision <id>]` revalidates the plan against
+  the live repository before any write — plan and operation-set digest
+  authenticity (tamper detection), full projection rebuild with digest
+  equality, per-target current-digest recheck under lock, and a
+  decision gate requiring explicit acknowledgement of every required
+  decision — then applies only the deterministic generated set through
+  the shared mutation-target, lock, and atomic-replacement authorities
+  (deterministic fingerprint-sorted lock set, staged bytes validated
+  against reviewed digests, all-or-nothing commit with complete
+  rollback from in-memory preimages). Emits a bounded intermediate
+  apply receipt (plan identity, before worktree identity, lock and
+  per-operation intended/observed digests, staged validation,
+  transaction and rollback results, remaining obligations,
+  Applied/NoOp/Stale/Mismatch/DecisionRequired/Conflict/RolledBack/
+  RecoveryRequired/InstrumentFailure state). Fault-injection tests
+  prove the no-write, rolled-back, and staged-refusal paths; rerun of
+  a moved-against plan is Stale with zero writes. Mechanics only: no
+  release meaning, no qualification, no publication.

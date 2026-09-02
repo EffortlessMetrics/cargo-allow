@@ -2,6 +2,7 @@ mod add;
 mod add_finding_plan;
 mod add_plan_application;
 mod adoption_plan;
+mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod diff;
@@ -44,6 +45,11 @@ pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
     WritePosture, recommend_core_adoption_plan,
+};
+pub use candidate_preparation_apply_v1::{
+    CANDIDATE_APPLY_CLAIM_BOUNDARY_V1, CANDIDATE_APPLY_RECEIPT_SCHEMA_V1,
+    CandidateApplyLockRecordV1, CandidateApplyOperationRecordV1, CandidateApplyReceiptV1,
+    CandidateApplyStateV1,
 };
 pub use candidate_preparation_operations_v1::{
     CANDIDATE_OPERATION_PLAN_SCHEMA_V1, CandidateCollisionResultV1, CandidateContentStateV1,

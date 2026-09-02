@@ -430,11 +430,17 @@ fn control_12_projection_is_read_only() {
     assert_eq!(head_before, head_after, "projection mutated the head");
 
     let command_source = include_str!("cli/candidate_preparation_command.rs");
+    // The projection stays read-only; the #3833 apply engine writes only
+    // through the shared atomic-replacement authority (effortless_repo_edit
+    // write primitives, whose temp+rename+sync is the audited mechanism)
+    // and std::fs::remove_file solely to roll back files the same
+    // transaction created, restoring prior absence. Direct bypasses of the
+    // authority and directory-level destruction stay forbidden.
     for writer in [
         "fs::write",
         "OpenOptions",
-        "remove_file",
-        "rename(",
+        "write_all(",
+        "remove_dir_all",
         "create_dir",
     ] {
         assert!(
@@ -603,7 +609,10 @@ fn command_dispatch_parses_through_the_real_cli() {
         panic!("prep-candidate must parse into the hidden command");
     };
     let crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(plan_args) =
-        parsed.command;
+        parsed.command
+    else {
+        panic!("plan subcommand must parse");
+    };
     assert_eq!(plan_args.version, "0.2.0");
     let result = crate::cli::candidate_preparation_command::build_preparation_result(
         &plan_args.version,
@@ -991,4 +1000,441 @@ fn mutation_target_collisions_are_detected() {
     assert!(surfaces.iter().all(|s| s.collision.is_clear()));
 
     let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Build a minimal but authority-complete fixture repository whose live
+/// projection matches the real pipeline: git identity, root manifest with
+/// one exact internal requirement, topology V2 generation, support
+/// matrices, changie corpus, policy, and a version-derived reference.
+#[cfg(test)]
+fn fixture_apply_repo(tag: &str) -> std::path::PathBuf {
+    use std::process::Command as Process;
+
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-apply-fixture-{tag}-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("crates/allow-core")).expect("crate dir");
+    std::fs::create_dir_all(root.join("policy")).expect("policy dir");
+    std::fs::create_dir_all(root.join("docs")).expect("docs dir");
+    std::fs::create_dir_all(root.join(".changes")).expect("changes dir");
+
+    std::fs::write(
+        root.join("Cargo.toml"),
+        "[workspace]\nresolver = \"3\"\nmembers = [\n  \"crates/allow-core\",\n]\n\n[workspace.package]\nversion = \"0.2.0-rc.1\"\n\n[workspace.dependencies]\nallow-core = { path = \"crates/allow-core\", version = \"=0.2.0-rc.1\" }\n",
+    )
+    .expect("root manifest");
+    std::fs::write(
+        root.join("crates/allow-core/Cargo.toml"),
+        "[package]\nname = \"allow-core\"\nversion.workspace = true\n",
+    )
+    .expect("member manifest");
+    std::fs::write(root.join("Cargo.lock"), "version = 4\n").expect("lock");
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        "authority_generation = 2\n\n[[package]]\nlogical_id = \"allow-core\"\ncargo_package_name = \"allow-core\"\nversion_line = \"cargo-allow-0.2\"\nproduct_family = \"cargo-allow\"\nposture = \"CargoAllowSupported\"\npackage_version = \"0.2.0-rc.1\"\nversion_source = \"WorkspaceProduct\"\npublication_state = \"UnpublishedInternal\"\npublish = true\ncandidate_inclusion = true\nrelease_order = 10\nci_lane = \"test\"\nsupport_tier = \"supported\"\nasset_roots = []\nextraction_destination = \"cargo-allow\"\n\n[[package]]\nlogical_id = \"repo-protocol\"\ncargo_package_name = \"effortless-repo-protocol\"\nversion_line = \"shared-0.1\"\nproduct_family = \"shared\"\nposture = \"SharedProtocolInternalOrStabilizing\"\npackage_version = \"0.1.0\"\nversion_source = \"Explicit\"\npublication_state = \"UnpublishedInternal\"\npublish = true\ncandidate_inclusion = true\nrelease_order = 80\nci_lane = \"test\"\nsupport_tier = \"internal-stabilizing\"\nasset_roots = []\nextraction_destination = \"cargo-allow\"\n",
+    )
+    .expect("topology");
+    let policy_support_matrix = "[[product]]\nproduct_id = \"cargo-allow\"\nposture = \"CargoAllowSupported\"\n[[product]]\nproduct_id = \"shared-protocols\"\nposture = \"SharedProtocolInternalOrStabilizing\"\n";
+    std::fs::write(
+        root.join("policy/product-support-matrix.toml"),
+        policy_support_matrix,
+    )
+    .expect("policy support matrix");
+    std::fs::write(
+        root.join("docs/support-matrix.toml"),
+        "published_version = \"0.1.11\"\ncandidate_version = \"0.2.0-rc.1\"\ncandidate_published = false\n",
+    )
+    .expect("candidate support matrix");
+    std::fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n").expect("policy");
+    std::fs::write(root.join(".changie.yaml"), "changes: []\n").expect("changie config");
+    std::fs::write(root.join(".changes/one.md"), "fragment\n").expect("fragment");
+    std::fs::write(
+        root.join("docs/getting-started.md"),
+        "Install the 0.2.0-rc.1 candidate line.\n",
+    )
+    .expect("getting started");
+
+    let git = |args: &[&str]| {
+        let output = Process::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            output.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    };
+    git(&["init", "-b", "main"]);
+    git(&["config", "user.email", "fixture@example.test"]);
+    git(&["config", "user.name", "Fixture"]);
+    git(&[
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/EffortlessMetrics/cargo-allow-fixture.git",
+    ]);
+    git(&["add", "-A"]);
+    git(&["commit", "-m", "fixture"]);
+    root
+}
+
+#[cfg(test)]
+fn fixture_plan(root: &std::path::Path) -> allow_report::CandidatePreparationResultV1 {
+    crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        root, "0.2.0", None,
+    )
+    .expect("fixture projection builds")
+}
+
+#[cfg(test)]
+fn fixture_decisions(result: &allow_report::CandidatePreparationResultV1) -> Vec<String> {
+    let plan = result.plan.as_ref().expect("plan");
+    let mut ids: Vec<String> = plan
+        .required_decisions
+        .iter()
+        .map(|decision| decision.decision_id.clone())
+        .collect();
+    if let Some(ops) = &result.operations {
+        ids.extend(
+            ops.decisions
+                .iter()
+                .map(|decision| decision.decision_id.clone()),
+        );
+    }
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+/// Apply executes the deterministic set through the shared authorities and
+/// leaves every generated byte in place (acceptance: one exact plan
+/// applies; equal inputs yield equal bytes).
+#[test]
+fn candidate_preparation_apply_applies_the_deterministic_set() {
+    let root = fixture_apply_repo("apply");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Applied,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(receipt.staged_validation);
+    assert_eq!(receipt.rollback_result, "not_needed");
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert!(manifest.contains("version = \"0.2.0\""));
+    assert!(manifest.contains("version = \"=0.2.0\""));
+    assert!(!manifest.contains("0.2.0-rc.1"));
+    let topology = std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+        .expect("topology");
+    assert_eq!(topology.matches("package_version = \"0.2.0\"").count(), 1);
+    assert_eq!(
+        topology
+            .matches("publication_state = \"UnpublishedInternal\"")
+            .count(),
+        2
+    );
+    let getting_started =
+        std::fs::read_to_string(root.join("docs/getting-started.md")).expect("getting started");
+    assert!(getting_started.contains("0.2.0"));
+    assert!(!getting_started.contains("0.2.0-rc.1"));
+    // The judgment-bearing surfaces were acknowledged, not written.
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "not_applied" && operation.path == ".changes")
+    );
+    // Unrelated worktree files are byte-preserved.
+    let lock = std::fs::read_to_string(root.join("Cargo.lock")).expect("lock");
+    assert_eq!(lock, "version = 4\n");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A plan whose decisions were not acknowledged is refused before any
+/// write (controls 9; gate law).
+#[test]
+fn candidate_preparation_apply_requires_decision_acknowledgements() {
+    let root = fixture_apply_repo("decisions");
+    let plan = fixture_plan(&root);
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &[],
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::DecisionRequired
+    );
+    assert!(receipt.decision_acknowledgements.is_empty());
+    let after = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert_eq!(before, after, "no write may precede the decision gate");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A source or destination movement after plan generation is Stale with
+/// zero writes (control 1).
+#[test]
+fn candidate_preparation_apply_detects_stale_plans() {
+    let root = fixture_apply_repo("stale");
+    let plan = fixture_plan(&root);
+    std::fs::write(
+        root.join("docs/getting-started.md"),
+        "drifted past the plan\n",
+    )
+    .expect("drift");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &fixture_decisions(&plan),
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Stale);
+    assert!(
+        !receipt.staged_validation,
+        "no staging may happen for a stale plan"
+    );
+    let getting_started =
+        std::fs::read_to_string(root.join("docs/getting-started.md")).expect("getting started");
+    assert!(getting_started.contains("drifted"), "drift must survive");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Rerunning the same reviewed plan after a successful apply is Stale —
+/// the plan no longer matches the moved repository — and it performs no
+/// writes; the repository stays at the applied state (control 10).
+#[test]
+fn candidate_preparation_apply_second_run_is_stale_without_writes() {
+    let root = fixture_apply_repo("rerun");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    let rerun = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(rerun.state, allow_report::CandidateApplyStateV1::Stale);
+    assert!(
+        rerun
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied"),
+        "a stale rerun performs no writes"
+    );
+
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert!(
+        manifest.contains("version = \"0.2.0\""),
+        "the repository stays at the applied state"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A mid-commit fault leaves the complete prior state via rollback
+/// (control 7; transaction law).
+#[test]
+fn candidate_preparation_faults_mid_commit_rolls_back_completely() {
+    let root = fixture_apply_repo("rollback");
+    let before_manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let before_topology =
+        std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+            .expect("topology");
+    let before_matrix =
+        std::fs::read_to_string(root.join("docs/support-matrix.toml")).expect("support matrix");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: Some(2),
+            corrupt_staged: false,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::RolledBack,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert_eq!(receipt.rollback_result, "complete");
+    assert_eq!(
+        std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest"),
+        before_manifest,
+        "rollback must restore the complete prior state"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+            .expect("topology"),
+        before_topology
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("docs/support-matrix.toml")).expect("support matrix"),
+        before_matrix
+    );
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "rolled_back")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Corrupted staged bytes abort before the first write (control 7 staging
+/// half; transaction law: validate staged bytes before replacement).
+#[test]
+fn candidate_preparation_faults_corrupt_staged_abort_without_writes() {
+    let root = fixture_apply_repo("corrupt");
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: None,
+            corrupt_staged: true,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::InstrumentFailure,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(!receipt.staged_validation);
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest"),
+        before,
+        "no write may precede staged validation"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A tampered plan file (an operation path escaping the repository) fails
+/// the revalidation gate before any mutation (controls 4; gate law).
+#[test]
+fn candidate_preparation_apply_tampered_plan_fails_before_writes() {
+    let root = fixture_apply_repo("tampered");
+    let plan = fixture_plan(&root);
+    let mut tampered = serde_json::to_value(&plan).expect("plan serializes");
+    let operations = tampered
+        .pointer_mut("/operations/operations/0/path")
+        .expect("operation path");
+    *operations = serde_json::Value::String("../escaped.txt".to_string());
+    let parsed: allow_report::CandidatePreparationResultV1 =
+        serde_json::from_value(tampered).expect("tampered plan parses");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &parsed,
+        &fixture_decisions(&plan),
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Conflict,
+        "a tampered plan must fail the authenticity gate"
+    );
+    assert!(
+        receipt
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("does not cover its content"))
+    );
+    assert!(!root.join("../escaped.txt").exists());
+    assert!(!root.parent().expect("parent").join("escaped.txt").exists());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Unrelated dirty files stay byte-preserved through a successful apply
+/// (transaction law; control 2 complement).
+#[test]
+fn candidate_preparation_apply_preserves_unrelated_dirty_files() {
+    let root = fixture_apply_repo("dirty");
+    std::fs::write(root.join("unrelated.txt"), "operator scratch\n").expect("dirty file");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Applied);
+    assert_eq!(
+        std::fs::read_to_string(root.join("unrelated.txt")).expect("dirty file"),
+        "operator scratch\n",
+        "unrelated content must be byte-preserved"
+    );
+    assert!(
+        !receipt
+            .operations
+            .iter()
+            .any(|operation| operation.path == "unrelated.txt")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The command never reaches git-mutating, token-reading, or network
+/// constructs (control 12; source-level law).
+#[test]
+fn candidate_preparation_apply_command_source_has_no_external_writes() {
+    let source = include_str!("cli/candidate_preparation_command.rs");
+    for forbidden in [
+        "fs::write",
+        "OpenOptions",
+        "remove_dir_all",
+        "\"push\"",
+        "\"fetch\"",
+        "\"token\"",
+        "GITHUB_TOKEN",
+        "reqwest",
+        "ureq",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "apply command source contains forbidden construct {forbidden:?}"
+        );
+    }
 }
