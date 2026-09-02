@@ -3,17 +3,19 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
 
-use crate::policy_config::missing_policy_config_error;
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
-    current_dir, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
+    emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    git_relative_config_path, load_world_with_evidence_mode, portable_relative_under_root,
+    load_world_from_resolved_policy_with_options, portable_relative_under_root,
     resolve_source_tree_root,
 };
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest,
+    apply_single_target_with_target_and_expected_digest,
+};
 
 #[path = "prune_args.rs"]
 mod prune_args;
@@ -65,34 +67,42 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let mutation_lock = if args.write {
-        let cwd = current_dir()?;
-        let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-        let path =
-            config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
-        crate::policy_config::assert_path_within_root(&root, &path)?;
-        Some({
-            let target = effortless_repo_edit::resolve_mutation_target(&path, &root)
-                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-            MutationLock::acquire_for_target(&target)
-                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?
-        })
+    let root = resolve_source_tree_root(args.root.root.as_deref(), current_dir()?)?;
+    let (policy_path, federation) =
+        crate::policy_config::select_policy_path(&root, args.config.as_deref())?;
+    crate::policy_config::assert_path_within_root(&root, &policy_path)?;
+    crate::command_support::reject_output_collision(
+        &root,
+        args.output.as_deref(),
+        &[policy_path.as_path()],
+        "--output must differ from the selected policy output",
+    )?;
+    let (resolved_mutation_target, mutation_lock) = if args.write {
+        let target = effortless_repo_edit::resolve_mutation_target(&policy_path, &root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+        let lock = MutationLock::acquire_for_target(&target)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+        (Some(target), Some(lock))
     } else {
-        None
+        (None, None)
     };
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        true,
-        None,
-        args.include_untracked,
+    let _mutation_lock = mutation_lock;
+    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+        policy_path.clone(),
         EvidenceValidationMode::ReportOnly,
     )?;
-    let _mutation_lock = mutation_lock;
+    let (root, cfg, findings, inventory_facts, _federation) =
+        load_world_from_resolved_policy_with_options(
+            &root,
+            cfg,
+            Some(policy_digest.clone()),
+            federation,
+            args.include_untracked,
+            None,
+            true,
+        )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
-    let policy_path =
-        config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
     let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
     receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
     let before_fingerprints = receipt_candidates
@@ -114,9 +124,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let repo_root = root.display().to_string();
-    let config_source = crate::policy_config::git_relative_config_path(&root, Some(&policy_path))?
-        .to_string_lossy()
-        .replace('\\', "/");
+    let config_source =
+        crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?
+            .to_string_lossy()
+            .replace('\\', "/");
     let recovery_command = format!("git diff -- {config_source}");
     let mutation_receipt = MutationReceipt {
         operation: "prune",
@@ -155,20 +166,30 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             &pruned,
             evidence_source_tree_files.as_ref(),
         )?;
-        let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+        let policy_target =
+            crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
         let rendered = render_policy(&pruned);
-        apply_single_target(SingleTargetApplyRequest {
-            repository_root: &root,
-            target: &policy_target,
-            contents: &rendered,
-            caller_reference: Some("cargo-allow:prune"),
-            lock_identity: Some(
-                policy_target
-                    .to_string_lossy()
-                    .replace(std::path::MAIN_SEPARATOR, "/"),
-            ),
-            mode: SingleTargetApplyMode::AtomicReplace,
-        })
+        apply_single_target_with_target_and_expected_digest(
+            SingleTargetApplyRequest {
+                repository_root: &root,
+                target: &policy_target,
+                contents: &rendered,
+                caller_reference: Some("cargo-allow:prune"),
+                lock_identity: Some(
+                    policy_target
+                        .to_string_lossy()
+                        .replace(std::path::MAIN_SEPARATOR, "/"),
+                ),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            resolved_mutation_target.as_ref().ok_or_else(|| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    "internal error: prune mutation target was not resolved",
+                )
+            })?,
+            &policy_digest,
+        )
         .into_result()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         Some(policy_path.clone())
