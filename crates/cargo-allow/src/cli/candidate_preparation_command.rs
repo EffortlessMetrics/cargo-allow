@@ -352,7 +352,7 @@ pub(crate) fn build_preparation_result(
 /// Digest over the typed source release identity projected from the
 /// topology's product closure. Empty when the closure does not agree on one
 /// line (the pure classifier then reports the conflict).
-fn source_release_identity_digest(rows: &[CandidatePackageRowV1]) -> String {
+pub(crate) fn source_release_identity_digest(rows: &[CandidatePackageRowV1]) -> String {
     let mut source_versions: BTreeMap<&str, ()> = BTreeMap::new();
     for row in rows {
         if row.product_family == "cargo-allow" && row.candidate_inclusion {
@@ -456,7 +456,7 @@ fn git_root() -> Fact<PathBuf> {
     ))
 }
 
-fn git_text(root: &Path, args: &[&str]) -> Fact<String> {
+pub(crate) fn git_text(root: &Path, args: &[&str]) -> Fact<String> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
@@ -473,7 +473,7 @@ fn git_text(root: &Path, args: &[&str]) -> Fact<String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
-fn repository_identity(root: &Path) -> Fact<String> {
+pub(crate) fn repository_identity(root: &Path) -> Fact<String> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
@@ -493,7 +493,7 @@ fn repository_identity(root: &Path) -> Fact<String> {
     Ok(format!("{owner}/{repo}"))
 }
 
-fn dirty_state_class(root: &Path) -> Fact<CandidatePreparationDirtyStateV1> {
+pub(crate) fn dirty_state_class(root: &Path) -> Fact<CandidatePreparationDirtyStateV1> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
@@ -526,11 +526,11 @@ fn dirty_state_class(root: &Path) -> Fact<CandidatePreparationDirtyStateV1> {
     })
 }
 
-fn read_repo_file(root: &Path, relative: &str) -> Fact<Vec<u8>> {
+pub(crate) fn read_repo_file(root: &Path, relative: &str) -> Fact<Vec<u8>> {
     std::fs::read(root.join(relative)).map_err(|error| format!("read {relative}: {error}"))
 }
 
-fn file_digest(root: &Path, relative: &str) -> Fact<String> {
+pub(crate) fn file_digest(root: &Path, relative: &str) -> Fact<String> {
     Ok(allow_core::sha256_v1_bytes(&read_repo_file(
         root, relative,
     )?))
@@ -548,7 +548,7 @@ fn member_manifest_digests(root: &Path) -> Fact<BTreeMap<String, String>> {
 }
 
 /// Parse the `members = [...]` array of the workspace manifest.
-fn parse_workspace_members(workspace: &[u8]) -> Fact<Vec<String>> {
+pub(crate) fn parse_workspace_members(workspace: &[u8]) -> Fact<Vec<String>> {
     let text = std::str::from_utf8(workspace)
         .map_err(|error| format!("workspace manifest encoding: {error}"))?;
     let start = text
@@ -683,7 +683,7 @@ fn parse_workspace_requirements(workspace: &Fact<Vec<u8>>) -> BTreeMap<String, S
 }
 
 /// Digest the sorted Changie history corpus under `.changes/`.
-fn changie_history_digest(root: &Path) -> Fact<String> {
+pub(crate) fn changie_history_digest(root: &Path) -> Fact<String> {
     let mut files = Vec::new();
     collect_corpus_files(&root.join(CHANGES_DIR), 0, &mut files)?;
     files.sort();
@@ -703,7 +703,7 @@ fn changie_history_digest(root: &Path) -> Fact<String> {
     Ok(allow_core::sha256_v1_bytes(material.as_bytes()))
 }
 
-fn collect_corpus_files(dir: &Path, depth: usize, files: &mut Vec<PathBuf>) -> Fact<()> {
+pub(crate) fn collect_corpus_files(dir: &Path, depth: usize, files: &mut Vec<PathBuf>) -> Fact<()> {
     if depth > CORPUS_WALK_MAX_DEPTH {
         return Err(format!(
             "corpus walk exceeded depth bound {CORPUS_WALK_MAX_DEPTH}"

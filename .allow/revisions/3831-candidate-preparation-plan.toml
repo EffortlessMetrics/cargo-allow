@@ -116,3 +116,45 @@ allow_ids = ["allow-0728"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:15dc560c21b6250543b503ae895a0ea0682b127125d84d067e38144eced92b2d"
 reason = "Same test-only assertion law for the plan access in the render-summary test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0729"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fd6bd98d93e55e314890a45da83b795a6550ad688d322389b1ad11d6ee8259c2"
+reason = "Test-only end-to-end CLI subprocess assertion in the control suite (#3831); covers the hidden command dispatch, rendering, and exit codes against the built binary."
+
+[[records]]
+allow_ids = ["allow-0730"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6d045c3260cf107512d7ecb0c3ce33b60218ad77bec1e2dd5434d1c09857707b"
+reason = "Same end-to-end assertion law for the human-format run and the malformed-target rejection path (#3831)."
+
+[[records]]
+allow_ids = ["allow-0731"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2b8a8dfa8210c4e0c83bd12eefbba87531078ef8262828595c0c871bd0abc428"
+reason = "Same end-to-end assertion law for the built-binary resolution helper (#3831)."
+
+[[records]]
+allow_ids = ["allow-0732"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e7e678764ca17e35ffc900dd167f66bbd641f7c0bf53317858661abb164ea2fe"
+reason = "Same test-only assertion law for the gather-error-arm fixtures against a non-repository directory (#3831)."
+
+[[records]]
+allow_ids = ["allow-0733"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4be054b7251b713807a3611f05e538e89d7534020e0a44fe662325ab3df17cbb"
+reason = "Same test-only assertion law for the operation-set row-role law arms (#3831)."
+
+[[records]]
+allow_ids = ["allow-0734"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1bdce91bdf47af701bfc1410b606e68552b6ded25d07b51e4dca64429951f566"
+reason = "Same test-only assertion law for the target parse in the row-role law arms (#3831)."
+
+[[records]]
+allow_ids = ["allow-0735"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:71f641a2c70760a861b051b63380e0970e32181c8b4cecfbcbfe568941ef319f"
+reason = "Same test-only assertion law for the source-identity digest agreement fixtures (#3831)."

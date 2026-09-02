@@ -568,6 +568,24 @@ fn live_result_validates_against_the_registered_schema() {
         .expect("live candidate preparation result must validate against its schema");
 }
 
+/// The compiled binary sits beside the test executable under
+/// `target/<profile>/`, so the end-to-end tests can drive the real CLI.
+fn built_binary() -> std::path::PathBuf {
+    let test_exe = std::env::current_exe().expect("test executable path");
+    test_exe
+        .ancestors()
+        .skip(1)
+        .find_map(|dir| {
+            let windows = dir.join("cargo-allow.exe");
+            if windows.is_file() {
+                return Some(windows);
+            }
+            let unix = dir.join("cargo-allow");
+            (unix.is_file()).then_some(unix)
+        })
+        .expect("built cargo-allow binary must exist beside the test binary")
+}
+
 fn live_preparation_result(version: &str) -> allow_report::CandidatePreparationResultV1 {
     crate::cli::candidate_preparation_command::build_preparation_result(version)
         .expect("live preparation must not be a process error")
@@ -582,4 +600,202 @@ fn git_text(root: &std::path::Path, args: &[&str]) -> String {
         .expect("git runs");
     assert!(output.status.success(), "git {:?} failed", args);
     String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+/// The hidden command is reachable end-to-end: the rendered JSON result
+/// exits zero for a projected plan, and the human path renders the same
+/// digest.
+#[test]
+fn command_runs_end_to_end_through_the_cli() {
+    let bin = built_binary();
+    let json = std::process::Command::new(&bin)
+        .args([
+            "prep-candidate",
+            "plan",
+            "--version",
+            "0.2.0",
+            "--format",
+            "json",
+        ])
+        .output()
+        .expect("binary runs");
+    assert!(json.status.success(), "projected plan must exit zero");
+    let stdout = String::from_utf8_lossy(&json.stdout);
+    assert!(stdout.contains("cargo-allow.candidate-preparation-result.v1"));
+    assert!(stdout.contains("candidate-preparation-plan.v1"));
+    assert!(stdout.contains("confirm-frozen-candidate-basis"));
+
+    let text = std::process::Command::new(&bin)
+        .args([
+            "prep-candidate",
+            "plan",
+            "--version",
+            "0.2.0",
+            "--format",
+            "text",
+        ])
+        .output()
+        .expect("binary runs");
+    assert!(text.status.success());
+    let stdout = String::from_utf8_lossy(&text.stdout);
+    assert!(stdout.contains("candidate preparation: 10 product rows -> 0.2.0"));
+}
+
+/// A malformed target renders the explicit Unsupported typed result and
+/// exits non-zero.
+#[test]
+fn command_rejects_malformed_targets_with_explicit_result() {
+    let bin = built_binary();
+    let output = std::process::Command::new(bin)
+        .args([
+            "prep-candidate",
+            "plan",
+            "--version",
+            "0.2.0-beta.9",
+            "--format",
+            "json",
+        ])
+        .output()
+        .expect("binary runs");
+    assert!(
+        !output.status.success(),
+        "unsupported target must exit non-zero"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("unsupported"));
+    assert!(stdout.contains("only supported prerelease form is rc.N"));
+}
+
+/// Gather-path error arms: git facts against a non-repository directory
+/// fail with explicit reasons instead of panicking.
+#[test]
+fn gather_error_arms_fail_with_explicit_reasons() {
+    let temp = std::env::temp_dir().join("cargo-allow-prep-gather-negative");
+    let _ = std::fs::remove_dir_all(&temp);
+    std::fs::create_dir_all(&temp).expect("temp dir");
+
+    assert!(
+        crate::cli::candidate_preparation_command::git_text(&temp, &["status", "--porcelain"])
+            .is_err()
+    );
+    assert!(crate::cli::candidate_preparation_command::repository_identity(&temp).is_err());
+    assert!(crate::cli::candidate_preparation_command::dirty_state_class(&temp).is_err());
+    assert!(crate::cli::candidate_preparation_command::file_digest(&temp, "no-such-file").is_err());
+    assert!(
+        crate::cli::candidate_preparation_command::read_repo_file(&temp, "no-such-file").is_err()
+    );
+    assert!(crate::cli::candidate_preparation_command::changie_history_digest(&temp).is_err());
+    assert!(
+        crate::cli::candidate_preparation_command::collect_corpus_files(
+            &temp.join("absent"),
+            0,
+            &mut Vec::new()
+        )
+        .is_err()
+    );
+
+    let _ = std::fs::remove_dir_all(&temp);
+}
+
+/// The source-identity digest stays empty unless the product closure
+/// agrees on exactly one typed line.
+#[test]
+fn source_identity_digest_requires_one_agreed_line() {
+    use allow_report::CandidatePackageRowV1;
+    let agreed = vec![fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1")];
+    assert!(
+        !crate::cli::candidate_preparation_command::source_release_identity_digest(&agreed)
+            .is_empty()
+    );
+    let disagreeing = vec![
+        fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+        fixture_row("allow-policy", "cargo-allow", 20, "0.2.0-rc.2"),
+    ];
+    assert!(
+        crate::cli::candidate_preparation_command::source_release_identity_digest(&disagreeing)
+            .is_empty()
+    );
+    let untyped = vec![CandidatePackageRowV1 {
+        package_version: "not.a.version".to_string(),
+        ..fixture_row("allow-core", "cargo-allow", 10, "not.a.version")
+    }];
+    assert!(
+        crate::cli::candidate_preparation_command::source_release_identity_digest(&untyped)
+            .is_empty()
+    );
+}
+
+/// Operation-set law arms that fixtures do not reach through the
+/// projection: holds must name shared rows, requirements must name
+/// closure rows.
+#[test]
+fn operation_set_validates_row_roles() {
+    let selected = vec![
+        allow_report::CandidateSelectedRowV1 {
+            row: fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+            role: "product".to_string(),
+            prospective_version: "0.2.0".to_string(),
+        },
+        allow_report::CandidateSelectedRowV1 {
+            row: fixture_row("effortless-repo-protocol", "shared", 80, "0.1.0"),
+            role: "shared_prerequisite".to_string(),
+            prospective_version: "0.1.0".to_string(),
+        },
+    ];
+    let target = ReleaseVersionV1::parse("0.2.0").expect("target parses");
+
+    let hold_product = vec![CandidatePreparationOperationV1::HoldExactVersion {
+        package: "allow-core".to_string(),
+        release_order: 10,
+        version: "0.2.0-rc.1".to_string(),
+        reason: "wrong".to_string(),
+    }];
+    assert!(validate_candidate_operation_set(&selected, &target, &hold_product).is_err());
+
+    let mismatched_hold = vec![CandidatePreparationOperationV1::HoldExactVersion {
+        package: "effortless-repo-protocol".to_string(),
+        release_order: 80,
+        version: "0.1.0".to_string(),
+        reason: "holds must match the closure binding".to_string(),
+    }];
+    let wrong_version = vec![CandidatePreparationOperationV1::HoldExactVersion {
+        package: "effortless-repo-protocol".to_string(),
+        release_order: 80,
+        version: "0.2.0".to_string(),
+        reason: "wrong".to_string(),
+    }];
+    assert!(validate_candidate_operation_set(&selected, &target, &mismatched_hold).is_ok());
+    assert!(validate_candidate_operation_set(&selected, &target, &wrong_version).is_err());
+
+    let outside_requirement = vec![CandidatePreparationOperationV1::SetInternalRequirement {
+        dependency: "effortless-repo-protocol".to_string(),
+        from: "0.1.0".to_string(),
+        to: "=0.2.0".to_string(),
+    }];
+    assert!(validate_candidate_operation_set(&selected, &target, &outside_requirement).is_err());
+}
+
+/// A fully bound corpus keeps the projection off the stale branch.
+#[test]
+fn bound_corpus_sources_project_without_stale_reasons() {
+    let rows = vec![
+        fixture_row("allow-core", "cargo-allow", 10, "0.2.0-rc.1"),
+        fixture_row("allow-policy", "cargo-allow", 20, "0.2.0-rc.1"),
+        fixture_row("effortless-repo-protocol", "shared", 80, "0.1.0"),
+    ];
+    let mut bound = fixture_input("0.2.0", &rows);
+    bound.input_identity.release_record = Some(allow_report::CandidateCorpusSourceV1 {
+        path: "docs/release/0.2.0.md".to_string(),
+        digest: "sha256:v1:aa".to_string(),
+    });
+    bound.input_identity.github_release_note = Some(allow_report::CandidateCorpusSourceV1 {
+        path: "docs/release/github/v0.2.0.md".to_string(),
+        digest: "sha256:v1:bb".to_string(),
+    });
+    let result = allow_report::prepare_candidate_plan(bound);
+    assert!(result.reasons.is_empty(), "bound corpus must not be stale");
+    assert_eq!(
+        result.readiness,
+        CandidatePreparationReadinessV1::DecisionRequired
+    );
 }
