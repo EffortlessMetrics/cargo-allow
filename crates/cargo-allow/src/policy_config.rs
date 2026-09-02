@@ -18,6 +18,14 @@ pub(crate) fn missing_policy_config_error() -> CargoAllowError {
     )
 }
 
+pub(crate) fn is_missing_policy_config_error(error: &CargoAllowError) -> bool {
+    error.kind() == CargoAllowErrorKind::InvalidConfig
+        && (error.message().starts_with("no policy config found")
+            || error
+                .message()
+                .starts_with("no cargo-allow policy config found"))
+}
+
 pub(crate) fn missing_plan_policy_config_error() -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
@@ -411,6 +419,25 @@ mod tests {
         assert!(err.to_string().contains("foreign/allow.toml"));
 
         remove_test_dir(&missing_root);
+    }
+
+    #[test]
+    fn missing_policy_classifier_rejects_other_invalid_config_errors() {
+        let missing = missing_policy_config_error();
+        assert!(is_missing_policy_config_error(&missing));
+
+        let foreign = missing_config_error(&[SkippedPolicyCandidate {
+            path: PathBuf::from("foreign/allow.toml"),
+            source: allow_policy::SOURCE_CONVENTIONAL_PATH,
+            reason: "foreign policy dialect".to_string(),
+        }]);
+        assert!(is_missing_policy_config_error(&foreign));
+
+        let ambiguous = CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            "ambiguous policy selection",
+        );
+        assert!(!is_missing_policy_config_error(&ambiguous));
     }
 
     #[test]

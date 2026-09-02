@@ -138,12 +138,15 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
                 true,
             )?
         }
-        Err(_) => load_world_without_policy_after_selection(
-            &mutation_root,
-            args.kind.as_deref(),
-            args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
-        )?,
+        Err(error) if crate::policy_config::is_missing_policy_config_error(&error) => {
+            load_world_without_policy_after_selection(
+                &mutation_root,
+                args.kind.as_deref(),
+                args.include_untracked,
+                EvidenceValidationMode::ReportOnly,
+            )?
+        }
+        Err(error) => return Err(error),
     };
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
     let new_findings_total = outcomes
