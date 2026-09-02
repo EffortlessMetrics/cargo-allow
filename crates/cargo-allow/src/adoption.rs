@@ -257,11 +257,11 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
                 .to_string(),
         );
     }
-    let options = InventoryOptions {
+    let options = crate::world::inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked: args.include_untracked,
-    };
+    });
     let inventory = match inventory(&root, &options) {
         Ok(inventory) => inventory,
         Err(error) => {
@@ -317,64 +317,62 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     }
 
     let scan = if policy_state == allow_report::PolicyState::Invalid {
-        Ok((
-            root.clone(),
-            cfg.clone(),
-            Vec::new(),
-            InventoryFacts::scanned_inventory(&inventory),
-            crate::world::default_federation_evaluation(),
-        ))
+        Ok(crate::world::CoreWorldContext {
+            root: root.clone(),
+            cfg: cfg.clone(),
+            findings: Vec::new(),
+            inventory_facts: InventoryFacts::scanned_inventory(&inventory),
+            federation: crate::world::default_federation_evaluation(),
+        })
     } else {
         let federation = discovery
             .federation
             .clone()
             .unwrap_or_else(crate::world::default_federation_evaluation);
-        crate::world::load_world_from_resolved_policy(
+        crate::world::load_core_world_from_resolved_policy_with_inventory(
             &root,
             cfg.clone(),
             policy_digest.clone(),
             federation,
-            args.include_untracked,
+            &inventory,
+            &options,
+            crate::world::ResolvedPolicyScanOptions {
+                kind_filter: None,
+                persistent_cache: true,
+            },
         )
     };
-    let (scan_root, scanned_cfg, findings, inventory_facts, federation, instrument_failure) =
-        match scan {
-            Ok((scan_root, scanned_cfg, findings, inventory_facts, federation)) => (
-                scan_root,
-                scanned_cfg,
-                findings,
-                inventory_facts,
-                federation,
-                None,
-            ),
-            Err(error) => (
-                root.clone(),
-                cfg.clone(),
-                Vec::new(),
-                InventoryFacts::scanned_inventory(&inventory),
-                crate::world::default_federation_evaluation(),
-                Some(format!(
-                    "source inventory scan failed: {}",
-                    sanitize_diagnostic(&root, &error.to_string())
-                )),
-            ),
-        };
-    let _ = scan_root;
-    if inventory_facts.rust_files_skipped > 0 {
+    let (context, instrument_failure) = match scan {
+        Ok(context) => (context, None),
+        Err(error) => (
+            crate::world::CoreWorldContext {
+                root: root.clone(),
+                cfg: cfg.clone(),
+                findings: Vec::new(),
+                inventory_facts: InventoryFacts::scanned_inventory(&inventory),
+                federation: crate::world::default_federation_evaluation(),
+            },
+            Some(format!(
+                "source inventory scan failed: {}",
+                sanitize_diagnostic(&root, &error.to_string())
+            )),
+        ),
+    };
+    if context.inventory_facts.rust_files_skipped > 0 {
         limitations.push(format!(
             "{} Rust file(s) could not be read by the scanner",
-            inventory_facts.rust_files_skipped
+            context.inventory_facts.rust_files_skipped
         ));
     }
-    if inventory_facts.rust_files_with_parse_errors > 0 {
+    if context.inventory_facts.rust_files_with_parse_errors > 0 {
         limitations.push(format!(
             "{} Rust file(s) contained parse errors",
-            inventory_facts.rust_files_with_parse_errors
+            context.inventory_facts.rust_files_with_parse_errors
         ));
     }
 
-    let report_cfg = report_config(&scanned_cfg, None)?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
+    let report_cfg = report_config(&context.cfg, None)?;
+    let outcomes = evaluate(&report_cfg, &context.findings, CheckMode::Audit);
     let evidence_files = crate::evidence_inventory::current_evidence_source_tree_files(
         &root,
         args.include_untracked,
@@ -404,9 +402,9 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     let facts = adoption_facts(AdoptionFactInputs {
         root: &root,
         inventory: Some(&inventory),
-        inventory_facts: Some(&inventory_facts),
+        inventory_facts: Some(&context.inventory_facts),
         policy_path: policy_path.as_deref(),
-        cfg: &scanned_cfg,
+        cfg: &context.cfg,
         policy_state,
         policy_diagnostic,
         limitations,
@@ -415,7 +413,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         signals: Some(PolicySignals {
             outcomes: &outcomes,
             evidence,
-            mirror_divergence: !federation.divergences.is_empty(),
+            mirror_divergence: !context.federation.divergences.is_empty(),
             digest: policy_digest,
         }),
         instrument_failure,
@@ -423,7 +421,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     Ok(Inspection {
         root,
         inventory: Some(inventory),
-        inventory_facts: Some(inventory_facts),
+        inventory_facts: Some(context.inventory_facts),
         policy_path,
         plan: allow_report::recommend_core_adoption_plan(&facts),
     })
