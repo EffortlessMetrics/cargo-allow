@@ -37,7 +37,7 @@ use crate::policy_config::{
     EvidenceValidationMode, load_policy_at_path_with_digest, select_policy_path,
 };
 use crate::{
-    MutationLock, SourceTreeReportContext, config_path, current_dir, emit_stderr_text,
+    MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -149,28 +149,19 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     // validate, and atomic replace are serialized against a concurrent writer.
     let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let mutation_target = config_path(&mutation_root, args.config.as_deref());
-    if let Some(target) = &mutation_target {
-        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
-    }
-    if let Some(target) = mutation_target.as_deref() {
-        crate::command_support::reject_legacy_summary_output_collision(
-            &mutation_root,
-            args.summary_output.as_deref(),
-            &[target],
-        )?;
-    }
-    let _mutation_lock = mutation_target
-        .as_ref()
-        .map(|target| {
-            let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
-            MutationLock::acquire_for_target(&resolved)
-        })
-        .transpose()
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
     let (policy_path, federation) = select_policy_path(&mutation_root, args.config.as_deref())?;
+    crate::policy_config::assert_path_within_root(&mutation_root, &policy_path)?;
+    crate::command_support::reject_legacy_summary_output_collision(
+        &mutation_root,
+        args.summary_output.as_deref(),
+        &[&policy_path],
+    )?;
+    let resolved_mutation_target =
+        effortless_repo_edit::resolve_mutation_target(&policy_path, &mutation_root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let _mutation_lock = MutationLock::acquire_for_target(&resolved_mutation_target)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let (mut cfg, policy_before_digest) =
         load_policy_at_path_with_digest(policy_path.clone(), EvidenceValidationMode::Abort)?;
     let (root, _loaded_cfg, findings, inventory_facts, _federation) =
