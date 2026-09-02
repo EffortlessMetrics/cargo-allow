@@ -1864,8 +1864,11 @@ fn asset_roots_parser_reads_all_declared_roots() {
 fn candidate_preparation_corrupted_topology_fails_loudly() {
     let root = fixture_apply_repo("corrupt-topology");
     let invalid_utf8: Vec<u8> = vec![0xff, 0xfe, 0x00];
-    std::fs::write(root.join("policy/product-package-topology-v2.toml"), invalid_utf8)
-        .expect("write bytes");
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        invalid_utf8,
+    )
+    .expect("write bytes");
     let error = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
         &root, "0.2.0", None,
     )
