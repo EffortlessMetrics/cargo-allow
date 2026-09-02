@@ -24,7 +24,9 @@ thread_local! {
 
 const TOOL_OWNED_CACHE_GLOB: &str = "target/cargo-allow/cache/**";
 
-fn inventory_options_with_tool_cache_ignore(mut options: InventoryOptions) -> InventoryOptions {
+pub(crate) fn inventory_options_with_tool_cache_ignore(
+    mut options: InventoryOptions,
+) -> InventoryOptions {
     if !options
         .ignored
         .iter()
@@ -544,25 +546,6 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     ))
 }
 
-/// Load a world from an already observed policy/configuration selection.
-pub(crate) fn load_world_from_resolved_policy(
-    root: &Path,
-    cfg: AllowConfig,
-    policy_digest: Option<String>,
-    federation: FederationEvaluation,
-    include_untracked: bool,
-) -> WorldLoadResult {
-    load_world_from_resolved_policy_with_options(
-        root,
-        cfg,
-        policy_digest,
-        federation,
-        include_untracked,
-        None,
-        true,
-    )
-}
-
 /// Load a world from an already observed policy while varying only scan
 /// options. The policy/configuration and federation provenance are reused;
 /// callers must not invoke configuration selection again for a broader scan.
@@ -581,24 +564,61 @@ pub(crate) fn load_world_from_resolved_policy_with_options(
         include_untracked,
     });
     let inventory = inventory(root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    load_core_world_from_resolved_policy_with_inventory(
+        root,
+        cfg,
+        policy_digest,
+        federation,
+        &inventory,
+        &opts,
+        ResolvedPolicyScanOptions {
+            kind_filter,
+            persistent_cache,
+        },
+    )
+    .map(|context| {
+        (
+            context.root,
+            context.cfg,
+            context.findings,
+            context.inventory_facts,
+            context.federation,
+        )
+    })
+}
+
+pub(crate) struct ResolvedPolicyScanOptions<'a> {
+    pub(crate) kind_filter: Option<&'a str>,
+    pub(crate) persistent_cache: bool,
+}
+
+pub(crate) fn load_core_world_from_resolved_policy_with_inventory(
+    root: &Path,
+    cfg: AllowConfig,
+    policy_digest: Option<String>,
+    federation: FederationEvaluation,
+    inventory: &Inventory,
+    opts: &InventoryOptions,
+    scan_options: ResolvedPolicyScanOptions<'_>,
+) -> CargoAllowResult<CoreWorldContext> {
+    let inventory_facts = InventoryFacts::scanned_inventory(inventory);
     let inventory_facts = policy_digest.map_or(inventory_facts, |digest| {
         inventory_facts.with_policy_digest(digest)
     });
-    let files = inventory.files;
-    let rust_scan = scan_rust_files_with_cache_mode(root, &files, persistent_cache)?;
+    let files = &inventory.files;
+    let rust_scan = scan_rust_files_with_cache_mode(root, files, scan_options.persistent_cache)?;
     let mut findings = rust_scan.findings;
     findings.extend(allow_files::scan_files_with_options(
-        &files,
+        files,
         &allow_files::FileScanOptions {
             generated: opts.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
             content_aware_generated: false,
         },
     ));
-    let companion_findings = canonical_companion_findings(root, &cfg, &files)?;
+    let companion_findings = canonical_companion_findings(root, &cfg, files)?;
     extend_unique_findings(&mut findings, companion_findings);
-    if let Some(kind) = kind_filter {
+    if let Some(kind) = scan_options.kind_filter {
         let parsed = parse_kind_filter(kind)?;
         findings.retain(|finding| parsed.matches_finding(finding));
     }
@@ -607,16 +627,16 @@ pub(crate) fn load_world_from_resolved_policy_with_options(
             finding.ledger = Some(provenance.clone());
         }
     }
-    Ok((
-        root.to_path_buf(),
+    Ok(CoreWorldContext {
+        root: root.to_path_buf(),
         cfg,
         findings,
-        inventory_facts
+        inventory_facts: inventory_facts
             .with_rust_files_considered(rust_scan.files_considered)
             .with_rust_files_skipped(rust_scan.files_skipped)
             .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
         federation,
-    ))
+    })
 }
 
 /// Load the full policy but scan only the single file at `target_path` instead

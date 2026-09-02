@@ -257,11 +257,11 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
                 .to_string(),
         );
     }
-    let options = InventoryOptions {
+    let options = crate::world::inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked: args.include_untracked,
-    };
+    });
     let inventory = match inventory(&root, &options) {
         Ok(inventory) => inventory,
         Err(error) => {
@@ -297,84 +297,65 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     if inventory.empty_git_tracked {
         limitations.push("Git reported no tracked files".into());
     }
-    if !inventory.skipped_paths.is_empty() {
-        limitations.push(format!(
-            "{} inventory path(s) were skipped",
-            inventory.skipped_paths.len()
-        ));
-    }
-    if !inventory.deleted_tracked.is_empty() {
-        limitations.push(format!(
-            "{} tracked path(s) are missing",
-            inventory.deleted_tracked.len()
-        ));
-    }
-    if !inventory.submodule_paths.is_empty() {
-        limitations.push(format!(
-            "{} submodule path(s) are not recursively scanned",
-            inventory.submodule_paths.len()
-        ));
-    }
+    append_inventory_limitations(&mut limitations, &inventory);
 
     let scan = if policy_state == allow_report::PolicyState::Invalid {
-        Ok((
-            root.clone(),
-            cfg.clone(),
-            Vec::new(),
-            InventoryFacts::scanned_inventory(&inventory),
-            crate::world::default_federation_evaluation(),
-        ))
+        Ok(crate::world::CoreWorldContext {
+            root: root.clone(),
+            cfg: cfg.clone(),
+            findings: Vec::new(),
+            inventory_facts: InventoryFacts::scanned_inventory(&inventory),
+            federation: crate::world::default_federation_evaluation(),
+        })
     } else {
         let federation = discovery
             .federation
             .clone()
             .unwrap_or_else(crate::world::default_federation_evaluation);
-        crate::world::load_world_from_resolved_policy(
+        crate::world::load_core_world_from_resolved_policy_with_inventory(
             &root,
             cfg.clone(),
             policy_digest.clone(),
             federation,
-            args.include_untracked,
+            &inventory,
+            &options,
+            crate::world::ResolvedPolicyScanOptions {
+                kind_filter: None,
+                persistent_cache: true,
+            },
         )
     };
-    let (scan_root, scanned_cfg, findings, inventory_facts, federation, instrument_failure) =
-        match scan {
-            Ok((scan_root, scanned_cfg, findings, inventory_facts, federation)) => (
-                scan_root,
-                scanned_cfg,
-                findings,
-                inventory_facts,
-                federation,
-                None,
-            ),
-            Err(error) => (
-                root.clone(),
-                cfg.clone(),
-                Vec::new(),
-                InventoryFacts::scanned_inventory(&inventory),
-                crate::world::default_federation_evaluation(),
-                Some(format!(
-                    "source inventory scan failed: {}",
-                    sanitize_diagnostic(&root, &error.to_string())
-                )),
-            ),
-        };
-    let _ = scan_root;
-    if inventory_facts.rust_files_skipped > 0 {
+    let (context, instrument_failure) = match scan {
+        Ok(context) => (context, None),
+        Err(error) => (
+            crate::world::CoreWorldContext {
+                root: root.clone(),
+                cfg: cfg.clone(),
+                findings: Vec::new(),
+                inventory_facts: InventoryFacts::scanned_inventory(&inventory),
+                federation: crate::world::default_federation_evaluation(),
+            },
+            Some(format!(
+                "source inventory scan failed: {}",
+                sanitize_diagnostic(&root, &error.to_string())
+            )),
+        ),
+    };
+    if context.inventory_facts.rust_files_skipped > 0 {
         limitations.push(format!(
             "{} Rust file(s) could not be read by the scanner",
-            inventory_facts.rust_files_skipped
+            context.inventory_facts.rust_files_skipped
         ));
     }
-    if inventory_facts.rust_files_with_parse_errors > 0 {
+    if context.inventory_facts.rust_files_with_parse_errors > 0 {
         limitations.push(format!(
             "{} Rust file(s) contained parse errors",
-            inventory_facts.rust_files_with_parse_errors
+            context.inventory_facts.rust_files_with_parse_errors
         ));
     }
 
-    let report_cfg = report_config(&scanned_cfg, None)?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
+    let report_cfg = report_config(&context.cfg, None)?;
+    let outcomes = evaluate(&report_cfg, &context.findings, CheckMode::Audit);
     let evidence_files = crate::evidence_inventory::current_evidence_source_tree_files(
         &root,
         args.include_untracked,
@@ -404,9 +385,9 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     let facts = adoption_facts(AdoptionFactInputs {
         root: &root,
         inventory: Some(&inventory),
-        inventory_facts: Some(&inventory_facts),
+        inventory_facts: Some(&context.inventory_facts),
         policy_path: policy_path.as_deref(),
-        cfg: &scanned_cfg,
+        cfg: &context.cfg,
         policy_state,
         policy_diagnostic,
         limitations,
@@ -415,7 +396,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
         signals: Some(PolicySignals {
             outcomes: &outcomes,
             evidence,
-            mirror_divergence: !federation.divergences.is_empty(),
+            mirror_divergence: !context.federation.divergences.is_empty(),
             digest: policy_digest,
         }),
         instrument_failure,
@@ -423,7 +404,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     Ok(Inspection {
         root,
         inventory: Some(inventory),
-        inventory_facts: Some(inventory_facts),
+        inventory_facts: Some(context.inventory_facts),
         policy_path,
         plan: allow_report::recommend_core_adoption_plan(&facts),
     })
@@ -651,6 +632,27 @@ fn ci_guidance_completed(root: &Path, files: &[PathBuf]) -> bool {
 fn resolve_root(root_args: &RootArgs) -> CargoAllowResult<PathBuf> {
     let cwd = current_dir()?;
     resolve_source_tree_root(root_args.root.as_deref(), cwd)
+}
+
+fn append_inventory_limitations(limitations: &mut Vec<String>, inventory: &Inventory) {
+    if !inventory.skipped_paths.is_empty() {
+        limitations.push(format!(
+            "{} inventory path(s) were skipped",
+            inventory.skipped_paths.len()
+        ));
+    }
+    if !inventory.deleted_tracked.is_empty() {
+        limitations.push(format!(
+            "{} tracked path(s) are missing",
+            inventory.deleted_tracked.len()
+        ));
+    }
+    if !inventory.submodule_paths.is_empty() {
+        limitations.push(format!(
+            "{} submodule path(s) are not recursively scanned",
+            inventory.submodule_paths.len()
+        ));
+    }
 }
 
 fn inventory_artifact(inspection: &Inspection) -> AdoptionInventoryArtifact {
@@ -993,6 +995,27 @@ mod tests {
     }
 
     #[test]
+    fn inventory_limitations_are_projected_with_bounded_reasons() -> Result<(), String> {
+        let mut sample = inventory(InventorySource::GitTracked, InventoryCompleteness::Partial);
+        sample.skipped_paths.push(PathBuf::from("missing-link"));
+        sample.deleted_tracked.push(PathBuf::from("deleted.rs"));
+        sample.submodule_paths.push(PathBuf::from("vendor/module"));
+        let mut limitations = Vec::new();
+
+        append_inventory_limitations(&mut limitations, &sample);
+
+        require(
+            limitations
+                == [
+                    "1 inventory path(s) were skipped",
+                    "1 tracked path(s) are missing",
+                    "1 submodule path(s) are not recursively scanned",
+                ],
+            "inventory posture should retain each bounded limitation",
+        )
+    }
+
+    #[test]
     fn path_and_diagnostic_helpers_preserve_repository_boundaries() -> Result<(), String> {
         let root = std::env::temp_dir().join("cargo-allow-adoption-path-root");
         require(
@@ -1224,5 +1247,37 @@ mod tests {
             output: None,
         })
         .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn inspect_invalid_selected_policy_keeps_scanned_context() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-adoption-invalid-policy-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+        fs::write(root.join("policy/allow.toml"), "[invalid").map_err(|error| error.to_string())?;
+
+        let inspection = inspect(&AdoptionArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(PathBuf::from("policy/allow.toml")),
+            include_untracked: true,
+            strict: false,
+            format: HumanJsonFormat::Json,
+            output: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        require(
+            inspection.inventory.is_some() && inspection.inventory_facts.is_some(),
+            "invalid policy should retain the scanned inventory context",
+        )?;
+        require(
+            inspection.plan.policy.state == allow_report::PolicyState::Invalid,
+            "invalid selected policy should remain invalid",
+        )?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
 }
