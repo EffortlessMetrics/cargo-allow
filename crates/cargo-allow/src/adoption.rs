@@ -297,24 +297,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     if inventory.empty_git_tracked {
         limitations.push("Git reported no tracked files".into());
     }
-    if !inventory.skipped_paths.is_empty() {
-        limitations.push(format!(
-            "{} inventory path(s) were skipped",
-            inventory.skipped_paths.len()
-        ));
-    }
-    if !inventory.deleted_tracked.is_empty() {
-        limitations.push(format!(
-            "{} tracked path(s) are missing",
-            inventory.deleted_tracked.len()
-        ));
-    }
-    if !inventory.submodule_paths.is_empty() {
-        limitations.push(format!(
-            "{} submodule path(s) are not recursively scanned",
-            inventory.submodule_paths.len()
-        ));
-    }
+    append_inventory_limitations(&mut limitations, &inventory);
 
     let scan = if policy_state == allow_report::PolicyState::Invalid {
         Ok(crate::world::CoreWorldContext {
@@ -649,6 +632,27 @@ fn ci_guidance_completed(root: &Path, files: &[PathBuf]) -> bool {
 fn resolve_root(root_args: &RootArgs) -> CargoAllowResult<PathBuf> {
     let cwd = current_dir()?;
     resolve_source_tree_root(root_args.root.as_deref(), cwd)
+}
+
+fn append_inventory_limitations(limitations: &mut Vec<String>, inventory: &Inventory) {
+    if !inventory.skipped_paths.is_empty() {
+        limitations.push(format!(
+            "{} inventory path(s) were skipped",
+            inventory.skipped_paths.len()
+        ));
+    }
+    if !inventory.deleted_tracked.is_empty() {
+        limitations.push(format!(
+            "{} tracked path(s) are missing",
+            inventory.deleted_tracked.len()
+        ));
+    }
+    if !inventory.submodule_paths.is_empty() {
+        limitations.push(format!(
+            "{} submodule path(s) are not recursively scanned",
+            inventory.submodule_paths.len()
+        ));
+    }
 }
 
 fn inventory_artifact(inspection: &Inspection) -> AdoptionInventoryArtifact {
@@ -987,6 +991,27 @@ mod tests {
         require(
             complete.completeness == "complete",
             "complete scanner facts should remain complete",
+        )
+    }
+
+    #[test]
+    fn inventory_limitations_are_projected_with_bounded_reasons() -> Result<(), String> {
+        let mut sample = inventory(InventorySource::GitTracked, InventoryCompleteness::Partial);
+        sample.skipped_paths.push(PathBuf::from("missing-link"));
+        sample.deleted_tracked.push(PathBuf::from("deleted.rs"));
+        sample.submodule_paths.push(PathBuf::from("vendor/module"));
+        let mut limitations = Vec::new();
+
+        append_inventory_limitations(&mut limitations, &sample);
+
+        require(
+            limitations
+                == [
+                    "1 inventory path(s) were skipped",
+                    "1 tracked path(s) are missing",
+                    "1 submodule path(s) are not recursively scanned",
+                ],
+            "inventory posture should retain each bounded limitation",
         )
     }
 
