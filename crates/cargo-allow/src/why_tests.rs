@@ -107,45 +107,38 @@ fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> 
         }
     }
 
-    let original = std::env::current_dir()?;
-    let result = (|| -> Result<(), Box<dyn Error>> {
-        std::env::set_current_dir(&root)?;
-        let args = WhyArgs {
-            root: RootArgs {
-                root: Some(root.clone()),
-            },
-            config: None,
-            kind: "panic".to_string(),
-            path: PathBuf::from("src/lib.rs"),
-            line: 1,
-            include_untracked: false,
-            format: HumanJsonFormat::Json,
-            output: Some(root.join("why.json")),
-            plan: None,
-        };
-        let scoped = crate::world::load_world_for_path(
-            Some(&root),
-            None,
-            true,
-            Some("panic"),
-            false,
-            &root.join("src/lib.rs"),
-        )?;
-        let broadened = broaden_context(
-            &scoped.0,
-            scoped.0.inventory_facts.policy_digest_text(),
-            false,
-            Some("panic"),
-        )?;
-        if broadened.findings.is_empty() {
-            return Err("broadened why context lost the fixture finding".into());
-        }
-        cmd_why(&args)?;
-        Ok(())
-    })();
-    std::env::set_current_dir(original)?;
+    let args = WhyArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(root.join("why.json")),
+        plan: None,
+    };
+    let scoped = crate::world::load_world_for_path(
+        Some(&root),
+        None,
+        true,
+        Some("panic"),
+        false,
+        &root.join("src/lib.rs"),
+    )?;
+    let scoped_digest = scoped.0.inventory_facts.policy_digest_text();
+    let broadened = broaden_context(&scoped.0, scoped_digest.clone(), false, Some("panic"))?;
+    if broadened.findings.is_empty() {
+        return Err("broadened why context lost the fixture finding".into());
+    }
+    if broadened.inventory_facts.policy_digest_text() != scoped_digest {
+        return Err("broadened why context changed the selected policy digest".into());
+    }
+    cmd_why(&args)?;
     let _ = fs::remove_dir_all(&root);
-    result
+    Ok(())
 }
 
 #[test]
