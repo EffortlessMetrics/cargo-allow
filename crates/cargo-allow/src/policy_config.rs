@@ -25,6 +25,7 @@ pub(crate) fn missing_plan_policy_config_error() -> CargoAllowError {
     )
 }
 
+#[cfg(test)]
 pub(crate) fn missing_plan_update_policy_config_error() -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
