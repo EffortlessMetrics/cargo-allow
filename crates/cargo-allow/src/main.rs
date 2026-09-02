@@ -163,6 +163,8 @@ mod changie_compat_matrix_tests;
 #[path = "allow_files_changie_admission_tests.rs"]
 mod allow_files_changie_admission_tests;
 #[cfg(test)]
+mod candidate_preparation_plan_tests;
+#[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
 #[cfg(test)]

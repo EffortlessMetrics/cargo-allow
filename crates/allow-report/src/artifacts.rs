@@ -2,6 +2,7 @@ mod add;
 mod add_finding_plan;
 mod add_plan_application;
 mod adoption_plan;
+mod candidate_preparation_plan_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -42,6 +43,17 @@ pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
     WritePosture, recommend_core_adoption_plan,
+};
+pub use candidate_preparation_plan_v1::{
+    CANDIDATE_PREPARATION_CLAIM_BOUNDARY_V1, CANDIDATE_PREPARATION_PLAN_SCHEMA_V1,
+    CANDIDATE_PREPARATION_RESULT_SCHEMA_V1, CandidateCorpusRoleV1, CandidateCorpusSourceV1,
+    CandidateExternalObservationV1, CandidateGovernedFileClassV1, CandidatePackageRowV1,
+    CandidatePreparationDecisionV1, CandidatePreparationDirtyStateV1,
+    CandidatePreparationInputIdentityV1, CandidatePreparationOperationV1,
+    CandidatePreparationPlanV1, CandidatePreparationReadinessV1, CandidatePreparationResultV1,
+    CandidateProjectionInput, CandidateReleaseIdentityProjectionV1, CandidateSelectedRowV1,
+    CandidateSupportChannelPostureV1, CandidateValidationObligationV1,
+    SUPPORTED_TOPOLOGY_GENERATION_V1, prepare_candidate_plan, validate_candidate_operation_set,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,

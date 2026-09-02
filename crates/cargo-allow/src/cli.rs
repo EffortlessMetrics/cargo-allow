@@ -10,6 +10,7 @@ use crate::{
     reference, refresh, vocabulary, why, worklist,
 };
 
+pub(crate) mod candidate_preparation_command;
 mod reconcile_package_publication_command;
 mod release_identity_command;
 
@@ -120,6 +121,9 @@ pub(crate) enum CargoAllowCommand {
     /// Validate and project release identity for repository automation.
     #[command(hide = true)]
     ReleaseIdentity(release_identity_command::ReleaseIdentityArgs),
+    /// Project release-candidate preparation without writing.
+    #[command(hide = true)]
+    PrepCandidate(candidate_preparation_command::PrepCandidateArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -215,6 +219,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::ReleaseIdentity(args) => {
             release_identity_command::cmd_release_identity(&args)
+        }
+        CargoAllowCommand::PrepCandidate(args) => {
+            candidate_preparation_command::cmd_prep_candidate(&args)
         }
     }
 }
@@ -413,5 +420,6 @@ impl CargoAllowCommand {
         "changie",
         "release-identity",
         "reconcile-package-publication",
+        "prep-candidate",
     ];
 }

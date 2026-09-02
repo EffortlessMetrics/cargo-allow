@@ -1,0 +1,178 @@
+schema_version = 1
+# Revision note for the #3831 candidate-preparation plan slice.
+
+# This diff adds the typed candidate-preparation model (allow-report), the
+# hidden read-only `prep-candidate plan` command, its 12 negative controls
+# plus acceptance tests, the candidate-preparation-plan-v1 schema, and the
+# changie fragment. The source-exception additions receipt only the
+# syntax-visible panicking constructs the new files introduce:
+# allow-0712/allow-0713 are glob-ratcheted expect baselines for the model's
+# fixture/invariant-guarded expects and the test module's negative-control
+# expects; allow-0714..allow-0719 receipt the per-occurrence panic constructs
+# in the model, the tests, and the command's bounded manifest parsers;
+# allow-0720 receipts the schema contract document. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened: every record
+# below is an addition. policy/allow.toml keeps its CRLF line-ending
+# contract; the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-0712"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:59cfdc157fed19bcf2edfa1db42c1a70758f97e6837f42b085f4885f75af7da1"
+reason = "Glob-ratcheted expect baseline for the candidate-preparation plan model (#3831); every expect guards an invariant established by immediately preceding validation (single source line, non-empty collections, canonical serialization) under fully controlled fixture inputs."
+
+[[records]]
+allow_ids = ["allow-0713"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f074033d8a31cd083ae75b3fa0d8ec6af7d18277a9b065eee4a413abc4caca42"
+reason = "Glob-ratcheted expect baseline for the negative-control and acceptance test module (#3831); expects run against fixtures and the read-only live projection, never against mutable state."
+
+[[records]]
+allow_ids = ["allow-0714"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e11760bc2b00f53361bbd894429e4cb8ae64e7ff5b83603e8e6fda8320066572"
+reason = "Canonicalization failure guard in the input-identity digest (#3831); serde JSON serialization of this typed identity struct is total, so the panic arm is unreachable."
+
+[[records]]
+allow_ids = ["allow-0715"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:59cbaa1f2ea1111adce25ebcaae4e4f4c325aaf6a8d6c838845e2d8a40aba1d2"
+reason = "Workspace-root discovery failure fires only when the test process starts outside the repository (#3831)."
+
+[[records]]
+allow_ids = ["allow-0716"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7749356878161174859b01c168ffa9affec758172814e2cc2a9be6192c26bd3e"
+reason = "Corpus-path containment guard in the read-only gather path (#3831); paths are collected under the repository root so the strip_prefix cannot fail."
+
+[[records]]
+allow_ids = ["allow-0717"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6677dd4e59676ebcd9b2c2ebf19aea30c5050aab7d0f4a9c521bcba000fbbc01"
+reason = "ASCII-boundary slicing after a literal find anchor in the workspace-members parser (#3831); offsets come from find on ASCII markers so slice boundaries are char-safe."
+
+[[records]]
+allow_ids = ["allow-0718"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:09e344b6ed67318782a122dfb9b1ec0078ac2d48cd467719f9c029ca2f0688aa"
+reason = "Same ASCII-boundary slicing law for the second members-array anchor (#3831)."
+
+[[records]]
+allow_ids = ["allow-0719"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:70b2b701fd71ddd7affb6254c006819652f27591bebf718114b700ff412e389f"
+reason = "Same ASCII-boundary slicing law for the workspace-dependencies requirement parser (#3831)."
+
+[[records]]
+allow_ids = ["allow-0720"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:06f57d11558b1539b9dce7df738a6bba338001f0da6508a96c339ebac4189da8"
+reason = "Receipt for the candidate-preparation-plan-v1 schema contract document (#3831); machine-readable contract for the read-only prep-candidate projection."
+
+[[records]]
+allow_ids = ["allow-0721"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:18c667050f1ada03ef415bccc8356793f2e4433133a988be54c8ce7e11a11e58"
+reason = "Self-receipt for this revision note record (#3831); the note documents the added_allow transition for the candidate-preparation receipt set."
+
+[[records]]
+allow_ids = ["allow-0722"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:de26d37cbe928a2f2988144d3bab01615026d6c9aa7a5601e925578d75b7852b"
+reason = "Invariant-guarded product-row indexing in the closure projection (#3831); the preceding empty-closure conflict check guarantees product_rows is non-empty before the first row is read."
+
+[[records]]
+allow_ids = ["allow-0723"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5aaf1f3c22055222d7af96abfff7f2f78dd4ce6ec550b9090abb75a4b03ca692"
+reason = "Test-only workspace-members parser assertion in the command's module-local test unit (#3831); the expected side is fully controlled test input."
+
+[[records]]
+allow_ids = ["allow-0724"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:90ac2572d67066ad7d776083c73df0d996e383d67b0af82c48a29d6850f1d3b5"
+reason = "Same test-only assertion law for the topology generation header parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0725"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:061fc994e1c7ceb7ac66009da664dd5cb28ef25220444d7ff89f0ee8acdcfb67"
+reason = "Same test-only assertion law for the source-exception policy schema-version parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0726"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43c15c8433300b99b5c6ebc4dc612086238ceb5a54d9841e9929b2fb62e93386"
+reason = "Same test-only assertion law for the topology-row mirror parser test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0727"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43310a39b6e28bdf46bef7131a8c3ffc3fe5d9c901cefcc6170711aee4d1690c"
+reason = "Same test-only assertion law for the live projection build in the render-summary test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0728"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:15dc560c21b6250543b503ae895a0ea0682b127125d84d067e38144eced92b2d"
+reason = "Same test-only assertion law for the plan access in the render-summary test (#3831)."
+
+[[records]]
+allow_ids = ["allow-0729"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fd6bd98d93e55e314890a45da83b795a6550ad688d322389b1ad11d6ee8259c2"
+reason = "Test-only end-to-end CLI subprocess assertion in the control suite (#3831); covers the hidden command dispatch, rendering, and exit codes against the built binary."
+
+[[records]]
+allow_ids = ["allow-0730"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6d045c3260cf107512d7ecb0c3ce33b60218ad77bec1e2dd5434d1c09857707b"
+reason = "Same end-to-end assertion law for the human-format run and the malformed-target rejection path (#3831)."
+
+[[records]]
+allow_ids = ["allow-0731"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2b8a8dfa8210c4e0c83bd12eefbba87531078ef8262828595c0c871bd0abc428"
+reason = "Same end-to-end assertion law for the built-binary resolution helper (#3831)."
+
+[[records]]
+allow_ids = ["allow-0732"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e7e678764ca17e35ffc900dd167f66bbd641f7c0bf53317858661abb164ea2fe"
+reason = "Same test-only assertion law for the gather-error-arm fixtures against a non-repository directory (#3831)."
+
+[[records]]
+allow_ids = ["allow-0733"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4be054b7251b713807a3611f05e538e89d7534020e0a44fe662325ab3df17cbb"
+reason = "Same test-only assertion law for the operation-set row-role law arms (#3831)."
+
+[[records]]
+allow_ids = ["allow-0734"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1bdce91bdf47af701bfc1410b606e68552b6ded25d07b51e4dca64429951f566"
+reason = "Same test-only assertion law for the target parse in the row-role law arms (#3831)."
+
+[[records]]
+allow_ids = ["allow-0735"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:71f641a2c70760a861b051b63380e0970e32181c8b4cecfbcbfe568941ef319f"
+reason = "Same test-only assertion law for the source-identity digest agreement fixtures (#3831)."
+
+[[records]]
+allow_ids = ["allow-0736"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1d0b4069c95c1962f57dc9fb68f3a8b2a05038b39f613d7ac463b9fd3653feb7"
+reason = "Test-only panic in the dispatch parse guard: the hidden command must parse into the PrepCandidate variant (#3831)."
+
+[[records]]
+allow_ids = ["allow-0737"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5d7ad49afadc4c2fcafae5b788337d59f0d12d4ed284ec3c8901781cf47c9ffc"
+reason = "Test-only expectation that the live projection builds through the parsed CLI surface (#3831)."
+
+[[records]]
+allow_ids = ["allow-0738"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1e7003cdcd649d38cf1a3bc03a6bdf93ec8d5eb74766698505f64249f396bafe"
+reason = "Test-only expectation in the command-layer readiness test (#3831); the expected side is the read-only live projection."
