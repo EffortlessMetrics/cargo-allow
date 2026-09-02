@@ -16,6 +16,8 @@ use crate::plan_bindings::compute_plan_finding_bindings;
 pub(super) struct AddFindingPlanInput<'a> {
     pub root: &'a Path,
     pub config: Option<&'a Path>,
+    pub expected_policy_digest: Option<&'a str>,
+    pub expected_policy_path: Option<&'a str>,
     pub cfg: &'a AllowConfig,
     pub include_untracked: bool,
     pub source_context: &'a SourceTreeReportContext,
@@ -30,6 +32,8 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
     let AddFindingPlanInput {
         root,
         config,
+        expected_policy_digest,
+        expected_policy_path,
         cfg,
         include_untracked,
         source_context,
@@ -44,6 +48,14 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
     ensure_exact_plan_evaluation(evaluation, inventory, scanner_completeness)?;
 
     let bindings = compute_plan_finding_bindings(root, config, cfg, include_untracked, finding)?;
+    if expected_policy_digest.is_some_and(|expected| bindings.policy_digest != expected)
+        || expected_policy_path.is_some_and(|expected| bindings.policy_path != expected)
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            "selected policy identity changed while preparing the add-finding plan; rerun why",
+        ));
+    }
     let root_text = source_context.source_tree_root().to_string();
 
     let plan = AddFindingPlanV1 {

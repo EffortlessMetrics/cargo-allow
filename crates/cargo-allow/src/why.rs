@@ -6,9 +6,8 @@ use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 use allow_rust::RustFileScanOutcome;
 
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
-    load_world_for_path, load_world_with_evidence_mode, parse_kind_filter,
-    resolve_source_tree_root,
+    HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text, load_world_for_path,
+    load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
 };
 
 #[path = "why_args.rs"]
@@ -130,6 +129,17 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let scoped_finding =
         crate::add::select_add_finding(&scoped_world.2, parsed_kind, &target_repo_path, args.line)?
             .1;
+    let selected_policy_digest = scoped_world.3.policy_digest_text();
+    let selected_policy_path = if args.plan.is_some() {
+        Some(scoped_world.6.clone().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                "selected policy identity could not be observed; rerun why",
+            )
+        })?)
+    } else {
+        None
+    };
     let locality_reasons =
         crate::world::scoped_locality_reasons(&scoped_world.1, scoped_finding, &scoped_world.4);
     let evaluation = if locality_reasons.is_empty() {
@@ -154,13 +164,14 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             scoped_world.4,
         )
     } else {
-        load_world_with_evidence_mode(
-            args.root.root.as_deref(),
-            args.config.as_deref(),
-            true,
-            Some(args.kind.as_str()),
+        load_world_from_resolved_policy_with_options(
+            &scoped_world.0,
+            scoped_world.1.clone(),
+            selected_policy_digest.clone(),
+            scoped_world.4.clone(),
             args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
+            Some(args.kind.as_str()),
+            true,
         )?
     };
     let (finding_index, finding) =
@@ -191,6 +202,8 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             root: &root,
             config: args.config.as_deref(),
             cfg: &cfg,
+            expected_policy_digest: selected_policy_digest.as_deref(),
+            expected_policy_path: selected_policy_path.as_deref(),
             include_untracked: args.include_untracked,
             source_context: &source_context,
             evaluation,

@@ -76,7 +76,7 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    extend_unique_findings, load_policy_at_path, parse_kind_filter,
+    extend_unique_findings, parse_kind_filter,
 };
 
 type StagedRustInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
@@ -438,6 +438,7 @@ type ScopedWorldLoadResult = CargoAllowResult<(
     InventoryFacts,
     FederationEvaluation,
     Option<allow_rust::RustFileScanOutcome>,
+    Option<String>,
 )>;
 
 pub(crate) fn load_world(
@@ -568,6 +569,29 @@ pub(crate) fn load_world_from_resolved_policy(
     federation: FederationEvaluation,
     include_untracked: bool,
 ) -> WorldLoadResult {
+    load_world_from_resolved_policy_with_options(
+        root,
+        cfg,
+        policy_digest,
+        federation,
+        include_untracked,
+        None,
+        true,
+    )
+}
+
+/// Load a world from an already observed policy while varying only scan
+/// options. The policy/configuration and federation provenance are reused;
+/// callers must not invoke configuration selection again for a broader scan.
+pub(crate) fn load_world_from_resolved_policy_with_options(
+    root: &Path,
+    cfg: AllowConfig,
+    policy_digest: Option<String>,
+    federation: FederationEvaluation,
+    include_untracked: bool,
+    kind_filter: Option<&str>,
+    persistent_cache: bool,
+) -> WorldLoadResult {
     let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -579,7 +603,7 @@ pub(crate) fn load_world_from_resolved_policy(
         inventory_facts.with_policy_digest(digest)
     });
     let files = inventory.files;
-    let rust_scan = scan_rust_files_with_cache_mode(root, &files, true)?;
+    let rust_scan = scan_rust_files_with_cache_mode(root, &files, persistent_cache)?;
     let mut findings = rust_scan.findings;
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -591,6 +615,10 @@ pub(crate) fn load_world_from_resolved_policy(
     ));
     let companion_findings = canonical_companion_findings(root, &cfg, &files)?;
     extend_unique_findings(&mut findings, companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|finding| parsed.matches_finding(finding));
+    }
     if let Some(provenance) = federation.active_provenance.clone() {
         for finding in &mut findings {
             finding.ledger = Some(provenance.clone());
@@ -636,11 +664,15 @@ pub(crate) fn load_world_for_path(
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
             )?;
-            return Ok((root, cfg, findings, facts, federation, None));
+            return Ok((root, cfg, findings, facts, federation, None, None));
         }
         Err(err) => return Err(err),
     };
-    let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
+    let selected_policy_identity = canonical_policy_identity(&root, &policy_path);
+    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+        policy_path,
+        EvidenceValidationMode::ReportOnly,
+    )?;
     let inventory = inventory(
         &root,
         &inventory_options_with_tool_cache_ignore(InventoryOptions {
@@ -710,6 +742,7 @@ pub(crate) fn load_world_for_path(
         }
     }
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
+        .with_policy_digest(policy_digest)
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
@@ -720,7 +753,15 @@ pub(crate) fn load_world_for_path(
         inventory_facts,
         federation,
         target_scan,
+        selected_policy_identity,
     ))
+}
+
+fn canonical_policy_identity(root: &Path, policy: &Path) -> Option<String> {
+    let canonical_root = root.canonicalize().ok()?;
+    let canonical_policy = policy.canonicalize().ok()?;
+    let relative = canonical_policy.strip_prefix(canonical_root).ok()?;
+    Some(normalize_path(relative))
 }
 
 /// Explain why the target finding cannot safely use the one-file evaluator.
@@ -1129,6 +1170,39 @@ mod tests {
         {
             return Err("cold and warm source-only results differ".to_string());
         }
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_policy_identity_is_repo_relative_and_fail_closed() -> Result<(), String> {
+        let root = fixture_dir();
+        let policy = root.join("policy/allow.toml");
+        fs::create_dir_all(policy.parent().ok_or("policy parent missing")?)
+            .map_err(|err| format!("policy dir: {err}"))?;
+        fs::write(&policy, "version = 1\n").map_err(|err| format!("policy: {err}"))?;
+
+        let identity = canonical_policy_identity(&root, &policy)
+            .ok_or("contained policy should have a portable identity")?;
+        if identity != "policy/allow.toml" {
+            return Err(format!("unexpected policy identity: {identity}"));
+        }
+
+        let missing = canonical_policy_identity(&root, &root.join("policy/missing.toml"));
+        if missing.is_some() {
+            return Err("missing policy must not receive an identity".to_string());
+        }
+
+        let outside_root = fixture_dir();
+        let outside = outside_root.join("outside-policy.toml");
+        fs::write(&outside, "version = 1\n").map_err(|err| format!("outside policy: {err}"))?;
+        let outside_identity = canonical_policy_identity(&root, &outside);
+        if outside_identity.is_some() {
+            return Err("outside policy must not receive an identity".to_string());
+        }
+
+        fs::remove_file(outside).map_err(|err| format!("remove outside policy: {err}"))?;
+        fs::remove_dir_all(outside_root).map_err(|err| format!("remove outside fixture: {err}"))?;
         fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
         Ok(())
     }
