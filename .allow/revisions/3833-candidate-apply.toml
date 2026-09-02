@@ -410,3 +410,15 @@ allow_ids = ["allow-0826"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:9a7f4793d0d14074d347e7f64d24e1cc6c0d1fdd5eae741eeeea01a03fd42f2c"
 reason = "Test-only drift-rejection or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1842 for the staged renderer's occurrence-count law (#3833)."
+
+[[records]]
+allow_ids = ["allow-0827"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:92a9b22b1f4656388915ccc0d879f98e6207a8509373670c3ec56670cc8bacd6"
+reason = "Guarded staging-loop expectations at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1832 in the apply engine (#3833); the re-render derives from the same validated authorities the reviewed plan bound, so these arms are unreachable in practice."
+
+[[records]]
+allow_ids = ["allow-0828"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4e52898f2c8769aeee803db34fa04b46970330484c1e58f2277bfa64edfb2f44"
+reason = "Guarded staging-loop expectations at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1855 in the apply engine (#3833); the re-render derives from the same validated authorities the reviewed plan bound, so these arms are unreachable in practice."

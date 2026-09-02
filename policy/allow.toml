@@ -17784,3 +17784,49 @@ normalized_snippet_hash = "fnv1a64:5c727f91c09c4f3c"
 [allow.last_seen]
 line = 1842
 column = 14
+
+[[allow]]
+id = "allow-0827"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Guarded surface-set expectation in the apply engine's staging loop (#3833); the re-render derives from the same validated authorities the plan bound, so the reviewed surface set cannot shrink"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "apply_candidate_plan"
+callee = "expect"
+receiver_fingerprint = "nd(|surface| surface.owner == operation.owner && surface.path == operation.path)"
+normalized_snippet_hash = "fnv1a64:b880a9a12063bea7"
+
+[allow.last_seen]
+line = 1832
+column = 14
+
+[[allow]]
+id = "allow-0828"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Guarded generated-bytes expectation in the apply engine's staging loop (#3833); only deterministic surfaces enter the staged write set"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "apply_candidate_plan"
+callee = "expect"
+receiver_fingerprint = "String::from_utf8(bytes)"
+normalized_snippet_hash = "fnv1a64:7eb354976ab3e189"
+
+[allow.last_seen]
+line = 1855
+column = 56
