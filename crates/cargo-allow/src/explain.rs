@@ -40,15 +40,20 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts, _federation) = load_read_only_world(
+    let crate::world::CoreWorldContext {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation: _federation,
+    } = load_read_only_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         None,
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
-    )?
-    .into_parts();
+    )?;
     // Normalize numeric shorthand: "42" → "allow-0042", matching the ledger's
     // zero-padded id format (#3166).
     let normalized_id = normalize_allow_id_shorthand(&args.id);

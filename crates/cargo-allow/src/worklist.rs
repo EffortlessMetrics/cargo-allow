@@ -73,15 +73,20 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let (root, cfg, findings, inventory_facts, federation) = load_read_only_world(
+    let crate::world::CoreWorldContext {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+    } = load_read_only_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         args.kind.as_deref(),
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
-    )?
-    .into_parts();
+    )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
     let filters = worklist_filters(args);

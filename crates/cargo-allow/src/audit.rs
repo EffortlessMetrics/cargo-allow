@@ -30,22 +30,22 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 
     crate::emit_scan_status("audit", args.format, args.output.as_deref(), None);
 
-    let (root, cfg, findings, inventory_facts, _federation) = if args.compat {
+    let world = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
         )
-        .map(|(root, cfg, findings, inventory_facts)| {
-            (
+        .map(
+            |(root, cfg, findings, inventory_facts)| crate::world::CoreWorldContext {
                 root,
                 cfg,
                 findings,
                 inventory_facts,
-                crate::world::default_federation_evaluation(),
-            )
-        })?
+                federation: crate::world::default_federation_evaluation(),
+            },
+        )?
     } else {
         load_read_only_world(
             args.root.root.as_deref(),
@@ -55,8 +55,14 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             args.include_untracked,
             EvidenceValidationMode::ReportOnly,
         )?
-        .into_parts()
     };
+    let crate::world::CoreWorldContext {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation: _federation,
+    } = world;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit);
     let projected_outcomes = allow_report::ledger_project_outcomes(

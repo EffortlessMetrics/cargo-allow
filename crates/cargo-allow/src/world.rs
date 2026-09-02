@@ -353,34 +353,16 @@ pub(crate) type WorldLoadResult = CargoAllowResult<(
     FederationEvaluation,
 )>;
 
-/// Named read-only world context for commands participating in #3876.
-/// This wraps the existing tuple result without changing selection semantics.
-pub(crate) struct LoadedWorld {
+/// Invocation-scoped read-only context for commands participating in #3876.
+///
+/// The canonical world loader assembles this once so commands can share the
+/// selected configuration and derived observations without re-resolving them.
+pub(crate) struct CoreWorldContext {
     pub(crate) root: PathBuf,
     pub(crate) cfg: AllowConfig,
     pub(crate) findings: Vec<Finding>,
     pub(crate) inventory_facts: InventoryFacts,
     pub(crate) federation: FederationEvaluation,
-}
-
-impl LoadedWorld {
-    pub(crate) fn into_parts(
-        self,
-    ) -> (
-        PathBuf,
-        AllowConfig,
-        Vec<Finding>,
-        InventoryFacts,
-        FederationEvaluation,
-    ) {
-        (
-            self.root,
-            self.cfg,
-            self.findings,
-            self.inventory_facts,
-            self.federation,
-        )
-    }
 }
 
 pub(crate) fn load_read_only_world(
@@ -390,7 +372,7 @@ pub(crate) fn load_read_only_world(
     kind_filter: Option<&str>,
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
-) -> CargoAllowResult<LoadedWorld> {
+) -> CargoAllowResult<CoreWorldContext> {
     load_read_only_world_and_cache(
         explicit_root,
         config,
@@ -410,7 +392,7 @@ pub(crate) fn load_read_only_world_and_cache(
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
     persistent_cache: bool,
-) -> CargoAllowResult<LoadedWorld> {
+) -> CargoAllowResult<CoreWorldContext> {
     load_world_with_evidence_mode_and_cache(
         explicit_root,
         config,
@@ -421,7 +403,7 @@ pub(crate) fn load_read_only_world_and_cache(
         persistent_cache,
     )
     .map(
-        |(root, cfg, findings, inventory_facts, federation)| LoadedWorld {
+        |(root, cfg, findings, inventory_facts, federation)| CoreWorldContext {
             root,
             cfg,
             findings,

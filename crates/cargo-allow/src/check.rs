@@ -182,20 +182,20 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     if let Some(receipt) = &args.receipt {
         assert_path_within_root(&resolved_root, receipt)?;
     }
-    let (root, cfg, findings, inventory_facts, federation) = if args.compat {
+    let world = if args.compat {
         let (root, cfg, findings, inventory_facts) = load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
         )?;
-        (
+        crate::world::CoreWorldContext {
             root,
             cfg,
             findings,
             inventory_facts,
-            crate::world::default_federation_evaluation(),
-        )
+            federation: crate::world::default_federation_evaluation(),
+        }
     } else {
         load_read_only_world_and_cache(
             args.root.root.as_deref(),
@@ -206,8 +206,14 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             EvidenceValidationMode::ReportOnly,
             persistent_cache,
         )?
-        .into_parts()
     };
+    let crate::world::CoreWorldContext {
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+    } = world;
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let mode = CheckMode::parse(
