@@ -1,4 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
     load_policy, load_policy_with_reportable_evidence, parse_policy_at,
@@ -41,6 +42,9 @@ pub(crate) struct ConfigDiscovery {
     /// True when federation evaluation failed before conventional fallback.
     /// This is distinct from a successful evaluation with no federation.
     pub federation_evaluation_failed: bool,
+    /// True when the federation was parsed but failed validation during the
+    /// same initial observation used to choose the policy fallback.
+    pub federation_invalid_observed: bool,
 }
 
 /// The selected policy observation used by read-only diagnostics.
@@ -155,6 +159,7 @@ pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf>
 }
 
 pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> ConfigDiscovery {
+    let federation_invalid_observed = federation_config_invalid_observed(root);
     match evaluate_source_exception_policy(root, config) {
         Ok((path, evaluation)) => {
             let skipped = if evaluation.precedence_applied == PrecedenceTier::DiscoveryFallback {
@@ -174,6 +179,7 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 precedence: Some(evaluation.precedence_applied),
                 federation: Some(evaluation),
                 federation_evaluation_failed: false,
+                federation_invalid_observed,
             }
         }
         Err(_) => {
@@ -185,9 +191,17 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
                 precedence: None,
                 federation: None,
                 federation_evaluation_failed: federation_config_observed(root),
+                federation_invalid_observed,
             }
         }
     }
+}
+
+fn federation_config_invalid_observed(root: &Path) -> bool {
+    matches!(
+        load_federation_config(root).ok().map(|loaded| loaded.outcome),
+        Some(FederationLoadOutcome::Parsed(validated)) if !validated.valid
+    )
 }
 
 fn federation_config_observed(root: &Path) -> bool {

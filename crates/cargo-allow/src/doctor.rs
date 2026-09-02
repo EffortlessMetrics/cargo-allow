@@ -97,7 +97,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .map(|path| allow_report::source_tree_path_text(path));
     let (mut config_valid, mut config_diagnostic) =
         config_status(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
-    if config_discovery.federation_evaluation_failed {
+    if config_discovery.federation_evaluation_failed || config_discovery.federation_invalid_observed
+    {
         config_valid = Some(false);
         if config_diagnostic.is_none() {
             config_diagnostic = Some(
@@ -147,6 +148,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let mut federation = FederationDoctorFacts::load(&root)?;
     federation.enrich_runtime_divergences(&root)?;
     if config_discovery.federation_evaluation_failed
+        || config_discovery.federation_invalid_observed
         || (config_discovery.precedence == Some(allow_policy::PrecedenceTier::DiscoveryFallback)
             && federation.valid == Some(false))
     {
