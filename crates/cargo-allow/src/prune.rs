@@ -77,6 +77,11 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         &[policy_path.as_path()],
         "--output must differ from the selected policy output",
     )?;
+    crate::core_command_router::reject_configured_summary_output_collision(
+        &root,
+        &[policy_path.as_path()],
+        "--command-summary-output must differ from the selected policy output",
+    )?;
     let (resolved_mutation_target, mutation_lock) = if args.write {
         let target = effortless_repo_edit::resolve_mutation_target(&policy_path, &root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;

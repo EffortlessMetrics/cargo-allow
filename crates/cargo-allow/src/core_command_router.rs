@@ -96,6 +96,31 @@ pub(crate) fn write_summary_artifact(
     write_summary_artifact_with_config(root, summary, SUMMARY_OUTPUT.get())
 }
 
+/// Reject a configured command-summary sidecar that aliases a mutation target.
+/// This check is needed by commands whose mutation target is discovered rather
+/// than supplied as an explicit command argument.
+pub(crate) fn reject_configured_summary_output_collision(
+    root: &Path,
+    mutation_targets: &[&Path],
+    message: &'static str,
+) -> CargoAllowResult<()> {
+    let Some(config) = SUMMARY_OUTPUT.get() else {
+        return Ok(());
+    };
+    let validated = validate_summary_output_path(root, config)?;
+    for mutation_target in mutation_targets {
+        let target = effortless_repo_edit::resolve_mutation_target(mutation_target, root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+        if validated.target.target_fingerprint() == target.target_fingerprint() {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                message,
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn write_summary_artifact_with_config(
     root: &Path,
     summary: &CoreCommandSummaryV1,
