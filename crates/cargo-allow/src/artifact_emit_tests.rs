@@ -100,21 +100,51 @@ fn semantic_digest_binds_finding_message() -> Result<(), String> {
 
 #[test]
 fn semantic_digest_binds_diff_head_revision() -> Result<(), String> {
-    let mut report_a = allow_report::ReportContext::default();
-    report_a.diff_analysis = Some(allow_report::DiffAnalysisContext {
-        head_revision: Some("head-a"),
-        ..allow_report::DiffAnalysisContext::default()
-    });
-    let mut report_b = report_a;
-    report_b.diff_analysis = Some(allow_report::DiffAnalysisContext {
-        head_revision: Some("head-b"),
-        ..allow_report::DiffAnalysisContext::default()
-    });
+    let report_a = allow_report::ReportContext {
+        diff_analysis: Some(allow_report::DiffAnalysisContext {
+            head_revision: Some("head-a"),
+            ..allow_report::DiffAnalysisContext::default()
+        }),
+        ..allow_report::ReportContext::default()
+    };
+    let report_b = allow_report::ReportContext {
+        diff_analysis: Some(allow_report::DiffAnalysisContext {
+            head_revision: Some("head-b"),
+            ..allow_report::DiffAnalysisContext::default()
+        }),
+        ..allow_report::ReportContext::default()
+    };
     let ctx_a = context(&report_a);
     let ctx_b = context(&report_b);
     let cfg = config("policy-a", "subject-a");
     if semantic_result_digest(&cfg, &ctx_a) == semantic_result_digest(&cfg, &ctx_b) {
         return Err("diff head revision must affect the digest".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn semantic_digest_binds_report_and_receipt_context() -> Result<(), String> {
+    let report_a = allow_report::ReportContext::default();
+    let mut report_b = report_a;
+    report_b.rust_files_skipped = 1;
+    let receipt = allow_report::ReportContext::default();
+    let ctx_a = context(&report_a);
+    let ctx_b = ArtifactEmitContext {
+        report_context: &report_b,
+        ..context(&report_b)
+    };
+    let ctx_c = ArtifactEmitContext {
+        receipt_context: Some(&receipt),
+        ..context(&report_a)
+    };
+    let cfg = config("policy-a", "subject-a");
+    let baseline = semantic_result_digest(&cfg, &ctx_a);
+    if baseline == semantic_result_digest(&cfg, &ctx_b) {
+        return Err("report completeness must affect the digest".to_string());
+    }
+    if baseline == semantic_result_digest(&cfg, &ctx_c) {
+        return Err("receipt context must affect the digest".to_string());
     }
     Ok(())
 }

@@ -82,6 +82,31 @@ fn sha256_bytes(data: &[u8]) -> String {
     allow_core::sha256_v1_bytes(data)
 }
 
+fn report_context_payload(context: &allow_report::ReportContext<'_>) -> serde_json::Value {
+    serde_json::json!({
+        "inventory": format!("{:?}", context.inventory),
+        "baseline_debt_entries": context.baseline_debt_entries,
+        "policy_missing_evidence_entries": context.policy_missing_evidence_entries,
+        "broken_evidence_links": context.broken_evidence_links,
+        "weak_evidence_references": context.weak_evidence_references,
+        "occurrence_headroom_entries": context.occurrence_headroom_entries,
+        "mode": context.mode,
+        "enforcement": context.enforcement,
+        "policy_config": context.policy_config,
+        "tool_version": context.tool_version,
+        "lane_posture": format!("{:?}", context.lane_posture),
+        "federation": format!("{:?}", context.federation),
+        "mirror_divergence_entries": context.mirror_divergence_entries,
+        "blocking_divergence_entries": context.blocking_divergence_entries,
+        "git_sha": context.git_sha,
+        "policy_digest": context.policy_digest,
+        "diff_analysis": format!("{:?}", context.diff_analysis),
+        "rust_files_skipped": context.rust_files_skipped,
+        "rust_files_considered": context.rust_files_considered,
+        "rust_files_with_parse_errors": context.rust_files_with_parse_errors,
+    })
+}
+
 fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>) -> String {
     let finding_payloads = ctx
         .findings
@@ -118,19 +143,8 @@ fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>
         "result_class": format!("{:?}", config.result_class),
         "blocking": config.blocking,
         "failed": ctx.failed,
-        "policy_digest": ctx.report_context.policy_digest,
-        "diff_analysis": ctx.report_context.diff_analysis.map(|diff| serde_json::json!({
-            "result_class": diff.result_class,
-            "base_revision": diff.base_revision,
-            "head_revision": diff.head_revision,
-            "base_inventory_complete": diff.base_inventory_complete,
-            "base_scanner_complete": diff.base_scanner_complete,
-            "head_inventory_complete": diff.head_inventory_complete,
-            "head_scanner_complete": diff.head_scanner_complete,
-            "introduced": diff.introduced,
-            "retained": diff.retained,
-            "removed": diff.removed,
-        })),
+        "report_context": report_context_payload(ctx.report_context),
+        "receipt_context": ctx.receipt_context.map(report_context_payload),
         "finding_payloads": finding_payloads,
         "outcome_identities": outcome_identities,
     });
