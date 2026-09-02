@@ -105,26 +105,40 @@ pub(crate) fn reject_legacy_summary_output_collision(
     summary_output: Option<&Path>,
     mutation_targets: &[&Path],
 ) -> CargoAllowResult<()> {
-    let Some(summary_output) = summary_output else {
+    reject_output_collision(
+        repository_root,
+        summary_output,
+        mutation_targets,
+        "--summary-output must differ from the candidate or live policy output",
+    )
+}
+
+pub(crate) fn reject_output_collision(
+    repository_root: &Path,
+    output: Option<&Path>,
+    mutation_targets: &[&Path],
+    message: &'static str,
+) -> CargoAllowResult<()> {
+    let Some(output) = output else {
         return Ok(());
     };
     let current = current_dir()?;
-    let summary_absolute = if summary_output.is_absolute() {
-        summary_output.to_path_buf()
+    let output_absolute = if output.is_absolute() {
+        output.to_path_buf()
     } else {
-        current.join(summary_output)
+        current.join(output)
     };
-    let summary_target =
-        effortless_repo_edit::resolve_mutation_target(&summary_absolute, repository_root)
+    let output_target =
+        effortless_repo_edit::resolve_mutation_target(&output_absolute, repository_root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     for mutation_target in mutation_targets {
         let target =
             effortless_repo_edit::resolve_mutation_target(mutation_target, repository_root)
                 .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-        if target.target_fingerprint() == summary_target.target_fingerprint() {
+        if target.target_fingerprint() == output_target.target_fingerprint() {
             return Err(allow_core::CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Usage,
-                "--summary-output must differ from the candidate or live policy output",
+                message,
             ));
         }
     }
@@ -258,6 +272,34 @@ mod io_tests {
         }
         let contents = fs::read_to_string(&policy).map_err(|error| error.to_string())?;
         if contents != "original policy\n" {
+            return Err("collision preflight changed the policy sentinel".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn generic_output_collision_rejects_direct_and_alias_paths() -> Result<(), String> {
+        let root = TempRoot::new("generic-output-collision").map_err(|error| error.to_string())?;
+        let policy_dir = root.path().join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("allow.toml");
+        fs::write(&policy, "original policy\n").map_err(|error| error.to_string())?;
+        let message = "--output must differ from the selected policy output";
+
+        for output in [policy.clone(), policy_dir.join(".").join("allow.toml")] {
+            let result =
+                reject_output_collision(root.path(), Some(&output), &[policy.as_path()], message);
+            let error = match result {
+                Ok(()) => return Err(format!("accepted output collision: {}", output.display())),
+                Err(error) => error,
+            };
+            if error.kind() != allow_core::CargoAllowErrorKind::Usage
+                || error.to_string() != message
+            {
+                return Err(format!("unexpected collision error: {}", error.code()));
+            }
+        }
+        if fs::read_to_string(&policy).map_err(|error| error.to_string())? != "original policy\n" {
             return Err("collision preflight changed the policy sentinel".to_string());
         }
         Ok(())
