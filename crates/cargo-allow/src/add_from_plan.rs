@@ -33,12 +33,16 @@ use super::{
 use crate::plan_bindings::{
     PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
 };
+use crate::policy_config::{
+    EvidenceValidationMode, discover_config_path, load_policy_at_path_with_digest,
+    missing_plan_update_policy_config_error,
+};
 use crate::{
     MutationLock, SourceTreeReportContext, config_path, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world, parse_kind_filter, resolve_source_tree_root,
+    load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
 };
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
@@ -167,18 +171,26 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
-    let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
-        args.root.root.as_deref(),
-        args.config.as_deref(),
-        true,
-        Some(plan.finding.kind.as_str()),
-        args.include_untracked,
-    )?;
-
-    let policy_path = config_path(&root, args.config.as_deref())
-        .ok_or_else(crate::policy_config::missing_plan_update_policy_config_error)?;
-    let policy_before = read_bound_file(&policy_path, "policy")?;
-    let policy_before_digest = sha256_v1_bytes(&policy_before);
+    let discovery = discover_config_path(&mutation_root, args.config.as_deref());
+    let policy_path = discovery
+        .path
+        .clone()
+        .ok_or_else(missing_plan_update_policy_config_error)?;
+    let (mut cfg, policy_before_digest) =
+        load_policy_at_path_with_digest(policy_path.clone(), EvidenceValidationMode::Abort)?;
+    let federation = discovery
+        .federation
+        .ok_or_else(|| stale("selected configuration provenance could not be observed"))?;
+    let (root, _loaded_cfg, findings, inventory_facts, _federation) =
+        load_world_from_resolved_policy_with_options(
+            &mutation_root,
+            cfg.clone(),
+            Some(policy_before_digest.clone()),
+            federation,
+            args.include_untracked,
+            Some(plan.finding.kind.as_str()),
+            true,
+        )?;
 
     // Re-select the finding by the plan's recorded coordinates against the live
     // scan. A finding that moved or vanished, or a now-ambiguous location, fails
@@ -212,7 +224,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let bindings = compute_plan_finding_bindings_with_policy(
         &root,
         &policy_path,
-        &policy_before,
+        &policy_before_digest,
         &cfg,
         args.include_untracked,
         finding,

@@ -52,10 +52,11 @@ pub(crate) fn compute_plan_finding_bindings(
 ) -> CargoAllowResult<PlanFindingBindings> {
     let policy_path = config_path(root, config).ok_or_else(missing_plan_policy_config_error)?;
     let policy_bytes = read_bound_file(&policy_path, "policy")?;
+    let policy_digest = sha256_v1_bytes(&policy_bytes);
     compute_plan_finding_bindings_with_policy(
         root,
         &policy_path,
-        &policy_bytes,
+        &policy_digest,
         cfg,
         include_untracked,
         finding,
@@ -68,7 +69,7 @@ pub(crate) fn compute_plan_finding_bindings(
 pub(crate) fn compute_plan_finding_bindings_with_policy(
     root: &Path,
     policy_path: &Path,
-    policy_bytes: &[u8],
+    policy_digest: &str,
     cfg: &AllowConfig,
     include_untracked: bool,
     finding: &Finding,
@@ -79,7 +80,6 @@ pub(crate) fn compute_plan_finding_bindings_with_policy(
     let finding_key = finding_identity_key(finding);
     let selector = selector_from_finding(finding);
     let inventory_basis_identity = inventory_identity(root, cfg, include_untracked)?;
-    let policy_digest = sha256_v1_bytes(policy_bytes);
     let repository_identity = sha256_v1_bytes(
         format!("cargo-allow.repository.v1\n{inventory_basis_identity}\n{policy_digest}")
             .as_bytes(),
@@ -89,7 +89,7 @@ pub(crate) fn compute_plan_finding_bindings_with_policy(
         repository_identity,
         inventory_basis_identity,
         policy_path: normalize_path(&relative_policy),
-        policy_digest,
+        policy_digest: policy_digest.to_string(),
         finding_kind: finding.kind.as_str().to_string(),
         finding_family: finding.family.clone(),
         finding_path: normalize_path(&finding.path),
