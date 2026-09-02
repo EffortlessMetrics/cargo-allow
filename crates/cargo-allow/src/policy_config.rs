@@ -108,7 +108,7 @@ pub(crate) fn load_policy_at_path_with_digest(
     path: PathBuf,
     evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<(AllowConfig, String)> {
-    let bytes = std::fs::read(&path).map_err(|error| {
+    let bytes = allow_core::read_file_capped(&path).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
             format!("could not read policy {}: {error}", path.display()),
