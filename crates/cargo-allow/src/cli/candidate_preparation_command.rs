@@ -40,7 +40,7 @@ type Fact<T> = Result<T, String>;
 #[command(disable_version_flag = true)]
 pub(crate) struct PrepCandidateArgs {
     #[command(subcommand)]
-    pub(super) command: PrepCandidateSubcommand,
+    pub(crate) command: PrepCandidateSubcommand,
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -60,7 +60,7 @@ enum PrepOutputFormat {
 pub(crate) struct PrepCandidatePlanArgs {
     /// Canonical stable or numbered release-candidate target version.
     #[arg(long)]
-    version: String,
+    pub(crate) version: String,
     /// Output rendering. Both derive from the same typed result.
     #[arg(long, value_enum, default_value_t = PrepOutputFormat::Json)]
     format: PrepOutputFormat,
@@ -845,6 +845,23 @@ extraction_destination = \"cargo-allow\"
         assert!(rendered.contains(&plan.plan_digest));
         assert!(rendered.contains("decision required [confirm-frozen-candidate-basis]"));
         assert!(rendered.contains(plan.claim_boundary));
+    }
+
+    #[test]
+    fn command_layer_renders_and_fails_closed_by_readiness() {
+        let ready = PrepCandidatePlanArgs {
+            version: "0.2.0".to_string(),
+            format: PrepOutputFormat::Text,
+        };
+        cmd_prep_candidate_plan(&ready).expect("decision-required plan exits ready");
+
+        let unsupported = PrepCandidatePlanArgs {
+            version: "0.2.0-beta.9".to_string(),
+            format: PrepOutputFormat::Json,
+        };
+        let error =
+            cmd_prep_candidate_plan(&unsupported).expect_err("unsupported target fails closed");
+        assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
     }
 
     #[test]

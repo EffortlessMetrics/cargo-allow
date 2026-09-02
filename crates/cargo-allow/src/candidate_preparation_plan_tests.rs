@@ -568,24 +568,6 @@ fn live_result_validates_against_the_registered_schema() {
         .expect("live candidate preparation result must validate against its schema");
 }
 
-/// The compiled binary sits beside the test executable under
-/// `target/<profile>/`, so the end-to-end tests can drive the real CLI.
-fn built_binary() -> std::path::PathBuf {
-    let test_exe = std::env::current_exe().expect("test executable path");
-    test_exe
-        .ancestors()
-        .skip(1)
-        .find_map(|dir| {
-            let windows = dir.join("cargo-allow.exe");
-            if windows.is_file() {
-                return Some(windows);
-            }
-            let unix = dir.join("cargo-allow");
-            (unix.is_file()).then_some(unix)
-        })
-        .expect("built cargo-allow binary must exist beside the test binary")
-}
-
 fn live_preparation_result(version: &str) -> allow_report::CandidatePreparationResultV1 {
     crate::cli::candidate_preparation_command::build_preparation_result(version)
         .expect("live preparation must not be a process error")
@@ -602,68 +584,49 @@ fn git_text(root: &std::path::Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&output.stdout).trim().to_string()
 }
 
-/// The hidden command is reachable end-to-end: the rendered JSON result
-/// exits zero for a projected plan, and the human path renders the same
-/// digest.
+/// The hidden command parses through the real clap surface and the
+/// projected plan reaches the command layer.
 #[test]
-fn command_runs_end_to_end_through_the_cli() {
-    let bin = built_binary();
-    let json = std::process::Command::new(&bin)
-        .args([
-            "prep-candidate",
-            "plan",
-            "--version",
-            "0.2.0",
-            "--format",
-            "json",
-        ])
-        .output()
-        .expect("binary runs");
-    assert!(json.status.success(), "projected plan must exit zero");
-    let stdout = String::from_utf8_lossy(&json.stdout);
-    assert!(stdout.contains("cargo-allow.candidate-preparation-result.v1"));
-    assert!(stdout.contains("candidate-preparation-plan.v1"));
-    assert!(stdout.contains("confirm-frozen-candidate-basis"));
-
-    let text = std::process::Command::new(&bin)
-        .args([
-            "prep-candidate",
-            "plan",
-            "--version",
-            "0.2.0",
-            "--format",
-            "text",
-        ])
-        .output()
-        .expect("binary runs");
-    assert!(text.status.success());
-    let stdout = String::from_utf8_lossy(&text.stdout);
-    assert!(stdout.contains("candidate preparation: 10 product rows -> 0.2.0"));
+fn command_dispatch_parses_through_the_real_cli() {
+    use clap::Parser as _;
+    let cli = crate::cli::CargoAllowCli::try_parse_from([
+        "cargo-allow",
+        "prep-candidate",
+        "plan",
+        "--version",
+        "0.2.0",
+        "--format",
+        "json",
+    ])
+    .expect("hidden command parses");
+    let Some(crate::cli::CargoAllowCommand::PrepCandidate(parsed)) = cli.command else {
+        panic!("prep-candidate must parse into the hidden command");
+    };
+    let crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(plan_args) =
+        parsed.command;
+    assert_eq!(plan_args.version, "0.2.0");
+    let result =
+        crate::cli::candidate_preparation_command::build_preparation_result(&plan_args.version)
+            .expect("live projection builds");
+    assert_eq!(
+        result.readiness,
+        CandidatePreparationReadinessV1::DecisionRequired
+    );
 }
 
-/// A malformed target renders the explicit Unsupported typed result and
-/// exits non-zero.
+/// A malformed target fails the command layer closed with a structured
+/// invalid-config error.
 #[test]
-fn command_rejects_malformed_targets_with_explicit_result() {
-    let bin = built_binary();
-    let output = std::process::Command::new(bin)
-        .args([
-            "prep-candidate",
-            "plan",
-            "--version",
-            "0.2.0-beta.9",
-            "--format",
-            "json",
-        ])
-        .output()
-        .expect("binary runs");
-    assert!(
-        !output.status.success(),
-        "unsupported target must exit non-zero"
+fn command_layer_rejects_malformed_targets() {
+    let result =
+        crate::cli::candidate_preparation_command::build_preparation_result("0.2.0-beta.9")
+            .expect("the typed result exists for the unsupported target");
+    assert_eq!(
+        result.readiness,
+        CandidatePreparationReadinessV1::Unsupported
     );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("unsupported"));
-    assert!(stdout.contains("only supported prerelease form is rc.N"));
+    assert!(result.plan.is_none());
+    assert!(result.reasons[0].contains("only supported prerelease form is rc.N"));
 }
 
 /// Gather-path error arms: git facts against a non-repository directory

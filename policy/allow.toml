@@ -15696,3 +15696,72 @@ normalized_snippet_hash = "fnv1a64:f4f56a96e60e4094"
 [allow.last_seen]
 line = 745
 column = 51
+
+[[allow]]
+id = "allow-0736"
+kind = "panic"
+family = "panic_macro"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only panic in the dispatch parse guard: the hidden command must parse into the PrepCandidate variant (#3831)"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "command_dispatch_parses_through_the_real_cli"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:29ee553755992130"
+
+[allow.last_seen]
+line = 603
+column = 9
+
+[[allow]]
+id = "allow-0737"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expectation that the live projection builds through the parsed CLI surface (#3831)"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_layer_rejects_malformed_targets"
+callee = "expect"
+receiver_fingerprint = "te::cli::candidate_preparation_command::build_preparation_result(\"0.2.0-beta.9\")"
+normalized_snippet_hash = "fnv1a64:f7afd8157624cc5c"
+
+[allow.last_seen]
+line = 623
+column = 14
+
+[[allow]]
+id = "allow-0738"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expectation in the command-layer readiness test (#3831); the expected side is the read-only live projection"
+evidence = ["issue:3831"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::command_layer_renders_and_fails_closed_by_readiness"
+callee = "expect"
+receiver_fingerprint = "cmd_prep_candidate_plan(&ready)"
+normalized_snippet_hash = "fnv1a64:fe163754f306ae73"
+
+[allow.last_seen]
+line = 856
+column = 41

@@ -158,3 +158,21 @@ allow_ids = ["allow-0735"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:71f641a2c70760a861b051b63380e0970e32181c8b4cecfbcbfe568941ef319f"
 reason = "Same test-only assertion law for the source-identity digest agreement fixtures (#3831)."
+
+[[records]]
+allow_ids = ["allow-0736"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1d0b4069c95c1962f57dc9fb68f3a8b2a05038b39f613d7ac463b9fd3653feb7"
+reason = "Test-only panic in the dispatch parse guard: the hidden command must parse into the PrepCandidate variant (#3831)."
+
+[[records]]
+allow_ids = ["allow-0737"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5d7ad49afadc4c2fcafae5b788337d59f0d12d4ed284ec3c8901781cf47c9ffc"
+reason = "Test-only expectation that the live projection builds through the parsed CLI surface (#3831)."
+
+[[records]]
+allow_ids = ["allow-0738"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1e7003cdcd649d38cf1a3bc03a6bdf93ec8d5eb74766698505f64249f396bafe"
+reason = "Test-only expectation in the command-layer readiness test (#3831); the expected side is the read-only live projection."
