@@ -601,7 +601,7 @@ pub(crate) fn load_core_world_from_resolved_policy_with_inventory(
     opts: &InventoryOptions,
     scan_options: ResolvedPolicyScanOptions<'_>,
 ) -> CargoAllowResult<CoreWorldContext> {
-    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    let inventory_facts = InventoryFacts::scanned_inventory(inventory);
     let inventory_facts = policy_digest.map_or(inventory_facts, |digest| {
         inventory_facts.with_policy_digest(digest)
     });
