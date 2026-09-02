@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Mutation: `propose` now reuses the policy selected for the invocation when
+  scanning and recording a proposed baseline, avoiding a second configuration
+  discovery that could produce mixed policy identity.
