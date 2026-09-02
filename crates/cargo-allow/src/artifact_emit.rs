@@ -82,6 +82,49 @@ fn sha256_bytes(data: &[u8]) -> String {
     allow_core::sha256_v1_bytes(data)
 }
 
+fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>) -> String {
+    let finding_payloads = ctx
+        .findings
+        .iter()
+        .map(|finding| {
+            serde_json::json!({
+                "identity": allow_core::finding_identity_key(finding),
+                "message": finding.message.as_str(),
+                "span": format!("{:?}", finding.span),
+                "ledger": format!("{:?}", finding.ledger),
+            })
+        })
+        .collect::<Vec<_>>();
+    let outcome_identities = ctx
+        .outcomes
+        .iter()
+        .map(|outcome| {
+            format!(
+                "status={:?};allow_id={:?};candidates={:?};finding_index={:?};message={};score={}",
+                outcome.status,
+                outcome.allow_id,
+                outcome.candidate_ids,
+                outcome.finding_index,
+                outcome.message,
+                outcome.score
+            )
+        })
+        .collect::<Vec<_>>();
+    let payload = serde_json::json!({
+        "operation": config.operation,
+        "command": ctx.command,
+        "source_subject": config.source_subject,
+        "resolved_config_identity": config.resolved_config_identity,
+        "result_class": format!("{:?}", config.result_class),
+        "blocking": config.blocking,
+        "failed": ctx.failed,
+        "policy_digest": ctx.report_context.policy_digest,
+        "finding_payloads": finding_payloads,
+        "outcome_identities": outcome_identities,
+    });
+    sha256_bytes(&serde_json::to_vec(&payload).unwrap_or_default())
+}
+
 /// Configuration for the artifact set emission.
 pub struct EmitConfig<'a> {
     pub operation: &'a str,
@@ -145,14 +188,7 @@ pub fn emit_artifact_set(
         mode: None,
         source_subject: config.source_subject.to_string(),
         resolved_config_identity: config.resolved_config_identity.to_string(),
-        semantic_result_digest: allow_core::sha256_v1_bytes(
-            serde_json::to_vec(&serde_json::json!({
-                "command": ctx.command,
-                "failed": ctx.failed,
-            }))
-            .unwrap_or_default()
-            .as_slice(),
-        ),
+        semantic_result_digest: semantic_result_digest(config, ctx),
         result_class: config.result_class,
         blocking: config.blocking,
         requested_formats: formats.to_vec(),
@@ -183,4 +219,107 @@ pub fn emit_artifact_set(
         .map_err(|error| format!("write manifest: {error}"))?;
 
     Ok(set)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn context<'a>(report: &'a allow_report::ReportContext<'a>) -> ArtifactEmitContext<'a> {
+        static FINDINGS: [allow_core::Finding; 0] = [];
+        static OUTCOMES: [allow_core::MatchOutcome; 0] = [];
+        ArtifactEmitContext {
+            command: "check",
+            findings: &FINDINGS,
+            outcomes: &OUTCOMES,
+            failed: false,
+            report_context: report,
+            receipt_context: None,
+        }
+    }
+
+    fn config<'a>(identity: &'a str, source: &'a str) -> EmitConfig<'a> {
+        EmitConfig {
+            operation: "check",
+            formats: &[],
+            result_class: EvaluationResultClassV2::Passed,
+            blocking: false,
+            resolved_config_identity: identity,
+            source_subject: source,
+        }
+    }
+
+    #[test]
+    fn semantic_digest_binds_identity_and_subject() -> Result<(), String> {
+        let report = allow_report::ReportContext::default();
+        let ctx = context(&report);
+        let baseline = semantic_result_digest(&config("policy-a", "subject-a"), &ctx);
+        if baseline == semantic_result_digest(&config("policy-b", "subject-a"), &ctx) {
+            return Err("configuration identity must affect the digest".to_string());
+        }
+        if baseline == semantic_result_digest(&config("policy-a", "subject-b"), &ctx) {
+            return Err("source subject must affect the digest".to_string());
+        }
+        if baseline != semantic_result_digest(&config("policy-a", "subject-a"), &ctx) {
+            return Err("equal inputs must produce equal digests".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_digest_binds_outcome_payload() -> Result<(), String> {
+        let report = allow_report::ReportContext::default();
+        let empty = context(&report);
+        let matched = allow_core::MatchOutcome {
+            status: allow_core::MatchStatus::Matched,
+            allow_id: Some("policy-a".to_string()),
+            candidate_ids: vec!["policy-a".to_string()],
+            finding_index: None,
+            message: "matched".to_string(),
+            score: 1,
+        };
+        let with_outcome = ArtifactEmitContext {
+            outcomes: std::slice::from_ref(&matched),
+            ..empty
+        };
+        if semantic_result_digest(&config("policy-a", "subject-a"), &empty)
+            == semantic_result_digest(&config("policy-a", "subject-a"), &with_outcome)
+        {
+            return Err("outcome payload must affect the digest".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn semantic_digest_binds_finding_message() -> Result<(), String> {
+        let report = allow_report::ReportContext::default();
+        let finding_a = allow_core::Finding {
+            kind: allow_core::FindingKind::Panic,
+            family: None,
+            path: std::path::PathBuf::from("src/lib.rs"),
+            span: None,
+            identity: allow_core::StructuralIdentity::new("rust", "call"),
+            message: "first message".to_string(),
+            ledger: None,
+        };
+        let finding_b = allow_core::Finding {
+            message: "second message".to_string(),
+            ..finding_a.clone()
+        };
+        let ctx_a = ArtifactEmitContext {
+            findings: std::slice::from_ref(&finding_a),
+            report_context: &report,
+            ..context(&report)
+        };
+        let ctx_b = ArtifactEmitContext {
+            findings: std::slice::from_ref(&finding_b),
+            report_context: &report,
+            ..context(&report)
+        };
+        let cfg = config("policy-a", "subject-a");
+        if semantic_result_digest(&cfg, &ctx_a) == semantic_result_digest(&cfg, &ctx_b) {
+            return Err("finding message must affect the digest".to_string());
+        }
+        Ok(())
+    }
 }
