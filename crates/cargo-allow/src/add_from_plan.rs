@@ -43,7 +43,9 @@ use crate::{
     },
     load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
 };
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
 /// The parse models exactly the fields the transaction reads; other v1 fields
@@ -245,18 +247,21 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let rendered = render_policy(&cfg);
     let policy_target =
         crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
-    apply_single_target(SingleTargetApplyRequest {
-        repository_root: &root,
-        target: &policy_target,
-        contents: &rendered,
-        caller_reference: Some("cargo-allow:add-from-plan"),
-        lock_identity: Some(
-            policy_target
-                .to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR, "/"),
-        ),
-        mode: SingleTargetApplyMode::AtomicReplace,
-    })
+    apply_single_target_with_target(
+        SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &policy_target,
+            contents: &rendered,
+            caller_reference: Some("cargo-allow:add-from-plan"),
+            lock_identity: Some(
+                policy_target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
+            mode: SingleTargetApplyMode::AtomicReplace,
+        },
+        &resolved_mutation_target,
+    )
     .into_result()
     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let policy_after_digest = sha256_v1_bytes(rendered.as_bytes());
