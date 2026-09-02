@@ -1223,4 +1223,36 @@ mod tests {
         })
         .map_err(|error| error.to_string())
     }
+
+    #[test]
+    fn inspect_invalid_selected_policy_keeps_scanned_context() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-adoption-invalid-policy-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+        fs::write(root.join("policy/allow.toml"), "[invalid").map_err(|error| error.to_string())?;
+
+        let inspection = inspect(&AdoptionArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(PathBuf::from("policy/allow.toml")),
+            include_untracked: true,
+            strict: false,
+            format: HumanJsonFormat::Json,
+            output: None,
+        })
+        .map_err(|error| error.to_string())?;
+
+        require(
+            inspection.inventory.is_some() && inspection.inventory_facts.is_some(),
+            "invalid policy should retain the scanned inventory context",
+        )?;
+        require(
+            inspection.plan.policy.state == allow_report::PolicyState::Invalid,
+            "invalid selected policy should remain invalid",
+        )?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
 }
