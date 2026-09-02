@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Mutation: `prune --write` now binds policy loading, locking, and replacement
+  to the single policy selected for the invocation, rejecting stale policy bytes
+  and report-output collisions.

@@ -204,6 +204,49 @@ fn cmd_prune_write_reports_missing_policy_config_with_exact_error() {
 }
 
 #[test]
+fn cmd_prune_rejects_output_aliasing_selected_policy_before_read_or_write() -> Result<(), String> {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+    let policy_path = policy_dir.join("allow.toml");
+    let sentinel = "policy sentinel\n";
+    fs::write(&policy_path, sentinel).map_err(|error| error.to_string())?;
+
+    for output in [policy_path.clone(), policy_dir.join(".").join("allow.toml")] {
+        let result = cmd_prune(&PruneArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy_path.clone()),
+            stale: true,
+            allow_id: None,
+            dry_run: true,
+            write: false,
+            include_untracked: false,
+            format: HumanJsonFormat::Json,
+            output: Some(output.clone()),
+        });
+        let error = match result {
+            Ok(()) => return Err(format!("accepted output collision: {}", output.display())),
+            Err(error) => error,
+        };
+        if error.kind() != CargoAllowErrorKind::Usage
+            || error.to_string() != "--output must differ from the selected policy output"
+        {
+            return Err(format!(
+                "unexpected output-collision error: {}",
+                error.code()
+            ));
+        }
+    }
+    if fs::read_to_string(&policy_path).map_err(|error| error.to_string())? != sentinel {
+        return Err("output collision changed the selected policy".to_string());
+    }
+    fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
     let root = prune_fixture_dir();
     let policy_dir = root.join("policy");
