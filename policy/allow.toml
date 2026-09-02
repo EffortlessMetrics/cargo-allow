@@ -17646,3 +17646,49 @@ normalized_snippet_hash = "fnv1a64:de378fc5aa6e2cc2"
 [allow.last_seen]
 line = 1796
 column = 10
+
+[[allow]]
+id = "allow-0821"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only live-root resolution in the render-summary command test (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::command_layer_renders_and_fails_closed_by_readiness"
+callee = "expect"
+receiver_fingerprint = "git_root()"
+normalized_snippet_hash = "fnv1a64:c4b6b64809d8e320"
+
+[allow.last_seen]
+line = 1473
+column = 31
+
+[[allow]]
+id = "allow-0822"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expectation that the live projection builds in the render-summary command test (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::command_layer_renders_and_fails_closed_by_readiness"
+callee = "expect"
+receiver_fingerprint = "cmd_prep_candidate_plan_for_root(&root, &ready)"
+normalized_snippet_hash = "fnv1a64:f260d3f2579b4d2f"
+
+[allow.last_seen]
+line = 1475
+column = 14

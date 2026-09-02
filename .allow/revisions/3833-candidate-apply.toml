@@ -374,3 +374,15 @@ allow_ids = ["allow-0820"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:3403a16829776df326f59e9519cc38a956862d5a5ffc5c0e0707fb6e272def91"
 reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1796 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0821"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:290d4db7e012e5b03ea512e36b53dc2b76a9ed995b33b9829e7312bc42f8bba8"
+reason = "Test-only live-root resolution or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1473 in the candidate-preparation suite (#3833); the expected side is the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0822"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f4406cc31d97de4c808df18769ff63d131b1392c356e47fc066d279135392b32"
+reason = "Test-only live-root resolution or render assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1475 in the candidate-preparation suite (#3833); the expected side is the read-only live projection."
