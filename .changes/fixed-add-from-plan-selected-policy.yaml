@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Mutation: `add --from-plan` now binds plan application to the single policy
+  selected for the invocation, preventing policy re-selection or mismatched
+  policy identities during mutation planning and writes.
