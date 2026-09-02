@@ -17922,3 +17922,49 @@ normalized_snippet_hash = "fnv1a64:0294ea56cdaf336c"
 [allow.last_seen]
 line = 1881
 column = 6
+
+[[allow]]
+id = "allow-0833"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only corrupted-authority expectation in the candidate-preparation suite (#3833); the expected side is deliberately corrupted fixture input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_corrupted_topology_fails_loudly"
+callee = "expect"
+receiver_fingerprint = ":write( root.join(\"policy/product-package-topology-v2.toml\"), broken_topology, )"
+normalized_snippet_hash = "fnv1a64:0294ea56cdaf336c"
+
+[allow.last_seen]
+line = 1882
+column = 6
+
+[[allow]]
+id = "allow-0834"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only corrupted-authority expectation in the candidate-preparation suite (#3833); the expected side is deliberately corrupted fixture input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_corrupted_topology_fails_loudly"
+callee = "expect"
+receiver_fingerprint = "d::fs::write(root.join(\"policy/product-package-topology-v2.toml\"), invalid_utf8)"
+normalized_snippet_hash = "fnv1a64:ff02f0029eaba708"
+
+[allow.last_seen]
+line = 1868
+column = 10
