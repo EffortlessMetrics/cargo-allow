@@ -34,8 +34,7 @@ use crate::plan_bindings::{
     PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
 };
 use crate::policy_config::{
-    EvidenceValidationMode, discover_config_path, load_policy_at_path_with_digest,
-    missing_plan_update_policy_config_error,
+    EvidenceValidationMode, load_policy_at_path_with_digest, select_policy_path,
 };
 use crate::{
     MutationLock, SourceTreeReportContext, config_path, current_dir, emit_stderr_text,
@@ -171,16 +170,9 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
-    let discovery = discover_config_path(&mutation_root, args.config.as_deref());
-    let policy_path = discovery
-        .path
-        .clone()
-        .ok_or_else(missing_plan_update_policy_config_error)?;
+    let (policy_path, federation) = select_policy_path(&mutation_root, args.config.as_deref())?;
     let (mut cfg, policy_before_digest) =
         load_policy_at_path_with_digest(policy_path.clone(), EvidenceValidationMode::Abort)?;
-    let federation = discovery
-        .federation
-        .ok_or_else(|| stale("selected configuration provenance could not be observed"))?;
     let (root, _loaded_cfg, findings, inventory_facts, _federation) =
         load_world_from_resolved_policy_with_options(
             &mutation_root,

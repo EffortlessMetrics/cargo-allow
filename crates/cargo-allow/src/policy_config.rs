@@ -158,6 +158,15 @@ pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf>
     discover_config_path(root, config).path
 }
 
+/// Select one policy using the canonical precedence evaluator without the
+/// report-oriented fallback behavior of [`discover_config_path`].
+pub(crate) fn select_policy_path(
+    root: &Path,
+    config: Option<&Path>,
+) -> CargoAllowResult<(PathBuf, allow_policy::federation::FederationEvaluation)> {
+    evaluate_source_exception_policy(root, config)
+}
+
 pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> ConfigDiscovery {
     let federation_invalid_observed = federation_config_invalid_observed(root);
     match evaluate_source_exception_policy(root, config) {
