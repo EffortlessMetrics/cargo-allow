@@ -333,6 +333,16 @@ pub(crate) fn git_relative_config_path(
     let path = discovery
         .path
         .ok_or_else(|| missing_config_error(&discovery.skipped))?;
+    git_relative_selected_config_path(root, &path)
+}
+
+/// Relativize an already selected policy path without performing discovery.
+/// Callers that have loaded a world from a specific observation use this form
+/// to keep subsequent identity and mutation steps bound to that same path.
+pub(crate) fn git_relative_selected_config_path(
+    root: &Path,
+    path: &Path,
+) -> CargoAllowResult<PathBuf> {
     let root = root.canonicalize().map_err(|e| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Inventory,

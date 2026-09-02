@@ -30,13 +30,15 @@ use super::{
     ensure_addable_outcome, ensure_unique_allow_id, next_allow_id, require_add_evidence,
     select_add_finding,
 };
-use crate::plan_bindings::{PlanFindingBindings, compute_plan_finding_bindings, read_bound_file};
+use crate::plan_bindings::{
+    PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
+};
 use crate::{
     MutationLock, SourceTreeReportContext, config_path, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    git_relative_config_path, load_world, parse_kind_filter, resolve_source_tree_root,
+    load_world, parse_kind_filter, resolve_source_tree_root,
 };
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
@@ -207,9 +209,10 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
 
     // Recompute every binding from the live scan and require an exact match.
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
-    let bindings = compute_plan_finding_bindings(
+    let bindings = compute_plan_finding_bindings_with_policy(
         &root,
-        args.config.as_deref(),
+        &policy_path,
+        &policy_before,
         &cfg,
         args.include_untracked,
         finding,
@@ -245,7 +248,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
-    let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+    let policy_target =
+        crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &policy_target,

@@ -18,7 +18,7 @@ use allow_core::{
 use serde_json::{Value, json};
 
 use crate::config_path;
-use crate::policy_config::{git_relative_config_path, missing_plan_policy_config_error};
+use crate::policy_config::{git_relative_selected_config_path, missing_plan_policy_config_error};
 use crate::selector::selector_from_finding;
 
 /// Recomputed identity bindings for one finding against the live scan. Every
@@ -52,13 +52,34 @@ pub(crate) fn compute_plan_finding_bindings(
 ) -> CargoAllowResult<PlanFindingBindings> {
     let policy_path = config_path(root, config).ok_or_else(missing_plan_policy_config_error)?;
     let policy_bytes = read_bound_file(&policy_path, "policy")?;
-    let relative_policy = git_relative_config_path(root, Some(&policy_path))?;
+    compute_plan_finding_bindings_with_policy(
+        root,
+        &policy_path,
+        &policy_bytes,
+        cfg,
+        include_untracked,
+        finding,
+    )
+}
+
+/// Compute bindings from a policy path and byte observation already held by the
+/// caller. Mutation callers use this form so binding computation cannot
+/// silently select or read another policy.
+pub(crate) fn compute_plan_finding_bindings_with_policy(
+    root: &Path,
+    policy_path: &Path,
+    policy_bytes: &[u8],
+    cfg: &AllowConfig,
+    include_untracked: bool,
+    finding: &Finding,
+) -> CargoAllowResult<PlanFindingBindings> {
+    let relative_policy = git_relative_selected_config_path(root, policy_path)?;
     let source_path = root.join(&finding.path);
     let source_bytes = read_bound_file(&source_path, "source file")?;
     let finding_key = finding_identity_key(finding);
     let selector = selector_from_finding(finding);
     let inventory_basis_identity = inventory_identity(root, cfg, include_untracked)?;
-    let policy_digest = sha256_v1_bytes(&policy_bytes);
+    let policy_digest = sha256_v1_bytes(policy_bytes);
     let repository_identity = sha256_v1_bytes(
         format!("cargo-allow.repository.v1\n{inventory_basis_identity}\n{policy_digest}")
             .as_bytes(),
