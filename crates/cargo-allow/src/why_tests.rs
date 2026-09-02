@@ -73,6 +73,75 @@ fn why_rejects_existing_plan_as_usage() {
 }
 
 #[test]
+fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-context-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("policy"))?;
+    fs::create_dir_all(root.join("src"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "policy = \"cargo-allow\"\n\n[[allow]]\nid = \"why-context\"\nkind = \"panic\"\nfamily = \"unwrap\"\nglob = \"src/**/*.rs\"\nowner = \"test\"\nclassification = \"fixture\"\nreason = \"why context fixture\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"call_expression\"\nglob = \"src/**/*.rs\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+    )?;
+    for args in [
+        vec!["init"],
+        vec!["config", "user.email", "cargo-allow@example.invalid"],
+        vec!["config", "user.name", "cargo-allow why test"],
+        vec!["add", "--all"],
+        vec!["commit", "-m", "why context fixture"],
+    ] {
+        let status = std::process::Command::new("git")
+            .args(&args)
+            .current_dir(&root)
+            .status()?;
+        if !status.success() {
+            return Err(format!("git command failed: {args:?}").into());
+        }
+    }
+
+    let args = WhyArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(root.join("why.json")),
+        plan: None,
+    };
+    let scoped = crate::world::load_world_for_path(
+        Some(&root),
+        None,
+        true,
+        Some("panic"),
+        false,
+        &root.join("src/lib.rs"),
+    )?;
+    let scoped_digest = scoped.0.inventory_facts.policy_digest_text();
+    let broadened = broaden_context(&scoped.0, scoped_digest.clone(), false, Some("panic"))?;
+    if broadened.findings.is_empty() {
+        return Err("broadened why context lost the fixture finding".into());
+    }
+    if broadened.inventory_facts.policy_digest_text() != scoped_digest {
+        return Err("broadened why context changed the selected policy digest".into());
+    }
+    cmd_why(&args)?;
+    let _ = fs::remove_dir_all(&root);
+    Ok(())
+}
+
+#[test]
 fn why_missing_evaluation_outcome_is_an_internal_invariant() {
     let err = missing_evaluation_outcome_error(std::path::Path::new("src/lib.rs"), 42);
 

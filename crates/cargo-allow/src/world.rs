@@ -359,6 +359,7 @@ pub(crate) type WorldLoadResult = CargoAllowResult<(
 ///
 /// The canonical world loader assembles this once so commands can share the
 /// selected configuration and derived observations without re-resolving them.
+#[derive(Clone)]
 pub(crate) struct CoreWorldContext {
     pub(crate) root: PathBuf,
     pub(crate) cfg: AllowConfig,
@@ -415,15 +416,11 @@ pub(crate) fn load_read_only_world_and_cache(
     )
 }
 
-type ScopedWorldLoadResult = CargoAllowResult<(
-    PathBuf,
-    AllowConfig,
-    Vec<Finding>,
-    InventoryFacts,
-    FederationEvaluation,
+pub(crate) type ScopedWorldContext = (
+    CoreWorldContext,
     Option<allow_rust::RustFileScanOutcome>,
     Option<String>,
-)>;
+);
 
 #[cfg(test)]
 pub(crate) fn load_world(
@@ -654,7 +651,7 @@ pub(crate) fn load_world_for_path(
     kind_filter: Option<&str>,
     include_untracked: bool,
     target_path: &Path,
-) -> ScopedWorldLoadResult {
+) -> CargoAllowResult<ScopedWorldContext> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
@@ -667,7 +664,17 @@ pub(crate) fn load_world_for_path(
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
             )?;
-            return Ok((root, cfg, findings, facts, federation, None, None));
+            return Ok((
+                CoreWorldContext {
+                    root,
+                    cfg,
+                    findings,
+                    inventory_facts: facts,
+                    federation,
+                },
+                None,
+                None,
+            ));
         }
         Err(err) => return Err(err),
     };
@@ -750,11 +757,13 @@ pub(crate) fn load_world_for_path(
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     Ok((
-        root,
-        cfg,
-        findings,
-        inventory_facts,
-        federation,
+        CoreWorldContext {
+            root,
+            cfg,
+            findings,
+            inventory_facts,
+            federation,
+        },
         target_scan,
         selected_policy_identity,
     ))
@@ -1624,7 +1633,18 @@ mod tests {
                 })
         };
         let full_finding = select(&full.2);
-        let scoped_finding = select(&scoped.2);
+        let scoped_finding = select(&scoped.0.findings);
+
+        assert_eq!(
+            scoped.2.as_deref(),
+            Some("policy/allow.toml"),
+            "scoped context must retain the exact selected policy identity for later fallback"
+        );
+        assert_eq!(
+            scoped.0.inventory_facts.policy_digest_text(),
+            full.3.policy_digest_text(),
+            "scoped context must retain the selected policy digest for later fallback"
+        );
 
         assert_eq!(
             full_finding.identity.crate_name.as_deref(),
