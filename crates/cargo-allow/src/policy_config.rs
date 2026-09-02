@@ -25,6 +25,13 @@ pub(crate) fn missing_plan_policy_config_error() -> CargoAllowError {
     )
 }
 
+pub(crate) fn missing_plan_update_policy_config_error() -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        "no policy config found to update; run `cargo-allow init`",
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConfigDiscovery {
     pub path: Option<PathBuf>,
