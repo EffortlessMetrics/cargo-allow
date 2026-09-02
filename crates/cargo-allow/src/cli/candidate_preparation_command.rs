@@ -255,24 +255,6 @@ fn instrument_failure_result(reasons: Vec<String>) -> CandidatePreparationResult
     }
 }
 
-/// CWD-bound projection entry point; production commands bind the root
-/// explicitly, so this convenience wrapper is test-only today.
-#[cfg_attr(not(test), allow(dead_code))]
-pub(crate) fn build_preparation_result(
-    target_version: &str,
-    policy_plan: Option<&Path>,
-) -> CargoAllowResult<CandidatePreparationResultV1> {
-    let root = match git_root() {
-        Ok(root) => root,
-        Err(reason) => {
-            return Ok(instrument_failure_result(vec![format!(
-                "repository worktree: {reason}"
-            )]));
-        }
-    };
-    build_preparation_result_for_root(&root, target_version, policy_plan)
-}
-
 /// Root-parameterized projection, used by the apply engine's revalidation
 /// and by the fixture-driven tests.
 pub(crate) fn build_preparation_result_for_root(
@@ -1470,9 +1452,12 @@ extraction_destination = \"cargo-allow\"
         assert!(rendered.contains("inputs could not be trusted"));
         assert!(rendered.contains("reason: repository identity: missing"));
 
-        let live =
-            crate::cli::candidate_preparation_command::build_preparation_result("0.2.0", None)
-                .expect("live projection builds");
+        let live = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+            &git_root().expect("the live repository root resolves"),
+            "0.2.0",
+            None,
+        )
+        .expect("live projection builds");
         let rendered = render_text_summary(&live);
         let plan = live.plan.as_ref().expect("plan projects");
         assert!(rendered.contains(&plan.plan_digest));

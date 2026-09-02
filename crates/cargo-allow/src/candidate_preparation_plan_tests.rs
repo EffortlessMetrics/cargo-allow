@@ -575,8 +575,12 @@ fn live_result_validates_against_the_registered_schema() {
 }
 
 fn live_preparation_result(version: &str) -> allow_report::CandidatePreparationResultV1 {
-    crate::cli::candidate_preparation_command::build_preparation_result(version, None)
-        .expect("live preparation must not be a process error")
+    crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
+        version,
+        None,
+    )
+    .expect("live preparation must not be a process error")
 }
 
 fn git_text(root: &std::path::Path, args: &[&str]) -> String {
@@ -614,7 +618,8 @@ fn command_dispatch_parses_through_the_real_cli() {
         panic!("plan subcommand must parse");
     };
     assert_eq!(plan_args.version, "0.2.0");
-    let result = crate::cli::candidate_preparation_command::build_preparation_result(
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
         &plan_args.version,
         None,
     )
@@ -629,9 +634,12 @@ fn command_dispatch_parses_through_the_real_cli() {
 /// invalid-config error.
 #[test]
 fn command_layer_rejects_malformed_targets() {
-    let result =
-        crate::cli::candidate_preparation_command::build_preparation_result("0.2.0-beta.9", None)
-            .expect("the typed result exists for the unsupported target");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
+        "0.2.0-beta.9",
+        None,
+    )
+    .expect("the typed result exists for the unsupported target");
     assert_eq!(
         result.readiness,
         CandidatePreparationReadinessV1::Unsupported
