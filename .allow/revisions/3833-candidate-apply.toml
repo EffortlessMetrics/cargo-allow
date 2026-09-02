@@ -290,3 +290,27 @@ allow_ids = ["allow-0806"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:1761321f8ba8dfc34a1bcd2029379c4e3799418632bf25e7d53af755e09102f3"
 reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1669 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0807"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8a6a8a9c1f0efd13e6c46fd38a9426c4e38499dea3cfb9209c6dfbedb4bd9a9b"
+reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:626 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0808"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:83fda27b1f699dfa58ba06d16759b24cae7bb45d4d7f6951497652fea20cb1f5"
+reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:642 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0809"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5464e2e5fccc11ea9a6521cd77c595e9a4aeab9874520efd186e54b6b0b631a7"
+reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1456 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0810"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8a782ccdd04feaa3ce50bf05fa78e9fd3e043ebbdcf85bb6c5eeeb5fd02f31e5"
+reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1460 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."

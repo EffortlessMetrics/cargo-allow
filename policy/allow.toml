@@ -17324,3 +17324,95 @@ normalized_snippet_hash = "fnv1a64:843e9b598b81bf1c"
 [allow.last_seen]
 line = 1669
 column = 6
+
+[[allow]]
+id = "allow-0807"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper or coverage assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_dispatch_parses_through_the_real_cli"
+callee = "expect"
+receiver_fingerprint = "uild_preparation_result_for_root( &workspace_root(), &plan_args.version, None, )"
+normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
+
+[allow.last_seen]
+line = 626
+column = 6
+
+[[allow]]
+id = "allow-0808"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper or coverage assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_layer_rejects_malformed_targets"
+callee = "expect"
+receiver_fingerprint = "d::build_preparation_result_for_root( &workspace_root(), \"0.2.0-beta.9\", None, )"
+normalized_snippet_hash = "fnv1a64:f7afd8157624cc5c"
+
+[allow.last_seen]
+line = 642
+column = 6
+
+[[allow]]
+id = "allow-0809"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only live-root resolution in the render-summary command test (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "git_root()"
+normalized_snippet_hash = "fnv1a64:c8f0de562ac58fbb"
+
+[allow.last_seen]
+line = 1456
+column = 25
+
+[[allow]]
+id = "allow-0810"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expectation that the live projection builds in the render-summary test (#3833)"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "_root( &git_root().expect(\"the live repository root resolves\"), \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
+
+[allow.last_seen]
+line = 1460
+column = 10
