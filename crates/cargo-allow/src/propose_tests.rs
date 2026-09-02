@@ -79,6 +79,39 @@ fn propose_summary_collision_rejects_before_touching_live_policy() -> Result<(),
 }
 
 #[test]
+fn propose_without_policy_preserves_bootstrap_baseline_path() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-no-policy-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+    fs::write(root.join("src/lib.rs"), "pub fn example() {}\n")
+        .map_err(|error| error.to_string())?;
+    let target = root.join("policy/allow.toml");
+    let result = cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: None,
+        include_untracked: true,
+        expires: None,
+        write: Some(target.clone()),
+        force: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+        max: 50,
+    });
+    result.map_err(|error| format!("bootstrap propose failed: {error}"))?;
+    if !target.is_file() {
+        return Err("bootstrap propose did not create a policy".to_string());
+    }
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn proposal_summary_preserves_distinct_rejection_reasons() {
     let mut reason = None;
     record_unreceiptable_reason(&mut reason, "bare allow forbidden");
