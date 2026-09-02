@@ -1486,7 +1486,7 @@ extraction_destination = \"cargo-allow\"
 }
 
 /// Fault-injection points for the apply engine's transaction tests. The
-/// production CLI always passes [`ApplyFault::None`].
+/// production CLI always passes [`ApplyFault::none()`].
 /// Fault-injection channels for the apply engine's transaction tests. The
 /// production CLI passes `ApplyFault::none()`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
