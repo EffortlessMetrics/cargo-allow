@@ -961,8 +961,8 @@ fn mutation_target_collisions_are_detected() {
         validation_obligations: Vec::new(),
     };
 
-    // Repository escape.
-    let mut surfaces = vec![make("..\\escaped.txt")];
+    // Repository escape (forward slashes escape on every platform).
+    let mut surfaces = vec![make("../escaped.txt")];
     crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
     assert!(matches!(
         surfaces[0].collision,
