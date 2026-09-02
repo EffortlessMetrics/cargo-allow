@@ -61,13 +61,13 @@ pub(crate) enum PrepCandidateSubcommand {
 pub(crate) struct PrepCandidateApplyArgs {
     /// Reviewed plan file (the `prep-candidate plan --format json` output).
     #[arg(long)]
-    from_plan: PathBuf,
+    pub(crate) from_plan: PathBuf,
     /// Where to write the bounded intermediate apply receipt.
     #[arg(long)]
-    receipt: Option<PathBuf>,
+    pub(crate) receipt: Option<PathBuf>,
     /// Acknowledge one required decision by id (repeatable).
     #[arg(long = "acknowledge-decision")]
-    acknowledge_decision: Vec<String>,
+    pub(crate) acknowledge_decision: Vec<String>,
 }
 
 /// Output rendering for the preparation result.
@@ -97,7 +97,22 @@ pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<(
     }
 }
 
-fn cmd_prep_candidate_apply(args: &PrepCandidateApplyArgs) -> CargoAllowResult<()> {
+pub(crate) fn cmd_prep_candidate_apply(args: &PrepCandidateApplyArgs) -> CargoAllowResult<()> {
+    let root = git_root().map_err(|reason| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("apply requires a git worktree: {reason}"),
+        )
+    })?;
+    cmd_prep_candidate_apply_with_root(&root, args)
+}
+
+/// Root-parameterized apply entry point (the engine's fixture tests bind
+/// an explicit repository root).
+pub(crate) fn cmd_prep_candidate_apply_with_root(
+    root: &Path,
+    args: &PrepCandidateApplyArgs,
+) -> CargoAllowResult<()> {
     let plan_text = std::fs::read_to_string(&args.from_plan).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
@@ -110,14 +125,8 @@ fn cmd_prep_candidate_apply(args: &PrepCandidateApplyArgs) -> CargoAllowResult<(
             format!("parse plan file: {error}"),
         )
     })?;
-    let root = git_root().map_err(|reason| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            format!("apply requires a git worktree: {reason}"),
-        )
-    })?;
     let receipt = apply_candidate_plan(
-        &root,
+        root,
         &plan,
         &args.acknowledge_decision,
         args.receipt.as_deref(),
@@ -1132,6 +1141,16 @@ fn render_token_swap(
     Ok(text.replace(from, to).into_bytes())
 }
 
+/// One-byte workspace-state flip used by the post-lock mutation fault.
+fn append_byte(bytes: &[u8]) -> Vec<u8> {
+    let mut flipped = bytes.to_vec();
+    flipped.extend_from_slice(
+        b"
+",
+    );
+    flipped
+}
+
 /// Swap every occurrence of a token in a version-derived file.
 fn render_token_swap_all(bytes: &[u8], from: &str, to: &str, path: &str) -> Fact<Vec<u8>> {
     let text = std::str::from_utf8(bytes).map_err(|error| format!("{path} encoding: {error}"))?;
@@ -1495,6 +1514,9 @@ pub(crate) struct ApplyFault {
     pub(crate) after_commit: Option<usize>,
     /// Simulate staged bytes that do not match their expected digest.
     pub(crate) corrupt_staged: bool,
+    /// Simulate another writer flipping a target after the locks are held
+    /// but before the per-target recheck.
+    pub(crate) mutate_target_after_lock: bool,
 }
 
 impl ApplyFault {
@@ -1502,6 +1524,7 @@ impl ApplyFault {
         Self {
             after_commit: None,
             corrupt_staged: false,
+            mutate_target_after_lock: false,
         }
     }
 }
@@ -1746,6 +1769,13 @@ pub(crate) fn apply_candidate_plan(
 
     // ---- Per-target recheck immediately before staging: the plan's bound
     // current digests must still hold under lock.
+    if fault.mutate_target_after_lock
+        && let Some((_, path)) = lock_targets.first()
+        && let Ok(bytes) = std::fs::read(path)
+        && let Ok(mutated) = std::str::from_utf8(&append_byte(&bytes))
+    {
+        let _ = effortless_repo_edit::write_file(path, mutated);
+    }
     for operation in &write_ops {
         let absolute = root.join(&operation.path);
         let Ok(bytes) = std::fs::read(&absolute) else {

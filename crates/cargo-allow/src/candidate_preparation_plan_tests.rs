@@ -1279,6 +1279,7 @@ fn candidate_preparation_faults_mid_commit_rolls_back_completely() {
         crate::cli::candidate_preparation_command::ApplyFault {
             after_commit: Some(2),
             corrupt_staged: false,
+            mutate_target_after_lock: false,
         },
     );
     assert_eq!(
@@ -1327,6 +1328,7 @@ fn candidate_preparation_faults_corrupt_staged_abort_without_writes() {
         crate::cli::candidate_preparation_command::ApplyFault {
             after_commit: None,
             corrupt_staged: true,
+            mutate_target_after_lock: false,
         },
     );
     assert_eq!(
@@ -1437,4 +1439,89 @@ fn candidate_preparation_apply_command_source_has_no_external_writes() {
             "apply command source contains forbidden construct {forbidden:?}"
         );
     }
+}
+
+/// The command wrapper loads a plan file, writes the receipt, and maps an
+/// Applied state to success end to end.
+#[test]
+fn candidate_preparation_apply_command_writes_receipt_and_maps_exit() {
+    let root = fixture_apply_repo("cmd");
+    let plan = fixture_plan(&root);
+    // The plan file lives outside the fixture: an untracked file inside
+    // the repository would legitimately flip the dirty-state class and
+    // make the gate report Stale.
+    let plan_file = std::env::temp_dir().join(format!(
+        "candidate-preparation-plan-{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &plan_file,
+        serde_json::to_string_pretty(&plan).expect("plan serializes"),
+    )
+    .expect("plan file written");
+    let receipt_path = root.join("candidate-preparation.receipt.json");
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file.clone(),
+        receipt: Some(receipt_path.clone()),
+        acknowledge_decision: fixture_decisions(&plan),
+    };
+    crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+        .expect("applied plan exits ready");
+    let receipt_text = std::fs::read_to_string(&receipt_path).expect("receipt written");
+    assert!(receipt_text.contains("cargo-allow.candidate-apply-receipt.v1"));
+    assert!(receipt_text.contains("\"state\": \"applied\""));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A malformed plan file fails at load with a structured invalid-config
+/// error before any repository access.
+#[test]
+fn candidate_preparation_apply_command_rejects_malformed_plan_files() {
+    let root = fixture_apply_repo("cmd-bad");
+    let plan_file = root.join("broken-plan.json");
+    std::fs::write(&plan_file, "{ not json").expect("plan file written");
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file,
+        receipt: None,
+        acknowledge_decision: Vec::new(),
+    };
+    let error = crate::cli::candidate_preparation_command::cmd_prep_candidate_apply(&args)
+        .expect_err("malformed plan must fail");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A target flipped between lock acquisition and the recheck is a
+/// Mismatch with zero writes (control 6).
+#[test]
+fn candidate_preparation_faults_post_lock_mutation_is_a_mismatch() {
+    let root = fixture_apply_repo("postlock");
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: None,
+            corrupt_staged: false,
+            mutate_target_after_lock: true,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Mismatch,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    assert!(before.contains("0.2.0-rc.1"));
+    let _ = std::fs::remove_dir_all(&root);
 }

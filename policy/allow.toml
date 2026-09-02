@@ -17117,3 +17117,141 @@ glob = ".allow/revisions/3833-candidate-apply.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0798"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_writes_receipt_and_maps_exit"
+callee = "expect"
+receiver_fingerprint = "serde_json::to_string_pretty(&plan)"
+normalized_snippet_hash = "fnv1a64:b07f5c3e79221cdd"
+
+[allow.last_seen]
+line = 1459
+column = 45
+
+[[allow]]
+id = "allow-0799"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_writes_receipt_and_maps_exit"
+callee = "expect"
+receiver_fingerprint = "te( &plan_file, serde_json::to_string_pretty(&plan).expect(\"plan serializes\"), )"
+normalized_snippet_hash = "fnv1a64:88f7c2f470407be0"
+
+[allow.last_seen]
+line = 1461
+column = 6
+
+[[allow]]
+id = "allow-0800"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_rejects_malformed_plan_files"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(&plan_file, \"{ not json\")"
+normalized_snippet_hash = "fnv1a64:cc3c7b3fc6286fb0"
+
+[allow.last_seen]
+line = 1482
+column = 46
+
+[[allow]]
+id = "allow-0801"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_post_lock_mutation_is_a_mismatch"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(root.join(\"Cargo.toml\"))"
+normalized_snippet_hash = "fnv1a64:3bcd5cb13aeec3c8"
+
+[allow.last_seen]
+line = 1499
+column = 67
+
+[[allow]]
+id = "allow-0802"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_writes_receipt_and_maps_exit"
+callee = "expect"
+receiver_fingerprint = ":candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)"
+normalized_snippet_hash = "fnv1a64:e67e198e1de8b79a"
+
+[allow.last_seen]
+line = 1469
+column = 10
+
+[[allow]]
+id = "allow-0803"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply command wrapper assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_writes_receipt_and_maps_exit"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(&receipt_path)"
+normalized_snippet_hash = "fnv1a64:ecbe4427e8d8be0a"
+
+[allow.last_seen]
+line = 1470
+column = 63
