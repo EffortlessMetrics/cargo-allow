@@ -440,3 +440,9 @@ allow_ids = ["allow-0831"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:0227ccb9487bb23c2cc1d01247f90292bee295582c522bcada456f382a7e0de8"
 reason = "Test-only drift-rejection or root-parser assertion in the candidate-preparation suite (#3833); the expected side is fully controlled parser input."
+
+[[records]]
+allow_ids = ["allow-0832"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:31649d9d209ffd0419f43e93e4b695c60f54a7be4365311449711ca2e37fb3de"
+reason = "Test-only corrupted-authority expectation at the topology decode/parse arms in the candidate-preparation suite (#3833)."

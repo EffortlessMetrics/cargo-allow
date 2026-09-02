@@ -17899,3 +17899,26 @@ normalized_snippet_hash = "fnv1a64:3c4c64d608146e5e"
 [allow.last_seen]
 line = 1856
 column = 6
+
+[[allow]]
+id = "allow-0832"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only corrupted-authority expectation in the candidate-preparation suite (#3833); the expected side is deliberately corrupted fixture input"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_corrupted_topology_fails_loudly"
+callee = "expect"
+receiver_fingerprint = "y/product-package-topology-v2.toml\"), \"[[package]\\nlogical_id = \\\"broken\\\"\\n\", )"
+normalized_snippet_hash = "fnv1a64:0294ea56cdaf336c"
+
+[allow.last_seen]
+line = 1881
+column = 6
