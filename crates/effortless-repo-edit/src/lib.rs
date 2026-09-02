@@ -50,6 +50,7 @@ pub use parity::parity_contract_paths;
 pub use single_target_apply::{
     SingleTargetApplyMode, SingleTargetApplyRequest, SingleTargetApplyResponse,
     apply_single_target, apply_single_target_with_target,
+    apply_single_target_with_target_and_expected_digest,
 };
 pub use target_identity::canonicalize_lexically;
 

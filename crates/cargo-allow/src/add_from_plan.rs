@@ -44,7 +44,8 @@ use crate::{
     load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
 };
 use effortless_repo_edit::{
-    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+    SingleTargetApplyMode, SingleTargetApplyRequest,
+    apply_single_target_with_target_and_expected_digest,
 };
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
@@ -247,7 +248,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let rendered = render_policy(&cfg);
     let policy_target =
         crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
-    apply_single_target_with_target(
+    apply_single_target_with_target_and_expected_digest(
         SingleTargetApplyRequest {
             repository_root: &root,
             target: &policy_target,
@@ -261,6 +262,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
             mode: SingleTargetApplyMode::AtomicReplace,
         },
         &resolved_mutation_target,
+        &policy_before_digest,
     )
     .into_result()
     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
