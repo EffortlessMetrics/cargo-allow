@@ -3,6 +3,7 @@ use allow_core::{
 };
 use allow_files::{FileFamilyClassification, FileScanOptions, classify_file_family_with_options};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+#[cfg(test)]
 use allow_policy::load_policy_with_reportable_evidence;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -72,10 +73,11 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         assert_path_within_root(&root, path)?;
     }
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
-    let config_discovery =
-        crate::policy_config::discover_config_path(&root, args.config.as_deref());
+    let observed =
+        crate::policy_config::observe_policy_for_diagnostics(&root, args.config.as_deref());
+    let config_discovery = observed.discovery;
     let config = config_discovery.path.clone();
-    let policy = load_doctor_policy(config.as_deref());
+    let policy = observed.policy;
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
     let rust_scan = allow_rust::scan_rust_files(&root, &inventory.files)?;
@@ -93,8 +95,17 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
-    let (config_valid, config_diagnostic) =
+    let (mut config_valid, mut config_diagnostic) =
         config_status(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
+    if config_discovery.federation_evaluation_failed {
+        config_valid = Some(false);
+        if config_diagnostic.is_none() {
+            config_diagnostic = Some(
+                "federation configuration could not be evaluated; conventional fallback is not clean"
+                    .to_string(),
+            );
+        }
+    }
     let (broken_evidence_links, weak_evidence_references) =
         doctor_evidence_health(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
     let file_family_facts = doctor_file_family_facts(&inventory.files, policy.as_ref());
@@ -135,6 +146,18 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .and_then(|cfg| cfg.status.as_deref());
     let mut federation = FederationDoctorFacts::load(&root)?;
     federation.enrich_runtime_divergences(&root)?;
+    if config_discovery.federation_evaluation_failed
+        || (config_discovery.precedence == Some(allow_policy::PrecedenceTier::DiscoveryFallback)
+            && federation.valid == Some(false))
+    {
+        config_valid = Some(false);
+        if config_diagnostic.is_none() {
+            config_diagnostic = Some(
+                "federation configuration is invalid; conventional fallback is not clean"
+                    .to_string(),
+            );
+        }
+    }
     let configured_ledgers = federation.configured_ledger_summaries();
     let federation_diagnostics = federation.diagnostic_summaries();
     let federation_divergences = federation.divergence_summaries();
@@ -457,10 +480,6 @@ fn render_intent_provider_failure(
     )
 }
 
-fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
-    config.map(load_policy_with_reportable_evidence)
-}
-
 fn doctor_file_family_facts(
     files: &[std::path::PathBuf],
     policy: Option<&CargoAllowResult<AllowConfig>>,
@@ -512,6 +531,11 @@ fn doctor_file_family_facts(
         })
         .collect();
     DoctorFileFamilyFacts { rules, conflicts }
+}
+
+#[cfg(test)]
+fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
+    config.map(load_policy_with_reportable_evidence)
 }
 
 fn config_status(

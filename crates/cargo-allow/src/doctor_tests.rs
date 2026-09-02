@@ -229,6 +229,52 @@ fn doctor_require_clean_classifies_malformed_policy() -> Result<(), String> {
 }
 
 #[test]
+fn doctor_require_clean_rejects_malformed_federation_fallback() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+    fs::write(
+        root.join(".allow/config.toml"),
+        "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"dup\"\npath = \"policy/allow.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\npriority = 10\n\n[[ledgers]]\nid = \"dup\"\npath = \"policy/other.toml\"\ndialect = \"cargo-allow\"\nrole = \"imported\"\npriority = 20\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let policy = root.join("allow.toml");
+    fs::write(
+        &policy,
+        "policy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n",
+    )
+    .map_err(|error| error.to_string())?;
+
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: true,
+        output: None,
+        support_bundle: None,
+    });
+    remove_doctor_fixture_dir(root);
+
+    match result {
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::PolicyViolation
+                && error
+                    .to_string()
+                    .contains("policy config is invalid or missing") =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("unexpected federation fallback error: {error}")),
+        Ok(()) => Err(
+            "doctor --require-clean unexpectedly accepted malformed federation fallback"
+                .to_string(),
+        ),
+    }
+}
+
+#[test]
 fn doctor_require_clean_classifies_broken_evidence() -> Result<(), String> {
     let root = doctor_fixture_dir();
     let policy = root.join("allow.toml");

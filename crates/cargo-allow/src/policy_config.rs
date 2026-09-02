@@ -43,6 +43,28 @@ pub(crate) struct ConfigDiscovery {
     pub federation_evaluation_failed: bool,
 }
 
+/// The selected policy observation used by read-only diagnostics.
+///
+/// Keeping discovery metadata and the policy load together prevents callers
+/// from selecting a path once and then independently reloading a potentially
+/// different policy while constructing their report.
+pub(crate) struct ResolvedPolicyObservation {
+    pub discovery: ConfigDiscovery,
+    pub policy: Option<CargoAllowResult<AllowConfig>>,
+}
+
+pub(crate) fn observe_policy_for_diagnostics(
+    root: &Path,
+    config: Option<&Path>,
+) -> ResolvedPolicyObservation {
+    let discovery = discover_config_path(root, config);
+    let policy = discovery
+        .path
+        .clone()
+        .map(load_policy_with_reportable_evidence);
+    ResolvedPolicyObservation { discovery, policy }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum EvidenceValidationMode {
     Abort,
