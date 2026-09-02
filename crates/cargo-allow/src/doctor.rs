@@ -174,7 +174,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         .map(|cfg| CoreWorldContext {
             root: root.clone(),
             cfg: cfg.clone(),
-            findings: Vec::new(),
+            findings: rust_scan.findings.clone(),
             inventory_facts: InventoryFacts::scanned_inventory(&inventory)
                 .with_deleted_tracked(deleted_tracked_files)
                 .with_rust_files_considered(rust_scan.files_considered)
