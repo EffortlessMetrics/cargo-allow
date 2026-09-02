@@ -81,9 +81,9 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         &target_path,
     )?;
-    let scoped_root = &scoped_world.core.root;
+    let scoped_root = &scoped_world.0.root;
     let target_repo_path = crate::world::normalize_to_repo_relative(scoped_root, &target_path);
-    if let Some(target_scan) = scoped_world.target_scan.as_ref()
+    if let Some(target_scan) = scoped_world.1.as_ref()
         && !matches!(target_scan, RustFileScanOutcome::Scanned)
     {
         let (status, reason) = match target_scan {
@@ -97,7 +97,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             reasons: &[],
         };
         let source_context =
-            SourceTreeReportContext::new(scoped_root, scoped_world.core.inventory_facts);
+            SourceTreeReportContext::new(scoped_root, scoped_world.0.inventory_facts);
         let target_path_text = normalize_path(&target_repo_path);
         let detail_json = render_why_target_scan_json(
             source_context.inventory(),
@@ -112,7 +112,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             &source_context,
             &target_path_text,
             args.line,
-            scoped_world.core.inventory_facts,
+            scoped_world.0.inventory_facts,
         )?;
         crate::core_command_router::write_summary_artifact(scoped_root, &summary)?;
         let text = match args.format {
@@ -129,32 +129,27 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         return Ok(());
     }
     let scoped_finding = crate::add::select_add_finding(
-        &scoped_world.core.findings,
+        &scoped_world.0.findings,
         parsed_kind,
         &target_repo_path,
         args.line,
     )?
     .1;
-    let selected_policy_digest = scoped_world.core.inventory_facts.policy_digest_text();
+    let selected_policy_digest = scoped_world.0.inventory_facts.policy_digest_text();
     let selected_policy_path = if args.plan.is_some() {
-        Some(
-            scoped_world
-                .selected_policy_identity
-                .clone()
-                .ok_or_else(|| {
-                    CargoAllowError::with_kind(
-                        CargoAllowErrorKind::InvalidPolicy,
-                        "selected policy identity could not be observed; rerun why",
-                    )
-                })?,
-        )
+        Some(scoped_world.2.clone().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                "selected policy identity could not be observed; rerun why",
+            )
+        })?)
     } else {
         None
     };
     let locality_reasons = crate::world::scoped_locality_reasons(
-        &scoped_world.core.cfg,
+        &scoped_world.0.cfg,
         scoped_finding,
-        &scoped_world.core.federation,
+        &scoped_world.0.federation,
     );
     let evaluation = if locality_reasons.is_empty() {
         allow_report::EvaluationContext {
@@ -170,14 +165,14 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         }
     };
     let selected_context = if locality_reasons.is_empty() {
-        scoped_world.core.clone()
+        scoped_world.0.clone()
     } else {
         let (root, cfg, findings, inventory_facts, federation) =
             load_world_from_resolved_policy_with_options(
-                &scoped_world.core.root,
-                scoped_world.core.cfg.clone(),
+                &scoped_world.0.root,
+                scoped_world.0.cfg.clone(),
                 selected_policy_digest.clone(),
-                scoped_world.core.federation.clone(),
+                scoped_world.0.federation.clone(),
                 args.include_untracked,
                 Some(args.kind.as_str()),
                 true,

@@ -416,11 +416,11 @@ pub(crate) fn load_read_only_world_and_cache(
     )
 }
 
-pub(crate) struct ScopedWorldContext {
-    pub(crate) core: CoreWorldContext,
-    pub(crate) target_scan: Option<allow_rust::RustFileScanOutcome>,
-    pub(crate) selected_policy_identity: Option<String>,
-}
+pub(crate) type ScopedWorldContext = (
+    CoreWorldContext,
+    Option<allow_rust::RustFileScanOutcome>,
+    Option<String>,
+);
 
 #[cfg(test)]
 pub(crate) fn load_world(
@@ -664,17 +664,17 @@ pub(crate) fn load_world_for_path(
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
             )?;
-            return Ok(ScopedWorldContext {
-                core: CoreWorldContext {
+            return Ok((
+                CoreWorldContext {
                     root,
                     cfg,
                     findings,
                     inventory_facts: facts,
                     federation,
                 },
-                target_scan: None,
-                selected_policy_identity: None,
-            });
+                None,
+                None,
+            ));
         }
         Err(err) => return Err(err),
     };
@@ -756,8 +756,8 @@ pub(crate) fn load_world_for_path(
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
-    Ok(ScopedWorldContext {
-        core: CoreWorldContext {
+    Ok((
+        CoreWorldContext {
             root,
             cfg,
             findings,
@@ -766,7 +766,7 @@ pub(crate) fn load_world_for_path(
         },
         target_scan,
         selected_policy_identity,
-    })
+    ))
 }
 
 fn canonical_policy_identity(root: &Path, policy: &Path) -> Option<String> {
@@ -1633,15 +1633,15 @@ mod tests {
                 })
         };
         let full_finding = select(&full.2);
-        let scoped_finding = select(&scoped.core.findings);
+        let scoped_finding = select(&scoped.0.findings);
 
         assert_eq!(
-            scoped.selected_policy_identity.as_deref(),
+            scoped.2.as_deref(),
             Some("policy/allow.toml"),
             "scoped context must retain the exact selected policy identity for later fallback"
         );
         assert_eq!(
-            scoped.core.inventory_facts.policy_digest_text(),
+            scoped.0.inventory_facts.policy_digest_text(),
             full.3.policy_digest_text(),
             "scoped context must retain the selected policy digest for later fallback"
         );
