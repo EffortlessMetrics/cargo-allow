@@ -73,6 +73,65 @@ fn why_rejects_existing_plan_as_usage() {
 }
 
 #[test]
+fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-context-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("policy"))?;
+    fs::create_dir_all(root.join("src"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+    )?;
+    for args in [
+        vec!["init"],
+        vec!["config", "user.email", "cargo-allow@example.invalid"],
+        vec!["config", "user.name", "cargo-allow why test"],
+        vec!["add", "--all"],
+        vec!["commit", "-m", "why context fixture"],
+    ] {
+        let status = std::process::Command::new("git")
+            .args(&args)
+            .current_dir(&root)
+            .status()?;
+        if !status.success() {
+            return Err(format!("git command failed: {args:?}").into());
+        }
+    }
+
+    let original = std::env::current_dir()?;
+    let result = (|| -> Result<(), Box<dyn Error>> {
+        std::env::set_current_dir(&root)?;
+        let args = WhyArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: None,
+            kind: "panic".to_string(),
+            path: PathBuf::from("src/lib.rs"),
+            line: 1,
+            include_untracked: false,
+            format: HumanJsonFormat::Json,
+            output: Some(root.join("why.json")),
+            plan: None,
+        };
+        cmd_why(&args)?;
+        Ok(())
+    })();
+    std::env::set_current_dir(original)?;
+    let _ = fs::remove_dir_all(&root);
+    result
+}
+
+#[test]
 fn why_missing_evaluation_outcome_is_an_internal_invariant() {
     let err = missing_evaluation_outcome_error(std::path::Path::new("src/lib.rs"), 42);
 
