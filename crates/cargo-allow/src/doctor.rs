@@ -28,6 +28,7 @@ use crate::{
     },
     portable_relative_under_root, spec_system,
     support_bundle::{SupportBundleFacts, write_support_bundle},
+    world::CoreWorldContext,
 };
 
 #[derive(Debug, Default)]
@@ -49,6 +50,15 @@ struct DoctorFileFamilyConflict {
     path: String,
     rule_ids: Vec<String>,
     families: Vec<String>,
+}
+
+/// The doctor report combines the canonical resolved configuration context
+/// with diagnostic-only observations.  Keeping this boundary explicit prevents
+/// diagnostics from becoming a second configuration selector while preserving
+/// the existing fail-closed status reporting for malformed or missing policy.
+struct DoctorWorldContext {
+    core: Option<CoreWorldContext>,
+    rust_scan: allow_rust::RustScanResult,
 }
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
@@ -88,10 +98,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let skipped_paths = inventory.skipped_paths.len();
     let submodule_paths = inventory.submodule_paths.len();
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
-    let source_context = SourceTreeReportContext::new(
-        &root,
-        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files),
-    );
+    let doctor_inventory_facts =
+        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files);
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
@@ -160,6 +168,33 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             );
         }
     }
+    let core_context = policy
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
+        .map(|cfg| CoreWorldContext {
+            root: root.clone(),
+            cfg: cfg.clone(),
+            findings: Vec::new(),
+            inventory_facts: InventoryFacts::scanned_inventory(&inventory)
+                .with_deleted_tracked(deleted_tracked_files)
+                .with_rust_files_considered(rust_scan.files_considered)
+                .with_rust_files_skipped(rust_scan.files_skipped)
+                .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
+            federation: config_discovery
+                .federation
+                .clone()
+                .unwrap_or_else(crate::world::default_federation_evaluation),
+        });
+    let doctor_context = DoctorWorldContext {
+        core: core_context,
+        rust_scan,
+    };
+    let rust_scan = &doctor_context.rust_scan;
+    let source_context = doctor_context
+        .core
+        .as_ref()
+        .map(|core| SourceTreeReportContext::new(&root, core.inventory_facts))
+        .unwrap_or_else(|| SourceTreeReportContext::new(&root, doctor_inventory_facts));
     let configured_ledgers = federation.configured_ledger_summaries();
     let federation_diagnostics = federation.diagnostic_summaries();
     let federation_divergences = federation.divergence_summaries();
@@ -189,7 +224,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         git_inventory_error,
         skipped_paths,
         submodule_paths,
-        rust_scanner_completeness: rust_scanner_completeness(&rust_scan),
+        rust_scanner_completeness: rust_scanner_completeness(rust_scan),
         rust_files_considered: rust_scan.files_considered,
         rust_files_scanned: rust_scan
             .files_considered
