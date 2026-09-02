@@ -91,20 +91,28 @@ pub(crate) struct PrepCandidatePlanArgs {
 }
 
 pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<()> {
-    match &args.command {
-        PrepCandidateSubcommand::Plan(plan_args) => cmd_prep_candidate_plan(plan_args),
-        PrepCandidateSubcommand::Apply(apply_args) => cmd_prep_candidate_apply(apply_args),
-    }
-}
-
-pub(crate) fn cmd_prep_candidate_apply(args: &PrepCandidateApplyArgs) -> CargoAllowResult<()> {
     let root = git_root().map_err(|reason| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
-            format!("apply requires a git worktree: {reason}"),
+            format!("prep-candidate requires a git worktree: {reason}"),
         )
     })?;
-    cmd_prep_candidate_apply_with_root(&root, args)
+    cmd_prep_candidate_with_root(&root, args)
+}
+
+/// Root-parameterized dispatch (fixture tests bind an explicit root).
+pub(crate) fn cmd_prep_candidate_with_root(
+    root: &Path,
+    args: &PrepCandidateArgs,
+) -> CargoAllowResult<()> {
+    match &args.command {
+        PrepCandidateSubcommand::Plan(plan_args) => {
+            cmd_prep_candidate_plan_for_root(root, plan_args)
+        }
+        PrepCandidateSubcommand::Apply(apply_args) => {
+            cmd_prep_candidate_apply_with_root(root, apply_args)
+        }
+    }
 }
 
 /// Root-parameterized apply entry point (the engine's fixture tests bind
@@ -175,16 +183,6 @@ fn receipt_human_summary(receipt: &allow_report::CandidateApplyReceiptV1) -> Str
         "candidate apply: state {:?}; {applied} applied, {rolled_back} rolled back; transaction {}; rollback {}; plan {}",
         receipt.state, receipt.transaction_result, receipt.rollback_result, receipt.plan_digest,
     )
-}
-
-fn cmd_prep_candidate_plan(args: &PrepCandidatePlanArgs) -> CargoAllowResult<()> {
-    let root = git_root().map_err(|reason| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            format!("plan requires a git worktree: {reason}"),
-        )
-    })?;
-    cmd_prep_candidate_plan_for_root(&root, args)
 }
 
 /// Root-parameterized plan command (fixture tests bind an explicit root).
@@ -1472,15 +1470,17 @@ extraction_destination = \"cargo-allow\"
             format: PrepOutputFormat::Text,
             policy_plan: None,
         };
-        cmd_prep_candidate_plan(&ready).expect("decision-required plan exits ready");
+        let root = git_root().expect("the live repository root resolves");
+        cmd_prep_candidate_plan_for_root(&root, &ready)
+            .expect("decision-required plan exits ready");
 
         let unsupported = PrepCandidatePlanArgs {
             version: "0.2.0-beta.9".to_string(),
             format: PrepOutputFormat::Json,
             policy_plan: None,
         };
-        let error =
-            cmd_prep_candidate_plan(&unsupported).expect_err("unsupported target fails closed");
+        let error = cmd_prep_candidate_plan_for_root(&root, &unsupported)
+            .expect_err("unsupported target fails closed");
         assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
     }
 
@@ -1507,8 +1507,6 @@ extraction_destination = \"cargo-allow\"
     }
 }
 
-/// Fault-injection points for the apply engine's transaction tests. The
-/// production CLI always passes [`ApplyFault::none()`].
 /// Fault-injection channels for the apply engine's transaction tests. The
 /// production CLI passes `ApplyFault::none()`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

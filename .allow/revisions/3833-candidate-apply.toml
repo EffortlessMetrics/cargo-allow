@@ -314,3 +314,63 @@ allow_ids = ["allow-0810"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:8a782ccdd04feaa3ce50bf05fa78e9fd3e043ebbdcf85bb6c5eeeb5fd02f31e5"
 reason = "Test-only apply command wrapper or coverage assertion at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1460 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0811"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bf04dc29ef9b30a44de4bde6881663f8b96eb46e5df5cd4cea887e287889c2cb"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1028 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0812"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5c0e3af9568d1b430b7f33cf29b76ecba379d55730e3f5ffa292208ddb87c081"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1070 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0813"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2cf089db76da9a369932c6d0c33e2052733de3bb856a11dcf2c4be859fe0ad0f"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1075 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0814"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:205e329a6cc06677f10d792c8fd202711339b6d43ff39bce8c5c83e01dc88b45"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1707 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0815"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:637d39816038856cffc0b283d7a4ce63a94d10fa15d5d2ced128616e1a0d9381"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1711 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0816"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bf78cb8150d5247641d0c531e7c30a3bdbd138757f9886c55bfab68fff377097"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1744 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0817"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ff6e1236c406deea057959f62527403cad23459cac8ef5b62652eecd77eaaaa4"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1755 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0818"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cdf0c55039a5506f5a8795dfd84a454a422c7221c91388a84143cce983534da3"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1779 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0819"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5265bb91685ae1922628171e82e3491be8416a5e733706fdb02526e3e58b5d56"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1781 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0820"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3403a16829776df326f59e9519cc38a956862d5a5ffc5c0e0707fb6e272def91"
+reason = "Test-only apply dispatch, coverage, or fixture assertion at crates/cargo-allow/src/candidate_preparation_plan_tests.rs:1796 in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection."

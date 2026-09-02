@@ -17416,3 +17416,233 @@ normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
 [allow.last_seen]
 line = 1460
 column = 10
+
+[[allow]]
+id = "allow-0811"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\"docs/release/github\"))"
+normalized_snippet_hash = "fnv1a64:91e4de1f58332956"
+
+[allow.last_seen]
+line = 1028
+column = 63
+
+[[allow]]
+id = "allow-0812"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = "::fs::write( root.join(\"docs/release/0.2.0.md\"), \"# 0.2.0 candidate record\\n\", )"
+normalized_snippet_hash = "fnv1a64:f59af1e1f0df9db2"
+
+[allow.last_seen]
+line = 1070
+column = 6
+
+[[allow]]
+id = "allow-0813"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_apply_repo"
+callee = "expect"
+receiver_fingerprint = ".join(\"docs/release/github/v0.2.0.md\"), \"# GitHub release notes for v0.2.0\\n\", )"
+normalized_snippet_hash = "fnv1a64:aa7102a83168ab5f"
+
+[allow.last_seen]
+line = 1075
+column = 6
+
+[[allow]]
+id = "allow-0814"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_gather_failure_reports_every_missing_fact"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(&root)"
+normalized_snippet_hash = "fnv1a64:e15b3ea72e917272"
+
+[allow.last_seen]
+line = 1707
+column = 36
+
+[[allow]]
+id = "allow-0815"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_gather_failure_reports_every_missing_fact"
+callee = "expect"
+receiver_fingerprint = "_preparation_command::build_preparation_result_for_root( &root, \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:a35c222b570e1002"
+
+[allow.last_seen]
+line = 1711
+column = 6
+
+[[allow]]
+id = "allow-0816"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_unrebuildable_projection_is_stale"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(&root)"
+normalized_snippet_hash = "fnv1a64:e15b3ea72e917272"
+
+[allow.last_seen]
+line = 1744
+column = 36
+
+[[allow]]
+id = "allow-0817"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_faults_unrebuildable_projection_is_stale"
+callee = "expect"
+receiver_fingerprint = "identity\": null, \"plan\": null, \"operations\": null, \"human_summary\": \"forged\" }))"
+normalized_snippet_hash = "fnv1a64:854c3bd9fc833810"
+
+[allow.last_seen]
+line = 1755
+column = 10
+
+[[allow]]
+id = "allow-0818"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_dispatch_and_error_mapping"
+callee = "expect"
+receiver_fingerprint = "serde_json::to_string_pretty(&plan)"
+normalized_snippet_hash = "fnv1a64:b07f5c3e79221cdd"
+
+[allow.last_seen]
+line = 1779
+column = 45
+
+[[allow]]
+id = "allow-0819"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_dispatch_and_error_mapping"
+callee = "expect"
+receiver_fingerprint = "te( &plan_file, serde_json::to_string_pretty(&plan).expect(\"plan serializes\"), )"
+normalized_snippet_hash = "fnv1a64:88f7c2f470407be0"
+
+[allow.last_seen]
+line = 1781
+column = 6
+
+[[allow]]
+id = "allow-0820"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only apply dispatch, coverage, or fixture assertion in the candidate-preparation suite (#3833); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3833"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_apply_command_dispatch_and_error_mapping"
+callee = "expect"
+receiver_fingerprint = "cli::candidate_preparation_command::cmd_prep_candidate_with_root(&root, &routed)"
+normalized_snippet_hash = "fnv1a64:de378fc5aa6e2cc2"
+
+[allow.last_seen]
+line = 1796
+column = 10

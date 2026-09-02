@@ -1025,7 +1025,7 @@ fn fixture_apply_repo(tag: &str) -> std::path::PathBuf {
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("crates/allow-core")).expect("crate dir");
     std::fs::create_dir_all(root.join("policy")).expect("policy dir");
-    std::fs::create_dir_all(root.join("docs")).expect("docs dir");
+    std::fs::create_dir_all(root.join("docs/release/github")).expect("release docs dir");
     std::fs::create_dir_all(root.join(".changes")).expect("changes dir");
 
     std::fs::write(
@@ -1063,6 +1063,16 @@ fn fixture_apply_repo(tag: &str) -> std::path::PathBuf {
         "Install the 0.2.0-rc.1 candidate line.\n",
     )
     .expect("getting started");
+    std::fs::write(
+        root.join("docs/release/0.2.0.md"),
+        "# 0.2.0 candidate record\n",
+    )
+    .expect("release record");
+    std::fs::write(
+        root.join("docs/release/github/v0.2.0.md"),
+        "# GitHub release notes for v0.2.0\n",
+    )
+    .expect("github note");
 
     let git = |args: &[&str]| {
         let output = Process::new("git")
@@ -1495,8 +1505,9 @@ fn candidate_preparation_apply_command_rejects_malformed_plan_files() {
         receipt: None,
         acknowledge_decision: Vec::new(),
     };
-    let error = crate::cli::candidate_preparation_command::cmd_prep_candidate_apply(&args)
-        .expect_err("malformed plan must fail");
+    let error =
+        crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+            .expect_err("malformed plan must fail");
     assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -1684,5 +1695,117 @@ fn candidate_preparation_surface_gather_reports_missing_declared_files() {
         result.reasons
     );
     assert!(result.operations.is_none());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A non-repository root makes every git-bound input fact fail with
+/// explicit reasons: the whole gather-failure aggregation path.
+#[test]
+fn candidate_preparation_apply_gather_failure_reports_every_missing_fact() {
+    let root =
+        std::env::temp_dir().join(format!("cargo-allow-apply-nonrepo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("bare dir");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("the failure is a typed result, not a process error");
+    assert_eq!(
+        result.readiness,
+        allow_report::CandidatePreparationReadinessV1::InstrumentFailure
+    );
+    for expected in [
+        "repository identity",
+        "branch",
+        "HEAD commit",
+        "working-tree state",
+    ] {
+        assert!(
+            result
+                .reasons
+                .iter()
+                .any(|reason| reason.contains(expected)),
+            "reason {expected:?} missing: {:?}",
+            result.reasons
+        );
+    }
+    assert!(result.plan.is_none());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Applying against a root whose projection cannot even be rebuilt stays
+/// an explicit stale result (gate ordering: revalidation precedes writes).
+#[test]
+fn candidate_preparation_faults_unrebuildable_projection_is_stale() {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-apply-unrebuildable-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("bare dir");
+    let plan: allow_report::CandidatePreparationResultV1 =
+        serde_json::from_value(serde_json::json!({
+            "schema": "cargo-allow.candidate-preparation-result.v1",
+            "readiness": "decision_required",
+            "reasons": [],
+            "input_identity": null,
+            "plan": null,
+            "operations": null,
+            "human_summary": "forged"
+        }))
+        .expect("minimal result parses");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &[],
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The command dispatch routes both prep-candidate subcommands, and the
+/// apply wrapper's decision-refusal path maps to a structured error.
+#[test]
+fn candidate_preparation_apply_command_dispatch_and_error_mapping() {
+    let root = fixture_apply_repo("dispatch");
+    let plan = fixture_plan(&root);
+    let plan_file = std::env::temp_dir().join(format!(
+        "candidate-preparation-dispatch-{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &plan_file,
+        serde_json::to_string_pretty(&plan).expect("plan serializes"),
+    )
+    .expect("plan file written");
+
+    // The dispatch wrapper routes the Plan subcommand through the same
+    // root-parameterized projection (run while the rc line still binds).
+    let plan_args = crate::cli::candidate_preparation_command::PrepCandidatePlanArgs {
+        version: "0.2.0".to_string(),
+        format: crate::cli::candidate_preparation_command::PrepOutputFormat::Json,
+        policy_plan: None,
+    };
+    let routed = crate::cli::candidate_preparation_command::PrepCandidateArgs {
+        command: crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(
+            plan_args,
+        ),
+    };
+    crate::cli::candidate_preparation_command::cmd_prep_candidate_with_root(&root, &routed)
+        .expect("the plan subcommand exits ready for a projected plan");
+
+    // Apply without acknowledgements: the wrapper surfaces the typed
+    // DecisionRequired refusal as a structured error.
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file,
+        receipt: None,
+        acknowledge_decision: Vec::new(),
+    };
+    let error =
+        crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+            .expect_err("an unacknowledged-decision apply must fail");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     let _ = std::fs::remove_dir_all(&root);
 }
