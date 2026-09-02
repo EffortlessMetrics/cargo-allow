@@ -1925,15 +1925,13 @@ pub(crate) fn apply_candidate_plan(
             owner: operation.owner.clone(),
             role: operation.role.clone(),
             path: operation.path.clone(),
-            intended_posture: match operation.posture {
-                allow_report::CandidateOperationPostureV1::Create => "create".to_string(),
-                allow_report::CandidateOperationPostureV1::Replace => "replace".to_string(),
-                allow_report::CandidateOperationPostureV1::Remove => "remove".to_string(),
-                allow_report::CandidateOperationPostureV1::NoOp => "no_op".to_string(),
-                allow_report::CandidateOperationPostureV1::DecisionRequired => {
-                    "decision_required".to_string()
-                }
-                allow_report::CandidateOperationPostureV1::Conflict => "conflict".to_string(),
+            intended_posture: if matches!(
+                operation.posture,
+                allow_report::CandidateOperationPostureV1::Create
+            ) {
+                "create".to_string()
+            } else {
+                "replace".to_string()
             },
             before_digest: operation.current.digest.clone(),
             staged_digest: operation.prospective_digest.clone(),
