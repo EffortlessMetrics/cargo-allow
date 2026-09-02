@@ -569,7 +569,7 @@ fn live_result_validates_against_the_registered_schema() {
 }
 
 fn live_preparation_result(version: &str) -> allow_report::CandidatePreparationResultV1 {
-    crate::cli::candidate_preparation_command::build_preparation_result(version)
+    crate::cli::candidate_preparation_command::build_preparation_result(version, None)
         .expect("live preparation must not be a process error")
 }
 
@@ -605,9 +605,11 @@ fn command_dispatch_parses_through_the_real_cli() {
     let crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(plan_args) =
         parsed.command;
     assert_eq!(plan_args.version, "0.2.0");
-    let result =
-        crate::cli::candidate_preparation_command::build_preparation_result(&plan_args.version)
-            .expect("live projection builds");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result(
+        &plan_args.version,
+        None,
+    )
+    .expect("live projection builds");
     assert_eq!(
         result.readiness,
         CandidatePreparationReadinessV1::DecisionRequired
@@ -619,7 +621,7 @@ fn command_dispatch_parses_through_the_real_cli() {
 #[test]
 fn command_layer_rejects_malformed_targets() {
     let result =
-        crate::cli::candidate_preparation_command::build_preparation_result("0.2.0-beta.9")
+        crate::cli::candidate_preparation_command::build_preparation_result("0.2.0-beta.9", None)
             .expect("the typed result exists for the unsupported target");
     assert_eq!(
         result.readiness,
@@ -761,4 +763,232 @@ fn bound_corpus_sources_project_without_stale_reasons() {
         result.readiness,
         CandidatePreparationReadinessV1::DecisionRequired
     );
+}
+
+/// The compiled operation plan covers every required owner class on the
+/// live repository with the exact expected postures (omission control 1).
+#[test]
+fn operations_cover_every_required_owner_on_the_live_repo() {
+    let result = live_preparation_result("0.2.0");
+    let ops = result.operations.as_ref().expect("operations compile");
+    let owners: std::collections::BTreeSet<&str> =
+        ops.operations.iter().map(|o| o.owner.as_str()).collect();
+    for required in allow_report::REQUIRED_SURFACE_OWNERS {
+        assert!(owners.contains(required), "owner {required} omitted");
+    }
+    let postures: std::collections::BTreeMap<&str, usize> =
+        ops.operations
+            .iter()
+            .fold(std::collections::BTreeMap::new(), |mut acc, o| {
+                let key = match o.posture {
+                    allow_report::CandidateOperationPostureV1::Create => "create",
+                    allow_report::CandidateOperationPostureV1::Replace => "replace",
+                    allow_report::CandidateOperationPostureV1::Remove => "remove",
+                    allow_report::CandidateOperationPostureV1::NoOp => "noop",
+                    allow_report::CandidateOperationPostureV1::DecisionRequired => "decision",
+                    allow_report::CandidateOperationPostureV1::Conflict => "conflict",
+                };
+                *acc.entry(key).or_default() += 1;
+                acc
+            });
+    // Structural surfaces: root manifest, topology, support matrix, and
+    // the version-derived reference files move; every member manifest is
+    // an explicit NoOp; nothing conflicts.
+    assert!(
+        postures.get("replace").copied().unwrap_or(0) >= 4,
+        "{postures:?}"
+    );
+    assert!(
+        postures.get("noop").copied().unwrap_or(0) >= 22,
+        "{postures:?}"
+    );
+    assert_eq!(
+        postures.get("conflict").copied().unwrap_or(0),
+        0,
+        "{postures:?}"
+    );
+    assert!(ops.operations.iter().all(|o| o.collision.is_clear()));
+}
+
+/// The five judgment-bearing surfaces are exactly the ones the issue
+/// reserves for humans: lock regeneration, Changie framing, release
+/// record, GitHub note, and the policy plan (controls 4-6).
+#[test]
+fn decisions_surface_exactly_the_human_judgments() {
+    let result = live_preparation_result("0.2.0");
+    let ops = result.operations.as_ref().expect("operations compile");
+    let mut ids: Vec<&str> = ops
+        .decisions
+        .iter()
+        .map(|d| d.decision_id.as_str())
+        .collect();
+    ids.sort_unstable();
+    assert_eq!(
+        ids,
+        vec![
+            "cargo-lock-regeneration",
+            "changie-target-entries",
+            "github-note-authoring",
+            "policy-plan",
+            "release-record-authoring",
+        ]
+    );
+    for decision in &ops.decisions {
+        assert!(!decision.question.is_empty());
+        assert!(!decision.owner.is_empty());
+    }
+    for operation in ops
+        .operations
+        .iter()
+        .filter(|o| o.posture == allow_report::CandidateOperationPostureV1::DecisionRequired)
+    {
+        assert!(!operation.deterministic);
+        assert!(operation.prospective_digest.is_none());
+        assert!(operation.producer.starts_with("decision:"));
+    }
+}
+
+/// The generated bytes move only the candidate line: the topology
+/// prospective touches package_version rows and never publication state
+/// or incident history (controls 7 and 8).
+#[test]
+fn generated_bytes_never_touch_publication_or_incident_history() {
+    let root = workspace_root();
+    let target = ReleaseVersionV1::parse("0.2.0").expect("target parses");
+    let surfaces = crate::cli::candidate_preparation_command::gather_surface_inputs(
+        &root,
+        "0.2.0-rc.1",
+        &target,
+        None,
+    )
+    .expect("surfaces gather");
+    let topology = surfaces
+        .iter()
+        .find(|s| s.owner == "package_topology")
+        .expect("topology surface");
+    let bytes = topology
+        .prospective_bytes
+        .as_ref()
+        .expect("topology renders");
+    let text = String::from_utf8(bytes.clone()).expect("utf-8");
+    assert_eq!(text.matches("package_version = \"0.2.0\"").count(), 10);
+    assert_eq!(text.matches("publication_state = \"Published\"").count(), 0);
+    assert_eq!(
+        text.matches("publication_state = \"UnpublishedInternal\"")
+            .count(),
+        22
+    );
+    // The candidate version stays unpublished in the support matrix.
+    let matrix = surfaces
+        .iter()
+        .find(|s| s.owner == "support_matrix")
+        .expect("support surface");
+    let matrix_text = String::from_utf8(matrix.prospective_bytes.clone().expect("matrix renders"))
+        .expect("utf-8");
+    assert!(matrix_text.contains("candidate_version = \"0.2.0\""));
+    assert!(matrix_text.contains("candidate_published = false"));
+    // No operation targets the retained incident evidence or the history
+    // corpus bytes.
+    for surface in &surfaces {
+        assert!(
+            !surface.path.starts_with("docs/release/evidence/"),
+            "incident evidence must never be an operation target: {}",
+            surface.path
+        );
+    }
+}
+
+/// Equal inputs produce equal operation plans, and the plan stays
+/// decision-required while judgments are open (controls 10-11).
+#[test]
+fn operations_are_deterministic_and_stay_decision_required() {
+    let first = live_preparation_result("0.2.0");
+    let second = live_preparation_result("0.2.0");
+    let first_ops = first.operations.as_ref().expect("operations");
+    let second_ops = second.operations.as_ref().expect("operations");
+    assert_eq!(first_ops.operations_digest, second_ops.operations_digest);
+    assert_eq!(first_ops.operations, second_ops.operations);
+    assert_eq!(first_ops.decisions.len(), second_ops.decisions.len());
+    assert_eq!(
+        first.readiness,
+        CandidatePreparationReadinessV1::DecisionRequired
+    );
+}
+
+/// The dirty working tree never sweeps unrelated files into the write
+/// set: every operation path comes from the declared authority surfaces
+/// (control 3).
+#[test]
+fn operations_never_include_unrelated_dirty_paths() {
+    let result = live_preparation_result("0.2.0");
+    let ops = result.operations.as_ref().expect("operations compile");
+    for operation in &ops.operations {
+        let path = &operation.path;
+        let declared = path == "Cargo.toml"
+            || path == "Cargo.lock"
+            || path == "policy/product-package-topology-v2.toml"
+            || path == "docs/support-matrix.toml"
+            || path == "policy/allow.toml"
+            || path.starts_with("crates/")
+            || path.starts_with("docs/release/")
+            || path.starts_with("docs/schemas/")
+            || path.starts_with("examples/")
+            || path == ".changes"
+            || path.starts_with(".changes/")
+            || path == "docs/getting-started.md";
+        assert!(declared, "operation path outside declared surfaces: {path}");
+    }
+}
+
+/// Collision law through the shared mutation-target authority: escape,
+/// duplicates, and case collisions are detected on crafted surface sets
+/// (control 9).
+#[test]
+fn mutation_target_collisions_are_detected() {
+    let root = std::env::temp_dir().join("cargo-allow-collision-probe");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("docs")).expect("temp root");
+
+    let make = |path: &str| allow_report::CandidateSurfaceInputV1 {
+        owner: "workspace_manifest".to_string(),
+        role: "role".to_string(),
+        path: path.to_string(),
+        current: allow_report::CandidateContentStateV1::absent(),
+        prospective_bytes: Some(b"bytes".to_vec()),
+        judgment: None,
+        collision: allow_report::CandidateCollisionResultV1::Clear,
+        rollback_source: None,
+        validation_obligations: Vec::new(),
+    };
+
+    // Repository escape (forward slashes escape on every platform).
+    let mut surfaces = vec![make("../escaped.txt")];
+    crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
+    assert!(matches!(
+        surfaces[0].collision,
+        allow_report::CandidateCollisionResultV1::Escape { .. }
+    ));
+
+    // Duplicate destination.
+    let mut surfaces = vec![make("docs/a.md"), make("docs/a.md")];
+    crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
+    assert!(surfaces.iter().all(|s| matches!(
+        s.collision,
+        allow_report::CandidateCollisionResultV1::DuplicateDestination { .. }
+    )));
+
+    // Case collision.
+    let mut surfaces = vec![make("docs/a.md"), make("docs/A.md")];
+    crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
+    assert!(surfaces.iter().all(|s| matches!(
+        s.collision,
+        allow_report::CandidateCollisionResultV1::CaseCollision { .. }
+    )));
+
+    // Clear paths stay clear.
+    let mut surfaces = vec![make("docs/a.md"), make("docs/b.md")];
+    crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
+    assert!(surfaces.iter().all(|s| s.collision.is_clear()));
+
+    let _ = std::fs::remove_dir_all(&root);
 }

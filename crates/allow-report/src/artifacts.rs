@@ -2,6 +2,7 @@ mod add;
 mod add_finding_plan;
 mod add_plan_application;
 mod adoption_plan;
+mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod diff;
 mod doctor;
@@ -43,6 +44,12 @@ pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
     WritePosture, recommend_core_adoption_plan,
+};
+pub use candidate_preparation_operations_v1::{
+    CANDIDATE_OPERATION_PLAN_SCHEMA_V1, CandidateCollisionResultV1, CandidateContentStateV1,
+    CandidateFileOperationV1, CandidateOperationCompilerInput, CandidateOperationPlanV1,
+    CandidateOperationPostureV1, CandidateSurfaceDecisionV1, CandidateSurfaceInputV1,
+    REQUIRED_SURFACE_OWNERS, compile_candidate_operations,
 };
 pub use candidate_preparation_plan_v1::{
     CANDIDATE_PREPARATION_CLAIM_BOUNDARY_V1, CANDIDATE_PREPARATION_PLAN_SCHEMA_V1,

@@ -1,0 +1,139 @@
+schema_version = 1
+# Revision note for the #3832 candidate-operation plan slice.
+
+# This diff adds the file-operation/decision plan model, the surface
+# compiler in the hidden prep-candidate command, its negative controls,
+# the schema registration, and the changie fragment. The additions below
+# receipt only the syntax-visible panicking constructs the new code
+# introduces: glob-ratcheted expect baselines for the new model's test
+# module, per-occurrence receipts for the control suite's expanded
+# assertion set, and per-occurrence receipts for the surface compiler's
+# guarded constructs. No existing exception is weakened, no expiry is
+# extended, and no scope is broadened: every record is an addition.
+# policy/allow.toml keeps its CRLF line-ending contract.
+
+[[records]]
+allow_ids = ["allow-0739"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d2d89b2e246073338d0978bd2561f161a216a3e743cb3f794e10ddf065e107c5"
+reason = "Fixture and canonicalization expects in the candidate-operation compiler tests (#3832); each guarded invariant is established by immediately preceding construction in the same test."
+
+[[records]]
+allow_ids = ["allow-0740"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d8f2f669dbab46c05f3ae60a5130ed0d4cdf1294df9a0781be1a8fd65df0f065"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0741"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bf84d0a99adfae309c73f4c90df480db7069ccbe4e9e0c3342bbc5641f2967dc"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0742"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6845493a2b80f81bbb2d61cbb7eeba783645e2f20c4c8f16c129d42b7b5efe89"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0743"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7cc9f6f87bcf3b9a21951f2b9a8a0987ff48c28ec9bff95300cd782afdd3ad7e"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0744"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:77377159447f50808dcffc52f6fc954474d86b1754e8f158914d4cc54d898bed"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0745"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:278d6094a8b4e5add530f51053910f9afe4ab110b944620915cb153ec1a1af91"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0746"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:03a7825c00e399cafa6b0d79042fc4b69f41c18be119989a02f0004dcf0f8b1d"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0747"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:081d7e466d31bf5a188e46d7bec8666ea844041f8d87d2c689a18eacd76fd257"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0748"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:06f8297fc0164e4f7c651630d4c6c762c6863e4bad76e1ae6a5f0239a41bb99a"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0749"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:913b9b217c1a023b6e5aea7444837782957b3dbfa5fe7f7a3b9cea0e92e108cf"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0750"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d56418b6e9cac549afeff9e7df1238a286e418f2423269019ec77640e64caced"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0751"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9813729b32091a40c54b8537c76403fcb31b0afdca0f6bf05ed152d34d19153b"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0752"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6cf8cb17c13a233ec5149aee615c9d2dfac349352d798c22c6b2dcbc0b900838"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0753"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c9f4171355d4200e65f4cfa98af4718b2d3ca5418009a0120da05b7264044d0a"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0754"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3077c241833d4865a172a118ff2a58e3b201440e9837dc9b519d4a656269d7d3"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0755"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b1dd557c68dbc23cba96e54956ed849fd56e9936254e67be550cc8d904b15c27"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0756"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7811f086fd01436ee91b011d1b2f52c1bc4b7bcf7501d4a484216532583d750a"
+reason = "Receipted construct at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1184 in the candidate-preparation surface compiler or command tests (#3832); the panicking construct is guarded by immediately preceding validation or is test-only."
+
+[[records]]
+allow_ids = ["allow-0757"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b5e7e2f7ee4d651d62ba12b97e99f3a38a4baa05a919abcaef8ffdb1215cb408"
+reason = "Receipted construct at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1201 in the candidate-preparation surface compiler or command tests (#3832); the panicking construct is guarded by immediately preceding validation or is test-only."
+
+[[records]]
+allow_ids = ["allow-0758"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:12550728f0d0ea8578941458ff8e0a319d34397acffb294aadd05f4dea041219"
+reason = "Receipted construct at crates/cargo-allow/src/cli/candidate_preparation_command.rs:1341 in the candidate-preparation surface compiler or command tests (#3832); the panicking construct is guarded by immediately preceding validation or is test-only."
+
+[[records]]
+allow_ids = ["allow-0759"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2618b97cf60ab0653866582d0c309a60f87cda3b5a106affdc22c9b226fb214c"
+reason = "Self-receipt for this revision note record (#3832); the note documents the added_allow transition for the candidate-operation receipt set."

@@ -15765,3 +15765,480 @@ normalized_snippet_hash = "fnv1a64:fe163754f306ae73"
 [allow.last_seen]
 line = 856
 column = 41
+
+[[allow]]
+id = "allow-0739"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/artifacts/candidate_preparation_operations_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Fixture and canonicalization expects in the candidate-operation compiler tests (#3832); each guarded invariant is established by immediately preceding construction in the same test"
+evidence = ["issue:3832"]
+occurrence_limit = 3
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/artifacts/candidate_preparation_operations_v1.rs"
+
+[[allow]]
+id = "allow-0740"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_dispatch_parses_through_the_real_cli"
+callee = "expect"
+receiver_fingerprint = "idate_preparation_command::build_preparation_result( &plan_args.version, None, )"
+normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
+
+[allow.last_seen]
+line = 612
+column = 6
+
+[[allow]]
+id = "allow-0741"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_layer_rejects_malformed_targets"
+callee = "expect"
+receiver_fingerprint = "i::candidate_preparation_command::build_preparation_result(\"0.2.0-beta.9\", None)"
+normalized_snippet_hash = "fnv1a64:f7afd8157624cc5c"
+
+[allow.last_seen]
+line = 625
+column = 14
+
+[[allow]]
+id = "allow-0742"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "operations_cover_every_required_owner_on_the_live_repo"
+callee = "expect"
+receiver_fingerprint = "result.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:3f04f907e3ce7399"
+
+[allow.last_seen]
+line = 773
+column = 42
+
+[[allow]]
+id = "allow-0743"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "decisions_surface_exactly_the_human_judgments"
+callee = "expect"
+receiver_fingerprint = "result.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:3f04f907e3ce7399"
+
+[allow.last_seen]
+line = 819
+column = 42
+
+[[allow]]
+id = "allow-0744"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "ReleaseVersionV1::parse(\"0.2.0\")"
+normalized_snippet_hash = "fnv1a64:f4f56a96e60e4094"
+
+[allow.last_seen]
+line = 857
+column = 51
+
+[[allow]]
+id = "allow-0745"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "reparation_command::gather_surface_inputs( &root, \"0.2.0-rc.1\", &target, None, )"
+normalized_snippet_hash = "fnv1a64:d4d68bc7f549d4b9"
+
+[allow.last_seen]
+line = 864
+column = 6
+
+[[allow]]
+id = "allow-0746"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "surfaces .iter() .find(|s| s.owner == \"package_topology\")"
+normalized_snippet_hash = "fnv1a64:68c47a3436201d3e"
+
+[allow.last_seen]
+line = 868
+column = 10
+
+[[allow]]
+id = "allow-0747"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "topology .prospective_bytes .as_ref()"
+normalized_snippet_hash = "fnv1a64:4afc47acbf560910"
+
+[allow.last_seen]
+line = 872
+column = 10
+
+[[allow]]
+id = "allow-0748"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "String::from_utf8(bytes.clone())"
+normalized_snippet_hash = "fnv1a64:fbe50b4a8c4c9c2a"
+
+[allow.last_seen]
+line = 873
+column = 49
+
+[[allow]]
+id = "allow-0749"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "surfaces .iter() .find(|s| s.owner == \"support_matrix\")"
+normalized_snippet_hash = "fnv1a64:cb7a3cf55d7a0c5c"
+
+[allow.last_seen]
+line = 885
+column = 10
+
+[[allow]]
+id = "allow-0750"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "matrix.prospective_bytes.clone()"
+normalized_snippet_hash = "fnv1a64:aff1e1366a4085c5"
+
+[allow.last_seen]
+line = 886
+column = 74
+
+[[allow]]
+id = "allow-0751"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "generated_bytes_never_touch_publication_or_incident_history"
+callee = "expect"
+receiver_fingerprint = "String::from_utf8(matrix.prospective_bytes.clone().expect(\"matrix renders\"))"
+normalized_snippet_hash = "fnv1a64:3d4ea9e06b530890"
+
+[allow.last_seen]
+line = 887
+column = 10
+
+[[allow]]
+id = "allow-0752"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "operations_are_deterministic_and_stay_decision_required"
+callee = "expect"
+receiver_fingerprint = "first.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:bee0e0a0ddbbcc26"
+
+[allow.last_seen]
+line = 907
+column = 47
+
+[[allow]]
+id = "allow-0753"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "operations_are_deterministic_and_stay_decision_required"
+callee = "expect"
+receiver_fingerprint = "second.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:4428270161eb5a42"
+
+[allow.last_seen]
+line = 908
+column = 49
+
+[[allow]]
+id = "allow-0754"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "operations_never_include_unrelated_dirty_paths"
+callee = "expect"
+receiver_fingerprint = "result.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:3f04f907e3ce7399"
+
+[allow.last_seen]
+line = 924
+column = 42
+
+[[allow]]
+id = "allow-0755"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only end-to-end, law-arm, or operation-coverage assertion in the candidate-preparation control suite (#3832); the expected side is a fully controlled fixture or the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "mutation_target_collisions_are_detected"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(root.join(\"docs\"))"
+normalized_snippet_hash = "fnv1a64:02411bb325b57cbb"
+
+[allow.last_seen]
+line = 950
+column = 48
+
+[[allow]]
+id = "allow-0756"
+kind = "panic"
+family = "indexing"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded indexing of the resolved collision list (#3832); the pair loop iterates the same vector it indexes so the index is in bounds by construction"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "resolve_surface_collisions"
+symbol = "resolved[index]"
+receiver_fingerprint = "resolved"
+target_fingerprint = "index"
+normalized_snippet_hash = "fnv1a64:b7fb4f423ac35a60"
+
+[allow.last_seen]
+line = 1184
+column = 58
+
+[[allow]]
+id = "allow-0757"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Corpus-path containment guard in the version-derived surface walk (#3831/#3832); paths are collected under the repository root so the strip_prefix cannot fail"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "resolve_surface_collisions"
+callee = "expect"
+receiver_fingerprint = "surfaces .iter_mut() .find(|surface| &surface.path == path)"
+normalized_snippet_hash = "fnv1a64:dbbd21597229ec67"
+
+[allow.last_seen]
+line = 1201
+column = 26
+
+[[allow]]
+id = "allow-0758"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only expectation in the command-layer readiness test (#3832); the expected side is the read-only live projection"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "ate::cli::candidate_preparation_command::build_preparation_result(\"0.2.0\", None)"
+normalized_snippet_hash = "fnv1a64:327187dc66d1cc08"
+
+[allow.last_seen]
+line = 1341
+column = 18
+
+[[allow]]
+id = "allow-0759"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3832-candidate-operations.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-receipt for the #3832 revision note record; the note documents the added_allow transition for the candidate-operation receipt set"
+evidence = ["issue:3832"]
+created = "2026-09-02"
+review_after = "2026-12-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3832-candidate-operations.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3832-candidate-operations.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
