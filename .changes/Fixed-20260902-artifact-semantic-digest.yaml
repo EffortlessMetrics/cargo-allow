@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Bind emitted artifact semantic digests to configuration identity, source
+  subject, findings, outcomes, and policy context so projections cannot reuse
+  a digest for different evaluation results.

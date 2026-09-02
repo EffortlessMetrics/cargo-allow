@@ -82,6 +82,75 @@ fn sha256_bytes(data: &[u8]) -> String {
     allow_core::sha256_v1_bytes(data)
 }
 
+fn report_context_payload(context: &allow_report::ReportContext<'_>) -> serde_json::Value {
+    serde_json::json!({
+        "inventory": format!("{:?}", context.inventory),
+        "baseline_debt_entries": context.baseline_debt_entries,
+        "policy_missing_evidence_entries": context.policy_missing_evidence_entries,
+        "broken_evidence_links": context.broken_evidence_links,
+        "weak_evidence_references": context.weak_evidence_references,
+        "occurrence_headroom_entries": context.occurrence_headroom_entries,
+        "mode": context.mode,
+        "enforcement": context.enforcement,
+        "policy_config": context.policy_config,
+        "tool_version": context.tool_version,
+        "lane_posture": format!("{:?}", context.lane_posture),
+        "federation": format!("{:?}", context.federation),
+        "mirror_divergence_entries": context.mirror_divergence_entries,
+        "blocking_divergence_entries": context.blocking_divergence_entries,
+        "git_sha": context.git_sha,
+        "policy_digest": context.policy_digest,
+        "diff_analysis": format!("{:?}", context.diff_analysis),
+        "rust_files_skipped": context.rust_files_skipped,
+        "rust_files_considered": context.rust_files_considered,
+        "rust_files_with_parse_errors": context.rust_files_with_parse_errors,
+    })
+}
+
+fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>) -> String {
+    let finding_payloads = ctx
+        .findings
+        .iter()
+        .map(|finding| {
+            serde_json::json!({
+                "identity": allow_core::finding_identity_key(finding),
+                "message": finding.message.as_str(),
+                "span": format!("{:?}", finding.span),
+                "ledger": format!("{:?}", finding.ledger),
+            })
+        })
+        .collect::<Vec<_>>();
+    let outcome_identities = ctx
+        .outcomes
+        .iter()
+        .map(|outcome| {
+            format!(
+                "status={:?};allow_id={:?};candidates={:?};finding_index={:?};message={};score={}",
+                outcome.status,
+                outcome.allow_id,
+                outcome.candidate_ids,
+                outcome.finding_index,
+                outcome.message,
+                outcome.score
+            )
+        })
+        .collect::<Vec<_>>();
+    let payload = serde_json::json!({
+        "operation": config.operation,
+        "command": ctx.command,
+        "source_subject": config.source_subject,
+        "resolved_config_identity": config.resolved_config_identity,
+        "result_class": format!("{:?}", config.result_class),
+        "blocking": config.blocking,
+        "failed": ctx.failed,
+        "report_context": report_context_payload(ctx.report_context),
+        "receipt_context": ctx.receipt_context.map(report_context_payload),
+        "finding_payloads": finding_payloads,
+        "outcome_identities": outcome_identities,
+    });
+    sha256_bytes(&serde_json::to_vec(&payload).unwrap_or_default())
+}
+
 /// Configuration for the artifact set emission.
 pub struct EmitConfig<'a> {
     pub operation: &'a str,
@@ -145,14 +214,7 @@ pub fn emit_artifact_set(
         mode: None,
         source_subject: config.source_subject.to_string(),
         resolved_config_identity: config.resolved_config_identity.to_string(),
-        semantic_result_digest: allow_core::sha256_v1_bytes(
-            serde_json::to_vec(&serde_json::json!({
-                "command": ctx.command,
-                "failed": ctx.failed,
-            }))
-            .unwrap_or_default()
-            .as_slice(),
-        ),
+        semantic_result_digest: semantic_result_digest(config, ctx),
         result_class: config.result_class,
         blocking: config.blocking,
         requested_formats: formats.to_vec(),
@@ -184,3 +246,7 @@ pub fn emit_artifact_set(
 
     Ok(set)
 }
+
+#[cfg(test)]
+#[path = "artifact_emit_tests.rs"]
+mod tests;
