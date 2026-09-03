@@ -665,6 +665,37 @@ mod tests {
     }
 
     #[test]
+    fn validation_rejects_unbound_and_unusable_runtime_controls() -> Result<(), String> {
+        let mut plan_mismatch = spec()?;
+        plan_mismatch.reviewed_plan_id = "other-plan".to_string();
+        if !matches!(
+            execute_bounded(&plan_mismatch, ExecutionApprovalV1::Explicit),
+            Err(RunnerError::InvalidSpec(message)) if message.contains("reviewed invocation")
+        ) {
+            return Err("plan identity mismatch was accepted".to_string());
+        }
+
+        let mut env = spec()?;
+        env.env_allowlist = vec![("UNREVIEWED".to_string(), "1".to_string())];
+        if !matches!(
+            execute_bounded(&env, ExecutionApprovalV1::Explicit),
+            Err(RunnerError::InvalidSpec(message)) if message.contains("reviewed invocation policy")
+        ) {
+            return Err("unreviewed environment was accepted".to_string());
+        }
+
+        let mut missing = spec()?;
+        missing.cwd = missing.cwd.join("missing-child");
+        if !matches!(
+            execute_bounded(&missing, ExecutionApprovalV1::Explicit),
+            Err(RunnerError::InvalidSpec(message)) if message.contains("canonicalized")
+        ) {
+            return Err("missing cwd was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn timeout_and_output_limits_are_observed_without_shells() -> Result<(), String> {
         let mut timeout = spec()?;
         timeout.timeout = Duration::from_nanos(1);
