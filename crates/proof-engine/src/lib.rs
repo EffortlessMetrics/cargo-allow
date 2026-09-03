@@ -7,8 +7,9 @@
 //! contracts (#2603-A) and command adapter contracts (#2603-B) that previously
 //! lived in standalone `proof-provider-api` and `proof-adapter-command` crates
 //! (#2937). It accepts intent obligation plans via intent-protocol (#3310).
-//! It does not execute repository code or invoke Cargo, rustc, Clippy, build
-//! scripts, or proc macros.
+//! Planning does not execute repository code or invoke Cargo, rustc, Clippy,
+//! build scripts, or proc macros. The bounded observation kernel is a separate
+//! explicit execution API and never interprets provider semantics.
 
 #[cfg(test)]
 mod boundary;

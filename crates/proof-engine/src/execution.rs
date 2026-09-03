@@ -3,7 +3,7 @@
 use proof_protocol::{ProofPlanV1, validate_proof_plan};
 use serde::{Deserialize, Serialize};
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::{Arc, Mutex},
     thread,
@@ -165,18 +165,28 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
     let deadline = Instant::now() + spec.timeout;
     let mut timed_out = false;
     let status = loop {
+        if Instant::now() >= deadline {
+            timed_out = true;
+            if let Err(error) = child.kill() {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
+                {
+                    break status;
+                }
+                return Err(RunnerError::Io(format!(
+                    "timed-out process could not be terminated: {error}"
+                )));
+            }
+            break child
+                .wait()
+                .map_err(|error| RunnerError::Io(error.to_string()))?;
+        }
         if let Some(status) = child
             .try_wait()
             .map_err(|error| RunnerError::Io(error.to_string()))?
         {
             break status;
-        }
-        if Instant::now() >= deadline {
-            timed_out = true;
-            let _ = child.kill();
-            break child
-                .wait()
-                .map_err(|error| RunnerError::Io(error.to_string()))?;
         }
         thread::sleep(Duration::from_millis(5));
     };
@@ -198,8 +208,8 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
         .clone();
     let stdout = stdout_state.bytes;
     let stderr = stderr_state.bytes;
-    let stdout_truncated = stdout_state.truncated;
-    let stderr_truncated = stderr_state.truncated;
+    let stdout_truncated = stdout_state.truncated || timed_out;
+    let stderr_truncated = stderr_state.truncated || timed_out;
     let reader_failed = stdout_state.error.is_some() || stderr_state.error.is_some();
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
@@ -229,6 +239,7 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
         limitations: vec![
             "process-tree termination is limited to the spawned process on this platform"
                 .to_string(),
+            "timed-out output capture is explicitly incomplete".to_string(),
         ],
     })
 }
@@ -243,20 +254,33 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
             "plan, command, program, and cwd are required".to_string(),
         ));
     }
+    if !Path::new(&spec.program).is_absolute() {
+        return Err(RunnerError::InvalidSpec(
+            "program must be an absolute reviewed executable path".to_string(),
+        ));
+    }
     if spec.timeout.is_zero() || spec.stdout_limit == 0 || spec.stderr_limit == 0 {
         return Err(RunnerError::InvalidSpec(
             "timeout and output limits must be positive".to_string(),
         ));
     }
-    let program = spec.program.to_ascii_lowercase();
-    if program.ends_with("sh")
-        || program.ends_with("cmd")
-        || program.ends_with("cmd.exe")
-        || program.ends_with("powershell")
-        || program.ends_with("powershell.exe")
-        || program.ends_with("pwsh")
-        || program.ends_with("pwsh.exe")
-    {
+    let program = Path::new(&spec.program)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if matches!(
+        program.as_str(),
+        "sh" | "bash"
+            | "zsh"
+            | "fish"
+            | "cmd"
+            | "cmd.exe"
+            | "powershell"
+            | "powershell.exe"
+            | "pwsh"
+            | "pwsh.exe"
+    ) {
         return Err(RunnerError::InvalidSpec(
             "shell programs are not accepted by the structured runner".to_string(),
         ));
