@@ -417,3 +417,10 @@ pub use artifacts::{
     RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
     render_final_freeze_replay_markdown, replay_final_freeze,
 };
+
+// Root re-exports for the #3737 final support-selection freeze contract.
+pub use artifacts::{
+    FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
+    FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
+    FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
+};

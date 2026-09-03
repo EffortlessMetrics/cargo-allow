@@ -508,3 +508,251 @@ fn policy_claims_stay_explicitly_undecided_until_decided() {
         "SUPPORT.md must surface the undecided policy items rather than hide them"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Final selection (#3737): the 0.2.0 release proof denominator.
+//
+// The [final_selection] section records which claims the prospective final
+// release makes and declines. Every check here is fail-closed: the section
+// must bind to the typed model, its digests must recompute, the denominator
+// must be complete, and a narrowed claim must stay narrowed.
+// ---------------------------------------------------------------------------
+
+use allow_report::{FinalSelectionDispositionV1, FinalSupportSelectionV1};
+
+/// Parse and bind the section to the typed contract in allow-report — the
+/// single implementation of the row model and both digests.
+fn final_selection() -> FinalSupportSelectionV1 {
+    let parsed: toml::Value = toml::from_str(MATRIX).unwrap_or_else(|error| {
+        std::panic::panic_any(format!("support matrix is not valid TOML: {error}"))
+    });
+    let section = parsed.get("final_selection").unwrap_or_else(|| {
+        std::panic::panic_any("support matrix lost its [final_selection] section")
+    });
+    let json = serde_json::to_value(section).unwrap_or_else(|error| {
+        std::panic::panic_any(format!("final_selection is not serializable: {error}"))
+    });
+    serde_json::from_value::<FinalSupportSelectionV1>(json).unwrap_or_else(|error| {
+        std::panic::panic_any(format!(
+            "[final_selection] does not match the typed contract: {error}"
+        ))
+    })
+}
+
+fn disposition_label(disposition: FinalSelectionDispositionV1) -> &'static str {
+    disposition.label()
+}
+
+/// The section must verify end to end against the typed model: schema
+/// generation, row structure, claim boundary, identity binding, and both
+/// recomputed digests. Any drift anywhere in the section fails here.
+#[test]
+fn final_selection_binds_the_typed_contract() {
+    final_selection().verify().unwrap_or_else(|error| {
+        std::panic::panic_any(format!("final selection does not verify: {error}"))
+    });
+}
+
+/// The denominator must be exactly the packet's row set. A missing row
+/// silently shrinks the denominator; an extra row silently broadens it —
+/// both must fail and force a deliberate test update.
+#[test]
+fn final_selection_covers_the_exact_packet_denominator() {
+    let selection = final_selection();
+    let mut observed: Vec<(String, String, &'static str)> = selection
+        .rows
+        .iter()
+        .map(|row| {
+            (
+                row.dimension.clone(),
+                row.subject.clone(),
+                disposition_label(row.disposition),
+            )
+        })
+        .collect();
+    observed.sort();
+
+    let expected = [
+        ("channel", "cargo-binstall", "not_included"),
+        ("channel", "crates.io-exact-version-install", "selected"),
+        ("channel", "ordinary-latest-install", "selected"),
+        ("channel", "prebuilt-binary-archive", "not_included"),
+        ("pilot", "brownfield-repository", "not_included"),
+        ("pilot", "clean-repository", "not_proven"),
+        ("platform", "aarch64-apple-darwin", "not_included"),
+        ("platform", "x86_64-apple-darwin", "not_included"),
+        ("platform", "x86_64-pc-windows-msvc", "selected"),
+        ("platform", "x86_64-unknown-linux-gnu", "selected"),
+        ("rust", "1.95", "selected"),
+        (
+            "sibling-product",
+            "cargo-intent-and-cargo-proof",
+            "not_included",
+        ),
+        ("upgrade-rollback", "0.1.11-to-final-to-0.1.11", "selected"),
+    ];
+    let expected: Vec<(String, String, &'static str)> = expected
+        .iter()
+        .map(|(dimension, subject, disposition)| {
+            (
+                (*dimension).to_string(),
+                (*subject).to_string(),
+                *disposition,
+            )
+        })
+        .collect();
+
+    assert_eq!(
+        observed, expected,
+        "the final-selection denominator drifted from the #3737 packet"
+    );
+}
+
+/// A `needs_decision` row means the denominator is not yet selectable: the
+/// freeze must consume a non-selection instead of a silent default.
+#[test]
+fn final_selection_has_no_needs_decision_rows() {
+    let selection = final_selection();
+    let undecided = selection.needs_decision_rows();
+    assert!(
+        undecided.is_empty(),
+        "final-selection rows still need a maintainer decision: {:?}",
+        undecided
+            .iter()
+            .map(|row| format!("{}/{}", row.dimension, row.subject))
+            .collect::<Vec<_>>()
+    );
+}
+
+/// A selected platform must be backed by the proven tiers in the
+/// `[platform]` table; bounded (`ci_proven_bounded`) evidence may not be
+/// selected. This is the anti-invention guard for the final denominator.
+#[test]
+fn final_selection_selected_platforms_are_ci_proven() {
+    let selection = final_selection();
+    let selected: Vec<String> = selection
+        .rows
+        .iter()
+        .filter(|row| {
+            row.dimension == "platform" && row.disposition == FinalSelectionDispositionV1::Selected
+        })
+        .map(|row| row.subject.clone())
+        .collect();
+    assert!(
+        !selected.is_empty(),
+        "the denominator must select at least one platform"
+    );
+
+    let mut tiers = std::collections::BTreeMap::new();
+    for block in MATRIX.split("[[platform]]").skip(1) {
+        let target = block
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("target = "))
+            .map(|value| value.trim().trim_matches('"').to_string());
+        let tier = block
+            .lines()
+            .find_map(|line| line.trim().strip_prefix("tier = "))
+            .map(|value| value.trim().trim_matches('"').to_string());
+        if let (Some(target), Some(tier)) = (target, tier) {
+            tiers.insert(target, tier);
+        }
+    }
+
+    for subject in &selected {
+        let tier = tiers.get(subject).unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "selected platform {subject} has no [[platform]] row at all"
+            ))
+        });
+        assert_eq!(
+            tier, "ci_proven",
+            "selected platform {subject} must be ci_proven, not {tier}"
+        );
+    }
+}
+
+/// Every evidence reference must name something that exists in the
+/// repository. A selection pointing at invented evidence is not a selection.
+#[test]
+fn final_selection_evidence_references_exist() {
+    let selection = final_selection();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for row in &selection.rows {
+        let path = root.join(&row.evidence_reference);
+        assert!(
+            path.exists(),
+            "row {}/{} cites missing evidence {}",
+            row.dimension,
+            row.subject,
+            row.evidence_reference
+        );
+    }
+}
+
+/// A not-proven pilot must stay a recorded gap. The clean-repository row in
+/// particular may never drift into an adoption claim.
+#[test]
+fn final_selection_not_proven_rows_stay_narrowed() {
+    let selection = final_selection();
+    let clean = selection
+        .rows
+        .iter()
+        .find(|row| row.dimension == "pilot" && row.subject == "clean-repository")
+        .unwrap_or_else(|| std::panic::panic_any("the clean-repository pilot row went missing"));
+    assert_eq!(clean.disposition, FinalSelectionDispositionV1::NotProven);
+    assert!(
+        clean
+            .claim_effect
+            .contains("no low-friction adoption claim"),
+        "a NotProven pilot must record the declining claim effect, found: {}",
+        clean.claim_effect
+    );
+}
+
+/// The sibling row and the per-product matrix must agree: installing
+/// cargo-allow never implies cargo-intent or cargo-proof.
+#[test]
+fn final_selection_does_not_imply_sibling_installation() {
+    const PRODUCT_MATRIX: &str = include_str!("../../../policy/product-support-matrix.toml");
+    let selection = final_selection();
+    let sibling = selection
+        .rows
+        .iter()
+        .find(|row| row.dimension == "sibling-product")
+        .unwrap_or_else(|| std::panic::panic_any("the sibling-product row went missing"));
+    assert_eq!(
+        sibling.disposition,
+        FinalSelectionDispositionV1::NotIncluded
+    );
+    assert!(sibling.claim_effect.contains("never implies"));
+
+    for product in ["cargo-intent", "cargo-proof"] {
+        let entry = PRODUCT_MATRIX
+            .split("[[product]]")
+            .skip(1)
+            .find(|block| block.contains(&format!("product_id = \"{product}\"")))
+            .unwrap_or_else(|| std::panic::panic_any(format!("product matrix lost {product}")));
+        assert!(
+            entry.contains("installed_by_default = false"),
+            "{product} must stay opt-in; installing cargo-allow does not install it"
+        );
+    }
+}
+
+/// The final selection chooses the release proof denominator. It must not
+/// quietly answer the #3777/#2478 maintenance-tenure questions.
+#[test]
+fn final_selection_does_not_answer_support_policy() {
+    let selection = final_selection();
+    let serialized = format!("{selection:?}");
+    for policy_phrase in [
+        "backport_policy",
+        "supported_release_window",
+        "security_response_target",
+    ] {
+        assert!(
+            !serialized.contains(policy_phrase),
+            "the final selection must not answer support-policy question {policy_phrase}"
+        );
+    }
+}
