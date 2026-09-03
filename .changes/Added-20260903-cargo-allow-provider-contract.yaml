@@ -1,0 +1,8 @@
+kind: Added
+summary: Advertise the read-only cargo-allow provider contract
+body: >-
+  The cargo-allow capabilities JSON now includes a versioned, snapshot-bound
+  read-only provider contract with an exact source-exception no-new capability,
+  request and receipt schema identities, and explicit excluded claims.
+component: cargo-allow
+"breaking": false

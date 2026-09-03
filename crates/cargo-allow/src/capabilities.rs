@@ -72,6 +72,7 @@ struct CapabilityCatalog {
     schema: &'static str,
     generation: u32,
     claim_boundary: &'static str,
+    provider_contract: crate::provider_contract::ProviderContractV1,
     capabilities: Vec<SensorCapability>,
     configured_file_families: Vec<ConfiguredFileFamilyCapability>,
 }
@@ -491,6 +492,7 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
         schema: SENSOR_CAPABILITY_SCHEMA,
         generation: 1,
         claim_boundary: "Source-tree observations only; no compilation, type, macro, MIR, runtime, or test-adequacy claim.",
+        provider_contract: crate::provider_contract::provider_contract(),
         capabilities,
         configured_file_families,
     };
@@ -741,6 +743,7 @@ mod tests {
             schema: SENSOR_CAPABILITY_SCHEMA,
             generation: 1,
             claim_boundary: "source-only",
+            provider_contract: crate::provider_contract::provider_contract(),
             capabilities: CAPABILITIES.to_vec(),
             configured_file_families: Vec::new(),
         })
@@ -748,6 +751,18 @@ mod tests {
         let value: serde_json::Value = serde_json::from_str(&json)
             .unwrap_or_else(|error| std::panic::panic_any(error.to_string()));
         assert_eq!(value["schema"], SENSOR_CAPABILITY_SCHEMA);
+        assert_eq!(
+            value["provider_contract"]["schema_id"],
+            crate::provider_contract::PROVIDER_CONTRACT_SCHEMA_ID
+        );
+        assert_eq!(
+            value["provider_contract"]["request_schema"],
+            crate::provider_contract::PROVIDER_REQUEST_SCHEMA_ID
+        );
+        assert_eq!(
+            value["provider_contract"]["receipt_schema"],
+            crate::provider_contract::PROVIDER_RECEIPT_SCHEMA_ID
+        );
         assert!(
             value["capabilities"]
                 .as_array()
