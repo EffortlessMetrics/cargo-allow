@@ -93,10 +93,9 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
     fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
     fs::write(root.join("source.rs"), "fn source() {}\n").map_err(|error| error.to_string())?;
     let policy = root.join("policy/allow.toml");
-    fs::write(
-        &policy,
-        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n",
-    )
+    let policy_text =
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n";
+    fs::write(&policy, policy_text)
     .map_err(|error| error.to_string())?;
     let doctor_output = root.join("doctor.txt");
     let bundle_output = root.join("target/cargo-allow/support-bundle.json");
@@ -134,7 +133,7 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
         .pointer("/config/digest")
         .and_then(Value::as_str)
         .ok_or_else(|| "support bundle omitted the selected policy digest".to_string())?;
-    if !digest.starts_with("sha256:v1:") {
+    if digest != allow_core::sha256_v1_bytes(policy_text.as_bytes()) {
         return Err("support bundle policy digest was not canonical".to_string());
     }
     if value.pointer("/config/precedence").and_then(Value::as_str) != Some("cli_override") {
