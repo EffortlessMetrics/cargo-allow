@@ -31,7 +31,17 @@ pub fn plan_proof_v2_from_intent(
     let mut items = envelope
         .obligations
         .iter()
-        .map(|obligation| build_item(obligation, &snapshot_identity, &catalogs))
+        .map(|obligation| {
+            build_item(
+                obligation,
+                &snapshot_identity,
+                &catalogs,
+                envelope
+                    .enrichment
+                    .as_ref()
+                    .and_then(|enrichment| enrichment.resolved_config_identity.as_deref()),
+            )
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let plan_id = semantic_plan_id(&intent_digest, &snapshot_identity, &catalogs, &items)?;
 
@@ -59,6 +69,7 @@ fn build_item(
     obligation: &IntentPhaseObligationV1,
     snapshot_identity: &str,
     catalogs: &[ProofCapabilityCatalogV1],
+    resolved_config_identity: Option<&str>,
 ) -> Result<ProofItemV1, String> {
     let handoff = obligation
         .handoff
@@ -87,6 +98,11 @@ fn build_item(
                     "snapshot" | "snapshot_identity" | "subject" | "provider_request" | "config"
                 )
             })
+            && (!handoff
+                .currentness_dimensions
+                .iter()
+                .any(|dimension| dimension == "config")
+                || resolved_config_identity.is_some_and(|identity| !identity.trim().is_empty()))
     });
     let selected = if matches!(
         obligation.posture,
@@ -178,7 +194,9 @@ fn build_item(
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
-                    config_identity: "config:unspecified".to_string(),
+                    config_identity: resolved_config_identity
+                        .unwrap_or("config:unspecified")
+                        .to_string(),
                     currentness_dimensions: vec![
                         "snapshot_identity".to_string(),
                         "subject".to_string(),
@@ -215,6 +233,12 @@ fn build_item(
     };
     if let Some(handoff) = handoff {
         limitations.extend(handoff.limitations.iter().cloned());
+        limitations.extend(
+            handoff
+                .unproven
+                .iter()
+                .map(|reason| format!("unproven: {reason}")),
+        );
         limitations.extend(
             handoff
                 .evidence_purpose_refs
@@ -382,8 +406,8 @@ mod tests {
     use intent_protocol::{
         IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationHandoffV1,
         IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
-        IntentProofHandoffDispositionV1, IntentSubjectPostureV1, RepositorySnapshotV1,
-        ResolvedRevisionV1,
+        IntentPlanEnrichmentV1, IntentProofHandoffDispositionV1, IntentSubjectPostureV1,
+        RepositorySnapshotV1, ResolvedRevisionV1,
     };
     use proof_protocol::{ProofCapabilityKindV1, ProofCapabilityV1, ProofReceiptSetV1};
 
@@ -669,6 +693,91 @@ mod tests {
                 .any(|reason| reason == "provider cannot observe generated code")
         {
             return Err("not-applicable reason was not preserved".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unproven_handoff_reasons_are_retained() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::PartialOrNotProven),
+            disposition_reason: Some("awaiting discriminator".to_string()),
+            unproven: vec!["runtime marker is absent".to_string()],
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if !item
+            .limitations
+            .iter()
+            .any(|reason| reason == "unproven: runtime marker is absent")
+        {
+            return Err("unproven handoff reason was dropped".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn config_currentness_binds_enrichment_identity() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched.enrichment = Some(IntentPlanEnrichmentV1 {
+            resolved_config_identity: Some("intent-config:resolved-001".to_string()),
+            ..IntentPlanEnrichmentV1::default()
+        });
+        enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?
+            .handoff
+            .as_mut()
+            .ok_or_else(|| "missing handoff".to_string())?
+            .currentness_dimensions = vec!["config".to_string()];
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::SelectedForExecution
+            || item
+                .expected_receipt
+                .as_ref()
+                .map(|receipt| receipt.config_identity.as_str())
+                != Some("intent-config:resolved-001")
+        {
+            return Err("config currentness was not bound to enrichment identity".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn config_currentness_without_identity_is_not_ready() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?
+            .handoff
+            .as_mut()
+            .ok_or_else(|| "missing handoff".to_string())?
+            .currentness_dimensions = vec!["config".to_string()];
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotProven {
+            return Err("config currentness without identity became executable".to_string());
         }
         Ok(())
     }
