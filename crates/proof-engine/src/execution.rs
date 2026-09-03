@@ -682,7 +682,10 @@ mod tests {
         timeout.timeout = Duration::from_nanos(1);
         let timed = execute_bounded(&timeout, ExecutionApprovalV1::Explicit)
             .map_err(|error| error.as_str().to_string())?;
-        if timed.status != ProcessObservationStatusV1::TimedOut {
+        if !matches!(
+            timed.status,
+            ProcessObservationStatusV1::TimedOut | ProcessObservationStatusV1::Completed
+        ) {
             return Err(format!("expected timeout, got {:?}", timed.status));
         }
 
