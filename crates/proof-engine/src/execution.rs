@@ -509,6 +509,17 @@ mod tests {
         if decoded != original {
             return Err("execution spec JSON round-trip changed the reviewed request".to_string());
         }
+        let mut unknown = serde_json::to_value(&original)
+            .map_err(|error| error.to_string())?
+            .as_object()
+            .cloned()
+            .ok_or_else(|| "execution spec did not serialize as an object".to_string())?;
+        unknown.insert("unexpected".to_string(), serde_json::Value::Bool(true));
+        let strict_error =
+            serde_json::from_value::<ExecutionSpecV1>(serde_json::Value::Object(unknown));
+        if strict_error.is_ok() {
+            return Err("execution spec accepted an unknown field".to_string());
+        }
         Ok(())
     }
 }
