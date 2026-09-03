@@ -216,7 +216,7 @@ fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), Pla
     drop(file);
     match std::fs::rename(&temporary, output_path) {
         Ok(()) => Ok(()),
-        Err(error) if output_path.is_file() => {
+        Err(_error) if output_path.is_file() => {
             std::fs::remove_file(output_path).map_err(|remove_error| PlanErrorV1 {
                 result_state: ProofResultStateV1::Unsupported,
                 message: format!("replace existing plan artifact: {remove_error}"),
