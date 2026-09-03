@@ -81,6 +81,12 @@ fn build_item(
                 .is_none_or(|completeness| {
                     completeness == intent_protocol::IntentSubjectInventoryCompletenessV1::Complete
                 })
+            && handoff.currentness_dimensions.iter().all(|dimension| {
+                matches!(
+                    dimension.as_str(),
+                    "snapshot" | "snapshot_identity" | "subject" | "provider_request" | "config"
+                )
+            })
     });
     let selected = if matches!(
         obligation.posture,
@@ -173,27 +179,12 @@ fn build_item(
                         .to_string(),
                     receipt_generation: 1,
                     config_identity: "config:unspecified".to_string(),
-                    currentness_dimensions: handoff
-                        .map(|handoff| {
-                            let mut dimensions = vec![
-                                "snapshot_identity".to_string(),
-                                "subject".to_string(),
-                                "provider_request".to_string(),
-                                "config".to_string(),
-                            ];
-                            dimensions.extend(handoff.currentness_dimensions.iter().cloned());
-                            dimensions.sort();
-                            dimensions.dedup();
-                            dimensions
-                        })
-                        .unwrap_or_else(|| {
-                            vec![
-                                "snapshot_identity".to_string(),
-                                "subject".to_string(),
-                                "provider_request".to_string(),
-                                "config".to_string(),
-                            ]
-                        }),
+                    currentness_dimensions: vec![
+                        "snapshot_identity".to_string(),
+                        "subject".to_string(),
+                        "provider_request".to_string(),
+                        "config".to_string(),
+                    ],
                 }),
                 ProofItemExecutionPostureV1::Execute,
                 Vec::new(),
