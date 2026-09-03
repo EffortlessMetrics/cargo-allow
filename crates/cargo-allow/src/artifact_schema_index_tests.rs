@@ -152,6 +152,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "github-pr-check-v1"
                 && name != "rc-publication-incident-v1"
                 && name != "candidate-preparation-plan-v1"
+                && name != "candidate-preparation-receipt-v1"
                 && name != "final-package-docs.v1"
                 && name != "topology-publish-receipt"
                 && name != "shared-package-candidate.v1"

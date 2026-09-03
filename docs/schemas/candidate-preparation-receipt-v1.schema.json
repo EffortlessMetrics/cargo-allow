@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/EffortlessMetrics/cargo-allow/main/docs/schemas/candidate-preparation-receipt-v1.schema.json",
+  "title": "cargo-allow candidate preparation receipt (#3834)",
+  "description": "Final typed source-preparation receipt: reconciles the applied source state against release identity, package topology, support/channel source, governed-file posture, and post-apply validation. Complete means the source candidate was prepared coherently; it does not qualify, authorize, or publish the release.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "plan_digest",
+    "apply_state",
+    "before_identity_digest",
+    "after_identity_digest",
+    "release_version",
+    "release_tag",
+    "release_channel",
+    "selected_graph",
+    "changed_files",
+    "resolved_decisions",
+    "outstanding_decisions",
+    "changie_result",
+    "release_support_projection",
+    "policy_drift_result",
+    "no_op_rerun_result",
+    "validation_rows",
+    "remaining_obligations",
+    "state",
+    "reasons",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "cargo-allow.candidate-preparation-receipt.v1"
+    },
+    "plan_digest": {
+      "type": "string",
+      "minLength": 1
+    },
+    "apply_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "before_identity_digest": {
+      "type": "string"
+    },
+    "after_identity_digest": {
+      "type": "string"
+    },
+    "release_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_tag": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_channel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selected_graph": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "logical_id",
+          "cargo_package_name",
+          "product_family",
+          "version"
+        ],
+        "properties": {
+          "logical_id": {
+            "type": "string"
+          },
+          "cargo_package_name": {
+            "type": "string"
+          },
+          "product_family": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "before_digest",
+          "after_digest"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "before_digest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "after_digest": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "resolved_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "decision_id",
+          "resolution"
+        ],
+        "properties": {
+          "decision_id": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "outstanding_decisions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "changie_result": {
+      "type": "string"
+    },
+    "release_support_projection": {
+      "type": "string"
+    },
+    "policy_drift_result": {
+      "type": "string"
+    },
+    "no_op_rerun_result": {
+      "type": "string"
+    },
+    "validation_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "obligation_id",
+          "command",
+          "result",
+          "detail"
+        ],
+        "properties": {
+          "obligation_id": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "result": {
+            "enum": [
+              "passed",
+              "failed",
+              "deferred"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "remaining_obligations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "state": {
+      "enum": [
+        "complete",
+        "incomplete",
+        "decision_required",
+        "stale",
+        "mismatch",
+        "conflict",
+        "unsupported",
+        "instrument_failure"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

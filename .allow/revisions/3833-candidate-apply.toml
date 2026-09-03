@@ -464,3 +464,39 @@ allow_ids = ["allow-0835"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:5fb27ba84e0de0ad27a1fb62ece46bfb6451ad4b670915c35b0e85537bb54b13"
 reason = "Test-only corrupted-authority expectation at the topology decode arm in the candidate-preparation suite (#3833)."
+
+[[records]]
+allow_ids = ["allow-0836"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7c2aca4f003aebfd5b390f3c555e6b24ade839d8f5868bfa0f13657fae1ca14e"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0837"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1db4e958e829eb291264dd8e2f229ac0dd9564f770a076d06f838f3c6c627e75"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0838"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43673d7cf2126b7953611862d06b0bfda1f7baa976e8fd6b0a4a8d115031d975"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0839"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e8cc2214d9bab84c4d802d7411b03acc0fc3d3a5774098d6a42909329710b901"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0840"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3dc8ab44d9852af2e6418f42dabd0e056498a3eb9f40fde2aa224ba074e42207"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0841"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:19e5951219d32ff820e9114e5703dc3fb2653169014a926a82472e7c5d927a08"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection."

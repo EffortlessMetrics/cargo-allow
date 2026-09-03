@@ -17991,3 +17991,141 @@ normalized_snippet_hash = "fnv1a64:ff02f0029eaba708"
 [allow.last_seen]
 line = 1871
 column = 6
+
+[[allow]]
+id = "allow-0836"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_receipt_detects_support_drift"
+callee = "expect"
+receiver_fingerprint = "std::fs::read(&matrix_path)"
+normalized_snippet_hash = "fnv1a64:f78c8cb5677097e6"
+
+[allow.last_seen]
+line = 2026
+column = 65
+
+[[allow]]
+id = "allow-0837"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_receipt_detects_support_drift"
+callee = "expect"
+receiver_fingerprint = "String::from_utf8(std::fs::read(&matrix_path).expect(\"matrix\"))"
+normalized_snippet_hash = "fnv1a64:34f50adf8f40ed0b"
+
+[allow.last_seen]
+line = 2027
+column = 10
+
+[[allow]]
+id = "allow-0838"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_receipt_detects_support_drift"
+callee = "expect"
+receiver_fingerprint = "std::fs::write(&matrix_path, drifted)"
+normalized_snippet_hash = "fnv1a64:afe76c1f97ca72e5"
+
+[allow.last_seen]
+line = 2029
+column = 43
+
+[[allow]]
+id = "allow-0839"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "prep_candidate_end_to_end_final_receipt_writes_through_the_command"
+callee = "expect"
+receiver_fingerprint = "serde_json::to_string_pretty(&plan)"
+normalized_snippet_hash = "fnv1a64:b07f5c3e79221cdd"
+
+[allow.last_seen]
+line = 2103
+column = 45
+
+[[allow]]
+id = "allow-0840"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "prep_candidate_end_to_end_final_receipt_writes_through_the_command"
+callee = "expect"
+receiver_fingerprint = "te( &plan_file, serde_json::to_string_pretty(&plan).expect(\"plan serializes\"), )"
+normalized_snippet_hash = "fnv1a64:88f7c2f470407be0"
+
+[allow.last_seen]
+line = 2105
+column = 6
+
+[[allow]]
+id = "allow-0841"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt reconciliation or end-to-end assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository or the read-only live projection"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "prep_candidate_end_to_end_final_receipt_writes_through_the_command"
+callee = "expect"
+receiver_fingerprint = ":candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)"
+normalized_snippet_hash = "fnv1a64:754ab56cdfded1b2"
+
+[allow.last_seen]
+line = 2117
+column = 10

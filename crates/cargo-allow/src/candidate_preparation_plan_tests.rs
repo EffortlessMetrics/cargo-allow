@@ -1484,6 +1484,7 @@ fn candidate_preparation_apply_command_writes_receipt_and_maps_exit() {
         from_plan: plan_file.clone(),
         receipt: Some(receipt_path.clone()),
         acknowledge_decision: fixture_decisions(&plan),
+        final_receipt: None,
     };
     crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
         .expect("applied plan exits ready");
@@ -1504,6 +1505,7 @@ fn candidate_preparation_apply_command_rejects_malformed_plan_files() {
         from_plan: plan_file,
         receipt: None,
         acknowledge_decision: Vec::new(),
+        final_receipt: None,
     };
     let error =
         crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
@@ -1802,6 +1804,7 @@ fn candidate_preparation_apply_command_dispatch_and_error_mapping() {
         from_plan: plan_file,
         receipt: None,
         acknowledge_decision: Vec::new(),
+        final_receipt: None,
     };
     let error =
         crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
@@ -1887,4 +1890,239 @@ fn candidate_preparation_corrupted_topology_fails_loudly() {
     let error = broken.expect_err("broken topology must fail");
     assert!(error.to_string().contains("parse"), "{error}");
     let _ = std::fs::remove_dir_all(&root);
+}
+
+/// End-to-end: plan → apply (with acknowledgements) → final
+/// CandidatePreparationReceiptV1 reconciles the applied source state to
+/// Complete with coherent identity, graph, and corpus rows.
+#[test]
+fn prep_candidate_end_to_end_produces_complete_receipt() {
+    let root = fixture_apply_repo("e2e");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let apply_receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        apply_receipt.state,
+        allow_report::CandidateApplyStateV1::Applied
+    );
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &decisions,
+    );
+    assert_eq!(
+        final_receipt.state,
+        allow_report::CandidatePreparationStateV1::Complete,
+        "reasons: {:?}",
+        final_receipt.reasons
+    );
+    // Graph: the fixture selects one product row and one shared
+    // prerequisite, reconciled at their target versions.
+    assert_eq!(final_receipt.selected_graph.len(), 2);
+    assert!(
+        final_receipt
+            .selected_graph
+            .iter()
+            .any(|row| row.cargo_package_name == "allow-core" && row.version == "0.2.0")
+    );
+    assert!(
+        final_receipt
+            .selected_graph
+            .iter()
+            .any(|row| row.cargo_package_name == "effortless-repo-protocol"
+                && row.version == "0.1.0")
+    );
+    // Changed files recorded with before/after digests.
+    assert!(
+        final_receipt
+            .changed_files
+            .iter()
+            .any(|file| file.path == "Cargo.toml" && file.before_digest.is_some())
+    );
+    // Every executed row passed; deferred rows are retained as obligations.
+    assert!(
+        final_receipt
+            .validation_rows
+            .iter()
+            .all(|row| row.result != allow_report::CandidateValidationResultV1::Failed)
+    );
+    assert!(
+        final_receipt
+            .remaining_obligations
+            .contains(&"no-new-guard".to_string())
+    );
+    assert!(
+        final_receipt
+            .remaining_obligations
+            .contains(&"changie-history-roundtrip".to_string())
+    );
+    // No-op rerun: the parity row holds.
+    assert_eq!(final_receipt.no_op_rerun_result, "pass");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Outstanding decisions block `Complete` even when every executed
+/// validation row passes (control 9).
+#[test]
+fn candidate_preparation_receipt_outstanding_decisions_block_complete() {
+    let root = fixture_apply_repo("outstanding");
+    let plan = fixture_plan(&root);
+    let all = fixture_decisions(&plan);
+    let partial: Vec<String> = all.iter().skip(1).cloned().collect();
+    let apply_receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &partial,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        apply_receipt.state,
+        allow_report::CandidateApplyStateV1::DecisionRequired
+    );
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &partial,
+    );
+    assert_eq!(
+        final_receipt.state,
+        allow_report::CandidatePreparationStateV1::DecisionRequired
+    );
+    assert!(!final_receipt.outstanding_decisions.is_empty());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Post-apply support/channel drift fails the coherence row and keeps the
+/// receipt Incomplete (controls 5 and 9).
+#[test]
+fn candidate_preparation_receipt_detects_support_drift() {
+    let root = fixture_apply_repo("support-drift");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let apply_receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        apply_receipt.state,
+        allow_report::CandidateApplyStateV1::Applied
+    );
+    // A maintainer flips the published flag after the apply: the
+    // candidate now claims public availability it cannot have (control 4
+    // adjacent).
+    let matrix_path = root.join("docs/support-matrix.toml");
+    let drifted = String::from_utf8(std::fs::read(&matrix_path).expect("matrix"))
+        .expect("utf-8")
+        .replace("candidate_published = false", "candidate_published = true");
+    std::fs::write(&matrix_path, drifted).expect("write drift");
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &decisions,
+    );
+    assert_eq!(
+        final_receipt.state,
+        allow_report::CandidatePreparationStateV1::Incomplete
+    );
+    assert_eq!(final_receipt.release_support_projection, "incoherent");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The receipt's claim boundary is source-preparation only: Complete
+/// never asserts authorization, qualification, or publication
+/// (controls 8 and 12).
+#[test]
+fn candidate_preparation_receipt_complete_never_claims_authorization() {
+    let root = fixture_apply_repo("claim");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let apply_receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &decisions,
+    );
+    assert_eq!(
+        final_receipt.state,
+        allow_report::CandidatePreparationStateV1::Complete
+    );
+    for forbidden in [
+        "authorized",
+        "qualified",
+        "published",
+        "release is complete",
+    ] {
+        assert!(
+            !final_receipt.claim_boundary.contains(forbidden),
+            "claim boundary must not assert {forbidden:?}"
+        );
+    }
+    assert!(
+        final_receipt
+            .remaining_obligations
+            .iter()
+            .any(|obligation| obligation.contains("rehearsal")
+                || obligation.contains("no-new-guard")),
+        "qualification obligations must remain open"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The full CLI path (plan file → apply with --final-receipt) writes a
+/// final receipt whose after-identity matches the applied tree.
+#[test]
+fn prep_candidate_end_to_end_final_receipt_writes_through_the_command() {
+    let root = fixture_apply_repo("cli-final");
+    let plan = fixture_plan(&root);
+    let plan_file = std::env::temp_dir().join(format!(
+        "candidate-preparation-final-{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &plan_file,
+        serde_json::to_string_pretty(&plan).expect("plan serializes"),
+    )
+    .expect("plan file written");
+    let final_receipt_path = std::env::temp_dir().join(format!(
+        "candidate-preparation-final-receipt-{}.json",
+        std::process::id()
+    ));
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file,
+        receipt: None,
+        acknowledge_decision: fixture_decisions(&plan),
+        final_receipt: Some(final_receipt_path.clone()),
+    };
+    crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+        .expect("apply with final receipt exits ready");
+    let final_text = std::fs::read_to_string(&final_receipt_path).expect("final receipt");
+    assert!(final_text.contains("cargo-allow.candidate-preparation-receipt.v1"));
+    assert!(final_text.contains("\"state\": \"complete\""));
+    let parsed: allow_report::CandidatePreparationReceiptV1 =
+        serde_json::from_str(&final_text).expect("final receipt parses");
+    assert_eq!(parsed.release_version, "0.2.0");
+    assert_eq!(parsed.release_tag, "v0.2.0");
+    assert_eq!(parsed.release_channel, "stable");
+    let _ = std::fs::remove_dir_all(&root);
+    let _ = std::fs::remove_file(&final_receipt_path);
 }
