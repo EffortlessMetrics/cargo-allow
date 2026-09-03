@@ -355,6 +355,15 @@ pub(crate) type WorldLoadResult = CargoAllowResult<(
     FederationEvaluation,
 )>;
 
+struct LoadedWorld {
+    root: PathBuf,
+    selected_policy_path: Option<PathBuf>,
+    cfg: AllowConfig,
+    findings: Vec<Finding>,
+    inventory_facts: InventoryFacts,
+    federation: FederationEvaluation,
+}
+
 /// Invocation-scoped read-only context for commands participating in #3876.
 ///
 /// The canonical world loader assembles this once so commands can share the
@@ -396,7 +405,7 @@ pub(crate) fn load_read_only_world_and_cache(
     evidence_validation: EvidenceValidationMode,
     persistent_cache: bool,
 ) -> CargoAllowResult<CoreWorldContext> {
-    load_world_with_evidence_mode_and_cache(
+    load_world_with_evidence_mode_and_cache_internal(
         explicit_root,
         config,
         require_config,
@@ -405,15 +414,45 @@ pub(crate) fn load_read_only_world_and_cache(
         evidence_validation,
         persistent_cache,
     )
-    .map(
-        |(root, cfg, findings, inventory_facts, federation)| CoreWorldContext {
-            root,
-            cfg,
-            findings,
-            inventory_facts,
-            federation,
-        },
+    .map(|loaded| CoreWorldContext {
+        root: loaded.root,
+        cfg: loaded.cfg,
+        findings: loaded.findings,
+        inventory_facts: loaded.inventory_facts,
+        federation: loaded.federation,
+    })
+}
+
+pub(crate) fn load_read_only_world_with_selected_policy(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+) -> CargoAllowResult<(CoreWorldContext, Option<PathBuf>)> {
+    load_world_with_evidence_mode_and_cache_internal(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        true,
     )
+    .map(|loaded| {
+        let selected_policy_path = loaded.selected_policy_path.clone();
+        (
+            CoreWorldContext {
+                root: loaded.root,
+                cfg: loaded.cfg,
+                findings: loaded.findings,
+                inventory_facts: loaded.inventory_facts,
+                federation: loaded.federation,
+            },
+            selected_policy_path,
+        )
+    })
 }
 
 pub(crate) type ScopedWorldContext = (
@@ -459,7 +498,7 @@ pub(crate) fn load_world_with_evidence_mode(
     )
 }
 
-pub(crate) fn load_world_with_evidence_mode_and_cache(
+fn load_world_with_evidence_mode_and_cache_internal(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
     require_config: bool,
@@ -467,7 +506,7 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
     persistent_cache: bool,
-) -> WorldLoadResult {
+) -> CargoAllowResult<LoadedWorld> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
@@ -480,12 +519,24 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
                 evidence_validation,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
                 persistent_cache,
+            )
+            .map(
+                |(root, cfg, findings, inventory_facts, federation)| LoadedWorld {
+                    root,
+                    selected_policy_path: None,
+                    cfg,
+                    findings,
+                    inventory_facts,
+                    federation,
+                },
             );
         }
         Err(err) => return Err(err),
     };
-    let (cfg, policy_digest) =
-        crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
+    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+        policy_path.clone(),
+        evidence_validation,
+    )?;
     let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
@@ -531,16 +582,46 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
             finding.ledger = Some(provenance.clone());
         }
     }
-    Ok((
+    Ok(LoadedWorld {
         root,
+        selected_policy_path: Some(policy_path),
         cfg,
         findings,
-        inventory_facts
+        inventory_facts: inventory_facts
             .with_rust_files_considered(rust_scan.files_considered)
             .with_rust_files_skipped(rust_files_skipped)
             .with_rust_files_with_parse_errors(rust_files_with_parse_errors),
         federation,
-    ))
+    })
+}
+
+pub(crate) fn load_world_with_evidence_mode_and_cache(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+    persistent_cache: bool,
+) -> WorldLoadResult {
+    load_world_with_evidence_mode_and_cache_internal(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        persistent_cache,
+    )
+    .map(|loaded| {
+        (
+            loaded.root,
+            loaded.cfg,
+            loaded.findings,
+            loaded.inventory_facts,
+            loaded.federation,
+        )
+    })
 }
 
 /// Load a world from an already observed policy while varying only scan
