@@ -4,13 +4,12 @@ use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
 
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
-    emit_text,
+    HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir, emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world_from_resolved_policy_with_options, portable_relative_under_root,
-    resolve_source_tree_root,
+    load_selected_mutation_policy, load_world_from_resolved_policy_with_options,
+    portable_relative_under_root, resolve_source_tree_root, select_mutation_policy,
 };
 use effortless_repo_edit::{
     SingleTargetApplyMode, SingleTargetApplyRequest,
@@ -68,9 +67,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         ));
     }
     let root = resolve_source_tree_root(args.root.root.as_deref(), current_dir()?)?;
-    let (policy_path, federation) =
-        crate::policy_config::select_policy_path(&root, args.config.as_deref())?;
-    crate::policy_config::assert_path_within_root(&root, &policy_path)?;
+    let (policy_path, federation) = select_mutation_policy(&root, args.config.as_deref())?;
     crate::command_support::reject_output_collision(
         &root,
         args.output.as_deref(),
@@ -92,10 +89,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         (None, None)
     };
     let _mutation_lock = mutation_lock;
-    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
-        policy_path.clone(),
-        EvidenceValidationMode::ReportOnly,
-    )?;
+    let (cfg, policy_digest) = load_selected_mutation_policy(&policy_path)?;
     let (root, cfg, findings, inventory_facts, _federation) =
         load_world_from_resolved_policy_with_options(
             &root,
