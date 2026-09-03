@@ -30,12 +30,11 @@ use super::{
     ensure_addable_outcome, ensure_unique_allow_id, next_allow_id, require_add_evidence,
     select_add_finding,
 };
+use crate::command_support::select_mutation_policy;
 use crate::plan_bindings::{
     PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
 };
-use crate::policy_config::{
-    EvidenceValidationMode, load_policy_at_path_with_digest, select_policy_path,
-};
+use crate::policy_config::{EvidenceValidationMode, load_policy_at_path_with_digest};
 use crate::{
     MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
     evidence_inventory::{
@@ -153,8 +152,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
-    let (policy_path, federation) = select_policy_path(&mutation_root, args.config.as_deref())?;
-    crate::policy_config::assert_path_within_root(&mutation_root, &policy_path)?;
+    let (policy_path, federation) = select_mutation_policy(&mutation_root, args.config.as_deref())?;
     crate::command_support::reject_legacy_summary_output_collision(
         &mutation_root,
         args.summary_output.as_deref(),
