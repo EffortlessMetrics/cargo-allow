@@ -1,8 +1,10 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
+#[cfg(test)]
+use allow_policy::load_policy;
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
-    load_policy, load_policy_with_reportable_evidence, parse_policy_at,
+    load_policy_with_reportable_evidence, parse_policy_at,
     parse_policy_with_reportable_evidence_at,
 };
 #[cfg(test)]
@@ -71,10 +73,15 @@ pub(crate) fn observe_policy_for_diagnostics(
     config: Option<&Path>,
 ) -> ResolvedPolicyObservation {
     let discovery = discover_config_path(root, config);
-    let policy = discovery
-        .path
-        .clone()
-        .map(load_policy_with_reportable_evidence);
+    // An explicit CLI path remains authoritative even when unrelated
+    // federation diagnostics prevent the normal evaluator from producing a
+    // selected path. Preserve that fail-closed selection while keeping this
+    // helper the single policy observation boundary for diagnostics.
+    let policy_path = config
+        .map(|explicit| root.join(explicit))
+        .filter(|explicit| discovery.path.as_deref() != Some(explicit.as_path()))
+        .or_else(|| discovery.path.clone());
+    let policy = policy_path.map(load_policy_with_reportable_evidence);
     ResolvedPolicyObservation { discovery, policy }
 }
 
@@ -121,6 +128,7 @@ pub(crate) fn load_config_optional_with_evidence_mode(
     }
 }
 
+#[cfg(test)]
 fn load_policy_for_root(
     path: PathBuf,
     evidence_validation: EvidenceValidationMode,
@@ -130,13 +138,6 @@ fn load_policy_for_root(
     } else {
         load_policy(path)
     }
-}
-
-pub(crate) fn load_policy_at_path(
-    path: PathBuf,
-    evidence_validation: EvidenceValidationMode,
-) -> CargoAllowResult<AllowConfig> {
-    load_policy_for_root(path, evidence_validation)
 }
 
 pub(crate) fn load_policy_at_path_with_digest(

@@ -3,10 +3,8 @@ use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::{
-    EvidenceValidationMode, RootArgs, config_path, current_dir, emit_text, load_policy_at_path,
-    resolve_source_tree_root,
-};
+use crate::policy_config::observe_policy_for_diagnostics;
+use crate::{RootArgs, current_dir, emit_text, resolve_source_tree_root};
 
 pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = "cargo-allow.sensor-capabilities.v1";
 
@@ -511,21 +509,16 @@ fn configured_file_family_capabilities(
     }
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let Some(path) = args
-        .config
-        .as_deref()
-        .map(|config| root.join(config))
-        .or_else(|| config_path(&root, None))
-    else {
+    let observation = observe_policy_for_diagnostics(&root, args.config.as_deref());
+    let Some(policy) = observation.policy else {
         return Ok(Vec::new());
     };
-    let config =
-        load_policy_at_path(path, EvidenceValidationMode::ReportOnly).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidPolicy,
-                format!("failed to load capability policy: {error}"),
-            )
-        })?;
+    let config = policy.map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!("failed to load capability policy: {error}"),
+        )
+    })?;
 
     if args
         .class
