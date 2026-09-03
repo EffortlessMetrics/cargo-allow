@@ -437,4 +437,22 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn timeout_and_output_limits_are_observed_without_shells() -> Result<(), String> {
+        let mut timeout = spec()?;
+        timeout.timeout = Duration::from_nanos(1);
+        let timed = execute_bounded(&timeout).map_err(|error| error.as_str().to_string())?;
+        if timed.status != ProcessObservationStatusV1::TimedOut {
+            return Err(format!("expected timeout, got {:?}", timed.status));
+        }
+
+        let mut limited = spec()?;
+        limited.stdout_limit = 1;
+        let observed = execute_bounded(&limited).map_err(|error| error.as_str().to_string())?;
+        if observed.status != ProcessObservationStatusV1::OutputLimitExceeded {
+            return Err(format!("expected output limit, got {:?}", observed.status));
+        }
+        Ok(())
+    }
 }
