@@ -471,6 +471,17 @@ const CAPABILITIES: &[SensorCapability] = &[
 
 pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> {
     if args.provider_contract {
+        if args.root.root.is_some()
+            || args.config.is_some()
+            || args.class.is_some()
+            || args.kind.is_some()
+            || args.family.is_some()
+        {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--provider-contract cannot be combined with sensor catalog filters or repository policy selection",
+            ));
+        }
         let contract = crate::provider_contract::provider_contract();
         let rendered = match args.format {
             CapabilityFormat::Human => format!(
