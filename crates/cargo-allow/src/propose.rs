@@ -1,3 +1,4 @@
+use crate::command_support::select_mutation_policy;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
     emit_stderr_text, load_world_from_resolved_policy_with_options,
@@ -93,12 +94,12 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         }
     });
     let mutation_root = crate::resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let selection =
-        crate::policy_config::select_policy_path(&mutation_root, args.config.as_deref());
+    let selection = match select_mutation_policy(&mutation_root, args.config.as_deref()) {
+        Ok(selection) => Ok(selection),
+        Err(error) if crate::policy_config::is_missing_policy_config_error(&error) => Err(error),
+        Err(error) => return Err(error),
+    };
     let selected_policy_path = selection.as_ref().ok().map(|(path, _)| path.clone());
-    if let Some(path) = &selected_policy_path {
-        crate::policy_config::assert_path_within_root(&mutation_root, path)?;
-    }
     if let Some(target) = &write_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
