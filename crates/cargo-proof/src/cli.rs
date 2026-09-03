@@ -172,8 +172,10 @@ fn run_cli(cli: CargoProofCli) -> Result<ProcessExitFamilyV1, String> {
             let outcome = match plan_result {
                 Ok(outcome) => {
                     if outcome.plan.items.iter().any(|item| {
-                        item.blocking
-                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable
+                        (item.blocking
+                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable)
+                            || item.disposition
+                                == ProofItemDispositionV1::RepositoryDecisionRequired
                     }) {
                         eprintln!(
                             "error: proof plan contains a blocking provider_unavailable item"
