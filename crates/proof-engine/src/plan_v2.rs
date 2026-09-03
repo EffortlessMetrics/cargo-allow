@@ -71,7 +71,7 @@ fn build_item(
         .transpose()?;
     let capability_class = handoff
         .and_then(|handoff| handoff.requested_evidence_class.clone())
-        .unwrap_or_else(|| obligation.kind.as_str().to_string());
+        .unwrap_or_else(|| "unresolved_intent_evidence_class".to_string());
     let handoff_ready = handoff.is_some_and(|handoff| {
         handoff.disposition
             == Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning)
@@ -109,11 +109,7 @@ fn build_item(
     let mut subject = ProofSubjectV1 {
         subject_class: ProofSubjectClassV1::Commit,
         revision: Some(snapshot_identity.to_string()),
-        selector: Some(
-            handoff
-                .and_then(|handoff| handoff.subject_selector_ref.clone())
-                .unwrap_or_else(|| obligation.evidence_refs.join(",")),
-        ),
+        selector: handoff.and_then(|handoff| handoff.subject_selector_ref.clone()),
         body_identity: handoff.and_then(|handoff| handoff.source_identity.clone()),
         limitations: handoff
             .map(|handoff| handoff.subject_inventory_limitations.clone())
@@ -243,7 +239,7 @@ fn build_item(
                 .evidence_purpose_refs
                 .first()
                 .cloned()
-                .unwrap_or_else(|| obligation.statement.clone()),
+                .unwrap_or_else(|| "unresolved_intent_evidence_purpose".to_string()),
             required_capability_class: capability_class,
             snapshot_identity: snapshot_identity.to_string(),
             subject,
@@ -271,7 +267,7 @@ fn build_item(
         blocking: matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Blocking),
         evidence_purpose_ref: handoff
             .and_then(|handoff| handoff.evidence_purpose_refs.first().cloned())
-            .unwrap_or_else(|| obligation.statement.clone()),
+            .unwrap_or_else(|| "unresolved_intent_evidence_purpose".to_string()),
         required_capability_class: capability_class,
         snapshot_identity: snapshot_identity.to_string(),
         subject,
@@ -538,6 +534,33 @@ mod tests {
             || item.execution_posture != ProofItemExecutionPostureV1::None
         {
             return Err("absent handoff must remain not-ready".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn incomplete_handoff_does_not_fabricate_legacy_semantics() -> Result<(), String> {
+        let mut incomplete = envelope();
+        let obligation = incomplete
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::EvidenceDesignIncomplete),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&incomplete, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.required_capability_class != "unresolved_intent_evidence_class"
+            || item.subject.selector.is_some()
+            || item.evidence_purpose_ref != "unresolved_intent_evidence_purpose"
+            || item.disposition != ProofItemDispositionV1::NotProven
+        {
+            return Err("incomplete handoff fabricated legacy semantics".to_string());
         }
         Ok(())
     }
