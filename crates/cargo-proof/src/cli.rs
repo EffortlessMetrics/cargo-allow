@@ -364,6 +364,10 @@ mod tests {
         AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
         ResultClassV1,
     };
+    use intent_protocol::{
+        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPlanEnvelopeV1,
+    };
+    use proof_engine::CapturedReceiptStoreV1;
     use proof_protocol::{
         CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
         ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
@@ -406,6 +410,81 @@ mod tests {
         if run_cli(cli).map_err(|error| error.to_string())? != ProcessExitFamilyV1::Usage {
             return Err("partial explicit catalog inputs must be usage errors".to_string());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn plan_cli_exercises_legacy_and_explicit_registry_routes() -> Result<(), String> {
+        let directory =
+            std::env::temp_dir().join(format!("cargo-proof-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        let obligation = directory.join("obligation.json");
+        let receipts = directory.join("receipts.json");
+        let output = directory.join("plan.json");
+        let envelope = IntentObligationPlanEnvelopeV1::new(
+            IntentIdentityEnvelopeV1::new(
+                RepositorySnapshotV1::new_committed_head(
+                    "test",
+                    "sha1",
+                    ResolvedRevisionV1 {
+                        requested: "HEAD".to_string(),
+                        commit: "abc".to_string(),
+                        tree: String::new(),
+                    },
+                ),
+                IntentArtifactKindV1::RequirementDocument,
+                "test-artifact",
+                "test/source.md",
+                "test-content",
+            ),
+            "precommit",
+            vec![],
+        );
+        std::fs::write(
+            &obligation,
+            serde_json::to_vec(&envelope).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &receipts,
+            serde_json::to_vec(&CapturedReceiptStoreV1::new())
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let base = |provider_catalog: Option<PathBuf>,
+                    receipt_inventory: Option<PathBuf>,
+                    output: Option<PathBuf>| {
+            CargoProofCli {
+                root: PathBuf::from("."),
+                config: None,
+                format: FormatArg::Json,
+                command: Some(CargoProofCommand::Plan(PlanArgs {
+                    obligation_plan: obligation.clone(),
+                    provider_catalog,
+                    receipt_inventory,
+                    output,
+                })),
+            }
+        };
+        if run_cli(base(None, None, None))? != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("legacy plan should preserve provider-unavailable posture".to_string());
+        }
+        let catalog = directory.join("catalog.json");
+        std::fs::write(&catalog, b"[]").map_err(|error| error.to_string())?;
+        if run_cli(base(
+            Some(catalog),
+            Some(receipts.clone()),
+            Some(output.clone()),
+        ))? != ProcessExitFamilyV1::InstrumentFailure
+        {
+            return Err("explicit catalog route should reach planning".to_string());
+        }
+        let selected = run_cli(base(None, Some(receipts), Some(output)))?;
+        if selected != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("selected registry route should reach planning".to_string());
+        }
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }
 
