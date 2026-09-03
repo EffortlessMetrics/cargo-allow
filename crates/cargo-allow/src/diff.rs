@@ -27,12 +27,12 @@ use diff_render::{
 };
 
 use crate::artifact_emit;
+use crate::policy_config::git_relative_selected_config_path;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
-    git_relative_config_path, load_read_only_world_with_selected_policy,
-    normalize_to_repo_relative, parse_kind_filter, policy_baseline_debt_entries, report_config,
-    write_file,
+    git_relative_config_path, load_read_only_world_with_selected_policy, parse_kind_filter,
+    policy_baseline_debt_entries, report_config, write_file,
 };
 
 struct CurrentWorld {
@@ -608,7 +608,7 @@ fn git_relative_config_path_for_diff(
             )
         })?;
         assert_path_within_root(root, selected)?;
-        return Ok(normalize_to_repo_relative(root, selected));
+        return git_relative_selected_config_path(root, selected);
     }
     let head = head.unwrap_or(base);
     if let Some(config) = config {
@@ -1186,23 +1186,24 @@ mod summary_tests {
     #[test]
     fn current_diff_reuses_selected_policy_path_without_reselection() -> Result<(), String> {
         let root = std::env::current_dir().map_err(|error| error.to_string())?;
-        let selected = std::path::Path::new("policy/selected.toml");
-        let path = git_relative_config_path_for_diff(&root, None, "base", None, Some(selected))
+        let selected = root.join("Cargo.toml");
+        let path = git_relative_config_path_for_diff(&root, None, "base", None, Some(&selected))
             .map_err(|error| error.to_string())?;
-        if path != selected {
-            return Err(format!("expected selected path {selected:?}, got {path:?}"));
+        let expected = std::path::Path::new("Cargo.toml");
+        if path != expected {
+            return Err(format!("expected selected path {expected:?}, got {path:?}"));
         }
         let explicit = git_relative_config_path_for_diff(
             &root,
             Some(std::path::Path::new("policy/other.toml")),
             "base",
             None,
-            Some(selected),
+            Some(&selected),
         )
         .map_err(|error| error.to_string())?;
-        if explicit != selected {
+        if explicit != expected {
             return Err(format!(
-                "explicit current config must reuse selected path {selected:?}, got {explicit:?}"
+                "explicit current config must reuse selected path {expected:?}, got {explicit:?}"
             ));
         }
         let external = root
@@ -1211,6 +1212,29 @@ mod summary_tests {
             .join("outside-policy.toml");
         if git_relative_config_path_for_diff(&root, None, "base", None, Some(&external)).is_ok() {
             return Err("external selected policy path must be rejected".to_string());
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn current_diff_uses_tracked_target_for_selected_policy_symlink() -> Result<(), String> {
+        use std::fs;
+        use std::os::unix::fs::symlink;
+
+        let root =
+            std::env::temp_dir().join(format!("cargo-allow-diff-symlink-{}", std::process::id()));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let target = root.join("target.toml");
+        let link = root.join("selected.toml");
+        fs::write(&target, "[allow]\n").map_err(|error| error.to_string())?;
+        symlink(&target, &link).map_err(|error| error.to_string())?;
+
+        let relative = git_relative_config_path_for_diff(&root, None, "base", None, Some(&link))
+            .map_err(|error| error.to_string())?;
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        if relative != std::path::Path::new("target.toml") {
+            return Err(format!("expected canonical target path, got {relative:?}"));
         }
         Ok(())
     }
