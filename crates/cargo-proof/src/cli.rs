@@ -2,11 +2,12 @@ use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1,
     captured_receipt_inputs_from_paths, dry_run_from_plan_path, emit_frame, exit_code_for_family,
     exit_family_for_result_class, explain_receipt_item, load_config, plan_from_obligation_path,
-    plan_v2_from_paths, receipt_validation_satisfies_plan, reconcile_receipts,
-    render_captured_receipt_status, render_captured_receipt_validation, render_dry_run_frame,
-    render_plan_v2_frame, render_receipt_explain, render_receipt_reconcile,
+    plan_v2_from_paths, plan_v2_from_selected_registry, receipt_validation_satisfies_plan,
+    reconcile_receipts, render_captured_receipt_status, render_captured_receipt_validation,
+    render_dry_run_frame, render_plan_v2_frame, render_receipt_explain, render_receipt_reconcile,
 };
 use clap::{Parser, Subcommand, ValueEnum};
+use proof_protocol::ProofItemDispositionV1;
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -108,6 +109,10 @@ pub enum ReceiptAction {
 
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
     let cli = CargoProofCli::parse();
+    run_cli(cli)
+}
+
+fn run_cli(cli: CargoProofCli) -> Result<ProcessExitFamilyV1, String> {
     let config = load_config(&cli.root, cli.config.as_deref())?;
     let output_format = OutputFormat::from(cli.format);
     let _profile = config.profile;
@@ -122,16 +127,15 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         }
         Some(CargoProofCommand::Providers) => provider_command_family(cmd_providers(output_format)),
         Some(CargoProofCommand::Plan(args)) => {
-            let supplied = usize::from(args.provider_catalog.is_some())
-                + usize::from(args.receipt_inventory.is_some())
-                + usize::from(args.output.is_some());
-            if supplied == 1 || supplied == 2 {
+            if args.provider_catalog.is_some()
+                && (args.receipt_inventory.is_none() || args.output.is_none())
+            {
                 eprintln!(
                     "error: --provider-catalog, --receipt-inventory, and --output must be supplied together"
                 );
                 return Ok(ProcessExitFamilyV1::Usage);
             }
-            if supplied == 0 {
+            if args.receipt_inventory.is_none() || args.output.is_none() {
                 let plan_error = match plan_from_obligation_path(&args.obligation_plan) {
                     Ok(_) => {
                         eprintln!(
@@ -148,21 +152,42 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 eprintln!("error: {}", plan_error.message);
                 return Ok(family);
             }
-            let (Some(provider_catalog), Some(receipt_inventory), Some(output)) = (
-                args.provider_catalog.as_ref(),
-                args.receipt_inventory.as_ref(),
-                args.output.as_ref(),
-            ) else {
+            let (Some(receipt_inventory), Some(output)) =
+                (args.receipt_inventory.as_ref(), args.output.as_ref())
+            else {
                 eprintln!("error: incomplete V2 plan inputs");
                 return Ok(ProcessExitFamilyV1::Usage);
             };
-            let outcome = match plan_v2_from_paths(
-                &args.obligation_plan,
-                provider_catalog,
-                receipt_inventory,
-                output,
-            ) {
-                Ok(outcome) => outcome,
+            let plan_result = match args.provider_catalog.as_ref() {
+                Some(provider_catalog) => plan_v2_from_paths(
+                    &args.obligation_plan,
+                    provider_catalog,
+                    receipt_inventory,
+                    output,
+                ),
+                None => {
+                    plan_v2_from_selected_registry(&args.obligation_plan, receipt_inventory, output)
+                }
+            };
+            let outcome = match plan_result {
+                Ok(outcome) => {
+                    if outcome.plan.items.iter().any(|item| {
+                        item.blocking
+                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable
+                    }) {
+                        eprintln!(
+                            "error: proof plan contains a blocking provider_unavailable item"
+                        );
+                        return Ok(exit_family_for_result_class("provider_unavailable"));
+                    }
+                    if outcome.plan.items.iter().any(|item| {
+                        item.disposition == ProofItemDispositionV1::RepositoryDecisionRequired
+                    }) {
+                        eprintln!("error: proof plan requires a repository decision");
+                        return Ok(exit_family_for_result_class("repository_decision_required"));
+                    }
+                    outcome
+                }
                 Err(plan_error) => {
                     // Map the exit family from the proof-corpus result
                     // class instead of treating every plan failure as
@@ -336,18 +361,197 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::provider_command_family;
-    use super::{ReceiptAction, ReceiptsArgs, run_receipts};
+    use super::{
+        CargoProofCli, CargoProofCommand, FormatArg, PlanArgs, ReceiptAction, ReceiptsArgs,
+        run_cli, run_receipts,
+    };
     use cargo_proof::{ProcessExitFamilyV1, ReceiptCommandError};
     use effortless_repo_protocol::{
         AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
         ResultClassV1,
     };
+    use intent_protocol::{
+        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPlanEnvelopeV1,
+        IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+    };
+    use proof_engine::CapturedReceiptStoreV1;
     use proof_protocol::{
         CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
-        ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
-        ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
+        ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofItemDispositionV1,
+        ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2, ProofSubjectClassV1, ProofSubjectV1,
+        ProviderSelectionV1,
     };
     use std::path::PathBuf;
+
+    #[test]
+    fn plan_cli_requires_receipt_and_output_for_registry_route() -> Result<(), String> {
+        let cli = CargoProofCli {
+            root: PathBuf::from("."),
+            config: None,
+            format: FormatArg::Json,
+            command: Some(CargoProofCommand::Plan(PlanArgs {
+                obligation_plan: PathBuf::from("missing-obligation.json"),
+                provider_catalog: None,
+                receipt_inventory: Some(PathBuf::from("receipts.json")),
+                output: None,
+            })),
+        };
+        if run_cli(cli).map_err(|error| error.to_string())? != ProcessExitFamilyV1::Usage {
+            return Err("partial registry inputs must be usage errors".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn plan_cli_rejects_partial_explicit_catalog() -> Result<(), String> {
+        let cli = CargoProofCli {
+            root: PathBuf::from("."),
+            config: None,
+            format: FormatArg::Json,
+            command: Some(CargoProofCommand::Plan(PlanArgs {
+                obligation_plan: PathBuf::from("missing-obligation.json"),
+                provider_catalog: Some(PathBuf::from("catalog.json")),
+                receipt_inventory: Some(PathBuf::from("receipts.json")),
+                output: None,
+            })),
+        };
+        if run_cli(cli).map_err(|error| error.to_string())? != ProcessExitFamilyV1::Usage {
+            return Err("partial explicit catalog inputs must be usage errors".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn plan_cli_exercises_legacy_and_explicit_registry_routes() -> Result<(), String> {
+        let directory =
+            std::env::temp_dir().join(format!("cargo-proof-cli-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        let obligation = directory.join("obligation.json");
+        let receipts = directory.join("receipts.json");
+        let output = directory.join("plan.json");
+        let envelope = IntentObligationPlanEnvelopeV1::new(
+            IntentIdentityEnvelopeV1::new(
+                RepositorySnapshotV1::new_committed_head(
+                    "test",
+                    "sha1",
+                    ResolvedRevisionV1 {
+                        requested: "HEAD".to_string(),
+                        commit: "abc".to_string(),
+                        tree: String::new(),
+                    },
+                ),
+                IntentArtifactKindV1::RequirementDocument,
+                "test-artifact",
+                "test/source.md",
+                "test-content",
+            ),
+            "precommit",
+            vec![IntentPhaseObligationV1 {
+                handoff: None,
+                obligation_id: "obl-cli".to_string(),
+                phase: "precommit".to_string(),
+                kind: IntentPhaseObligationKindV1::EvidenceReview,
+                statement: "Review evidence".to_string(),
+                posture: IntentObligationPostureV1::Blocking,
+                evidence_refs: vec![],
+            }],
+        );
+        std::fs::write(
+            &obligation,
+            serde_json::to_vec(&envelope).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &receipts,
+            serde_json::to_vec(&CapturedReceiptStoreV1::new())
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let base = |provider_catalog: Option<PathBuf>,
+                    receipt_inventory: Option<PathBuf>,
+                    output: Option<PathBuf>| {
+            CargoProofCli {
+                root: PathBuf::from("."),
+                config: None,
+                format: FormatArg::Json,
+                command: Some(CargoProofCommand::Plan(PlanArgs {
+                    obligation_plan: obligation.clone(),
+                    provider_catalog,
+                    receipt_inventory,
+                    output,
+                })),
+            }
+        };
+        if run_cli(base(None, None, None))? != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("legacy plan should preserve provider-unavailable posture".to_string());
+        }
+        let catalog = directory.join("catalog.json");
+        let catalog_value = ProofCapabilityCatalogV1::new(
+            "test-provider",
+            vec![ProofCapabilityV1 {
+                capability_id: "evidence_review".to_string(),
+                kind: ProofCapabilityKindV1::StaticReport,
+                program: "test-provider".to_string(),
+                statement: "Review evidence".to_string(),
+            }],
+        );
+        std::fs::write(
+            &catalog,
+            serde_json::to_vec(&vec![catalog_value]).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        if run_cli(base(
+            Some(catalog),
+            Some(receipts.clone()),
+            Some(output.clone()),
+        ))? != ProcessExitFamilyV1::Success
+        {
+            return Err("explicit catalog route should produce a successful plan".to_string());
+        }
+        if !output.is_file() {
+            return Err("explicit catalog route should write its plan".to_string());
+        }
+        let selected = run_cli(base(None, Some(receipts.clone()), Some(output)))?;
+        if selected != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("selected registry route should reach planning".to_string());
+        }
+        let mut decision_envelope = envelope;
+        decision_envelope
+            .obligations
+            .get_mut(0)
+            .ok_or_else(|| "fixture must contain an obligation".to_string())?
+            .posture = IntentObligationPostureV1::Decision;
+        std::fs::write(
+            &obligation,
+            serde_json::to_vec(&decision_envelope).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let decision = run_cli(base(
+            None,
+            Some(receipts),
+            Some(directory.join("decision-plan.json")),
+        ))?;
+        if decision != ProcessExitFamilyV1::Blocking {
+            return Err("decision posture should require an explicit decision".to_string());
+        }
+        let missing = CargoProofCli {
+            root: PathBuf::from("."),
+            config: None,
+            format: FormatArg::Json,
+            command: Some(CargoProofCommand::Plan(PlanArgs {
+                obligation_plan: directory.join("missing-obligation.json"),
+                provider_catalog: None,
+                receipt_inventory: None,
+                output: None,
+            })),
+        };
+        if run_cli(missing)? != ProcessExitFamilyV1::Usage {
+            return Err("missing legacy obligation should be usage".to_string());
+        }
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 
     fn receipt_cli_fixture() -> (ProofPlanV2, CapturedReceiptManifestV1) {
         let snapshot = RepositorySnapshotV1::new_committed_head(

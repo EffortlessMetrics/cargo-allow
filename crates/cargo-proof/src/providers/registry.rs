@@ -141,6 +141,18 @@ impl StaticProviderRegistryV1 {
         projections
     }
 
+    /// Return the selected provider capability catalogs for the planner.
+    ///
+    /// The projection is cloned at this boundary so plan generation consumes
+    /// the same validated feature-selected registry as the `providers`
+    /// command, without exposing provider implementations to the planner.
+    pub fn catalogs(&self) -> Vec<ProofCapabilityCatalogV1> {
+        self.projections()
+            .into_iter()
+            .map(|projection| projection.capabilities)
+            .collect()
+    }
+
     /// Return selected provider IDs in deterministic order.
     pub fn provider_ids(&self) -> Vec<String> {
         self.projections()

@@ -15,11 +15,18 @@ on the published install channel yet. Evaluate it from the source tree:
 cargo run -p cargo-proof -- identity
 cargo run -p cargo-proof -- --format json providers
 cargo run -p cargo-proof -- plan --obligation-plan <intent.obligation-plan.v1.json>
+cargo run -p cargo-proof -- plan \
+  --obligation-plan <intent.obligation-plan.v1.json> \
+  --receipt-inventory <captured-receipts.json> \
+  --output <proof.plan.v2.json>
 cargo run -p cargo-proof -- dry-run --proof-plan <proof.plan.v1.toml>
 ```
 
-`plan` consumes an `intent.obligation-plan.v1` JSON file produced by the
-intent side and projects a structured proof plan. `dry-run` validates a
+`plan --obligation-plan` consumes an `intent.obligation-plan.v1` JSON file
+produced by the intent side and projects the legacy proof plan. Supplying
+`--receipt-inventory` and `--output` selects the V2 planner, which uses the
+compile-time provider registry and writes an atomic `proof.plan.v2` artifact.
+`dry-run` validates a
 `proof.plan.v1` TOML file with structured argv only — it never executes
 the planned commands. Live provider execution is not part of the current
 surface.

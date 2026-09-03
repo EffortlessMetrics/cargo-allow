@@ -61,27 +61,34 @@ fn build_item(
     catalogs: &[ProofCapabilityCatalogV1],
 ) -> Result<ProofItemV1, String> {
     let capability_class = obligation.kind.as_str().to_string();
-    let selected = catalogs
-        .iter()
-        .flat_map(|catalog| {
-            catalog
-                .capabilities
-                .iter()
-                .map(move |capability| (catalog, capability))
-        })
-        .filter(|(_, capability)| capability.capability_id == capability_class)
-        .min_by(
-            |(left_catalog, left_capability), (right_catalog, right_capability)| {
-                (
-                    left_catalog.provider_id.as_str(),
-                    left_capability.capability_id.as_str(),
-                )
-                    .cmp(&(
-                        right_catalog.provider_id.as_str(),
-                        right_capability.capability_id.as_str(),
-                    ))
-            },
-        );
+    let selected = if matches!(
+        obligation.posture,
+        intent_protocol::IntentObligationPostureV1::Decision
+    ) {
+        None
+    } else {
+        catalogs
+            .iter()
+            .flat_map(|catalog| {
+                catalog
+                    .capabilities
+                    .iter()
+                    .map(move |capability| (catalog, capability))
+            })
+            .filter(|(_, capability)| capability.capability_id == capability_class)
+            .min_by(
+                |(left_catalog, left_capability), (right_catalog, right_capability)| {
+                    (
+                        left_catalog.provider_id.as_str(),
+                        left_capability.capability_id.as_str(),
+                    )
+                        .cmp(&(
+                            right_catalog.provider_id.as_str(),
+                            right_capability.capability_id.as_str(),
+                        ))
+                },
+            )
+    };
 
     let subject = ProofSubjectV1 {
         subject_class: ProofSubjectClassV1::Commit,
@@ -121,11 +128,21 @@ fn build_item(
             )
         }
         None => (
-            ProofItemDispositionV1::ProviderUnavailable,
+            match obligation.posture {
+                intent_protocol::IntentObligationPostureV1::Decision => {
+                    ProofItemDispositionV1::RepositoryDecisionRequired
+                }
+                _ => ProofItemDispositionV1::ProviderUnavailable,
+            },
             None,
             None,
             ProofItemExecutionPostureV1::None,
-            vec!["no catalog capability matches the required evidence class".to_string()],
+            vec![match obligation.posture {
+                intent_protocol::IntentObligationPostureV1::Decision => {
+                    "repository decision required before provider selection".to_string()
+                }
+                _ => "no catalog capability matches the required evidence class".to_string(),
+            }],
         ),
     };
     Ok(ProofItemV1 {
@@ -275,6 +292,32 @@ mod tests {
         let second = plan_proof_v2_from_intent(&envelope(), &[first_catalog, reversed], &receipts)?;
         if first.plan_id != second.plan_id {
             return Err("catalog order must not change semantic plan identity".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn decision_posture_prevents_provider_selection() -> Result<(), String> {
+        let mut decision = envelope();
+        decision
+            .obligations
+            .get_mut(0)
+            .ok_or_else(|| "fixture must contain an obligation".to_string())?
+            .posture = IntentObligationPostureV1::Decision;
+        let plan =
+            plan_proof_v2_from_intent(&decision, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .into_iter()
+            .next()
+            .ok_or_else(|| "decision plan must contain an item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
+            || item.selection.is_some()
+            || item.execution_posture != ProofItemExecutionPostureV1::None
+            || item.limitations
+                != vec!["repository decision required before provider selection".to_string()]
+        {
+            return Err("decision posture must remain non-executable".to_string());
         }
         Ok(())
     }
