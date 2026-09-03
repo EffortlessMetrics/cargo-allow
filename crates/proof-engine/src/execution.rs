@@ -4,10 +4,10 @@ use crate::CommandInvocationSpecV1;
 use proof_protocol::{ProofPlanV1, validate_proof_plan};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, File, OpenOptions},
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::mpsc,
     thread,
     time::{Duration, Instant},
 };
@@ -151,19 +151,13 @@ pub fn execute_bounded(
     let deadline = Instant::now().checked_add(spec.timeout).ok_or_else(|| {
         RunnerError::InvalidSpec("timeout exceeds the platform clock range".to_string())
     })?;
-    let stdout_path = capture_path("stdout")?;
-    let stderr_path = capture_path("stderr")?;
-    let stdout_file = File::create(&stdout_path)
-        .map_err(|error| RunnerError::Io(format!("stdout capture: {error}")))?;
-    let stderr_file = File::create(&stderr_path)
-        .map_err(|error| RunnerError::Io(format!("stderr capture: {error}")))?;
     let mut command = Command::new(&spec.program);
     command
         .args(&spec.argv)
         .current_dir(&spec.cwd)
         .stdin(Stdio::null())
-        .stdout(Stdio::from(stdout_file))
-        .stderr(Stdio::from(stderr_file))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .env_clear();
     for (key, value) in &spec.env_allowlist {
         command.env(key, value);
@@ -171,8 +165,6 @@ pub fn execute_bounded(
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
-            let _ = fs::remove_file(&stdout_path);
-            let _ = fs::remove_file(&stderr_path);
             return Ok(ExecutionReceiptV1 {
                 schema_id: EXECUTION_RECEIPT_SCHEMA_ID.to_string(),
                 plan_id: spec.plan_id.clone(),
@@ -191,9 +183,47 @@ pub fn execute_bounded(
             });
         }
     };
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| RunnerError::Io("stdout pipe unavailable".to_string()))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| RunnerError::Io("stderr pipe unavailable".to_string()))?;
+    let (stdout_tx, stdout_rx) = mpsc::channel();
+    let (stderr_tx, stderr_rx) = mpsc::channel();
+    let stdout_limit = spec.stdout_limit;
+    let stderr_limit = spec.stderr_limit;
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stdout
+            .take((stdout_limit.saturating_add(1)) as u64)
+            .read_to_end(&mut bytes)
+            .map(|_| bytes)
+            .map_err(|error| error.to_string());
+        let _ = stdout_tx.send(result);
+    });
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let result = stderr
+            .take((stderr_limit.saturating_add(1)) as u64)
+            .read_to_end(&mut bytes)
+            .map(|_| bytes)
+            .map_err(|error| error.to_string());
+        let _ = stderr_tx.send(result);
+    });
     let mut timed_out = false;
     let mut output_limit_exceeded = false;
+    let mut stdout_result = None;
+    let mut stderr_result = None;
     let status = loop {
+        if let Some(status) = child
+            .try_wait()
+            .map_err(|error| RunnerError::Io(error.to_string()))?
+        {
+            break status;
+        }
         if Instant::now() >= deadline {
             timed_out = true;
             if let Err(error) = child.kill() {
@@ -211,13 +241,21 @@ pub fn execute_bounded(
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
         }
-        let stdout_len = fs::metadata(&stdout_path)
-            .map_err(|error| RunnerError::Io(format!("stdout capture metadata: {error}")))?
-            .len();
-        let stderr_len = fs::metadata(&stderr_path)
-            .map_err(|error| RunnerError::Io(format!("stderr capture metadata: {error}")))?
-            .len();
-        if stdout_len > spec.stdout_limit as u64 || stderr_len > spec.stderr_limit as u64 {
+        if stdout_result.is_none() {
+            stdout_result = stdout_rx.try_recv().ok();
+        }
+        if stderr_result.is_none() {
+            stderr_result = stderr_rx.try_recv().ok();
+        }
+        let stdout_over = stdout_result
+            .as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .is_some_and(|bytes| bytes.len() > spec.stdout_limit);
+        let stderr_over = stderr_result
+            .as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .is_some_and(|bytes| bytes.len() > spec.stderr_limit);
+        if stdout_over || stderr_over {
             output_limit_exceeded = true;
             if let Err(error) = child.kill() {
                 if let Some(status) = child
@@ -234,20 +272,32 @@ pub fn execute_bounded(
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
         }
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|error| RunnerError::Io(error.to_string()))?
-        {
-            break status;
-        }
         thread::sleep(Duration::from_millis(5));
     };
-    let stdout = read_capture(&stdout_path, spec.stdout_limit)?;
-    let stderr = read_capture(&stderr_path, spec.stderr_limit)?;
-    let stdout_truncated = output_limit_exceeded || timed_out || stdout.len() == spec.stdout_limit;
-    let stderr_truncated = output_limit_exceeded || timed_out || stderr.len() == spec.stderr_limit;
-    let _ = fs::remove_file(&stdout_path);
-    let _ = fs::remove_file(&stderr_path);
+    if stdout_result.is_none() {
+        stdout_result = stdout_rx.try_recv().ok();
+    }
+    if stderr_result.is_none() {
+        stderr_result = stderr_rx.try_recv().ok();
+    }
+    let stdout = if timed_out || output_limit_exceeded {
+        stdout_result.and_then(Result::ok).unwrap_or_default()
+    } else {
+        stdout_result
+            .or_else(|| stdout_rx.recv().ok())
+            .ok_or_else(|| RunnerError::Io("stdout capture worker failed".to_string()))?
+            .map_err(RunnerError::Io)?
+    };
+    let stderr = if timed_out || output_limit_exceeded {
+        stderr_result.and_then(Result::ok).unwrap_or_default()
+    } else {
+        stderr_result
+            .or_else(|| stderr_rx.recv().ok())
+            .ok_or_else(|| RunnerError::Io("stderr capture worker failed".to_string()))?
+            .map_err(RunnerError::Io)?
+    };
+    let stdout_truncated = output_limit_exceeded || timed_out || stdout.len() > spec.stdout_limit;
+    let stderr_truncated = output_limit_exceeded || timed_out || stderr.len() > spec.stderr_limit;
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
     } else if output_limit_exceeded || stdout_truncated || stderr_truncated {
@@ -344,35 +394,6 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
         ));
     }
     Ok(())
-}
-
-fn capture_path(label: &str) -> Result<PathBuf, RunnerError> {
-    let base = std::env::temp_dir();
-    let pid = std::process::id();
-    for attempt in 0_u32..100 {
-        let path = base.join(format!("cargo-proof-{pid}-{label}-{attempt}.out"));
-        match OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(file) => {
-                drop(file);
-                return Ok(path);
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(error) => return Err(RunnerError::Io(format!("capture path: {error}"))),
-        }
-    }
-    Err(RunnerError::Io(
-        "capture path collision limit exceeded".to_string(),
-    ))
-}
-
-fn read_capture(path: &Path, limit: usize) -> Result<Vec<u8>, RunnerError> {
-    let mut file = File::open(path).map_err(|error| RunnerError::Io(error.to_string()))?;
-    let mut bytes = Vec::new();
-    file.by_ref()
-        .take(limit as u64)
-        .read_to_end(&mut bytes)
-        .map_err(|error| RunnerError::Io(error.to_string()))?;
-    Ok(bytes)
 }
 
 fn digest(bytes: &[u8]) -> String {
