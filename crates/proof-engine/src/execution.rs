@@ -226,17 +226,7 @@ pub fn execute_bounded(
         }
         if Instant::now() >= deadline {
             timed_out = true;
-            if let Err(error) = child.kill() {
-                if let Some(status) = child
-                    .try_wait()
-                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
-                {
-                    break status;
-                }
-                return Err(RunnerError::Io(format!(
-                    "timed-out process could not be terminated: {error}"
-                )));
-            }
+            let _ = child.kill();
             break child
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
@@ -257,17 +247,7 @@ pub fn execute_bounded(
             .is_some_and(|bytes| bytes.len() > spec.stderr_limit);
         if stdout_over || stderr_over {
             output_limit_exceeded = true;
-            if let Err(error) = child.kill() {
-                if let Some(status) = child
-                    .try_wait()
-                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
-                {
-                    break status;
-                }
-                return Err(RunnerError::Io(format!(
-                    "output-limited process could not be terminated: {error}"
-                )));
-            }
+            let _ = child.kill();
             break child
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
