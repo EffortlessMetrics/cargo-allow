@@ -102,11 +102,11 @@ fn propose_returns_out_of_root_policy_before_write_target_checks() -> Result<(),
         root: RootArgs {
             root: Some(root.clone()),
         },
-        config: Some(outside_policy),
+        config: Some(outside_policy.clone()),
         kind: None,
         include_untracked: true,
         expires: None,
-        write: Some(root.join("target/proposed.toml")),
+        write: Some(outside.join("proposed.toml")),
         force: false,
         summary_format: HumanJsonFormat::Human,
         summary_output: None,
@@ -116,8 +116,11 @@ fn propose_returns_out_of_root_policy_before_write_target_checks() -> Result<(),
         Ok(()) => return Err("out-of-root policy was accepted".to_string()),
         Err(error) => error,
     };
-    if !error.to_string().contains("outside the source-tree root") {
-        return Err(format!("unexpected containment error: {error}"));
+    let error_text = error.to_string();
+    if !error_text.contains("outside the source-tree root")
+        || !error_text.contains(outside_policy.to_string_lossy().as_ref())
+    {
+        return Err(format!("unexpected containment error: {error_text}"));
     }
 
     fs::remove_dir_all(root).map_err(|error| error.to_string())?;
