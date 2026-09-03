@@ -211,7 +211,12 @@ fn build_item(
                 "intent handoff readiness changed during planning",
             ),
         };
-        limitations.push(reason.to_string());
+        limitations.push(
+            handoff
+                .disposition_reason
+                .clone()
+                .unwrap_or_else(|| reason.to_string()),
+        );
         return Ok(ProofItemV1 {
             proof_item_id: digest(&base),
             intent_obligation_id: obligation.obligation_id.clone(),
@@ -496,6 +501,35 @@ mod tests {
             || item.execution_posture != ProofItemExecutionPostureV1::None
         {
             return Err("non-ready handoff became executable".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn not_applicable_handoff_preserves_reason() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::NotApplicableWithReason),
+            disposition_reason: Some("provider cannot observe generated code".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotApplicableWithReason
+            || !item
+                .limitations
+                .iter()
+                .any(|reason| reason == "provider cannot observe generated code")
+        {
+            return Err("not-applicable reason was not preserved".to_string());
         }
         Ok(())
     }
