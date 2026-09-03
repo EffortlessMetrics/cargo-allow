@@ -1,0 +1,15 @@
+# Revision note for #3876: checked configuration-authority consumer denominator.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-0854"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5871790c51851e9daf4932c14402d663b16ee35402065b257d4d2d2fa1e30d31"
+reason = "Receipts the checked configuration-authority consumer denominator added for issue #3876."
+
+[[records]]
+allow_ids = ["allow-0855"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:28587b88d8ea71b8515fd9bb122e93f33877502f4f022a4a7ced71707c292b9f"
+reason = "Receipts this revision note's own policy exception for issue #3876."
