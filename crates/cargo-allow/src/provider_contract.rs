@@ -144,6 +144,17 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
             }
         }
     }
+    for identity in &snapshot.selected_paths {
+        if identity.path.trim().is_empty()
+            || identity.present != identity.blob_oid.is_some()
+            || identity
+                .blob_oid
+                .as_deref()
+                .is_some_and(|value| !is_object_id(value))
+        {
+            return Err("analysis request selected path identity is invalid".to_string());
+        }
+    }
     let expected_closure = selected_source_closure_hash(&snapshot.selected_paths);
     if snapshot.selected_source_closure != expected_closure {
         return Err("analysis request selected source closure is inconsistent".to_string());
@@ -354,6 +365,27 @@ mod tests {
         };
         if !error.contains("closure") {
             return Err("stale closure error lost its reason".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn request_validation_rejects_incoherent_selected_path() -> Result<(), String> {
+        let mut value = request();
+        value
+            .snapshot
+            .selected_paths
+            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
+                path: "src/lib.rs".to_string(),
+                present: true,
+                blob_oid: None,
+            });
+        let error = match validate_request(&value) {
+            Ok(()) => return Err("incoherent selected path was accepted".to_string()),
+            Err(error) => error,
+        };
+        if !error.contains("path identity") {
+            return Err("selected path error lost its reason".to_string());
         }
         Ok(())
     }
