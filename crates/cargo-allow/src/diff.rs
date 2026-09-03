@@ -1187,13 +1187,13 @@ mod summary_tests {
     fn current_diff_reuses_selected_policy_path_without_reselection() -> Result<(), String> {
         let root = std::env::current_dir().map_err(|error| error.to_string())?;
         let selected = std::path::Path::new("policy/selected.toml");
-        let path = git_relative_config_path_for_diff(root, None, "base", None, Some(selected))
+        let path = git_relative_config_path_for_diff(&root, None, "base", None, Some(selected))
             .map_err(|error| error.to_string())?;
         if path != selected {
             return Err(format!("expected selected path {selected:?}, got {path:?}"));
         }
         let explicit = git_relative_config_path_for_diff(
-            root,
+            &root,
             Some(std::path::Path::new("policy/other.toml")),
             "base",
             None,
@@ -1209,7 +1209,7 @@ mod summary_tests {
             .parent()
             .ok_or_else(|| "repository root has no parent".to_string())?
             .join("outside-policy.toml");
-        if git_relative_config_path_for_diff(root, None, "base", None, Some(&external)).is_ok() {
+        if git_relative_config_path_for_diff(&root, None, "base", None, Some(&external)).is_ok() {
             return Err("external selected policy path must be rejected".to_string());
         }
         Ok(())
