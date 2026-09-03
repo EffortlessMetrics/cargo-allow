@@ -238,4 +238,58 @@ mod tests {
         let error = validate_request(&value).expect_err("range without base must fail closed");
         assert!(error.contains("base revision"));
     }
+
+    #[test]
+    fn request_validation_rejects_bad_top_level_fields() -> Result<(), String> {
+        let mut value = request();
+        value.schema_version = 2;
+        require_rejection(&value)?;
+        value = request();
+        value.config_identity.clear();
+        require_rejection(&value)?;
+        value = request();
+        value.output_root.clear();
+        require_rejection(&value)
+    }
+
+    #[test]
+    fn request_validation_rejects_bad_snapshot_schema_and_ids() -> Result<(), String> {
+        let mut value = request();
+        value.snapshot.schema_id = "other.snapshot.v1".to_string();
+        require_rejection(&value)?;
+        value = request();
+        value.snapshot.head.commit = "not-an-object-id".to_string();
+        require_rejection(&value)?;
+        value = request();
+        value.snapshot.head.tree = "not-an-object-id".to_string();
+        require_rejection(&value)
+    }
+
+    #[test]
+    fn request_validation_rejects_head_range_identity_conflicts() -> Result<(), String> {
+        let mut value = request();
+        value.snapshot.base = Some(value.snapshot.head.clone());
+        require_rejection(&value)?;
+
+        value = request();
+        value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
+        value.snapshot.base = Some(value.snapshot.head.clone());
+        value.snapshot.merge_base = Some("not-an-object-id".to_string());
+        require_rejection(&value)?;
+
+        value.snapshot.merge_base = None;
+        value.snapshot.base = Some(ResolvedRevisionV1 {
+            requested: "BASE".to_string(),
+            commit: String::new(),
+            tree: "b".repeat(40),
+        });
+        require_rejection(&value)
+    }
+
+    fn require_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
+        if validate_request(value).is_ok() {
+            return Err("invalid provider request was accepted".to_string());
+        }
+        Ok(())
+    }
 }
