@@ -273,11 +273,12 @@ fn build_item(
             selection: None,
             current_receipt: None,
             expected_receipt: None,
-            execution_posture: match handoff.disposition {
-                Some(intent_protocol::IntentProofHandoffDispositionV1::ManualOrNativeOutstanding) => {
-                    ProofItemExecutionPostureV1::ManualNative
-                }
-                _ => ProofItemExecutionPostureV1::None,
+            execution_posture: if disposition
+                == ProofItemDispositionV1::ManualOrNativeOutstanding
+            {
+                ProofItemExecutionPostureV1::ManualNative
+            } else {
+                ProofItemExecutionPostureV1::None
             },
             dependency_group: None,
             limitations,
@@ -738,6 +739,33 @@ mod tests {
                 .any(|reason| reason == "decision still needed")
         {
             return Err("decision posture was overwritten by handoff disposition".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn decision_posture_clears_manual_execution_posture() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.posture = IntentObligationPostureV1::Decision;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::ManualOrNativeOutstanding),
+            disposition_reason: Some("native review remains".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
+            || item.execution_posture != ProofItemExecutionPostureV1::None
+        {
+            return Err("decision posture retained an incompatible manual posture".to_string());
         }
         Ok(())
     }
