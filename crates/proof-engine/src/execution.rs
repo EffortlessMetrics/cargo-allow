@@ -214,7 +214,8 @@ pub fn execute_bounded(
         let _ = stderr_tx.send(result);
     });
     let mut timed_out = false;
-    let mut output_limit_exceeded = false;
+    let mut stdout_limit_exceeded = false;
+    let mut stderr_limit_exceeded = false;
     let mut stdout_result = None;
     let mut stderr_result = None;
     let status = loop {
@@ -246,7 +247,8 @@ pub fn execute_bounded(
             .and_then(|result| result.as_ref().ok())
             .is_some_and(|bytes| bytes.len() > spec.stderr_limit);
         if stdout_over || stderr_over {
-            output_limit_exceeded = true;
+            stdout_limit_exceeded |= stdout_over;
+            stderr_limit_exceeded |= stderr_over;
             let _ = child.kill();
             break child
                 .wait()
@@ -261,6 +263,7 @@ pub fn execute_bounded(
         stderr_result = stderr_rx.try_recv().ok();
     }
     let mut capture_incomplete = false;
+    let output_limit_exceeded = stdout_limit_exceeded || stderr_limit_exceeded;
     let stdout = if timed_out || output_limit_exceeded {
         stdout_result.and_then(Result::ok).unwrap_or_default()
     } else {
@@ -283,8 +286,8 @@ pub fn execute_bounded(
             }
         }
     };
-    let stdout_truncated = output_limit_exceeded || timed_out || stdout.len() > spec.stdout_limit;
-    let stderr_truncated = output_limit_exceeded || timed_out || stderr.len() > spec.stderr_limit;
+    let stdout_truncated = stdout_limit_exceeded || timed_out || stdout.len() > spec.stdout_limit;
+    let stderr_truncated = stderr_limit_exceeded || timed_out || stderr.len() > spec.stderr_limit;
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
     } else if output_limit_exceeded || stdout_truncated || stderr_truncated {
