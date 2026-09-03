@@ -44,3 +44,15 @@ allow_ids = ["allow-0847"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:6fca603971276933cfda61d08ac728eecb043a2e7815a0effe1eca9e6592d458"
 reason = "Test-only reconcile error-arm or deferral assertion at the candidate-preparation receipt suite (#3834)."
+
+[[records]]
+allow_ids = ["allow-0848"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d710de6f9fb54c342ea3503f9668f2b69178e0333d71fddc205df3381c6ccc25"
+reason = "Test-only fixture-projection assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository."
+
+[[records]]
+allow_ids = ["allow-0849"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1167e3bec5f4f03c7dcd1c01183c5cfb758b24fb20ad71b97ffa807c2e4de86c"
+reason = "Test-only fixture-projection assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository."
