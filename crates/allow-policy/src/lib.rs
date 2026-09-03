@@ -145,6 +145,35 @@ pub fn load_policy_with_reportable_evidence(
     parse_policy_with_reportable_evidence_at(path, &text)
 }
 
+/// Load a policy and return the digest of the exact bytes consumed.
+///
+/// This keeps identity binding at the same read boundary as reportable policy
+/// loading, so callers do not need to reopen the source merely to project its
+/// digest.
+pub fn load_policy_with_reportable_evidence_and_digest(
+    path: impl AsRef<Path>,
+) -> CargoAllowResult<(AllowConfig, String)> {
+    let path = path.as_ref();
+    let bytes = allow_core::read_file_capped(path).map_err(|error| match error {
+        CappedReadError::Io(source) => CargoAllowError::from(source)
+            .with_message_prefix(format!("failed to read {}: ", path.display())),
+        CappedReadError::Oversized { .. } | CappedReadError::NotUtf8(_) => {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to read {}: {error}", path.display()),
+            )
+        }
+    })?;
+    let text = std::str::from_utf8(&bytes).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!("failed to read {}: {error}", path.display()),
+        )
+    })?;
+    let config = parse_policy_with_reportable_evidence_at(path, text)?;
+    Ok((config, allow_core::sha256_v1_bytes(&bytes)))
+}
+
 pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
     parse_policy_at(Path::new("<policy>"), input)
 }

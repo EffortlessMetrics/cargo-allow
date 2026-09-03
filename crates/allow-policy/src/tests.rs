@@ -303,6 +303,36 @@ fn load_policy_with_reportable_evidence_reads_file_and_keeps_invalid_links() -> 
 }
 
 #[test]
+fn load_policy_with_reportable_evidence_and_digest_preserves_read_errors() -> std::io::Result<()> {
+    let root = TempRoot::new("load-reportable-evidence-digest-errors")?;
+    let missing = root.path().join("missing/allow.toml");
+    let missing_error = match load_policy_with_reportable_evidence_and_digest(&missing) {
+        Ok(_) => return Err(std::io::Error::other("missing policy unexpectedly loaded")),
+        Err(error) => error,
+    };
+    assert_eq!(
+        missing_error.kind(),
+        allow_core::CargoAllowErrorKind::InvalidConfig
+    );
+
+    let invalid_utf8 = root.path().join("invalid-utf8.toml");
+    std::fs::write(&invalid_utf8, [0xff, 0xfe])?;
+    let encoding_error = match load_policy_with_reportable_evidence_and_digest(&invalid_utf8) {
+        Ok(_) => {
+            return Err(std::io::Error::other(
+                "non-UTF-8 policy unexpectedly loaded",
+            ));
+        }
+        Err(error) => error,
+    };
+    assert_eq!(
+        encoding_error.kind(),
+        allow_core::CargoAllowErrorKind::InvalidPolicy
+    );
+    Ok(())
+}
+
+#[test]
 fn load_policy_reports_path_when_read_fails() -> std::io::Result<()> {
     let root = TempRoot::new("load-policy-read-error")?;
     let policy_path = root.path().join("missing/allow.toml");

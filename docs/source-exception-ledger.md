@@ -676,7 +676,7 @@ classification diagnostics only; they do not exclude files, approve findings,
 or make claims about file contents.
 
 For maintainer troubleshooting, `cargo-allow doctor --support-bundle <path>`
-writes the separate `cargo-allow.support-bundle.v1` contract to a path inside
+writes the separate `cargo-allow.support-bundle.v2` contract to a path inside
 the source-tree root. The bundle is allowlisted and redacted: it records setup
 metadata, repository-relative config identity, inventory counts, and federation
 presence/validity, while excluding source contents, policy reasons and

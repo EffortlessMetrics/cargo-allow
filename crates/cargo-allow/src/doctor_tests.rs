@@ -93,11 +93,8 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
     fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
     fs::write(root.join("source.rs"), "fn source() {}\n").map_err(|error| error.to_string())?;
     let policy = root.join("policy/allow.toml");
-    fs::write(
-        &policy,
-        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n",
-    )
-    .map_err(|error| error.to_string())?;
+    let policy_text = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n";
+    fs::write(&policy, policy_text).map_err(|error| error.to_string())?;
     let doctor_output = root.join("doctor.txt");
     let bundle_output = root.join("target/cargo-allow/support-bundle.json");
 
@@ -120,7 +117,7 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
 
     let bundle = fs::read_to_string(&bundle_output).map_err(|error| error.to_string())?;
     let value: Value = serde_json::from_str(&bundle).map_err(|error| error.to_string())?;
-    if value.pointer("/schema_id").and_then(Value::as_str) != Some("cargo-allow.support-bundle.v1")
+    if value.pointer("/schema_id").and_then(Value::as_str) != Some("cargo-allow.support-bundle.v2")
     {
         return Err("support bundle schema id did not match".to_string());
     }
@@ -129,6 +126,16 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
     }
     if value.pointer("/config/path").and_then(Value::as_str) != Some("policy/allow.toml") {
         return Err("support bundle config path was not repository-relative".to_string());
+    }
+    let digest = value
+        .pointer("/config/digest")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "support bundle omitted the selected policy digest".to_string())?;
+    if digest != allow_core::sha256_v1_bytes(policy_text.as_bytes()) {
+        return Err("support bundle policy digest was not canonical".to_string());
+    }
+    if value.pointer("/config/precedence").and_then(Value::as_str) != Some("cli_override") {
+        return Err("support bundle precedence was not canonical".to_string());
     }
     if bundle.contains(root.to_string_lossy().as_ref()) || bundle.contains("fn source") {
         return Err("support bundle leaked an absolute root or source contents".to_string());
