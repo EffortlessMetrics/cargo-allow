@@ -18463,7 +18463,7 @@ callee = "expect"
 glob = "crates/allow-report/src/artifacts/final_support_selection_v1.rs"
 
 [[allow]]
-id = "allow-0855"
+id = "allow-0857"
 kind = "non_rust_file"
 family = "configuration"
 path = ".allow/revisions/3737-final-support-selection.toml"
