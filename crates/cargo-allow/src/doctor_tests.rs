@@ -117,7 +117,7 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
 
     let bundle = fs::read_to_string(&bundle_output).map_err(|error| error.to_string())?;
     let value: Value = serde_json::from_str(&bundle).map_err(|error| error.to_string())?;
-    if value.pointer("/schema_id").and_then(Value::as_str) != Some("cargo-allow.support-bundle.v1")
+    if value.pointer("/schema_id").and_then(Value::as_str) != Some("cargo-allow.support-bundle.v2")
     {
         return Err("support bundle schema id did not match".to_string());
     }

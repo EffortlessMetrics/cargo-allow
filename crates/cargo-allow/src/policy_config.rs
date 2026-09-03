@@ -84,19 +84,14 @@ pub(crate) fn observe_policy_for_diagnostics(
     // selected path. Preserve that fail-closed selection while keeping this
     // helper the single policy observation boundary for diagnostics.
     let explicit_path = config.map(|explicit| root.join(explicit));
-    let policy_path = explicit_path
-        .clone()
-        .filter(|explicit| discovery.path.as_deref() != Some(explicit.as_path()))
-        .or_else(|| discovery.path.clone());
-    if let Some(explicit_path) = explicit_path
-        && discovery.path.as_deref() != Some(explicit_path.as_path())
-    {
+    let policy_path = explicit_path.clone().or_else(|| discovery.path.clone());
+    if let Some(explicit_path) = explicit_path {
         discovery.path = Some(explicit_path);
         discovery.source = Some("cli_override");
         discovery.precedence = Some(PrecedenceTier::CliOverride);
     }
     let (policy, policy_digest) = policy_path.map_or((None, None), |path| {
-        match load_policy_at_path_with_digest(path, EvidenceValidationMode::ReportOnly) {
+        match allow_policy::load_policy_with_reportable_evidence_and_digest(path) {
             Ok((config, digest)) => (Some(Ok(config)), Some(digest)),
             Err(error) => (Some(Err(error)), None),
         }
@@ -555,6 +550,39 @@ mod tests {
         }
         if !observation.discovery.federation_evaluation_failed {
             return Err("malformed federation diagnostic was lost".to_string());
+        }
+        remove_test_dir(&root);
+        Ok(())
+    }
+
+    #[test]
+    fn diagnostics_keep_cli_provenance_when_explicit_path_matches_fallback() -> Result<(), String> {
+        let root = unique_test_dir("policy-config-explicit-same-path-malformed-federation");
+        let policy_dir = root.join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        fs::write(
+            policy_dir.join("allow.toml"),
+            render_policy(&valid_policy_config()),
+        )
+        .map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+        fs::write(root.join(".allow/config.toml"), "not valid federation")
+            .map_err(|error| error.to_string())?;
+
+        let observation =
+            observe_policy_for_diagnostics(&root, Some(Path::new("policy/allow.toml")));
+        if observation.discovery.source != Some("cli_override")
+            || observation.discovery.precedence != Some(PrecedenceTier::CliOverride)
+        {
+            return Err("same-path explicit policy lost CLI provenance".to_string());
+        }
+        if observation
+            .policy
+            .as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .is_none()
+        {
+            return Err("same-path explicit policy was not loaded".to_string());
         }
         remove_test_dir(&root);
         Ok(())

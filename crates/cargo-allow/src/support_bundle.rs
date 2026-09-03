@@ -2,8 +2,8 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use serde::Serialize;
 use std::path::Path;
 
-pub(crate) const SUPPORT_BUNDLE_SCHEMA_VERSION: u32 = 1;
-pub(crate) const SUPPORT_BUNDLE_SCHEMA_ID: &str = "cargo-allow.support-bundle.v1";
+pub(crate) const SUPPORT_BUNDLE_SCHEMA_VERSION: u32 = 2;
+pub(crate) const SUPPORT_BUNDLE_SCHEMA_ID: &str = "cargo-allow.support-bundle.v2";
 
 const CLAIM_BOUNDARY: &[&str] = &[
     "bounded_support_diagnostic",

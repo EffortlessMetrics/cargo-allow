@@ -38,7 +38,7 @@ inside the repository:
 cargo-allow doctor --support-bundle target/cargo-allow/support-bundle.json
 ```
 
-The bundle is versioned as `cargo-allow.support-bundle.v1`. It contains only
+The bundle is versioned as `cargo-allow.support-bundle.v2`. It contains only
 allowlisted setup metadata, repository-relative config identity, inventory
 counts, and federation presence/validity. The repository root is redacted; the
 bundle excludes source contents, policy reasons and evidence, environment

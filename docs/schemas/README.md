@@ -156,7 +156,7 @@ source-tree scan result.
 | Receipt | Schema ID | Producer |
 |---|---|---|
 | Operator latency | `cargo-allow.operator-latency.v2` | `scripts/perf-budget-smoke.sh` |
-| Redacted support bundle | `cargo-allow.support-bundle.v1` | `cargo-allow doctor --support-bundle <path>` |
+| Redacted support bundle | `cargo-allow.support-bundle.v2` | `cargo-allow doctor --support-bundle <path>` |
 | Extraction cutover evidence manifest | `cargo-allow.extraction-cutover-evidence.v2` | `scripts/extraction-cutover-status.sh` / `cargo-allow extraction-parity --cutover-evidence` |
 | Extraction cutover ownership receipt | `cargo-allow.extraction-cutover-ownership.v1` | `scripts/extraction-cutover-status.sh` |
 | Extraction cutover build/package receipt | `cargo-allow.extraction-cutover-build-package.v1` | independent package/build harness consumed by `cargo-allow extraction-parity --cutover-evidence` |
