@@ -696,6 +696,92 @@ mod tests {
     }
 
     #[test]
+    fn validation_rejects_each_unsafe_shape() -> Result<(), String> {
+        let invalid = |candidate: ExecutionSpecV1, needle: &str| -> Result<(), String> {
+            match execute_bounded(&candidate, ExecutionApprovalV1::Explicit) {
+                Err(RunnerError::InvalidSpec(message)) if message.contains(needle) => Ok(()),
+                Err(error) => Err(format!("unexpected error: {}", error.as_str())),
+                Ok(_) => Err(format!("invalid candidate unexpectedly ran: {needle}")),
+            }
+        };
+
+        let mut empty = spec()?;
+        empty.plan_id.clear();
+        invalid(empty, "required")?;
+
+        let mut relative_program = spec()?;
+        relative_program.program = "cargo-proof".to_string();
+        relative_program.reviewed_invocation.program = relative_program.program.clone();
+        invalid(relative_program, "absolute")?;
+
+        let mut writes = spec()?;
+        writes.write_roots.push(writes.cwd.clone());
+        invalid(writes, "read-only")?;
+
+        let mut relative_cwd = spec()?;
+        relative_cwd.cwd = std::path::PathBuf::from(".");
+        invalid(relative_cwd, "contained")?;
+
+        let mut no_roots = spec()?;
+        no_roots.read_roots.clear();
+        invalid(no_roots, "contained")?;
+
+        let mut missing_root = spec()?;
+        missing_root.read_roots = vec![missing_root.cwd.join("missing-root")];
+        invalid(missing_root, "contained")?;
+
+        let mut command_mismatch = spec()?;
+        command_mismatch.reviewed_invocation.command_id = "other".to_string();
+        invalid(command_mismatch, "reviewed invocation")?;
+
+        let mut schema_mismatch = spec()?;
+        schema_mismatch.reviewed_invocation.schema_id = "wrong.schema".to_string();
+        invalid(schema_mismatch, "reviewed invocation")?;
+
+        let mut reviewed_write = spec()?;
+        reviewed_write
+            .reviewed_invocation
+            .write_paths
+            .push(reviewed_write.cwd.to_string_lossy().to_string());
+        invalid(reviewed_write, "reviewed invocation policy")?;
+
+        let mut zero = spec()?;
+        zero.timeout = Duration::ZERO;
+        invalid(zero, "positive")?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn approval_and_error_labels_are_stable() -> Result<(), String> {
+        let candidate = spec()?;
+        if !matches!(
+            execute_bounded(&candidate, ExecutionApprovalV1::Denied),
+            Err(RunnerError::ApprovalRequired)
+        ) {
+            return Err("missing explicit approval was accepted".to_string());
+        }
+        let labels = [
+            RunnerError::InvalidSpec(String::new()),
+            RunnerError::ApprovalRequired,
+            RunnerError::Spawn(String::new()),
+            RunnerError::Io(String::new()),
+        ];
+        let expected = [
+            "malformed_execution_spec",
+            "approval_required",
+            "spawn_failed",
+            "instrument_failure",
+        ];
+        for (error, label) in labels.iter().zip(expected) {
+            if error.as_str() != label {
+                return Err(format!("unexpected error label: {}", error.as_str()));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn timeout_and_output_limits_are_observed_without_shells() -> Result<(), String> {
         let mut timeout = spec()?;
         timeout.timeout = Duration::from_nanos(1);
