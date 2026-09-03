@@ -13,9 +13,11 @@ schema_version = 1
 # constructs the new model file introduces: allow-0854 is a
 # glob-ratcheted expect baseline (occurrence_limit=6) for the test module's
 # fixture/invariant-guarded expects; the one indexing site was rewritten as
-# a first_mut().expect so no indexing receipt is needed. No existing
+# a first_mut().expect so no indexing receipt is needed. allow-0855 is the
+# ledger-change-note receipt for this revision-note file itself, matching
+# the per-note receipt law used for prior revision notes. No existing
 # exception is weakened, no expiry is extended, and no scope is broadened:
-# the record below is an addition. policy/allow.toml keeps its CRLF
+# the records below are additions. policy/allow.toml keeps its CRLF
 # line-ending contract; the net transition is append-only.
 
 [[records]]
@@ -23,3 +25,9 @@ allow_ids = ["allow-0854"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:5afd48ed82e0dd4b536f197c8f934fe126bf4285e69e061c8d043ee2d9704541"
 reason = "Glob-ratcheted expect baseline for the final-support-selection model's test module (#3737); every expect guards an invariant established by immediately preceding fixture construction or typed validation in the same function, and the selection digests are recomputed from committed policy data only."
+
+[[records]]
+allow_ids = ["allow-0855"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ac632a4a6dbb041b7b102593448a94b2d28805599b6d69474d104bdd653fee44"
+reason = "Ledger-change-note receipt for this revision-note file itself (#3737); the note authorizes the allow-0854 expect baseline and is receipted per the per-note receipt law."
