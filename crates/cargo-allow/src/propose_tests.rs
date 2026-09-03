@@ -79,6 +79,56 @@ fn propose_summary_collision_rejects_before_touching_live_policy() -> Result<(),
 }
 
 #[test]
+fn propose_returns_out_of_root_policy_before_write_target_checks() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-out-of-root-policy-{}",
+        std::process::id()
+    ));
+    let outside = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-outside-policy-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&outside);
+    fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+    fs::write(root.join("src/lib.rs"), "pub fn example() {}\n")
+        .map_err(|error| error.to_string())?;
+    fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
+    let outside_policy = outside.join("allow.toml");
+    fs::write(&outside_policy, render_policy(&AllowConfig::empty()))
+        .map_err(|error| error.to_string())?;
+
+    let result = cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(outside_policy.clone()),
+        kind: None,
+        include_untracked: true,
+        expires: None,
+        write: Some(outside.join("proposed.toml")),
+        force: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+        max: 50,
+    });
+    let error = match result {
+        Ok(()) => return Err("out-of-root policy was accepted".to_string()),
+        Err(error) => error,
+    };
+    let error_text = error.to_string();
+    if !error_text.contains("outside the source-tree root")
+        || !error_text.contains(outside_policy.to_string_lossy().as_ref())
+    {
+        return Err(format!("unexpected containment error: {error_text}"));
+    }
+
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    fs::remove_dir_all(outside).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn propose_without_policy_preserves_bootstrap_baseline_path() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-propose-no-policy-{}",
