@@ -94,6 +94,8 @@ pub struct ExecutionSpecV1 {
     pub program: String,
     pub argv: Vec<String>,
     pub cwd: PathBuf,
+    pub read_roots: Vec<PathBuf>,
+    pub write_roots: Vec<PathBuf>,
     pub env_allowlist: Vec<(String, String)>,
     pub timeout: Duration,
     pub stdout_limit: usize,
@@ -261,6 +263,21 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
             "program must be an absolute reviewed executable path".to_string(),
         ));
     }
+    if !spec.write_roots.is_empty() {
+        return Err(RunnerError::InvalidSpec(
+            "the initial runner accepts read-only execution only".to_string(),
+        ));
+    }
+    if spec.read_roots.is_empty()
+        || !spec
+            .read_roots
+            .iter()
+            .any(|root| spec.cwd.starts_with(root))
+    {
+        return Err(RunnerError::InvalidSpec(
+            "cwd must be contained by an explicit read root".to_string(),
+        ));
+    }
     if spec.reviewed_invocation.command_id != spec.command_id
         || spec.reviewed_invocation.program != spec.program
         || spec.reviewed_invocation.argv != spec.argv
@@ -386,7 +403,9 @@ mod tests {
             command_id: "test".to_string(),
             program,
             argv: vec!["--list".to_string()],
-            cwd,
+            cwd: cwd.clone(),
+            read_roots: vec![cwd.clone()],
+            write_roots: vec![],
             env_allowlist: vec![],
             timeout: Duration::from_secs(5),
             stdout_limit: 64 * 1024,
