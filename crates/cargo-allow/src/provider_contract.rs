@@ -195,6 +195,14 @@ mod tests {
     }
 
     #[test]
+    fn capability_name_is_stable() -> Result<(), String> {
+        if ProviderCapabilityV1::SourceExceptionNoNew.as_str() != "source_exception_no_new" {
+            return Err("provider capability name changed".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn request_validation_rejects_wrong_mode() {
         let mut value = request();
         value.mode = "audit".to_string();
@@ -284,6 +292,15 @@ mod tests {
             tree: "b".repeat(40),
         });
         require_rejection(&value)
+    }
+
+    #[test]
+    fn request_validation_accepts_valid_committed_range() -> Result<(), String> {
+        let mut value = request();
+        value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
+        value.snapshot.base = Some(value.snapshot.head.clone());
+        value.snapshot.merge_base = Some("c".repeat(40));
+        validate_request(&value)
     }
 
     fn require_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
