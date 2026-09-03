@@ -15,7 +15,7 @@ pub(crate) use crate::kind_filter::{
 pub(crate) use crate::mutation_lock::MutationLock;
 pub(crate) use crate::policy_config::{
     EvidenceValidationMode, assert_path_within_root, config_path, git_relative_config_path,
-    portable_relative_under_root, root_relative_path,
+    portable_relative_under_root, root_relative_path, select_policy_path,
 };
 pub(crate) use allow_core::CargoAllowResult;
 pub(crate) use effortless_repo_edit::{write_file, write_file_no_overwrite};
@@ -36,6 +36,30 @@ pub(crate) use crate::world::{
 };
 pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;
+
+/// Select a mutation policy once for commands that share the same read/evaluate
+/// lifecycle. Mutation authorization remains a separate step at each call site.
+pub(crate) fn select_mutation_policy(
+    root: &Path,
+    config: Option<&Path>,
+) -> CargoAllowResult<(
+    std::path::PathBuf,
+    allow_policy::federation::FederationEvaluation,
+)> {
+    let (policy_path, federation) = select_policy_path(root, config)?;
+    assert_path_within_root(root, &policy_path)?;
+    Ok((policy_path, federation))
+}
+
+pub(crate) fn load_selected_mutation_policy(
+    policy_path: &Path,
+) -> CargoAllowResult<(allow_core::AllowConfig, String)> {
+    let (cfg, policy_digest) = crate::policy_config::load_policy_at_path_with_digest(
+        policy_path.to_path_buf(),
+        EvidenceValidationMode::ReportOnly,
+    )?;
+    Ok((cfg, policy_digest))
+}
 
 pub(crate) fn snapshot_error(error: SnapshotError) -> allow_core::CargoAllowError {
     let kind = match error.kind() {
