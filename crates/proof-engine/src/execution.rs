@@ -158,8 +158,8 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
         .stderr
         .take()
         .ok_or_else(|| RunnerError::Io("stderr pipe unavailable".to_string()))?;
-    let out = Arc::new(Mutex::new((Vec::new(), false)));
-    let err = Arc::new(Mutex::new((Vec::new(), false)));
+    let out = Arc::new(Mutex::new(ReaderState::default()));
+    let err = Arc::new(Mutex::new(ReaderState::default()));
     let out_reader = spawn_reader(stdout, Arc::clone(&out), spec.stdout_limit);
     let err_reader = spawn_reader(stderr, Arc::clone(&err), spec.stderr_limit);
     let deadline = Instant::now() + spec.timeout;
@@ -173,31 +173,38 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
         }
         if Instant::now() >= deadline {
             timed_out = true;
-            child
-                .kill()
-                .map_err(|error| RunnerError::Io(error.to_string()))?;
+            let _ = child.kill();
             break child
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
         }
         thread::sleep(Duration::from_millis(5));
     };
-    out_reader
-        .join()
-        .map_err(|_| RunnerError::Io("stdout reader panicked".to_string()))?;
-    err_reader
-        .join()
-        .map_err(|_| RunnerError::Io("stderr reader panicked".to_string()))?;
-    let (stdout, stdout_truncated) = out
+    if !timed_out {
+        out_reader
+            .join()
+            .map_err(|_| RunnerError::Io("stdout reader panicked".to_string()))?;
+        err_reader
+            .join()
+            .map_err(|_| RunnerError::Io("stderr reader panicked".to_string()))?;
+    }
+    let stdout_state = out
         .lock()
         .map_err(|_| RunnerError::Io("stdout lock poisoned".to_string()))?
         .clone();
-    let (stderr, stderr_truncated) = err
+    let stderr_state = err
         .lock()
         .map_err(|_| RunnerError::Io("stderr lock poisoned".to_string()))?
         .clone();
+    let stdout = stdout_state.bytes;
+    let stderr = stderr_state.bytes;
+    let stdout_truncated = stdout_state.truncated;
+    let stderr_truncated = stderr_state.truncated;
+    let reader_failed = stdout_state.error.is_some() || stderr_state.error.is_some();
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
+    } else if reader_failed {
+        ProcessObservationStatusV1::InstrumentFailure
     } else if stdout_truncated || stderr_truncated {
         ProcessObservationStatusV1::OutputLimitExceeded
     } else if status.success() {
@@ -241,9 +248,14 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
             "timeout and output limits must be positive".to_string(),
         ));
     }
-    if spec.program.ends_with("sh")
-        || spec.program.ends_with("cmd.exe")
-        || spec.program.ends_with("powershell.exe")
+    let program = spec.program.to_ascii_lowercase();
+    if program.ends_with("sh")
+        || program.ends_with("cmd")
+        || program.ends_with("cmd.exe")
+        || program.ends_with("powershell")
+        || program.ends_with("powershell.exe")
+        || program.ends_with("pwsh")
+        || program.ends_with("pwsh.exe")
     {
         return Err(RunnerError::InvalidSpec(
             "shell programs are not accepted by the structured runner".to_string(),
@@ -252,27 +264,40 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
     Ok(())
 }
 
+#[derive(Debug, Clone, Default)]
+struct ReaderState {
+    bytes: Vec<u8>,
+    truncated: bool,
+    error: Option<String>,
+}
+
 fn spawn_reader<R: std::io::Read + Send + 'static>(
     mut reader: R,
-    target: Arc<Mutex<(Vec<u8>, bool)>>,
+    target: Arc<Mutex<ReaderState>>,
     limit: usize,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
         loop {
             match reader.read(&mut buffer) {
-                Ok(0) | Err(_) => break,
+                Ok(0) => break,
+                Err(error) => {
+                    if let Ok(mut captured) = target.lock() {
+                        captured.error = Some(error.to_string());
+                    }
+                    break;
+                }
                 Ok(count) => {
                     if let Ok(mut captured) = target.lock() {
-                        let remaining = limit.saturating_sub(captured.0.len());
+                        let remaining = limit.saturating_sub(captured.bytes.len());
                         let capped = count.min(remaining);
                         if let Some(chunk) = buffer.get(..capped) {
-                            captured.0.extend_from_slice(chunk);
+                            captured.bytes.extend_from_slice(chunk);
                         } else {
-                            captured.1 = true;
+                            captured.truncated = true;
                         }
                         if count > remaining {
-                            captured.1 = true;
+                            captured.truncated = true;
                         }
                     }
                 }
