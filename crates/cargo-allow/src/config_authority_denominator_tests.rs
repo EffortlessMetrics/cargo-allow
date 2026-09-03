@@ -133,7 +133,7 @@ fn config_authority_denominator_is_current_and_blocks_new_shadow_resolvers() -> 
             "select_policy_path(",
             "evaluate_source_exception_policy(",
             "load_policy_at_path_with_digest(",
-            "load_policy_with_reportable_evidence",
+            "load_policy_with_reportable_evidence(",
             "config_path(",
         ] {
             if !contains_call(&source, marker) {

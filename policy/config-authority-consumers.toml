@@ -8,7 +8,7 @@ scan_roots = ["crates/cargo-allow/src"]
 id = "policy-config"
 path = "crates/cargo-allow/src/policy_config.rs"
 role = "canonical configuration discovery and policy loading"
-allowed_markers = ["discover_config_path(", "select_policy_path(", "evaluate_source_exception_policy(", "load_policy_at_path_with_digest(", "load_policy_with_reportable_evidence", "config_path("]
+allowed_markers = ["discover_config_path(", "select_policy_path(", "evaluate_source_exception_policy(", "load_policy_at_path_with_digest(", "load_policy_with_reportable_evidence(", "config_path("]
 claim_boundary = "Owns current configuration selection and the primitive policy loader; does not authorize writes."
 
 [[consumers]]
@@ -52,13 +52,6 @@ path = "crates/cargo-allow/src/plan_bindings.rs"
 role = "legacy plan policy binding"
 allowed_markers = ["config_path("]
 claim_boundary = "Binds legacy plan inputs to the canonical selected policy path; does not select another policy."
-
-[[consumers]]
-id = "doctor"
-path = "crates/cargo-allow/src/doctor.rs"
-role = "diagnostic policy evidence loading"
-allowed_markers = ["load_policy_with_reportable_evidence"]
-claim_boundary = "Loads policy evidence for diagnostics without changing read selection."
 
 [[consumers]]
 id = "add"
