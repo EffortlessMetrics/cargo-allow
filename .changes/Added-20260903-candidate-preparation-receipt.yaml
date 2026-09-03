@@ -1,0 +1,21 @@
+kind: Added
+body: >-
+  Final CandidatePreparationReceiptV1 and post-apply semantic
+  reconciliation (#3834, closing the #3750 candidate-preparation train's
+  write half). `prep-candidate apply --final-receipt <file>` now
+  reconciles the applied source state after a successful apply:
+  release-prep parity (the rebuilt projection reports the target line
+  already bound), exact package/topology/version requirements,
+  support/channel/document coherence (candidate fields with
+  candidate_published false, release corpus carrying the target
+  identity), governed-file policy drift (source-exception policy digest
+  equality), and resolved-vs-outstanding decision accounting. External
+  rows — Changie history roundtrip and the operator no-new guard — are
+  retained as deferred obligations with their exact commands, never
+  fabricated. The receipt retains plan/apply identities, before/after
+  worktree identity, the reconciled graph rows, changed files with
+  before/after digests, resolved and outstanding decisions, and the
+  Complete|Incomplete|DecisionRequired|Stale|Mismatch|Conflict|
+  Unsupported|InstrumentFailure state. Complete is source-preparation
+  evidence only: package qualification, rehearsal, freeze, and
+  authorization remain separate obligations.

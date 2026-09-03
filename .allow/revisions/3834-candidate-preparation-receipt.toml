@@ -1,0 +1,46 @@
+schema_version = 1
+# Revision note for the #3834 final preparation receipt lane.
+
+# This diff adds the final CandidatePreparationReceiptV1 model, the
+# post-apply reconciliation in the apply command, its end-to-end tests,
+# and the receipt schema. The additions below receipt only the
+# syntax-visible constructs the new code introduces. No existing
+# exception is weakened, no expiry is extended, and no scope is
+# broadened: every record is an addition. policy/allow.toml keeps its
+# CRLF line-ending contract.
+
+[[records]]
+allow_ids = ["allow-0842"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3c88aaf52577f60f0fca468b9153febbcfd747417f644005f029273ac2cc22e8"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0843"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6b5284c6423b9b84a146924ec001035e14bde67b5cb6b4dc7a20c804316afab6"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0844"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d3a05ce6bd4ffd509d795311729bb0f85ae8197e7a33adcbc07e073837f90639"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0845"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ee13676f13f9a04e6edb1c9aa8f191b0f364419be75c5dcae8424ee9c4e256b0"
+reason = "Self-receipt for the revision note record at the receipt-schema registration step (#3834)."
+
+[[records]]
+allow_ids = ["allow-0846"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d706ac3d9865c3b3f19a4b25355e2fea81c1293ac41ba34a97d7ec6e618bc38e"
+reason = "Test-only reconcile error-arm or deferral assertion at the candidate-preparation receipt suite (#3834)."
+
+[[records]]
+allow_ids = ["allow-0847"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6fca603971276933cfda61d08ac728eecb043a2e7815a0effe1eca9e6592d458"
+reason = "Test-only reconcile error-arm or deferral assertion at the candidate-preparation receipt suite (#3834)."

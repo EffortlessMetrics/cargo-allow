@@ -5,6 +5,7 @@ mod adoption_plan;
 mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
+mod candidate_preparation_receipt_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -67,6 +68,12 @@ pub use candidate_preparation_plan_v1::{
     CandidateProjectionInput, CandidateReleaseIdentityProjectionV1, CandidateSelectedRowV1,
     CandidateSupportChannelPostureV1, CandidateValidationObligationV1,
     SUPPORTED_TOPOLOGY_GENERATION_V1, prepare_candidate_plan, validate_candidate_operation_set,
+};
+pub use candidate_preparation_receipt_v1::{
+    CANDIDATE_PREPARATION_RECEIPT_CLAIM_BOUNDARY_V1, CANDIDATE_PREPARATION_RECEIPT_SCHEMA_V1,
+    CandidateChangedFileV1, CandidateGraphRowV1, CandidatePreparationReceiptV1,
+    CandidatePreparationStateV1, CandidateResolvedDecisionV1, CandidateValidationResultV1,
+    CandidateValidationRowV1,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
