@@ -472,6 +472,13 @@ mod tests {
         if error.result_state != ProofResultStateV1::Unsupported {
             return Err("output rename failure should be unsupported".to_string());
         }
+        std::fs::write(&receipts, br#"{"schema_id":"wrong","sets":[]}"#)
+            .map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .expect_err("invalid receipt store must fail");
+        if error.result_state != ProofResultStateV1::Unsupported {
+            return Err("invalid receipt store should be unsupported".to_string());
+        }
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }
