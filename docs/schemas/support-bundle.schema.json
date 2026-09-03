@@ -35,7 +35,10 @@
         "found": { "type": "boolean" },
         "path": { "type": ["string", "null"] },
         "schema_version": { "type": ["string", "null"] },
-        "valid": { "type": ["boolean", "null"] }
+        "valid": { "type": ["boolean", "null"] },
+        "source": { "type": ["string", "null"] },
+        "precedence": { "type": ["string", "null"] },
+        "digest": { "type": ["string", "null"] }
       }
     },
     "inventory": {

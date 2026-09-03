@@ -33,6 +33,9 @@ pub(crate) struct SupportBundleFacts<'a> {
     pub(crate) config_path: Option<&'a str>,
     pub(crate) config_schema_version: Option<&'a str>,
     pub(crate) config_valid: Option<bool>,
+    pub(crate) config_source: Option<&'a str>,
+    pub(crate) config_precedence: Option<&'a str>,
+    pub(crate) config_digest: Option<&'a str>,
     pub(crate) inventory_source: &'a str,
     pub(crate) inventory_completeness: &'a str,
     pub(crate) files_scanned: usize,
@@ -78,6 +81,9 @@ struct Config<'a> {
     path: Option<&'a str>,
     schema_version: Option<&'a str>,
     valid: Option<bool>,
+    source: Option<&'a str>,
+    precedence: Option<&'a str>,
+    digest: Option<&'a str>,
 }
 
 #[derive(Debug, Serialize)]
@@ -130,6 +136,9 @@ fn render_support_bundle_json(facts: SupportBundleFacts<'_>) -> CargoAllowResult
             path: facts.config_path,
             schema_version: facts.config_schema_version,
             valid: facts.config_valid,
+            source: facts.config_source,
+            precedence: facts.config_precedence,
+            digest: facts.config_digest,
         },
         inventory: Inventory {
             source: facts.inventory_source,
@@ -168,6 +177,9 @@ mod tests {
             config_path: Some("policy/allow.toml"),
             config_schema_version: Some("0.1"),
             config_valid: Some(true),
+            config_source: Some("conventional_path"),
+            config_precedence: Some("discovery_fallback"),
+            config_digest: Some("sha256:v1:test"),
             inventory_source: "git_tracked",
             inventory_completeness: "scoped",
             files_scanned: 42,

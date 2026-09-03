@@ -292,6 +292,10 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         file_family_conflicts: file_family_conflicts.as_slice(),
     };
     if let Some(output) = &args.support_bundle {
+        let support_policy_digest = doctor_inventory_facts.policy_digest_text();
+        let support_precedence = config_discovery
+            .precedence
+            .map(|precedence| format!("{precedence:?}"));
         let support_config_path = config
             .as_ref()
             .and_then(|path| {
@@ -314,6 +318,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 config_path: support_config_path.as_deref(),
                 config_schema_version,
                 config_valid,
+                config_source: config_discovery.source,
+                config_precedence: support_precedence.as_deref(),
+                config_digest: support_policy_digest.as_deref(),
                 inventory_source: source_context.inventory_source(),
                 inventory_completeness: source_context.inventory_completeness(),
                 files_scanned,
