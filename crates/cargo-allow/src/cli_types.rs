@@ -184,6 +184,10 @@ impl InventoryFacts {
         self
     }
 
+    pub(crate) fn with_optional_policy_digest(self, digest: Option<String>) -> Self {
+        digest.map_or(self, |digest| self.with_policy_digest(digest))
+    }
+
     pub(crate) fn policy_digest_text(&self) -> Option<String> {
         self.policy_digest.map(|bytes| {
             let mut text = String::from("sha256:v1:");

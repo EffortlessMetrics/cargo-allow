@@ -98,8 +98,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let skipped_paths = inventory.skipped_paths.len();
     let submodule_paths = inventory.submodule_paths.len();
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
-    let doctor_inventory_facts =
-        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files);
+    let doctor_inventory_facts = InventoryFacts::scanned_inventory(&inventory)
+        .with_deleted_tracked(deleted_tracked_files)
+        .with_optional_policy_digest(observed.policy_digest.clone());
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
@@ -295,7 +296,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         let support_policy_digest = doctor_inventory_facts.policy_digest_text();
         let support_precedence = config_discovery
             .precedence
-            .map(|precedence| format!("{precedence:?}"));
+            .map(allow_policy::PrecedenceTier::as_str);
         let support_config_path = config
             .as_ref()
             .and_then(|path| {
@@ -319,7 +320,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 config_schema_version,
                 config_valid,
                 config_source: config_discovery.source,
-                config_precedence: support_precedence.as_deref(),
+                config_precedence: support_precedence,
                 config_digest: support_policy_digest.as_deref(),
                 inventory_source: source_context.inventory_source(),
                 inventory_completeness: source_context.inventory_completeness(),

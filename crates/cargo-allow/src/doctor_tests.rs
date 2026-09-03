@@ -130,6 +130,16 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
     if value.pointer("/config/path").and_then(Value::as_str) != Some("policy/allow.toml") {
         return Err("support bundle config path was not repository-relative".to_string());
     }
+    let digest = value
+        .pointer("/config/digest")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "support bundle omitted the selected policy digest".to_string())?;
+    if !digest.starts_with("sha256:v1:") {
+        return Err("support bundle policy digest was not canonical".to_string());
+    }
+    if value.pointer("/config/precedence").and_then(Value::as_str) != Some("cli_override") {
+        return Err("support bundle precedence was not canonical".to_string());
+    }
     if bundle.contains(root.to_string_lossy().as_ref()) || bundle.contains("fn source") {
         return Err("support bundle leaked an absolute root or source contents".to_string());
     }

@@ -4,11 +4,13 @@ use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::load_policy;
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
-    load_policy_with_reportable_evidence, parse_policy_at,
-    parse_policy_with_reportable_evidence_at,
+    parse_policy_at, parse_policy_with_reportable_evidence_at,
 };
 #[cfg(test)]
-use allow_policy::{SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA};
+use allow_policy::{
+    SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA,
+    load_policy_with_reportable_evidence,
+};
 use std::path::{Path, PathBuf};
 
 /// Centralized "no policy config found" error constructor (#2824).
@@ -66,6 +68,10 @@ pub(crate) struct ConfigDiscovery {
 pub(crate) struct ResolvedPolicyObservation {
     pub discovery: ConfigDiscovery,
     pub policy: Option<CargoAllowResult<AllowConfig>>,
+    /// Digest of the exact policy bytes consumed for the selected observation.
+    /// Keeping this beside the parsed policy prevents projections from
+    /// re-reading the source merely to recover its identity.
+    pub policy_digest: Option<String>,
 }
 
 pub(crate) fn observe_policy_for_diagnostics(
@@ -89,8 +95,17 @@ pub(crate) fn observe_policy_for_diagnostics(
         discovery.source = Some("cli_override");
         discovery.precedence = Some(PrecedenceTier::CliOverride);
     }
-    let policy = policy_path.map(load_policy_with_reportable_evidence);
-    ResolvedPolicyObservation { discovery, policy }
+    let (policy, policy_digest) = policy_path.map_or((None, None), |path| {
+        match load_policy_at_path_with_digest(path, EvidenceValidationMode::ReportOnly) {
+            Ok((config, digest)) => (Some(Ok(config)), Some(digest)),
+            Err(error) => (Some(Err(error)), None),
+        }
+    });
+    ResolvedPolicyObservation {
+        discovery,
+        policy,
+        policy_digest,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
