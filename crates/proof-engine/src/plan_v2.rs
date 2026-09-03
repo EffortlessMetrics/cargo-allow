@@ -535,6 +535,63 @@ mod tests {
     }
 
     #[test]
+    fn non_ready_handoff_dispositions_remain_explicit() -> Result<(), String> {
+        let cases = [
+            (
+                IntentProofHandoffDispositionV1::RepositoryDecisionRequired,
+                ProofItemDispositionV1::RepositoryDecisionRequired,
+            ),
+            (
+                IntentProofHandoffDispositionV1::SelectorMissingOrAmbiguous,
+                ProofItemDispositionV1::SelectorMissingOrAmbiguous,
+            ),
+            (
+                IntentProofHandoffDispositionV1::ManualOrNativeOutstanding,
+                ProofItemDispositionV1::ManualOrNativeOutstanding,
+            ),
+            (
+                IntentProofHandoffDispositionV1::UnsupportedEvidenceClass,
+                ProofItemDispositionV1::UnsupportedCapability,
+            ),
+            (
+                IntentProofHandoffDispositionV1::NotApplicableWithReason,
+                ProofItemDispositionV1::NotApplicableWithReason,
+            ),
+            (
+                IntentProofHandoffDispositionV1::EvidenceDesignIncomplete,
+                ProofItemDispositionV1::NotProven,
+            ),
+        ];
+        for (disposition, expected) in cases {
+            let mut enriched = envelope();
+            let obligation = enriched
+                .obligations
+                .first_mut()
+                .ok_or_else(|| "missing obligation".to_string())?;
+            obligation.handoff = Some(IntentObligationHandoffV1 {
+                disposition: Some(disposition),
+                disposition_reason: (disposition
+                    == IntentProofHandoffDispositionV1::NotApplicableWithReason)
+                    .then(|| "not applicable to this change".to_string()),
+                ..IntentObligationHandoffV1::default()
+            });
+            let plan =
+                plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+            let item = plan
+                .items
+                .first()
+                .ok_or_else(|| "missing item".to_string())?;
+            if item.disposition != expected
+                || item.selection.is_some()
+                || item.execution_posture != ProofItemExecutionPostureV1::None
+            {
+                return Err(format!("handoff disposition {disposition:?} was lowered"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn receipt_reuse_requires_exact_plan_identity() -> Result<(), String> {
         let initial =
             plan_proof_v2_from_intent(&envelope(), &[catalog()], &CapturedReceiptStoreV1::new())?;
