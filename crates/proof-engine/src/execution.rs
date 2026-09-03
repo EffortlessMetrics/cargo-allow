@@ -125,6 +125,7 @@ pub struct ExecutionReceiptV1 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RunnerError {
     InvalidSpec(String),
+    ApprovalRequired,
     Spawn(String),
     Io(String),
 }
@@ -133,13 +134,18 @@ impl RunnerError {
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::InvalidSpec(_) => "malformed_execution_spec",
+            Self::ApprovalRequired => "approval_required",
             Self::Spawn(_) => "spawn_failed",
             Self::Io(_) => "instrument_failure",
         }
     }
 }
 
-pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, RunnerError> {
+pub fn execute_bounded(
+    spec: &ExecutionSpecV1,
+    approval: ExecutionApprovalV1,
+) -> Result<ExecutionReceiptV1, RunnerError> {
+    require_explicit_execution(approval).map_err(|_| RunnerError::ApprovalRequired)?;
     validate_execution_spec(spec)?;
     let deadline = Instant::now().checked_add(spec.timeout).ok_or_else(|| {
         RunnerError::InvalidSpec("timeout exceeds the platform clock range".to_string())
@@ -411,7 +417,8 @@ mod tests {
 
     #[test]
     fn bounded_runner_observes_a_completed_process() -> Result<(), String> {
-        let receipt = execute_bounded(&spec()?).map_err(|error| error.as_str().to_string())?;
+        let receipt = execute_bounded(&spec()?, ExecutionApprovalV1::Explicit)
+            .map_err(|error| error.as_str().to_string())?;
         if receipt.status != ProcessObservationStatusV1::Completed {
             return Err(format!(
                 "expected completed process, got {:?}",
@@ -428,7 +435,7 @@ mod tests {
     fn shell_programs_are_rejected_before_spawn() -> Result<(), String> {
         let mut candidate = spec()?;
         candidate.program = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }.to_string();
-        let error = match execute_bounded(&candidate) {
+        let error = match execute_bounded(&candidate, ExecutionApprovalV1::Explicit) {
             Ok(_) => return Err("shell program unexpectedly spawned".to_string()),
             Err(error) => error,
         };
@@ -442,14 +449,16 @@ mod tests {
     fn timeout_and_output_limits_are_observed_without_shells() -> Result<(), String> {
         let mut timeout = spec()?;
         timeout.timeout = Duration::from_nanos(1);
-        let timed = execute_bounded(&timeout).map_err(|error| error.as_str().to_string())?;
+        let timed = execute_bounded(&timeout, ExecutionApprovalV1::Explicit)
+            .map_err(|error| error.as_str().to_string())?;
         if timed.status != ProcessObservationStatusV1::TimedOut {
             return Err(format!("expected timeout, got {:?}", timed.status));
         }
 
         let mut limited = spec()?;
         limited.stdout_limit = 1;
-        let observed = execute_bounded(&limited).map_err(|error| error.as_str().to_string())?;
+        let observed = execute_bounded(&limited, ExecutionApprovalV1::Explicit)
+            .map_err(|error| error.as_str().to_string())?;
         if observed.status != ProcessObservationStatusV1::OutputLimitExceeded {
             return Err(format!("expected output limit, got {:?}", observed.status));
         }
