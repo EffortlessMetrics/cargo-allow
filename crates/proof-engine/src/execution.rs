@@ -4,9 +4,10 @@ use crate::CommandInvocationSpecV1;
 use proof_protocol::{ProofPlanV1, validate_proof_plan};
 use serde::{Deserialize, Serialize};
 use std::{
+    fs::{self, File, OpenOptions},
+    io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Arc, Mutex},
     thread,
     time::{Duration, Instant},
 };
@@ -140,34 +141,36 @@ impl RunnerError {
 
 pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, RunnerError> {
     validate_execution_spec(spec)?;
+    let deadline = Instant::now().checked_add(spec.timeout).ok_or_else(|| {
+        RunnerError::InvalidSpec("timeout exceeds the platform clock range".to_string())
+    })?;
+    let stdout_path = capture_path("stdout")?;
+    let stderr_path = capture_path("stderr")?;
+    let stdout_file = File::create(&stdout_path)
+        .map_err(|error| RunnerError::Io(format!("stdout capture: {error}")))?;
+    let stderr_file = File::create(&stderr_path)
+        .map_err(|error| RunnerError::Io(format!("stderr capture: {error}")))?;
     let mut command = Command::new(&spec.program);
     command
         .args(&spec.argv)
         .current_dir(&spec.cwd)
         .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file))
         .env_clear();
     for (key, value) in &spec.env_allowlist {
         command.env(key, value);
     }
-    let mut child = command
-        .spawn()
-        .map_err(|error| RunnerError::Spawn(error.to_string()))?;
-    let stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| RunnerError::Io("stdout pipe unavailable".to_string()))?;
-    let stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| RunnerError::Io("stderr pipe unavailable".to_string()))?;
-    let out = Arc::new(Mutex::new(ReaderState::default()));
-    let err = Arc::new(Mutex::new(ReaderState::default()));
-    let out_reader = spawn_reader(stdout, Arc::clone(&out), spec.stdout_limit);
-    let err_reader = spawn_reader(stderr, Arc::clone(&err), spec.stderr_limit);
-    let deadline = Instant::now() + spec.timeout;
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            let _ = fs::remove_file(&stdout_path);
+            let _ = fs::remove_file(&stderr_path);
+            return Err(RunnerError::Spawn(error.to_string()));
+        }
+    };
     let mut timed_out = false;
+    let mut output_limit_exceeded = false;
     let status = loop {
         if Instant::now() >= deadline {
             timed_out = true;
@@ -186,6 +189,29 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
         }
+        let stdout_len = fs::metadata(&stdout_path)
+            .map_err(|error| RunnerError::Io(format!("stdout capture metadata: {error}")))?
+            .len();
+        let stderr_len = fs::metadata(&stderr_path)
+            .map_err(|error| RunnerError::Io(format!("stderr capture metadata: {error}")))?
+            .len();
+        if stdout_len > spec.stdout_limit as u64 || stderr_len > spec.stderr_limit as u64 {
+            output_limit_exceeded = true;
+            if let Err(error) = child.kill() {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
+                {
+                    break status;
+                }
+                return Err(RunnerError::Io(format!(
+                    "output-limited process could not be terminated: {error}"
+                )));
+            }
+            break child
+                .wait()
+                .map_err(|error| RunnerError::Io(error.to_string()))?;
+        }
         if let Some(status) = child
             .try_wait()
             .map_err(|error| RunnerError::Io(error.to_string()))?
@@ -194,32 +220,15 @@ pub fn execute_bounded(spec: &ExecutionSpecV1) -> Result<ExecutionReceiptV1, Run
         }
         thread::sleep(Duration::from_millis(5));
     };
-    if !timed_out {
-        out_reader
-            .join()
-            .map_err(|_| RunnerError::Io("stdout reader panicked".to_string()))?;
-        err_reader
-            .join()
-            .map_err(|_| RunnerError::Io("stderr reader panicked".to_string()))?;
-    }
-    let stdout_state = out
-        .lock()
-        .map_err(|_| RunnerError::Io("stdout lock poisoned".to_string()))?
-        .clone();
-    let stderr_state = err
-        .lock()
-        .map_err(|_| RunnerError::Io("stderr lock poisoned".to_string()))?
-        .clone();
-    let stdout = stdout_state.bytes;
-    let stderr = stderr_state.bytes;
-    let stdout_truncated = stdout_state.truncated || timed_out;
-    let stderr_truncated = stderr_state.truncated || timed_out;
-    let reader_failed = stdout_state.error.is_some() || stderr_state.error.is_some();
+    let stdout = read_capture(&stdout_path, spec.stdout_limit)?;
+    let stderr = read_capture(&stderr_path, spec.stderr_limit)?;
+    let stdout_truncated = output_limit_exceeded || timed_out || stdout.len() == spec.stdout_limit;
+    let stderr_truncated = output_limit_exceeded || timed_out || stderr.len() == spec.stderr_limit;
+    let _ = fs::remove_file(&stdout_path);
+    let _ = fs::remove_file(&stderr_path);
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
-    } else if reader_failed {
-        ProcessObservationStatusV1::InstrumentFailure
-    } else if stdout_truncated || stderr_truncated {
+    } else if output_limit_exceeded || stdout_truncated || stderr_truncated {
         ProcessObservationStatusV1::OutputLimitExceeded
     } else if status.success() {
         ProcessObservationStatusV1::Completed
@@ -315,46 +324,33 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Default)]
-struct ReaderState {
-    bytes: Vec<u8>,
-    truncated: bool,
-    error: Option<String>,
+fn capture_path(label: &str) -> Result<PathBuf, RunnerError> {
+    let base = std::env::temp_dir();
+    let pid = std::process::id();
+    for attempt in 0_u32..100 {
+        let path = base.join(format!("cargo-proof-{pid}-{label}-{attempt}.out"));
+        match OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(file) => {
+                drop(file);
+                return Ok(path);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(RunnerError::Io(format!("capture path: {error}"))),
+        }
+    }
+    Err(RunnerError::Io(
+        "capture path collision limit exceeded".to_string(),
+    ))
 }
 
-fn spawn_reader<R: std::io::Read + Send + 'static>(
-    mut reader: R,
-    target: Arc<Mutex<ReaderState>>,
-    limit: usize,
-) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let mut buffer = [0_u8; 4096];
-        loop {
-            match reader.read(&mut buffer) {
-                Ok(0) => break,
-                Err(error) => {
-                    if let Ok(mut captured) = target.lock() {
-                        captured.error = Some(error.to_string());
-                    }
-                    break;
-                }
-                Ok(count) => {
-                    if let Ok(mut captured) = target.lock() {
-                        let remaining = limit.saturating_sub(captured.bytes.len());
-                        let capped = count.min(remaining);
-                        if let Some(chunk) = buffer.get(..capped) {
-                            captured.bytes.extend_from_slice(chunk);
-                        } else {
-                            captured.truncated = true;
-                        }
-                        if count > remaining {
-                            captured.truncated = true;
-                        }
-                    }
-                }
-            }
-        }
-    })
+fn read_capture(path: &Path, limit: usize) -> Result<Vec<u8>, RunnerError> {
+    let mut file = File::open(path).map_err(|error| RunnerError::Io(error.to_string()))?;
+    let mut bytes = Vec::new();
+    file.by_ref()
+        .take(limit as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| RunnerError::Io(error.to_string()))?;
+    Ok(bytes)
 }
 
 fn digest(bytes: &[u8]) -> String {
