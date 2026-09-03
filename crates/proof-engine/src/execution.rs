@@ -230,12 +230,7 @@ pub fn execute_bounded(
         }
         if Instant::now() >= deadline {
             timed_out = true;
-            if let Err(error) = child.kill()
-                && child
-                    .try_wait()
-                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
-                    .is_none()
-            {
+            if let Some(error) = termination_error(&mut child)? {
                 return Ok(instrument_failure_receipt(
                     spec,
                     format!("timed-out process could not be terminated: {error}"),
@@ -262,12 +257,7 @@ pub fn execute_bounded(
         if stdout_over || stderr_over {
             stdout_limit_exceeded |= stdout_over;
             stderr_limit_exceeded |= stderr_over;
-            if let Err(error) = child.kill()
-                && child
-                    .try_wait()
-                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
-                    .is_none()
-            {
+            if let Some(error) = termination_error(&mut child)? {
                 return Ok(instrument_failure_receipt(
                     spec,
                     format!("output-limited process could not be terminated: {error}"),
@@ -358,6 +348,23 @@ pub fn execute_bounded(
         stderr_digest: digest(&stderr),
         limitations,
     })
+}
+
+fn termination_error(child: &mut std::process::Child) -> Result<Option<String>, RunnerError> {
+    match child.kill() {
+        Ok(()) => Ok(None),
+        Err(error) => {
+            let still_running = child
+                .try_wait()
+                .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
+                .is_none();
+            if still_running {
+                Ok(Some(error.to_string()))
+            } else {
+                Ok(None)
+            }
+        }
+    }
 }
 
 fn instrument_failure_receipt(spec: &ExecutionSpecV1, reason: String) -> ExecutionReceiptV1 {
@@ -637,6 +644,19 @@ mod tests {
         };
         if !matches!(&error, RunnerError::InvalidSpec(message) if message.contains("contained")) {
             return Err(format!("unexpected runner error: {}", error.as_str()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn instrument_failure_receipt_is_typed_and_bounded() -> Result<(), String> {
+        let candidate = spec()?;
+        let receipt = instrument_failure_receipt(&candidate, "capture incomplete".to_string());
+        if receipt.status != ProcessObservationStatusV1::InstrumentFailure
+            || receipt.limitations != ["capture incomplete"]
+            || receipt.plan_id != candidate.plan_id
+        {
+            return Err("instrument failure receipt lost its bounded identity".to_string());
         }
         Ok(())
     }
