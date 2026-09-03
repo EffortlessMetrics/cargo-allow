@@ -162,8 +162,11 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 content_aware_generated: false,
             },
         ));
-        let companion_findings = crate::canonical_companion_findings(&root, cfg, &inventory.files)?;
-        crate::extend_unique_findings(&mut findings, companion_findings);
+        if let Ok(companion_findings) =
+            crate::canonical_companion_findings(&root, cfg, &inventory.files)
+        {
+            crate::extend_unique_findings(&mut findings, companion_findings);
+        }
         let federation = config_discovery
             .federation
             .clone()
@@ -178,7 +181,10 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             cfg: cfg.clone(),
             findings,
             inventory_facts: InventoryFacts::scanned_inventory(&inventory)
-                .with_deleted_tracked(deleted_tracked_files),
+                .with_deleted_tracked(deleted_tracked_files)
+                .with_rust_files_considered(rust_scan.files_considered)
+                .with_rust_files_skipped(rust_scan.files_skipped)
+                .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
             federation,
         })
     } else {
