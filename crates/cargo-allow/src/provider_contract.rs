@@ -115,11 +115,19 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
     {
         return Err("analysis request snapshot identity is incomplete".to_string());
     }
+    if !matches!(snapshot.object_format.as_str(), "sha1" | "sha256") {
+        return Err("analysis request snapshot object format is unsupported".to_string());
+    }
+    let object_id_len = if snapshot.object_format == "sha1" {
+        40
+    } else {
+        64
+    };
     for (label, value) in [
         ("head.commit", &snapshot.head.commit),
         ("head.tree", &snapshot.head.tree),
     ] {
-        if !is_object_id(value) {
+        if !is_object_id(value, object_id_len) {
             return Err(format!("analysis request snapshot {label} is invalid"));
         }
     }
@@ -136,21 +144,21 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
             if snapshot
                 .merge_base
                 .as_deref()
-                .is_some_and(|value| !is_object_id(value))
-                || !is_object_id(&base.commit)
-                || !is_object_id(&base.tree)
+                .is_some_and(|value| !is_object_id(value, object_id_len))
+                || !is_object_id(&base.commit, object_id_len)
+                || !is_object_id(&base.tree, object_id_len)
             {
                 return Err("committed-range snapshot identity is invalid".to_string());
             }
         }
     }
     for identity in &snapshot.selected_paths {
-        if identity.path.trim().is_empty()
+        if !is_repository_relative_path(&identity.path)
             || identity.present != identity.blob_oid.is_some()
             || identity
                 .blob_oid
                 .as_deref()
-                .is_some_and(|value| !is_object_id(value))
+                .is_some_and(|value| !is_object_id(value, object_id_len))
         {
             return Err("analysis request selected path identity is invalid".to_string());
         }
@@ -162,8 +170,17 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
     Ok(())
 }
 
-fn is_object_id(value: &str) -> bool {
-    matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+fn is_object_id(value: &str, expected_len: usize) -> bool {
+    value.len() == expected_len && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn is_repository_relative_path(value: &str) -> bool {
+    !value.is_empty()
+        && !value.starts_with('/')
+        && !value.contains(':')
+        && value
+            .split('/')
+            .all(|component| !matches!(component, "" | "." | ".."))
 }
 
 fn selected_source_closure_hash(
@@ -386,6 +403,40 @@ mod tests {
         };
         if !error.contains("path identity") {
             return Err("selected path error lost its reason".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn request_validation_rejects_mismatched_blob_format_and_path() -> Result<(), String> {
+        let mut value = request();
+        value
+            .snapshot
+            .selected_paths
+            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
+                path: "src/lib.rs".to_string(),
+                present: true,
+                blob_oid: Some("d".repeat(64)),
+            });
+        let error = match validate_request(&value) {
+            Ok(()) => return Err("mismatched blob format was accepted".to_string()),
+            Err(error) => error,
+        };
+        if !error.contains("path identity") {
+            return Err("blob-format error lost its reason".to_string());
+        }
+
+        let mut value = request();
+        value
+            .snapshot
+            .selected_paths
+            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
+                path: "../secret".to_string(),
+                present: false,
+                blob_oid: None,
+            });
+        if validate_request(&value).is_ok() {
+            return Err("parent-traversing selected path was accepted".to_string());
         }
         Ok(())
     }
