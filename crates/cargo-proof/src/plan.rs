@@ -225,8 +225,11 @@ fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), Pla
         });
     }
     drop(file);
-    match std::fs::rename(&temporary, output_path) {
-        Ok(()) => Ok(()),
+    match std::fs::hard_link(&temporary, output_path) {
+        Ok(()) => {
+            let _ = std::fs::remove_file(&temporary);
+            Ok(())
+        }
         Err(error) => {
             let _ = std::fs::remove_file(&temporary);
             Err(PlanErrorV1 {
