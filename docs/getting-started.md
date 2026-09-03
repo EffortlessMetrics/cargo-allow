@@ -23,7 +23,7 @@ The recurring policy and selector terms in this guide are defined in the
 | Channel | How you invoke cargo-allow | Commands this guide treats as ordinary |
 | --- | --- | --- |
 | **Published** `0.1.11` | `cargo install cargo-allow --version 0.1.11 --locked` then `cargo-allow …` | `doctor`, `audit`, `init`, `propose`, `check`, `list`, `explain`, `why`, `worklist`, `diff`, `add`, `refresh`, `prune` |
-| **Prerelease** `0.2.0` | `cargo install cargo-allow --version 0.2.0 --locked` then `cargo-allow …` | Published set plus the adoption-plan workflow (`adopt`) and artifact-dir emission |
+| **Prerelease** `0.2.0-rc.1` | `cargo install cargo-allow --version 0.2.0-rc.1 --locked` then `cargo-allow …` | Published set plus the adoption-plan workflow (`adopt`) and artifact-dir emission |
 | **Source candidate** (this checkout / current `main`) | `cargo run -p cargo-allow -- …` | Prerelease set plus any later explicitly labeled unreleased surfaces |
 
 Mechanical published-vs-candidate command registry enforcement uses the offline
@@ -74,7 +74,7 @@ The JSON artifact is `cargo-allow.core-adoption-plan.v1`; it is derived from
 the same plan and is portable across checkout paths. Published `0.1.11` does
 not expose `adopt` yet, so keep this command on the Source-candidate path.
 
-The `0.2.0` prerelease is published on crates.io; you can install it
+The `0.2.0-rc.1` prerelease is published on crates.io; you can install it
 directly. Do not copy unreleased source-candidate crate versions into install
 commands until they are published.
 
