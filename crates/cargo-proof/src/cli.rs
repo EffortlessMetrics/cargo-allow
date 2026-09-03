@@ -172,14 +172,15 @@ fn run_cli(cli: CargoProofCli) -> Result<ProcessExitFamilyV1, String> {
             let outcome = match plan_result {
                 Ok(outcome) => {
                     if let Some(item) = outcome.plan.items.iter().find(|item| {
-                        item.blocking
-                            && !matches!(
-                                item.disposition,
-                                ProofItemDispositionV1::SelectedForExecution
-                                    | ProofItemDispositionV1::SelectedForCapturedIngestion
-                                    | ProofItemDispositionV1::SatisfiedByCurrentReceipt
-                                    | ProofItemDispositionV1::NotApplicableWithReason
-                            )
+                        item.disposition == ProofItemDispositionV1::RepositoryDecisionRequired
+                            || (item.blocking
+                                && !matches!(
+                                    item.disposition,
+                                    ProofItemDispositionV1::SelectedForExecution
+                                        | ProofItemDispositionV1::SelectedForCapturedIngestion
+                                        | ProofItemDispositionV1::SatisfiedByCurrentReceipt
+                                        | ProofItemDispositionV1::NotApplicableWithReason
+                                ))
                     }) {
                         let result_class = match item.disposition {
                             ProofItemDispositionV1::RepositoryDecisionRequired => {
@@ -387,8 +388,9 @@ mod tests {
         ResultClassV1,
     };
     use intent_protocol::{
-        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPlanEnvelopeV1,
-        IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationHandoffV1,
+        IntentObligationPlanEnvelopeV1, IntentObligationPostureV1, IntentPhaseObligationKindV1,
+        IntentPhaseObligationV1, IntentProofHandoffDispositionV1, IntentSubjectPostureV1,
     };
     use proof_engine::CapturedReceiptStoreV1;
     use proof_protocol::{
@@ -463,7 +465,14 @@ mod tests {
             ),
             "precommit",
             vec![IntentPhaseObligationV1 {
-                handoff: None,
+                handoff: Some(IntentObligationHandoffV1 {
+                    disposition: Some(IntentProofHandoffDispositionV1::ReadyForProofPlanning),
+                    evidence_purpose_refs: vec!["purpose:review".to_string()],
+                    requested_evidence_class: Some("evidence_review".to_string()),
+                    subject_selector_ref: Some("selector:review".to_string()),
+                    subject_posture: Some(IntentSubjectPostureV1::Exact),
+                    ..IntentObligationHandoffV1::default()
+                }),
                 obligation_id: "obl-cli".to_string(),
                 phase: "precommit".to_string(),
                 kind: IntentPhaseObligationKindV1::EvidenceReview,
@@ -544,7 +553,7 @@ mod tests {
         )
         .map_err(|error| error.to_string())?;
         let decision = run_cli(base(
-            None,
+            Some(directory.join("catalog.json")),
             Some(receipts),
             Some(directory.join("decision-plan.json")),
         ))?;
