@@ -18445,8 +18445,9 @@ glob = ".allow/revisions/4126-config-authority-denominator.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
-id = "allow-0856"
+id = "allow-0858"
 kind = "panic"
 family = "expect"
 glob = "crates/allow-report/src/artifacts/final_support_selection_v1.rs"
@@ -18454,7 +18455,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the final-support-selection test module (#3737); every expect follows an immediately preceding constructor or validator whose inputs are fixture-controlled, so the guarded invariant is established in the same function"
 evidence = ["issue:3737"]
-occurrence_limit = 6
+occurrence_limit = 7
 created = "2026-09-03"
 review_after = "2026-12-02"
 
@@ -18469,7 +18470,7 @@ family = "configuration"
 path = ".allow/revisions/3737-final-support-selection.toml"
 owner = "core/policy"
 classification = "ledger_change_note"
-reason = "Revision note authorizing the final-support-selection expect baseline (allow-0854) added by the #3737 final-selection freeze PR."
+reason = "Revision note authorizing the final-support-selection expect baseline added by the #3737 final-selection freeze PR."
 evidence = ["issue:3737", "doc:docs/how-to/manage-an-exception.md"]
 created = "2026-09-03"
 review_after = "2026-12-02"

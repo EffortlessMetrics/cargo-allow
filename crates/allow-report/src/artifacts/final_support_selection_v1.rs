@@ -440,4 +440,170 @@ mod tests {
             FinalSupportSelectionErrorV1::SchemaId { .. }
         ));
     }
+
+    #[test]
+    fn foreign_schema_version_and_empty_row_set_fail_closed() {
+        let mut foreign = selection();
+        foreign.schema_version = 2;
+        assert!(matches!(
+            foreign.verify(),
+            Err(FinalSupportSelectionErrorV1::SchemaVersion { found: 2 })
+        ));
+
+        let mut empty = selection();
+        empty.rows.clear();
+        assert!(matches!(
+            empty.verify(),
+            Err(FinalSupportSelectionErrorV1::EmptyRowSet)
+        ));
+    }
+
+    #[test]
+    fn every_empty_field_and_duplicate_rows_are_rejected() {
+        let empty_field_names = |error: &FinalSupportSelectionErrorV1| match error {
+            FinalSupportSelectionErrorV1::EmptyField { field, .. } => Some(*field),
+            _ => None,
+        };
+        for field in [
+            "dimension",
+            "subject",
+            "proof_owner",
+            "required_evidence",
+            "evidence_reference",
+            "claim_effect",
+        ] {
+            let mut incomplete = selection();
+            let first = incomplete.rows.first_mut().expect("fixture has rows");
+            match field {
+                "dimension" => first.dimension = "  ".to_string(),
+                "subject" => first.subject = String::new(),
+                "proof_owner" => first.proof_owner = String::new(),
+                "required_evidence" => first.required_evidence = String::new(),
+                "evidence_reference" => first.evidence_reference = String::new(),
+                _ => first.claim_effect = String::new(),
+            }
+            let error = incomplete.verify().expect_err("empty field must fail");
+            assert_eq!(
+                empty_field_names(&error),
+                Some(field),
+                "the named field must be the emptied one, got {error}"
+            );
+        }
+
+        let mut duplicated = selection();
+        let twin = row(
+            "platform",
+            "x86_64-unknown-linux-gnu",
+            FinalSelectionDispositionV1::Selected,
+        );
+        duplicated.rows.push(twin);
+        assert!(matches!(
+            duplicated.verify(),
+            Err(FinalSupportSelectionErrorV1::DuplicateRow { dimension, subject })
+                if dimension == "platform" && subject == "x86_64-unknown-linux-gnu"
+        ));
+    }
+
+    #[test]
+    fn drifted_identity_digest_and_claim_boundary_are_rejected() {
+        let mut drifted = selection();
+        drifted.identity_digest = "sha256:v1:stale".to_string();
+        assert!(matches!(
+            drifted.verify(),
+            Err(FinalSupportSelectionErrorV1::IdentityDigestMismatch { .. })
+        ));
+
+        let mut boundary = selection();
+        boundary.claim_boundary = "a weaker boundary".to_string();
+        assert!(matches!(
+            boundary.verify(),
+            Err(FinalSupportSelectionErrorV1::ClaimBoundary)
+        ));
+    }
+
+    #[test]
+    fn malformed_release_identity_is_rejected() {
+        let mut malformed = selection();
+        malformed.release_version = "not-a-version".to_string();
+        assert!(matches!(
+            malformed.verify(),
+            Err(FinalSupportSelectionErrorV1::ReleaseIdentity { .. })
+        ));
+    }
+
+    #[test]
+    fn error_display_names_the_exact_failure() {
+        let cases: [(FinalSupportSelectionErrorV1, &str); 9] = [
+            (
+                FinalSupportSelectionErrorV1::SchemaId {
+                    found: "other".to_string(),
+                },
+                "selection schema id",
+            ),
+            (
+                FinalSupportSelectionErrorV1::SchemaVersion { found: 9 },
+                "schema version 9",
+            ),
+            (FinalSupportSelectionErrorV1::EmptyRowSet, "records no rows"),
+            (
+                FinalSupportSelectionErrorV1::EmptyField {
+                    row: "a/b".to_string(),
+                    field: "proof_owner",
+                },
+                "leaves proof_owner empty",
+            ),
+            (
+                FinalSupportSelectionErrorV1::DuplicateRow {
+                    dimension: "a".to_string(),
+                    subject: "b".to_string(),
+                },
+                "repeats dimension",
+            ),
+            (
+                FinalSupportSelectionErrorV1::ReleaseIdentity {
+                    reason: "bad".to_string(),
+                },
+                "not usable",
+            ),
+            (
+                FinalSupportSelectionErrorV1::IdentityDigestMismatch {
+                    expected: "e".to_string(),
+                    found: "f".to_string(),
+                },
+                "identity digest",
+            ),
+            (
+                FinalSupportSelectionErrorV1::SelectionDigestMismatch {
+                    expected: "e".to_string(),
+                    found: "f".to_string(),
+                },
+                "selection digest",
+            ),
+            (
+                FinalSupportSelectionErrorV1::ClaimBoundary,
+                "claim boundary",
+            ),
+        ];
+        for (error, needle) in cases {
+            let rendered = error.to_string();
+            assert!(
+                rendered.contains(needle),
+                "display {rendered:?} must name {needle:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn disposition_labels_cover_the_closed_vocabulary() {
+        assert_eq!(FinalSelectionDispositionV1::Selected.label(), "selected");
+        assert_eq!(
+            FinalSelectionDispositionV1::NotIncluded.label(),
+            "not_included"
+        );
+        assert_eq!(FinalSelectionDispositionV1::NotProven.label(), "not_proven");
+        assert_eq!(
+            FinalSelectionDispositionV1::NeedsDecision.label(),
+            "needs_decision"
+        );
+    }
 }
