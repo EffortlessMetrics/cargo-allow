@@ -1,0 +1,75 @@
+schema = "cargo-allow.config-authority-consumers.v1"
+schema_version = 1
+controlling_issue = 3876
+guard = "config_authority_denominator_tests"
+scan_roots = ["crates/cargo-allow/src"]
+
+[[consumers]]
+id = "policy-config"
+path = "crates/cargo-allow/src/policy_config.rs"
+role = "canonical configuration discovery and policy loading"
+allowed_markers = ["discover_config_path(", "select_policy_path(", "evaluate_source_exception_policy(", "load_policy_at_path_with_digest(", "load_policy_with_reportable_evidence", "config_path("]
+claim_boundary = "Owns current configuration selection and the primitive policy loader; does not authorize writes."
+
+[[consumers]]
+id = "command-support"
+path = "crates/cargo-allow/src/command_support.rs"
+role = "shared mutation selection and binding"
+allowed_markers = ["select_policy_path(", "load_policy_at_path_with_digest(", "config_path("]
+claim_boundary = "Reuses canonical selection for mutation commands; read selection remains separate from write authorization."
+
+[[consumers]]
+id = "world"
+path = "crates/cargo-allow/src/world.rs"
+role = "world construction and selected-policy observation"
+allowed_markers = ["evaluate_source_exception_policy(", "load_policy_at_path_with_digest("]
+claim_boundary = "Constructs evaluation inputs from an already selected policy or explicit compatibility route; does not define precedence."
+
+[[consumers]]
+id = "adoption"
+path = "crates/cargo-allow/src/adoption.rs"
+role = "adoption diagnostic observation"
+allowed_markers = ["discover_config_path(", "load_policy_at_path_with_digest("]
+claim_boundary = "Observes canonical adoption diagnostics and selected policy facts; does not provide a fallback selector."
+
+[[consumers]]
+id = "propose"
+path = "crates/cargo-allow/src/propose.rs"
+role = "selected mutation-policy loading"
+allowed_markers = ["load_policy_at_path_with_digest("]
+claim_boundary = "Loads the policy selected by the shared mutation seam while preserving bootstrap and separate write authorization."
+
+[[consumers]]
+id = "check"
+path = "crates/cargo-allow/src/check.rs"
+role = "staged and diagnostic policy-path projection"
+allowed_markers = ["config_path("]
+claim_boundary = "Projects the canonical selected policy path for check modes; does not define precedence."
+
+[[consumers]]
+id = "plan-bindings"
+path = "crates/cargo-allow/src/plan_bindings.rs"
+role = "legacy plan policy binding"
+allowed_markers = ["config_path("]
+claim_boundary = "Binds legacy plan inputs to the canonical selected policy path; does not select another policy."
+
+[[consumers]]
+id = "doctor"
+path = "crates/cargo-allow/src/doctor.rs"
+role = "diagnostic policy evidence loading"
+allowed_markers = ["load_policy_with_reportable_evidence"]
+claim_boundary = "Loads policy evidence for diagnostics without changing read selection."
+
+[[consumers]]
+id = "add"
+path = "crates/cargo-allow/src/add.rs"
+role = "selected mutation-policy loading"
+allowed_markers = ["load_policy_at_path_with_digest("]
+claim_boundary = "Loads the policy selected by the shared mutation seam; does not select configuration independently."
+
+[[consumers]]
+id = "add-from-plan"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+role = "selected mutation-policy loading"
+allowed_markers = ["load_policy_at_path_with_digest("]
+claim_boundary = "Loads the policy selected by the shared mutation seam and validates the plan binding."
