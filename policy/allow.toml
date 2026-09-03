@@ -18129,3 +18129,71 @@ normalized_snippet_hash = "fnv1a64:754ab56cdfded1b2"
 [allow.last_seen]
 line = 2117
 column = 10
+
+[[allow]]
+id = "allow-0842"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt write/read assertion in the end-to-end command test (#3834)"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "prep_candidate_end_to_end_final_receipt_writes_through_the_command"
+callee = "expect"
+receiver_fingerprint = "std::fs::read_to_string(&final_receipt_path)"
+normalized_snippet_hash = "fnv1a64:1abbbaf679e38d62"
+
+[allow.last_seen]
+line = 2118
+column = 67
+
+[[allow]]
+id = "allow-0843"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only final-receipt parse assertion in the end-to-end command test (#3834)"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "prep_candidate_end_to_end_final_receipt_writes_through_the_command"
+callee = "expect"
+receiver_fingerprint = "serde_json::from_str(&final_text)"
+normalized_snippet_hash = "fnv1a64:b0febd4d6a550995"
+
+[allow.last_seen]
+line = 2122
+column = 43
+
+[[allow]]
+id = "allow-0844"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/candidate-preparation-receipt-v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Contract documentation for the candidate-preparation receipt schema (#3834); machine-readable contract for the applied-source reconciliation receipt"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/candidate-preparation-receipt-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/candidate-preparation-receipt-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1

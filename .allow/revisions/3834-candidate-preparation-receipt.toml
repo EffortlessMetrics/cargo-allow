@@ -1,0 +1,28 @@
+schema_version = 1
+# Revision note for the #3834 final preparation receipt lane.
+
+# This diff adds the final CandidatePreparationReceiptV1 model, the
+# post-apply reconciliation in the apply command, its end-to-end tests,
+# and the receipt schema. The additions below receipt only the
+# syntax-visible constructs the new code introduces. No existing
+# exception is weakened, no expiry is extended, and no scope is
+# broadened: every record is an addition. policy/allow.toml keeps its
+# CRLF line-ending contract.
+
+[[records]]
+allow_ids = ["allow-0842"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3c88aaf52577f60f0fca468b9153febbcfd747417f644005f029273ac2cc22e8"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0843"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6b5284c6423b9b84a146924ec001035e14bde67b5cb6b4dc7a20c804316afab6"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."
+
+[[records]]
+allow_ids = ["allow-0844"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d3a05ce6bd4ffd509d795311729bb0f85ae8197e7a33adcbc07e073837f90639"
+reason = "Test-only or schema-contract receipt in the candidate-preparation receipt lane (#3834); the expected side is a controlled fixture repository or the read-only live projection."

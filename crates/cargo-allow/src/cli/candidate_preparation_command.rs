@@ -2101,7 +2101,6 @@ fn operation_before_digest(
 /// typed `CandidatePreparationReceiptV1`. In-process rows execute here;
 /// rows that need external tools or operator runs are retained as
 /// deferred obligations — never fabricated.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn reconcile_candidate_preparation(
     root: &Path,
     plan: &CandidatePreparationResultV1,
