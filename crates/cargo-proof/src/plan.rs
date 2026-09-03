@@ -130,6 +130,66 @@ pub fn plan_v2_from_paths(
     })
 }
 
+/// Generate a V2 plan using the compile-time selected provider registry.
+/// An explicitly supplied catalog remains supported for reproducible replay;
+/// this path is the normal product route and preserves an empty-registry
+/// `ProviderUnavailable` result when no provider feature is enabled.
+pub fn plan_v2_from_selected_registry(
+    obligation_path: &Path,
+    receipt_path: &Path,
+    output_path: &Path,
+) -> Result<PlanV2OutcomeV1, PlanErrorV1> {
+    let registry =
+        crate::providers::StaticProviderRegistryV1::selected().map_err(|error| PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("select provider registry: {}", error.as_str()),
+        })?;
+    let envelope_text = std::fs::read_to_string(obligation_path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", obligation_path.display()),
+    })?;
+    let envelope: intent_protocol::IntentObligationPlanEnvelopeV1 =
+        serde_json::from_str(&envelope_text).map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse intent envelope JSON: {err}"),
+        })?;
+    let receipt_text = std::fs::read_to_string(receipt_path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", receipt_path.display()),
+    })?;
+    let receipts: CapturedReceiptStoreV1 =
+        serde_json::from_str(&receipt_text).map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse receipt inventory JSON: {err}"),
+        })?;
+    let plan = plan_proof_v2_from_intent(&envelope, &registry.catalogs(), &receipts).map_err(
+        |message| PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("generate proof.plan.v2: {message}"),
+        },
+    )?;
+    let serialized = serde_json::to_string_pretty(&plan).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("serialize proof.plan.v2: {err}"),
+    })?;
+    let temporary = output_path.with_extension("json.tmp");
+    std::fs::write(&temporary, format!("{serialized}\n")).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("write temporary plan artifact: {err}"),
+    })?;
+    if let Err(err) = std::fs::rename(&temporary, output_path) {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("commit plan artifact: {err}"),
+        });
+    }
+    Ok(PlanV2OutcomeV1 {
+        plan,
+        output: output_path.display().to_string(),
+    })
+}
+
 /// Plan proof execution from an intent obligation plan envelope.
 fn plan_from_intent_envelope(
     envelope: &intent_protocol::IntentObligationPlanEnvelopeV1,
@@ -218,6 +278,7 @@ mod tests {
         IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
         RepositorySnapshotV1, ResolvedRevisionV1,
     };
+    use proof_engine::CapturedReceiptStoreV1;
 
     #[test]
     fn empty_registry_plan_fails_explicitly() -> Result<(), String> {
@@ -271,6 +332,61 @@ mod tests {
                 ));
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn selected_registry_plan_writes_a_deterministic_artifact() -> Result<(), String> {
+        let identity = IntentIdentityEnvelopeV1::new(
+            RepositorySnapshotV1::new_committed_head(
+                "test",
+                "sha1",
+                ResolvedRevisionV1 {
+                    requested: "HEAD".to_string(),
+                    commit: "abc".to_string(),
+                    tree: String::new(),
+                },
+            ),
+            IntentArtifactKindV1::RequirementDocument,
+            "test-artifact",
+            "test/source.md",
+            "test-content",
+        );
+        let envelope = IntentObligationPlanEnvelopeV1::new(
+            identity,
+            "precommit",
+            vec![IntentPhaseObligationV1 {
+                handoff: None,
+                obligation_id: "obl-direct".to_string(),
+                phase: "precommit".to_string(),
+                kind: IntentPhaseObligationKindV1::EvidenceReview,
+                statement: "Review evidence".to_string(),
+                posture: IntentObligationPostureV1::Blocking,
+                evidence_refs: vec![],
+            }],
+        );
+        let directory =
+            std::env::temp_dir().join(format!("cargo-proof-plan-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        let obligation = directory.join("obligation.json");
+        let receipts = directory.join("receipts.json");
+        let output = directory.join("plan.json");
+        std::fs::write(
+            &obligation,
+            serde_json::to_vec(&envelope).map_err(|e| e.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &receipts,
+            serde_json::to_vec(&CapturedReceiptStoreV1::new()).map_err(|e| e.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let outcome = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .map_err(|error| error.message)?;
+        if !output.is_file() || outcome.output != output.display().to_string() {
+            return Err("selected-registry plan did not write its artifact".to_string());
+        }
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }
 }

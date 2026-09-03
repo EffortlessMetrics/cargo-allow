@@ -41,7 +41,8 @@ pub use identity::{
 };
 pub use plan::{
     PLAN_CLAIM_BOUNDARY, PLAN_FRAME_SCHEMA_ID, PlanOutcomeV1, PlanV2OutcomeV1,
-    plan_from_obligation_path, plan_v2_from_paths, render_plan_frame, render_plan_v2_frame,
+    plan_from_obligation_path, plan_v2_from_paths, plan_v2_from_selected_registry,
+    render_plan_frame, render_plan_v2_frame,
 };
 pub use providers::{
     PROVIDER_REGISTRY_SCHEMA_ID, ProviderAvailabilityV1, ProviderDispositionV1,
