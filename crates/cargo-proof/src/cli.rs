@@ -172,10 +172,14 @@ fn run_cli(cli: CargoProofCli) -> Result<ProcessExitFamilyV1, String> {
             let outcome = match plan_result {
                 Ok(outcome) => {
                     if outcome.plan.items.iter().any(|item| {
-                        (item.blocking
-                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable)
-                            || item.disposition
-                                == ProofItemDispositionV1::RepositoryDecisionRequired
+                        item.disposition == ProofItemDispositionV1::RepositoryDecisionRequired
+                    }) {
+                        eprintln!("error: proof plan requires a repository decision");
+                        return Ok(exit_family_for_result_class("repository_decision_required"));
+                    }
+                    if outcome.plan.items.iter().any(|item| {
+                        item.blocking
+                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable
                     }) {
                         eprintln!(
                             "error: proof plan contains a blocking provider_unavailable item"
@@ -508,9 +512,24 @@ mod tests {
         if !output.is_file() {
             return Err("explicit catalog route should write its plan".to_string());
         }
-        let selected = run_cli(base(None, Some(receipts), Some(output)))?;
+        let selected = run_cli(base(None, Some(receipts.clone()), Some(output)))?;
         if selected != ProcessExitFamilyV1::InstrumentFailure {
             return Err("selected registry route should reach planning".to_string());
+        }
+        let mut decision_envelope = envelope;
+        decision_envelope.obligations[0].posture = IntentObligationPostureV1::Decision;
+        std::fs::write(
+            &obligation,
+            serde_json::to_vec(&decision_envelope).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let decision = run_cli(base(
+            None,
+            Some(receipts),
+            Some(directory.join("decision-plan.json")),
+        ))?;
+        if decision != ProcessExitFamilyV1::Blocking {
+            return Err("decision posture should require an explicit decision".to_string());
         }
         let missing = CargoProofCli {
             root: PathBuf::from("."),

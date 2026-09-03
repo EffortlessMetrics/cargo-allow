@@ -32,6 +32,7 @@ pub fn exit_family_for_result_class(result_class: &str) -> ProcessExitFamilyV1 {
     match result_class {
         "completed" => ProcessExitFamilyV1::Success,
         "findings" => ProcessExitFamilyV1::Blocking,
+        "repository_decision_required" => ProcessExitFamilyV1::Blocking,
         "malformed_input" => ProcessExitFamilyV1::Usage,
         // The proof-corpus vocabulary's provider-unavailable state
         // (ProofResultStateV1::ProviderUnavailable, proof-protocol) maps to
