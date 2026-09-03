@@ -6,7 +6,7 @@ The first-publication package rename preserves the Rust library import `proof_en
 
 ## Claim boundary
 
-The package does not scan source files, invoke Cargo, compile or execute repository code, or spawn provider processes. Provider-specific application wiring and process execution remain in `cargo-proof`; saved plans and receipt DTOs remain in `proof-protocol`.
+The package does not scan source files, invoke Cargo, or compile repository code. Planning remains non-executing; its bounded provider-neutral observation kernel is an explicit low-level process boundary, while provider-specific application wiring and semantic receipts remain in `cargo-proof`/`proof-protocol`.
 
 ## Packet 2713
 

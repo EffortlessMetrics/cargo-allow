@@ -1,5 +1,6 @@
 //! Explicit execution gate and bounded provider-neutral runner.
 
+use crate::CommandInvocationSpecV1;
 use proof_protocol::{ProofPlanV1, validate_proof_plan};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -87,6 +88,7 @@ pub enum ProcessObservationStatusV1 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionSpecV1 {
+    pub reviewed_invocation: CommandInvocationSpecV1,
     pub plan_id: String,
     pub command_id: String,
     pub program: String,
@@ -259,6 +261,14 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
             "program must be an absolute reviewed executable path".to_string(),
         ));
     }
+    if spec.reviewed_invocation.command_id != spec.command_id
+        || spec.reviewed_invocation.program != spec.program
+        || spec.reviewed_invocation.argv != spec.argv
+    {
+        return Err(RunnerError::InvalidSpec(
+            "execution spec must match its reviewed invocation".to_string(),
+        ));
+    }
     if spec.timeout.is_zero() || spec.stdout_limit == 0 || spec.stderr_limit == 0 {
         return Err(RunnerError::InvalidSpec(
             "timeout and output limits must be positive".to_string(),
@@ -345,6 +355,10 @@ fn digest(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        COMMAND_INVOCATION_SPEC_SCHEMA_ID, CancellationPostureV1, CommandSourceKindV1, CwdPolicyV1,
+        NetworkAccessV1,
+    };
 
     fn spec() -> Result<ExecutionSpecV1, String> {
         let program = std::env::current_exe()
@@ -352,7 +366,22 @@ mod tests {
             .display()
             .to_string();
         let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+        let reviewed_invocation = CommandInvocationSpecV1 {
+            schema_id: COMMAND_INVOCATION_SPEC_SCHEMA_ID.to_string(),
+            command_id: "test".to_string(),
+            source_kind: CommandSourceKindV1::ReviewedRegistry,
+            program: program.clone(),
+            argv: vec!["--list".to_string()],
+            cwd_policy: CwdPolicyV1::RepositoryRoot,
+            env_allowlist: vec![],
+            read_paths: vec![],
+            write_paths: vec![],
+            network: NetworkAccessV1::None,
+            timeout_ms: 5_000,
+            cancellation: CancellationPostureV1::Cooperative,
+        };
         Ok(ExecutionSpecV1 {
+            reviewed_invocation,
             plan_id: "plan-1".to_string(),
             command_id: "test".to_string(),
             program,
