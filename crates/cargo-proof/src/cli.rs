@@ -171,20 +171,36 @@ fn run_cli(cli: CargoProofCli) -> Result<ProcessExitFamilyV1, String> {
             };
             let outcome = match plan_result {
                 Ok(outcome) => {
-                    if outcome.plan.items.iter().any(|item| {
+                    if let Some(item) = outcome.plan.items.iter().find(|item| {
                         item.blocking
-                            && item.disposition == ProofItemDispositionV1::ProviderUnavailable
+                            && !matches!(
+                                item.disposition,
+                                ProofItemDispositionV1::SelectedForExecution
+                                    | ProofItemDispositionV1::SelectedForCapturedIngestion
+                                    | ProofItemDispositionV1::SatisfiedByCurrentReceipt
+                                    | ProofItemDispositionV1::NotApplicableWithReason
+                            )
                     }) {
+                        let result_class = match item.disposition {
+                            ProofItemDispositionV1::RepositoryDecisionRequired => {
+                                "repository_decision_required"
+                            }
+                            ProofItemDispositionV1::ProviderUnavailable => "provider_unavailable",
+                            ProofItemDispositionV1::UnsupportedCapability => "unsupported",
+                            ProofItemDispositionV1::SelectorMissingOrAmbiguous => "not_proven",
+                            ProofItemDispositionV1::ManualOrNativeOutstanding
+                            | ProofItemDispositionV1::DeferredWithinExplicitPolicy
+                            | ProofItemDispositionV1::NotProven => "not_proven",
+                            ProofItemDispositionV1::SelectedForExecution
+                            | ProofItemDispositionV1::SelectedForCapturedIngestion
+                            | ProofItemDispositionV1::SatisfiedByCurrentReceipt
+                            | ProofItemDispositionV1::NotApplicableWithReason => "completed",
+                        };
                         eprintln!(
-                            "error: proof plan contains a blocking provider_unavailable item"
+                            "error: proof plan contains blocking {} item",
+                            item.disposition.as_str()
                         );
-                        return Ok(exit_family_for_result_class("provider_unavailable"));
-                    }
-                    if outcome.plan.items.iter().any(|item| {
-                        item.disposition == ProofItemDispositionV1::RepositoryDecisionRequired
-                    }) {
-                        eprintln!("error: proof plan requires a repository decision");
-                        return Ok(exit_family_for_result_class("repository_decision_required"));
+                        return Ok(exit_family_for_result_class(result_class));
                     }
                     outcome
                 }
