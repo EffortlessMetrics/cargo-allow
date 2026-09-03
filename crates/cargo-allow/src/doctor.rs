@@ -28,6 +28,7 @@ use crate::{
     },
     portable_relative_under_root, spec_system,
     support_bundle::{SupportBundleFacts, write_support_bundle},
+    world::CoreWorldContext,
 };
 
 #[derive(Debug, Default)]
@@ -49,6 +50,15 @@ struct DoctorFileFamilyConflict {
     path: String,
     rule_ids: Vec<String>,
     families: Vec<String>,
+}
+
+/// The doctor report combines the canonical resolved configuration context
+/// with diagnostic-only observations.  Keeping this boundary explicit prevents
+/// diagnostics from becoming a second configuration selector while preserving
+/// the existing fail-closed status reporting for malformed or missing policy.
+struct DoctorWorldContext {
+    core: Option<CoreWorldContext>,
+    rust_scan: allow_rust::RustScanResult,
 }
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
@@ -88,10 +98,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let skipped_paths = inventory.skipped_paths.len();
     let submodule_paths = inventory.submodule_paths.len();
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
-    let source_context = SourceTreeReportContext::new(
-        &root,
-        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files),
-    );
+    let doctor_inventory_facts =
+        InventoryFacts::scanned_inventory(&inventory).with_deleted_tracked(deleted_tracked_files);
     let config_text = config
         .as_ref()
         .map(|path| allow_report::source_tree_path_text(path));
@@ -128,22 +136,6 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             families: conflict.families.as_slice(),
         })
         .collect::<Vec<_>>();
-    let config_schema_version = policy
-        .as_ref()
-        .and_then(|result| result.as_ref().ok())
-        .map(|cfg| cfg.schema_version.as_str());
-    let config_policy = policy
-        .as_ref()
-        .and_then(|result| result.as_ref().ok())
-        .map(|cfg| cfg.policy.as_str());
-    let config_owner = policy
-        .as_ref()
-        .and_then(|result| result.as_ref().ok())
-        .and_then(|cfg| cfg.owner.as_deref());
-    let config_status = policy
-        .as_ref()
-        .and_then(|result| result.as_ref().ok())
-        .and_then(|cfg| cfg.status.as_deref());
     let mut federation = FederationDoctorFacts::load(&root)?;
     federation.enrich_runtime_divergences(&root)?;
     if config_discovery.federation_evaluation_failed
@@ -160,6 +152,87 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             );
         }
     }
+    let core_context = (|| -> Option<CoreWorldContext> {
+        let cfg = policy.as_ref().and_then(|result| result.as_ref().ok())?;
+        let mut findings = rust_scan.findings.clone();
+        findings.extend(allow_files::scan_files_with_options(
+            &inventory.files,
+            &FileScanOptions {
+                generated: opts.generated.clone(),
+                file_families: cfg.workspace.file_families.clone(),
+                content_aware_generated: false,
+            },
+        ));
+        let companion_findings =
+            crate::canonical_companion_findings(&root, cfg, &inventory.files).ok()?;
+        crate::extend_unique_findings(&mut findings, companion_findings);
+        let federation = config_discovery
+            .federation
+            .clone()
+            .unwrap_or_else(crate::world::default_federation_evaluation);
+        if let Some(provenance) = federation.active_provenance.clone() {
+            for finding in &mut findings {
+                finding.ledger = Some(provenance.clone());
+            }
+        }
+        Some(CoreWorldContext {
+            root: root.clone(),
+            cfg: cfg.clone(),
+            findings,
+            inventory_facts: InventoryFacts::scanned_inventory(&inventory)
+                .with_deleted_tracked(deleted_tracked_files)
+                .with_rust_files_considered(rust_scan.files_considered)
+                .with_rust_files_skipped(rust_scan.files_skipped)
+                .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
+            federation,
+        })
+    })();
+    let doctor_context = DoctorWorldContext {
+        core: core_context,
+        rust_scan,
+    };
+    let rust_scan = &doctor_context.rust_scan;
+    let source_context = SourceTreeReportContext::new(&root, doctor_inventory_facts);
+    let config_schema_version = doctor_context
+        .core
+        .as_ref()
+        .map(|core| core.cfg.schema_version.as_str())
+        .or_else(|| {
+            policy
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+                .map(|cfg| cfg.schema_version.as_str())
+        });
+    let config_policy = doctor_context
+        .core
+        .as_ref()
+        .map(|core| core.cfg.policy.as_str())
+        .or_else(|| {
+            policy
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+                .map(|cfg| cfg.policy.as_str())
+        });
+    let config_owner = doctor_context
+        .core
+        .as_ref()
+        .and_then(|core| core.cfg.owner.as_deref())
+        .or_else(|| {
+            policy
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+                .and_then(|cfg| cfg.owner.as_deref())
+        });
+    let config_status = doctor_context
+        .core
+        .as_ref()
+        .and_then(|core| core.cfg.status.as_deref())
+        .or_else(|| {
+            policy
+                .as_ref()
+                .and_then(|result| result.as_ref().ok())
+                .and_then(|cfg| cfg.status.as_deref())
+        });
     let configured_ledgers = federation.configured_ledger_summaries();
     let federation_diagnostics = federation.diagnostic_summaries();
     let federation_divergences = federation.divergence_summaries();
@@ -189,7 +262,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         git_inventory_error,
         skipped_paths,
         submodule_paths,
-        rust_scanner_completeness: rust_scanner_completeness(&rust_scan),
+        rust_scanner_completeness: rust_scanner_completeness(rust_scan),
         rust_files_considered: rust_scan.files_considered,
         rust_files_scanned: rust_scan
             .files_considered
