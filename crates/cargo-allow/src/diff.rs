@@ -30,8 +30,9 @@ use crate::artifact_emit;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
-    git_relative_config_path, load_read_only_world_with_selected_policy, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    git_relative_config_path, load_read_only_world_with_selected_policy,
+    normalize_to_repo_relative, parse_kind_filter, policy_baseline_debt_entries, report_config,
+    write_file,
 };
 
 struct CurrentWorld {
@@ -606,10 +607,7 @@ fn git_relative_config_path_for_diff(
                 "current policy selection did not provide a policy path",
             )
         })?;
-        return Ok(selected
-            .strip_prefix(root)
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|_| selected.to_path_buf()));
+        return Ok(normalize_to_repo_relative(root, selected));
     }
     let head = head.unwrap_or(base);
     if let Some(config) = config {
