@@ -93,10 +93,8 @@ fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
     fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
     fs::write(root.join("source.rs"), "fn source() {}\n").map_err(|error| error.to_string())?;
     let policy = root.join("policy/allow.toml");
-    let policy_text =
-        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n";
-    fs::write(&policy, policy_text)
-    .map_err(|error| error.to_string())?;
+    let policy_text = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n";
+    fs::write(&policy, policy_text).map_err(|error| error.to_string())?;
     let doctor_output = root.join("doctor.txt");
     let bundle_output = root.join("target/cargo-allow/support-bundle.json");
 
