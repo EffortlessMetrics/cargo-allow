@@ -371,8 +371,9 @@ mod tests {
     use proof_engine::CapturedReceiptStoreV1;
     use proof_protocol::{
         CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
-        ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
-        ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
+        ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofItemDispositionV1,
+        ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2, ProofSubjectClassV1, ProofSubjectV1,
+        ProviderSelectionV1,
     };
     use std::path::PathBuf;
 
@@ -480,14 +481,30 @@ mod tests {
             return Err("legacy plan should preserve provider-unavailable posture".to_string());
         }
         let catalog = directory.join("catalog.json");
-        std::fs::write(&catalog, b"[]").map_err(|error| error.to_string())?;
+        let catalog_value = ProofCapabilityCatalogV1::new(
+            "test-provider",
+            vec![ProofCapabilityV1 {
+                capability_id: "evidence_review".to_string(),
+                kind: ProofCapabilityKindV1::StaticReport,
+                program: "test-provider".to_string(),
+                statement: "Review evidence".to_string(),
+            }],
+        );
+        std::fs::write(
+            &catalog,
+            serde_json::to_vec(&vec![catalog_value]).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
         if run_cli(base(
             Some(catalog),
             Some(receipts.clone()),
             Some(output.clone()),
-        ))? != ProcessExitFamilyV1::InstrumentFailure
+        ))? != ProcessExitFamilyV1::Success
         {
-            return Err("explicit catalog route should reach planning".to_string());
+            return Err("explicit catalog route should produce a successful plan".to_string());
+        }
+        if !output.is_file() {
+            return Err("explicit catalog route should write its plan".to_string());
         }
         let selected = run_cli(base(None, Some(receipts), Some(output)))?;
         if selected != ProcessExitFamilyV1::InstrumentFailure {
