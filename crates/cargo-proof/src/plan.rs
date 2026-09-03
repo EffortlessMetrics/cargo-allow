@@ -453,6 +453,25 @@ mod tests {
         if error.result_state != ProofResultStateV1::Missing {
             return Err("malformed receipt inventory should be classified as missing".to_string());
         }
+        std::fs::write(
+            &receipts,
+            serde_json::to_vec(&CapturedReceiptStoreV1::new())
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let unwritable = directory.join("missing-parent").join("plan.json");
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &unwritable)
+            .expect_err("missing output parent must fail");
+        if error.result_state != ProofResultStateV1::Unsupported {
+            return Err("output write failure should be unsupported".to_string());
+        }
+        let output_directory = directory.join("output-directory");
+        std::fs::create_dir_all(&output_directory).map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output_directory)
+            .expect_err("directory output target must fail");
+        if error.result_state != ProofResultStateV1::Unsupported {
+            return Err("output rename failure should be unsupported".to_string());
+        }
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }

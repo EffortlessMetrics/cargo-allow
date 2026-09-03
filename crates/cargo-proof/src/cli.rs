@@ -484,6 +484,20 @@ mod tests {
         if selected != ProcessExitFamilyV1::InstrumentFailure {
             return Err("selected registry route should reach planning".to_string());
         }
+        let missing = CargoProofCli {
+            root: PathBuf::from("."),
+            config: None,
+            format: FormatArg::Json,
+            command: Some(CargoProofCommand::Plan(PlanArgs {
+                obligation_plan: directory.join("missing-obligation.json"),
+                provider_catalog: None,
+                receipt_inventory: None,
+                output: None,
+            })),
+        };
+        if run_cli(missing)? != ProcessExitFamilyV1::Usage {
+            return Err("missing legacy obligation should be usage".to_string());
+        }
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }
