@@ -24,6 +24,11 @@ pub fn plan_proof_v2_from_intent(
     for catalog in catalogs {
         validate_capability_catalog(catalog).map_err(|error| error.as_str().to_string())?;
     }
+    if let Some(enrichment) = envelope.enrichment.as_ref() {
+        enrichment
+            .validate()
+            .map_err(|error| format!("plan enrichment: {error}"))?;
+    }
     validate_captured_receipt_store(receipts).map_err(|error| error.as_str().to_string())?;
 
     let snapshot_identity = snapshot_identity(envelope)?;
@@ -778,6 +783,21 @@ mod tests {
             .ok_or_else(|| "missing item".to_string())?;
         if item.disposition != ProofItemDispositionV1::NotProven {
             return Err("config currentness without identity became executable".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn blank_enrichment_identity_is_rejected_before_projection() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched.enrichment = Some(IntentPlanEnrichmentV1 {
+            resolved_config_identity: Some("  ".to_string()),
+            ..IntentPlanEnrichmentV1::default()
+        });
+        if plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())
+            .is_ok()
+        {
+            return Err("blank enrichment identity must fail planning".to_string());
         }
         Ok(())
     }
