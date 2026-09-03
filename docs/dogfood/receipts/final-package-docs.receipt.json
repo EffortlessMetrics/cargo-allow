@@ -1,0 +1,170 @@
+{
+  "basis": {
+    "cargo_lock_sha256": "sha256:3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+    "commit": "01ef5ff13ca9cfb606d11a95eee03cc0a3247337",
+    "release_identity": {
+      "channel": "stable",
+      "github_prerelease": false,
+      "tag": "v0.2.0",
+      "version": "0.2.0"
+    },
+    "topology_sha256": "sha256:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+    "tree": "b176294be3a944a78477c79b84f923a13390c383"
+  },
+  "channel_law": {
+    "channel_identities": [
+      "0.1.11",
+      "0.2.0-rc.1",
+      "0.2.0"
+    ],
+    "getting_started": "docs/getting-started.md",
+    "support_matrix": "docs/support-matrix.toml"
+  },
+  "claim_boundary": "Docs/package audit for the exact final candidate basis; binds the ten cargo-allow rows and the three shared prerequisites while excluding rc.1 inputs as final authority. Publication itself stays gated by #3760/#2502.",
+  "limitations": [
+    "normalized-manifest audit runs through offline packaging",
+    "relocated docs.rs execution is deferred to the installed-experience lanes",
+    "install-channel wording remains governed by the getting-started contract tests"
+  ],
+  "rc_line_inputs_excluded": true,
+  "rows": [
+    {
+      "crate_sha256": "sha256:9cf4ac9e3592fea107fbadc65851323648db3cd2ee3aeb3bf16e01dea6cca7f3",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:636180c260a2b3bacd81f56080b2f45ddf1f84cce5a36b80dae7b1dfa3c10d85",
+      "name": "allow-core",
+      "normalized_manifest_sha256": "sha256:201ecbcbe975028677f3a834672020f98ca297cf2321bd60edbb624ec0e7d54d",
+      "readme_present": true,
+      "release_order": 10,
+      "result": "Complete",
+      "size_bytes": 52052,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:3c2f0f2c62cbf240853026b3c1503617f52528e52eee44aaca5ac0a324b79fb4",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:3a3097d5c5974c80183c459c006cd48cc2cb88ead8387949c31de39043e965e9",
+      "name": "allow-policy",
+      "normalized_manifest_sha256": "sha256:1d4f8662b2db2194c4f386ecc79a9ce923e3f1bc9ab5ace5ebecf6a6dd1115f1",
+      "readme_present": true,
+      "release_order": 20,
+      "result": "Complete",
+      "size_bytes": 205693,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:f1c0cbb17d4b4e71794ec4a1b63be365754cfddbe66c90f5e6347206a73901e0",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:72b47963a17bb1721f74ee89d738b55358760edbd68a59867ed4fe2663f5ddd9",
+      "name": "allow-inventory",
+      "normalized_manifest_sha256": "sha256:c41b9a186ab67dd42e1aa582f48f9b7dfa2d747dddfeb2bbce707a9b87eff9b2",
+      "readme_present": true,
+      "release_order": 30,
+      "result": "Complete",
+      "size_bytes": 77896,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:cc70c57feff70413b80f2e524e13463fc41ed4d1711f92276a526c8dbe388b66",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:2de46de8c4f7d425f00f8e47a37d09c97e55047d17421839704c1fdebaf8d5dd",
+      "name": "allow-files",
+      "normalized_manifest_sha256": "sha256:f18d58d0e455e32f35df11e45e7f803a9f7c1aa89f206c3550f9c5affe6a78c9",
+      "readme_present": true,
+      "release_order": 40,
+      "result": "Complete",
+      "size_bytes": 69478,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:32e2cf8298adde88ea81df8ae8adb7e57e829e0274ca7abfbcc83356c628da91",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:32cdfbb2387dba145c4c451c1a3920cb55d586d5d8c6b91fad7e0ba53b1890b6",
+      "name": "allow-rust",
+      "normalized_manifest_sha256": "sha256:2c20b4958b3ea5d94b965e9e8b6206259836ae7936a6f728f80aefc0b3e91e19",
+      "readme_present": true,
+      "release_order": 50,
+      "result": "Complete",
+      "size_bytes": 97706,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:a3f7b3829358b8ce02f47e32c31bbaaadecc499787bce232d3c003bf206ac812",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:152797d624f091340aef2051822dcbe06c45456245471fe8b63e176bed338cd0",
+      "name": "allow-match",
+      "normalized_manifest_sha256": "sha256:a1ad8f6c78e43aa7319d04d04b57837669955f45442391c58fe04ddf5755ff2f",
+      "readme_present": true,
+      "release_order": 60,
+      "result": "Complete",
+      "size_bytes": 38745,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:366859824aafdc1a19b4f32e743dae4d3dd456636eaf92a3a2143272632a6dd0",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:4bcb2ad9b6627fb4950cce9b33b672ad025ecdd6784978e28d97d4150d9019d7",
+      "name": "allow-report",
+      "normalized_manifest_sha256": "sha256:5542fed796a0fe362219d2a13bf7afc3dec0acb3e550ea4ebc2d692750dcacda",
+      "readme_present": true,
+      "release_order": 70,
+      "result": "Complete",
+      "size_bytes": 304321,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:350052d72c4a531d19ffae0f791437da2bbc8ad5308366c2a4e8eaffe6454795",
+      "docs_posture": "compatibility_migration",
+      "file_list_digest": "sha256:72d6f27bb4f6fd223b28086a379bb5e10aa21b9f71b2269820531a829a55699b",
+      "name": "allow-policy-legacy",
+      "normalized_manifest_sha256": "sha256:ea53add59bf7938e84dd1405ac499c6015dad2a010ae1b2a861effaa31f9d6be",
+      "readme_present": true,
+      "release_order": 75,
+      "result": "Complete",
+      "size_bytes": 94575,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:864b29b6c71d86a6ed318b0e6e4a164791d33ea2fe2a45917c28496da4818ee1",
+      "docs_posture": "library",
+      "file_list_digest": "sha256:e501f5019970dac1211539c6d9a31d5bdf16ef554cd7d789ef65dd6f7c6e35fe",
+      "name": "allow-diff",
+      "normalized_manifest_sha256": "sha256:d8cca1b3532b436f82798a8d7e6333a86182c2b9e1be5622e92b85e4e18bebac",
+      "readme_present": true,
+      "release_order": 95,
+      "result": "Complete",
+      "size_bytes": 90532,
+      "version": "0.2.0"
+    },
+    {
+      "crate_sha256": "sha256:7d60510784b83b46cd0e11839d42ada80c2c15f591b333d77111a683dedbbf3f",
+      "docs_posture": "product_cli",
+      "file_list_digest": "sha256:de5d16ad0ba96bdb5d9c26bc294cd03a910abd6576b44711913ef63c42c0b91c",
+      "name": "cargo-allow",
+      "normalized_manifest_sha256": "sha256:dce11e60f595915f1fb902f697f97a8fd010ab52ba7006a7b818d2d14aeb4965",
+      "readme_present": true,
+      "release_order": 100,
+      "result": "Complete",
+      "size_bytes": 876742,
+      "version": "0.2.0"
+    }
+  ],
+  "schema": "cargo-allow.final-package-docs.v1",
+  "shared_prerequisites": [
+    {
+      "expected_registry_checksum": "sha256:7755a359aa0a21d0a3258510b64bb26af35e88fbc8b6061a18798d8384a20008",
+      "name": "effortless-repo-protocol",
+      "version": "0.1.0"
+    },
+    {
+      "expected_registry_checksum": "sha256:e5988b678ce9abb5dc6ad920e497aa16d86e23f587bfcf05c52345717c997c4f",
+      "name": "effortless-repo-snapshot",
+      "version": "0.1.0"
+    },
+    {
+      "expected_registry_checksum": "sha256:c911da1ad15af64b3cd6c2d1a8ba7fd838a6da58c2e345d6f41ca8a349889728",
+      "name": "effortless-repo-edit",
+      "version": "0.1.0"
+    }
+  ]
+}

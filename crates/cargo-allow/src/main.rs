@@ -1,3 +1,15 @@
+//! `cargo-allow` — source-tree exception ledger and policy scanner for
+//! Rust repositories.
+//!
+//! This binary is the complete CLI product of the cargo-allow package: it
+//! scans repository files without executing project code and checks the
+//! findings against `policy/allow.toml`, the durable source-tree exception
+//! ledger. Library crates in this workspace (allow-core, allow-policy,
+//! allow-inventory, allow-files, allow-rust, allow-match, allow-report,
+//! allow-diff, allow-policy-legacy) are internal implementation crates of
+//! the same product; cargo-intent and cargo-proof are separate optional
+//! sibling products and are not part of this CLI.
+
 use std::process;
 
 mod add;

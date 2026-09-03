@@ -302,7 +302,10 @@ def build_receipt(basis_path: Path, receipt_path: Path, skip_package: bool) -> d
     packages_dir = ROOT / "target/package"
     if not skip_package:
         packages = publisher.cargo_packages()
-        publisher.validate_rows(cargo_allow, packages)
+        # The publication-closure law runs over the full 13-row candidate
+        # closure: the allow family reaches the three shared prerequisites,
+        # so validating only the ten product rows would misreport closure.
+        publisher.validate_rows(cargo_allow + shared, packages)
         publisher.package_workspace(
             {row["cargo_package_name"] for row in cargo_allow}, packages
         )
