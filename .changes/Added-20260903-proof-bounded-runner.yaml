@@ -1,0 +1,9 @@
+kind: Added
+summary: Add a bounded provider-neutral proof process runner
+body: >-
+  proof-engine now executes reviewed structured invocations without a shell,
+  with explicit environment isolation, timeout and output limits, and a typed
+  provider-neutral execution receipt. Provider-specific interpretation remains
+  outside the runner.
+component: cargo-proof
+"breaking": false

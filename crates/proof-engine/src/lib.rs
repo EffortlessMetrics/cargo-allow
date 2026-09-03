@@ -77,8 +77,9 @@ pub use dry_run::{
     dry_run_plan_artifact, dry_run_proof_plan, dry_run_proof_plan_v2,
 };
 pub use execution::{
-    EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
-    evaluate_execution_gate, require_explicit_execution,
+    EXECUTION_GATE_SCHEMA_ID, EXECUTION_RECEIPT_SCHEMA_ID, ExecutionApprovalV1, ExecutionError,
+    ExecutionGateReportV1, ExecutionReceiptV1, ExecutionSpecV1, ProcessObservationStatusV1,
+    RunnerError, evaluate_execution_gate, execute_bounded, require_explicit_execution,
 };
 pub use intent_digest::{
     INTENT_PLAN_IDENTITY_PREFIX, intent_obligation_plan_digest, intent_plan_identity,
