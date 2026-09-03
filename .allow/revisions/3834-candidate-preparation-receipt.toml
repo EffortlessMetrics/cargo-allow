@@ -68,3 +68,15 @@ allow_ids = ["allow-0851"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:35bfe7addd97febfba39bf7da9170697b174abb56df3e53f410c5cc0cf63485f"
 reason = "Test-only fixture-projection or readiness expectation in the candidate-preparation command tests (#3834); the expected side is the read-only shared fixture."
+
+[[records]]
+allow_ids = ["allow-0852"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:519449a45325afce279a158db0da97f8a7aec9a600c54c28d4b7e1171988c88e"
+reason = "Retained basis/audit-receipt artifact for the #3773 package-docs audit at the 0.2.0 candidate line."
+
+[[records]]
+allow_ids = ["allow-0853"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5e25d1134dd0f8e3c2c52fb4c00971f957c34bd6e0bf5a4430d8742c0564fa7e"
+reason = "Retained basis/audit-receipt artifact for the #3773 package-docs audit at the 0.2.0 candidate line."
