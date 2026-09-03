@@ -52,7 +52,7 @@ class CandidateProducerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             topology_path = Path(directory) / "topology.toml"
             text = self.real_topology().read_text(encoding="utf-8").replace(
-                'package_version = "0.2.0-rc.1"', 'package_version = "9.9.9"', 1
+                'package_version = "0.2.0"', 'package_version = "9.9.9"', 1
             )
             topology_path.write_text(text, encoding="utf-8")
             with self.assertRaises(ValueError):
@@ -82,23 +82,23 @@ class CandidateProducerTests(unittest.TestCase):
     def test_verify_packaged_requires_exact_filename_and_clean_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
             package_dir = Path(directory)
-            crate_root = Path(directory) / "allow-core-0.2.0-rc.1"
+            crate_root = Path(directory) / "allow-core-0.2.0"
             crate_root.mkdir()
             (crate_root / "Cargo.toml").write_text(
-                '[package]\nname = "allow-core"\nversion = "0.2.0-rc.1"\n'
+                '[package]\nname = "allow-core"\nversion = "0.2.0"\n'
                 'readme = "README.md"\n'
                 '[lib]\npath = "src/lib.rs"\n'
-                '[dependencies]\nallow-policy = { version = "0.2.0-rc.1" }\n',
+                '[dependencies]\nallow-policy = { version = "0.2.0" }\n',
                 encoding="utf-8",
             )
             (crate_root / "README.md").write_text(
                 "candidate crate readme\n", encoding="utf-8"
             )
-            crate_path = package_dir / "allow-core-0.2.0-rc.1.crate"
+            crate_path = package_dir / "allow-core-0.2.0.crate"
             with tarfile.open(crate_path, "w:gz") as archive:
                 archive.add(
                     crate_root,
-                    arcname="allow-core-0.2.0-rc.1",
+                    arcname="allow-core-0.2.0",
                     filter=lambda info: info,
                 )
 
@@ -113,7 +113,7 @@ class CandidateProducerTests(unittest.TestCase):
             row["expected_dependency_rows"] = [
                 {
                     "package_name": "allow-policy",
-                    "package_version": "0.2.0-rc.1",
+                    "package_version": "0.2.0",
                     "dependency_kind": "internal",
                 }
             ]
@@ -138,27 +138,27 @@ class CandidateProducerTests(unittest.TestCase):
             readme_file.unlink()
             crate_path.unlink()
             with tarfile.open(crate_path, "w:gz") as archive:
-                archive.add(crate_root, arcname="allow-core-0.2.0-rc.1")
+                archive.add(crate_root, arcname="allow-core-0.2.0")
             with self.assertRaises(ValueError):
                 candidate.verify_packaged(payload, package_dir)
             readme_file.write_text("candidate crate readme\n", encoding="utf-8")
             crate_path.unlink()
             with tarfile.open(crate_path, "w:gz") as archive:
-                archive.add(crate_root, arcname="allow-core-0.2.0-rc.1")
+                archive.add(crate_root, arcname="allow-core-0.2.0")
             candidate.verify_packaged(payload, package_dir)
 
             # A packaged path dependency must fail the packaging law.
             leak_root = Path(directory) / "leaky"
             leak_root.mkdir()
             (leak_root / "Cargo.toml").write_text(
-                '[package]\nname = "allow-core"\nversion = "0.2.0-rc.1"\n'
+                '[package]\nname = "allow-core"\nversion = "0.2.0"\n'
                 '[dependencies]\nallow-policy = { path = "../allow-policy" }\n',
                 encoding="utf-8",
             )
-            leaky = package_dir / "allow-core-0.2.0-rc.1.crate"
+            leaky = package_dir / "allow-core-0.2.0.crate"
             leaky.unlink()
             with tarfile.open(leaky, "w:gz") as archive:
-                archive.add(leak_root, arcname="allow-core-0.2.0-rc.1")
+                archive.add(leak_root, arcname="allow-core-0.2.0")
             with self.assertRaises(ValueError):
                 candidate.verify_packaged(payload, package_dir)
 

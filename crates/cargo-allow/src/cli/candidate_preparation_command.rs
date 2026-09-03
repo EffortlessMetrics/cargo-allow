@@ -1480,12 +1480,11 @@ extraction_destination = \"cargo-allow\"
         assert!(rendered.contains("inputs could not be trusted"));
         assert!(rendered.contains("reason: repository identity: missing"));
 
+        let root = crate::candidate_preparation_plan_tests::shared_fixture().as_path();
         let live = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
-            &git_root().expect("the live repository root resolves"),
-            "0.2.0",
-            None,
+            root, "0.2.0", None,
         )
-        .expect("live projection builds");
+        .expect("fixture projection builds");
         let rendered = render_text_summary(&live);
         let plan = live.plan.as_ref().expect("plan projects");
         assert!(rendered.contains(&plan.plan_digest));
@@ -1500,16 +1499,15 @@ extraction_destination = \"cargo-allow\"
             format: PrepOutputFormat::Text,
             policy_plan: None,
         };
-        let root = git_root().expect("the live repository root resolves");
-        cmd_prep_candidate_plan_for_root(&root, &ready)
-            .expect("decision-required plan exits ready");
+        let root = crate::candidate_preparation_plan_tests::shared_fixture().as_path();
+        cmd_prep_candidate_plan_for_root(root, &ready).expect("decision-required plan exits ready");
 
         let unsupported = PrepCandidatePlanArgs {
             version: "0.2.0-beta.9".to_string(),
             format: PrepOutputFormat::Json,
             policy_plan: None,
         };
-        let error = cmd_prep_candidate_plan_for_root(&root, &unsupported)
+        let error = cmd_prep_candidate_plan_for_root(root, &unsupported)
             .expect_err("unsupported target fails closed");
         assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
     }

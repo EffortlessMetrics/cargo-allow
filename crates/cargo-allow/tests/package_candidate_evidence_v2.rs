@@ -83,7 +83,7 @@ fn example_candidate_is_complete_and_mixed_version() -> Result<(), String> {
         .filter(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
         .map(|row| row.cargo_package_version.as_str())
         .collect::<std::collections::BTreeSet<_>>();
-    if cargo_allow_family != std::collections::BTreeSet::from(["0.2.0-rc.1"])
+    if cargo_allow_family != std::collections::BTreeSet::from(["0.2.0"])
         || shared_family != std::collections::BTreeSet::from(["0.1.0"])
     {
         return Err(format!(

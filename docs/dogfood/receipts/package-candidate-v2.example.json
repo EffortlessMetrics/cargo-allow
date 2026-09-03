@@ -2,21 +2,21 @@
   "schema_id": "cargo-allow.package-candidate.v2",
   "schema_version": 2,
   "topology_id": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001",
-  "topology_digest": "sha256:72d06a5883e2a35a136575ebd53e003649c89724a5fc2eba489f63eb66af2929",
-  "repository_commit": "7154d0f5ebc115b14425418d4f14469d249e9f66",
-  "repository_tree": "3d57ca44aa4ca32ad9dd59fa2cd376305141fa97",
-  "cargo_lock_digest": "sha256:5577b8ade3da35da92e9d2f55b177c8aedfd0291d6e43573339f05aae35d7b53",
+  "topology_digest": "sha256:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+  "repository_commit": "fd23dd87eb0a1b4d2036693c278bd7f3627bb615",
+  "repository_tree": "4a4d01bc9420a3fc06887e6d1c4b35f6b3770b53",
+  "cargo_lock_digest": "sha256:3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
   "root_package_name": "cargo-allow",
-  "root_package_version": "0.2.0-rc.1",
+  "root_package_version": "0.2.0",
   "target_class": "cargo-allow-0.2",
   "feature_set_id": "default",
   "rows": [
     {
       "logical_id": "allow-core",
       "cargo_package_name": "allow-core",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_core",
       "workspace_source_path": "crates/allow-core",
       "product_family": "cargo-allow-0.2",
@@ -25,7 +25,7 @@
       "support_tier": "supported",
       "release_order": 10,
       "selected_features": [],
-      "expected_manifest_identity": "allow-core:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-core:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "sha2",
@@ -43,7 +43,7 @@
     {
       "logical_id": "allow-policy",
       "cargo_package_name": "allow-policy",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_policy",
       "workspace_source_path": "crates/allow-policy",
       "product_family": "cargo-allow-0.2",
@@ -52,11 +52,11 @@
       "support_tier": "supported",
       "release_order": 20,
       "selected_features": [],
-      "expected_manifest_identity": "allow-policy:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-policy:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -80,7 +80,7 @@
     {
       "logical_id": "allow-inventory",
       "cargo_package_name": "allow-inventory",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_inventory",
       "workspace_source_path": "crates/allow-inventory",
       "product_family": "cargo-allow-0.2",
@@ -89,11 +89,11 @@
       "support_tier": "supported",
       "release_order": 30,
       "selected_features": [],
-      "expected_manifest_identity": "allow-inventory:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-inventory:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -122,7 +122,7 @@
     {
       "logical_id": "allow-files",
       "cargo_package_name": "allow-files",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_files",
       "workspace_source_path": "crates/allow-files",
       "product_family": "cargo-allow-0.2",
@@ -131,11 +131,11 @@
       "support_tier": "supported",
       "release_order": 40,
       "selected_features": [],
-      "expected_manifest_identity": "allow-files:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-files:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -149,7 +149,7 @@
     {
       "logical_id": "allow-rust",
       "cargo_package_name": "allow-rust",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_rust",
       "workspace_source_path": "crates/allow-rust",
       "product_family": "cargo-allow-0.2",
@@ -158,11 +158,11 @@
       "support_tier": "supported",
       "release_order": 50,
       "selected_features": [],
-      "expected_manifest_identity": "allow-rust:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-rust:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -196,7 +196,7 @@
     {
       "logical_id": "allow-match",
       "cargo_package_name": "allow-match",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_match",
       "workspace_source_path": "crates/allow-match",
       "product_family": "cargo-allow-0.2",
@@ -205,11 +205,11 @@
       "support_tier": "supported",
       "release_order": 60,
       "selected_features": [],
-      "expected_manifest_identity": "allow-match:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-match:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         }
       ],
@@ -218,7 +218,7 @@
     {
       "logical_id": "allow-report",
       "cargo_package_name": "allow-report",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_report",
       "workspace_source_path": "crates/allow-report",
       "product_family": "cargo-allow-0.2",
@@ -227,16 +227,16 @@
       "support_tier": "supported",
       "release_order": 70,
       "selected_features": [],
-      "expected_manifest_identity": "allow-report:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-report:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -265,7 +265,7 @@
     {
       "logical_id": "allow-policy-legacy",
       "cargo_package_name": "allow-policy-legacy",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_policy_legacy",
       "workspace_source_path": "crates/allow-policy-legacy",
       "product_family": "cargo-allow-0.2",
@@ -274,21 +274,21 @@
       "support_tier": "supported",
       "release_order": 75,
       "selected_features": [],
-      "expected_manifest_identity": "allow-policy-legacy:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-policy-legacy:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -388,7 +388,7 @@
     {
       "logical_id": "allow-diff",
       "cargo_package_name": "allow-diff",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "allow_diff",
       "workspace_source_path": "crates/allow-diff",
       "product_family": "cargo-allow-0.2",
@@ -397,26 +397,26 @@
       "support_tier": "supported",
       "release_order": 95,
       "selected_features": [],
-      "expected_manifest_identity": "allow-diff:0.2.0-rc.1",
+      "expected_manifest_identity": "allow-diff:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-rust",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
@@ -445,7 +445,7 @@
     {
       "logical_id": "cargo-allow",
       "cargo_package_name": "cargo-allow",
-      "cargo_package_version": "0.2.0-rc.1",
+      "cargo_package_version": "0.2.0",
       "rust_library_name": "cargo_allow",
       "workspace_source_path": "crates/cargo-allow",
       "product_family": "cargo-allow-0.2",
@@ -454,51 +454,51 @@
       "support_tier": "supported",
       "release_order": 100,
       "selected_features": [],
-      "expected_manifest_identity": "cargo-allow:0.2.0-rc.1",
+      "expected_manifest_identity": "cargo-allow:0.2.0",
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-diff",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-inventory",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-match",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy-legacy",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-report",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-rust",
-          "package_version": "0.2.0-rc.1",
+          "package_version": "0.2.0",
           "dependency_kind": "internal"
         },
         {

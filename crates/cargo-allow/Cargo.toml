@@ -16,7 +16,7 @@ categories = ["command-line-utilities", "development-tools"]
 # require these values to stay exactly synchronized with the repository source.
 schema = "cargo-allow.support-matrix.v1"
 published_version = "0.1.11"
-candidate_version = "0.2.0-rc.1"
+candidate_version = "0.2.0"
 
 [[package.metadata.cargo-allow.reference.channel]]
 name = "crates.io"

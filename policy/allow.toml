@@ -18265,3 +18265,95 @@ normalized_snippet_hash = "fnv1a64:854c3bd9fc833810"
 [allow.last_seen]
 line = 2150
 column = 10
+
+[[allow]]
+id = "allow-0848"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fixture-projection assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "command_dispatch_parses_through_the_real_cli"
+callee = "expect"
+receiver_fingerprint = "build_preparation_result_for_root( shared_fixture(), &plan_args.version, None, )"
+normalized_snippet_hash = "fnv1a64:42494872fd47ceb9"
+
+[allow.last_seen]
+line = 637
+column = 6
+
+[[allow]]
+id = "allow-0849"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fixture-projection assertion in the candidate-preparation suite (#3834); the expected side is a controlled fixture repository"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "operations_cover_every_required_owner_on_the_live_repo"
+callee = "expect"
+receiver_fingerprint = "fixture.operations.as_ref()"
+normalized_snippet_hash = "fnv1a64:61cc6cbb76a6a819"
+
+[allow.last_seen]
+line = 805
+column = 47
+
+[[allow]]
+id = "allow-0850"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only fixture projection expectation in the render-summary command test (#3834); the expected side is the read-only shared fixture"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::text_summary_renders_reasons_decisions_and_digest_from_one_plan"
+callee = "expect"
+receiver_fingerprint = "e_preparation_command::build_preparation_result_for_root( root, \"0.2.0\", None, )"
+normalized_snippet_hash = "fnv1a64:42494872fd47ceb9"
+
+[allow.last_seen]
+line = 1487
+column = 10
+
+[[allow]]
+id = "allow-0851"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/cli/candidate_preparation_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only decision-required expectation in the command-layer readiness test (#3834); the expected side is the read-only shared fixture"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "tests::command_layer_renders_and_fails_closed_by_readiness"
+callee = "expect"
+receiver_fingerprint = "cmd_prep_candidate_plan_for_root(root, &ready)"
+normalized_snippet_hash = "fnv1a64:5a1847501797a86c"
+
+[allow.last_seen]
+line = 1503
+column = 56
