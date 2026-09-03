@@ -7,8 +7,9 @@
 //! contracts (#2603-A) and command adapter contracts (#2603-B) that previously
 //! lived in standalone `proof-provider-api` and `proof-adapter-command` crates
 //! (#2937). It accepts intent obligation plans via intent-protocol (#3310).
-//! It does not execute repository code or invoke Cargo, rustc, Clippy, build
-//! scripts, or proc macros.
+//! Planning does not execute repository code or invoke Cargo, rustc, Clippy,
+//! build scripts, or proc macros. The bounded observation kernel is a separate
+//! explicit execution API and never interprets provider semantics.
 
 #[cfg(test)]
 mod boundary;
@@ -77,8 +78,9 @@ pub use dry_run::{
     dry_run_plan_artifact, dry_run_proof_plan, dry_run_proof_plan_v2,
 };
 pub use execution::{
-    EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
-    evaluate_execution_gate, require_explicit_execution,
+    EXECUTION_GATE_SCHEMA_ID, EXECUTION_RECEIPT_SCHEMA_ID, ExecutionApprovalV1, ExecutionError,
+    ExecutionGateReportV1, ExecutionReceiptV1, ExecutionSpecV1, ProcessObservationStatusV1,
+    RunnerError, evaluate_execution_gate, execute_bounded, require_explicit_execution,
 };
 pub use intent_digest::{
     INTENT_PLAN_IDENTITY_PREFIX, intent_obligation_plan_digest, intent_plan_identity,
