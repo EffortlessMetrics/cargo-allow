@@ -4,7 +4,12 @@ Human projection of the snapshot-bound read-only cargo-allow proof provider (#25
 
 ## Claim boundary
 
-Packet 2567 lands the snapshot-bound read-only provider contract. Packet 2554 lands public process discovery, dry-run argv compilation via `proof-adapter-command`, and `ProofProviderV1` wiring. Process execution remains proof-engine owned.
+The cargo-allow binary advertises the transport contract beside its sensor
+capability catalog through `cargo-allow capabilities --format json`.
+The provider adapter mirrors and validates that contract before selecting a
+provider. Packet 2554 lands public process discovery, dry-run argv compilation
+via `proof-adapter-command`, and `ProofProviderV1` wiring. Process execution
+remains proof-engine owned.
 
 `proof-adapter-cargo-allow` must not depend on `intent-model`, `intent-engine`, or `cargo-allow` private crates (ADR-0002 forbidden edges). `cargo-allow` must not take a production dependency on proof libraries.
 
