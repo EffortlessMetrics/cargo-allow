@@ -29,7 +29,8 @@ pub(crate) use crate::selector::selector_from_finding;
 #[cfg(test)]
 pub(crate) use crate::world::load_world;
 pub(crate) use crate::world::{
-    load_read_only_world, load_read_only_world_and_cache, load_staged_world, load_world_for_path,
+    load_read_only_world, load_read_only_world_and_cache,
+    load_read_only_world_with_selected_policy, load_staged_world, load_world_for_path,
     load_world_from_resolved_policy_with_options, load_world_with_evidence_mode,
     load_world_without_policy_after_selection,
 };
