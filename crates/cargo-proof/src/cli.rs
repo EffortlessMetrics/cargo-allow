@@ -366,6 +366,7 @@ mod tests {
     };
     use intent_protocol::{
         IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPlanEnvelopeV1,
+        IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
     };
     use proof_engine::CapturedReceiptStoreV1;
     use proof_protocol::{
@@ -438,7 +439,15 @@ mod tests {
                 "test-content",
             ),
             "precommit",
-            vec![],
+            vec![IntentPhaseObligationV1 {
+                handoff: None,
+                obligation_id: "obl-cli".to_string(),
+                phase: "precommit".to_string(),
+                kind: IntentPhaseObligationKindV1::EvidenceReview,
+                statement: "Review evidence".to_string(),
+                posture: IntentObligationPostureV1::Blocking,
+                evidence_refs: vec![],
+            }],
         );
         std::fs::write(
             &obligation,
