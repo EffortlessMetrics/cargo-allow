@@ -18197,3 +18197,25 @@ glob = "docs/schemas/candidate-preparation-receipt-v1.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0845"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3834-candidate-preparation-receipt.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-receipt for the #3834 revision note record; the note documents the added_allow transition for the receipt-lane set"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3834-candidate-preparation-receipt.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3834-candidate-preparation-receipt.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
