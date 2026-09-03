@@ -18,7 +18,7 @@ Parity fixtures live under `tests/fixtures/proof-adapter-cargo-allow/`.
 ## Module surfaces
 
 - `proof-adapter-cargo-allow::boundary` — claim boundary and upstream topology markers
-- `proof-adapter-cargo-allow::provider_contract` — snapshot-bound read-only provider contract (#2567)
+- `cargo-allow capabilities --provider-contract --format json` — snapshot-bound read-only provider contract descriptor (#2567). The installed request/receipt endpoint is a subsequent slice; this descriptor does not advertise an executable protocol yet.
 - `proof-adapter-cargo-allow::provider_discovery` — public process discovery without workspace leaks
 - `proof-adapter-cargo-allow::process_protocol` — dry-run argv compilation via reviewed registry
 - `proof-adapter-cargo-allow::cargo_allow_provider` — `ProofProviderV1` implementation (#2554)
