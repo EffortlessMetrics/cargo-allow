@@ -30,8 +30,8 @@ use crate::artifact_emit;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
-    git_relative_config_path, load_world_with_evidence_mode, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    git_relative_config_path, parse_kind_filter, policy_baseline_debt_entries, report_config,
+    world::load_read_only_world, write_file,
 };
 
 struct CurrentWorld {
@@ -529,7 +529,7 @@ fn diff_summary(
 }
 
 fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
-    let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
+    let context = load_read_only_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
@@ -538,10 +538,10 @@ fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
         EvidenceValidationMode::ReportOnly,
     )?;
     Ok(CurrentWorld {
-        root,
-        cfg,
-        findings,
-        inventory_facts,
+        root: context.root,
+        cfg: context.cfg,
+        findings: context.findings,
+        inventory_facts: context.inventory_facts,
     })
 }
 
