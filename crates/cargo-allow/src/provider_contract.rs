@@ -4,7 +4,9 @@
 //! and configuration identities without importing cargo-proof or cargo-intent
 //! types, so an installed cargo-allow binary can be consumed independently.
 
-use effortless_repo_protocol::{RepositorySnapshotKindV1, RepositorySnapshotV1, ResultClassV1};
+use effortless_repo_protocol::{
+    AnalysisReceiptEnvelopeV1, RepositorySnapshotKindV1, RepositorySnapshotV1,
+};
 use serde::{Deserialize, Serialize};
 
 pub const PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
@@ -78,24 +80,12 @@ pub struct AnalysisRequestV1 {
     pub output_root: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AnalysisReceiptV1 {
-    pub schema_id: String,
-    pub schema_version: u32,
-    pub provider_id: String,
-    pub request_schema_id: String,
-    pub capability: ProviderCapabilityV1,
-    pub snapshot: RepositorySnapshotV1,
-    pub config_identity: String,
-    pub policy_identity: Option<String>,
-    pub result_class: ResultClassV1,
-    pub completeness: String,
-    pub currentness: String,
-    pub provider_payload: serde_json::Value,
-    pub claim_boundary: String,
-    pub limitations: Vec<String>,
-}
+/// Neutral receipt envelope used by cargo-proof for provider results.
+///
+/// Cargo-allow-specific result data belongs in `provider_payload`; keeping the
+/// shared envelope here prevents a future endpoint from advertising a schema
+/// that cargo-proof cannot deserialize.
+pub type AnalysisReceiptV1 = AnalysisReceiptEnvelopeV1;
 
 pub fn validate_request(request: &AnalysisRequestV1) -> Result<(), String> {
     if request.schema_id != PROVIDER_REQUEST_SCHEMA_ID || request.schema_version != 1 {
