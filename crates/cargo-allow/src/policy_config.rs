@@ -1,8 +1,10 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
+#[cfg(test)]
+use allow_policy::load_policy;
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
-    load_policy, load_policy_with_reportable_evidence, parse_policy_at,
+    load_policy_with_reportable_evidence, parse_policy_at,
     parse_policy_with_reportable_evidence_at,
 };
 #[cfg(test)]
@@ -70,11 +72,24 @@ pub(crate) fn observe_policy_for_diagnostics(
     root: &Path,
     config: Option<&Path>,
 ) -> ResolvedPolicyObservation {
-    let discovery = discover_config_path(root, config);
-    let policy = discovery
-        .path
+    let mut discovery = discover_config_path(root, config);
+    // An explicit CLI path remains authoritative even when unrelated
+    // federation diagnostics prevent the normal evaluator from producing a
+    // selected path. Preserve that fail-closed selection while keeping this
+    // helper the single policy observation boundary for diagnostics.
+    let explicit_path = config.map(|explicit| root.join(explicit));
+    let policy_path = explicit_path
         .clone()
-        .map(load_policy_with_reportable_evidence);
+        .filter(|explicit| discovery.path.as_deref() != Some(explicit.as_path()))
+        .or_else(|| discovery.path.clone());
+    if let Some(explicit_path) = explicit_path
+        && discovery.path.as_deref() != Some(explicit_path.as_path())
+    {
+        discovery.path = Some(explicit_path);
+        discovery.source = Some("cli_override");
+        discovery.precedence = Some(PrecedenceTier::CliOverride);
+    }
+    let policy = policy_path.map(load_policy_with_reportable_evidence);
     ResolvedPolicyObservation { discovery, policy }
 }
 
@@ -121,6 +136,7 @@ pub(crate) fn load_config_optional_with_evidence_mode(
     }
 }
 
+#[cfg(test)]
 fn load_policy_for_root(
     path: PathBuf,
     evidence_validation: EvidenceValidationMode,
@@ -130,13 +146,6 @@ fn load_policy_for_root(
     } else {
         load_policy(path)
     }
-}
-
-pub(crate) fn load_policy_at_path(
-    path: PathBuf,
-    evidence_validation: EvidenceValidationMode,
-) -> CargoAllowResult<AllowConfig> {
-    load_policy_for_root(path, evidence_validation)
 }
 
 pub(crate) fn load_policy_at_path_with_digest(
@@ -490,6 +499,50 @@ mod tests {
         assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
+    }
+
+    #[test]
+    fn diagnostics_bind_explicit_policy_metadata_when_federation_is_malformed() -> Result<(), String>
+    {
+        let root = unique_test_dir("policy-config-explicit-malformed-federation");
+        let policy_dir = root.join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let explicit = policy_dir.join("selected.toml");
+        let fallback = policy_dir.join("allow.toml");
+        fs::write(&explicit, render_policy(&valid_policy_config()))
+            .map_err(|error| error.to_string())?;
+        fs::write(&fallback, render_policy(&reportable_link_policy_config()))
+            .map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+        fs::write(root.join(".allow/config.toml"), "not valid federation")
+            .map_err(|error| error.to_string())?;
+
+        let observation =
+            observe_policy_for_diagnostics(&root, Some(Path::new("policy/selected.toml")));
+        let policy = observation
+            .policy
+            .ok_or_else(|| "explicit policy was not observed".to_string())?
+            .map_err(|error| error.to_string())?;
+        if observation.discovery.path.as_deref() != Some(explicit.as_path()) {
+            return Err(format!(
+                "discovery path was {:?}, expected {}",
+                observation.discovery.path,
+                explicit.display()
+            ));
+        }
+        if observation.discovery.source != Some("cli_override")
+            || observation.discovery.precedence != Some(PrecedenceTier::CliOverride)
+        {
+            return Err("explicit policy provenance was not retained".to_string());
+        }
+        if policy.allow.len() != valid_policy_config().allow.len() {
+            return Err("observation loaded a different policy body".to_string());
+        }
+        if !observation.discovery.federation_evaluation_failed {
+            return Err("malformed federation diagnostic was lost".to_string());
+        }
+        remove_test_dir(&root);
+        Ok(())
     }
 
     #[test]

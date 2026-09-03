@@ -15,7 +15,7 @@ pub(crate) use crate::kind_filter::{
 pub(crate) use crate::mutation_lock::MutationLock;
 pub(crate) use crate::policy_config::{
     EvidenceValidationMode, assert_path_within_root, config_path, git_relative_config_path,
-    load_policy_at_path, portable_relative_under_root, root_relative_path,
+    portable_relative_under_root, root_relative_path,
 };
 pub(crate) use allow_core::CargoAllowResult;
 pub(crate) use effortless_repo_edit::{write_file, write_file_no_overwrite};
