@@ -32,3 +32,15 @@ allow_ids = ["allow-0845"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ee13676f13f9a04e6edb1c9aa8f191b0f364419be75c5dcae8424ee9c4e256b0"
 reason = "Self-receipt for the revision note record at the receipt-schema registration step (#3834)."
+
+[[records]]
+allow_ids = ["allow-0846"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d706ac3d9865c3b3f19a4b25355e2fea81c1293ac41ba34a97d7ec6e618bc38e"
+reason = "Test-only reconcile error-arm or deferral assertion at the candidate-preparation receipt suite (#3834)."
+
+[[records]]
+allow_ids = ["allow-0847"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6fca603971276933cfda61d08ac728eecb043a2e7815a0effe1eca9e6592d458"
+reason = "Test-only reconcile error-arm or deferral assertion at the candidate-preparation receipt suite (#3834)."

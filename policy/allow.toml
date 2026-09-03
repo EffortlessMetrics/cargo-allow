@@ -18219,3 +18219,49 @@ glob = ".allow/revisions/3834-candidate-preparation-receipt.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0846"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only reconcile error-arm or deferral assertion in the candidate-preparation receipt suite (#3834); the expected side is a controlled fixture or forged-minimal input"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_receipt_rebuild_failure_is_instrument_failure"
+callee = "expect"
+receiver_fingerprint = "std::fs::create_dir_all(&root)"
+normalized_snippet_hash = "fnv1a64:e15b3ea72e917272"
+
+[allow.last_seen]
+line = 2139
+column = 36
+
+[[allow]]
+id = "allow-0847"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/candidate_preparation_plan_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Test-only reconcile error-arm or deferral assertion in the candidate-preparation receipt suite (#3834); the expected side is a controlled fixture or forged-minimal input"
+evidence = ["issue:3834"]
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_preparation_receipt_rebuild_failure_is_instrument_failure"
+callee = "expect"
+receiver_fingerprint = "identity\": null, \"plan\": null, \"operations\": null, \"human_summary\": \"forged\" }))"
+normalized_snippet_hash = "fnv1a64:854c3bd9fc833810"
+
+[allow.last_seen]
+line = 2150
+column = 10

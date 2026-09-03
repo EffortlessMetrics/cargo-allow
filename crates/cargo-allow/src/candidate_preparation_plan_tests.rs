@@ -2126,3 +2126,87 @@ fn prep_candidate_end_to_end_final_receipt_writes_through_the_command() {
     let _ = std::fs::remove_dir_all(&root);
     let _ = std::fs::remove_file(&final_receipt_path);
 }
+
+/// Reconciling against a root whose projection cannot be rebuilt is an
+/// explicit InstrumentFailure with the rebuild reason retained.
+#[test]
+fn candidate_preparation_receipt_rebuild_failure_is_instrument_failure() {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-receipt-rebuild-fail-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("bare dir");
+    let plan: allow_report::CandidatePreparationResultV1 =
+        serde_json::from_value(serde_json::json!({
+            "schema": "cargo-allow.candidate-preparation-result.v1",
+            "readiness": "decision_required",
+            "reasons": [],
+            "input_identity": null,
+            "plan": null,
+            "operations": null,
+            "human_summary": "forged"
+        }))
+        .expect("minimal result parses");
+    let apply_receipt = allow_report::CandidateApplyReceiptV1::new(
+        "sha256:v1:aa".to_string(),
+        "sha256:v1:bb".to_string(),
+    );
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &[],
+    );
+    assert_eq!(
+        final_receipt.state,
+        allow_report::CandidatePreparationStateV1::Conflict
+    );
+    assert!(
+        final_receipt
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("carries no projected plan"))
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The Changie roundtrip and no-new rows stay deferred with their exact
+/// commands retained, never fabricated as executed.
+#[test]
+fn candidate_preparation_receipt_defers_external_rows_with_commands() {
+    let root = fixture_apply_repo("deferred");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let apply_receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    let final_receipt = crate::cli::candidate_preparation_command::reconcile_candidate_preparation(
+        &root,
+        &plan,
+        &apply_receipt,
+        &decisions,
+    );
+    let deferred_commands: Vec<&str> = final_receipt
+        .validation_rows
+        .iter()
+        .filter(|row| row.result == allow_report::CandidateValidationResultV1::Deferred)
+        .map(|row| row.command.as_str())
+        .collect();
+    assert!(
+        deferred_commands
+            .iter()
+            .any(|command| command.contains("test-changie-history-roundtrip"))
+    );
+    assert!(
+        deferred_commands
+            .iter()
+            .any(|command| command.contains("check --mode no-new"))
+    );
+    assert_eq!(final_receipt.changie_result, "deferred");
+    let _ = std::fs::remove_dir_all(&root);
+}
