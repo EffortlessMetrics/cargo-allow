@@ -172,7 +172,22 @@ pub fn execute_bounded(
         Err(error) => {
             let _ = fs::remove_file(&stdout_path);
             let _ = fs::remove_file(&stderr_path);
-            return Err(RunnerError::Spawn(error.to_string()));
+            return Ok(ExecutionReceiptV1 {
+                schema_id: EXECUTION_RECEIPT_SCHEMA_ID.to_string(),
+                plan_id: spec.plan_id.clone(),
+                command_id: spec.command_id.clone(),
+                program: spec.program.clone(),
+                argv: spec.argv.clone(),
+                status: ProcessObservationStatusV1::SpawnFailed,
+                exit_code: None,
+                stdout_len: 0,
+                stderr_len: 0,
+                stdout_truncated: false,
+                stderr_truncated: false,
+                stdout_digest: digest(&[]),
+                stderr_digest: digest(&[]),
+                limitations: vec![format!("process spawn failed: {error}")],
+            });
         }
     };
     let mut timed_out = false;
@@ -461,6 +476,24 @@ mod tests {
             .map_err(|error| error.as_str().to_string())?;
         if observed.status != ProcessObservationStatusV1::OutputLimitExceeded {
             return Err(format!("expected output limit, got {:?}", observed.status));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn spawn_failure_is_a_typed_observation() -> Result<(), String> {
+        let mut candidate = spec()?;
+        candidate.program = if cfg!(windows) {
+            "C:\\cargo-proof-missing-executable.exe"
+        } else {
+            "/definitely-missing/cargo-proof-executable"
+        }
+        .to_string();
+        candidate.reviewed_invocation.program = candidate.program.clone();
+        let receipt = execute_bounded(&candidate, ExecutionApprovalV1::Explicit)
+            .map_err(|error| error.as_str().to_string())?;
+        if receipt.status != ProcessObservationStatusV1::SpawnFailed {
+            return Err(format!("expected spawn failure, got {:?}", receipt.status));
         }
         Ok(())
     }
