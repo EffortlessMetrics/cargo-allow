@@ -120,6 +120,7 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
     }
     if snapshot.root_identity.trim().is_empty()
         || snapshot.object_format.trim().is_empty()
+        || snapshot.dirty_state.trim().is_empty()
         || snapshot.selected_source_closure.trim().is_empty()
     {
         return Err("analysis request snapshot identity is incomplete".to_string());
@@ -145,7 +146,7 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
             if snapshot
                 .merge_base
                 .as_deref()
-                .is_none_or(|value| !is_object_id(value))
+                .is_some_and(|value| !is_object_id(value))
                 || !is_object_id(&base.commit)
                 || !is_object_id(&base.tree)
             {
@@ -229,6 +230,14 @@ mod tests {
         let mut value = request();
         value.snapshot.selected_source_closure.clear();
         let error = validate_request(&value).expect_err("incomplete snapshot must fail closed");
+        assert!(error.contains("incomplete"));
+    }
+
+    #[test]
+    fn request_validation_rejects_missing_dirty_state() {
+        let mut value = request();
+        value.snapshot.dirty_state.clear();
+        let error = validate_request(&value).expect_err("dirty state is required");
         assert!(error.contains("incomplete"));
     }
 
