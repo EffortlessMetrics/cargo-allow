@@ -87,7 +87,8 @@ pub enum ProcessObservationStatusV1 {
     InstrumentFailure,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ExecutionSpecV1 {
     pub reviewed_invocation: CommandInvocationSpecV1,
     pub plan_id: String,
@@ -494,6 +495,18 @@ mod tests {
             .map_err(|error| error.as_str().to_string())?;
         if receipt.status != ProcessObservationStatusV1::SpawnFailed {
             return Err(format!("expected spawn failure, got {:?}", receipt.status));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn execution_spec_round_trips_as_strict_json() -> Result<(), String> {
+        let original = spec()?;
+        let encoded = serde_json::to_string(&original).map_err(|error| error.to_string())?;
+        let decoded: ExecutionSpecV1 =
+            serde_json::from_str(&encoded).map_err(|error| error.to_string())?;
+        if decoded != original {
+            return Err("execution spec JSON round-trip changed the reviewed request".to_string());
         }
         Ok(())
     }

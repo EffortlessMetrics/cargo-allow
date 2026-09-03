@@ -4,6 +4,7 @@
 //! issue/spec text are rejected as executable authority.
 
 use proof_protocol::ProofPlanCommandV1;
+use serde::{Deserialize, Serialize};
 
 use super::command_registry::{
     CommandRegistryError, ReviewedCommandEntryV1, ReviewedCommandRegistryV1,
@@ -12,7 +13,8 @@ use super::command_registry::{
 
 pub const COMMAND_INVOCATION_SPEC_SCHEMA_ID: &str = "proof.command-invocation-spec.v1";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CommandSourceKindV1 {
     ReviewedRegistry,
 }
@@ -25,7 +27,8 @@ impl CommandSourceKindV1 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CommandInvocationSpecV1 {
     pub schema_id: String,
     pub command_id: String,
