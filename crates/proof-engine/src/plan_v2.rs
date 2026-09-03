@@ -137,7 +137,12 @@ fn build_item(
             None,
             None,
             ProofItemExecutionPostureV1::None,
-            vec!["no catalog capability matches the required evidence class".to_string()],
+            vec![match obligation.posture {
+                intent_protocol::IntentObligationPostureV1::Decision => {
+                    "repository decision required before provider selection".to_string()
+                }
+                _ => "no catalog capability matches the required evidence class".to_string(),
+            }],
         ),
     };
     Ok(ProofItemV1 {
@@ -304,6 +309,8 @@ mod tests {
         if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
             || item.selection.is_some()
             || item.execution_posture != ProofItemExecutionPostureV1::None
+            || item.limitations
+                != vec!["repository decision required before provider selection".to_string()]
         {
             return Err("decision posture must remain non-executable".to_string());
         }

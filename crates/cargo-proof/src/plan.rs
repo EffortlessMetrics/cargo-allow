@@ -165,6 +165,12 @@ pub fn plan_v2_from_selected_registry(
 static PLAN_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), PlanErrorV1> {
+    let lock_path = output_path.with_extension("json.lock");
+    std::fs::create_dir(&lock_path).map_err(|error| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("lock plan artifact destination: {error}"),
+    })?;
+    let _lock = PlanOutputLock(lock_path);
     if output_path.exists() {
         return Err(PlanErrorV1 {
             result_state: ProofResultStateV1::Unsupported,
@@ -225,11 +231,8 @@ fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), Pla
         });
     }
     drop(file);
-    match std::fs::hard_link(&temporary, output_path) {
-        Ok(()) => {
-            let _ = std::fs::remove_file(&temporary);
-            Ok(())
-        }
+    match std::fs::rename(&temporary, output_path) {
+        Ok(()) => Ok(()),
         Err(error) => {
             let _ = std::fs::remove_file(&temporary);
             Err(PlanErrorV1 {
@@ -237,6 +240,14 @@ fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), Pla
                 message: format!("commit plan artifact: {error}"),
             })
         }
+    }
+}
+
+struct PlanOutputLock(PathBuf);
+
+impl Drop for PlanOutputLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0);
     }
 }
 
