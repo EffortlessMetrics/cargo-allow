@@ -18445,3 +18445,19 @@ glob = ".allow/revisions/4126-config-authority-denominator.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-0856"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/artifacts/final_support_selection_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the final-support-selection test module (#3737); every expect follows an immediately preceding constructor or validator whose inputs are fixture-controlled, so the guarded invariant is established in the same function"
+evidence = ["issue:3737"]
+occurrence_limit = 6
+created = "2026-09-03"
+review_after = "2026-12-02"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/artifacts/final_support_selection_v1.rs"

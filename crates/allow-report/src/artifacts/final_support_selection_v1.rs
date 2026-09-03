@@ -402,7 +402,11 @@ mod tests {
     #[test]
     fn edited_rows_break_the_selection_digest() {
         let mut edited = selection();
-        edited.rows[0].disposition = FinalSelectionDispositionV1::NotIncluded;
+        let first = edited
+            .rows
+            .first_mut()
+            .expect("the fixture keeps at least one row");
+        first.disposition = FinalSelectionDispositionV1::NotIncluded;
         let error = edited.verify().expect_err("row edits must fail the digest");
         assert!(matches!(
             error,
