@@ -7,10 +7,10 @@
 use effortless_repo_protocol::{RepositorySnapshotKindV1, RepositorySnapshotV1, ResultClassV1};
 use serde::{Deserialize, Serialize};
 
-pub const PROVIDER_CONTRACT_SCHEMA_ID: &str = "cargo-allow.provider-contract.v1";
+pub const PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
 pub const PROVIDER_REQUEST_SCHEMA_ID: &str = "cargo-allow.analysis-request.v1";
 pub const PROVIDER_RECEIPT_SCHEMA_ID: &str = effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
-pub const PROVIDER_ID: &str = "cargo-allow";
+pub const PROVIDER_ID: &str = "proof.cargo-allow.v1";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -33,18 +33,13 @@ pub struct ProviderContractV1 {
     pub schema_version: u32,
     pub provider_id: String,
     pub product_name: String,
-    pub read_only: bool,
-    pub executes_project_code: bool,
-    pub uses_network: bool,
-    pub capabilities: Vec<ProviderCapabilityV1>,
-    /// Reserved until the installed process endpoint is landed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub request_schema: Option<String>,
-    /// The neutral repo-protocol receipt envelope used by cargo-proof.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub receipt_schema: Option<String>,
-    pub claim_boundary: String,
-    pub excluded_claims: Vec<String>,
+    pub access_posture: String,
+    pub snapshot_bound: bool,
+    pub discovery_order: Vec<String>,
+    pub forbidden_path_prefixes: Vec<String>,
+    pub environment_variable: String,
+    pub config_relative_path: String,
+    pub required_capabilities: Vec<String>,
 }
 
 pub fn provider_contract() -> ProviderContractV1 {
@@ -53,19 +48,19 @@ pub fn provider_contract() -> ProviderContractV1 {
         schema_version: 1,
         provider_id: PROVIDER_ID.to_string(),
         product_name: "cargo-allow".to_string(),
-        read_only: true,
-        executes_project_code: false,
-        uses_network: false,
-        capabilities: vec![ProviderCapabilityV1::SourceExceptionNoNew],
-        request_schema: None,
-        receipt_schema: None,
-        claim_boundary:
-            "source-exception policy posture for the selected exact repository snapshot".to_string(),
-        excluded_claims: vec![
-            "compilation".to_string(),
-            "type_semantics".to_string(),
-            "runtime_behavior".to_string(),
-            "test_adequacy".to_string(),
+        access_posture: "read_only".to_string(),
+        snapshot_bound: true,
+        discovery_order: vec![
+            "explicit_environment".to_string(),
+            "compatibility_config".to_string(),
+            "path_lookup".to_string(),
+        ],
+        forbidden_path_prefixes: vec!["target/".to_string(), "crates/".to_string()],
+        environment_variable: "CARGO_ALLOW_BIN".to_string(),
+        config_relative_path: ".allow/compatibility/proof-delegation.toml".to_string(),
+        required_capabilities: vec![
+            "cargo-allow.check.no-new".to_string(),
+            "cargo-allow.capabilities.json".to_string(),
         ],
     }
 }
@@ -198,12 +193,13 @@ mod tests {
     #[test]
     fn contract_advertises_only_read_only_no_new() {
         let contract = provider_contract();
-        assert!(contract.read_only);
-        assert!(!contract.executes_project_code);
-        assert!(!contract.uses_network);
-        assert_eq!(
-            contract.capabilities,
-            vec![ProviderCapabilityV1::SourceExceptionNoNew]
+        assert_eq!(contract.access_posture, "read_only");
+        assert!(contract.snapshot_bound);
+        assert!(
+            contract
+                .required_capabilities
+                .iter()
+                .any(|capability| capability == "cargo-allow.check.no-new")
         );
     }
 

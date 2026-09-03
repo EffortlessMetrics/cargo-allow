@@ -474,26 +474,13 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
         let contract = crate::provider_contract::provider_contract();
         let rendered = match args.format {
             CapabilityFormat::Human => format!(
-                "cargo-allow provider contract ({})\n\ncapability={} read_only={} executes_project_code={} uses_network={}\nclaim_boundary={}\nrequest_schema={}\nreceipt_schema={}\n",
+                "cargo-allow provider contract ({})\n\nprovider_id={} access_posture={} snapshot_bound={}\nrequired_capabilities={}\nconfig_relative_path={}\n",
                 contract.schema_id,
-                contract
-                    .capabilities
-                    .iter()
-                    .map(crate::provider_contract::ProviderCapabilityV1::as_str)
-                    .collect::<Vec<_>>()
-                    .join(","),
-                contract.read_only,
-                contract.executes_project_code,
-                contract.uses_network,
-                contract.claim_boundary,
-                contract
-                    .request_schema
-                    .as_deref()
-                    .unwrap_or("not_advertised"),
-                contract
-                    .receipt_schema
-                    .as_deref()
-                    .unwrap_or("not_advertised"),
+                contract.provider_id,
+                contract.access_posture,
+                contract.snapshot_bound,
+                contract.required_capabilities.join(","),
+                contract.config_relative_path,
             ),
             CapabilityFormat::Json => render_json(&contract)?,
         };
