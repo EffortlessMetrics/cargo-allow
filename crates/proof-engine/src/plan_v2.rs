@@ -106,11 +106,26 @@ fn build_item(
             )
     };
 
+    let source_identity = handoff.and_then(|handoff| handoff.source_identity.clone());
+    let subject_class = source_identity
+        .as_deref()
+        .map(|identity| {
+            if identity.starts_with("source:staged:") {
+                ProofSubjectClassV1::Index
+            } else if identity.starts_with("source:worktree:") {
+                ProofSubjectClassV1::Worktree
+            } else if identity.starts_with("source:committed:") {
+                ProofSubjectClassV1::Commit
+            } else {
+                ProofSubjectClassV1::Tree
+            }
+        })
+        .unwrap_or(ProofSubjectClassV1::Commit);
     let mut subject = ProofSubjectV1 {
-        subject_class: ProofSubjectClassV1::Commit,
+        subject_class,
         revision: Some(snapshot_identity.to_string()),
         selector: handoff.and_then(|handoff| handoff.subject_selector_ref.clone()),
-        body_identity: handoff.and_then(|handoff| handoff.source_identity.clone()),
+        body_identity: source_identity,
         limitations: handoff
             .map(|handoff| handoff.subject_inventory_limitations.clone())
             .unwrap_or_default(),
@@ -189,7 +204,17 @@ fn build_item(
         handoff.disposition
             != Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning)
     }) {
-        let (disposition, reason) = match handoff.disposition {
+        let (disposition, reason) =
+            if matches!(
+                obligation.posture,
+                intent_protocol::IntentObligationPostureV1::Decision
+            ) {
+                (
+                    ProofItemDispositionV1::RepositoryDecisionRequired,
+                    "repository decision required before provider selection",
+                )
+            } else {
+                match handoff.disposition {
             Some(intent_protocol::IntentProofHandoffDispositionV1::RepositoryDecisionRequired) => (
                 ProofItemDispositionV1::RepositoryDecisionRequired,
                 "intent handoff requires a repository decision",
@@ -223,7 +248,8 @@ fn build_item(
                 ProofItemDispositionV1::NotProven,
                 "intent handoff readiness changed during planning",
             ),
-        };
+            }
+            };
         limitations.push(
             handoff
                 .disposition_reason
@@ -501,6 +527,7 @@ mod tests {
             .ok_or_else(|| "missing item".to_string())?;
         if item.required_capability_class != "cargo_allow_source_exception"
             || item.evidence_purpose_ref != "evidence:purpose"
+            || item.subject.subject_class != ProofSubjectClassV1::Index
             || item.subject.selector.as_deref() != Some("test:selector")
             || item.subject.body_identity.as_deref() != Some("source:staged:abc")
             || !item
@@ -681,6 +708,36 @@ mod tests {
             {
                 return Err(format!("handoff disposition {disposition:?} was lowered"));
             }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn decision_posture_remains_authoritative_over_non_ready_handoff() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.posture = IntentObligationPostureV1::Decision;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::PartialOrNotProven),
+            disposition_reason: Some("decision still needed".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
+            || !item
+                .limitations
+                .iter()
+                .any(|reason| reason == "decision still needed")
+        {
+            return Err("decision posture was overwritten by handoff disposition".to_string());
         }
         Ok(())
     }

@@ -169,9 +169,9 @@ fn receipt_contract_mismatch(
             "snapshot" | "snapshot_identity" => true,
             "subject" => item
                 .subject
-                .selector
+                .body_identity
                 .as_ref()
-                .or(item.subject.body_identity.as_ref())
+                .or(item.subject.selector.as_ref())
                 .or(item.subject.revision.as_ref())
                 .map(|identity| identity == &row.subject_identity)
                 .unwrap_or(false),
