@@ -16,6 +16,7 @@ pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod final_freeze_replay_v1;
 mod final_readiness_v1;
+mod final_support_selection_v1;
 mod frozen_candidate_custody_v1;
 mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
@@ -140,6 +141,11 @@ pub use final_readiness_v1::{
     FinalReadinessRootDecisionV1, FinalReadinessRowKindV1, FinalReadinessRowV1,
     FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
     render_final_readiness_json, render_final_readiness_markdown,
+};
+pub use final_support_selection_v1::{
+    FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
+    FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
+    FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
 };
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,

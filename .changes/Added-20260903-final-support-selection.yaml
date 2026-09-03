@@ -1,0 +1,21 @@
+kind: Added
+body: >-
+  Machine-readable final-selection freeze for the 0.2.0 release proof
+  denominator (#3737). `docs/support-matrix.toml` gains a
+  `[final_selection]` section keyed to the typed release identity: thirteen
+  rows across rust, platform, channel, sibling-product, pilot, and
+  upgrade-rollback dimensions, each with a closed disposition
+  (selected/not_included/not_proven/needs_decision), proof owner, required
+  evidence, current evidence reference, claim effect, and staleness inputs.
+  The typed model and both digests (identity digest role
+  `final-selection`, canonical selection digest over the sorted row set)
+  live once in `allow-report::final_support_selection_v1`; consumers
+  recompute, never restate. Drift tests bind the section to the workspace
+  candidate version, ci_proven platform tiers, on-disk evidence references,
+  the no-sibling-implication invariant, and the
+  support-policy-stays-undecided boundary. NotProven adoption rows record
+  the no-low-friction-adoption-claim effect; unselected platforms
+  (macOS), channels (archive, binstall), and pilots stay explicitly
+  narrowed. This chooses the release proof denominator only; support
+  policy tenure (#3777/#2478), channel truth (#3781/#3782), and
+  publication authorization (#3760) remain separate authorities.
