@@ -3,8 +3,10 @@ use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::policy_config::observe_policy_for_diagnostics;
-use crate::{RootArgs, current_dir, emit_text, resolve_source_tree_root};
+use crate::{
+    EvidenceValidationMode, RootArgs, current_dir, emit_text, load_read_only_world,
+    resolve_source_tree_root,
+};
 
 pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = "cargo-allow.sensor-capabilities.v1";
 
@@ -507,18 +509,42 @@ fn configured_file_family_capabilities(
     if args.root.root.is_none() && args.config.is_none() {
         return Ok(Vec::new());
     }
-    let cwd = current_dir()?;
-    let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let observation = observe_policy_for_diagnostics(&root, args.config.as_deref());
-    let Some(policy) = observation.policy else {
-        return Ok(Vec::new());
-    };
-    let config = policy.map_err(|error| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidPolicy,
-            format!("failed to load capability policy: {error}"),
+    let config = if let Some(explicit) = args.config.as_deref() {
+        let cwd = current_dir()?;
+        let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+        let path = if explicit.is_absolute() {
+            explicit.to_path_buf()
+        } else {
+            root.join(explicit)
+        };
+        crate::policy_config::load_policy_at_path_with_digest(
+            path,
+            EvidenceValidationMode::ReportOnly,
         )
-    })?;
+        .map(|(config, _)| config)
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to load capability policy: {error}"),
+            )
+        })?
+    } else {
+        load_read_only_world(
+            args.root.root.as_deref(),
+            None,
+            false,
+            None,
+            false,
+            EvidenceValidationMode::ReportOnly,
+        )
+        .map(|context| context.cfg)
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to load capability policy: {error}"),
+            )
+        })?
+    };
 
     if args
         .class
