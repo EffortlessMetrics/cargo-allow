@@ -152,7 +152,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             );
         }
     }
-    let core_context = if let Some(cfg) = policy.as_ref().and_then(|result| result.as_ref().ok()) {
+    let core_context = (|| -> Option<CoreWorldContext> {
+        let cfg = policy.as_ref().and_then(|result| result.as_ref().ok())?;
         let mut findings = rust_scan.findings.clone();
         findings.extend(allow_files::scan_files_with_options(
             &inventory.files,
@@ -162,11 +163,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 content_aware_generated: false,
             },
         ));
-        if let Ok(companion_findings) =
-            crate::canonical_companion_findings(&root, cfg, &inventory.files)
-        {
-            crate::extend_unique_findings(&mut findings, companion_findings);
-        }
+        let companion_findings =
+            crate::canonical_companion_findings(&root, cfg, &inventory.files).ok()?;
+        crate::extend_unique_findings(&mut findings, companion_findings);
         let federation = config_discovery
             .federation
             .clone()
@@ -187,9 +186,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors),
             federation,
         })
-    } else {
-        None
-    };
+    })();
     let doctor_context = DoctorWorldContext {
         core: core_context,
         rust_scan,
