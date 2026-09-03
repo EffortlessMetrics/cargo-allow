@@ -607,6 +607,7 @@ fn git_relative_config_path_for_diff(
                 "current policy selection did not provide a policy path",
             )
         })?;
+        assert_path_within_root(root, selected)?;
         return Ok(normalize_to_repo_relative(root, selected));
     }
     let head = head.unwrap_or(base);
@@ -1203,6 +1204,10 @@ mod summary_tests {
             return Err(format!(
                 "explicit current config must reuse selected path {selected:?}, got {explicit:?}"
             ));
+        }
+        let external = std::path::Path::new("..\\outside-policy.toml");
+        if git_relative_config_path_for_diff(root, None, "base", None, Some(external)).is_ok() {
+            return Err("external selected policy path must be rejected".to_string());
         }
         Ok(())
     }
