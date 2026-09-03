@@ -3,8 +3,8 @@ summary: Expose the read-only cargo-allow provider contract descriptor
 body: >-
   The cargo-allow capabilities command can now emit a versioned, snapshot-bound
   read-only provider contract descriptor via --provider-contract. It advertises
-  the source-exception no-new capability and explicit excluded claims without
-  changing the established sensor-capabilities v1 shape. The executable
+  the source-exception no-new capability without changing the established
+  sensor-capabilities v1 shape. The executable
   request/receipt endpoint is intentionally reserved for the follow-up provider
   process slice.
 component: cargo-allow

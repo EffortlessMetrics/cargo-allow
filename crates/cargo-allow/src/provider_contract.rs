@@ -144,11 +144,35 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
             }
         }
     }
+    let expected_closure = selected_source_closure_hash(&snapshot.selected_paths);
+    if snapshot.selected_source_closure != expected_closure {
+        return Err("analysis request selected source closure is inconsistent".to_string());
+    }
     Ok(())
 }
 
 fn is_object_id(value: &str) -> bool {
     matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn selected_source_closure_hash(
+    selected: &[effortless_repo_protocol::SelectedPathIdentityV1],
+) -> String {
+    let mut selected = selected.to_vec();
+    selected.sort_by(|left, right| left.path.cmp(&right.path));
+    let mut canonical = Vec::new();
+    push_bound_value(&mut canonical, "cargo-allow.selected-source-closure.v1");
+    for identity in selected {
+        push_bound_value(&mut canonical, &identity.path);
+        push_bound_value(&mut canonical, if identity.present { "1" } else { "0" });
+        push_bound_value(&mut canonical, identity.blob_oid.as_deref().unwrap_or(""));
+    }
+    allow_core::sha256_v1_bytes(&canonical)
+}
+
+fn push_bound_value(output: &mut Vec<u8>, value: &str) {
+    output.extend_from_slice(&(value.len() as u64).to_be_bytes());
+    output.extend_from_slice(value.as_bytes());
 }
 
 #[cfg(test)]
@@ -171,7 +195,8 @@ mod tests {
                         tree: "b".repeat(40),
                     },
                 );
-                snapshot.selected_source_closure = "sha256:v1:test".to_string();
+                snapshot.selected_source_closure =
+                    selected_source_closure_hash(&snapshot.selected_paths);
                 snapshot
             },
             config_identity: "sha256:v1:test".to_string(),
@@ -198,6 +223,15 @@ mod tests {
     fn capability_name_is_stable() -> Result<(), String> {
         if ProviderCapabilityV1::SourceExceptionNoNew.as_str() != "source_exception_no_new" {
             return Err("provider capability name changed".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn capability_name_matches_serialized_request() -> Result<(), String> {
+        let encoded = serde_json::to_string(&request()).map_err(|error| error.to_string())?;
+        if !encoded.contains("\"capability\":\"source_exception_no_new\"") {
+            return Err("serialized provider capability name changed".to_string());
         }
         Ok(())
     }
@@ -299,8 +333,29 @@ mod tests {
         let mut value = request();
         value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
         value.snapshot.base = Some(value.snapshot.head.clone());
-        value.snapshot.merge_base = Some("c".repeat(40));
+        value.snapshot.merge_base = Some(value.snapshot.head.commit.clone());
         validate_request(&value)
+    }
+
+    #[test]
+    fn request_validation_rejects_stale_source_closure() -> Result<(), String> {
+        let mut value = request();
+        value
+            .snapshot
+            .selected_paths
+            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
+                path: "src/lib.rs".to_string(),
+                present: true,
+                blob_oid: Some("d".repeat(40)),
+            });
+        let error = match validate_request(&value) {
+            Ok(()) => return Err("stale closure was accepted".to_string()),
+            Err(error) => error,
+        };
+        if !error.contains("closure") {
+            return Err("stale closure error lost its reason".to_string());
+        }
+        Ok(())
     }
 
     fn require_rejection(value: &AnalysisRequestV1) -> Result<(), String> {

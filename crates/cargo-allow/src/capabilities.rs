@@ -915,6 +915,63 @@ mod tests {
     }
 
     #[test]
+    fn provider_contract_mode_renders_and_rejects_catalog_filters() -> Result<(), String> {
+        let json_path = output_path("provider-contract-json");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Json,
+            class: None,
+            kind: None,
+            family: None,
+            output: Some(json_path.clone()),
+            provider_contract: true,
+        })
+        .map_err(|error| error.to_string())?;
+        let json = fs::read_to_string(&json_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&json_path).map_err(|error| error.to_string())?;
+        if !json.contains("proof.cargo-allow-provider-contract.v1") {
+            return Err("provider contract JSON omitted its schema id".to_string());
+        }
+
+        let human_path = output_path("provider-contract-human");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Human,
+            class: None,
+            kind: None,
+            family: None,
+            output: Some(human_path.clone()),
+            provider_contract: true,
+        })
+        .map_err(|error| error.to_string())?;
+        let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&human_path).map_err(|error| error.to_string())?;
+        if !human.contains("cargo-allow provider contract") {
+            return Err("provider contract human output omitted its heading".to_string());
+        }
+
+        let error = match cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedSyntax),
+            kind: None,
+            family: None,
+            output: None,
+            provider_contract: true,
+        }) {
+            Ok(()) => return Err("provider contract accepted a catalog filter".to_string()),
+            Err(error) => error,
+        };
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err("provider contract filter error was not usage-classified".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn configured_file_family_capabilities_are_policy_backed_and_sorted() -> Result<(), String> {
         let root = output_path("configured-root");
         let policy_dir = root.join("policy");
