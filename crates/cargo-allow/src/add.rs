@@ -26,6 +26,7 @@ use add_render::render_add_summary;
 use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summary_styled};
 pub(super) use add_types::AddContext;
 
+use crate::command_support::select_mutation_policy;
 use crate::{
     HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
     emit_text,
@@ -100,8 +101,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     // no-policy error mentions --update explicitly (matching add_from_plan's
     // message at add_from_plan.rs:127), instead of the generic load_world
     // error that doesn't reference the update operation.
-    let selection =
-        crate::policy_config::select_policy_path(&mutation_root, args.config.as_deref());
+    let selection = select_mutation_policy(&mutation_root, args.config.as_deref());
     let (selected_policy_path, federation) = match selection {
         Ok(value) => value,
         Err(error)
@@ -114,7 +114,6 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         }
         Err(error) => return Err(error),
     };
-    crate::policy_config::assert_path_within_root(&mutation_root, &selected_policy_path)?;
     let write_target = args.write.as_deref().map(|path| {
         if path.is_absolute() {
             path.to_path_buf()
