@@ -458,3 +458,9 @@ allow_ids = ["allow-0834"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:996bc9c6ca17cfc371fd9f414a54c75b7d39d38e3cc5a93390d727756d2f2390"
 reason = "Test-only corrupted-authority expectation in the candidate-preparation suite (#3833); the expected side is deliberately corrupted fixture input."
+
+[[records]]
+allow_ids = ["allow-0835"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5fb27ba84e0de0ad27a1fb62ece46bfb6451ad4b670915c35b0e85537bb54b13"
+reason = "Test-only corrupted-authority expectation at the topology decode arm in the candidate-preparation suite (#3833)."
