@@ -175,9 +175,19 @@ fn is_object_id(value: &str, expected_len: usize) -> bool {
 }
 
 fn is_repository_relative_path(value: &str) -> bool {
+    #[cfg(windows)]
+    let drive_prefixed = value.as_bytes().get(1).is_some_and(|colon| {
+        *colon == b':'
+            && value
+                .as_bytes()
+                .first()
+                .is_some_and(u8::is_ascii_alphabetic)
+    });
+    #[cfg(not(windows))]
+    let drive_prefixed = false;
     !value.is_empty()
         && !value.starts_with('/')
-        && !value.contains(':')
+        && !drive_prefixed
         && value
             .split('/')
             .all(|component| !matches!(component, "" | "." | ".."))
