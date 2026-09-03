@@ -260,21 +260,28 @@ pub fn execute_bounded(
     if stderr_result.is_none() {
         stderr_result = stderr_rx.try_recv().ok();
     }
+    let mut capture_incomplete = false;
     let stdout = if timed_out || output_limit_exceeded {
         stdout_result.and_then(Result::ok).unwrap_or_default()
     } else {
-        stdout_result
-            .or_else(|| stdout_rx.recv().ok())
-            .ok_or_else(|| RunnerError::Io("stdout capture worker failed".to_string()))?
-            .map_err(RunnerError::Io)?
+        match stdout_result.or_else(|| stdout_rx.recv_timeout(Duration::from_millis(50)).ok()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) | None => {
+                capture_incomplete = true;
+                Vec::new()
+            }
+        }
     };
     let stderr = if timed_out || output_limit_exceeded {
         stderr_result.and_then(Result::ok).unwrap_or_default()
     } else {
-        stderr_result
-            .or_else(|| stderr_rx.recv().ok())
-            .ok_or_else(|| RunnerError::Io("stderr capture worker failed".to_string()))?
-            .map_err(RunnerError::Io)?
+        match stderr_result.or_else(|| stderr_rx.recv_timeout(Duration::from_millis(50)).ok()) {
+            Some(Ok(bytes)) => bytes,
+            Some(Err(_)) | None => {
+                capture_incomplete = true;
+                Vec::new()
+            }
+        }
     };
     let stdout_truncated = output_limit_exceeded || timed_out || stdout.len() > spec.stdout_limit;
     let stderr_truncated = output_limit_exceeded || timed_out || stderr.len() > spec.stderr_limit;
@@ -282,11 +289,21 @@ pub fn execute_bounded(
         ProcessObservationStatusV1::TimedOut
     } else if output_limit_exceeded || stdout_truncated || stderr_truncated {
         ProcessObservationStatusV1::OutputLimitExceeded
+    } else if capture_incomplete {
+        ProcessObservationStatusV1::InstrumentFailure
     } else if status.success() {
         ProcessObservationStatusV1::Completed
     } else {
         ProcessObservationStatusV1::NonzeroExit
     };
+    let mut limitations = vec![
+        "process-tree termination is limited to the spawned process on this platform".to_string(),
+        "timed-out output capture is explicitly incomplete".to_string(),
+    ];
+    if capture_incomplete {
+        limitations
+            .push("output capture did not settle before the bounded grace period".to_string());
+    }
     Ok(ExecutionReceiptV1 {
         schema_id: EXECUTION_RECEIPT_SCHEMA_ID.to_string(),
         plan_id: spec.plan_id.clone(),
@@ -301,11 +318,7 @@ pub fn execute_bounded(
         stderr_truncated,
         stdout_digest: digest(&stdout),
         stderr_digest: digest(&stderr),
-        limitations: vec![
-            "process-tree termination is limited to the spawned process on this platform"
-                .to_string(),
-            "timed-out output capture is explicitly incomplete".to_string(),
-        ],
+        limitations,
     })
 }
 
@@ -342,9 +355,31 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
     if spec.reviewed_invocation.command_id != spec.command_id
         || spec.reviewed_invocation.program != spec.program
         || spec.reviewed_invocation.argv != spec.argv
+        || spec.reviewed_invocation.schema_id != crate::COMMAND_INVOCATION_SPEC_SCHEMA_ID
     {
         return Err(RunnerError::InvalidSpec(
             "execution spec must match its reviewed invocation".to_string(),
+        ));
+    }
+    let env_keys: Vec<&str> = spec
+        .env_allowlist
+        .iter()
+        .map(|(key, _)| key.as_str())
+        .collect();
+    if env_keys
+        != spec
+            .reviewed_invocation
+            .env_allowlist
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>()
+        || spec.timeout > Duration::from_millis(spec.reviewed_invocation.timeout_ms)
+        || !spec.reviewed_invocation.write_paths.is_empty()
+        || spec.reviewed_invocation.network != crate::NetworkAccessV1::None
+        || spec.reviewed_invocation.cancellation != crate::CancellationPostureV1::Cooperative
+    {
+        return Err(RunnerError::InvalidSpec(
+            "execution spec exceeds reviewed invocation policy".to_string(),
         ));
     }
     if spec.timeout.is_zero() || spec.stdout_limit == 0 || spec.stderr_limit == 0 {
