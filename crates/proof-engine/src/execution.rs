@@ -151,10 +151,13 @@ pub fn execute_bounded(
     let deadline = Instant::now().checked_add(spec.timeout).ok_or_else(|| {
         RunnerError::InvalidSpec("timeout exceeds the platform clock range".to_string())
     })?;
+    let canonical_cwd = std::fs::canonicalize(&spec.cwd).map_err(|error| {
+        RunnerError::InvalidSpec(format!("cwd cannot be canonicalized: {error}"))
+    })?;
     let mut command = Command::new(&spec.program);
     command
         .args(&spec.argv)
-        .current_dir(&spec.cwd)
+        .current_dir(&canonical_cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -227,7 +230,17 @@ pub fn execute_bounded(
         }
         if Instant::now() >= deadline {
             timed_out = true;
-            let _ = child.kill();
+            if let Err(error) = child.kill()
+                && child
+                    .try_wait()
+                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
+                    .is_none()
+            {
+                return Ok(instrument_failure_receipt(
+                    spec,
+                    format!("timed-out process could not be terminated: {error}"),
+                ));
+            }
             break child
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
@@ -249,7 +262,17 @@ pub fn execute_bounded(
         if stdout_over || stderr_over {
             stdout_limit_exceeded |= stdout_over;
             stderr_limit_exceeded |= stderr_over;
-            let _ = child.kill();
+            if let Err(error) = child.kill()
+                && child
+                    .try_wait()
+                    .map_err(|wait_error| RunnerError::Io(wait_error.to_string()))?
+                    .is_none()
+            {
+                return Ok(instrument_failure_receipt(
+                    spec,
+                    format!("output-limited process could not be terminated: {error}"),
+                ));
+            }
             break child
                 .wait()
                 .map_err(|error| RunnerError::Io(error.to_string()))?;
@@ -265,7 +288,13 @@ pub fn execute_bounded(
     let mut capture_incomplete = false;
     let output_limit_exceeded = stdout_limit_exceeded || stderr_limit_exceeded;
     let stdout = if timed_out || output_limit_exceeded {
-        stdout_result.and_then(Result::ok).unwrap_or_default()
+        match stdout_result.and_then(Result::ok) {
+            Some(bytes) => bytes,
+            None => {
+                capture_incomplete = true;
+                Vec::new()
+            }
+        }
     } else {
         match stdout_result.or_else(|| stdout_rx.recv_timeout(Duration::from_millis(50)).ok()) {
             Some(Ok(bytes)) => bytes,
@@ -276,7 +305,13 @@ pub fn execute_bounded(
         }
     };
     let stderr = if timed_out || output_limit_exceeded {
-        stderr_result.and_then(Result::ok).unwrap_or_default()
+        match stderr_result.and_then(Result::ok) {
+            Some(bytes) => bytes,
+            None => {
+                capture_incomplete = true;
+                Vec::new()
+            }
+        }
     } else {
         match stderr_result.or_else(|| stderr_rx.recv_timeout(Duration::from_millis(50)).ok()) {
             Some(Ok(bytes)) => bytes,
@@ -325,6 +360,25 @@ pub fn execute_bounded(
     })
 }
 
+fn instrument_failure_receipt(spec: &ExecutionSpecV1, reason: String) -> ExecutionReceiptV1 {
+    ExecutionReceiptV1 {
+        schema_id: EXECUTION_RECEIPT_SCHEMA_ID.to_string(),
+        plan_id: spec.plan_id.clone(),
+        command_id: spec.command_id.clone(),
+        program: spec.program.clone(),
+        argv: spec.argv.clone(),
+        status: ProcessObservationStatusV1::InstrumentFailure,
+        exit_code: None,
+        stdout_len: 0,
+        stderr_len: 0,
+        stdout_truncated: false,
+        stderr_truncated: false,
+        stdout_digest: digest(&[]),
+        stderr_digest: digest(&[]),
+        limitations: vec![reason],
+    }
+}
+
 fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
     if spec.plan_id.trim().is_empty()
         || spec.command_id.trim().is_empty()
@@ -345,12 +399,39 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
             "the initial runner accepts read-only execution only".to_string(),
         ));
     }
-    if spec.read_roots.is_empty()
+    let has_unsafe_component = |path: &Path| {
+        path.components().any(|component| {
+            matches!(
+                component,
+                std::path::Component::CurDir | std::path::Component::ParentDir
+            )
+        })
+    };
+    if !Path::new(&spec.cwd).is_absolute()
+        || has_unsafe_component(&spec.cwd)
+        || spec.read_roots.is_empty()
+        || spec
+            .read_roots
+            .iter()
+            .any(|root| !root.is_absolute() || has_unsafe_component(root))
         || !spec
             .read_roots
             .iter()
             .any(|root| spec.cwd.starts_with(root))
     {
+        return Err(RunnerError::InvalidSpec(
+            "cwd must be contained by an explicit read root".to_string(),
+        ));
+    }
+    let canonical_cwd = std::fs::canonicalize(&spec.cwd).map_err(|error| {
+        RunnerError::InvalidSpec(format!("cwd cannot be canonicalized: {error}"))
+    })?;
+    let contained = spec.read_roots.iter().any(|root| {
+        std::fs::canonicalize(root)
+            .map(|canonical_root| canonical_cwd.starts_with(canonical_root))
+            .unwrap_or(false)
+    });
+    if !contained {
         return Err(RunnerError::InvalidSpec(
             "cwd must be contained by an explicit read root".to_string(),
         ));
@@ -400,6 +481,13 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
         "sh" | "bash"
             | "zsh"
             | "fish"
+            | "dash"
+            | "ash"
+            | "ksh"
+            | "csh"
+            | "tcsh"
+            | "nu"
+            | "nushell"
             | "cmd"
             | "cmd.exe"
             | "powershell"
@@ -409,6 +497,16 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
     ) {
         return Err(RunnerError::InvalidSpec(
             "shell programs are not accepted by the structured runner".to_string(),
+        ));
+    }
+    if spec.argv.iter().any(|arg| {
+        matches!(
+            arg.to_ascii_lowercase().as_str(),
+            "-c" | "/c" | "-command" | "/command" | "-commandandexit"
+        )
+    }) {
+        return Err(RunnerError::InvalidSpec(
+            "shell command arguments are not accepted by the structured runner".to_string(),
         ));
     }
     Ok(())
@@ -489,12 +587,55 @@ mod tests {
     #[test]
     fn shell_programs_are_rejected_before_spawn() -> Result<(), String> {
         let mut candidate = spec()?;
-        candidate.program = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" }.to_string();
+        candidate.program = if cfg!(windows) {
+            std::path::PathBuf::from(r"C:\Windows\System32\cmd.exe")
+        } else {
+            std::path::PathBuf::from("/bin/sh")
+        }
+        .display()
+        .to_string();
+        candidate.reviewed_invocation.program = candidate.program.clone();
         let error = match execute_bounded(&candidate, ExecutionApprovalV1::Explicit) {
             Ok(_) => return Err("shell program unexpectedly spawned".to_string()),
             Err(error) => error,
         };
-        if error.as_str() != "malformed_execution_spec" {
+        if !matches!(&error, RunnerError::InvalidSpec(message) if message.contains("shell programs"))
+        {
+            return Err(format!("unexpected runner error: {}", error.as_str()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn shell_aliases_and_command_flags_are_rejected() -> Result<(), String> {
+        let mut candidate = spec()?;
+        candidate.program = if cfg!(windows) {
+            r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe".to_string()
+        } else {
+            "/bin/dash".to_string()
+        };
+        candidate.argv = vec!["-c".to_string(), "echo unsafe".to_string()];
+        candidate.reviewed_invocation.program = candidate.program.clone();
+        candidate.reviewed_invocation.argv = candidate.argv.clone();
+        let error = match execute_bounded(&candidate, ExecutionApprovalV1::Explicit) {
+            Ok(_) => return Err("shell alias unexpectedly accepted".to_string()),
+            Err(error) => error,
+        };
+        if !matches!(&error, RunnerError::InvalidSpec(message) if message.contains("shell")) {
+            return Err(format!("unexpected runner error: {}", error.as_str()));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn traversal_paths_are_rejected_before_spawn() -> Result<(), String> {
+        let mut candidate = spec()?;
+        candidate.cwd = candidate.cwd.join("..");
+        let error = match execute_bounded(&candidate, ExecutionApprovalV1::Explicit) {
+            Ok(_) => return Err("traversal cwd unexpectedly accepted".to_string()),
+            Err(error) => error,
+        };
+        if !matches!(&error, RunnerError::InvalidSpec(message) if message.contains("contained")) {
             return Err(format!("unexpected runner error: {}", error.as_str()));
         }
         Ok(())
