@@ -1,0 +1,9 @@
+kind: Changed
+summary: Keep incomplete proof handoffs out of executable planning
+body: >-
+  cargo-proof now treats absent or non-ready intent proof handoffs as explicit
+  non-proof dispositions. Blocking plan items return a non-success exit family,
+  while ready handoffs retain exact source identity, limitations, claim
+  boundaries, and all declared evidence-purpose references.
+component: cargo-proof
+"breaking": false
