@@ -495,39 +495,27 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
         .and_then(|name| name.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
-    if program.ends_with("sh")
-        || matches!(
-            program.as_str(),
-            "sh" | "bash"
-                | "zsh"
-                | "fish"
-                | "dash"
-                | "ash"
-                | "ksh"
-                | "csh"
-                | "tcsh"
-                | "nu"
-                | "nushell"
-                | "cmd"
-                | "cmd.exe"
-                | "powershell"
-                | "powershell.exe"
-                | "pwsh"
-                | "pwsh.exe"
-        )
-    {
+    if matches!(
+        program.as_str(),
+        "sh" | "bash"
+            | "zsh"
+            | "fish"
+            | "dash"
+            | "ash"
+            | "ksh"
+            | "csh"
+            | "tcsh"
+            | "nu"
+            | "nushell"
+            | "cmd"
+            | "cmd.exe"
+            | "powershell"
+            | "powershell.exe"
+            | "pwsh"
+            | "pwsh.exe"
+    ) {
         return Err(RunnerError::InvalidSpec(
             "shell programs are not accepted by the structured runner".to_string(),
-        ));
-    }
-    if spec.argv.iter().any(|arg| {
-        matches!(
-            arg.to_ascii_lowercase().as_str(),
-            "-c" | "/c" | "-command" | "/command" | "-commandandexit"
-        )
-    }) {
-        return Err(RunnerError::InvalidSpec(
-            "shell command arguments are not accepted by the structured runner".to_string(),
         ));
     }
     Ok(())
