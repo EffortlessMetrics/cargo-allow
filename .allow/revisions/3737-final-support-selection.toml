@@ -1,0 +1,25 @@
+schema_version = 1
+# Revision note for the #3737 final support-selection freeze slice.
+
+# This diff adds the [final_selection] section to docs/support-matrix.toml
+# (the 0.2.0 release proof denominator: thirteen typed rows with closed
+# dispositions, proof owners, evidence references, claim effects, and
+# staleness inputs, keyed to the typed release identity by two recomputed
+# digests), the final_support_selection_v1 typed model in allow-report (the
+# single implementation of the row model, identity digest role
+# final-selection, and canonical selection digest), fail-closed drift tests
+# in the support_matrix contract test, and the changie fragment. The
+# source-exception addition receipts only the syntax-visible panicking
+# constructs the new model file introduces: allow-0854 is a
+# glob-ratcheted expect baseline (occurrence_limit=6) for the test module's
+# fixture/invariant-guarded expects; the one indexing site was rewritten as
+# a first_mut().expect so no indexing receipt is needed. No existing
+# exception is weakened, no expiry is extended, and no scope is broadened:
+# the record below is an addition. policy/allow.toml keeps its CRLF
+# line-ending contract; the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-0854"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5afd48ed82e0dd4b536f197c8f934fe126bf4285e69e061c8d043ee2d9704541"
+reason = "Glob-ratcheted expect baseline for the final-support-selection model's test module (#3737); every expect guards an invariant established by immediately preceding fixture construction or typed validation in the same function, and the selection digests are recomputed from committed policy data only."
