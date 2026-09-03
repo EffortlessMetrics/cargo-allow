@@ -8,7 +8,8 @@ commands may change before the first published release.
 | --- | --- |
 | `identity` | Report the exact binary identity and capability surface. |
 | `providers` | Report the deterministic selected-provider/capability projection and explicit availability posture. |
-| `plan --obligation-plan <json>` | Project a proof plan from an `intent.obligation-plan.v1` file. |
+| `plan --obligation-plan <json>` | Project the legacy proof plan from an `intent.obligation-plan.v1` file. |
+| `plan --obligation-plan <json> --receipt-inventory <json> --output <json>` | Generate a V2 plan from the selected provider registry and captured receipt inventory. |
 | `dry-run --proof-plan <toml>` | Validate a `proof.plan.v1` file with structured argv only. |
 | `receipts --action validate --plan <json> --receipts <json>` | Validate a captured receipt manifest read-only. |
 | `receipts --action status --plan <json> --receipts <json>` | Classify every proof item from captured receipts. |

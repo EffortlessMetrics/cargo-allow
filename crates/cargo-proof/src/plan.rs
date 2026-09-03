@@ -5,7 +5,9 @@
 //! path has been deleted (#3314) and is guarded against reintroduction
 //! (#3317).
 
-use std::path::Path;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use proof_engine::{
     CapturedReceiptStoreV1, IntentPlannerError, ProviderRegistryV1, intent_obligation_plan_digest,
@@ -108,22 +110,7 @@ pub fn plan_v2_from_paths(
             message: format!("generate proof.plan.v2: {message}"),
         }
     })?;
-    let serialized = serde_json::to_string_pretty(&plan).map_err(|err| PlanErrorV1 {
-        result_state: ProofResultStateV1::Unsupported,
-        message: format!("serialize proof.plan.v2: {err}"),
-    })?;
-    let temporary = output_path.with_extension("json.tmp");
-    std::fs::write(&temporary, format!("{serialized}\n")).map_err(|err| PlanErrorV1 {
-        result_state: ProofResultStateV1::Unsupported,
-        message: format!("write temporary plan artifact: {err}"),
-    })?;
-    if let Err(err) = std::fs::rename(&temporary, output_path) {
-        let _ = std::fs::remove_file(&temporary);
-        return Err(PlanErrorV1 {
-            result_state: ProofResultStateV1::Unsupported,
-            message: format!("commit plan artifact: {err}"),
-        });
-    }
+    write_plan_artifact(&plan, output_path)?;
     Ok(PlanV2OutcomeV1 {
         plan,
         output: output_path.display().to_string(),
@@ -168,26 +155,85 @@ pub fn plan_v2_from_selected_registry(
             message: format!("generate proof.plan.v2: {message}"),
         },
     )?;
-    let serialized = serde_json::to_string_pretty(&plan).map_err(|err| PlanErrorV1 {
-        result_state: ProofResultStateV1::Unsupported,
-        message: format!("serialize proof.plan.v2: {err}"),
-    })?;
-    let temporary = output_path.with_extension("json.tmp");
-    std::fs::write(&temporary, format!("{serialized}\n")).map_err(|err| PlanErrorV1 {
-        result_state: ProofResultStateV1::Unsupported,
-        message: format!("write temporary plan artifact: {err}"),
-    })?;
-    if let Err(err) = std::fs::rename(&temporary, output_path) {
-        let _ = std::fs::remove_file(&temporary);
-        return Err(PlanErrorV1 {
-            result_state: ProofResultStateV1::Unsupported,
-            message: format!("commit plan artifact: {err}"),
-        });
-    }
+    write_plan_artifact(&plan, output_path)?;
     Ok(PlanV2OutcomeV1 {
         plan,
         output: output_path.display().to_string(),
     })
+}
+
+static PLAN_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), PlanErrorV1> {
+    let serialized = serde_json::to_string_pretty(plan).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("serialize proof.plan.v2: {err}"),
+    })?;
+    let parent = output_path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = output_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("proof-plan.json");
+    let mut temporary = PathBuf::new();
+    let mut file = None;
+    for _ in 0..128 {
+        let sequence = PLAN_TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let candidate = parent.join(format!(
+            ".{file_name}.{}.{}.tmp",
+            std::process::id(),
+            sequence
+        ));
+        match std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&candidate)
+        {
+            Ok(handle) => {
+                temporary = candidate;
+                file = Some(handle);
+                break;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(PlanErrorV1 {
+                    result_state: ProofResultStateV1::Unsupported,
+                    message: format!("create temporary plan artifact: {error}"),
+                });
+            }
+        }
+    }
+    let Some(mut file) = file else {
+        return Err(PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: "allocate unique temporary plan artifact".to_string(),
+        });
+    };
+    file.write_all(format!("{serialized}\n").as_bytes())
+        .map_err(|error| PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("write temporary plan artifact: {error}"),
+        })?;
+    drop(file);
+    match std::fs::rename(&temporary, output_path) {
+        Ok(()) => Ok(()),
+        Err(error) if output_path.is_file() => {
+            std::fs::remove_file(output_path).map_err(|remove_error| PlanErrorV1 {
+                result_state: ProofResultStateV1::Unsupported,
+                message: format!("replace existing plan artifact: {remove_error}"),
+            })?;
+            std::fs::rename(&temporary, output_path).map_err(|rename_error| PlanErrorV1 {
+                result_state: ProofResultStateV1::Unsupported,
+                message: format!("commit plan artifact: {rename_error}"),
+            })
+        }
+        Err(error) => {
+            let _ = std::fs::remove_file(&temporary);
+            Err(PlanErrorV1 {
+                result_state: ProofResultStateV1::Unsupported,
+                message: format!("commit plan artifact: {error}"),
+            })
+        }
+    }
 }
 
 /// Plan proof execution from an intent obligation plan envelope.
@@ -386,6 +432,8 @@ mod tests {
         if !output.is_file() || outcome.output != output.display().to_string() {
             return Err("selected-registry plan did not write its artifact".to_string());
         }
+        plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .map_err(|error| error.message)?;
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }

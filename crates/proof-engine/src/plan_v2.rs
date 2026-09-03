@@ -132,7 +132,7 @@ fn build_item(
         proof_item_id: digest(&base),
         intent_obligation_id: obligation.obligation_id.clone(),
         phase: obligation.phase.clone(),
-        blocking: matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Blocking),
+        blocking: !matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Advisory),
         evidence_purpose_ref: obligation.statement.clone(),
         required_capability_class: capability_class,
         snapshot_identity: snapshot_identity.to_string(),

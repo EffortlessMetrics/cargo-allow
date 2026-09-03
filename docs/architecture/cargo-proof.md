@@ -9,7 +9,8 @@ Packet 2589-B lands thin CLI with identity, help, version, render, exit mapping,
 ## Commands
 
 - `cargo-proof identity` — product identity frame
-- `cargo-proof plan --obligation-plan <intent-envelope.json>` — `intent.obligation-plan.v1` envelope → proof plan via proof-engine (#2936); the plan frame binds the intent plan digest (#3316)
+- `cargo-proof plan --obligation-plan <intent-envelope.json>` — legacy `intent.obligation-plan.v1` envelope → proof plan via proof-engine (#2936)
+- `cargo-proof plan --obligation-plan <intent-envelope.json> --receipt-inventory <receipts.json> --output <plan.json>` — selected provider registry + captured receipt inventory → atomic `proof.plan.v2` artifact
 - `cargo-proof dry-run --proof-plan <toml>` — structured argv projection only (never pasteable shell from prose)
 
 ## Semantic routing
