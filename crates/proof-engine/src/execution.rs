@@ -276,6 +276,9 @@ pub fn execute_bounded(
     if stderr_result.is_none() {
         stderr_result = stderr_rx.try_recv().ok();
     }
+    let capture_deadline = Instant::now()
+        .checked_add(Duration::from_millis(50))
+        .unwrap_or_else(Instant::now);
     let mut capture_incomplete = false;
     let mut stdout_capture_missing = false;
     let mut stderr_capture_missing = false;
@@ -290,7 +293,7 @@ pub fn execute_bounded(
             }
         }
     } else {
-        match stdout_result.or_else(|| stdout_rx.recv_timeout(Duration::from_millis(50)).ok()) {
+        match stdout_result.or_else(|| stdout_rx.recv_timeout(remaining(capture_deadline)).ok()) {
             Some(Ok(bytes)) => bytes,
             Some(Err(_)) | None => {
                 capture_incomplete = true;
@@ -308,7 +311,7 @@ pub fn execute_bounded(
             }
         }
     } else {
-        match stderr_result.or_else(|| stderr_rx.recv_timeout(Duration::from_millis(50)).ok()) {
+        match stderr_result.or_else(|| stderr_rx.recv_timeout(remaining(capture_deadline)).ok()) {
             Some(Ok(bytes)) => bytes,
             Some(Err(_)) | None => {
                 capture_incomplete = true;
@@ -359,6 +362,10 @@ pub fn execute_bounded(
         stderr_digest: digest(&stderr),
         limitations,
     })
+}
+
+fn remaining(deadline: Instant) -> Duration {
+    deadline.saturating_duration_since(Instant::now())
 }
 
 fn termination_error(child: &mut std::process::Child) -> Result<Option<String>, RunnerError> {
@@ -784,13 +791,16 @@ mod tests {
     #[test]
     fn timeout_and_output_limits_are_observed_without_shells() -> Result<(), String> {
         let mut timeout = spec()?;
-        timeout.timeout = Duration::from_nanos(1);
+        timeout.argv = vec![
+            "--exact".to_string(),
+            "execution::tests::timeout_witness".to_string(),
+            "--nocapture".to_string(),
+        ];
+        timeout.reviewed_invocation.argv = timeout.argv.clone();
+        timeout.timeout = Duration::from_millis(10);
         let timed = execute_bounded(&timeout, ExecutionApprovalV1::Explicit)
             .map_err(|error| error.as_str().to_string())?;
-        if !matches!(
-            timed.status,
-            ProcessObservationStatusV1::TimedOut | ProcessObservationStatusV1::Completed
-        ) {
+        if timed.status != ProcessObservationStatusV1::TimedOut {
             return Err(format!("expected timeout, got {:?}", timed.status));
         }
 
@@ -802,6 +812,11 @@ mod tests {
             return Err(format!("expected output limit, got {:?}", observed.status));
         }
         Ok(())
+    }
+
+    #[test]
+    fn timeout_witness() {
+        std::thread::sleep(Duration::from_millis(100));
     }
 
     #[test]
