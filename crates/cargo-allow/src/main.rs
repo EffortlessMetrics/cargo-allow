@@ -209,6 +209,8 @@ mod intent_protocol_parity_tests;
 mod review_packet_compiler_parity_tests;
 
 #[cfg(test)]
+mod config_authority_denominator_tests;
+#[cfg(test)]
 #[path = "package_topology_enforcement_tests.rs"]
 mod package_topology_enforcement_tests;
 #[cfg(test)]
