@@ -1,0 +1,13 @@
+{
+  "schema": "cargo-allow.final-package-docs-basis.v1",
+  "commit": "e0acf38822a8da9a79370082b924869596f9210f",
+  "tree": "017691d7a5d5057ec1897684ab675baddd3a13f7",
+  "cargo_lock_sha256": "sha256:3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+  "topology_sha256": "sha256:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+  "release_identity": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "channel": "stable",
+    "github_prerelease": false
+  }
+}
