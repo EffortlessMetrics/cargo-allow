@@ -217,7 +217,10 @@ fn write_plan_artifact(plan: &ProofPlanV2, output_path: &Path) -> Result<(), Pla
     }
     drop(file);
     match std::fs::hard_link(&temporary, output_path) {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+            let _ = std::fs::remove_file(&temporary);
+            Ok(())
+        }
         Err(error) => {
             let _ = std::fs::remove_file(&temporary);
             Err(PlanErrorV1 {
@@ -425,6 +428,19 @@ mod tests {
             .map_err(|error| error.message)?;
         if !output.is_file() || outcome.output != output.display().to_string() {
             return Err("selected-registry plan did not write its artifact".to_string());
+        }
+        let temporary_count = std::fs::read_dir(&directory)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".plan.json.")
+            })
+            .count();
+        if temporary_count != 0 {
+            return Err("successful plan publication left a temporary artifact".to_string());
         }
         let repeat = plan_v2_from_selected_registry(&obligation, &receipts, &output)
             .expect_err("existing plan artifacts are not overwritten");

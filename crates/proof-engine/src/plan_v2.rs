@@ -299,12 +299,17 @@ mod tests {
     #[test]
     fn decision_posture_prevents_provider_selection() -> Result<(), String> {
         let mut decision = envelope();
-        decision.obligations[0].posture = IntentObligationPostureV1::Decision;
+        decision
+            .obligations
+            .get_mut(0)
+            .ok_or_else(|| "fixture must contain an obligation".to_string())?
+            .posture = IntentObligationPostureV1::Decision;
         let plan =
             plan_proof_v2_from_intent(&decision, &[catalog()], &CapturedReceiptStoreV1::new())?;
         let item = plan
             .items
-            .first()
+            .into_iter()
+            .next()
             .ok_or_else(|| "decision plan must contain an item".to_string())?;
         if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
             || item.selection.is_some()

@@ -517,7 +517,11 @@ mod tests {
             return Err("selected registry route should reach planning".to_string());
         }
         let mut decision_envelope = envelope;
-        decision_envelope.obligations[0].posture = IntentObligationPostureV1::Decision;
+        decision_envelope
+            .obligations
+            .get_mut(0)
+            .ok_or_else(|| "fixture must contain an obligation".to_string())?
+            .posture = IntentObligationPostureV1::Decision;
         std::fs::write(
             &obligation,
             serde_json::to_vec(&decision_envelope).map_err(|error| error.to_string())?,
