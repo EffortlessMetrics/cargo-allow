@@ -75,6 +75,12 @@ fn build_item(
     let handoff_ready = handoff.is_some_and(|handoff| {
         handoff.disposition
             == Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning)
+            && handoff.minimum_threshold.is_none()
+            && handoff
+                .subject_inventory_completeness
+                .is_none_or(|completeness| {
+                    completeness == intent_protocol::IntentSubjectInventoryCompletenessV1::Complete
+                })
     });
     let selected = if matches!(
         obligation.posture,
@@ -137,6 +143,17 @@ fn build_item(
             .limitations
             .push("intent subject posture is not exact".to_string());
     }
+    if handoff.is_some_and(|handoff| {
+        handoff
+            .subject_inventory_completeness
+            .is_some_and(|completeness| {
+                completeness != intent_protocol::IntentSubjectInventoryCompletenessV1::Complete
+            })
+    }) {
+        subject
+            .limitations
+            .push("intent subject inventory completeness is not complete".to_string());
+    }
     let base = format!("{}:{}", obligation.obligation_id, obligation.phase);
     let (disposition, selection, expected_receipt, posture, mut limitations) = match selected {
         Some((catalog, capability)) => {
@@ -156,12 +173,27 @@ fn build_item(
                         .to_string(),
                     receipt_generation: 1,
                     config_identity: "config:unspecified".to_string(),
-                    currentness_dimensions: vec![
-                        "snapshot_identity".to_string(),
-                        "subject".to_string(),
-                        "provider_request".to_string(),
-                        "config".to_string(),
-                    ],
+                    currentness_dimensions: handoff
+                        .map(|handoff| {
+                            let mut dimensions = vec![
+                                "snapshot_identity".to_string(),
+                                "subject".to_string(),
+                                "provider_request".to_string(),
+                                "config".to_string(),
+                            ];
+                            dimensions.extend(handoff.currentness_dimensions.iter().cloned());
+                            dimensions.sort();
+                            dimensions.dedup();
+                            dimensions
+                        })
+                        .unwrap_or_else(|| {
+                            vec![
+                                "snapshot_identity".to_string(),
+                                "subject".to_string(),
+                                "provider_request".to_string(),
+                                "config".to_string(),
+                            ]
+                        }),
                 }),
                 ProofItemExecutionPostureV1::Execute,
                 Vec::new(),
