@@ -389,4 +389,71 @@ mod tests {
         std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
         Ok(())
     }
+
+    #[test]
+    fn selected_registry_plan_reports_input_and_output_failures() -> Result<(), String> {
+        let missing =
+            std::env::temp_dir().join(format!("cargo-proof-missing-{}", std::process::id()));
+        let output = missing.with_extension("json");
+        let error = plan_v2_from_selected_registry(&missing, &missing, &output)
+            .expect_err("missing obligation must fail");
+        if error.result_state != ProofResultStateV1::Missing {
+            return Err("missing obligation should be classified as missing".to_string());
+        }
+
+        let directory =
+            std::env::temp_dir().join(format!("cargo-proof-input-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
+        let obligation = directory.join("obligation.json");
+        let receipts = directory.join("receipts.json");
+        std::fs::write(&obligation, b"not-json").map_err(|error| error.to_string())?;
+        std::fs::write(&receipts, b"{}").map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .expect_err("malformed obligation must fail");
+        if error.result_state != ProofResultStateV1::Missing {
+            return Err("malformed obligation should be classified as missing".to_string());
+        }
+        std::fs::write(&obligation, b"{}").map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .expect_err("invalid envelope must fail");
+        if error.result_state != ProofResultStateV1::Missing {
+            return Err("invalid envelope should be classified as missing".to_string());
+        }
+        let identity = IntentIdentityEnvelopeV1::new(
+            RepositorySnapshotV1::new_committed_head(
+                "test",
+                "sha1",
+                ResolvedRevisionV1 {
+                    requested: "HEAD".to_string(),
+                    commit: "abc".to_string(),
+                    tree: String::new(),
+                },
+            ),
+            IntentArtifactKindV1::RequirementDocument,
+            "test-artifact",
+            "test/source.md",
+            "test-content",
+        );
+        let valid_envelope = serde_json::to_vec(&IntentObligationPlanEnvelopeV1::new(
+            identity,
+            "precommit",
+            vec![],
+        ))
+        .map_err(|error| error.to_string())?;
+        std::fs::write(&obligation, valid_envelope).map_err(|error| error.to_string())?;
+        std::fs::remove_file(&receipts).map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .expect_err("missing receipt inventory must fail");
+        if error.result_state != ProofResultStateV1::Missing {
+            return Err("missing receipt inventory should be classified as missing".to_string());
+        }
+        std::fs::write(&receipts, b"not-json").map_err(|error| error.to_string())?;
+        let error = plan_v2_from_selected_registry(&obligation, &receipts, &output)
+            .expect_err("malformed receipt inventory must fail");
+        if error.result_state != ProofResultStateV1::Missing {
+            return Err("malformed receipt inventory should be classified as missing".to_string());
+        }
+        std::fs::remove_dir_all(&directory).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 }

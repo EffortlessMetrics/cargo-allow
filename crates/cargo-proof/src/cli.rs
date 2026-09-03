@@ -390,6 +390,25 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn plan_cli_rejects_partial_explicit_catalog() -> Result<(), String> {
+        let cli = CargoProofCli {
+            root: PathBuf::from("."),
+            config: None,
+            format: FormatArg::Json,
+            command: Some(CargoProofCommand::Plan(PlanArgs {
+                obligation_plan: PathBuf::from("missing-obligation.json"),
+                provider_catalog: Some(PathBuf::from("catalog.json")),
+                receipt_inventory: Some(PathBuf::from("receipts.json")),
+                output: None,
+            })),
+        };
+        if run_cli(cli).map_err(|error| error.to_string())? != ProcessExitFamilyV1::Usage {
+            return Err("partial explicit catalog inputs must be usage errors".to_string());
+        }
+        Ok(())
+    }
+
     fn receipt_cli_fixture() -> (ProofPlanV2, CapturedReceiptManifestV1) {
         let snapshot = RepositorySnapshotV1::new_committed_head(
             "snapshot-1",
