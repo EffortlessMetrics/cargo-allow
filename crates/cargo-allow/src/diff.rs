@@ -1205,8 +1205,8 @@ mod summary_tests {
                 "explicit current config must reuse selected path {selected:?}, got {explicit:?}"
             ));
         }
-        let external = std::path::Path::new("..\\outside-policy.toml");
-        if git_relative_config_path_for_diff(root, None, "base", None, Some(external)).is_ok() {
+        let external = std::env::temp_dir().join("outside-policy.toml");
+        if git_relative_config_path_for_diff(root, None, "base", None, Some(&external)).is_ok() {
             return Err("external selected policy path must be rejected".to_string());
         }
         Ok(())
