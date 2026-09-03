@@ -52,11 +52,27 @@ pub(crate) struct PrepCandidateArgs {
 pub(crate) enum PrepCandidateSubcommand {
     /// Project the exact prospective candidate transition without writing.
     Plan(PrepCandidatePlanArgs),
+    /// Apply one exact reviewed plan atomically and stale-safely.
+    Apply(PrepCandidateApplyArgs),
+}
+
+/// Apply arguments for one reviewed plan file.
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct PrepCandidateApplyArgs {
+    /// Reviewed plan file (the `prep-candidate plan --format json` output).
+    #[arg(long)]
+    pub(crate) from_plan: PathBuf,
+    /// Where to write the bounded intermediate apply receipt.
+    #[arg(long)]
+    pub(crate) receipt: Option<PathBuf>,
+    /// Acknowledge one required decision by id (repeatable).
+    #[arg(long = "acknowledge-decision")]
+    pub(crate) acknowledge_decision: Vec<String>,
 }
 
 /// Output rendering for the preparation result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum PrepOutputFormat {
+pub(crate) enum PrepOutputFormat {
     Json,
     Text,
 }
@@ -68,20 +84,114 @@ pub(crate) struct PrepCandidatePlanArgs {
     pub(crate) version: String,
     /// Output rendering. Both derive from the same typed result.
     #[arg(long, value_enum, default_value_t = PrepOutputFormat::Json)]
-    format: PrepOutputFormat,
+    pub(crate) format: PrepOutputFormat,
     /// Optional add-finding plan supplying governed policy changes.
     #[arg(long)]
-    policy_plan: Option<PathBuf>,
+    pub(crate) policy_plan: Option<PathBuf>,
 }
 
 pub(super) fn cmd_prep_candidate(args: &PrepCandidateArgs) -> CargoAllowResult<()> {
+    let root = git_root().map_err(|reason| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("prep-candidate requires a git worktree: {reason}"),
+        )
+    })?;
+    cmd_prep_candidate_with_root(&root, args)
+}
+
+/// Root-parameterized dispatch (fixture tests bind an explicit root).
+pub(crate) fn cmd_prep_candidate_with_root(
+    root: &Path,
+    args: &PrepCandidateArgs,
+) -> CargoAllowResult<()> {
     match &args.command {
-        PrepCandidateSubcommand::Plan(plan_args) => cmd_prep_candidate_plan(plan_args),
+        PrepCandidateSubcommand::Plan(plan_args) => {
+            cmd_prep_candidate_plan_for_root(root, plan_args)
+        }
+        PrepCandidateSubcommand::Apply(apply_args) => {
+            cmd_prep_candidate_apply_with_root(root, apply_args)
+        }
     }
 }
 
-fn cmd_prep_candidate_plan(args: &PrepCandidatePlanArgs) -> CargoAllowResult<()> {
-    let result = build_preparation_result(&args.version, args.policy_plan.as_deref())?;
+/// Root-parameterized apply entry point (the engine's fixture tests bind
+/// an explicit repository root).
+pub(crate) fn cmd_prep_candidate_apply_with_root(
+    root: &Path,
+    args: &PrepCandidateApplyArgs,
+) -> CargoAllowResult<()> {
+    let plan_text = std::fs::read_to_string(&args.from_plan).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("read {}: {error}", args.from_plan.display()),
+        )
+    })?;
+    let plan: CandidatePreparationResultV1 = serde_json::from_str(&plan_text).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("parse plan file: {error}"),
+        )
+    })?;
+    let receipt = apply_candidate_plan(
+        root,
+        &plan,
+        &args.acknowledge_decision,
+        args.receipt.as_deref(),
+        ApplyFault::none(),
+    );
+    let rendered = serde_json::to_string_pretty(&receipt).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("render apply receipt: {error}"),
+        )
+    })?;
+    if let Some(receipt_path) = &args.receipt {
+        effortless_repo_edit::write_file(receipt_path, &rendered).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                format!("write apply receipt: {error}"),
+            )
+        })?;
+    }
+    println!("{}", receipt_human_summary(&receipt));
+    match receipt.state {
+        allow_report::CandidateApplyStateV1::Applied
+        | allow_report::CandidateApplyStateV1::NoOp => Ok(()),
+        _ => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "apply finished in state {:?}; the receipt carries the explicit reasons",
+                receipt.state
+            ),
+        )),
+    }
+}
+
+fn receipt_human_summary(receipt: &allow_report::CandidateApplyReceiptV1) -> String {
+    let applied = receipt
+        .operations
+        .iter()
+        .filter(|operation| operation.result == "applied")
+        .count();
+    let rolled_back = receipt
+        .operations
+        .iter()
+        .filter(|operation| operation.result == "rolled_back")
+        .count();
+    format!(
+        "candidate apply: state {:?}; {applied} applied, {rolled_back} rolled back; transaction {}; rollback {}; plan {}",
+        receipt.state, receipt.transaction_result, receipt.rollback_result, receipt.plan_digest,
+    )
+}
+
+/// Root-parameterized plan command (fixture tests bind an explicit root).
+pub(crate) fn cmd_prep_candidate_plan_for_root(
+    root: &Path,
+    args: &PrepCandidatePlanArgs,
+) -> CargoAllowResult<()> {
+    let result =
+        build_preparation_result_for_root(root, &args.version, args.policy_plan.as_deref())?;
     let rendered = match args.format {
         PrepOutputFormat::Json => serde_json::to_string_pretty(&result).map_err(|error| {
             CargoAllowError::with_kind(
@@ -133,7 +243,7 @@ fn render_text_summary(result: &CandidatePreparationResultV1) -> String {
 
 fn instrument_failure_result(reasons: Vec<String>) -> CandidatePreparationResultV1 {
     CandidatePreparationResultV1 {
-        schema: allow_report::CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+        schema: allow_report::CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
         readiness: CandidatePreparationReadinessV1::InstrumentFailure,
         reasons,
         input_identity: None,
@@ -143,19 +253,13 @@ fn instrument_failure_result(reasons: Vec<String>) -> CandidatePreparationResult
     }
 }
 
-pub(crate) fn build_preparation_result(
+/// Root-parameterized projection, used by the apply engine's revalidation
+/// and by the fixture-driven tests.
+pub(crate) fn build_preparation_result_for_root(
+    root: &Path,
     target_version: &str,
     policy_plan: Option<&Path>,
 ) -> CargoAllowResult<CandidatePreparationResultV1> {
-    let root = match git_root() {
-        Ok(root) => root,
-        Err(reason) => {
-            return Ok(instrument_failure_result(vec![format!(
-                "repository worktree: {reason}"
-            )]));
-        }
-    };
-
     // Collect every input fact, accumulating instrument failures so all
     // collection gaps are reported in one pass.
     let mut failures: Vec<String> = Vec::new();
@@ -169,25 +273,25 @@ pub(crate) fn build_preparation_result(
 
     let repository = collect(
         "repository identity",
-        repository_identity(&root),
+        repository_identity(root),
         &mut failures,
     );
     let branch = collect(
         "branch",
-        git_text(&root, &["rev-parse", "--abbrev-ref", "HEAD"]),
+        git_text(root, &["rev-parse", "--abbrev-ref", "HEAD"]),
         &mut failures,
     );
     let head_commit = collect(
         "HEAD commit",
-        git_text(&root, &["rev-parse", "HEAD"]),
+        git_text(root, &["rev-parse", "HEAD"]),
         &mut failures,
     );
     let tree = collect(
         "HEAD tree",
-        git_text(&root, &["rev-parse", "HEAD^{tree}"]),
+        git_text(root, &["rev-parse", "HEAD^{tree}"]),
         &mut failures,
     );
-    let dirty_state: Option<CandidatePreparationDirtyStateV1> = match dirty_state_class(&root) {
+    let dirty_state: Option<CandidatePreparationDirtyStateV1> = match dirty_state_class(root) {
         Ok(dirty_state) => Some(dirty_state),
         Err(reason) => {
             failures.push(format!("working-tree state: {reason}"));
@@ -197,15 +301,15 @@ pub(crate) fn build_preparation_result(
 
     let cargo_lock_digest = collect(
         "Cargo.lock digest",
-        file_digest(&root, CARGO_LOCK_PATH),
+        file_digest(root, CARGO_LOCK_PATH),
         &mut failures,
     );
     let workspace_manifest_digest = collect(
         "workspace manifest digest",
-        file_digest(&root, WORKSPACE_MANIFEST_PATH),
+        file_digest(root, WORKSPACE_MANIFEST_PATH),
         &mut failures,
     );
-    let topology_bytes = read_repo_file(&root, TOPOLOGY_PATH);
+    let topology_bytes = read_repo_file(root, TOPOLOGY_PATH);
     let topology_digest = match &topology_bytes {
         Ok(bytes) => Some(allow_core::sha256_v1_bytes(bytes)),
         Err(reason) => {
@@ -222,20 +326,20 @@ pub(crate) fn build_preparation_result(
     };
     let support_selection_digest = collect(
         "support selection digest",
-        file_digest(&root, SUPPORT_MATRIX_PATH),
+        file_digest(root, SUPPORT_MATRIX_PATH),
         &mut failures,
     );
     let changie_config_digest = collect(
         "Changie configuration digest",
-        file_digest(&root, CHANGIE_CONFIG_PATH),
+        file_digest(root, CHANGIE_CONFIG_PATH),
         &mut failures,
     );
     let changie_history_digest = collect(
         "Changie history corpus digest",
-        changie_history_digest(&root),
+        changie_history_digest(root),
         &mut failures,
     );
-    let allow_policy_bytes = read_repo_file(&root, ALLOW_POLICY_PATH);
+    let allow_policy_bytes = read_repo_file(root, ALLOW_POLICY_PATH);
     let source_exception_policy_digest = match &allow_policy_bytes {
         Ok(bytes) => Some(allow_core::sha256_v1_bytes(bytes)),
         Err(reason) => {
@@ -251,7 +355,7 @@ pub(crate) fn build_preparation_result(
                 None
             }
         };
-    let member_manifest_digests = match member_manifest_digests(&root) {
+    let member_manifest_digests = match member_manifest_digests(root) {
         Ok(digests) => Some(digests),
         Err(reason) => {
             failures.push(format!("member manifest digests: {reason}"));
@@ -289,12 +393,12 @@ pub(crate) fn build_preparation_result(
     let (release_record, github_release_note) = match ReleaseVersionV1::parse(target_version) {
         Ok(target) => {
             let release_record = corpus_source(
-                &root,
+                root,
                 &format!("docs/release/{}.md", target.as_str()),
                 &mut failures,
             );
             let github_release_note = corpus_source(
-                &root,
+                root,
                 &format!("docs/release/github/{}.md", target.tag()),
                 &mut failures,
             );
@@ -332,16 +436,16 @@ pub(crate) fn build_preparation_result(
     };
 
     let support_matrix_postures =
-        parse_support_matrix_postures(&read_repo_file(&root, SUPPORT_MATRIX_PATH));
+        parse_support_matrix_postures(&read_repo_file(root, SUPPORT_MATRIX_PATH));
     let internal_requirements =
-        parse_workspace_requirements(&read_repo_file(&root, WORKSPACE_MANIFEST_PATH));
+        parse_workspace_requirements(&read_repo_file(root, WORKSPACE_MANIFEST_PATH));
 
     let mut external_observations = vec![CandidateExternalObservationV1 {
         observation_id: "public_prerelease_line".to_string(),
         subject: "0.2.0-rc.1".to_string(),
         detail: "Public rc.1 is usable pilot evidence with incident lineage; not reusable as final package bytes (#3768 claim boundaries). Inputs only.".to_string(),
     }];
-    if let Ok(digest) = file_digest(&root, INCIDENT_EVIDENCE_PATH) {
+    if let Ok(digest) = file_digest(root, INCIDENT_EVIDENCE_PATH) {
         external_observations.push(CandidateExternalObservationV1 {
             observation_id: "rc1_publication_incident_evidence".to_string(),
             subject: INCIDENT_EVIDENCE_PATH.to_string(),
@@ -363,9 +467,9 @@ pub(crate) fn build_preparation_result(
         && let Ok(target) = ReleaseVersionV1::parse(target_version)
     {
         let source_version = plan.source_release_identity.version.clone();
-        match gather_surface_inputs(&root, &source_version, &target, policy_plan) {
+        match gather_surface_inputs(root, &source_version, &target, policy_plan) {
             Ok(mut surfaces) => {
-                let warnings = resolve_surface_collisions(&root, &mut surfaces);
+                let warnings = resolve_surface_collisions(root, &mut surfaces);
                 let compiled =
                     compile_candidate_operations(CandidateOperationCompilerInput { surfaces });
                 for warning in warnings {
@@ -1018,7 +1122,7 @@ pub(crate) fn gather_surface_inputs(
 /// Deterministic token-level rewrite. Fails the surface (and the plan)
 /// when the expected occurrence count is absent, so a drifted authority
 /// can never compile into a silently wrong operation.
-fn render_token_swap(
+pub(crate) fn render_token_swap(
     bytes: &[u8],
     from: &str,
     to: &str,
@@ -1035,8 +1139,23 @@ fn render_token_swap(
     Ok(text.replace(from, to).into_bytes())
 }
 
+/// One-byte workspace-state flip used by the post-lock mutation fault.
+fn append_byte(bytes: &[u8]) -> Vec<u8> {
+    let mut flipped = bytes.to_vec();
+    flipped.extend_from_slice(
+        b"
+",
+    );
+    flipped
+}
+
 /// Swap every occurrence of a token in a version-derived file.
-fn render_token_swap_all(bytes: &[u8], from: &str, to: &str, path: &str) -> Fact<Vec<u8>> {
+pub(crate) fn render_token_swap_all(
+    bytes: &[u8],
+    from: &str,
+    to: &str,
+    path: &str,
+) -> Fact<Vec<u8>> {
     let text = std::str::from_utf8(bytes).map_err(|error| format!("{path} encoding: {error}"))?;
     if !text.contains(from) {
         return Err(format!("{path} stopped carrying `{from}`"));
@@ -1115,7 +1234,7 @@ fn version_derived_surface(
 }
 
 /// Parse the `asset_roots` lists out of the topology file text.
-fn asset_roots_from_topology(topology: &[u8]) -> Fact<Vec<String>> {
+pub(crate) fn asset_roots_from_topology(topology: &[u8]) -> Fact<Vec<String>> {
     let text =
         std::str::from_utf8(topology).map_err(|error| format!("topology encoding: {error}"))?;
     let mut roots = Vec::new();
@@ -1336,14 +1455,17 @@ extraction_destination = \"cargo-allow\"
         assert!(rendered.contains("inputs could not be trusted"));
         assert!(rendered.contains("reason: repository identity: missing"));
 
-        let live =
-            crate::cli::candidate_preparation_command::build_preparation_result("0.2.0", None)
-                .expect("live projection builds");
+        let live = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+            &git_root().expect("the live repository root resolves"),
+            "0.2.0",
+            None,
+        )
+        .expect("live projection builds");
         let rendered = render_text_summary(&live);
         let plan = live.plan.as_ref().expect("plan projects");
         assert!(rendered.contains(&plan.plan_digest));
         assert!(rendered.contains("decision required [confirm-frozen-candidate-basis]"));
-        assert!(rendered.contains(plan.claim_boundary));
+        assert!(rendered.contains(plan.claim_boundary.as_str()));
     }
 
     #[test]
@@ -1353,15 +1475,17 @@ extraction_destination = \"cargo-allow\"
             format: PrepOutputFormat::Text,
             policy_plan: None,
         };
-        cmd_prep_candidate_plan(&ready).expect("decision-required plan exits ready");
+        let root = git_root().expect("the live repository root resolves");
+        cmd_prep_candidate_plan_for_root(&root, &ready)
+            .expect("decision-required plan exits ready");
 
         let unsupported = PrepCandidatePlanArgs {
             version: "0.2.0-beta.9".to_string(),
             format: PrepOutputFormat::Json,
             policy_plan: None,
         };
-        let error =
-            cmd_prep_candidate_plan(&unsupported).expect_err("unsupported target fails closed");
+        let error = cmd_prep_candidate_plan_for_root(&root, &unsupported)
+            .expect_err("unsupported target fails closed");
         assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
     }
 
@@ -1386,4 +1510,562 @@ extraction_destination = \"cargo-allow\"
         );
         assert_eq!(parsed("bare"), "");
     }
+}
+
+/// Fault-injection channels for the apply engine's transaction tests. The
+/// production CLI passes `ApplyFault::none()`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ApplyFault {
+    /// Simulate a crash after this many commits have landed.
+    pub(crate) after_commit: Option<usize>,
+    /// Simulate staged bytes that do not match their expected digest.
+    pub(crate) corrupt_staged: bool,
+    /// Simulate another writer flipping a target after the locks are held
+    /// but before the per-target recheck.
+    pub(crate) mutate_target_after_lock: bool,
+    /// Simulate rollback failure: the first committed target cannot be
+    /// restored, producing the bounded RecoveryRequired state.
+    pub(crate) remove_first_target_before_rollback: bool,
+}
+
+impl ApplyFault {
+    pub(crate) fn none() -> Self {
+        Self {
+            after_commit: None,
+            corrupt_staged: false,
+            mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
+        }
+    }
+}
+
+/// Apply one exact reviewed plan to `root` through the repository's shared
+/// write-safety authorities: revalidation gate, decision gate, deterministic
+/// lock set, per-target recheck, in-memory staging validated against
+/// expected digests, atomic replacement, and full rollback from in-memory
+/// preimages. Mechanics only; the receipt records what happened.
+pub(crate) fn apply_candidate_plan(
+    root: &Path,
+    plan: &CandidatePreparationResultV1,
+    acknowledgements: &[String],
+    receipt_path: Option<&Path>,
+    fault: ApplyFault,
+) -> allow_report::CandidateApplyReceiptV1 {
+    use allow_report::{
+        CandidateApplyLockRecordV1, CandidateApplyOperationRecordV1, CandidateApplyStateV1,
+    };
+
+    let plan_ref = match &plan.plan {
+        Some(plan) => plan,
+        None => {
+            let mut receipt =
+                allow_report::CandidateApplyReceiptV1::new(String::new(), String::new());
+            receipt.state = CandidateApplyStateV1::Conflict;
+            receipt
+                .reasons
+                .push("the plan file carries no projected plan".to_string());
+            return receipt;
+        }
+    };
+    let mut receipt =
+        allow_report::CandidateApplyReceiptV1::new(plan_ref.plan_digest.clone(), String::new());
+
+    // ---- Authenticity gate: the plan file's stored digests must cover
+    // its own content (tamper detection before any repository read).
+    if !plan_ref.digest_is_authentic() {
+        receipt.state = CandidateApplyStateV1::Conflict;
+        receipt
+            .reasons
+            .push("the plan file's stored digest does not cover its content".to_string());
+        return receipt;
+    }
+    if let Some(operations) = &plan.operations
+        && !operations.digest_is_authentic()
+    {
+        receipt.state = CandidateApplyStateV1::Conflict;
+        receipt
+            .reasons
+            .push("the plan file's operation-set digest does not cover its content".to_string());
+        return receipt;
+    }
+
+    // ---- Revalidation gate: rebuild the projection and compare identities.
+    let target_version = plan_ref.target_release_identity.version.clone();
+    let fresh = match build_preparation_result_for_root(root, &target_version, None) {
+        Ok(fresh) => fresh,
+        Err(error) => {
+            receipt.state = CandidateApplyStateV1::InstrumentFailure;
+            receipt
+                .reasons
+                .push(format!("revalidation failed: {error}"));
+            return receipt;
+        }
+    };
+    let Some(fresh_plan) = &fresh.plan else {
+        receipt.state = CandidateApplyStateV1::Stale;
+        receipt.reasons.extend(fresh.reasons.clone());
+        receipt
+            .reasons
+            .push("the live repository no longer projects this plan".to_string());
+        return receipt;
+    };
+    {
+        let before = serde_json::to_string(&fresh_plan.input_identity).unwrap_or_default();
+        receipt.before_identity_digest = allow_core::sha256_v1_bytes(before.as_bytes());
+    }
+    if fresh_plan.plan_digest != plan_ref.plan_digest {
+        receipt.state = CandidateApplyStateV1::Stale;
+        receipt.reasons.push(
+            "the live repository state no longer matches the plan identity; regenerate the plan"
+                .to_string(),
+        );
+        return receipt;
+    }
+    let Some(fresh_ops) = &fresh.operations else {
+        receipt.state = CandidateApplyStateV1::InstrumentFailure;
+        receipt
+            .reasons
+            .push("revalidation did not compile operations".to_string());
+        return receipt;
+    };
+    let plan_ops = match &plan.operations {
+        Some(ops) => ops,
+        None => {
+            receipt.state = CandidateApplyStateV1::Conflict;
+            receipt
+                .reasons
+                .push("the plan file carries no operation set".to_string());
+            return receipt;
+        }
+    };
+    if fresh_ops.operations_digest != plan_ops.operations_digest {
+        receipt.state = CandidateApplyStateV1::Stale;
+        receipt.reasons.push(
+            "the compiled operation set changed since the plan was reviewed; regenerate the plan"
+                .to_string(),
+        );
+        return receipt;
+    }
+
+    // ---- Decision gate: every required decision must be acknowledged.
+    let mut required_ids: Vec<String> = plan_ref
+        .required_decisions
+        .iter()
+        .map(|decision| decision.decision_id.clone())
+        .collect();
+    required_ids.extend(
+        plan_ops
+            .decisions
+            .iter()
+            .map(|decision| decision.decision_id.clone()),
+    );
+    required_ids.sort();
+    required_ids.dedup();
+    let mut unacknowledged: Vec<String> = required_ids
+        .iter()
+        .filter(|id| !acknowledgements.contains(id))
+        .cloned()
+        .collect();
+    if !unacknowledged.is_empty() {
+        unacknowledged.sort();
+        receipt.state = CandidateApplyStateV1::DecisionRequired;
+        receipt.reasons.push(format!(
+            "unacknowledged decisions: {}",
+            unacknowledged.join(", ")
+        ));
+        return receipt;
+    }
+    for id in &required_ids {
+        receipt
+            .decision_acknowledgements
+            .insert(id.clone(), "acknowledged".to_string());
+    }
+
+    // ---- Output collision check: the receipt may not share an underlying
+    // target with any operation or live under .git.
+    if let Some(receipt_path) = receipt_path {
+        let receipt_fold = receipt_path
+            .to_string_lossy()
+            .replace('\\', "/")
+            .to_lowercase();
+        if receipt_fold.contains("/.git/") || receipt_fold.starts_with(".git/") {
+            receipt.state = CandidateApplyStateV1::Conflict;
+            receipt
+                .reasons
+                .push("the receipt path lives under .git".to_string());
+            return receipt;
+        }
+        for operation in &plan_ops.operations {
+            let target_fold = operation.path.replace('\\', "/").to_lowercase();
+            if receipt_fold.ends_with(&target_fold) || target_fold.ends_with(&receipt_fold) {
+                receipt.state = CandidateApplyStateV1::Conflict;
+                receipt.reasons.push(format!(
+                    "the receipt path collides with the operation target {}",
+                    operation.path
+                ));
+                return receipt;
+            }
+        }
+    }
+
+    // ---- Deterministic write set: plan operations with generated bytes.
+    let mut write_ops: Vec<&allow_report::CandidateFileOperationV1> = plan_ops
+        .operations
+        .iter()
+        .filter(|operation| {
+            matches!(
+                operation.posture,
+                allow_report::CandidateOperationPostureV1::Replace
+                    | allow_report::CandidateOperationPostureV1::Create
+            )
+        })
+        .collect();
+    write_ops.sort_by(|a, b| (&a.path, &a.role).cmp(&(&b.path, &b.role)));
+
+    // ---- Deterministic lock set over underlying targets.
+    let mut lock_targets: Vec<(String, PathBuf)> = Vec::new();
+    for operation in &write_ops {
+        let requested = root.join(&operation.path);
+        match effortless_repo_edit::resolve_mutation_target(&requested, root) {
+            Ok(target) => {
+                if target.ownership()
+                    != effortless_repo_edit::MutationTargetOwnership::SourceTreeOwned
+                {
+                    receipt.state = CandidateApplyStateV1::Conflict;
+                    receipt.reasons.push(format!(
+                        "operation target {} escapes repository ownership",
+                        operation.path
+                    ));
+                    return receipt;
+                }
+                lock_targets.push((
+                    target.target_fingerprint().to_string(),
+                    target.normalized_absolute().to_path_buf(),
+                ));
+            }
+            Err(error) => {
+                receipt.state = CandidateApplyStateV1::Conflict;
+                receipt.reasons.push(format!(
+                    "mutation-target resolution failed for {}: {error}",
+                    operation.path
+                ));
+                return receipt;
+            }
+        }
+    }
+    lock_targets.sort();
+    lock_targets.dedup();
+    let mut locks = Vec::new();
+    for (fingerprint, path) in &lock_targets {
+        match effortless_repo_edit::MutationLock::acquire(path) {
+            Ok(lock) => {
+                locks.push(lock);
+                receipt.locks.push(CandidateApplyLockRecordV1 {
+                    path: path.display().to_string(),
+                    fingerprint: fingerprint.clone(),
+                    acquired: true,
+                });
+            }
+            Err(error) => {
+                receipt.state = CandidateApplyStateV1::Conflict;
+                receipt.reasons.push(format!(
+                    "lock acquisition failed for {}: {error}",
+                    path.display()
+                ));
+                return receipt;
+            }
+        }
+    }
+
+    // ---- Per-target recheck immediately before staging: the plan's bound
+    // current digests must still hold under lock.
+    if fault.mutate_target_after_lock
+        && let Some((_, path)) = lock_targets.first()
+        && let Ok(bytes) = std::fs::read(path)
+        && let Ok(mutated) = std::str::from_utf8(&append_byte(&bytes))
+    {
+        let _ = effortless_repo_edit::write_file(path, mutated);
+    }
+    for operation in &write_ops {
+        let absolute = root.join(&operation.path);
+        let Ok(bytes) = std::fs::read(&absolute) else {
+            receipt.state = CandidateApplyStateV1::Mismatch;
+            receipt.reasons.push(format!(
+                "target {} is no longer readable under lock",
+                operation.path
+            ));
+            return receipt;
+        };
+        let digest = allow_core::sha256_v1_bytes(&bytes);
+        if Some(&digest) != operation.current.digest.as_ref() {
+            receipt.state = CandidateApplyStateV1::Mismatch;
+            receipt.reasons.push(format!(
+                "target {} changed after plan generation (control 1/6)",
+                operation.path
+            ));
+            return receipt;
+        }
+    }
+
+    // ---- Stage: re-render prospective bytes from the revalidated
+    // authorities and validate them against the plan's expected digests.
+    let source_version = plan_ref.source_release_identity.version.clone();
+    let Ok(target) = ReleaseVersionV1::parse(&target_version) else {
+        receipt.state = CandidateApplyStateV1::InstrumentFailure;
+        receipt
+            .reasons
+            .push("target version stopped parsing".to_string());
+        return receipt;
+    };
+    let rendered = match gather_surface_inputs(root, &source_version, &target, None) {
+        Ok(rendered) => rendered,
+        Err(reason) => {
+            receipt.state = CandidateApplyStateV1::InstrumentFailure;
+            receipt
+                .reasons
+                .push(format!("surface re-render failed: {reason}"));
+            return receipt;
+        }
+    };
+    let mut staged: Vec<(&allow_report::CandidateFileOperationV1, String)> = Vec::new();
+    for operation in &write_ops {
+        // Only deterministic surfaces reach this loop, so the re-render
+        // always contains the surface with generated UTF-8 bytes.
+        let surface = rendered
+            .iter()
+            .find(|surface| surface.owner == operation.owner && surface.path == operation.path)
+            .expect("the re-render preserves the reviewed surface set");
+        let bytes = surface.prospective_bytes.as_ref().expect("generated bytes");
+        let bytes = std::str::from_utf8(bytes)
+            .expect("rendered bytes stay UTF-8")
+            .as_bytes();
+        let mut bytes = bytes.to_vec();
+        if fault.corrupt_staged {
+            if bytes.is_empty() {
+                bytes.push(0x20);
+            } else {
+                let original = bytes[0];
+                bytes[0] = original.wrapping_add(1);
+            }
+        }
+        let staged_digest = allow_core::sha256_v1_bytes(&bytes);
+        if Some(&staged_digest) != operation.prospective_digest.as_ref() {
+            receipt.state = CandidateApplyStateV1::InstrumentFailure;
+            receipt.reasons.push(format!(
+                "staged bytes for {} do not match the reviewed digest; refusing to write",
+                operation.path
+            ));
+            return receipt;
+        }
+        let staged_contents = String::from_utf8(bytes).expect("rendered bytes stay UTF-8");
+        staged.push((operation, staged_contents));
+    }
+    receipt.staged_validation = true;
+
+    // ---- Preimages for rollback.
+    let mut preimages: Vec<(String, Vec<u8>)> = Vec::new();
+    for (operation, _) in &staged {
+        let absolute = root.join(&operation.path);
+        match std::fs::read(&absolute) {
+            Ok(bytes) => preimages.push((operation.path.clone(), bytes)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                preimages.push((operation.path.clone(), Vec::new()));
+            }
+            Err(error) => {
+                receipt.state = CandidateApplyStateV1::InstrumentFailure;
+                receipt.reasons.push(format!(
+                    "cannot read preimage for {}: {error}",
+                    operation.path
+                ));
+                return receipt;
+            }
+        }
+    }
+
+    // ---- Commit the complete ordered transaction. Staged bytes were
+    // already validated against the reviewed digests, so each write goes
+    // straight through the shared atomic primitive.
+    let mut committed: Vec<String> = Vec::new();
+    let mut abort: Option<(allow_report::CandidateApplyStateV1, String)> = None;
+    for (operation, contents) in &staged {
+        let absolute = root.join(&operation.path);
+        let write_result = match operation.posture {
+            allow_report::CandidateOperationPostureV1::Create => {
+                effortless_repo_edit::write_file_create_new_atomic(&absolute, contents)
+            }
+            _ => effortless_repo_edit::write_file(&absolute, contents),
+        };
+        if let Err(error) = write_result {
+            abort = Some((
+                CandidateApplyStateV1::InstrumentFailure,
+                format!("atomic write failed for {}: {error}", operation.path),
+            ));
+            break;
+        }
+        committed.push(operation.path.clone());
+        if let Some(limit) = fault.after_commit
+            && committed.len() == limit
+        {
+            abort = Some((
+                CandidateApplyStateV1::RolledBack,
+                format!("injected fault after {limit} commits"),
+            ));
+            break;
+        }
+    }
+
+    // Record per-operation outcomes.
+    for (operation, contents) in &staged {
+        let after_digest = allow_core::sha256_v1_bytes(contents.as_bytes());
+        let result = if committed.contains(&operation.path) {
+            if abort.is_some() {
+                "rolled_back"
+            } else {
+                "applied"
+            }
+        } else {
+            "not_applied"
+        };
+        receipt.operations.push(CandidateApplyOperationRecordV1 {
+            owner: operation.owner.clone(),
+            role: operation.role.clone(),
+            path: operation.path.clone(),
+            intended_posture: if matches!(
+                operation.posture,
+                allow_report::CandidateOperationPostureV1::Create
+            ) {
+                "create".to_string()
+            } else {
+                "replace".to_string()
+            },
+            before_digest: operation.current.digest.clone(),
+            staged_digest: operation.prospective_digest.clone(),
+            after_digest: Some(after_digest),
+            result: result.to_string(),
+        });
+    }
+    for operation in &plan_ops.operations {
+        if !matches!(
+            operation.posture,
+            allow_report::CandidateOperationPostureV1::Replace
+                | allow_report::CandidateOperationPostureV1::Create
+        ) {
+            receipt.operations.push(CandidateApplyOperationRecordV1 {
+                owner: operation.owner.clone(),
+                role: operation.role.clone(),
+                path: operation.path.clone(),
+                intended_posture: "decision_required".to_string(),
+                before_digest: operation.current.digest.clone(),
+                staged_digest: None,
+                after_digest: None,
+                result: "not_applied".to_string(),
+            });
+        }
+    }
+
+    // ---- Rollback on abort: restore every committed path from its
+    // preimage, oldest last, and verify the restored digests.
+    if let Some((state, reason)) = abort {
+        receipt.transaction_result = reason.clone();
+        let mut rollback_failures: Vec<String> = Vec::new();
+        let mut first_restored = false;
+        for path in committed.iter().rev() {
+            if fault.remove_first_target_before_rollback && !first_restored {
+                first_restored = true;
+                rollback_failures.push(format!(
+                    "{path}: injected rollback failure leaves the file in the prospective state"
+                ));
+                if let Some(record) = receipt
+                    .operations
+                    .iter_mut()
+                    .find(|record| &record.path == path)
+                {
+                    record.result = "recovery_required".to_string();
+                }
+                continue;
+            }
+            let Some((_, preimage)) = preimages.iter().find(|(p, _)| p == path) else {
+                rollback_failures.push(format!("{path}: no preimage"));
+                continue;
+            };
+            let absolute = root.join(path);
+            let restore = if preimage.is_empty() {
+                std::fs::remove_file(&absolute)
+                    .map_err(|error| format!("remove: {error}"))
+                    .and(Ok(()))
+            } else {
+                String::from_utf8(preimage.clone())
+                    .map_err(|error| format!("utf-8: {error}"))
+                    .and_then(|contents| {
+                        effortless_repo_edit::write_file(&absolute, &contents)
+                            .map_err(|error| error.to_string())
+                    })
+            };
+            match restore {
+                Ok(()) => {
+                    let restored = std::fs::read(&absolute).unwrap_or_default();
+                    let digest = allow_core::sha256_v1_bytes(&restored);
+                    let matches_before = preimages
+                        .iter()
+                        .find(|(p, _)| p == path)
+                        .map(|(_, preimage)| digest == allow_core::sha256_v1_bytes(preimage))
+                        .unwrap_or(false);
+                    if matches_before {
+                        let before = operation_before_digest(&receipt.operations, path);
+                        if let Some(record) = receipt
+                            .operations
+                            .iter_mut()
+                            .find(|record| &record.path == path)
+                        {
+                            record.result = "rolled_back".to_string();
+                            record.after_digest = before;
+                        }
+                    } else {
+                        rollback_failures.push(format!("{path}: restored bytes diverge"));
+                    }
+                }
+                Err(error) => rollback_failures.push(format!("{path}: {error}")),
+            }
+        }
+        if rollback_failures.is_empty() {
+            receipt.rollback_result = "complete".to_string();
+            receipt.state = state;
+        } else {
+            receipt.rollback_result = format!("incomplete: {}", rollback_failures.join("; "));
+            receipt.state = CandidateApplyStateV1::RecoveryRequired;
+            receipt.reasons.extend(rollback_failures);
+        }
+        if state == CandidateApplyStateV1::RolledBack {
+            receipt.reasons.push(reason);
+        }
+        return receipt;
+    }
+
+    // ---- Success: Applied, or NoOp when the deterministic set was empty.
+    receipt.transaction_result = "committed".to_string();
+    receipt.rollback_result = "not_needed".to_string();
+    receipt.state = if staged.is_empty() {
+        CandidateApplyStateV1::NoOp
+    } else {
+        CandidateApplyStateV1::Applied
+    };
+    for obligation in &plan_ref
+        .validation_obligations
+        .iter()
+        .map(|obligation| obligation.obligation_id.clone())
+        .collect::<Vec<_>>()
+    {
+        receipt.remaining_obligations.push(obligation.clone());
+    }
+    receipt
+}
+
+fn operation_before_digest(
+    operations: &[allow_report::CandidateApplyOperationRecordV1],
+    path: &str,
+) -> Option<String> {
+    operations
+        .iter()
+        .find(|record| record.path == path)
+        .and_then(|record| record.before_digest.clone())
 }

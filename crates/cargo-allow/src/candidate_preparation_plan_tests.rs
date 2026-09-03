@@ -430,11 +430,17 @@ fn control_12_projection_is_read_only() {
     assert_eq!(head_before, head_after, "projection mutated the head");
 
     let command_source = include_str!("cli/candidate_preparation_command.rs");
+    // The projection stays read-only; the #3833 apply engine writes only
+    // through the shared atomic-replacement authority (effortless_repo_edit
+    // write primitives, whose temp+rename+sync is the audited mechanism)
+    // and std::fs::remove_file solely to roll back files the same
+    // transaction created, restoring prior absence. Direct bypasses of the
+    // authority and directory-level destruction stay forbidden.
     for writer in [
         "fs::write",
         "OpenOptions",
-        "remove_file",
-        "rename(",
+        "write_all(",
+        "remove_dir_all",
         "create_dir",
     ] {
         assert!(
@@ -569,8 +575,12 @@ fn live_result_validates_against_the_registered_schema() {
 }
 
 fn live_preparation_result(version: &str) -> allow_report::CandidatePreparationResultV1 {
-    crate::cli::candidate_preparation_command::build_preparation_result(version, None)
-        .expect("live preparation must not be a process error")
+    crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
+        version,
+        None,
+    )
+    .expect("live preparation must not be a process error")
 }
 
 fn git_text(root: &std::path::Path, args: &[&str]) -> String {
@@ -603,9 +613,13 @@ fn command_dispatch_parses_through_the_real_cli() {
         panic!("prep-candidate must parse into the hidden command");
     };
     let crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(plan_args) =
-        parsed.command;
+        parsed.command
+    else {
+        panic!("plan subcommand must parse");
+    };
     assert_eq!(plan_args.version, "0.2.0");
-    let result = crate::cli::candidate_preparation_command::build_preparation_result(
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
         &plan_args.version,
         None,
     )
@@ -620,9 +634,12 @@ fn command_dispatch_parses_through_the_real_cli() {
 /// invalid-config error.
 #[test]
 fn command_layer_rejects_malformed_targets() {
-    let result =
-        crate::cli::candidate_preparation_command::build_preparation_result("0.2.0-beta.9", None)
-            .expect("the typed result exists for the unsupported target");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &workspace_root(),
+        "0.2.0-beta.9",
+        None,
+    )
+    .expect("the typed result exists for the unsupported target");
     assert_eq!(
         result.readiness,
         CandidatePreparationReadinessV1::Unsupported
@@ -990,5 +1007,884 @@ fn mutation_target_collisions_are_detected() {
     crate::cli::candidate_preparation_command::resolve_surface_collisions(&root, &mut surfaces);
     assert!(surfaces.iter().all(|s| s.collision.is_clear()));
 
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Build a minimal but authority-complete fixture repository whose live
+/// projection matches the real pipeline: git identity, root manifest with
+/// one exact internal requirement, topology V2 generation, support
+/// matrices, changie corpus, policy, and a version-derived reference.
+#[cfg(test)]
+fn fixture_apply_repo(tag: &str) -> std::path::PathBuf {
+    use std::process::Command as Process;
+
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-apply-fixture-{tag}-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("crates/allow-core")).expect("crate dir");
+    std::fs::create_dir_all(root.join("policy")).expect("policy dir");
+    std::fs::create_dir_all(root.join("docs/release/github")).expect("release docs dir");
+    std::fs::create_dir_all(root.join(".changes")).expect("changes dir");
+
+    std::fs::write(
+        root.join("Cargo.toml"),
+        "[workspace]\nresolver = \"3\"\nmembers = [\n  \"crates/allow-core\",\n]\n\n[workspace.package]\nversion = \"0.2.0-rc.1\"\n\n[workspace.dependencies]\nallow-core = { path = \"crates/allow-core\", version = \"=0.2.0-rc.1\" }\n",
+    )
+    .expect("root manifest");
+    std::fs::write(
+        root.join("crates/allow-core/Cargo.toml"),
+        "[package]\nname = \"allow-core\"\nversion.workspace = true\n",
+    )
+    .expect("member manifest");
+    std::fs::write(root.join("Cargo.lock"), "version = 4\n").expect("lock");
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        "authority_generation = 2\n\n[[package]]\nlogical_id = \"allow-core\"\ncargo_package_name = \"allow-core\"\nversion_line = \"cargo-allow-0.2\"\nproduct_family = \"cargo-allow\"\nposture = \"CargoAllowSupported\"\npackage_version = \"0.2.0-rc.1\"\nversion_source = \"WorkspaceProduct\"\npublication_state = \"UnpublishedInternal\"\npublish = true\ncandidate_inclusion = true\nrelease_order = 10\nci_lane = \"test\"\nsupport_tier = \"supported\"\nasset_roots = []\nextraction_destination = \"cargo-allow\"\n\n[[package]]\nlogical_id = \"repo-protocol\"\ncargo_package_name = \"effortless-repo-protocol\"\nversion_line = \"shared-0.1\"\nproduct_family = \"shared\"\nposture = \"SharedProtocolInternalOrStabilizing\"\npackage_version = \"0.1.0\"\nversion_source = \"Explicit\"\npublication_state = \"UnpublishedInternal\"\npublish = true\ncandidate_inclusion = true\nrelease_order = 80\nci_lane = \"test\"\nsupport_tier = \"internal-stabilizing\"\nasset_roots = []\nextraction_destination = \"cargo-allow\"\n",
+    )
+    .expect("topology");
+    let policy_support_matrix = "[[product]]\nproduct_id = \"cargo-allow\"\nposture = \"CargoAllowSupported\"\n[[product]]\nproduct_id = \"shared-protocols\"\nposture = \"SharedProtocolInternalOrStabilizing\"\n";
+    std::fs::write(
+        root.join("policy/product-support-matrix.toml"),
+        policy_support_matrix,
+    )
+    .expect("policy support matrix");
+    std::fs::write(
+        root.join("docs/support-matrix.toml"),
+        "published_version = \"0.1.11\"\ncandidate_version = \"0.2.0-rc.1\"\ncandidate_published = false\n",
+    )
+    .expect("candidate support matrix");
+    std::fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n").expect("policy");
+    std::fs::write(root.join(".changie.yaml"), "changes: []\n").expect("changie config");
+    std::fs::write(root.join(".changes/one.md"), "fragment\n").expect("fragment");
+    std::fs::write(
+        root.join("docs/getting-started.md"),
+        "Install the 0.2.0-rc.1 candidate line.\n",
+    )
+    .expect("getting started");
+    std::fs::write(
+        root.join("docs/release/0.2.0.md"),
+        "# 0.2.0 candidate record\n",
+    )
+    .expect("release record");
+    std::fs::write(
+        root.join("docs/release/github/v0.2.0.md"),
+        "# GitHub release notes for v0.2.0\n",
+    )
+    .expect("github note");
+
+    let git = |args: &[&str]| {
+        let output = Process::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(args)
+            .output()
+            .expect("git runs");
+        assert!(
+            output.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    };
+    git(&["init", "-b", "main"]);
+    git(&["config", "user.email", "fixture@example.test"]);
+    git(&["config", "user.name", "Fixture"]);
+    git(&[
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/EffortlessMetrics/cargo-allow-fixture.git",
+    ]);
+    git(&["add", "-A"]);
+    git(&["commit", "-m", "fixture"]);
+    root
+}
+
+#[cfg(test)]
+fn fixture_plan(root: &std::path::Path) -> allow_report::CandidatePreparationResultV1 {
+    crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        root, "0.2.0", None,
+    )
+    .expect("fixture projection builds")
+}
+
+#[cfg(test)]
+fn fixture_decisions(result: &allow_report::CandidatePreparationResultV1) -> Vec<String> {
+    let plan = result.plan.as_ref().expect("plan");
+    let mut ids: Vec<String> = plan
+        .required_decisions
+        .iter()
+        .map(|decision| decision.decision_id.clone())
+        .collect();
+    if let Some(ops) = &result.operations {
+        ids.extend(
+            ops.decisions
+                .iter()
+                .map(|decision| decision.decision_id.clone()),
+        );
+    }
+    ids.sort();
+    ids.dedup();
+    ids
+}
+
+/// Apply executes the deterministic set through the shared authorities and
+/// leaves every generated byte in place (acceptance: one exact plan
+/// applies; equal inputs yield equal bytes).
+#[test]
+fn candidate_preparation_apply_applies_the_deterministic_set() {
+    let root = fixture_apply_repo("apply");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Applied,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(receipt.staged_validation);
+    assert_eq!(receipt.rollback_result, "not_needed");
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert!(manifest.contains("version = \"0.2.0\""));
+    assert!(manifest.contains("version = \"=0.2.0\""));
+    assert!(!manifest.contains("0.2.0-rc.1"));
+    let topology = std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+        .expect("topology");
+    assert_eq!(topology.matches("package_version = \"0.2.0\"").count(), 1);
+    assert_eq!(
+        topology
+            .matches("publication_state = \"UnpublishedInternal\"")
+            .count(),
+        2
+    );
+    let getting_started =
+        std::fs::read_to_string(root.join("docs/getting-started.md")).expect("getting started");
+    assert!(getting_started.contains("0.2.0"));
+    assert!(!getting_started.contains("0.2.0-rc.1"));
+    // The judgment-bearing surfaces were acknowledged, not written.
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "not_applied" && operation.path == ".changes")
+    );
+    // Unrelated worktree files are byte-preserved.
+    let lock = std::fs::read_to_string(root.join("Cargo.lock")).expect("lock");
+    assert_eq!(lock, "version = 4\n");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A plan whose decisions were not acknowledged is refused before any
+/// write (controls 9; gate law).
+#[test]
+fn candidate_preparation_apply_requires_decision_acknowledgements() {
+    let root = fixture_apply_repo("decisions");
+    let plan = fixture_plan(&root);
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &[],
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::DecisionRequired
+    );
+    assert!(receipt.decision_acknowledgements.is_empty());
+    let after = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert_eq!(before, after, "no write may precede the decision gate");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A source or destination movement after plan generation is Stale with
+/// zero writes (control 1).
+#[test]
+fn candidate_preparation_apply_detects_stale_plans() {
+    let root = fixture_apply_repo("stale");
+    let plan = fixture_plan(&root);
+    std::fs::write(
+        root.join("docs/getting-started.md"),
+        "drifted past the plan\n",
+    )
+    .expect("drift");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &fixture_decisions(&plan),
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Stale);
+    assert!(
+        !receipt.staged_validation,
+        "no staging may happen for a stale plan"
+    );
+    let getting_started =
+        std::fs::read_to_string(root.join("docs/getting-started.md")).expect("getting started");
+    assert!(getting_started.contains("drifted"), "drift must survive");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Rerunning the same reviewed plan after a successful apply is Stale —
+/// the plan no longer matches the moved repository — and it performs no
+/// writes; the repository stays at the applied state (control 10).
+#[test]
+fn candidate_preparation_apply_second_run_is_stale_without_writes() {
+    let root = fixture_apply_repo("rerun");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    let rerun = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(rerun.state, allow_report::CandidateApplyStateV1::Stale);
+    assert!(
+        rerun
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied"),
+        "a stale rerun performs no writes"
+    );
+
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    assert!(
+        manifest.contains("version = \"0.2.0\""),
+        "the repository stays at the applied state"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A mid-commit fault leaves the complete prior state via rollback
+/// (control 7; transaction law).
+#[test]
+fn candidate_preparation_faults_mid_commit_rolls_back_completely() {
+    let root = fixture_apply_repo("rollback");
+    let before_manifest = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let before_topology =
+        std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+            .expect("topology");
+    let before_matrix =
+        std::fs::read_to_string(root.join("docs/support-matrix.toml")).expect("support matrix");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: Some(2),
+            corrupt_staged: false,
+            mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::RolledBack,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert_eq!(receipt.rollback_result, "complete");
+    assert_eq!(
+        std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest"),
+        before_manifest,
+        "rollback must restore the complete prior state"
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+            .expect("topology"),
+        before_topology
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("docs/support-matrix.toml")).expect("support matrix"),
+        before_matrix
+    );
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "rolled_back")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Corrupted staged bytes abort before the first write (control 7 staging
+/// half; transaction law: validate staged bytes before replacement).
+#[test]
+fn candidate_preparation_faults_corrupt_staged_abort_without_writes() {
+    let root = fixture_apply_repo("corrupt");
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: None,
+            corrupt_staged: true,
+            mutate_target_after_lock: false,
+            remove_first_target_before_rollback: false,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::InstrumentFailure,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(!receipt.staged_validation);
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    assert_eq!(
+        std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest"),
+        before,
+        "no write may precede staged validation"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A tampered plan file (an operation path escaping the repository) fails
+/// the revalidation gate before any mutation (controls 4; gate law).
+#[test]
+fn candidate_preparation_apply_tampered_plan_fails_before_writes() {
+    let root = fixture_apply_repo("tampered");
+    let plan = fixture_plan(&root);
+    let mut tampered = serde_json::to_value(&plan).expect("plan serializes");
+    let operations = tampered
+        .pointer_mut("/operations/operations/0/path")
+        .expect("operation path");
+    *operations = serde_json::Value::String("../escaped.txt".to_string());
+    let parsed: allow_report::CandidatePreparationResultV1 =
+        serde_json::from_value(tampered).expect("tampered plan parses");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &parsed,
+        &fixture_decisions(&plan),
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Conflict,
+        "a tampered plan must fail the authenticity gate"
+    );
+    assert!(
+        receipt
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("does not cover its content"))
+    );
+    assert!(!root.join("../escaped.txt").exists());
+    assert!(!root.parent().expect("parent").join("escaped.txt").exists());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Unrelated dirty files stay byte-preserved through a successful apply
+/// (transaction law; control 2 complement).
+#[test]
+fn candidate_preparation_apply_preserves_unrelated_dirty_files() {
+    let root = fixture_apply_repo("dirty");
+    std::fs::write(root.join("unrelated.txt"), "operator scratch\n").expect("dirty file");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Applied);
+    assert_eq!(
+        std::fs::read_to_string(root.join("unrelated.txt")).expect("dirty file"),
+        "operator scratch\n",
+        "unrelated content must be byte-preserved"
+    );
+    assert!(
+        !receipt
+            .operations
+            .iter()
+            .any(|operation| operation.path == "unrelated.txt")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The command never reaches git-mutating, token-reading, or network
+/// constructs (control 12; source-level law).
+#[test]
+fn candidate_preparation_apply_command_source_has_no_external_writes() {
+    let source = include_str!("cli/candidate_preparation_command.rs");
+    for forbidden in [
+        "fs::write",
+        "OpenOptions",
+        "remove_dir_all",
+        "\"push\"",
+        "\"fetch\"",
+        "\"token\"",
+        "GITHUB_TOKEN",
+        "reqwest",
+        "ureq",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "apply command source contains forbidden construct {forbidden:?}"
+        );
+    }
+}
+
+/// The command wrapper loads a plan file, writes the receipt, and maps an
+/// Applied state to success end to end.
+#[test]
+fn candidate_preparation_apply_command_writes_receipt_and_maps_exit() {
+    let root = fixture_apply_repo("cmd");
+    let plan = fixture_plan(&root);
+    // The plan file lives outside the fixture: an untracked file inside
+    // the repository would legitimately flip the dirty-state class and
+    // make the gate report Stale.
+    let plan_file = std::env::temp_dir().join(format!(
+        "candidate-preparation-plan-{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &plan_file,
+        serde_json::to_string_pretty(&plan).expect("plan serializes"),
+    )
+    .expect("plan file written");
+    let receipt_path = root.join("candidate-preparation.receipt.json");
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file.clone(),
+        receipt: Some(receipt_path.clone()),
+        acknowledge_decision: fixture_decisions(&plan),
+    };
+    crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+        .expect("applied plan exits ready");
+    let receipt_text = std::fs::read_to_string(&receipt_path).expect("receipt written");
+    assert!(receipt_text.contains("cargo-allow.candidate-apply-receipt.v1"));
+    assert!(receipt_text.contains("\"state\": \"applied\""));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A malformed plan file fails at load with a structured invalid-config
+/// error before any repository access.
+#[test]
+fn candidate_preparation_apply_command_rejects_malformed_plan_files() {
+    let root = fixture_apply_repo("cmd-bad");
+    let plan_file = root.join("broken-plan.json");
+    std::fs::write(&plan_file, "{ not json").expect("plan file written");
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file,
+        receipt: None,
+        acknowledge_decision: Vec::new(),
+    };
+    let error =
+        crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+            .expect_err("malformed plan must fail");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A target flipped between lock acquisition and the recheck is a
+/// Mismatch with zero writes (control 6).
+#[test]
+fn candidate_preparation_faults_post_lock_mutation_is_a_mismatch() {
+    let root = fixture_apply_repo("postlock");
+    let before = std::fs::read_to_string(root.join("Cargo.toml")).expect("manifest");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: None,
+            corrupt_staged: false,
+            mutate_target_after_lock: true,
+            remove_first_target_before_rollback: false,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::Mismatch,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    assert!(before.contains("0.2.0-rc.1"));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// An incomplete rollback surfaces as an explicit bounded
+/// RecoveryRequired state instead of a silent green (transaction law).
+#[test]
+fn candidate_preparation_faults_incomplete_rollback_is_recovery_required() {
+    let root = fixture_apply_repo("recovery");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault {
+            after_commit: Some(1),
+            corrupt_staged: false,
+            mutate_target_after_lock: false,
+            remove_first_target_before_rollback: true,
+        },
+    );
+    assert_eq!(
+        receipt.state,
+        allow_report::CandidateApplyStateV1::RecoveryRequired,
+        "reasons: {:?}",
+        receipt.reasons
+    );
+    assert!(receipt.rollback_result.starts_with("incomplete"));
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .any(|operation| operation.result == "recovery_required")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A receipt path that collides with an operation target is a Conflict
+/// before any write (control 5).
+#[test]
+fn candidate_preparation_apply_receipt_path_collision_is_a_conflict() {
+    let root = fixture_apply_repo("receipt-collide");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        Some(&root.join("Cargo.toml")),
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    assert!(
+        receipt
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("collides with the operation target"))
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Applying a result that carries no projected plan (the repository has
+/// already reached the target line) is an explicit Conflict, not a write.
+#[test]
+fn candidate_preparation_apply_planless_result_is_a_conflict() {
+    let root = fixture_apply_repo("planless");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    // Post-apply, the repository no longer projects a transition.
+    let planless = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("result builds");
+    assert!(planless.plan.is_none());
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &planless,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    assert!(
+        receipt
+            .operations
+            .iter()
+            .all(|operation| operation.result != "applied")
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The plan command maps hard non-ready classes to a structured error
+/// while still rendering the typed result (exit-mapping coverage).
+#[test]
+fn candidate_preparation_plan_command_maps_stale_to_error() {
+    let root = fixture_apply_repo("plan-exit");
+    let plan = fixture_plan(&root);
+    let decisions = fixture_decisions(&plan);
+    let first = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &decisions,
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(first.state, allow_report::CandidateApplyStateV1::Applied);
+
+    let stale_args = crate::cli::candidate_preparation_command::PrepCandidatePlanArgs {
+        version: "0.2.0".to_string(),
+        format: crate::cli::candidate_preparation_command::PrepOutputFormat::Text,
+        policy_plan: None,
+    };
+    let error = crate::cli::candidate_preparation_command::cmd_prep_candidate_plan_for_root(
+        &root,
+        &stale_args,
+    )
+    .expect_err("a stale projection must map to a non-zero exit");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A missing version-derived reference makes the surface gather fail
+/// explicitly rather than silently dropping the surface.
+#[test]
+fn candidate_preparation_surface_gather_reports_missing_declared_files() {
+    let root = fixture_apply_repo("gather-gap");
+    std::fs::remove_file(root.join("docs/getting-started.md")).expect("remove reference");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("result renders");
+    assert!(
+        result
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("operation compilation unavailable")),
+        "reasons: {:?}",
+        result.reasons
+    );
+    assert!(result.operations.is_none());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// A non-repository root makes every git-bound input fact fail with
+/// explicit reasons: the whole gather-failure aggregation path.
+#[test]
+fn candidate_preparation_apply_gather_failure_reports_every_missing_fact() {
+    let root =
+        std::env::temp_dir().join(format!("cargo-allow-apply-nonrepo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("bare dir");
+    let result = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect("the failure is a typed result, not a process error");
+    assert_eq!(
+        result.readiness,
+        allow_report::CandidatePreparationReadinessV1::InstrumentFailure
+    );
+    for expected in [
+        "repository identity",
+        "branch",
+        "HEAD commit",
+        "working-tree state",
+    ] {
+        assert!(
+            result
+                .reasons
+                .iter()
+                .any(|reason| reason.contains(expected)),
+            "reason {expected:?} missing: {:?}",
+            result.reasons
+        );
+    }
+    assert!(result.plan.is_none());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Applying against a root whose projection cannot even be rebuilt stays
+/// an explicit stale result (gate ordering: revalidation precedes writes).
+#[test]
+fn candidate_preparation_faults_unrebuildable_projection_is_stale() {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-apply-unrebuildable-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("bare dir");
+    let plan: allow_report::CandidatePreparationResultV1 =
+        serde_json::from_value(serde_json::json!({
+            "schema": "cargo-allow.candidate-preparation-result.v1",
+            "readiness": "decision_required",
+            "reasons": [],
+            "input_identity": null,
+            "plan": null,
+            "operations": null,
+            "human_summary": "forged"
+        }))
+        .expect("minimal result parses");
+    let receipt = crate::cli::candidate_preparation_command::apply_candidate_plan(
+        &root,
+        &plan,
+        &[],
+        None,
+        crate::cli::candidate_preparation_command::ApplyFault::none(),
+    );
+    assert_eq!(receipt.state, allow_report::CandidateApplyStateV1::Conflict);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The command dispatch routes both prep-candidate subcommands, and the
+/// apply wrapper's decision-refusal path maps to a structured error.
+#[test]
+fn candidate_preparation_apply_command_dispatch_and_error_mapping() {
+    let root = fixture_apply_repo("dispatch");
+    let plan = fixture_plan(&root);
+    let plan_file = std::env::temp_dir().join(format!(
+        "candidate-preparation-dispatch-{}.json",
+        std::process::id()
+    ));
+    std::fs::write(
+        &plan_file,
+        serde_json::to_string_pretty(&plan).expect("plan serializes"),
+    )
+    .expect("plan file written");
+
+    // The dispatch wrapper routes the Plan subcommand through the same
+    // root-parameterized projection (run while the rc line still binds).
+    let plan_args = crate::cli::candidate_preparation_command::PrepCandidatePlanArgs {
+        version: "0.2.0".to_string(),
+        format: crate::cli::candidate_preparation_command::PrepOutputFormat::Json,
+        policy_plan: None,
+    };
+    let routed = crate::cli::candidate_preparation_command::PrepCandidateArgs {
+        command: crate::cli::candidate_preparation_command::PrepCandidateSubcommand::Plan(
+            plan_args,
+        ),
+    };
+    crate::cli::candidate_preparation_command::cmd_prep_candidate_with_root(&root, &routed)
+        .expect("the plan subcommand exits ready for a projected plan");
+
+    // Apply without acknowledgements: the wrapper surfaces the typed
+    // DecisionRequired refusal as a structured error.
+    let args = crate::cli::candidate_preparation_command::PrepCandidateApplyArgs {
+        from_plan: plan_file,
+        receipt: None,
+        acknowledge_decision: Vec::new(),
+    };
+    let error =
+        crate::cli::candidate_preparation_command::cmd_prep_candidate_apply_with_root(&root, &args)
+            .expect_err("an unacknowledged-decision apply must fail");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// The staged renderer refuses a drifted authority: an unexpected
+/// occurrence count fails the surface instead of compiling a wrong
+/// operation (drift control for the generated-byte law).
+#[test]
+fn render_token_swap_rejects_drifted_occurrence_counts() {
+    use crate::cli::candidate_preparation_command::render_token_swap;
+    let bytes = b"version = \"0.2.0-rc.1\"\nversion = \"0.2.0-rc.1\"\n";
+    let error = render_token_swap(bytes, "0.2.0-rc.1", "0.2.0", 3, "probe")
+        .expect_err("the drift must be rejected");
+    assert!(error.contains("expects exactly 3"), "{error}");
+    let ok = render_token_swap(bytes, "0.2.0-rc.1", "0.2.0", 2, "probe")
+        .expect("matching count renders");
+    let text = String::from_utf8(ok).expect("utf-8");
+    assert!(!text.contains("0.2.0-rc.1"));
+}
+
+/// The swap-all renderer refuses a file that stopped carrying the token
+/// instead of silently emitting identical bytes.
+#[test]
+fn render_token_swap_all_rejects_missing_token() {
+    use crate::cli::candidate_preparation_command::render_token_swap_all;
+    let error = render_token_swap_all(b"no token here", "0.2.0-rc.1", "0.2.0", "probe")
+        .expect_err("a missing token must be rejected");
+    assert!(error.contains("stopped carrying"), "{error}");
+    let ok = render_token_swap_all(b"a 0.2.0-rc.1 b 0.2.0-rc.1", "0.2.0-rc.1", "0.2.0", "probe")
+        .expect("token present");
+    assert_eq!(String::from_utf8(ok).expect("utf-8"), "a 0.2.0 b 0.2.0");
+}
+
+/// The topology asset-root parser reads every declared root.
+#[test]
+fn asset_roots_parser_reads_all_declared_roots() {
+    let roots = crate::cli::candidate_preparation_command::asset_roots_from_topology(
+        b"asset_roots = [\"docs/schemas\", \"examples\"]\n".as_ref(),
+    )
+    .expect("roots parse");
+    assert_eq!(
+        roots,
+        vec!["docs/schemas".to_string(), "examples".to_string()]
+    );
+    let empty = crate::cli::candidate_preparation_command::asset_roots_from_topology(
+        b"publish = true\n".as_ref(),
+    )
+    .expect("no roots is fine");
+    assert!(empty.is_empty());
+}
+
+/// A corrupted topology authority fails the projection loudly: invalid
+/// UTF-8 hits the decode arm, broken TOML hits the parse arm, and both
+/// produce a structured invalid-config error (#3832 staging law).
+#[test]
+fn candidate_preparation_corrupted_topology_fails_loudly() {
+    let root = fixture_apply_repo("corrupt-topology");
+    let invalid_utf8: Vec<u8> = vec![0xff, 0xfe, 0x00];
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        invalid_utf8,
+    )
+    .expect("write bytes");
+    let error = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    )
+    .expect_err("invalid UTF-8 topology must fail");
+    assert!(error.to_string().contains("decode"), "{error}");
+
+    let broken_topology = "[[package]\nlogical_id = \"broken\"\n";
+    std::fs::write(
+        root.join("policy/product-package-topology-v2.toml"),
+        broken_topology,
+    )
+    .expect("write broken toml");
+    let broken = crate::cli::candidate_preparation_command::build_preparation_result_for_root(
+        &root, "0.2.0", None,
+    );
+    let error = broken.expect_err("broken topology must fail");
+    assert!(error.to_string().contains("parse"), "{error}");
     let _ = std::fs::remove_dir_all(&root);
 }

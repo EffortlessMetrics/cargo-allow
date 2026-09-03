@@ -90,6 +90,19 @@ pub struct CandidatePreparationInputIdentityV1 {
     pub source_exception_policy_digest: String,
 }
 
+impl CandidatePreparationPlanV1 {
+    /// True when the stored plan digest equals the canonical digest of the
+    /// plan's own content. Apply-time gate against tampering.
+    pub fn digest_is_authentic(&self) -> bool {
+        let mut draft = self.clone();
+        draft.plan_digest = String::new();
+        match serde_json::to_string(&draft) {
+            Ok(canonical) => allow_core::sha256_v1_bytes(canonical.as_bytes()) == self.plan_digest,
+            Err(_) => false,
+        }
+    }
+}
+
 impl CandidatePreparationInputIdentityV1 {
     /// Digest over the canonical JSON of the full identity. Relative paths
     /// and content digests only, so equal repository states digest equally
@@ -245,13 +258,13 @@ pub struct CandidateExternalObservationV1 {
 /// The complete typed semantic plan (#3831).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CandidatePreparationPlanV1 {
-    pub schema: &'static str,
+    pub schema: String,
     pub input_identity: CandidatePreparationInputIdentityV1,
     pub source_release_identity: CandidateReleaseIdentityProjectionV1,
     pub target_release_identity: CandidateReleaseIdentityProjectionV1,
     /// Always "projected_not_public": a prepared candidate has no public
     /// existence until a separately authorized release executes.
-    pub target_publication_posture: &'static str,
+    pub target_publication_posture: String,
     pub selected_rows: Vec<CandidateSelectedRowV1>,
     pub operations: Vec<CandidatePreparationOperationV1>,
     pub support_channel_posture: CandidateSupportChannelPostureV1,
@@ -261,7 +274,7 @@ pub struct CandidatePreparationPlanV1 {
     pub external_observations: Vec<CandidateExternalObservationV1>,
     pub validation_obligations: Vec<CandidateValidationObligationV1>,
     pub plan_digest: String,
-    pub claim_boundary: &'static str,
+    pub claim_boundary: String,
 }
 
 /// The classified outcome of one preparation attempt. Non-ready classes
@@ -269,7 +282,7 @@ pub struct CandidatePreparationPlanV1 {
 /// identity that was bound.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CandidatePreparationResultV1 {
-    pub schema: &'static str,
+    pub schema: String,
     pub readiness: CandidatePreparationReadinessV1,
     pub reasons: Vec<String>,
     pub input_identity: Option<CandidatePreparationInputIdentityV1>,
@@ -384,7 +397,7 @@ pub fn validate_candidate_operation_set(
 /// never panics or silent greens.
 pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidatePreparationResultV1 {
     let unsupported = |reasons: Vec<String>| CandidatePreparationResultV1 {
-        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
         readiness: CandidatePreparationReadinessV1::Unsupported,
         reasons,
         input_identity: Some(input.input_identity.clone()),
@@ -418,7 +431,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
 
     if input.input_identity.topology_generation != SUPPORTED_TOPOLOGY_GENERATION_V1 {
         return CandidatePreparationResultV1 {
-            schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+            schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
             readiness: CandidatePreparationReadinessV1::Unsupported,
             reasons: vec![format!(
                 "product package topology generation {} is unsupported; this contract understands generation {SUPPORTED_TOPOLOGY_GENERATION_V1}",
@@ -433,7 +446,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
     }
 
     let instrument_failure = |reasons: Vec<String>| CandidatePreparationResultV1 {
-        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
         readiness: CandidatePreparationReadinessV1::InstrumentFailure,
         reasons,
         input_identity: Some(input.input_identity.clone()),
@@ -452,7 +465,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
     }
 
     let conflict = |reasons: Vec<String>| CandidatePreparationResultV1 {
-        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
         readiness: CandidatePreparationReadinessV1::Conflict,
         reasons,
         input_identity: Some(input.input_identity.clone()),
@@ -550,7 +563,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
 
     if target.as_str() == source_version.as_str() {
         return CandidatePreparationResultV1 {
-            schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+            schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
             readiness: CandidatePreparationReadinessV1::Stale,
             reasons: vec![format!(
                 "target version {} equals the current source line; there is no transition to prepare",
@@ -821,11 +834,11 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
     }
 
     let draft = CandidatePreparationPlanV1 {
-        schema: CANDIDATE_PREPARATION_PLAN_SCHEMA_V1,
+        schema: CANDIDATE_PREPARATION_PLAN_SCHEMA_V1.to_string(),
         input_identity: input.input_identity.clone(),
         source_release_identity: source_projection,
         target_release_identity: target_projection,
-        target_publication_posture: "projected_not_public",
+        target_publication_posture: "projected_not_public".to_string(),
         selected_rows,
         operations,
         support_channel_posture: CandidateSupportChannelPostureV1 {
@@ -843,7 +856,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
         external_observations: input.external_observations.clone(),
         validation_obligations,
         plan_digest: String::new(),
-        claim_boundary: CANDIDATE_PREPARATION_CLAIM_BOUNDARY_V1,
+        claim_boundary: CANDIDATE_PREPARATION_CLAIM_BOUNDARY_V1.to_string(),
     };
 
     let digest = sha256_v1_bytes(
@@ -891,7 +904,7 @@ pub fn prepare_candidate_plan(input: CandidateProjectionInput<'_>) -> CandidateP
     );
 
     CandidatePreparationResultV1 {
-        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1,
+        schema: CANDIDATE_PREPARATION_RESULT_SCHEMA_V1.to_string(),
         readiness,
         reasons,
         input_identity: Some(input.input_identity),

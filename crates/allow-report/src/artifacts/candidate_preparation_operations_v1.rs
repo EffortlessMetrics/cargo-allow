@@ -132,7 +132,7 @@ pub struct CandidateSurfaceDecisionV1 {
 /// plan; older results without these fields stay valid.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CandidateOperationPlanV1 {
-    pub schema: &'static str,
+    pub schema: String,
     /// Owner classes the compiler required for this plan.
     pub required_owners: Vec<String>,
     pub operations: Vec<CandidateFileOperationV1>,
@@ -140,7 +140,7 @@ pub struct CandidateOperationPlanV1 {
     /// Digest over the canonical serialization of operations and
     /// decisions, independent of the #3831 plan digest.
     pub operations_digest: String,
-    pub claim_boundary: &'static str,
+    pub claim_boundary: String,
 }
 
 /// One surface input gathered by the caller from a live authority.
@@ -286,7 +286,7 @@ pub fn compile_candidate_operations(
     decisions.sort_by(|a, b| a.decision_id.cmp(&b.decision_id));
 
     let draft = CandidateOperationPlanV1 {
-        schema: CANDIDATE_OPERATION_PLAN_SCHEMA_V1,
+        schema: CANDIDATE_OPERATION_PLAN_SCHEMA_V1.to_string(),
         required_owners: REQUIRED_SURFACE_OWNERS
             .iter()
             .map(|owner| (*owner).to_string())
@@ -294,7 +294,7 @@ pub fn compile_candidate_operations(
         operations,
         decisions,
         operations_digest: String::new(),
-        claim_boundary: OPERATION_CLAIM_BOUNDARY_V1,
+        claim_boundary: OPERATION_CLAIM_BOUNDARY_V1.to_string(),
     };
     let digest = sha256_v1_bytes(
         serde_json::to_string(&draft)
@@ -304,6 +304,22 @@ pub fn compile_candidate_operations(
     CandidateOperationPlanV1 {
         operations_digest: digest,
         ..draft
+    }
+}
+
+impl CandidateOperationPlanV1 {
+    /// True when the stored operations digest equals the canonical digest
+    /// of the operation set's own content. Apply-time gate against
+    /// tampering.
+    pub fn digest_is_authentic(&self) -> bool {
+        let mut draft = self.clone();
+        draft.operations_digest = String::new();
+        match serde_json::to_string(&draft) {
+            Ok(canonical) => {
+                allow_core::sha256_v1_bytes(canonical.as_bytes()) == self.operations_digest
+            }
+            Err(_) => false,
+        }
     }
 }
 
