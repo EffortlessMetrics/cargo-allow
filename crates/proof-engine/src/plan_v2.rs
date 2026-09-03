@@ -121,7 +121,12 @@ fn build_item(
             )
         }
         None => (
-            ProofItemDispositionV1::ProviderUnavailable,
+            match obligation.posture {
+                intent_protocol::IntentObligationPostureV1::Decision => {
+                    ProofItemDispositionV1::RepositoryDecisionRequired
+                }
+                _ => ProofItemDispositionV1::ProviderUnavailable,
+            },
             None,
             None,
             ProofItemExecutionPostureV1::None,
@@ -132,7 +137,7 @@ fn build_item(
         proof_item_id: digest(&base),
         intent_obligation_id: obligation.obligation_id.clone(),
         phase: obligation.phase.clone(),
-        blocking: !matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Advisory),
+        blocking: matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Blocking),
         evidence_purpose_ref: obligation.statement.clone(),
         required_capability_class: capability_class,
         snapshot_identity: snapshot_identity.to_string(),
