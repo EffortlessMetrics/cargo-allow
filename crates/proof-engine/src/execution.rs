@@ -91,6 +91,7 @@ pub enum ProcessObservationStatusV1 {
 #[serde(deny_unknown_fields)]
 pub struct ExecutionSpecV1 {
     pub reviewed_invocation: CommandInvocationSpecV1,
+    pub reviewed_plan_id: String,
     pub plan_id: String,
     pub command_id: String,
     pub program: String,
@@ -276,12 +277,15 @@ pub fn execute_bounded(
         stderr_result = stderr_rx.try_recv().ok();
     }
     let mut capture_incomplete = false;
+    let mut stdout_capture_missing = false;
+    let mut stderr_capture_missing = false;
     let output_limit_exceeded = stdout_limit_exceeded || stderr_limit_exceeded;
     let stdout = if timed_out || output_limit_exceeded {
         match stdout_result.and_then(Result::ok) {
             Some(bytes) => bytes,
             None => {
                 capture_incomplete = true;
+                stdout_capture_missing = true;
                 Vec::new()
             }
         }
@@ -299,6 +303,7 @@ pub fn execute_bounded(
             Some(bytes) => bytes,
             None => {
                 capture_incomplete = true;
+                stderr_capture_missing = true;
                 Vec::new()
             }
         }
@@ -311,8 +316,14 @@ pub fn execute_bounded(
             }
         }
     };
-    let stdout_truncated = stdout_limit_exceeded || timed_out || stdout.len() > spec.stdout_limit;
-    let stderr_truncated = stderr_limit_exceeded || timed_out || stderr.len() > spec.stderr_limit;
+    let stdout_truncated = stdout_limit_exceeded
+        || timed_out
+        || stdout_capture_missing
+        || stdout.len() > spec.stdout_limit;
+    let stderr_truncated = stderr_limit_exceeded
+        || timed_out
+        || stderr_capture_missing
+        || stderr.len() > spec.stderr_limit;
     let observation = if timed_out {
         ProcessObservationStatusV1::TimedOut
     } else if output_limit_exceeded || stdout_truncated || stderr_truncated {
@@ -444,6 +455,7 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
         ));
     }
     if spec.reviewed_invocation.command_id != spec.command_id
+        || spec.reviewed_plan_id != spec.plan_id
         || spec.reviewed_invocation.program != spec.program
         || spec.reviewed_invocation.argv != spec.argv
         || spec.reviewed_invocation.schema_id != crate::COMMAND_INVOCATION_SPEC_SCHEMA_ID
@@ -483,25 +495,27 @@ fn validate_execution_spec(spec: &ExecutionSpecV1) -> Result<(), RunnerError> {
         .and_then(|name| name.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
-    if matches!(
-        program.as_str(),
-        "sh" | "bash"
-            | "zsh"
-            | "fish"
-            | "dash"
-            | "ash"
-            | "ksh"
-            | "csh"
-            | "tcsh"
-            | "nu"
-            | "nushell"
-            | "cmd"
-            | "cmd.exe"
-            | "powershell"
-            | "powershell.exe"
-            | "pwsh"
-            | "pwsh.exe"
-    ) {
+    if program.ends_with("sh")
+        || matches!(
+            program.as_str(),
+            "sh" | "bash"
+                | "zsh"
+                | "fish"
+                | "dash"
+                | "ash"
+                | "ksh"
+                | "csh"
+                | "tcsh"
+                | "nu"
+                | "nushell"
+                | "cmd"
+                | "cmd.exe"
+                | "powershell"
+                | "powershell.exe"
+                | "pwsh"
+                | "pwsh.exe"
+        )
+    {
         return Err(RunnerError::InvalidSpec(
             "shell programs are not accepted by the structured runner".to_string(),
         ));
@@ -561,6 +575,7 @@ mod tests {
         };
         Ok(ExecutionSpecV1 {
             reviewed_invocation,
+            reviewed_plan_id: "plan-1".to_string(),
             plan_id: "plan-1".to_string(),
             command_id: "test".to_string(),
             program,
