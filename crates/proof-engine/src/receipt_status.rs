@@ -169,9 +169,9 @@ fn receipt_contract_mismatch(
             "snapshot" | "snapshot_identity" => true,
             "subject" => item
                 .subject
-                .selector
+                .body_identity
                 .as_ref()
-                .or(item.subject.body_identity.as_ref())
+                .or(item.subject.selector.as_ref())
                 .or(item.subject.revision.as_ref())
                 .map(|identity| identity == &row.subject_identity)
                 .unwrap_or(false),
@@ -395,6 +395,44 @@ mod tests {
             != Some(ProofItemReceiptStatusV1::CurrentFindings)
         {
             return Err("provider findings were flattened".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn subject_currentness_binds_body_identity_before_selector() -> Result<(), String> {
+        let mut bound_plan = plan();
+        let item = bound_plan
+            .items
+            .first_mut()
+            .ok_or_else(|| "plan item missing".to_string())?;
+        item.subject.selector = Some("selector:old".to_string());
+        item.subject.body_identity = Some("source:staged:new".to_string());
+
+        let mut matching_body = manifest(ResultClassV1::Completed);
+        matching_body
+            .rows
+            .first_mut()
+            .ok_or_else(|| "manifest row missing".to_string())?
+            .subject_identity = "source:staged:new".to_string();
+        let report = evaluate_captured_receipt_status(&bound_plan, &matching_body)?;
+        if report.items.first().map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt)
+        {
+            return Err("matching source identity was not accepted".to_string());
+        }
+
+        let mut selector_only = manifest(ResultClassV1::Completed);
+        selector_only
+            .rows
+            .first_mut()
+            .ok_or_else(|| "manifest row missing".to_string())?
+            .subject_identity = "selector:old".to_string();
+        let report = evaluate_captured_receipt_status(&bound_plan, &selector_only)?;
+        if report.items.first().map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::ReceiptMalformed)
+        {
+            return Err("selector-only receipt bypassed source binding".to_string());
         }
         Ok(())
     }

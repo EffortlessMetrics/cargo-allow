@@ -24,6 +24,11 @@ pub fn plan_proof_v2_from_intent(
     for catalog in catalogs {
         validate_capability_catalog(catalog).map_err(|error| error.as_str().to_string())?;
     }
+    if let Some(enrichment) = envelope.enrichment.as_ref() {
+        enrichment
+            .validate()
+            .map_err(|error| format!("plan enrichment: {error}"))?;
+    }
     validate_captured_receipt_store(receipts).map_err(|error| error.as_str().to_string())?;
 
     let snapshot_identity = snapshot_identity(envelope)?;
@@ -31,7 +36,17 @@ pub fn plan_proof_v2_from_intent(
     let mut items = envelope
         .obligations
         .iter()
-        .map(|obligation| build_item(obligation, &snapshot_identity, &catalogs))
+        .map(|obligation| {
+            build_item(
+                obligation,
+                &snapshot_identity,
+                &catalogs,
+                envelope
+                    .enrichment
+                    .as_ref()
+                    .and_then(|enrichment| enrichment.resolved_config_identity.as_deref()),
+            )
+        })
         .collect::<Result<Vec<_>, _>>()?;
     let plan_id = semantic_plan_id(&intent_digest, &snapshot_identity, &catalogs, &items)?;
 
@@ -59,12 +74,46 @@ fn build_item(
     obligation: &IntentPhaseObligationV1,
     snapshot_identity: &str,
     catalogs: &[ProofCapabilityCatalogV1],
+    resolved_config_identity: Option<&str>,
 ) -> Result<ProofItemV1, String> {
-    let capability_class = obligation.kind.as_str().to_string();
+    let handoff = obligation
+        .handoff
+        .as_ref()
+        .map(|handoff| {
+            handoff.validate().map(|()| handoff).map_err(|error| {
+                format!("obligation {} handoff: {error}", obligation.obligation_id)
+            })
+        })
+        .transpose()?;
+    let capability_class = handoff
+        .and_then(|handoff| handoff.requested_evidence_class.clone())
+        .unwrap_or_else(|| "unresolved_intent_evidence_class".to_string());
+    let handoff_ready = handoff.is_some_and(|handoff| {
+        handoff.disposition
+            == Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning)
+            && handoff.minimum_threshold.is_none()
+            && handoff
+                .subject_inventory_completeness
+                .is_none_or(|completeness| {
+                    completeness == intent_protocol::IntentSubjectInventoryCompletenessV1::Complete
+                })
+            && handoff.currentness_dimensions.iter().all(|dimension| {
+                matches!(
+                    dimension.as_str(),
+                    "snapshot" | "snapshot_identity" | "subject" | "provider_request" | "config"
+                )
+            })
+            && (!handoff
+                .currentness_dimensions
+                .iter()
+                .any(|dimension| dimension == "config")
+                || resolved_config_identity.is_some_and(|identity| !identity.trim().is_empty()))
+    });
     let selected = if matches!(
         obligation.posture,
         intent_protocol::IntentObligationPostureV1::Decision
-    ) {
+    ) || !handoff_ready
+    {
         None
     } else {
         catalogs
@@ -90,15 +139,50 @@ fn build_item(
             )
     };
 
-    let subject = ProofSubjectV1 {
-        subject_class: ProofSubjectClassV1::Commit,
+    let source_identity = handoff.and_then(|handoff| handoff.source_identity.clone());
+    let subject_class = source_identity
+        .as_deref()
+        .map(|identity| {
+            if identity.starts_with("source:staged:") {
+                ProofSubjectClassV1::Index
+            } else if identity.starts_with("source:worktree:") {
+                ProofSubjectClassV1::Worktree
+            } else if identity.starts_with("source:committed:") {
+                ProofSubjectClassV1::Commit
+            } else {
+                ProofSubjectClassV1::Tree
+            }
+        })
+        .unwrap_or(ProofSubjectClassV1::Commit);
+    let mut subject = ProofSubjectV1 {
+        subject_class,
         revision: Some(snapshot_identity.to_string()),
-        selector: Some(obligation.evidence_refs.join(",")),
-        body_identity: None,
-        limitations: Vec::new(),
+        selector: handoff.and_then(|handoff| handoff.subject_selector_ref.clone()),
+        body_identity: source_identity,
+        limitations: handoff
+            .map(|handoff| handoff.subject_inventory_limitations.clone())
+            .unwrap_or_default(),
     };
+    if handoff.is_some_and(|handoff| {
+        handoff.subject_posture != Some(intent_protocol::IntentSubjectPostureV1::Exact)
+    }) {
+        subject
+            .limitations
+            .push("intent subject posture is not exact".to_string());
+    }
+    if handoff.is_some_and(|handoff| {
+        handoff
+            .subject_inventory_completeness
+            .is_some_and(|completeness| {
+                completeness != intent_protocol::IntentSubjectInventoryCompletenessV1::Complete
+            })
+    }) {
+        subject
+            .limitations
+            .push("intent subject inventory completeness is not complete".to_string());
+    }
     let base = format!("{}:{}", obligation.obligation_id, obligation.phase);
-    let (disposition, selection, expected_receipt, posture, limitations) = match selected {
+    let (disposition, selection, expected_receipt, posture, mut limitations) = match selected {
         Some((catalog, capability)) => {
             let request_digest = digest(&format!(
                 "{}:{}:{}",
@@ -115,7 +199,9 @@ fn build_item(
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
-                    config_identity: "config:unspecified".to_string(),
+                    config_identity: resolved_config_identity
+                        .unwrap_or("config:unspecified")
+                        .to_string(),
                     currentness_dimensions: vec![
                         "snapshot_identity".to_string(),
                         "subject".to_string(),
@@ -128,29 +214,139 @@ fn build_item(
             )
         }
         None => (
-            match obligation.posture {
-                intent_protocol::IntentObligationPostureV1::Decision => {
+            match (obligation.posture, handoff_ready) {
+                (intent_protocol::IntentObligationPostureV1::Decision, _) => {
                     ProofItemDispositionV1::RepositoryDecisionRequired
                 }
+                (_, false) => ProofItemDispositionV1::NotProven,
                 _ => ProofItemDispositionV1::ProviderUnavailable,
             },
             None,
             None,
             ProofItemExecutionPostureV1::None,
-            vec![match obligation.posture {
-                intent_protocol::IntentObligationPostureV1::Decision => {
+            vec![match (obligation.posture, handoff_ready) {
+                (intent_protocol::IntentObligationPostureV1::Decision, _) => {
                     "repository decision required before provider selection".to_string()
+                }
+                (_, false) => {
+                    "intent evidence handoff is absent or not ready for provider selection"
+                        .to_string()
                 }
                 _ => "no catalog capability matches the required evidence class".to_string(),
             }],
         ),
     };
+    if let Some(handoff) = handoff {
+        limitations.extend(handoff.limitations.iter().cloned());
+        limitations.extend(
+            handoff
+                .unproven
+                .iter()
+                .map(|reason| format!("unproven: {reason}")),
+        );
+        limitations.extend(
+            handoff
+                .evidence_purpose_refs
+                .iter()
+                .skip(1)
+                .map(|reference| format!("additional evidence purpose reference: {reference}")),
+        );
+    }
+    if let Some(handoff) = handoff.filter(|handoff| {
+        handoff.disposition
+            != Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning)
+    }) {
+        let (disposition, reason) =
+            if matches!(
+                obligation.posture,
+                intent_protocol::IntentObligationPostureV1::Decision
+            ) {
+                (
+                    ProofItemDispositionV1::RepositoryDecisionRequired,
+                    "repository decision required before provider selection",
+                )
+            } else {
+                match handoff.disposition {
+            Some(intent_protocol::IntentProofHandoffDispositionV1::RepositoryDecisionRequired) => (
+                ProofItemDispositionV1::RepositoryDecisionRequired,
+                "intent handoff requires a repository decision",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::SelectorMissingOrAmbiguous) => (
+                ProofItemDispositionV1::SelectorMissingOrAmbiguous,
+                "intent handoff selector is missing or ambiguous",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::ManualOrNativeOutstanding) => (
+                ProofItemDispositionV1::ManualOrNativeOutstanding,
+                "intent handoff requires manual or native evidence",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::UnsupportedEvidenceClass) => (
+                ProofItemDispositionV1::UnsupportedCapability,
+                "intent handoff requests an unsupported evidence class",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::NotApplicableWithReason) => (
+                ProofItemDispositionV1::NotApplicableWithReason,
+                "intent handoff marks this obligation not applicable",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::PartialOrNotProven) => (
+                ProofItemDispositionV1::NotProven,
+                "intent handoff is partial or not proven",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::EvidenceDesignIncomplete)
+            | None => (
+                ProofItemDispositionV1::NotProven,
+                "intent evidence design is incomplete",
+            ),
+            Some(intent_protocol::IntentProofHandoffDispositionV1::ReadyForProofPlanning) => (
+                ProofItemDispositionV1::NotProven,
+                "intent handoff readiness changed during planning",
+            ),
+            }
+            };
+        limitations.push(
+            handoff
+                .disposition_reason
+                .clone()
+                .unwrap_or_else(|| reason.to_string()),
+        );
+        return Ok(ProofItemV1 {
+            proof_item_id: digest(&base),
+            intent_obligation_id: obligation.obligation_id.clone(),
+            phase: obligation.phase.clone(),
+            blocking: matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Blocking),
+            evidence_purpose_ref: handoff
+                .evidence_purpose_refs
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "unresolved_intent_evidence_purpose".to_string()),
+            required_capability_class: capability_class,
+            snapshot_identity: snapshot_identity.to_string(),
+            subject,
+            disposition,
+            selection: None,
+            current_receipt: None,
+            expected_receipt: None,
+            execution_posture: if disposition
+                == ProofItemDispositionV1::ManualOrNativeOutstanding
+            {
+                ProofItemExecutionPostureV1::ManualNative
+            } else {
+                ProofItemExecutionPostureV1::None
+            },
+            dependency_group: None,
+            limitations,
+            claim_boundary: handoff.claim_boundary.clone().unwrap_or_else(|| {
+                "Planning disposition only; intent evidence handoff is not ready for provider execution.".to_string()
+            }),
+        });
+    }
     Ok(ProofItemV1 {
         proof_item_id: digest(&base),
         intent_obligation_id: obligation.obligation_id.clone(),
         phase: obligation.phase.clone(),
         blocking: matches!(obligation.posture, intent_protocol::IntentObligationPostureV1::Blocking),
-        evidence_purpose_ref: obligation.statement.clone(),
+        evidence_purpose_ref: handoff
+            .and_then(|handoff| handoff.evidence_purpose_refs.first().cloned())
+            .unwrap_or_else(|| "unresolved_intent_evidence_purpose".to_string()),
         required_capability_class: capability_class,
         snapshot_identity: snapshot_identity.to_string(),
         subject,
@@ -161,7 +357,9 @@ fn build_item(
         execution_posture: posture,
         dependency_group: None,
         limitations,
-        claim_boundary: "Planning disposition only; no provider execution or evidence satisfaction is established.".to_string(),
+        claim_boundary: handoff
+            .and_then(|handoff| handoff.claim_boundary.clone())
+            .unwrap_or_else(|| "Planning disposition only; no provider execution or evidence satisfaction is established.".to_string()),
     })
 }
 
@@ -211,9 +409,10 @@ fn digest(input: &str) -> String {
 mod tests {
     use super::*;
     use intent_protocol::{
-        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPostureV1,
-        IntentPhaseObligationKindV1, IntentPhaseObligationV1, RepositorySnapshotV1,
-        ResolvedRevisionV1,
+        IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationHandoffV1,
+        IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+        IntentPlanEnrichmentV1, IntentProofHandoffDispositionV1, IntentSubjectPostureV1,
+        RepositorySnapshotV1, ResolvedRevisionV1,
     };
     use proof_protocol::{ProofCapabilityKindV1, ProofCapabilityV1, ProofReceiptSetV1};
 
@@ -236,7 +435,14 @@ mod tests {
             ),
             "precommit",
             vec![IntentPhaseObligationV1 {
-                handoff: None,
+                handoff: Some(IntentObligationHandoffV1 {
+                    disposition: Some(IntentProofHandoffDispositionV1::ReadyForProofPlanning),
+                    evidence_purpose_refs: vec!["evidence:purpose".to_string()],
+                    requested_evidence_class: Some("evidence_review".to_string()),
+                    subject_selector_ref: Some("test:selector".to_string()),
+                    subject_posture: Some(IntentSubjectPostureV1::Exact),
+                    ..IntentObligationHandoffV1::default()
+                }),
                 obligation_id: "obl-1".to_string(),
                 phase: "precommit".to_string(),
                 kind: IntentPhaseObligationKindV1::EvidenceReview,
@@ -333,6 +539,385 @@ mod tests {
             || item.execution_posture != ProofItemExecutionPostureV1::None
         {
             return Err("missing catalog capability must fail closed".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn enriched_handoff_controls_proof_item_projection() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::ReadyForProofPlanning),
+            evidence_purpose_refs: vec!["evidence:purpose".to_string()],
+            requested_evidence_class: Some("cargo_allow_source_exception".to_string()),
+            subject_selector_ref: Some("test:selector".to_string()),
+            subject_posture: Some(IntentSubjectPostureV1::Exact),
+            source_identity: Some("source:staged:abc".to_string()),
+            limitations: vec!["generated scope omitted".to_string()],
+            claim_boundary: Some("only staged source is covered".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan = plan_proof_v2_from_intent(
+            &enriched,
+            &[ProofCapabilityCatalogV1::new(
+                "provider-a",
+                vec![ProofCapabilityV1 {
+                    capability_id: "cargo_allow_source_exception".to_string(),
+                    kind: ProofCapabilityKindV1::StaticReport,
+                    program: "provider-a".to_string(),
+                    statement: "source exception posture".to_string(),
+                }],
+            )],
+            &CapturedReceiptStoreV1::new(),
+        )?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.required_capability_class != "cargo_allow_source_exception"
+            || item.evidence_purpose_ref != "evidence:purpose"
+            || item.subject.subject_class != ProofSubjectClassV1::Index
+            || item.subject.selector.as_deref() != Some("test:selector")
+            || item.subject.body_identity.as_deref() != Some("source:staged:abc")
+            || !item
+                .limitations
+                .iter()
+                .any(|limitation| limitation == "generated scope omitted")
+            || item.claim_boundary != "only staged source is covered"
+            || item.disposition != ProofItemDispositionV1::SelectedForExecution
+        {
+            return Err("enriched handoff was not preserved in the proof item".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn absent_handoff_is_explicitly_not_ready() -> Result<(), String> {
+        let mut legacy = envelope();
+        let obligation = legacy
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = None;
+        let plan =
+            plan_proof_v2_from_intent(&legacy, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotProven
+            || item.selection.is_some()
+            || item.execution_posture != ProofItemExecutionPostureV1::None
+        {
+            return Err("absent handoff must remain not-ready".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn incomplete_handoff_does_not_fabricate_legacy_semantics() -> Result<(), String> {
+        let mut incomplete = envelope();
+        let obligation = incomplete
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::EvidenceDesignIncomplete),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&incomplete, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.required_capability_class != "unresolved_intent_evidence_class"
+            || item.subject.selector.is_some()
+            || item.evidence_purpose_ref != "unresolved_intent_evidence_purpose"
+            || item.disposition != ProofItemDispositionV1::NotProven
+        {
+            return Err("incomplete handoff fabricated legacy semantics".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn non_ready_handoff_cannot_select_a_provider() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::PartialOrNotProven),
+            subject_posture: Some(IntentSubjectPostureV1::Weak),
+            requested_evidence_class: Some("evidence_review".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotProven
+            || item.selection.is_some()
+            || item.execution_posture != ProofItemExecutionPostureV1::None
+        {
+            return Err("non-ready handoff became executable".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn not_applicable_handoff_preserves_reason() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::NotApplicableWithReason),
+            disposition_reason: Some("provider cannot observe generated code".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotApplicableWithReason
+            || !item
+                .limitations
+                .iter()
+                .any(|reason| reason == "provider cannot observe generated code")
+        {
+            return Err("not-applicable reason was not preserved".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unproven_handoff_reasons_are_retained() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::PartialOrNotProven),
+            disposition_reason: Some("awaiting discriminator".to_string()),
+            unproven: vec!["runtime marker is absent".to_string()],
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if !item
+            .limitations
+            .iter()
+            .any(|reason| reason == "unproven: runtime marker is absent")
+        {
+            return Err("unproven handoff reason was dropped".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn config_currentness_binds_enrichment_identity() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched.enrichment = Some(IntentPlanEnrichmentV1 {
+            resolved_config_identity: Some("intent-config:resolved-001".to_string()),
+            ..IntentPlanEnrichmentV1::default()
+        });
+        enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?
+            .handoff
+            .as_mut()
+            .ok_or_else(|| "missing handoff".to_string())?
+            .currentness_dimensions = vec!["config".to_string()];
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::SelectedForExecution
+            || item
+                .expected_receipt
+                .as_ref()
+                .map(|receipt| receipt.config_identity.as_str())
+                != Some("intent-config:resolved-001")
+        {
+            return Err("config currentness was not bound to enrichment identity".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn config_currentness_without_identity_is_not_ready() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?
+            .handoff
+            .as_mut()
+            .ok_or_else(|| "missing handoff".to_string())?
+            .currentness_dimensions = vec!["config".to_string()];
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::NotProven {
+            return Err("config currentness without identity became executable".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn blank_enrichment_identity_is_rejected_before_projection() -> Result<(), String> {
+        let mut enriched = envelope();
+        enriched.enrichment = Some(IntentPlanEnrichmentV1 {
+            resolved_config_identity: Some("  ".to_string()),
+            ..IntentPlanEnrichmentV1::default()
+        });
+        if plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())
+            .is_ok()
+        {
+            return Err("blank enrichment identity must fail planning".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn non_ready_handoff_dispositions_remain_explicit() -> Result<(), String> {
+        let cases = [
+            (
+                IntentProofHandoffDispositionV1::RepositoryDecisionRequired,
+                ProofItemDispositionV1::RepositoryDecisionRequired,
+            ),
+            (
+                IntentProofHandoffDispositionV1::SelectorMissingOrAmbiguous,
+                ProofItemDispositionV1::SelectorMissingOrAmbiguous,
+            ),
+            (
+                IntentProofHandoffDispositionV1::ManualOrNativeOutstanding,
+                ProofItemDispositionV1::ManualOrNativeOutstanding,
+            ),
+            (
+                IntentProofHandoffDispositionV1::UnsupportedEvidenceClass,
+                ProofItemDispositionV1::UnsupportedCapability,
+            ),
+            (
+                IntentProofHandoffDispositionV1::NotApplicableWithReason,
+                ProofItemDispositionV1::NotApplicableWithReason,
+            ),
+            (
+                IntentProofHandoffDispositionV1::EvidenceDesignIncomplete,
+                ProofItemDispositionV1::NotProven,
+            ),
+        ];
+        for (disposition, expected) in cases {
+            let mut enriched = envelope();
+            let obligation = enriched
+                .obligations
+                .first_mut()
+                .ok_or_else(|| "missing obligation".to_string())?;
+            obligation.handoff = Some(IntentObligationHandoffV1 {
+                disposition: Some(disposition),
+                disposition_reason: (disposition
+                    == IntentProofHandoffDispositionV1::NotApplicableWithReason)
+                    .then(|| "not applicable to this change".to_string()),
+                ..IntentObligationHandoffV1::default()
+            });
+            let plan =
+                plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+            let item = plan
+                .items
+                .first()
+                .ok_or_else(|| "missing item".to_string())?;
+            if item.disposition != expected
+                || item.selection.is_some()
+                || item.execution_posture
+                    != if disposition == IntentProofHandoffDispositionV1::ManualOrNativeOutstanding
+                    {
+                        ProofItemExecutionPostureV1::ManualNative
+                    } else {
+                        ProofItemExecutionPostureV1::None
+                    }
+            {
+                return Err(format!("handoff disposition {disposition:?} was lowered"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn decision_posture_remains_authoritative_over_non_ready_handoff() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.posture = IntentObligationPostureV1::Decision;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::PartialOrNotProven),
+            disposition_reason: Some("decision still needed".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
+            || !item
+                .limitations
+                .iter()
+                .any(|reason| reason == "decision still needed")
+        {
+            return Err("decision posture was overwritten by handoff disposition".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn decision_posture_clears_manual_execution_posture() -> Result<(), String> {
+        let mut enriched = envelope();
+        let obligation = enriched
+            .obligations
+            .first_mut()
+            .ok_or_else(|| "missing obligation".to_string())?;
+        obligation.posture = IntentObligationPostureV1::Decision;
+        obligation.handoff = Some(IntentObligationHandoffV1 {
+            disposition: Some(IntentProofHandoffDispositionV1::ManualOrNativeOutstanding),
+            disposition_reason: Some("native review remains".to_string()),
+            ..IntentObligationHandoffV1::default()
+        });
+        let plan =
+            plan_proof_v2_from_intent(&enriched, &[catalog()], &CapturedReceiptStoreV1::new())?;
+        let item = plan
+            .items
+            .first()
+            .ok_or_else(|| "missing item".to_string())?;
+        if item.disposition != ProofItemDispositionV1::RepositoryDecisionRequired
+            || item.execution_posture != ProofItemExecutionPostureV1::None
+        {
+            return Err("decision posture retained an incompatible manual posture".to_string());
         }
         Ok(())
     }
