@@ -18545,3 +18545,91 @@ review_after = "2026-12-03"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/cli/release_freeze_command.rs"
+
+[[allow]]
+id = "allow-0863"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/final-freeze/composition.log"
+owner = "core/release"
+classification = "retained_freeze_evidence"
+reason = "Retained #2501 final-freeze evidence artifact bound to the frozen subject; records the composed freeze verdict for #3760 authorization review."
+evidence = ["issue:2501"]
+created = "2026-09-04"
+review_after = "2026-12-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/final-freeze/composition.log"
+target_fingerprint = "log"
+glob = "docs/dogfood/receipts/final-freeze/composition.log"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0864"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/final-freeze/final-freeze.readiness.json"
+owner = "core/release"
+classification = "retained_freeze_evidence"
+reason = "Retained #2501 final-freeze evidence artifact bound to the frozen subject; records the composed freeze verdict for #3760 authorization review."
+evidence = ["issue:2501"]
+created = "2026-09-04"
+review_after = "2026-12-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/final-freeze/final-freeze.readiness.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/final-freeze/final-freeze.readiness.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0865"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/final-freeze/final-freeze.receipt.json"
+owner = "core/release"
+classification = "retained_freeze_evidence"
+reason = "Retained #2501 final-freeze evidence artifact bound to the frozen subject; records the composed freeze verdict for #3760 authorization review."
+evidence = ["issue:2501"]
+created = "2026-09-04"
+review_after = "2026-12-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/final-freeze/final-freeze.receipt.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/final-freeze/final-freeze.receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0866"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/final-freeze/final-freeze.replay.json"
+owner = "core/release"
+classification = "retained_freeze_evidence"
+reason = "Retained #2501 final-freeze evidence artifact bound to the frozen subject; records the composed freeze verdict for #3760 authorization review."
+evidence = ["issue:2501"]
+created = "2026-09-04"
+review_after = "2026-12-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/final-freeze/final-freeze.replay.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/final-freeze/final-freeze.replay.json"
+
+[allow.last_seen]
+line = 1
+column = 1

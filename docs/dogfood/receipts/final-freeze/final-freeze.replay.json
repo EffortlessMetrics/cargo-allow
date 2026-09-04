@@ -1,0 +1,61 @@
+{
+  "schema_id": "cargo-allow.final-freeze-replay.v1",
+  "schema_version": 1,
+  "result": "complete_equivalent",
+  "custody_id": "candidate-custody-0.2.0-final",
+  "custody_disposition": "Complete",
+  "evidence_result": "complete",
+  "evidence_graph_digest": "sha256:v1:c4e85db3cdc857ee7b74ce8da5c442b702f02e5a516e86892c6e3b1cea2e417d",
+  "receipt_digest": "sha256:v1:0724777b6864811a72048780fdea09c9f98aa34afe971ce853e875ae5b43017d",
+  "release_identity": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "github_prerelease": false
+  },
+  "repository": "EffortlessMetrics/cargo-allow",
+  "commit": "63248416c2bd73edd63e22f064a1f242afcc0622",
+  "tree": "c0031b8e290f4ad16615971c9ff3f93bb5093b79",
+  "cargo_lock_digest": "sha256:v1:3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+  "topology_digest": "sha256:v1:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+  "selected_channel": "stable",
+  "selected_upload_rows": 10,
+  "selected_shared_rows": 3,
+  "selected_package_rows": 13,
+  "retained_artifact_count": 12,
+  "manifest_result": "exact",
+  "manifest_payload_digest": "sha256:v1:39a2735b7a0a3c2c94e714909fb7b503c3df1f053a638a0da580ca41d5cd37ad",
+  "rc1_excluded": true,
+  "incident_handoff_id": "incident-handoff",
+  "incident_handoff_present": true,
+  "observation_readings": [
+    {
+      "observation_id": "obs:ambient-cache",
+      "kind": "ambient_cache",
+      "freshness": "current",
+      "detail": "freeze-composition observation reading",
+      "authoritative": false
+    },
+    {
+      "observation_id": "obs:registry-feasibility",
+      "kind": "registry_feasibility",
+      "freshness": "current",
+      "detail": "freeze-composition observation reading",
+      "authoritative": true
+    },
+    {
+      "observation_id": "obs:source-live-control",
+      "kind": "source_live_control",
+      "freshness": "current",
+      "detail": "freeze-composition observation reading",
+      "authoritative": true
+    }
+  ],
+  "remaining_irreversible_operations": [
+    "publish the GitHub release",
+    "push tag v0.2.0",
+    "upload 10 package rows to crates.io"
+  ],
+  "rows": [],
+  "retained_bytes_verified": true,
+  "claim_boundary": "This replay reconstructs the final-freeze verdict from retained immutable inputs plus explicitly refreshable observations and recomputes every semantic and exact-artifact digest from retained bytes. It reads nothing outside its retained input set, cannot strengthen Incomplete, NotProven, Unsupported, ProviderUnavailable, or incident facts, and never tags, uploads, publishes, authorizes, mints release state, reads a secret, or mutates any live setting."
+}

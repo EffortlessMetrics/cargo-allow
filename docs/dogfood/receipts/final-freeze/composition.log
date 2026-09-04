@@ -1,0 +1,82 @@
+    Finished `dev` profile [optimized + debuginfo] target(s) in 0.09s
+     Running `target\debug\cargo-allow.exe release-freeze compose --evidence candidate-preparation=target/cargo-allow/freeze-evidence/candidate-preparation.json --evidence package-set=target/exact-candidate-package-set/exact-candidate-package-set.receipt.json --evidence package-docs=target/cargo-allow/freeze-evidence/package-docs.receipt.json --evidence rehearsal=target/cargo-allow/freeze-evidence/release-rehearsal.json --evidence install-journey=target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json --evidence upgrade-rollback=target/exact-upgrade-rollback-journey/exact-upgrade-rollback-journey.receipt.json --evidence controls=target/cargo-allow/freeze-evidence/live-controls.json --evidence release-manifest=target/cargo-allow/release-manifest-v2.json --out-dir target/cargo-allow/freeze`
+{
+  "schema_id": "cargo-allow.release-freeze-composition.v1",
+  "repository": "EffortlessMetrics/cargo-allow",
+  "commit": "63248416c2bd73edd63e22f064a1f242afcc0622",
+  "tree": "c0031b8e290f4ad16615971c9ff3f93bb5093b79",
+  "release_version": "0.2.0",
+  "release_tag": "v0.2.0",
+  "freeze_receipt_sha256": "sha256:v1:0724777b6864811a72048780fdea09c9f98aa34afe971ce853e875ae5b43017d",
+  "freeze_state": "Complete",
+  "replay_result": "CompleteEquivalent",
+  "replay_retained_bytes_verified": true,
+  "readiness_verdict": "ReadyForFreeze",
+  "selection_digest": "sha256:v1:e175c5da7aab215d335b42e054dfe46f98478a1511307e8ccde90f0502d94cd5",
+  "package_rows": 10,
+  "shared_rows": 3,
+  "evidence_rows": [
+    {
+      "role": "candidate-preparation",
+      "path": "F:/code/Rust2/cargo-allow\\target/cargo-allow/freeze-evidence/candidate-preparation.json",
+      "sha256": "sha256:v1:395d29560b469c1be1e538556e2561c6df7f5760c1ef831755d8668421dcf3c5",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "package-set",
+      "path": "F:/code/Rust2/cargo-allow\\target/exact-candidate-package-set/exact-candidate-package-set.receipt.json",
+      "sha256": "sha256:v1:75a8a804151be115af7532e3a99d3cfe8694b71f452513b98875cdc955999e77",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "package-docs",
+      "path": "F:/code/Rust2/cargo-allow\\target/cargo-allow/freeze-evidence/package-docs.receipt.json",
+      "sha256": "sha256:v1:244e2e4e7ce29493c88692322780b6d1c3a41e1c536ae5b2cf8741add3e36562",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "rehearsal",
+      "path": "F:/code/Rust2/cargo-allow\\target/cargo-allow/freeze-evidence/release-rehearsal.json",
+      "sha256": "sha256:v1:f7ac912f53c576c44ebf844d8c27285dfae719ecd784b860dccdc6b96aa055bf",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "install-journey",
+      "path": "F:/code/Rust2/cargo-allow\\target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json",
+      "sha256": "sha256:v1:94cb7b4b50cc7b82470730d5ef29fe4d6710c4620e5b06cba6804917ca19eacb",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "upgrade-rollback",
+      "path": "F:/code/Rust2/cargo-allow\\target/exact-upgrade-rollback-journey/exact-upgrade-rollback-journey.receipt.json",
+      "sha256": "sha256:v1:1dd193d613e7b1f1a8e1c681e79d8a65d1812ccd9256bf19bd7410c9443d2c58",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "controls",
+      "path": "F:/code/Rust2/cargo-allow\\target/cargo-allow/freeze-evidence/live-controls.json",
+      "sha256": "sha256:v1:8b8ca8733176909881b023767dd29635608d7d3c04e25284dd96e985b6de1965",
+      "bound": true,
+      "detail": ""
+    },
+    {
+      "role": "release-manifest",
+      "path": "F:/code/Rust2/cargo-allow\\target/cargo-allow/release-manifest-v2.json",
+      "sha256": "sha256:v1:39a2735b7a0a3c2c94e714909fb7b503c3df1f053a638a0da580ca41d5cd37ad",
+      "bound": true,
+      "detail": ""
+    }
+  ],
+  "remaining_irreversible_operations": [
+    "push tag v0.2.0",
+    "upload 10 package rows to crates.io",
+    "publish the GitHub release"
+  ],
+  "blocking_rows": []
+}
