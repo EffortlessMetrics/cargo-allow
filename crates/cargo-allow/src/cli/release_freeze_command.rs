@@ -198,16 +198,10 @@ impl FreezeEvidenceRole {
     }
 
     fn label(self) -> String {
-        format!("{self:?}")
-            .chars()
-            .flat_map(|c| {
-                if c.is_uppercase() {
-                    vec!['-', c.to_ascii_lowercase()]
-                } else {
-                    vec![c]
-                }
-            })
-            .collect()
+        use clap::ValueEnum as _;
+        self.to_possible_value()
+            .map(|value| value.get_name().to_string())
+            .unwrap_or_else(|| format!("{self:?}"))
     }
 }
 
@@ -908,7 +902,10 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
         }
         FreezeEvidenceRole::InstallJourney | FreezeEvidenceRole::UpgradeRollback => {
             let role_name = role.label();
-            if deep_find_version(value).as_deref() != Some(subject.version.as_str()) {
+            let bound = deep_find_version(value).as_deref() == Some(subject.version.as_str())
+                || deep_find_prefixed_version(value, &format!("cargo-allow {}", subject.version))
+                    .is_some();
+            if !bound {
                 notes.push(format!(
                     "fail:{role_name} receipt does not bind version {:?}",
                     subject.version
@@ -930,9 +927,21 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                 }
             }
         }
-        FreezeEvidenceRole::Interop
-        | FreezeEvidenceRole::ReleaseManifest
-        | FreezeEvidenceRole::Controls => {
+        FreezeEvidenceRole::Controls => {
+            let state = str_field(value, "state").unwrap_or_default();
+            if state != "Feasible" {
+                notes.push(format!(
+                    "fail:live controls state is {state:?}, not Feasible"
+                ));
+            }
+            let observed_commit = str_field(value, "commit").unwrap_or_default();
+            if observed_commit != subject.commit {
+                notes.push(format!(
+                    "fail:live controls observed commit {observed_commit}, not the freeze subject"
+                ));
+            }
+        }
+        FreezeEvidenceRole::Interop | FreezeEvidenceRole::ReleaseManifest => {
             if deep_find_version(value).is_none() {
                 notes.push(format!(
                     "note:{} receipt carries no version binding (recorded, not blocking)",
@@ -942,6 +951,31 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
         }
     }
     notes
+}
+
+/// Depth-bounded search for a string starting with the given prefix
+/// (version output is commonly rendered as `cargo-allow <version>`).
+fn deep_find_prefixed_version(value: &Json, prefix: &str) -> Option<String> {
+    const MAX_DEPTH: usize = 6;
+    fn walk(value: &Json, prefix: &str, depth: usize) -> Option<String> {
+        if depth > MAX_DEPTH {
+            return None;
+        }
+        match value {
+            Json::String(text) => {
+                let trimmed = text.trim();
+                trimmed.starts_with(prefix).then(|| trimmed.to_string())
+            }
+            Json::Object(map) => map
+                .values()
+                .find_map(|child| walk(child, prefix, depth + 1)),
+            Json::Array(items) => items
+                .iter()
+                .find_map(|child| walk(child, prefix, depth + 1)),
+            _ => None,
+        }
+    }
+    walk(value, prefix, 0)
 }
 
 /// Depth-bounded search for a version-shaped string value.
@@ -2401,5 +2435,164 @@ mod compose_fixture_tests {
             "the fixture freeze must replay complete_equivalent"
         );
         let _ = std::fs::remove_dir_all(&root);
+    }
+}
+//
+#[cfg(test)]
+mod probe_cover_tests {
+    use super::deep_find_prefixed_version;
+
+    #[test]
+    fn prefixed_version_search_matches_only_the_prefix() {
+        let value = serde_json::json!({
+            "from": { "version": "cargo-allow 0.1.11 release" },
+            "candidate": { "version": "cargo-allow 0.2.0" }
+        });
+        assert_eq!(
+            deep_find_prefixed_version(&value, "cargo-allow 0.2.0").as_deref(),
+            Some("cargo-allow 0.2.0")
+        );
+        assert_eq!(
+            deep_find_prefixed_version(&value, "cargo-allow 9.9.9"),
+            None
+        );
+    }
+
+    #[test]
+    fn version_shape_rejects_prerelease_and_prefixed_forms() {
+        assert!(!super::is_version_shaped("0.2.0-rc.1"));
+        assert!(super::is_version_shaped("0.2.0"));
+    }
+}
+//
+#[cfg(test)]
+mod probe_cover_tests2 {
+    use super::{FreezeEvidenceRole, SubjectIdentity, bind_evidence, deep_find_prefixed_version};
+    use serde_json::json;
+
+    fn subject() -> SubjectIdentity {
+        SubjectIdentity {
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            commit: "0123456789abcdef0123456789abcdef01234567".to_string(),
+            tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+            cargo_lock_digest:
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .to_string(),
+            topology_digest:
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                    .to_string(),
+            frozen_at_utc: "2026-09-04T00:00:00Z".to_string(),
+        }
+    }
+
+    #[test]
+    fn journey_role_accepts_cargo_allow_prefixed_version_strings() {
+        let subject = subject();
+        let bound = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::UpgradeRollback,
+            &json!({"from": {"version": "cargo-allow 0.1.11"}, "candidate": {"version": "cargo-allow 0.2.0"}, "result": "Passed"}),
+        );
+        assert!(
+            !bound.iter().any(|note| note.starts_with("fail:")),
+            "{bound:?}"
+        );
+
+        let drifted = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::UpgradeRollback,
+            &json!({"candidate": {"version": "cargo-allow 0.1.11"}}),
+        );
+        assert!(drifted.iter().any(|note| note.starts_with("fail:")));
+    }
+
+    #[test]
+    fn controls_role_binds_state_and_commit() {
+        let subject = subject();
+        let feasible = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Controls,
+            &json!({"state": "Feasible", "commit": subject.commit}),
+        );
+        assert!(
+            !feasible.iter().any(|note| note.starts_with("fail:")),
+            "{feasible:?}"
+        );
+
+        let mismatched = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Controls,
+            &json!({"state": "Mismatch", "commit": "9999999999999999999999999999999999999999"}),
+        );
+        assert!(mismatched.iter().any(|note| note.starts_with("fail:")));
+    }
+
+    #[test]
+    fn registry_role_binds_exact_version_and_flags_drift() {
+        let subject = subject();
+        let bound = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::RegistryObservation,
+            &json!({"crate": "cargo-allow", "version": "0.2.0"}),
+        );
+        assert!(
+            !bound.iter().any(|note| note.starts_with("fail:")),
+            "{bound:?}"
+        );
+
+        let drifted = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::RegistryObservation,
+            &json!({"crate": "cargo-allow", "version": "0.1.11"}),
+        );
+        assert!(
+            drifted.iter().any(|note| note.starts_with("fail:")),
+            "{drifted:?}"
+        );
+    }
+
+    #[test]
+    fn evidence_roles_map_to_distinct_graph_shapes() {
+        let subject = subject();
+        for role in [
+            FreezeEvidenceRole::PackageSet,
+            FreezeEvidenceRole::Rehearsal,
+            FreezeEvidenceRole::PackageDocs,
+            FreezeEvidenceRole::CandidatePreparation,
+            FreezeEvidenceRole::InstallJourney,
+            FreezeEvidenceRole::Interop,
+            FreezeEvidenceRole::RegistryObservation,
+            FreezeEvidenceRole::ReleaseManifest,
+            FreezeEvidenceRole::UpgradeRollback,
+            FreezeEvidenceRole::Controls,
+        ] {
+            let (class, origin, id) = role.graph_shape();
+            let node = super::node_for(
+                id,
+                class,
+                origin,
+                "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                allow_report::FinalEvidenceNodeResultV1::Complete,
+                &subject,
+            );
+            assert_eq!(node.evidence_id, id);
+            assert_eq!(node.class, class);
+            assert_eq!(node.origin, origin);
+        }
+    }
+
+    #[test]
+    fn prefixed_version_probe_walks_arrays_and_objects() {
+        let value = json!([{"legs": [{"bin": "cargo-allow 0.1.11"}]}]);
+        assert_eq!(
+            deep_find_prefixed_version(&value, "cargo-allow 0.1.11").as_deref(),
+            Some("cargo-allow 0.1.11")
+        );
+        assert_eq!(
+            deep_find_prefixed_version(&json!({}), "cargo-allow 0.1.11"),
+            None
+        );
     }
 }
