@@ -818,7 +818,9 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             // The basis generator records digests without the typed `v1`
             // segment; compare the hex payload so either spelling binds.
             fn hex_of(digest: &str) -> &str {
-                digest.trim_start_matches("sha256:").trim_start_matches("v1:")
+                digest
+                    .trim_start_matches("sha256:")
+                    .trim_start_matches("v1:")
             }
             for (key, expected) in [
                 ("commit", subject.commit.as_str()),
@@ -2610,7 +2612,10 @@ mod digest_normalization_tests {
     fn bare_and_prefixed_sha256_normalize_to_the_typed_form() {
         let hex = "ab".repeat(32);
         assert_eq!(canonical_digest(&hex), format!("sha256:v1:{hex}"));
-        assert_eq!(canonical_digest(&format!("sha256:{hex}")), format!("sha256:v1:{hex}"));
+        assert_eq!(
+            canonical_digest(&format!("sha256:{hex}")),
+            format!("sha256:v1:{hex}")
+        );
         assert_eq!(
             canonical_digest(&format!("sha256:v1:{hex}")),
             format!("sha256:v1:{hex}")
