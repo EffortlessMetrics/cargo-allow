@@ -815,18 +815,25 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::PackageDocs => {
+            // The basis generator records digests without the typed `v1`
+            // segment; compare the hex payload so either spelling binds.
+            fn hex_of(digest: &str) -> &str {
+                digest
+                    .trim_start_matches("sha256:")
+                    .trim_start_matches("v1:")
+            }
             for (key, expected) in [
-                ("commit", &subject.commit),
-                ("tree", &subject.tree),
-                ("cargo_lock_sha256", &subject.cargo_lock_digest),
-                ("topology_sha256", &subject.topology_digest),
+                ("commit", subject.commit.as_str()),
+                ("tree", subject.tree.as_str()),
+                ("cargo_lock_sha256", hex_of(&subject.cargo_lock_digest)),
+                ("topology_sha256", hex_of(&subject.topology_digest)),
             ] {
                 match value
                     .pointer(&format!("/basis/{key}"))
                     .and_then(Json::as_str)
-                    .map(str::to_string)
+                    .map(|found| hex_of(found).to_string())
                 {
-                    Some(found) if found == *expected => {}
+                    Some(found) if found == expected => {}
                     Some(found) => notes.push(format!(
                         "fail:package-docs basis {key} {found} does not bind the freeze subject"
                     )),
@@ -2593,6 +2600,25 @@ mod probe_cover_tests2 {
         assert_eq!(
             deep_find_prefixed_version(&json!({}), "cargo-allow 0.1.11"),
             None
+        );
+    }
+}
+//
+#[cfg(test)]
+mod digest_normalization_tests {
+    use super::canonical_digest;
+
+    #[test]
+    fn bare_and_prefixed_sha256_normalize_to_the_typed_form() {
+        let hex = "ab".repeat(32);
+        assert_eq!(canonical_digest(&hex), format!("sha256:v1:{hex}"));
+        assert_eq!(
+            canonical_digest(&format!("sha256:{hex}")),
+            format!("sha256:v1:{hex}")
+        );
+        assert_eq!(
+            canonical_digest(&format!("sha256:v1:{hex}")),
+            format!("sha256:v1:{hex}")
         );
     }
 }
