@@ -563,9 +563,16 @@ from pathlib import Path
 # control. The splitlines form intentionally changes the file so the stale
 # plan is rejected; write_text's Windows CRLF side effect is #4134.
 path = Path(sys.argv[1])
-lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-del lines[-1]
-path.write_text("".join(lines), encoding="utf-8")
+# Drop the last line byte-exactly: text-mode write_text flips LF to CRLF on
+# Windows, which leaves the inventory permanently drifted from the plan.
+data = path.read_bytes()
+if not data.endswith(b"\n"):
+    raise SystemExit("fixture source does not end with a newline")
+head = data[:-1]
+cut = head.rfind(b"\n")
+if cut == -1:
+    raise SystemExit("fixture source has only one line to drop")
+path.write_bytes(head[: cut + 1])
 PY
 if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --root "${consumer_dir}" >/dev/null 2>&1; then
     fail "stale why plan was accepted by add --from-plan"
