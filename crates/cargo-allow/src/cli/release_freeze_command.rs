@@ -198,16 +198,10 @@ impl FreezeEvidenceRole {
     }
 
     fn label(self) -> String {
-        format!("{self:?}")
-            .chars()
-            .flat_map(|c| {
-                if c.is_uppercase() {
-                    vec!['-', c.to_ascii_lowercase()]
-                } else {
-                    vec![c]
-                }
-            })
-            .collect()
+        use clap::ValueEnum as _;
+        self.to_possible_value()
+            .map(|value| value.get_name().to_string())
+            .unwrap_or_else(|| format!("{self:?}"))
     }
 }
 
@@ -908,7 +902,10 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
         }
         FreezeEvidenceRole::InstallJourney | FreezeEvidenceRole::UpgradeRollback => {
             let role_name = role.label();
-            if deep_find_version(value).as_deref() != Some(subject.version.as_str()) {
+            let bound = deep_find_version(value).as_deref() == Some(subject.version.as_str())
+                || deep_find_prefixed_version(value, &format!("cargo-allow {}", subject.version))
+                    .is_some();
+            if !bound {
                 notes.push(format!(
                     "fail:{role_name} receipt does not bind version {:?}",
                     subject.version
@@ -942,6 +939,31 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
         }
     }
     notes
+}
+
+/// Depth-bounded search for a string starting with the given prefix
+/// (version output is commonly rendered as `cargo-allow <version>`).
+fn deep_find_prefixed_version(value: &Json, prefix: &str) -> Option<String> {
+    const MAX_DEPTH: usize = 6;
+    fn walk(value: &Json, prefix: &str, depth: usize) -> Option<String> {
+        if depth > MAX_DEPTH {
+            return None;
+        }
+        match value {
+            Json::String(text) => {
+                let trimmed = text.trim();
+                trimmed.starts_with(prefix).then(|| trimmed.to_string())
+            }
+            Json::Object(map) => map
+                .values()
+                .find_map(|child| walk(child, prefix, depth + 1)),
+            Json::Array(items) => items
+                .iter()
+                .find_map(|child| walk(child, prefix, depth + 1)),
+            _ => None,
+        }
+    }
+    walk(value, prefix, 0)
 }
 
 /// Depth-bounded search for a version-shaped string value.
