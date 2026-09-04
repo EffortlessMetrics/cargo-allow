@@ -1,0 +1,47 @@
+schema_version = 1
+# Revision note for the #2501 final-freeze record.
+
+# This diff retains the #2501 final-freeze evidence artifacts under
+# docs/dogfood/receipts/final-freeze/: the composed
+# CargoAllowFinalFreezeReceiptV1 (freeze_state Complete at the frozen
+# subject), the read-only replay verdict (CompleteEquivalent, retained
+# bytes verified), the final readiness aggregate (ReadyForFreeze), and the
+# composition log with every evidence role's binding detail. The
+# source-exception additions receipt the retained artifact files themselves
+# (per-file non_rust_file receipts, matching the retained-evidence law used
+# for prior dogfood receipts): allow-0863 (composition log),
+# allow-0864 (readiness aggregate), allow-0865 (freeze receipt),
+# allow-0866 (replay record). No existing exception is weakened, no expiry
+# is extended, and no scope is broadened: the records below are additions.
+# policy/allow.toml keeps its CRLF line-ending contract; the net transition
+# is append-only.
+
+[[records]]
+allow_ids = ["allow-0863"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9122fc87411b1df098c9d14cc80ff68be583779f6f4d15f280ffee5fe095a8e8"
+reason = "Retained composition log for the #2501 final freeze: records every evidence role's path, digest, and subject binding, the composition verdict, and the named remaining irreversible operations."
+
+[[records]]
+allow_ids = ["allow-0864"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f650c7b96f07f083f0c44144a19aa14ce7ddd254e310ea3ff0d1d986f994c7a5"
+reason = "Retained final readiness aggregate (#3929) for the #2501 freeze: the deterministic ReadyForFreeze verdict over the composed evidence graph with the recorded campaign decisions and supported-limitation projections."
+
+[[records]]
+allow_ids = ["allow-0865"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3c9ed0b97aa0e7e94c358521abd7f42f738a97e161614a9a086bef172a2ac77f"
+reason = "Retained CargoAllowFinalFreezeReceiptV1 for the #2501 freeze: the typed receipt binding the frozen subject, the 10+3 package denominator, the prepublication manifest binding, the RC.1 exclusion with incident handoff, and the named remaining irreversible operations."
+
+[[records]]
+allow_ids = ["allow-0866"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b713b2e23ccb92db41b340bafa7c6b79dadb422ef3fc997b9c04b4d650fa9777"
+reason = "Retained read-only replay record for the #2501 freeze: the CompleteEquivalent verdict recomputed from the retained bytes alone, proving the freeze replays without moving main."
+
+[[records]]
+allow_ids = ["allow-0867"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e1b7267f5723f5607189d6a348ce5e60fc25a07a063e48c2310c62aba1007b21"
+reason = "Ledger-change-note receipt for this revision-note file itself (#2501); the note authorizes the retained final-freeze evidence artifacts and is receipted per the per-note receipt law."
