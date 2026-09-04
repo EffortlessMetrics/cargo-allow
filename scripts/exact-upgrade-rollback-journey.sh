@@ -6,7 +6,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_SET_DIR="${PACKAGE_SET_DIR:-${ROOT}/target/exact-candidate-package-set}"
 WORK_DIR="${WORK_DIR:-${ROOT}/target/exact-upgrade-rollback-journey}"
 PACKAGE_RECEIPT="${PACKAGE_SET_DIR}/exact-candidate-package-set.receipt.json"
-CANDIDATE_BIN="${CANDIDATE_BIN:-${PACKAGE_SET_DIR}/install/bin/cargo-allow}"
+CANDIDATE_BIN="${CANDIDATE_BIN:-}"
+if [[ -z "${CANDIDATE_BIN}" ]]; then
+  candidate_default="${PACKAGE_SET_DIR}/install/bin/cargo-allow"
+  [[ -f "${candidate_default}" || -f "${candidate_default}.exe" ]] ||     fail "missing exact candidate package install binary under ${PACKAGE_SET_DIR}/install/bin"
+  CANDIDATE_BIN="${candidate_default}"
+fi
 RECEIPT="${WORK_DIR}/exact-upgrade-rollback-journey.receipt.json"
 SCHEMA="${ROOT}/docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
 FIXTURE="${ROOT}/docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"

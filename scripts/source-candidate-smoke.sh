@@ -74,6 +74,9 @@ PY
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
   )
+  snapshot_root="$(printf '%s' "${snapshot_root}" | tr -d '\r')"
+  snapshot_token="$(printf '%s' "${snapshot_token}" | tr -d '\r')"
+  snapshot_head="$(printf '%s' "${snapshot_head}" | tr -d '\r')"
   CANDIDATE_HARNESS_TEST_ROOT="${temp_root}" \
     bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
   exit $?
