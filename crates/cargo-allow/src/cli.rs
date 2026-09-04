@@ -12,6 +12,7 @@ use crate::{
 
 pub(crate) mod candidate_preparation_command;
 mod reconcile_package_publication_command;
+mod release_freeze_command;
 mod release_identity_command;
 
 #[derive(Debug, Parser)]
@@ -124,6 +125,9 @@ pub(crate) enum CargoAllowCommand {
     /// Project release-candidate preparation without writing.
     #[command(hide = true)]
     PrepCandidate(candidate_preparation_command::PrepCandidateArgs),
+    /// Compose and replay the final release freeze from retained evidence.
+    #[command(hide = true)]
+    ReleaseFreeze(release_freeze_command::ReleaseFreezeArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -223,6 +227,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::PrepCandidate(args) => {
             candidate_preparation_command::cmd_prep_candidate(&args)
         }
+        CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(&args),
     }
 }
 
@@ -421,5 +426,6 @@ impl CargoAllowCommand {
         "release-identity",
         "reconcile-package-publication",
         "prep-candidate",
+        "release-freeze",
     ];
 }

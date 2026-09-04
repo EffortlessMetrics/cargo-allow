@@ -1,0 +1,42 @@
+schema_version = 1
+# Revision note for the #2501 final freeze composition driver.
+
+# This diff adds the hidden read-only `cargo-allow release-freeze compose`
+# command: the fail-closed composition of CargoAllowFinalFreezeReceiptV1 from
+# bounded retained producer receipts (candidate-preparation no-op parity or
+# final receipt, exact-candidate package set, package-docs audit, the
+# eight-phase zero-upload rehearsal aggregate, install journey, upgrade /
+# rollback journey, live release-control observation), the typed final
+# support selection verified through its single digest implementation, and
+# the read-only replay of the composed retained set. It also adds
+# scripts/observe-live-release-controls.sh (read-only ruleset observation)
+# and repairs two Windows-portability defects the dogfood surfaced in the
+# release producers: CRLF output from the child JSON helpers corrupted
+# git-head and token comparisons (exact-candidate-package-set.sh,
+# source-candidate-smoke.sh), and the upgrade/rollback journey assumed a
+# non-.exe candidate binary. The source-exception additions receipt only the
+# syntax-visible constructs the new files introduce: allow-0859 is a
+# glob-ratcheted expect baseline (occurrence_limit=7) for the composition
+# test module's fixture-guarded expects, and allow-0860 receipts the new
+# observation script. No existing exception is weakened, no expiry is
+# extended, and no scope is broadened: the records below are additions.
+# policy/allow.toml keeps its CRLF line-ending contract; the net transition
+# is append-only.
+
+[[records]]
+allow_ids = ["allow-0859"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b0d96b6bee8e52473ad3cf5945476c70b8b2ae3b379bfb3243b4ed15410c20b6"
+reason = "Glob-ratcheted expect baseline for the release-freeze composition test module (#2501); every expect guards an invariant established by immediately preceding fixture construction, and the composed digests are recomputed from committed policy data and retained receipt bytes only."
+
+[[records]]
+allow_ids = ["allow-0860"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e0745f0d3d40d3501e71cd8b84d6bf9f23a0453e065175705f8db215c5938ea1"
+reason = "Read-only live release-control observation script (#2284/#2501); it records the current ruleset state for the freeze receipt and never mutates a setting."
+
+[[records]]
+allow_ids = ["allow-0861"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b733ac2534b68a44d7638ab5a047c9640003458bbafd109a7d79a4c78f246e5e"
+reason = "Ledger-change-note receipt for this revision-note file itself (#2501); the note authorizes the composition driver's expect baseline and the observation script and is receipted per the per-note receipt law."

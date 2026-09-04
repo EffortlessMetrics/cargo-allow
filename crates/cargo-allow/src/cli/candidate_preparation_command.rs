@@ -605,7 +605,7 @@ pub(crate) fn parse_topology_rows(text: &str) -> Fact<Vec<CandidatePackageRowV1>
         .collect())
 }
 
-fn git_root() -> Fact<PathBuf> {
+pub(crate) fn git_root() -> Fact<PathBuf> {
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()
