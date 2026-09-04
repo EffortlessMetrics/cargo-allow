@@ -8,6 +8,7 @@ use effortless_repo_protocol::{
     AnalysisReceiptEnvelopeV1, RepositorySnapshotKindV1, RepositorySnapshotV1,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 pub const PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
 pub const PROVIDER_REQUEST_SCHEMA_ID: &str = "cargo-allow.analysis-request.v1";
@@ -152,8 +153,10 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
             }
         }
     }
+    let mut selected_paths = HashSet::new();
     for identity in &snapshot.selected_paths {
         if !is_repository_relative_path(&identity.path)
+            || !selected_paths.insert(&identity.path)
             || identity.present != identity.blob_oid.is_some()
             || identity
                 .blob_oid
@@ -185,9 +188,14 @@ fn is_repository_relative_path(value: &str) -> bool {
     });
     #[cfg(not(windows))]
     let drive_prefixed = false;
+    #[cfg(windows)]
+    let has_backslash = value.contains('\\');
+    #[cfg(not(windows))]
+    let has_backslash = false;
     !value.is_empty()
         && !value.starts_with('/')
         && !drive_prefixed
+        && !has_backslash
         && value
             .split('/')
             .all(|component| !matches!(component, "" | "." | ".."))
@@ -447,6 +455,21 @@ mod tests {
             });
         if validate_request(&value).is_ok() {
             return Err("parent-traversing selected path was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn request_validation_rejects_duplicate_selected_paths() -> Result<(), String> {
+        let mut value = request();
+        let path = effortless_repo_protocol::SelectedPathIdentityV1 {
+            path: "src/lib.rs".to_string(),
+            present: false,
+            blob_oid: None,
+        };
+        value.snapshot.selected_paths = vec![path.clone(), path];
+        if validate_request(&value).is_ok() {
+            return Err("duplicate selected paths were accepted".to_string());
         }
         Ok(())
     }
