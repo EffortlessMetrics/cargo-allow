@@ -558,14 +558,14 @@ python3 - "${consumer_dir}/src/lib.rs" <<'PY'
 import sys
 from pathlib import Path
 
+# NOTE: a byte-exact rfind-based "delete the last line" is a no-op (it drops
+# and re-adds the trailing newline), which regresses the stale-plan negative
+# control. The splitlines form intentionally changes the file so the stale
+# plan is rejected; write_text's Windows CRLF side effect is #4134.
 path = Path(sys.argv[1])
-data = path.read_bytes()
-last_newline = data.rfind(b"\n")
-if last_newline == -1:
-    raise SystemExit("fixture source has no newline-terminated line to drop")
-# Byte-exact rewrite: text-mode write_text would flip LF to CRLF on Windows
-# and leave the inventory permanently drifted from the plan.
-path.write_bytes(data[:last_newline] + b"\n")
+lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+del lines[-1]
+path.write_text("".join(lines), encoding="utf-8")
 PY
 if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --root "${consumer_dir}" >/dev/null 2>&1; then
     fail "stale why plan was accepted by add --from-plan"
