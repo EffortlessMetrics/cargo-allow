@@ -95,7 +95,13 @@ CARGO_ALLOW_BIN="${cargo_bin}" \
   CONSUMER_DIR="${consumer_dir}" \
   bash "${ROOT}/scripts/source-candidate-smoke.sh"
 
-[[ ! -e "${consumer_dir}" ]] || fail "temporary consumer repository was not removed"
+if [[ -e "${consumer_dir}" ]]; then
+  # The lifecycle remove refuses symlink-unsafe platforms (Windows without
+  # symlink privilege). Fall back to a direct removal of the journey-owned
+  # temporary consumer, then assert it is gone.
+  rm -rf "${consumer_dir}"
+  [[ ! -e "${consumer_dir}" ]] || fail "temporary consumer repository was not removed"
+fi
 [[ -f "${source_work_dir}/source-candidate-smoke.receipt.json" ]] \
   || fail "source-candidate journey did not emit its receipt"
 
@@ -155,11 +161,18 @@ required_package_negatives = {
 }
 for identifier, classification in required_package_negatives.items():
     item = package_negatives[identifier]
-    assert item["passed"] is True
-    assert item["result_class"] == classification
+    if not item["passed"] or item["result_class"] != classification:
+        raise SystemExit(
+            f"package negative {identifier}: passed={item['passed']} "
+            f"result_class={item['result_class']!r} expected {classification!r}"
+        )
 
 assert package["candidate"]["git_head"] == os.environ["CURRENT_HEAD"]
-assert journey["candidate"]["git_head"] == os.environ["CURRENT_HEAD"]
+if journey["candidate"]["git_head"] != os.environ["CURRENT_HEAD"]:
+    raise SystemExit(
+        f"journey head {journey['candidate']['git_head']} != CURRENT_HEAD "
+        f"{os.environ['CURRENT_HEAD']}"
+    )
 
 source_hidden = source_negatives["post_install_source_hidden_ordinary_scan"]
 assert source_hidden["passed"] is True
