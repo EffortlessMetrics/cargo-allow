@@ -18486,23 +18486,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0859"
-kind = "panic"
-family = "expect"
-glob = "crates/cargo-allow/src/cli/release_freeze_command.rs"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Invariant-guarded expects in the release-freeze composition test module and fixture helpers (#2501); every expect follows immediately preceding fixture construction whose inputs the test controls, and the composition digests are recomputed from committed policy data only"
-evidence = ["issue:2501"]
-occurrence_limit = 7
-created = "2026-09-04"
-review_after = "2026-12-03"
-
-[allow.selector]
-callee = "expect"
-glob = "crates/cargo-allow/src/cli/release_freeze_command.rs"
-
-[[allow]]
 id = "allow-0860"
 kind = "non_rust_file"
 family = "release_script"
@@ -18545,3 +18528,20 @@ glob = ".allow/revisions/2501-release-freeze-composition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0862"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/release_freeze_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the release-freeze composition module, its fixture helpers, and the full-path fixture repository test (#2501); every expect follows immediately preceding fixture construction whose inputs the test controls, and the composed digests are recomputed from committed policy data and retained receipt bytes only"
+evidence = ["issue:2501"]
+occurrence_limit = 19
+created = "2026-09-04"
+review_after = "2026-12-03"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/release_freeze_command.rs"

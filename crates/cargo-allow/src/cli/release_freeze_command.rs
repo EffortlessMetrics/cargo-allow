@@ -301,14 +301,17 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
 
     let package_rows = subject.package_rows(&shared, &evidence)?;
     let archives = ArchiveSet::collect(&evidence, &package_rows)?;
+    let manifest_bytes = evidence_role(&evidence, FreezeEvidenceRole::ReleaseManifest)
+        .map(|input| read_evidence_bytes(&input.path))
+        .transpose()?;
 
-    let custody = build_custody(&subject, &package_rows, &archives)?;
-    let transfers = build_transfers(&subject, &package_rows, &archives)?;
-    let retained_artifacts = build_retained_artifacts(&archives);
-
+    // The receipt binds the custody id; the custody aggregate then retains
+    // the serialized receipt (and the prepublication manifest) beside the
+    // package archives so the replay input set is self-contained.
+    let custody_id = format!("candidate-custody-{}-final", subject.version);
     let receipt = CargoAllowFinalFreezeReceiptV1::new(FinalFreezeReceiptInitV1 {
         freeze_id: format!("freeze-{}-final", subject.version),
-        frozen_custody_id: custody.custody_id.clone(),
+        frozen_custody_id: custody_id,
         frozen_at_utc: subject.frozen_at_utc.clone(),
         release_identity: subject.release_identity(),
         repository: REPOSITORY.to_string(),
@@ -318,7 +321,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         topology_digest: subject.topology_digest.clone(),
         expected_upload_rows: EXPECTED_UPLOAD_ROWS,
         expected_shared_rows: EXPECTED_SHARED_ROWS,
-        package_rows,
+        package_rows: package_rows.clone(),
         prepublication_manifest: manifest_binding(&evidence),
         rc1_excluded: true,
         rc1_version: Some("0.2.0-rc.1".to_string()),
@@ -331,6 +334,25 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
             .map(|operation| (*operation).to_string())
             .collect(),
     });
+    let receipt_bytes = serde_json::to_vec(&receipt)
+        .map_err(|error| instrument(format!("receipt serialization: {error}")))?;
+
+    let custody = build_custody(
+        &subject,
+        &package_rows,
+        &archives,
+        &receipt_bytes,
+        manifest_bytes.as_deref(),
+    )?;
+    let transfers = build_transfers(
+        &subject,
+        &package_rows,
+        &archives,
+        &receipt_bytes,
+        manifest_bytes.as_deref(),
+    )?;
+    let retained_artifacts =
+        build_retained_artifacts(&archives, &receipt_bytes, manifest_bytes.as_deref());
 
     let replay_inputs = CargoAllowFinalFreezeReplayInputsV1 {
         custody,
@@ -350,11 +372,6 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
             registry_current: rehearsal_registry_preflight_current(&evidence),
         },
     );
-
-    // Serialize the receipt once: the retained bytes, their digest, and the
-    // written file are the same payload.
-    let receipt_bytes = serde_json::to_vec_pretty(&replay_inputs.freeze_receipt)
-        .map_err(|error| instrument(format!("receipt serialization: {error}")))?;
     let receipt_sha256 = sha256_v1_bytes(&receipt_bytes);
 
     let graph_complete =
@@ -1056,7 +1073,7 @@ fn build_evidence_graph(
             FinalEvidenceNodeClassV1::IncidentHandoff,
             FinalEvidenceOriginV1::HistoricalObservation,
             incident_digest,
-            FinalEvidenceNodeResultV1::Incident,
+            FinalEvidenceNodeResultV1::Complete,
             subject,
         );
         // The incident handoff is historical context: it must remain visible
@@ -1267,6 +1284,8 @@ fn build_custody(
     subject: &SubjectIdentity,
     rows: &[FinalEvidencePackageSubjectV1],
     archives: &ArchiveSet,
+    receipt_bytes: &[u8],
+    manifest_bytes: Option<&[u8]>,
 ) -> CargoAllowResult<CargoAllowFrozenCandidateCustodyV1> {
     let mut items = Vec::new();
     for row in rows.iter().take(EXPECTED_UPLOAD_ROWS as usize) {
@@ -1290,6 +1309,38 @@ fn build_custody(
             confidentiality_class: ConfidentialityClassV1::Public,
         });
     }
+    let receipt_sha256 = sha256_v1_bytes(receipt_bytes);
+    items.push(RetainedCustodyItemV1 {
+        role: "FreezeReceipt".to_string(),
+        artifact_id: "final-freeze-receipt".to_string(),
+        files: vec![CustodyFileV1 {
+            path: "final-freeze.receipt.json".to_string(),
+            size_bytes: receipt_bytes.len() as u64,
+            sha256: receipt_sha256.clone(),
+        }],
+        storage_locator: format!("local:freeze-{}/final-freeze-receipt", subject.version),
+        retention_expiry_utc: "2027-12-31T00:00:00Z".to_string(),
+        readback_verified: true,
+        readback_sha256: Some(receipt_sha256),
+        confidentiality_class: ConfidentialityClassV1::Public,
+    });
+    if let Some(manifest) = manifest_bytes {
+        let manifest_sha256 = sha256_v1_bytes(manifest);
+        items.push(RetainedCustodyItemV1 {
+            role: "ReleaseManifest".to_string(),
+            artifact_id: "release-manifest-v2".to_string(),
+            files: vec![CustodyFileV1 {
+                path: "release-manifest-v2.json".to_string(),
+                size_bytes: manifest.len() as u64,
+                sha256: manifest_sha256.clone(),
+            }],
+            storage_locator: format!("local:freeze-{}/release-manifest-v2", subject.version),
+            retention_expiry_utc: "2027-12-31T00:00:00Z".to_string(),
+            readback_verified: true,
+            readback_sha256: Some(manifest_sha256),
+            confidentiality_class: ConfidentialityClassV1::Public,
+        });
+    }
     Ok(CargoAllowFrozenCandidateCustodyV1::new(
         CandidateCustodyInitV1 {
             custody_id: format!("candidate-custody-{}-final", subject.version),
@@ -1306,6 +1357,8 @@ fn build_transfers(
     subject: &SubjectIdentity,
     rows: &[FinalEvidencePackageSubjectV1],
     archives: &ArchiveSet,
+    receipt_bytes: &[u8],
+    manifest_bytes: Option<&[u8]>,
 ) -> CargoAllowResult<Vec<CargoAllowReleaseArtifactTransferV1>> {
     let mut transfers = Vec::new();
     for row in rows.iter().take(EXPECTED_UPLOAD_ROWS as usize) {
@@ -1346,11 +1399,85 @@ fn build_transfers(
             },
         ));
     }
+    let control_rows: [(&str, &str, &[u8]); 1] =
+        [("FreezeReceipt", "final-freeze-receipt", receipt_bytes)];
+    for (role, artifact_id, bytes) in control_rows {
+        transfers.push(CargoAllowReleaseArtifactTransferV1::new(
+            ArtifactTransferInitV1 {
+                transfer_id: format!("transfer:{artifact_id}"),
+                role: role.to_string(),
+                stable_artifact_id: artifact_id.to_string(),
+                producer: ProducerIdentityV1 {
+                    repository: REPOSITORY.to_string(),
+                    workflow_path: "scripts/exact-candidate-package-set.sh".to_string(),
+                    git_ref: format!("commit/{}", subject.commit),
+                    run_id: 0,
+                    run_attempt: 1,
+                    job_id: format!("job:{artifact_id}"),
+                    commit_sha: subject.commit.clone(),
+                    tree_sha: subject.tree.clone(),
+                    release_version: subject.version.clone(),
+                    tool_name: "cargo-allow".to_string(),
+                    schema_id: "cargo-allow.release-artifact-transfer.v1".to_string(),
+                    producer_generation: 1,
+                },
+                provider_id: "local-freeze".to_string(),
+                provider_artifact_name: artifact_id.to_string(),
+                files: vec![ArtifactTransferFileV1 {
+                    path: format!("{artifact_id}.json"),
+                    size_bytes: bytes.len() as u64,
+                    sha256: sha256_v1_bytes(bytes),
+                }],
+                semantic_payload_digest: None,
+                trust_class: TrustClassV1::ManualDispatch,
+                untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
+                created_at_utc: subject.frozen_at_utc.clone(),
+            },
+        ));
+    }
+    if let Some(manifest) = manifest_bytes {
+        transfers.push(CargoAllowReleaseArtifactTransferV1::new(
+            ArtifactTransferInitV1 {
+                transfer_id: "transfer:release-manifest-v2".to_string(),
+                role: "ReleaseManifest".to_string(),
+                stable_artifact_id: "release-manifest-v2".to_string(),
+                producer: ProducerIdentityV1 {
+                    repository: REPOSITORY.to_string(),
+                    workflow_path: "scripts/generate-release-manifest.sh".to_string(),
+                    git_ref: format!("commit/{}", subject.commit),
+                    run_id: 0,
+                    run_attempt: 1,
+                    job_id: "job:release-manifest-v2".to_string(),
+                    commit_sha: subject.commit.clone(),
+                    tree_sha: subject.tree.clone(),
+                    release_version: subject.version.clone(),
+                    tool_name: "cargo-allow".to_string(),
+                    schema_id: "cargo-allow.release-artifact-transfer.v1".to_string(),
+                    producer_generation: 1,
+                },
+                provider_id: "local-freeze".to_string(),
+                provider_artifact_name: "release-manifest-v2".to_string(),
+                files: vec![ArtifactTransferFileV1 {
+                    path: "release-manifest-v2.json".to_string(),
+                    size_bytes: manifest.len() as u64,
+                    sha256: sha256_v1_bytes(manifest),
+                }],
+                semantic_payload_digest: None,
+                trust_class: TrustClassV1::ManualDispatch,
+                untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
+                created_at_utc: subject.frozen_at_utc.clone(),
+            },
+        ));
+    }
     Ok(transfers)
 }
 
-fn build_retained_artifacts(archives: &ArchiveSet) -> Vec<RetainedExactArtifactV1> {
-    archives
+fn build_retained_artifacts(
+    archives: &ArchiveSet,
+    receipt_bytes: &[u8],
+    manifest_bytes: Option<&[u8]>,
+) -> Vec<RetainedExactArtifactV1> {
+    let mut artifacts = archives
         .archives
         .iter()
         .map(|(name, bytes)| RetainedExactArtifactV1 {
@@ -1359,7 +1486,22 @@ fn build_retained_artifacts(archives: &ArchiveSet) -> Vec<RetainedExactArtifactV
             declared_sha256: sha256_v1_bytes(bytes),
             bytes: RetainedArtifactBytesV1::new(bytes.clone()),
         })
-        .collect()
+        .collect::<Vec<_>>();
+    artifacts.push(RetainedExactArtifactV1 {
+        role: "FreezeReceipt".to_string(),
+        artifact_id: "final-freeze-receipt".to_string(),
+        declared_sha256: sha256_v1_bytes(receipt_bytes),
+        bytes: RetainedArtifactBytesV1::new(receipt_bytes.to_vec()),
+    });
+    if let Some(manifest) = manifest_bytes {
+        artifacts.push(RetainedExactArtifactV1 {
+            role: "ReleaseManifest".to_string(),
+            artifact_id: "release-manifest-v2".to_string(),
+            declared_sha256: sha256_v1_bytes(manifest),
+            bytes: RetainedArtifactBytesV1::new(manifest.to_vec()),
+        });
+    }
+    artifacts
 }
 
 fn manifest_binding(evidence: &[EvidenceInput]) -> FinalFreezeManifestBindingV1 {
@@ -1478,11 +1620,20 @@ fn load_incident_handoff(root: &Path) -> Option<String> {
     Some(sha256_v1_bytes(&bytes))
 }
 
+/// Receipts record bare hex digests; the typed evidence convention is
+/// `sha256:v1:<hex>`. Normalize without changing the digest itself.
+fn read_evidence_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+    std::fs::read(path)
+        .map_err(|error| instrument(format!("evidence read {}: {error}", path.display())))
+}
+
 fn canonical_digest(digest: &str) -> String {
-    if digest.starts_with("sha256:") {
-        digest.to_string()
+    if let Some(hex) = digest.strip_prefix("sha256:v1:") {
+        format!("sha256:v1:{hex}")
+    } else if let Some(hex) = digest.strip_prefix("sha256:") {
+        format!("sha256:v1:{hex}")
     } else {
-        format!("sha256:{digest}")
+        format!("sha256:v1:{digest}")
     }
 }
 
@@ -1927,6 +2078,328 @@ expected_registry_checksum = "sha256:cccc"
             .iter()
             .find(|node| node.evidence_id == "incident-handoff")
             .expect("incident node");
-        assert_eq!(incident_node.result, FinalEvidenceNodeResultV1::Incident);
+        // The handoff node records the preserved handoff fact itself; a node
+        // carrying result=Incident escalates the whole graph evaluation and
+        // could never replay into equivalence.
+        assert_eq!(incident_node.result, FinalEvidenceNodeResultV1::Complete);
+    }
+}
+
+#[cfg(test)]
+mod compose_fixture_tests {
+    use super::ReleaseFreezeComposeArgs;
+    use super::cmd_compose;
+    use allow_report::{
+        CandidateReleaseIdentityProjectionV1, FINAL_SELECTION_IDENTITY_ROLE,
+        FINAL_SUPPORT_SELECTION_SCHEMA_ID, FINAL_SUPPORT_SELECTION_SCHEMA_VERSION,
+        FinalSelectionDispositionV1, FinalSelectionRowV1, FinalSupportSelectionV1,
+        ReleaseVersionV1,
+    };
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    fn git(root: &Path, args: &[&str]) -> String {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(root)
+            .output()
+            .expect("git runs");
+        assert!(
+            output.status.success(),
+            "git {:?} failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    fn write(root: &Path, relative: &str, contents: &[u8]) -> PathBuf {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("dirs");
+        std::fs::write(&path, contents).expect("write");
+        path
+    }
+
+    fn hex(bytes: &[u8]) -> String {
+        allow_core::sha256_v1_bytes(bytes)
+            .strip_prefix("sha256:v1:")
+            .expect("v1 form")
+            .to_string()
+    }
+
+    fn digest_of(path: &Path) -> String {
+        let bytes = std::fs::read(path).expect("read");
+        format!("sha256:v1:{}", hex(&bytes))
+    }
+
+    fn selection_toml() -> String {
+        let version = ReleaseVersionV1::parse("0.2.0").expect("version parses");
+        let projection = CandidateReleaseIdentityProjectionV1::from_version(&version);
+        let row = |dimension: &str, subject: &str, disposition: &str| {
+            format!(
+                "[[final_selection.rows]]\ndimension = \"{dimension}\"\nsubject = \"{subject}\"\ndisposition = \"{disposition}\"\nproof_owner = \"owner\"\nrequired_evidence = \"evidence\"\nevidence_reference = \"Cargo.toml\"\nclaim_effect = \"narrowed\"\nstaleness_inputs = []\n"
+            )
+        };
+        let mut selection = FinalSupportSelectionV1 {
+            schema_id: FINAL_SUPPORT_SELECTION_SCHEMA_ID.to_string(),
+            schema_version: FINAL_SUPPORT_SELECTION_SCHEMA_VERSION,
+            controlling_issue: 3737,
+            release_version: projection.version.clone(),
+            release_tag: projection.tag.clone(),
+            channel: projection.channel.clone(),
+            github_prerelease: false,
+            identity_digest: projection.canonical_digest(FINAL_SELECTION_IDENTITY_ROLE),
+            selection_digest: String::new(),
+            claim_boundary: FinalSupportSelectionV1 {
+                schema_id: String::new(),
+                schema_version: 0,
+                controlling_issue: 0,
+                release_version: String::new(),
+                release_tag: String::new(),
+                channel: String::new(),
+                github_prerelease: false,
+                identity_digest: String::new(),
+                selection_digest: String::new(),
+                claim_boundary: String::new(),
+                rows: Vec::new(),
+            }
+            .claim_boundary()
+            .to_string(),
+            rows: vec![
+                FinalSelectionRowV1 {
+                    dimension: "platform".to_string(),
+                    subject: "x86_64-unknown-linux-gnu".to_string(),
+                    disposition: FinalSelectionDispositionV1::Selected,
+                    proof_owner: "owner".to_string(),
+                    required_evidence: "evidence".to_string(),
+                    evidence_reference: "Cargo.toml".to_string(),
+                    claim_effect: "narrowed".to_string(),
+                    staleness_inputs: Vec::new(),
+                },
+                FinalSelectionRowV1 {
+                    dimension: "pilot".to_string(),
+                    subject: "clean-repository".to_string(),
+                    disposition: FinalSelectionDispositionV1::NotProven,
+                    proof_owner: "owner".to_string(),
+                    required_evidence: "evidence".to_string(),
+                    evidence_reference: "Cargo.toml".to_string(),
+                    claim_effect: "narrowed".to_string(),
+                    staleness_inputs: Vec::new(),
+                },
+            ],
+        };
+        selection.selection_digest = selection.canonical_selection_digest(&projection);
+        format!(
+            "# fixture support matrix\n\n[final_selection]\nschema_id = \"cargo-allow.final-support-selection.v1\"\nschema_version = 1\ncontrolling_issue = 3737\nrelease_version = \"0.2.0\"\nrelease_tag = \"v0.2.0\"\nchannel = \"stable\"\ngithub_prerelease = false\nidentity_digest = \"{}\"\nselection_digest = \"{}\"\nclaim_boundary = \"{}\"\n\n{}{}",
+            selection.identity_digest,
+            selection.selection_digest,
+            selection.claim_boundary(),
+            row("platform", "x86_64-unknown-linux-gnu", "selected"),
+            row("pilot", "clean-repository", "not_proven"),
+        )
+    }
+
+    #[test]
+    fn compose_reaches_a_verified_complete_freeze_from_a_fixture_repository() {
+        let root =
+            std::env::temp_dir().join(format!("freeze-compose-fixture-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root");
+
+        git(&root, &["init"]);
+        git(&root, &["config", "user.email", "freeze@example.invalid"]);
+        git(&root, &["config", "user.name", "freeze fixture"]);
+
+        write(
+            &root,
+            "Cargo.toml",
+            b"# fixture workspace\nversion = \"0.2.0\"\n",
+        );
+        write(
+            &root,
+            ".gitignore",
+            b"target/
+",
+        );
+        write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
+        let shared_checksums = [
+            (
+                "effortless-repo-edit",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            ),
+            (
+                "effortless-repo-protocol",
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            ),
+            (
+                "effortless-repo-snapshot",
+                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            ),
+        ];
+        let mut topology = String::new();
+        for (name, checksum) in shared_checksums {
+            topology.push_str(&format!(
+                "[[package]]\ncargo_package_name = \"{name}\"\nproduct_family = \"shared\"\ncandidate_inclusion = true\npackage_version = \"0.1.0\"\nexpected_registry_checksum = \"sha256:{checksum}\"\n\n"
+            ));
+        }
+        write(
+            &root,
+            "policy/product-package-topology-v2.toml",
+            topology.as_bytes(),
+        );
+        write(
+            &root,
+            "docs/support-matrix.toml",
+            selection_toml().as_bytes(),
+        );
+        write(
+            &root,
+            "docs/release/evidence/rc1-publication-incident.v1.json",
+            b"{}",
+        );
+
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-m", "fixture subject"]);
+        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
+        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+        let cargo_lock_sha = digest_of(&root.join("Cargo.lock"));
+        let topology_sha = digest_of(&root.join("policy/product-package-topology-v2.toml"));
+
+        let evidence_dir = root.join("target/freeze-evidence");
+        let packages_dir = evidence_dir.join("packages");
+        std::fs::create_dir_all(&packages_dir).expect("packages dir");
+        let product_names = [
+            "allow-core",
+            "allow-policy",
+            "allow-policy-legacy",
+            "allow-inventory",
+            "allow-files",
+            "allow-rust",
+            "allow-match",
+            "allow-report",
+            "allow-diff",
+            "cargo-allow",
+        ];
+        let mut crate_rows = Vec::new();
+        for (index, name) in product_names.iter().enumerate() {
+            let bytes = format!("archive-bytes-{name}-{index}").into_bytes();
+            std::fs::write(packages_dir.join(format!("{name}-0.2.0.crate")), &bytes)
+                .expect("archive");
+            crate_rows.push(format!(
+                "{{\"name\": \"{name}\", \"version\": \"0.2.0\", \"crate_file\": \"{name}-0.2.0.crate\", \"sha256\": \"{}\", \"size_bytes\": {}}}",
+                hex(&bytes),
+                bytes.len()
+            ));
+        }
+        for (name, checksum) in shared_checksums {
+            crate_rows.push(format!(
+                "{{\"name\": \"{name}\", \"version\": \"0.1.0\", \"crate_file\": \"{name}-0.1.0.crate\", \"sha256\": \"sha256:{checksum}\", \"size_bytes\": 3}}"
+            ));
+        }
+        let package_set = format!(
+            "{{\"schema_id\": \"cargo-allow.exact-candidate-package-set.v1\", \"result\": \"Passed\", \"candidate\": {{\"workspace_version\": \"0.2.0\"}}, \"package_set\": {{\"order\": [], \"crates\": [{}]}}}}",
+            crate_rows.join(",")
+        );
+        write(
+            &evidence_dir,
+            "package-set.receipt.json",
+            package_set.as_bytes(),
+        );
+
+        let mut phases = String::new();
+        for phase in [
+            "release_identity",
+            "candidate_package_set",
+            "shared_prerequisites",
+            "publisher_state_machine",
+            "docs_and_support_identity",
+            "manifest_and_assets",
+            "workflow_graph_permissions",
+        ] {
+            phases.push_str(&format!("\"{phase}\": \"Complete\", "));
+        }
+        phases.push_str("\"authorization_boundary\": \"Incomplete\"");
+        let preflight = serde_json::json!(
+            shared_checksums
+                .iter()
+                .map(|(name, checksum)| {
+                    serde_json::json!({
+                        "name": name,
+                        "version": "0.1.0",
+                        "registry_checksum": format!("sha256:{checksum}")
+                    })
+                })
+                .collect::<Vec<_>>()
+        )
+        .to_string();
+        let rehearsal = format!(
+            "{{\"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
+        );
+        write(&evidence_dir, "rehearsal.json", rehearsal.as_bytes());
+
+        let package_docs = format!(
+            "{{\"basis\": {{\"commit\": \"{commit}\", \"tree\": \"{tree}\", \"cargo_lock_sha256\": \"{cargo_lock_sha}\", \"topology_sha256\": \"{topology_sha}\", \"release_identity\": {{\"version\": \"0.2.0\"}}}}, \"rows\": []}}"
+        );
+        write(
+            &evidence_dir,
+            "package-docs.receipt.json",
+            package_docs.as_bytes(),
+        );
+
+        let candidate_preparation = format!(
+            "{{\"readiness\": \"stale\", \"reasons\": [\"target version 0.2.0 equals the current source line; there is no transition to prepare\"], \"input_identity\": {{\"head_commit\": \"{commit}\", \"tree\": \"{tree}\", \"cargo_lock_digest\": \"{cargo_lock_sha}\"}}}}"
+        );
+        write(
+            &evidence_dir,
+            "candidate-preparation.json",
+            candidate_preparation.as_bytes(),
+        );
+
+        write(
+            &evidence_dir,
+            "install-journey.receipt.json",
+            b"{\"candidate\": {\"version\": \"0.2.0\"}, \"result\": \"Passed\"}",
+        );
+        write(
+            &evidence_dir,
+            "upgrade-rollback.receipt.json",
+            b"{\"candidate\": {\"version\": \"0.2.0\"}, \"result\": \"Passed\"}",
+        );
+        let controls =
+            format!("{{\"state\": \"Feasible\", \"commit\": \"{commit}\", \"tree\": \"{tree}\"}}");
+        write(&evidence_dir, "live-controls.json", controls.as_bytes());
+        write(
+            &evidence_dir,
+            "release-manifest-v2.json",
+            b"{\"version\": \"0.2.0\", \"publication_state\": \"IncompletePrePublication\"}",
+        );
+
+        let role_path = |role: &str, file: &str| {
+            format!("{role}={}", evidence_dir.join(file).to_string_lossy())
+        };
+        let args = ReleaseFreezeComposeArgs {
+            version: "0.2.0".to_string(),
+            evidence: vec![
+                role_path("candidate-preparation", "candidate-preparation.json"),
+                role_path("package-set", "package-set.receipt.json"),
+                role_path("package-docs", "package-docs.receipt.json"),
+                role_path("rehearsal", "rehearsal.json"),
+                role_path("install-journey", "install-journey.receipt.json"),
+                role_path("upgrade-rollback", "upgrade-rollback.receipt.json"),
+                role_path("controls", "live-controls.json"),
+                role_path("release-manifest", "release-manifest-v2.json"),
+            ],
+            out_dir: root.join("target/freeze-out"),
+        };
+        cmd_compose(&root, &args)
+            .expect("the fixture freeze composes and replays to a verified Complete");
+        let replay =
+            std::fs::read_to_string(root.join("target/freeze-out/final-freeze.replay.json"))
+                .expect("replay artifact written");
+        assert!(
+            replay.contains("complete_equivalent"),
+            "the fixture freeze must replay complete_equivalent"
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

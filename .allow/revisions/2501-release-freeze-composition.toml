@@ -15,19 +15,21 @@ schema_version = 1
 # git-head and token comparisons (exact-candidate-package-set.sh,
 # source-candidate-smoke.sh), and the upgrade/rollback journey assumed a
 # non-.exe candidate binary. The source-exception additions receipt only the
-# syntax-visible constructs the new files introduce: allow-0859 is a
-# glob-ratcheted expect baseline (occurrence_limit=7) for the composition
-# test module's fixture-guarded expects, and allow-0860 receipts the new
+# syntax-visible constructs the new files introduce: allow-0862 is a
+# glob-ratcheted expect baseline (occurrence_limit=19) for the composition
+# module, its fixture helpers, and the full-path fixture repository test
+# (re-minted from the in-diff allow-0859 after the fixture test landed),
+# and allow-0860 receipts the new
 # observation script. No existing exception is weakened, no expiry is
 # extended, and no scope is broadened: the records below are additions.
 # policy/allow.toml keeps its CRLF line-ending contract; the net transition
 # is append-only.
 
 [[records]]
-allow_ids = ["allow-0859"]
+allow_ids = ["allow-0862"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:b0d96b6bee8e52473ad3cf5945476c70b8b2ae3b379bfb3243b4ed15410c20b6"
-reason = "Glob-ratcheted expect baseline for the release-freeze composition test module (#2501); every expect guards an invariant established by immediately preceding fixture construction, and the composed digests are recomputed from committed policy data and retained receipt bytes only."
+after_fingerprint = "sha256:v1:63b1236cddb06af70c12e94945b5608368dfe1dc65ea2d0f72c1cae49c6c00de"
+reason = "Glob-ratcheted expect baseline for the release-freeze composition module, its fixture helpers, and the full-path fixture repository test (#2501); every expect guards an invariant established by immediately preceding fixture construction, and the composed digests are recomputed from committed policy data and retained receipt bytes only."
 
 [[records]]
 allow_ids = ["allow-0860"]
