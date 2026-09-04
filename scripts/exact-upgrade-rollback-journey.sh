@@ -9,8 +9,15 @@ PACKAGE_RECEIPT="${PACKAGE_SET_DIR}/exact-candidate-package-set.receipt.json"
 CANDIDATE_BIN="${CANDIDATE_BIN:-}"
 if [[ -z "${CANDIDATE_BIN}" ]]; then
   candidate_default="${PACKAGE_SET_DIR}/install/bin/cargo-allow"
-  [[ -f "${candidate_default}" || -f "${candidate_default}.exe" ]] ||     fail "missing exact candidate package install binary under ${PACKAGE_SET_DIR}/install/bin"
-  CANDIDATE_BIN="${candidate_default}"
+  # MSYS stat aliases cargo-allow to cargo-allow.exe, so probe the .exe
+  # first and let Windows Python see the real file name.
+  if [[ -f "${candidate_default}.exe" ]]; then
+    CANDIDATE_BIN="${candidate_default}.exe"
+  elif [[ -f "${candidate_default}" ]]; then
+    CANDIDATE_BIN="${candidate_default}"
+  else
+    fail "missing exact candidate package install binary under ${PACKAGE_SET_DIR}/install/bin"
+  fi
 fi
 RECEIPT="${WORK_DIR}/exact-upgrade-rollback-journey.receipt.json"
 SCHEMA="${ROOT}/docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
@@ -40,6 +47,9 @@ rm -rf "${WORK_DIR}"
 mkdir -p "${WORK_DIR}/old-install" "${WORK_DIR}/old-cargo-home" "${WORK_DIR}/repository"
 old_root="${WORK_DIR}/old-install"
 old_bin="${old_root}/bin/cargo-allow"
+if [[ ! -f "${old_bin}" && -f "${old_bin}.exe" ]]; then
+  old_bin="${old_bin}.exe"
+fi
 if [[ -n "${OLD_BIN:-}" ]]; then
   old_bin="$(python3 - "${OLD_BIN}" "${WORK_DIR}" <<'PY'
 import sys

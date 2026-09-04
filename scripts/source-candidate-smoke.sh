@@ -368,6 +368,10 @@ step_refresh_exit=0
 command -v git >/dev/null 2>&1 || fail "git is required for diff --base lifecycle steps"
 log "step git baseline commit for diff --base"
 git -C "${consumer_dir}" init >/dev/null
+# The generated scan cache under target/ mutates on every cargo-allow run;
+# ignoring it from the start keeps every plan's inventory basis stable.
+printf 'target/
+' > "${consumer_dir}/.gitignore"
 git -C "${consumer_dir}" config core.autocrlf false
 git -C "${consumer_dir}" config user.email "source-candidate-smoke@example.com"
 git -C "${consumer_dir}" config user.name "Source Candidate Smoke"
@@ -555,15 +559,22 @@ import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-del lines[-1]
-path.write_text("".join(lines), encoding="utf-8")
+data = path.read_bytes()
+last_newline = data.rfind(b"\n")
+if last_newline == -1:
+    raise SystemExit("fixture source has no newline-terminated line to drop")
+# Byte-exact rewrite: text-mode write_text would flip LF to CRLF on Windows
+# and leave the inventory permanently drifted from the plan.
+path.write_bytes(data[:last_newline] + b"\n")
 PY
 if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --root "${consumer_dir}" >/dev/null 2>&1; then
     fail "stale why plan was accepted by add --from-plan"
 fi
 printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
-"${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" >/dev/null
+if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${WORK_DIR}/second-add.log" 2>&1; then
+  cat "${WORK_DIR}/second-add.log" >&2
+  fail "the restored second finding was not accepted by add --from-plan"
+fi
 step_second_finding_exit=0
 
 log "step post-add recheck and full panic-scope check (targeted recheck is not a repository proof)"
