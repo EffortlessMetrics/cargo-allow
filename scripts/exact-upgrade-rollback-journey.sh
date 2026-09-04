@@ -68,6 +68,10 @@ PY
 else
   CARGO_HOME="${WORK_DIR}/old-cargo-home" cargo install cargo-allow --version 0.1.11 --locked --root "${old_root}" --quiet
 fi
+# MSYS stat aliases the .exe name, so probe the .exe first after install.
+if [ -f "${old_bin}.exe" ]; then
+  old_bin="${old_bin}.exe"
+fi
 [[ -f "${old_bin}" ]] || fail "exact 0.1.11 binary was not installed"
 
 version() { "$1" --version | tr -d '\r'; }
