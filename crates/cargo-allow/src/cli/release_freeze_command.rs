@@ -2425,3 +2425,30 @@ mod compose_fixture_tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 }
+//
+#[cfg(test)]
+mod probe_cover_tests {
+    use super::deep_find_prefixed_version;
+
+    #[test]
+    fn prefixed_version_search_matches_only_the_prefix() {
+        let value = serde_json::json!({
+            "from": { "version": "cargo-allow 0.1.11 release" },
+            "candidate": { "version": "cargo-allow 0.2.0" }
+        });
+        assert_eq!(
+            deep_find_prefixed_version(&value, "cargo-allow 0.2.0").as_deref(),
+            Some("cargo-allow 0.2.0")
+        );
+        assert_eq!(
+            deep_find_prefixed_version(&value, "cargo-allow 9.9.9"),
+            None
+        );
+    }
+
+    #[test]
+    fn version_shape_rejects_prerelease_and_prefixed_forms() {
+        assert!(!super::is_version_shaped("0.2.0-rc.1"));
+        assert!(super::is_version_shaped("0.2.0"));
+    }
+}
