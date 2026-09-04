@@ -39,3 +39,9 @@ allow_ids = ["allow-0866"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:b713b2e23ccb92db41b340bafa7c6b79dadb422ef3fc997b9c04b4d650fa9777"
 reason = "Retained read-only replay record for the #2501 freeze: the CompleteEquivalent verdict recomputed from the retained bytes alone, proving the freeze replays without moving main."
+
+[[records]]
+allow_ids = ["allow-0867"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e1b7267f5723f5607189d6a348ce5e60fc25a07a063e48c2310c62aba1007b21"
+reason = "Ledger-change-note receipt for this revision-note file itself (#2501); the note authorizes the retained final-freeze evidence artifacts and is receipted per the per-note receipt law."
