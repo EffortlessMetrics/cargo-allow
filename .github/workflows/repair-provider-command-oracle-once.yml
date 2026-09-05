@@ -1,0 +1,92 @@
+name: One-shot provider command oracle repair
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: >-
+      github.event.pull_request.number == 4131 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'codex/2567-provider-contract'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: codex/2567-provider-contract
+          fetch-depth: 0
+      - name: Pin the emitted descriptor identity and capability set
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('crates/cargo-allow/src/capabilities.rs')
+          source = path.read_text(encoding='utf-8')
+          old = '''        let json = fs::read_to_string(&json_path).map_err(|error| error.to_string())?;
+          fs::remove_file(&json_path).map_err(|error| error.to_string())?;
+          if !json.contains("proof.cargo-allow-provider-contract.v1") {
+              return Err("provider contract JSON omitted its schema id".to_string());
+          }
+          '''
+          new = '''        let json = fs::read_to_string(&json_path).map_err(|error| error.to_string())?;
+          fs::remove_file(&json_path).map_err(|error| error.to_string())?;
+          let descriptor: serde_json::Value =
+              serde_json::from_str(&json).map_err(|error| error.to_string())?;
+          if descriptor.get("schema_id").and_then(serde_json::Value::as_str)
+              != Some("proof.cargo-allow-provider-contract.v1")
+              || descriptor
+                  .get("schema_version")
+                  .and_then(serde_json::Value::as_u64)
+                  != Some(1)
+              || descriptor.get("provider_id").and_then(serde_json::Value::as_str)
+                  != Some("proof.cargo-allow.v1")
+              || descriptor
+                  .get("access_posture")
+                  .and_then(serde_json::Value::as_str)
+                  != Some("read_only")
+              || descriptor
+                  .get("snapshot_bound")
+                  .and_then(serde_json::Value::as_bool)
+                  != Some(true)
+          {
+              return Err("provider contract JSON identity changed".to_string());
+          }
+          let required = descriptor
+              .get("required_capabilities")
+              .and_then(serde_json::Value::as_array)
+              .ok_or_else(|| "provider contract required_capabilities was not an array".to_string())?
+              .iter()
+              .map(|value| {
+                  value
+                      .as_str()
+                      .ok_or_else(|| "provider contract capability was not a string".to_string())
+              })
+              .collect::<Result<Vec<_>, _>>()?;
+          if required
+              != [
+                  "cargo-allow.check.no-new",
+                  "cargo-allow.capabilities.json",
+              ]
+          {
+              return Err("provider contract required capabilities changed".to_string());
+          }
+          '''
+          if source.count(old) != 1:
+              raise SystemExit('expected exactly one provider JSON assertion block')
+          path.write_text(source.replace(old, new), encoding='utf-8')
+          PY
+          changed="$(git diff --name-only)"
+          test "$changed" = "crates/cargo-allow/src/capabilities.rs"
+          git diff --check
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git add crates/cargo-allow/src/capabilities.rs
+          git commit -m 'test(provider): pin command descriptor contract'
+          git push origin HEAD:codex/2567-provider-contract
