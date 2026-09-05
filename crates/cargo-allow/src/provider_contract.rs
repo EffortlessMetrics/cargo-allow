@@ -116,6 +116,9 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
     {
         return Err("analysis request snapshot identity is incomplete".to_string());
     }
+    if !is_supported_dirty_state(&snapshot.dirty_state) {
+        return Err("analysis request snapshot dirty state is unsupported".to_string());
+    }
     if !matches!(snapshot.object_format.as_str(), "sha1" | "sha256") {
         return Err("analysis request snapshot object format is unsupported".to_string());
     }
@@ -171,6 +174,22 @@ fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
         return Err("analysis request selected source closure is inconsistent".to_string());
     }
     Ok(())
+}
+
+fn is_supported_dirty_state(value: &str) -> bool {
+    [
+        effortless_repo_snapshot::RepositoryDirtyState::Clean,
+        effortless_repo_snapshot::RepositoryDirtyState::NotProbed,
+        effortless_repo_snapshot::RepositoryDirtyState::TrackedModified,
+        effortless_repo_snapshot::RepositoryDirtyState::StagedChanges,
+        effortless_repo_snapshot::RepositoryDirtyState::UntrackedPresent,
+        effortless_repo_snapshot::RepositoryDirtyState::SubmoduleOrNestedStateUnknown,
+        effortless_repo_snapshot::RepositoryDirtyState::PartialOrUnavailable,
+        effortless_repo_snapshot::RepositoryDirtyState::NotAGitRepository,
+        effortless_repo_snapshot::RepositoryDirtyState::InstrumentFailure,
+    ]
+    .into_iter()
+    .any(|state| state.as_str() == value)
 }
 
 fn is_object_id(value: &str, expected_len: usize) -> bool {
@@ -323,6 +342,17 @@ mod tests {
     }
 
     #[test]
+    fn request_validation_rejects_unknown_dirty_state() {
+        let mut value = request();
+        value.snapshot.dirty_state = "forged".to_string();
+        let error = validate_request(&value).expect_err("unknown dirty state must fail closed");
+        assert_eq!(
+            error,
+            "analysis request snapshot dirty state is unsupported"
+        );
+    }
+
+    #[test]
     fn request_validation_rejects_range_without_base() {
         let mut value = request();
         value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
@@ -332,7 +362,7 @@ mod tests {
 
     #[test]
     fn request_validation_rejects_bad_top_level_fields() -> Result<(), String> {
-        let mut value = request();
+        let dut value = request();
         value.schema_version = 2;
         require_rejection(&value)?;
         value = request();
