@@ -33,9 +33,9 @@ jobs:
             '.github/workflows/repair-provider-rustfmt-once.yml' \
             'crates/cargo-allow/src/capabilities.rs' \
             | sort > /tmp/expected-paths
-          git diff --name-only | sort > /tmp/actual-paths
+          git diff --name-only HEAD | sort > /tmp/actual-paths
           diff -u /tmp/expected-paths /tmp/actual-paths
-          git diff --check
+          git diff --check HEAD
           git config user.name EffortlessSteven
           git config user.email git@effortlesssteven.com
           git add crates/cargo-allow/src/capabilities.rs
