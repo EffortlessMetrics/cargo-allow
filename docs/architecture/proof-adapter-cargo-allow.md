@@ -6,7 +6,9 @@ Human projection of the snapshot-bound read-only cargo-allow proof provider (#25
 
 The cargo-allow binary exposes the provider contract descriptor through the
 explicit `cargo-allow capabilities --provider-contract --format json` mode;
-the default sensor capability catalog remains unchanged.
+the default sensor capability catalog remains unchanged. Descriptor discovery
+does not read a repository, select policy, execute analysis, or emit an analysis
+receipt.
 The provider adapter mirrors and validates that contract before selecting a
 provider. Packet 2554 lands public process discovery, dry-run argv compilation
 via `proof-adapter-command`, and `ProofProviderV1` wiring. Process execution
