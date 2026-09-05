@@ -1,0 +1,22 @@
+name: Frozen subject lock
+
+# #3928: after the #2501 final freeze, load-bearing movement without an
+# explicit invalidation must not merge. Read-only: evaluation only.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frozen-subject-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - run: cargo run -p cargo-allow --locked -- frozen-subject-lock check --receipt docs/dogfood/receipts/final-freeze/final-freeze.receipt.json

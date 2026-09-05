@@ -1,0 +1,1 @@
+{"reason": "bootstrap: adding the #3928 frozen-subject lock machinery (lock model in allow-report, lock command in cargo-allow, lock workflow) moves release control surfaces past the frozen subject; refreeze required after merge", "recorded_by": "core/release", "recorded_at_utc": "2026-09-04T06:30:00Z", "frozen_commit": "63248416c2bd73edd63e22f064a1f242afcc0622"}

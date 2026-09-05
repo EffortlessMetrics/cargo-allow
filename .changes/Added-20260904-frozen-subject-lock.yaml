@@ -1,0 +1,23 @@
+kind: Added
+body: >-
+  Frozen-subject lock (#3928). After the #2501 final freeze, ordinary
+  movement of load-bearing release surfaces must not silently invalidate
+  the freeze. New hidden read-only `cargo-allow frozen-subject-lock
+  check` evaluates `CargoAllowFrozenSubjectLockV1`: it reads the retained
+  final-freeze receipt, diffs the frozen commit against HEAD (or a
+  reference), classifies every changed path against the typed
+  load-bearing denominator (frozen lock records, shipped source,
+  manifests/lockfile, toolchain, policy, package docs/assets, schemas,
+  support/channel truth, release records, workflows/actions,
+  release evidence producers), and returns the verdict.
+  RequiresInvalidation fails the check; Conflict (moving the retained
+  lock records) fails closed; proven unrelated work (sibling products,
+  campaign records, repository prose, the lock's own machinery) is
+  allowed through the typed classification; a proven append-only ledger
+  diff cannot change gate semantics or candidate bytes and is classified
+  ledger_append_only. Explicit invalidations under
+  .allow/frozen-subject-lock/invalidations/ move the lock to
+  InvalidatedForRefreeze (stales the freeze, allows the work, requires
+  refreeze). New workflow job runs the check on every pull request and
+  push to main. The check never mutates anything, never replaces branch
+  protection, and never authorizes or executes release operations.

@@ -11,6 +11,7 @@ use crate::{
 };
 
 pub(crate) mod candidate_preparation_command;
+mod frozen_subject_lock_command;
 mod reconcile_package_publication_command;
 mod release_freeze_command;
 mod release_identity_command;
@@ -128,6 +129,9 @@ pub(crate) enum CargoAllowCommand {
     /// Compose and replay the final release freeze from retained evidence.
     #[command(hide = true)]
     ReleaseFreeze(release_freeze_command::ReleaseFreezeArgs),
+    /// Evaluate the frozen-subject lock against ordinary mutation.
+    #[command(hide = true)]
+    FrozenSubjectLock(frozen_subject_lock_command::FrozenSubjectLockArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -228,6 +232,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
             candidate_preparation_command::cmd_prep_candidate(&args)
         }
         CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(&args),
+        CargoAllowCommand::FrozenSubjectLock(args) => {
+            frozen_subject_lock_command::cmd_frozen_subject_lock(&args)
+        }
     }
 }
 
@@ -427,5 +434,6 @@ impl CargoAllowCommand {
         "reconcile-package-publication",
         "prep-candidate",
         "release-freeze",
+        "frozen-subject-lock",
     ];
 }
