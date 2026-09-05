@@ -716,7 +716,7 @@ mod closeout_coverage_tests {
     use super::{
         CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
         CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
-        CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1, CampaignReviewPairV1,
+        CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
         evaluate_campaign_closeout,
     };
 
@@ -776,7 +776,7 @@ mod closeout_coverage_tests {
 
     #[test]
     fn evidence_identity_is_required_for_a_passing_row() {
-        let mut snapshot = state();
+        let snapshot = state();
         let mut record = CampaignCloseoutRecordV1 {
             parent_campaign: 3768,
             child_issue: 3845,
