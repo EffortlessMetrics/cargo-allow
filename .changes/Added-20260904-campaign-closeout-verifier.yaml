@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Campaign closeout verifier (#3845). Typed CampaignCloseoutRecordV1 /
+  CampaignRepositoryStateV1 inputs and CampaignCloseoutResultV1
+  evaluation implementing the merged-main law (merged-not-draft PRs,
+  merge reachability from current main, reviewed pair binding,
+  terminal-Passed required checks), acceptance coverage law (per-row
+  outcomes with exact remaining rows; NotPlanned/Duplicate requiring
+  explicit owner/reason/replacement), and the false-closeout corpus
+  (open/draft/unmerged PRs, unreachable merges, stale review pairs,
+  nonterminal checks, foreign-issue PRs, partial slices, empty records,
+  moved main) as unit tests. Hidden read-only `cargo-allow
+  campaign-closeout evaluate` command evaluates a declared closeout
+  record against a live state snapshot. No GitHub state is mutated; no
+  issue events are listened to; enforcement is owned by the next child.

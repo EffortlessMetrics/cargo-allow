@@ -1,0 +1,33 @@
+schema_version = 1
+# Revision note for the #3845 campaign closeout verifier.
+
+# This diff adds the typed campaign closeout verifier in allow-report:
+# CampaignCloseoutRecordV1 / CampaignRepositoryStateV1 inputs and the
+# CampaignCloseoutResultV1 evaluation implementing the merged-main law
+# (merged-not-draft PRs, merge reachability from current main, reviewed
+# pair binding, terminal-Passed required checks), acceptance coverage
+# law (per-row outcomes with exact remaining rows; NotPlanned/Duplicate
+# requiring explicit owner/reason/replacement), and the false-closeout
+# corpus (open/draft/unmerged PRs, unreachable merges, stale review
+# pairs, nonterminal checks, foreign-issue PRs, partial slices, empty
+# records, moved main) as unit tests; the corpus fixture code iterates
+# rather than indexes, so no indexing receipt is needed. The
+# source-exception addition receipts only the syntax-visible construct
+# the new file introduces: allow-0873 is a glob-ratcheted expect
+# baseline (occurrence_limit=1) for the corpus helper. No
+# existing exception is weakened, no expiry is extended, and no scope
+# is broadened: the records below are additions. policy/allow.toml
+# keeps its CRLF line-ending contract; the net transition is
+# append-only.
+
+[[records]]
+allow_ids = ["allow-0873"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8c7dfd44dcc7dd959559e4022a5e803c56c69266e730be9d11ed6d3b9392eca3"
+reason = "Glob-ratcheted expect baseline (occurrence_limit=1) for the campaign-closeout corpus helper (#3845); the single expect guards the guaranteed row-1 outcome established by the fixture construction immediately before the call."
+
+[[records]]
+allow_ids = ["allow-0874"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ba3da3ac25aa309f99c02e538c64a1290bbdf8e38d20fd90a72018f778b73be4"
+reason = "Ledger-change-note receipt for this revision-note file itself (#3845); the note authorizes the closeout verifier's expect ratchet and is receipted per the per-note receipt law."
