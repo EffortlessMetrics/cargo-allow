@@ -40,3 +40,15 @@ allow_ids = ["allow-0871"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:aa44092ee5b95b108e8a0c78e3d0a6806ee3ea5f838e6a1b39ff93bbd6dd9b90"
 reason = "Append-only invalidation record receipt for the #3928 lock bootstrap (.allow/frozen-subject-lock/invalidations/20260904-lock-bootstrap.json); the record stales the #2501 freeze for the machinery addition and is receipted per the per-note receipt law."
+
+[[records]]
+allow_ids = ["allow-0872"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6d25e0f5e18c2c5cbe42b6e7c6cd411e274ba7e3766f45b2843bca3bfbc64b7f"
+reason = "Glob-ratcheted expect baseline for the frozen-subject lock CLI fixture tests (#3928); every expect guards an invariant established by immediately preceding fixture git operations under fully controlled inputs. Replaces the earlier command-file ratchet attempt (0869 covered only the model file; 0872/0873 consolidation leaves one ratchet per file)."
+
+[[records]]
+allow_ids = ["allow-0871"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aa44092ee5b95b108e8a0c78e3d0a6806ee3ea5f838e6a1b39ff93bbd6dd9b90"
+reason = "Append-only invalidation record receipt for the #3928 lock bootstrap (.allow/frozen-subject-lock/invalidations/20260904-lock-bootstrap.json); the record stales the #2501 freeze for the machinery addition and is receipted per the per-note receipt law."
