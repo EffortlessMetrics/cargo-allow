@@ -714,10 +714,10 @@ mod closeout_corpus_tests {
 #[cfg(test)]
 mod closeout_coverage_tests {
     use super::{
-        evaluate_campaign_closeout, CampaignAcceptanceRowV1, CampaignCheckEvidenceV1,
-        CampaignCheckOutcomeV1, CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1,
-        CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1,
-        CampaignRepositoryStateV1, CampaignReviewPairV1,
+        CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+        CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
+        CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1, CampaignReviewPairV1,
+        evaluate_campaign_closeout,
     };
 
     #[test]
@@ -731,7 +731,10 @@ mod closeout_coverage_tests {
             (CampaignCloseoutVerdictV1::Mismatch, "mismatch"),
             (CampaignCloseoutVerdictV1::NotProven, "not_proven"),
             (CampaignCloseoutVerdictV1::Unsupported, "unsupported"),
-            (CampaignCloseoutVerdictV1::InstrumentFailure, "instrument_failure"),
+            (
+                CampaignCloseoutVerdictV1::InstrumentFailure,
+                "instrument_failure",
+            ),
         ] {
             assert_eq!(format!("{verdict}"), expected);
             assert_eq!(verdict.label(), expected);
@@ -764,10 +767,11 @@ mod closeout_coverage_tests {
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
         assert_eq!(outcome.uncovered_row_ids, vec!["r1".to_string()]);
         let row = &outcome.row_outcomes[0];
-        assert!(row
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("absent from the state snapshot")));
+        assert!(
+            row.reasons
+                .iter()
+                .any(|reason| reason.contains("absent from the state snapshot"))
+        );
     }
 
     #[test]
@@ -793,10 +797,12 @@ mod closeout_coverage_tests {
         };
         let outcome = evaluate_campaign_closeout(&record, &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(outcome.row_outcomes[0]
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("evidence identity")));
+        assert!(
+            outcome.row_outcomes[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("evidence identity"))
+        );
 
         // Fill in the identity; the row now passes.
         record.rows[0].evidence_identity = "sha256:v1:aa".to_string();
