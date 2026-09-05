@@ -178,9 +178,6 @@ impl LoadBearingOwnerV1 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NonLoadBearingOwnerV1 {
-    /// Proven append-only movement of the exception ledger: no removals or
-    /// modifications, so gate semantics and candidate bytes cannot change.
-    LedgerAppendOnly,
     /// The lock's own CI machinery: minimal-permission enforcement only.
     FrozenSubjectLockMachinery,
     /// Unselected sibling products outside the frozen closure.
@@ -196,7 +193,6 @@ pub enum NonLoadBearingOwnerV1 {
 impl NonLoadBearingOwnerV1 {
     pub(crate) fn patterns(self) -> &'static [&'static str] {
         match self {
-            Self::LedgerAppendOnly => &["policy/allow.toml"],
             Self::FrozenSubjectLockMachinery => &[".github/workflows/frozen-subject-lock.yml"],
             Self::SiblingProducts => &[
                 "crates/cargo-intent",
@@ -220,7 +216,6 @@ impl NonLoadBearingOwnerV1 {
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
-            Self::LedgerAppendOnly => "ledger_append_only",
             Self::FrozenSubjectLockMachinery => "frozen_subject_lock_machinery",
             Self::SiblingProducts => "sibling_products",
             Self::CampaignRecords => "campaign_records",
@@ -321,6 +316,11 @@ pub fn classify_frozen_subject_path(
         if let Some(prefix) = pattern.strip_suffix('*') {
             return path.starts_with(prefix);
         }
+        if pattern.ends_with('-') {
+            // Name-prefix pattern (e.g. `scripts/release-`): match any
+            // path below or beside the dash.
+            return path.starts_with(pattern);
+        }
         path == pattern || path.starts_with(&format!("{pattern}/"))
     }
     // The retained final-freeze records are tamper-evident: they are
@@ -334,11 +334,18 @@ pub fn classify_frozen_subject_path(
     // A proven append-only ledger diff cannot change candidate bytes (the
     // ledger does not ship) or gate semantics (append-only receipt entries
     // carry reviewed evidence and the change-note gate governs integrity).
-    if path == "policy/allow.toml" && append_only {
-        return class(
-            FrozenSubjectPathKindV1::NonLoadBearing,
-            "ledger_append_only".to_string(),
-        );
+    // A proven append-only ledger diff cannot change candidate bytes (the
+    // ledger does not ship) or gate semantics (append-only receipt entries
+    // carry reviewed evidence and the change-note gate governs integrity).
+    // Without the append-only proof the path stays load-bearing Policy.
+    if path == "policy/allow.toml" {
+        if append_only {
+            return class(
+                FrozenSubjectPathKindV1::NonLoadBearing,
+                "ledger_append_only".to_string(),
+            );
+        }
+        return class(FrozenSubjectPathKindV1::LoadBearing, "policy".to_string());
     }
     let lock_records = LoadBearingOwnerV1::FrozenLockRecords;
     for pattern in lock_records.patterns() {
@@ -376,9 +383,8 @@ pub fn classify_frozen_subject_path(
 }
 
 impl NonLoadBearingOwnerV1 {
-    fn patterns_owned() -> [Self; 5] {
+    fn patterns_owned() -> [Self; 4] {
         [
-            Self::LedgerAppendOnly,
             Self::FrozenSubjectLockMachinery,
             Self::SiblingProducts,
             Self::CampaignRecords,
@@ -820,5 +826,78 @@ mod invalidation_scope_tests {
         assert_eq!(lock.invalidation_count, 1);
         // An invalidation with no movement still stales the freeze.
         assert_eq!(lock.verdict, FrozenSubjectVerdictV1::Stale);
+    }
+}
+//
+#[cfg(test)]
+mod coverage_tests {
+    use super::super::frozen_subject_lock_v1::*;
+    use super::super::frozen_subject_lock_v1::*;
+
+    #[test]
+    fn every_load_bearing_owner_has_patterns_and_a_label() {
+        for owner in LoadBearingOwnerV1::patterns_owned() {
+            assert!(!owner.patterns().is_empty());
+            assert!(!owner.label().is_empty());
+        }
+    }
+
+    #[test]
+    fn every_non_load_bearing_owner_has_patterns_and_a_label() {
+        for owner in NonLoadBearingOwnerV1::patterns_owned() {
+            assert!(!owner.patterns().is_empty());
+            assert!(!owner.label().is_empty());
+        }
+    }
+
+    #[test]
+    fn display_renders_the_verdict_label() {
+        for verdict in [
+            FrozenSubjectVerdictV1::Complete,
+            FrozenSubjectVerdictV1::AllowedNonLoadBearing,
+            FrozenSubjectVerdictV1::RequiresInvalidation,
+            FrozenSubjectVerdictV1::Conflict,
+            FrozenSubjectVerdictV1::Stale,
+            FrozenSubjectVerdictV1::InstrumentFailure,
+        ] {
+            assert_eq!(format!("{verdict}"), verdict.label());
+        }
+    }
+
+    #[test]
+    fn load_bearing_patterns_classify_canonical_paths() {
+        let cases = [
+            ("docs/dogfood/receipts/final-freeze/x.json", "frozen_lock_records"),
+            ("crates/allow-core/src/lib.rs", "shipped_source"),
+            ("Cargo.lock", "manifests_lockfile"),
+            ("rust-toolchain.toml", "toolchain"),
+            ("policy/allow.toml", "policy"),
+            ("docs/schemas/x.json", "schemas"),
+            ("README.md", "package_docs_assets"),
+            ("docs/support-matrix.toml", "support_channel_truth"),
+            (".changes/x.yaml", "release_records"),
+            (".github/workflows/release.yml", "workflows_actions"),
+            ("scripts/release-topology-publisher.py", "release_evidence_producers"),
+        ];
+        for (path, owner) in cases {
+            let classified = classify_frozen_subject_path(path, "M", false);
+            assert_eq!(classified.kind, FrozenSubjectPathKindV1::LoadBearing, "{path}");
+            assert_eq!(classified.owner, owner, "{path}");
+        }
+    }
+
+    #[test]
+    fn non_load_bearing_patterns_classify_canonical_paths() {
+        let cases = [
+            (".github/workflows/frozen-subject-lock.yml", "frozen_subject_lock_machinery"),
+            ("crates/cargo-intent/src/lib.rs", "sibling_products"),
+            ("docs/dogfood/receipts/old-lane/x.json", "campaign_records"),
+            ("docs/source-of-truth/x.md", "repository_prose"),
+        ];
+        for (path, owner) in cases {
+            let classified = classify_frozen_subject_path(path, "M", false);
+            assert_eq!(classified.kind, FrozenSubjectPathKindV1::NonLoadBearing, "{path}");
+            assert_eq!(classified.owner, owner, "{path}");
+        }
     }
 }
