@@ -193,6 +193,7 @@ fn is_repository_relative_path(value: &str) -> bool {
     #[cfg(not(windows))]
     let has_backslash = false;
     !value.is_empty()
+        && !value.contains('\0')
         && !value.starts_with('/')
         && !drive_prefixed
         && !has_backslash
@@ -224,7 +225,9 @@ fn push_bound_value(output: &mut Vec<u8>, value: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use effortless_repo_protocol::{RepositorySnapshotV1, ResolvedRevisionV1};
+    use effortless_repo_protocol::{
+        RepositorySnapshotV1, ResolvedRevisionV1, SelectedPathIdentityV1,
+    };
 
     fn request() -> AnalysisRequestV1 {
         AnalysisRequestV1 {
@@ -404,74 +407,180 @@ mod tests {
         Ok(())
     }
 
+    fn request_with_selected_paths(paths: Vec<SelectedPathIdentityV1>) -> AnalysisRequestV1 {
+        let mut value = request();
+        value.snapshot.selected_paths = paths;
+        // Keep closure validation satisfied so it cannot hide a missing identity check.
+        value.snapshot.selected_source_closure =
+            selected_source_closure_hash(&value.snapshot.selected_paths);
+        value
+    }
+
+    fn require_selected_path_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
+        match validate_request(value) {
+            Err(error) if error == "analysis request selected path identity is invalid" => Ok(()),
+            result => Err(format!("expected selected-path rejection, got {result:?}")),
+        }
+    }
+
     #[test]
     fn request_validation_rejects_incoherent_selected_path() -> Result<(), String> {
-        let mut value = request();
-        value
-            .snapshot
-            .selected_paths
-            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
+        for (present, blob_oid) in [
+            (true, None),
+            (false, Some("d".repeat(40))),
+            (true, Some("not-an-object-id".to_string())),
+        ] {
+            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
                 path: "src/lib.rs".to_string(),
-                present: true,
-                blob_oid: None,
-            });
-        let error = match validate_request(&value) {
-            Ok(()) => return Err("incoherent selected path was accepted".to_string()),
-            Err(error) => error,
-        };
-        if !error.contains("path identity") {
-            return Err("selected path error lost its reason".to_string());
+                present,
+                blob_oid,
+            }]);
+            require_selected_path_rejection(&value)?;
         }
         Ok(())
     }
 
     #[test]
-    fn request_validation_rejects_mismatched_blob_format_and_path() -> Result<(), String> {
-        let mut value = request();
-        value
-            .snapshot
-            .selected_paths
-            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
-                path: "src/lib.rs".to_string(),
-                present: true,
-                blob_oid: Some("d".repeat(64)),
-            });
-        let error = match validate_request(&value) {
-            Ok(()) => return Err("mismatched blob format was accepted".to_string()),
-            Err(error) => error,
-        };
-        if !error.contains("path identity") {
-            return Err("blob-format error lost its reason".to_string());
+    fn request_validation_enforces_selected_path_object_format() -> Result<(), String> {
+        for (format, width, wrong_width) in [("sha1", 40, 64), ("sha256", 64, 40)] {
+            for (blob_width, accepted) in [(width, true), (wrong_width, false)] {
+                let mut value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+                    path: "src/lib.rs".to_string(),
+                    present: true,
+                    blob_oid: Some("d".repeat(blob_width)),
+                }]);
+                value.snapshot.object_format = format.to_string();
+                value.snapshot.head.commit = "a".repeat(width);
+                value.snapshot.head.tree = "b".repeat(width);
+                if accepted {
+                    validate_request(&value)?;
+                } else {
+                    require_selected_path_rejection(&value)?;
+                }
+            }
         }
+        Ok(())
+    }
 
-        let mut value = request();
-        value
-            .snapshot
-            .selected_paths
-            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
-                path: "../secret".to_string(),
+    #[test]
+    fn request_validation_rejects_invalid_repository_paths() -> Result<(), String> {
+        for path in [
+            "",
+            ".",
+            "..",
+            "../secret",
+            "/tmp/file",
+            "src//lib.rs",
+            "src/./lib.rs",
+            "src/../secret",
+            "src/lib.rs/",
+            "\0",
+            "\0src/lib.rs",
+            "src/nu\0l.rs",
+            "src/lib.rs\0",
+        ] {
+            for present in [false, true] {
+                let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+                    path: path.to_string(),
+                    present,
+                    blob_oid: present.then(|| "d".repeat(40)),
+                }]);
+                require_selected_path_rejection(&value)
+                    .map_err(|error| format!("path {path:?}, present={present}: {error}"))?;
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn request_validation_rejects_nul_path_after_json_round_trip() -> Result<(), String> {
+        let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+            path: "src/nu\0l.rs".to_string(),
+            present: true,
+            blob_oid: Some("d".repeat(40)),
+        }]);
+        let encoded = serde_json::to_string(&value).map_err(|error| error.to_string())?;
+        let decoded: AnalysisRequestV1 =
+            serde_json::from_str(&encoded).map_err(|error| error.to_string())?;
+        if decoded != value {
+            return Err("JSON transport changed the selected-path identity".to_string());
+        }
+        require_selected_path_rejection(&decoded)
+    }
+
+    #[test]
+    fn request_validation_accepts_repository_relative_paths() -> Result<(), String> {
+        for path in [
+            "src/lib.rs",
+            "src/with space.rs",
+            "src/unicode-λ.rs",
+            "src/.hidden.rs",
+        ] {
+            for present in [false, true] {
+                let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+                    path: path.to_string(),
+                    present,
+                    blob_oid: present.then(|| "d".repeat(40)),
+                }]);
+                validate_request(&value)
+                    .map_err(|error| format!("path {path:?}, present={present}: {error}"))?;
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn request_validation_preserves_literal_unix_filename_bytes() -> Result<(), String> {
+        for path in [
+            "src/type:generated.rs",
+            r"src/literal\name.rs",
+            "src/line\nname.rs",
+        ] {
+            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+                path: path.to_string(),
+                present: true,
+                blob_oid: Some("d".repeat(40)),
+            }]);
+            validate_request(&value).map_err(|error| format!("path {path:?}: {error}"))?;
+        }
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn request_validation_rejects_windows_noncanonical_paths() -> Result<(), String> {
+        for path in [
+            r"..\secret",
+            r"\tmp\file",
+            r"src\..\secret",
+            r"\\server\share\file",
+            r"\\?\C:\file",
+            r"C:\file",
+            "C:/file",
+            "C:file",
+            r"src\lib.rs",
+        ] {
+            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
+                path: path.to_string(),
                 present: false,
                 blob_oid: None,
-            });
-        if validate_request(&value).is_ok() {
-            return Err("parent-traversing selected path was accepted".to_string());
+            }]);
+            require_selected_path_rejection(&value)
+                .map_err(|error| format!("path {path:?}: {error}"))?;
         }
         Ok(())
     }
 
     #[test]
     fn request_validation_rejects_duplicate_selected_paths() -> Result<(), String> {
-        let mut value = request();
-        let path = effortless_repo_protocol::SelectedPathIdentityV1 {
+        let path = SelectedPathIdentityV1 {
             path: "src/lib.rs".to_string(),
             present: false,
             blob_oid: None,
         };
-        value.snapshot.selected_paths = vec![path.clone(), path];
-        if validate_request(&value).is_ok() {
-            return Err("duplicate selected paths were accepted".to_string());
-        }
-        Ok(())
+        let value = request_with_selected_paths(vec![path.clone(), path]);
+        require_selected_path_rejection(&value)
     }
 
     fn require_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
