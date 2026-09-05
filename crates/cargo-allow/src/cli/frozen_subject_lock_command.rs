@@ -325,3 +325,151 @@ mod tests {
         assert!(str_field(&value, "tree").is_err());
     }
 }
+//
+#[cfg(test)]
+mod check_fixture_tests {
+    use super::FrozenSubjectLockCheckArgs;
+    use super::cmd_check;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    fn git(root: &Path, args: &[&str]) -> String {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(root)
+            .output()
+            .expect("git runs");
+        assert!(
+            output.status.success(),
+            "git {:?} failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
+
+    fn write(root: &Path, relative: &str, contents: &str) {
+        let path = root.join(relative);
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("dirs");
+        std::fs::write(path, contents).expect("write");
+    }
+
+    fn receipt_json(commit: &str) -> String {
+        format!(
+            "{{\"schema_id\": \"cargo-allow.final-freeze-receipt.v1\", \"commit\": \"{commit}\", \"tree\": \"tree\", \"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"remaining_irreversible_operations\": []}}"
+        )
+    }
+
+    fn setup_repo(tag: &str) -> (PathBuf, PathBuf) {
+        // A unique counter (not just the pid) guarantees a fresh directory
+        // even when several tests run in one process and an earlier run
+        // left a locked leftover behind.
+        static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let seq = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let root = std::env::temp_dir().join(format!(
+            "frozen-lock-check-{tag}-{}-{seq}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root");
+        git(&root, &["init", "-q"]);
+        git(&root, &["config", "user.email", "lock@example.invalid"]);
+        git(&root, &["config", "user.name", "lock fixture"]);
+        write(&root, ".gitignore", "target/\n");
+        write(&root, "README.md", "# fixture\n");
+        write(&root, "policy/allow.toml", "[workspace]\nroot = \".\"\n");
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-qm", "frozen baseline"]);
+        let frozen = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
+        write(
+            &root,
+            "docs/dogfood/receipts/final-freeze/final-freeze.receipt.json",
+            &receipt_json(&frozen),
+        );
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-qm", "receipt"]);
+        let receipt = root.join("docs/dogfood/receipts/final-freeze/final-freeze.receipt.json");
+        (root, receipt)
+    }
+
+    fn args(receipt: &Path) -> FrozenSubjectLockCheckArgs {
+        FrozenSubjectLockCheckArgs {
+            receipt: receipt.to_path_buf(),
+            against: None,
+            format_json: true,
+        }
+    }
+
+    fn commit_all(root: &Path, message: &str) {
+        git(root, &["add", "-A"]);
+        git(root, &["commit", "-qm", message]);
+    }
+
+    #[test]
+    fn check_requires_invalidation_for_load_bearing_movement() {
+        let (root, receipt) = setup_repo("lb");
+        write(&root, "README.md", "# changed\n");
+        commit_all(&root, "load-bearing movement");
+        let outcome = cmd_check(&root, &args(&receipt));
+        match outcome {
+            Err(error) => assert!(error.to_string().contains("invalidation"), "{error}"),
+            Ok(()) => panic!("load-bearing movement must not pass without invalidation"),
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn check_allows_proven_append_only_ledger_movement() {
+        let (root, receipt) = setup_repo("append");
+        let mut ledger = std::fs::read_to_string(root.join("policy/allow.toml")).expect("ledger");
+        ledger.push_str("\n[[allow]]\nid = \"allow-9\"\nkind = \"panic\"\n");
+        std::fs::write(root.join("policy/allow.toml"), ledger).expect("append");
+        // Also add a non-load-bearing path so the run has mixed movement.
+        write(&root, "docs/source-of-truth/notes.md", "prose\n");
+        commit_all(&root, "append-only ledger movement");
+        cmd_check(&root, &args(&receipt)).expect("append-only ledger movement is allowed");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[test]
+    fn check_passes_when_an_invalidation_covers_the_movement() {
+        let (root, receipt_path) = setup_repo("inv");
+        // The invalidation must name the frozen commit recorded in the
+        // retained receipt (the baseline), not the current head.
+        let frozen = json_field(&receipt_path, "commit");
+        write(
+            &root,
+            "README.md",
+            "# changed
+",
+        );
+        let record = format!(
+            "{{\"reason\": \"fixture\", \"recorded_by\": \"t\", \"recorded_at_utc\": \"2026-09-04T00:00:00Z\", \"frozen_commit\": \"{frozen}\"}}"
+        );
+        write(
+            &root,
+            ".allow/frozen-subject-lock/invalidations/inv.json",
+            &record,
+        );
+        commit_all(&root, "invalidated load-bearing movement");
+        cmd_check(&root, &args(&receipt_path)).expect("invalidated movement is allowed loudly");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    fn json_field(receipt_path: &Path, key: &str) -> String {
+        let value: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(receipt_path).expect("receipt read"))
+                .expect("receipt parses");
+        value[key].as_str().expect("string field").to_string()
+    }
+
+    #[test]
+    fn check_missing_receipt_is_an_instrument_failure() {
+        let (root, _receipt) = setup_repo("noreceipt");
+        let missing = root.join("docs/dogfood/receipts/final-freeze/missing.json");
+        let outcome = cmd_check(&root, &args(&missing));
+        assert!(outcome.is_err(), "a missing receipt must fail the check");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+}
