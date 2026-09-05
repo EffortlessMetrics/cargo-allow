@@ -930,10 +930,48 @@ mod tests {
         .map_err(|error| error.to_string())?;
         let json = fs::read_to_string(&json_path).map_err(|error| error.to_string())?;
         fs::remove_file(&json_path).map_err(|error| error.to_string())?;
-        if !json.contains("proof.cargo-allow-provider-contract.v1") {
-            return Err("provider contract JSON omitted its schema id".to_string());
+        let descriptor: serde_json::Value =
+            serde_json::from_str(&json).map_err(|error| error.to_string())?;
+        if descriptor.get("schema_id").and_then(serde_json::Value::as_str)
+            != Some("proof.cargo-allow-provider-contract.v1")
+            || descriptor
+                .get("schema_version")
+                .and_then(serde_json::Value::as_u64)
+                != Some(1)
+            || descriptor.get("provider_id").and_then(serde_json::Value::as_str)
+                != Some("proof.cargo-allow.v1")
+            || descriptor
+                .get("access_posture")
+                .and_then(serde_json::Value::as_str)
+                != Some("read_only")
+            || descriptor
+                .get("snapshot_bound")
+                .and_then(serde_json::Value::as_bool)
+                != Some(true)
+        {
+            return Err("provider contract JSON identity changed".to_string());
         }
-
+        let required = descriptor
+            .get("required_capabilities")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| {
+                "provider contract required_capabilities was not an array".to_string()
+            })?
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .ok_or_else(|| "provider contract capability was not a string".to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if required
+            != [
+                "cargo-allow.check.no-new",
+                "cargo-allow.capabilities.json",
+            ]
+        {
+            return Err("provider contract required capabilities changed".to_string());
+        }
         let human_path = output_path("provider-contract-human");
         cmd_capabilities(&CapabilitiesArgs {
             root: RootArgs { root: None },
