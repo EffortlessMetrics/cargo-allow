@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn request_validation_rejects_bad_top_level_fields() -> Result<(), String> {
-        let dut value = request();
+        let mut value = request();
         value.schema_version = 2;
         require_rejection(&value)?;
         value = request();
