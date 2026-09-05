@@ -10,7 +10,10 @@ use std::path::PathBuf;
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_report::{
-    CampaignCloseoutRecordV1, CampaignRepositoryStateV1, evaluate_campaign_closeout,
+    CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+    CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
+    CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+    evaluate_campaign_closeout,
 };
 use clap::{Parser, Subcommand};
 
@@ -123,4 +126,99 @@ pub(super) fn cmd_campaign_closeout(args: &CampaignCloseoutArgs) -> CargoAllowRe
     // RequiresInvalidation/Conflict/Mismatch/InstrumentFailure fail loudly;
     // Complete/Partial/NotPlanned/Duplicate/NotProven/Stale are informative.
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evaluate_produces_complete_for_a_fully_evidenced_closeout() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "done".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4142],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        };
+        let state = CampaignRepositoryStateV1 {
+            main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            main_tree: "tree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4142,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                head_sha: "cccccccccccccccccccccccccccccccccccccccc".to_string(),
+                base_sha: "dddddddddddddddddddddddddddddddddddddddd".to_string(),
+                merge_base: "dddddddddddddddddddddddddddddddddddddddd".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: Vec::new(),
+            reachable_from_main: vec![(
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                true,
+            )],
+        };
+        let outcome = evaluate_campaign_closeout(&record, &state);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+        assert_eq!(outcome.schema_id, "cargo-allow.campaign-issue-closeout.v1");
+        assert_eq!(outcome.child_issue, 3845);
+    }
+
+    #[test]
+    fn evaluate_rejects_rows_with_unreachable_merges() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4000],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        };
+        let state = CampaignRepositoryStateV1 {
+            main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            main_tree: "tree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4000,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                head_sha: "cccc".to_string(),
+                base_sha: "dddd".to_string(),
+                merge_base: "eeee".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: Vec::new(),
+            reachable_from_main: vec![(
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                false,
+            )],
+        };
+        let outcome = evaluate_campaign_closeout(&record, &state);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        assert!(outcome.row_outcomes[0]
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("not reachable")));
+    }
 }
