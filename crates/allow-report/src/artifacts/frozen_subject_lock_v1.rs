@@ -831,8 +831,12 @@ mod invalidation_scope_tests {
 //
 #[cfg(test)]
 mod coverage_tests {
-    use super::super::frozen_subject_lock_v1::*;
-    use super::super::frozen_subject_lock_v1::*;
+    use super::{
+        classify_frozen_subject_path, evaluate_frozen_subject_lock, FrozenSubjectChangeV1,
+        FrozenSubjectInvalidationV1, FrozenSubjectLockInputV1, FrozenSubjectPathClassV1,
+        FrozenSubjectPathKindV1, FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1,
+        FrozenSubjectVerdictV1, LoadBearingOwnerV1, NonLoadBearingOwnerV1,
+    };
 
     #[test]
     fn every_load_bearing_owner_has_patterns_and_a_label() {
@@ -867,7 +871,10 @@ mod coverage_tests {
     #[test]
     fn load_bearing_patterns_classify_canonical_paths() {
         let cases = [
-            ("docs/dogfood/receipts/final-freeze/x.json", "frozen_lock_records"),
+            (
+                "docs/dogfood/receipts/final-freeze/x.json",
+                "frozen_lock_records",
+            ),
             ("crates/allow-core/src/lib.rs", "shipped_source"),
             ("Cargo.lock", "manifests_lockfile"),
             ("rust-toolchain.toml", "toolchain"),
@@ -877,11 +884,18 @@ mod coverage_tests {
             ("docs/support-matrix.toml", "support_channel_truth"),
             (".changes/x.yaml", "release_records"),
             (".github/workflows/release.yml", "workflows_actions"),
-            ("scripts/release-topology-publisher.py", "release_evidence_producers"),
+            (
+                "scripts/release-topology-publisher.py",
+                "release_evidence_producers",
+            ),
         ];
         for (path, owner) in cases {
             let classified = classify_frozen_subject_path(path, "M", false);
-            assert_eq!(classified.kind, FrozenSubjectPathKindV1::LoadBearing, "{path}");
+            assert_eq!(
+                classified.kind,
+                FrozenSubjectPathKindV1::LoadBearing,
+                "{path}"
+            );
             assert_eq!(classified.owner, owner, "{path}");
         }
     }
@@ -889,14 +903,21 @@ mod coverage_tests {
     #[test]
     fn non_load_bearing_patterns_classify_canonical_paths() {
         let cases = [
-            (".github/workflows/frozen-subject-lock.yml", "frozen_subject_lock_machinery"),
+            (
+                ".github/workflows/frozen-subject-lock.yml",
+                "frozen_subject_lock_machinery",
+            ),
             ("crates/cargo-intent/src/lib.rs", "sibling_products"),
             ("docs/dogfood/receipts/old-lane/x.json", "campaign_records"),
             ("docs/source-of-truth/x.md", "repository_prose"),
         ];
         for (path, owner) in cases {
             let classified = classify_frozen_subject_path(path, "M", false);
-            assert_eq!(classified.kind, FrozenSubjectPathKindV1::NonLoadBearing, "{path}");
+            assert_eq!(
+                classified.kind,
+                FrozenSubjectPathKindV1::NonLoadBearing,
+                "{path}"
+            );
             assert_eq!(classified.owner, owner, "{path}");
         }
     }
