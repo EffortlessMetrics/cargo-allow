@@ -19,4 +19,4 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@1.95.0
-      - run: cargo run -p cargo-allow --locked -- frozen-subject-lock --check --receipt docs/dogfood/receipts/final-freeze/final-freeze.receipt.json
+      - run: cargo run -p cargo-allow --locked -- frozen-subject-lock check --receipt docs/dogfood/receipts/final-freeze/final-freeze.receipt.json
