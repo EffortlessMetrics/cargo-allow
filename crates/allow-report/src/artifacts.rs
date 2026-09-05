@@ -18,6 +18,7 @@ mod final_freeze_replay_v1;
 mod final_readiness_v1;
 mod final_support_selection_v1;
 mod frozen_candidate_custody_v1;
+mod frozen_subject_lock_v1;
 mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
 mod list;
@@ -150,6 +151,13 @@ pub use final_support_selection_v1::{
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
     CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,
+};
+pub use frozen_subject_lock_v1::{
+    CargoAllowFrozenSubjectLockV1, FROZEN_SUBJECT_LOCK_SCHEMA_ID,
+    FROZEN_SUBJECT_LOCK_SCHEMA_VERSION, FrozenSubjectChangeV1, FrozenSubjectInvalidationV1,
+    FrozenSubjectLockInputV1, FrozenSubjectPathClassV1, FrozenSubjectPathKindV1,
+    FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+    classify_frozen_subject_path, evaluate_frozen_subject_lock,
 };
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};

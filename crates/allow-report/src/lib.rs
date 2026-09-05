@@ -418,6 +418,15 @@ pub use artifacts::{
     render_final_freeze_replay_markdown, replay_final_freeze,
 };
 
+// Root re-exports for the #3928 frozen-subject lock contract.
+pub use artifacts::{
+    CargoAllowFrozenSubjectLockV1, FROZEN_SUBJECT_LOCK_SCHEMA_ID,
+    FROZEN_SUBJECT_LOCK_SCHEMA_VERSION, FrozenSubjectChangeV1, FrozenSubjectInvalidationV1,
+    FrozenSubjectLockInputV1, FrozenSubjectPathClassV1, FrozenSubjectPathKindV1,
+    FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+    classify_frozen_subject_path, evaluate_frozen_subject_lock,
+};
+
 // Root re-exports for the #3737 final support-selection freeze contract.
 pub use artifacts::{
     FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
