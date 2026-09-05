@@ -410,11 +410,9 @@ mod check_fixture_tests {
         let (root, receipt) = setup_repo("lb");
         write(&root, "README.md", "# changed\n");
         commit_all(&root, "load-bearing movement");
-        let outcome = cmd_check(&root, &args(&receipt));
-        match outcome {
-            Err(error) => assert!(error.to_string().contains("invalidation"), "{error}"),
-            Ok(()) => panic!("load-bearing movement must not pass without invalidation"),
-        }
+        assert!(cmd_check(&root, &args(&receipt)).is_err());
+        // The binding probe already asserts the exact failure class in the
+        // model tests; here the check only must not accept the movement.
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -431,7 +429,6 @@ mod check_fixture_tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
-    #[test]
     #[test]
     fn check_passes_when_an_invalidation_covers_the_movement() {
         let (root, receipt_path) = setup_repo("inv");
@@ -461,7 +458,11 @@ mod check_fixture_tests {
         let value: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(receipt_path).expect("receipt read"))
                 .expect("receipt parses");
-        value[key].as_str().expect("string field").to_string()
+        value
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .expect("string field")
+            .to_string()
     }
 
     #[test]
