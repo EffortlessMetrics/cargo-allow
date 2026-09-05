@@ -804,7 +804,9 @@ mod tests {
                         "state={freeze_state:?}, paths={paths:?}, invalidated={invalidated}"
                     );
                     assert!(
-                        lock.blocking_rows.iter().any(|row| row.contains("not Complete")),
+                        lock.blocking_rows
+                            .iter()
+                            .any(|row| row.contains("not Complete")),
                         "receipt-state rejection must retain its reason"
                     );
                     assert_eq!(lock.invalidation_count, usize::from(invalidated));
