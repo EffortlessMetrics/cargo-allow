@@ -710,3 +710,133 @@ mod closeout_corpus_tests {
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Mismatch);
     }
 }
+//
+#[cfg(test)]
+mod closeout_coverage_tests {
+    use super::{
+        evaluate_campaign_closeout, CampaignAcceptanceRowV1, CampaignCheckEvidenceV1,
+        CampaignCheckOutcomeV1, CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1,
+        CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1,
+        CampaignRepositoryStateV1, CampaignReviewPairV1,
+    };
+
+    #[test]
+    fn display_renders_all_nine_verdict_labels() {
+        for (verdict, expected) in [
+            (CampaignCloseoutVerdictV1::Complete, "complete"),
+            (CampaignCloseoutVerdictV1::Partial, "partial"),
+            (CampaignCloseoutVerdictV1::NotPlanned, "not_planned"),
+            (CampaignCloseoutVerdictV1::Duplicate, "duplicate"),
+            (CampaignCloseoutVerdictV1::Stale, "stale"),
+            (CampaignCloseoutVerdictV1::Mismatch, "mismatch"),
+            (CampaignCloseoutVerdictV1::NotProven, "not_proven"),
+            (CampaignCloseoutVerdictV1::Unsupported, "unsupported"),
+            (CampaignCloseoutVerdictV1::InstrumentFailure, "instrument_failure"),
+        ] {
+            assert_eq!(format!("{verdict}"), expected);
+            assert_eq!(verdict.label(), expected);
+        }
+    }
+
+    #[test]
+    fn empty_record_and_missing_pr_produce_partial_with_reasons() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![9999],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:x".to_string(),
+            }],
+            claimed_main_head: MAIN.to_string(),
+        };
+        let mut snapshot = state();
+        snapshot.prs.clear();
+        let outcome = evaluate_campaign_closeout(&record, &snapshot);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        assert_eq!(outcome.uncovered_row_ids, vec!["r1".to_string()]);
+        let row = &outcome.row_outcomes[0];
+        assert!(row
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("absent from the state snapshot")));
+    }
+
+    #[test]
+    fn evidence_identity_is_required_for_a_passing_row() {
+        let mut snapshot = state();
+        let mut record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4000],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "   ".to_string(),
+            }],
+            claimed_main_head: MAIN.to_string(),
+        };
+        let outcome = evaluate_campaign_closeout(&record, &snapshot);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        assert!(outcome.row_outcomes[0]
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("evidence identity")));
+
+        // Fill in the identity; the row now passes.
+        record.rows[0].evidence_identity = "sha256:v1:aa".to_string();
+        let outcome = evaluate_campaign_closeout(&record, &snapshot);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+    }
+
+    #[test]
+    fn unsupported_verdict_label_roundtrips_through_display() {
+        assert_eq!(
+            CampaignCloseoutVerdictV1::Unsupported.to_string(),
+            "unsupported"
+        );
+    }
+
+    const MAIN: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    fn state() -> CampaignRepositoryStateV1 {
+        CampaignRepositoryStateV1 {
+            main_head: MAIN.to_string(),
+            main_tree: "treetree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4000,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: MERGE.to_string(),
+                head_sha: HEAD.to_string(),
+                base_sha: BASE.to_string(),
+                merge_base: BASE.to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: vec![CampaignCheckEvidenceV1 {
+                name: "ci".to_string(),
+                required: true,
+                outcome: CampaignCheckOutcomeV1::Passed,
+            }],
+            reachable_from_main: vec![(MERGE.to_string(), true)],
+        }
+    }
+
+    const MERGE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    const HEAD: &str = "cccccccccccccccccccccccccccccccccccccccc";
+    const BASE: &str = "dddddddddddddddddddddddddddddddddddddddd";
+}
