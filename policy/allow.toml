@@ -18757,23 +18757,6 @@ callee = "expect"
 glob = "crates/cargo-allow/src/cli/frozen_subject_lock_command.rs"
 
 [[allow]]
-id = "allow-0873"
-kind = "panic"
-family = "expect"
-glob = "crates/allow-report/src/artifacts/campaign_issue_closeout_v1.rs"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Single invariant-guarded expect in the campaign-closeout corpus helper (#3845): the row-1 outcome is guaranteed by the fixture construction immediately before each call"
-evidence = ["issue:3845"]
-occurrence_limit = 1
-created = "2026-09-05"
-review_after = "2026-12-04"
-
-[allow.selector]
-callee = "expect"
-glob = "crates/allow-report/src/artifacts/campaign_issue_closeout_v1.rs"
-
-[[allow]]
 id = "allow-0874"
 kind = "non_rust_file"
 family = "configuration"
@@ -18794,3 +18777,20 @@ glob = ".allow/revisions/3845-campaign-closeout-verifier.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0875"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/artifacts/campaign_issue_closeout_v1.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Single invariant-guarded expect in the campaign-closeout corpus first-row helper (#3845); the row-1 outcome is guaranteed by the fixture construction immediately before each call"
+evidence = ["issue:3845"]
+occurrence_limit = 2
+created = "2026-09-05"
+review_after = "2026-12-04"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/artifacts/campaign_issue_closeout_v1.rs"

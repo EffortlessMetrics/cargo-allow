@@ -21,13 +21,13 @@ schema_version = 1
 # append-only.
 
 [[records]]
-allow_ids = ["allow-0873"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:8c7dfd44dcc7dd959559e4022a5e803c56c69266e730be9d11ed6d3b9392eca3"
-reason = "Glob-ratcheted expect baseline (occurrence_limit=1) for the campaign-closeout corpus helper (#3845); the single expect guards the guaranteed row-1 outcome established by the fixture construction immediately before the call."
-
-[[records]]
 allow_ids = ["allow-0874"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ba3da3ac25aa309f99c02e538c64a1290bbdf8e38d20fd90a72018f778b73be4"
 reason = "Ledger-change-note receipt for this revision-note file itself (#3845); the note authorizes the closeout verifier's expect ratchet and is receipted per the per-note receipt law."
+
+[[records]]
+allow_ids = ["allow-0875"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ad4d8dd11df98462d0a2324615aff0e52b652c7c50b7a770e7642cfc6674789e"
+reason = "Glob-ratcheted expect baseline (occurrence_limit=2) for the campaign-closeout coverage tests (#3845); covers the model and CLI fixture invariant-guarded expects. Replaces the initial single-expect ratchet after the corpus fixture code was refactored away from direct indexing."

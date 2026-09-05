@@ -801,16 +801,18 @@ mod closeout_coverage_tests {
         };
         let outcome = evaluate_campaign_closeout(&record, &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(outcome
-            .row_outcomes
-            .iter()
-            .find(|outcome_row| outcome_row.row_id == "r1")
-            .is_some_and(|outcome_row| {
-                outcome_row
-                    .reasons
-                    .iter()
-                    .any(|reason| reason.contains("evidence identity"))
-            }));
+        assert!(
+            outcome
+                .row_outcomes
+                .iter()
+                .find(|outcome_row| outcome_row.row_id == "r1")
+                .is_some_and(|outcome_row| {
+                    outcome_row
+                        .reasons
+                        .iter()
+                        .any(|reason| reason.contains("evidence identity"))
+                })
+        );
 
         // Fill in the identity; the row now passes.
         for acceptance_row in &mut record.rows {
