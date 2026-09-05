@@ -770,8 +770,8 @@ mod tests {
 #[cfg(test)]
 mod invalidation_scope_tests {
     use super::{
-        evaluate_frozen_subject_lock, FrozenSubjectInvalidationV1, FrozenSubjectLockInputV1,
-        FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+        FrozenSubjectInvalidationV1, FrozenSubjectLockInputV1, FrozenSubjectReceiptIdentityV1,
+        FrozenSubjectStateV1, FrozenSubjectVerdictV1, evaluate_frozen_subject_lock,
     };
 
     fn receipt(commit: &str) -> FrozenSubjectReceiptIdentityV1 {
@@ -803,7 +803,10 @@ mod invalidation_scope_tests {
             invalidations: vec![invalidation("cccc"), invalidation("dddd")],
         };
         let lock = evaluate_frozen_subject_lock(&input);
-        assert_eq!(lock.state, FrozenSubjectStateV1::FreezeCompleteAwaitingAuthorization);
+        assert_eq!(
+            lock.state,
+            FrozenSubjectStateV1::FreezeCompleteAwaitingAuthorization
+        );
         assert_eq!(lock.invalidation_count, 0);
 
         let input = FrozenSubjectLockInputV1 {
