@@ -832,7 +832,7 @@ mod invalidation_scope_tests {
 #[cfg(test)]
 mod coverage_tests {
     use super::{
-        classify_frozen_subject_path, FrozenSubjectVerdictV1, FrozenSubjectStateV1,
+        classify_frozen_subject_path, FrozenSubjectVerdictV1,
         FrozenSubjectPathKindV1, LoadBearingOwnerV1, NonLoadBearingOwnerV1,
     };
 
