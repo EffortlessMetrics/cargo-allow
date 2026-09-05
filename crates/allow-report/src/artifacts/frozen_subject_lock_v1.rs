@@ -453,6 +453,26 @@ pub fn evaluate_frozen_subject_lock(
             "the retained freeze receipt is not Complete (state {:?})",
             receipt.freeze_state
         ));
+        // A bad receipt state is not repaired by unrelated path movement
+        // or by an invalidation. Inactive/Stale is a failing CLI outcome,
+        // unlike InvalidatedForRefreeze/Stale, which permits further work.
+        return CargoAllowFrozenSubjectLockV1 {
+            schema_id: FROZEN_SUBJECT_LOCK_SCHEMA_ID.to_string(),
+            schema_version: FROZEN_SUBJECT_LOCK_SCHEMA_VERSION,
+            state: FrozenSubjectStateV1::Inactive,
+            verdict: FrozenSubjectVerdictV1::Stale,
+            frozen_commit: Some(receipt.commit.clone()),
+            current_head: Some(input.current_head.clone()),
+            classified_paths: classified,
+            load_bearing_moved,
+            invalidation_count: input
+                .invalidations
+                .iter()
+                .filter(|record| record.frozen_commit == receipt.commit)
+                .count(),
+            blocking_rows,
+            claim_boundary: CLAIM_BOUNDARY,
+        };
     }
 
     // An invalidation applies only to the frozen commit it names: after a
@@ -755,12 +775,43 @@ mod tests {
     }
 
     #[test]
-    fn non_complete_receipt_is_stale_never_allowed() {
-        let mut input = input(&[("A", "README.md")]);
-        input.receipt.as_mut().expect("receipt").freeze_state = "Stale".to_string();
-        let lock = evaluate_frozen_subject_lock(&input);
-        assert_eq!(lock.verdict, FrozenSubjectVerdictV1::RequiresInvalidation);
-        assert!(!lock.blocking_rows.is_empty());
+    fn non_complete_receipt_is_stale_never_allowed() -> Result<(), String> {
+        let movement_cases: &[&[(&str, &str)]] = &[
+            &[],
+            &[("A", "docs/source-of-truth/README.md")],
+            &[("M", "README.md")],
+        ];
+        for freeze_state in ["Stale", "Conflict", "", "complete"] {
+            for paths in movement_cases {
+                for invalidated in [false, true] {
+                    let mut value = input(paths);
+                    let Some(receipt) = value.receipt.as_mut() else {
+                        return Err("fixture must contain a receipt".to_string());
+                    };
+                    receipt.freeze_state = freeze_state.to_string();
+                    if invalidated {
+                        value.invalidations.push(invalidate());
+                    }
+                    let lock = evaluate_frozen_subject_lock(&value);
+                    assert_eq!(
+                        lock.state,
+                        FrozenSubjectStateV1::Inactive,
+                        "state={freeze_state:?}, paths={paths:?}, invalidated={invalidated}"
+                    );
+                    assert_eq!(
+                        lock.verdict,
+                        FrozenSubjectVerdictV1::Stale,
+                        "state={freeze_state:?}, paths={paths:?}, invalidated={invalidated}"
+                    );
+                    assert!(
+                        lock.blocking_rows.iter().any(|row| row.contains("not Complete")),
+                        "receipt-state rejection must retain its reason"
+                    );
+                    assert_eq!(lock.invalidation_count, usize::from(invalidated));
+                }
+            }
+        }
+        Ok(())
     }
 
     #[test]
