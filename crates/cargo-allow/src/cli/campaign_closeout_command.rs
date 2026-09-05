@@ -12,8 +12,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_report::{
     CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
     CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
-    CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
-    evaluate_campaign_closeout,
+    CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1, evaluate_campaign_closeout,
 };
 use clap::{Parser, Subcommand};
 
@@ -216,9 +215,11 @@ mod tests {
         };
         let outcome = evaluate_campaign_closeout(&record, &state);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(outcome.row_outcomes[0]
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("not reachable")));
+        assert!(
+            outcome.row_outcomes[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("not reachable"))
+        );
     }
 }
