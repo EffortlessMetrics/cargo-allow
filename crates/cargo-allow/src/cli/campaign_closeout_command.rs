@@ -9,11 +9,12 @@
 use std::path::PathBuf;
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+#[cfg(test)]
 use allow_report::{
     CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
-    CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
-    CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1, evaluate_campaign_closeout,
+    CampaignCloseoutVerdictV1, CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1,
 };
+use allow_report::{CampaignCloseoutRecordV1, CampaignRepositoryStateV1, evaluate_campaign_closeout};
 use clap::{Parser, Subcommand};
 
 /// Read-only campaign closeout verification (hidden automation tooling).
