@@ -449,7 +449,15 @@ pub fn evaluate_frozen_subject_lock(
         ));
     }
 
-    let state = if !input.invalidations.is_empty() {
+    // An invalidation applies only to the frozen commit it names: after a
+    // refreeze the new receipt binds a new commit and historical
+    // invalidations of the old subject are just history.
+    let applicable_invalidations: Vec<&FrozenSubjectInvalidationV1> = input
+        .invalidations
+        .iter()
+        .filter(|record| Some(record.frozen_commit.as_str()) == Some(receipt.commit.as_str()))
+        .collect();
+    let state = if !applicable_invalidations.is_empty() {
         FrozenSubjectStateV1::InvalidatedForRefreeze
     } else {
         FrozenSubjectStateV1::FreezeCompleteAwaitingAuthorization
@@ -474,7 +482,7 @@ pub fn evaluate_frozen_subject_lock(
             current_head: Some(input.current_head.clone()),
             classified_paths: classified,
             load_bearing_moved,
-            invalidation_count: input.invalidations.len(),
+            invalidation_count: applicable_invalidations.len(),
             blocking_rows,
             claim_boundary: CLAIM_BOUNDARY,
         };
@@ -512,7 +520,7 @@ pub fn evaluate_frozen_subject_lock(
             current_head: Some(input.current_head.clone()),
             classified_paths: classified,
             load_bearing_moved,
-            invalidation_count: input.invalidations.len(),
+            invalidation_count: applicable_invalidations.len(),
             blocking_rows,
             claim_boundary: CLAIM_BOUNDARY,
         };
@@ -530,7 +538,7 @@ pub fn evaluate_frozen_subject_lock(
             current_head: Some(input.current_head.clone()),
             classified_paths: classified,
             load_bearing_moved,
-            invalidation_count: input.invalidations.len(),
+            invalidation_count: applicable_invalidations.len(),
             blocking_rows: vec![
                 "load-bearing movement under an explicit invalidation: the freeze is stale and must be redone".to_string(),
             ],
@@ -551,7 +559,7 @@ pub fn evaluate_frozen_subject_lock(
         current_head: Some(input.current_head.clone()),
         classified_paths: classified,
         load_bearing_moved,
-        invalidation_count: input.invalidations.len(),
+        invalidation_count: applicable_invalidations.len(),
         blocking_rows,
         claim_boundary: CLAIM_BOUNDARY,
     }
@@ -756,5 +764,58 @@ mod tests {
         let classified = classify_frozen_subject_path("notes/scratch/new-note.md", "A", false);
         assert_eq!(classified.kind, FrozenSubjectPathKindV1::NonLoadBearing);
         assert_eq!(classified.owner, "unclassified");
+    }
+}
+//
+#[cfg(test)]
+mod invalidation_scope_tests {
+    use super::{
+        evaluate_frozen_subject_lock, FrozenSubjectInvalidationV1, FrozenSubjectLockInputV1,
+        FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+    };
+
+    fn receipt(commit: &str) -> FrozenSubjectReceiptIdentityV1 {
+        FrozenSubjectReceiptIdentityV1 {
+            commit: commit.to_string(),
+            tree: "tree".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            freeze_state: "Complete".to_string(),
+            receipt_digest: "sha256:v1:digest".to_string(),
+        }
+    }
+
+    fn invalidation(commit: &str) -> FrozenSubjectInvalidationV1 {
+        FrozenSubjectInvalidationV1 {
+            reason: "test".to_string(),
+            recorded_by: "test".to_string(),
+            recorded_at_utc: "2026-09-04T00:00:00Z".to_string(),
+            frozen_commit: commit.to_string(),
+        }
+    }
+
+    #[test]
+    fn invalidations_apply_only_to_the_commit_they_name() {
+        let input = FrozenSubjectLockInputV1 {
+            receipt: Some(receipt("aaaa")),
+            current_head: "bbbb".to_string(),
+            changed_paths: Vec::new(),
+            invalidations: vec![invalidation("cccc"), invalidation("dddd")],
+        };
+        let lock = evaluate_frozen_subject_lock(&input);
+        assert_eq!(lock.state, FrozenSubjectStateV1::FreezeCompleteAwaitingAuthorization);
+        assert_eq!(lock.invalidation_count, 0);
+
+        let input = FrozenSubjectLockInputV1 {
+            receipt: Some(receipt("aaaa")),
+            current_head: "bbbb".to_string(),
+            changed_paths: Vec::new(),
+            invalidations: vec![invalidation("cccc"), invalidation("aaaa")],
+        };
+        let lock = evaluate_frozen_subject_lock(&input);
+        assert_eq!(lock.state, FrozenSubjectStateV1::InvalidatedForRefreeze);
+        assert_eq!(lock.invalidation_count, 1);
+        // An invalidation with no movement still stales the freeze.
+        assert_eq!(lock.verdict, FrozenSubjectVerdictV1::Stale);
     }
 }

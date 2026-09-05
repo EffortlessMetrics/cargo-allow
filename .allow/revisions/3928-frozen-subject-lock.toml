@@ -34,3 +34,9 @@ allow_ids = ["allow-0870"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:a27a9f281c42caab44e75b01bad427ed1c690c69c7895d82031086844dc90b01"
 reason = "Ledger-change-note receipt for this revision-note file itself (#3928); the note authorizes the lock workflow receipt and the expect ratchet and is receipted per the per-note receipt law."
+
+[[records]]
+allow_ids = ["allow-0871"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aa44092ee5b95b108e8a0c78e3d0a6806ee3ea5f838e6a1b39ff93bbd6dd9b90"
+reason = "Append-only invalidation record receipt for the #3928 lock bootstrap (.allow/frozen-subject-lock/invalidations/20260904-lock-bootstrap.json); the record stales the #2501 freeze for the machinery addition and is receipted per the per-note receipt law."
