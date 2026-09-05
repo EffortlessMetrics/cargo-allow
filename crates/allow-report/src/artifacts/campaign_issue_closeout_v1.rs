@@ -766,7 +766,11 @@ mod closeout_coverage_tests {
         let outcome = evaluate_campaign_closeout(&record, &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
         assert_eq!(outcome.uncovered_row_ids, vec!["r1".to_string()]);
-        let row = &outcome.row_outcomes[0];
+        let row = outcome
+            .row_outcomes
+            .iter()
+            .find(|outcome_row| outcome_row.row_id == "r1")
+            .expect("r1 outcome present");
         assert!(
             row.reasons
                 .iter()
@@ -797,15 +801,21 @@ mod closeout_coverage_tests {
         };
         let outcome = evaluate_campaign_closeout(&record, &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(
-            outcome.row_outcomes[0]
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("evidence identity"))
-        );
+        assert!(outcome
+            .row_outcomes
+            .iter()
+            .find(|outcome_row| outcome_row.row_id == "r1")
+            .is_some_and(|outcome_row| {
+                outcome_row
+                    .reasons
+                    .iter()
+                    .any(|reason| reason.contains("evidence identity"))
+            }));
 
         // Fill in the identity; the row now passes.
-        record.rows[0].evidence_identity = "sha256:v1:aa".to_string();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.evidence_identity = "sha256:v1:aa".to_string();
+        }
         let outcome = evaluate_campaign_closeout(&record, &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
     }
