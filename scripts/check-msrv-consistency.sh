@@ -56,8 +56,6 @@ if ! printf "%s\n" "${active_pins}" | grep -qF "dtolnay/rust-toolchain@${msrv}.0
 fi
 off_msrv="$(printf "%s\n" "${active_pins}" \
   | grep -vF "dtolnay/rust-toolchain@${msrv}.0" || true)"
-off_msrv="$(grep -oE "dtolnay/rust-toolchain@[0-9][^ ]*" "${ci_workflow}" \
-  | grep -vF "dtolnay/rust-toolchain@${msrv}.0" || true)"
 if [[ -n "${off_msrv}" ]]; then
   fail "$(printf "%s pins off-MSRV toolchain(s): %s." \
     "${ci_workflow}" "${off_msrv}")"
