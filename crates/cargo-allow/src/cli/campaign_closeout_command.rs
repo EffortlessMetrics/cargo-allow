@@ -325,3 +325,89 @@ mod evaluate_coverage_tests {
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
     }
 }
+//
+#[cfg(test)]
+mod cmd_coverage_tests {
+    use super::CampaignCloseoutArgs;
+    use super::CampaignCloseoutEvaluateArgs;
+    use super::CampaignCloseoutSubcommand;
+    use super::CloseoutOutputFormat;
+    use super::cmd_campaign_closeout;
+    use std::path::PathBuf;
+
+    fn args_with(record: &str, state: &str, format: CloseoutOutputFormat) -> CampaignCloseoutArgs {
+        CampaignCloseoutArgs {
+            command: CampaignCloseoutSubcommand::Evaluate(CampaignCloseoutEvaluateArgs {
+                record: PathBuf::from(record),
+                state: PathBuf::from(state),
+                format,
+            }),
+        }
+    }
+
+    #[test]
+    fn cmd_evaluate_runs_on_a_valid_record_and_state() {
+        let dir = std::env::temp_dir().join(format!(
+            "closeout-cmd-test-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("dirs");
+        std::fs::write(
+            dir.join("record.json"),
+            r#"{"parent_campaign":3768,"child_issue":1,"claimed_verdict":"complete","decision_owner":"","decision_reason":"","duplicate_of":null,"rows":[],"claimed_main_head":"aaaa"}"#,
+        )
+        .expect("record");
+        std::fs::write(
+            dir.join("state.json"),
+            r#"{"main_head":"aaaa","main_tree":"t","prs":[],"checks":[],"reachable_from_main":[]}"#,
+        )
+        .expect("state");
+        let args = args_with(
+            dir.join("record.json").to_str().unwrap(),
+            dir.join("state.json").to_str().unwrap(),
+            CloseoutOutputFormat::Json,
+        );
+        cmd_campaign_closeout(&args).expect("evaluate succeeds");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cmd_evaluate_reports_human_output_for_mismatch() {
+        let dir = std::env::temp_dir().join(format!(
+            "closeout-cmd-mismatch-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("dirs");
+        std::fs::write(
+            dir.join("record.json"),
+            r#"{"parent_campaign":3768,"child_issue":2,"claimed_verdict":"complete","decision_owner":"","decision_reason":"","duplicate_of":null,"rows":[],"claimed_main_head":"aaaa"}"#,
+        )
+        .expect("record");
+        std::fs::write(
+            dir.join("state.json"),
+            r#"{"main_head":"bbbb","main_tree":"t","prs":[],"checks":[],"reachable_from_main":[]}"#,
+        )
+        .expect("state");
+        let args = args_with(
+            dir.join("record.json").to_str().unwrap(),
+            dir.join("state.json").to_str().unwrap(),
+            CloseoutOutputFormat::Human,
+        );
+        cmd_campaign_closeout(&args).expect("evaluate succeeds");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cmd_evaluate_fails_on_missing_record() {
+        let args = args_with(
+            "nonexistent-record.json",
+            "nonexistent-state.json",
+            CloseoutOutputFormat::Json,
+        );
+        assert!(cmd_campaign_closeout(&args).is_err());
+    }
+}
