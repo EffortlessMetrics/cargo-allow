@@ -37,6 +37,7 @@ mod release_identity_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
 mod review_disposition_v1;
+mod review_readiness_check_v1;
 mod why;
 mod worklist;
 
@@ -189,6 +190,14 @@ pub use review_disposition_v1::{
     parse_review_disposition_bytes, parse_review_live_source_bytes,
     parse_review_transition_request_bytes, render_review_disposition_human,
     render_review_disposition_json, review_semantic_identity,
+};
+pub use review_readiness_check_v1::{
+    REVIEW_READINESS_CHECK_CONTEXT, REVIEW_READINESS_CHECK_SCHEMA_ID,
+    REVIEW_READINESS_CHECK_SCHEMA_VERSION, ReviewReadinessBindingV1, ReviewReadinessConclusionV1,
+    ReviewReadinessDispositionInputV1, ReviewReadinessDraftStateV1, ReviewReadinessEventV1,
+    ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
+    evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
+    render_review_readiness_human, render_review_readiness_json,
 };
 
 pub use exact_candidate_receipt_v2::{

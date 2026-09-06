@@ -1,0 +1,61 @@
+schema_version = 1
+# Revision note for the #3844 review-readiness check.
+
+# This diff adds the stable review-readiness check projection in
+# allow-report: ReviewReadinessProjectionV1 consumes only structured
+# inputs (a retained ReviewDispositionV1 or its explicit absence, a
+# live source snapshot, the PR Draft/Ready posture, and the triggering
+# event class) and projects them onto the one stable `review-readiness`
+# check context. Conclusion law: a current clean disposition succeeds;
+# blocked, stale, partial, unsupported, and malformed states fail (a
+# Ready PR must become/remain Draft); a missing disposition stays
+# neutral with required posture Draft and the live required-control
+# posture remains #2284's. Freshness law: every pair-moving event
+# recomputes and a retained green observation whose source-pair
+# binding no longer equals the live pair is a stale green. CI
+# aggregate state, approval counts, comments, and labels are not
+# inputs and are rejected by the bounded schemas. The hidden read-only
+# 'cargo-allow review-readiness project' command and the minimal
+# pull-request workflow with the exact checked adapter
+# (scripts/project-review-readiness.sh, retained dispositions under
+# .allow/review-dispositions/) complete the lane. The
+# source-exception additions receipt only the syntax-visible
+# constructs the new test fixtures and declarative surfaces
+# introduce: allow-11210/allow-11211/allow-11212 are glob-ratcheted
+# expect baselines for fixture serialization and retained-file reads,
+# allow-11213/allow-11214 receipt the declarative workflow and adapter
+# files, and allow-11215 receipts this revision-note file itself per
+# the per-note receipt law. No existing exception is weakened, no
+# expiry is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11210"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5e05dea956942016787a1345a6e2dbee69d6e5768087a364d27e1bb48e4732da"
+
+[[records]]
+allow_ids = ["allow-11211"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d2161d7b7fa95e3dc3d49a8d5c604454835f2a86e7bd4c0f2c951910bc9b363"
+
+[[records]]
+allow_ids = ["allow-11212"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:22a48f07d33bd5e345a386eae2d7af3f9def1444a6a865bbf1ff6a2662370ece"
+
+[[records]]
+allow_ids = ["allow-11213"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d66a32e07bda62c13c02ef730587b72e783accaa2c817970b7515b4ed9e851c"
+
+[[records]]
+allow_ids = ["allow-11214"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2eaf21fc0ce5b33958781d4040471487425067d7607982bf07ac33f97fbc8928"
+
+[[records]]
+allow_ids = ["allow-11215"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:80513b07092d57a59565052ae21176ae76ca4978b2f63f7abe57d355eafe482f"

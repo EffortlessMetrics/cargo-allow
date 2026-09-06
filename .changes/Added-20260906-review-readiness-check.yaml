@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Review-readiness check projection (#3844). Typed
+  ReviewReadinessProjectionV1 projects the #3843 structured review
+  state onto one stable `review-readiness` GitHub check context for an
+  exact PR pair: current ReviewClean succeeds; ReviewBlocked, Stale,
+  Partial, Unsupported, and InstrumentFailure fail with the Draft
+  posture required; a missing disposition stays neutral and never
+  clean. Every readiness-relevant event recomputes, and a retained
+  green observation bound to a moved source pair is a stale green.
+  CI aggregate state, approval counts, comments, and labels are not
+  inputs and are rejected by the bounded schemas. Hidden read-only
+  `cargo-allow review-readiness project` command plus a minimal
+  pull-request workflow and exact checked adapter
+  (scripts/project-review-readiness.sh, dispositions under
+  `.allow/review-dispositions/`). Read-only: no merge, tag, publish,
+  ruleset, or release mutation; the workflow cannot self-require, and
+  live required-context configuration and effective readback remain
+  #2284.

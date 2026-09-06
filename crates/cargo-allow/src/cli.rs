@@ -17,6 +17,7 @@ mod reconcile_package_publication_command;
 mod release_freeze_command;
 mod release_identity_command;
 mod review_disposition_command;
+mod review_readiness_command;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -140,6 +141,9 @@ pub(crate) enum CargoAllowCommand {
     /// Verify one exact-head review disposition against a live source.
     #[command(hide = true)]
     ReviewDisposition(review_disposition_command::ReviewDispositionArgs),
+    /// Project review state onto the stable readiness check context.
+    #[command(hide = true)]
+    ReviewReadiness(review_readiness_command::ReviewReadinessArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -248,6 +252,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::ReviewDisposition(args) => {
             review_disposition_command::cmd_review_disposition(&args)
+        }
+        CargoAllowCommand::ReviewReadiness(args) => {
+            review_readiness_command::cmd_review_readiness(&args)
         }
     }
 }
@@ -451,5 +458,6 @@ impl CargoAllowCommand {
         "frozen-subject-lock",
         "campaign-closeout",
         "review-disposition",
+        "review-readiness",
     ];
 }

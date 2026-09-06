@@ -1,0 +1,33 @@
+name: Review readiness
+
+# #3844: project the typed exact-head review state (#3843) onto one
+# stable `review-readiness` check context. The job fails on a blocked,
+# stale, partial, unsupported, or malformed structured disposition and
+# recomputes on every readiness-relevant event; a missing disposition
+# stays neutral (never clean) and the live required-control posture is
+# owned by #2284. Read-only over review semantics: no merge, tag,
+# publish, ruleset, or release mutation.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Project review readiness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          EVENT_NAME: ${{ github.event.action }}
+        run: bash scripts/project-review-readiness.sh

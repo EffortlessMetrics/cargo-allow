@@ -18884,3 +18884,120 @@ glob = ".allow/revisions/3843-review-disposition-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11210"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/review_readiness_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expect in the review-readiness CLI adapter test (#3844); the expect guards a serialization of known-good typed data constructed immediately above under fully controlled inputs"
+evidence = ["issue:3844"]
+occurrence_limit = 1
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/review_readiness_command.rs"
+
+[[allow]]
+id = "allow-11211"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/review_readiness_check_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the review-readiness projection contract tests (#3844); every expect guards a serialization or parse of known-good typed fixtures constructed immediately above under fully controlled inputs"
+evidence = ["issue:3844"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/review_readiness_check_tests.rs"
+
+[[allow]]
+id = "allow-11212"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/repository_release_controls_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the release-controls surface tests (#3844); every expect guards a workspace-root resolution or a retained-file read whose existence is the property under test"
+evidence = ["issue:3844"]
+occurrence_limit = 4
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/repository_release_controls_tests.rs"
+
+[[allow]]
+id = "allow-11213"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/review-readiness.yml"
+owner = "core/release"
+classification = "review_readiness_check"
+reason = "Read-only review-readiness workflow (#3844): projects typed exact-head review state onto the stable review-readiness check context on every readiness-relevant pull-request event. Minimal contents:read and pull-requests:read permissions; never merges, mutates PR state, or self-requires."
+evidence = ["issue:3844"]
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/review-readiness.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/review-readiness.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11214"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/project-review-readiness.sh"
+owner = "core/release"
+classification = "review_readiness_adapter"
+reason = "Exact checked adapter for the review-readiness check (#3844): derives the live source pair, locates the retained disposition for the exact (repository, PR, head) triple, and runs the typed projection. Read-only; binds the diff digest with the documented sha256 recipe."
+evidence = ["issue:3844"]
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/project-review-readiness.sh"
+target_fingerprint = "sh"
+glob = "scripts/project-review-readiness.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11215"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3844-review-readiness-check.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the review-readiness ratchets and declarative-surface receipts added by the #3844 lane."
+evidence = ["issue:3844", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3844-review-readiness-check.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3844-review-readiness-check.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
