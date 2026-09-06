@@ -436,6 +436,20 @@ pub use artifacts::{
     classify_frozen_subject_path, evaluate_frozen_subject_lock,
 };
 
+// Root re-exports for the #3843 review-disposition contract.
+pub use artifacts::{
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
+    ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
+    ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,
+    ReviewReadinessStateV1, ReviewReadinessTransitionV1, ReviewRequiredCiV1,
+    ReviewTransitionRequestV1, evaluate_review_disposition, evaluate_review_readiness_transition,
+    parse_review_disposition_bytes, parse_review_live_source_bytes,
+    parse_review_transition_request_bytes, render_review_disposition_human,
+    render_review_disposition_json, review_semantic_identity,
+};
+
 // Root re-exports for the #3737 final support-selection freeze contract.
 pub use artifacts::{
     FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,

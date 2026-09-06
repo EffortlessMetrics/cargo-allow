@@ -16,6 +16,7 @@ mod frozen_subject_lock_command;
 mod reconcile_package_publication_command;
 mod release_freeze_command;
 mod release_identity_command;
+mod review_disposition_command;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -136,6 +137,9 @@ pub(crate) enum CargoAllowCommand {
     /// Verify one campaign closeout record against the live state.
     #[command(hide = true)]
     CampaignCloseout(campaign_closeout_command::CampaignCloseoutArgs),
+    /// Verify one exact-head review disposition against a live source.
+    #[command(hide = true)]
+    ReviewDisposition(review_disposition_command::ReviewDispositionArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -241,6 +245,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::CampaignCloseout(args) => {
             campaign_closeout_command::cmd_campaign_closeout(&args)
+        }
+        CargoAllowCommand::ReviewDisposition(args) => {
+            review_disposition_command::cmd_review_disposition(&args)
         }
     }
 }
@@ -443,5 +450,6 @@ impl CargoAllowCommand {
         "release-freeze",
         "frozen-subject-lock",
         "campaign-closeout",
+        "review-disposition",
     ];
 }

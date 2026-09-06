@@ -36,6 +36,7 @@ mod release_artifact_transfer_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
+mod review_disposition_v1;
 mod why;
 mod worklist;
 
@@ -176,6 +177,18 @@ pub use package_candidate_v2::{
     PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
     PackageCandidateV2Validation, render_package_candidate_v2, render_package_candidate_v2_bytes,
     validate_package_candidate_v2,
+};
+pub use review_disposition_v1::{
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
+    ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
+    ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,
+    ReviewReadinessStateV1, ReviewReadinessTransitionV1, ReviewRequiredCiV1,
+    ReviewTransitionRequestV1, evaluate_review_disposition, evaluate_review_readiness_transition,
+    parse_review_disposition_bytes, parse_review_live_source_bytes,
+    parse_review_transition_request_bytes, render_review_disposition_human,
+    render_review_disposition_json, review_semantic_identity,
 };
 
 pub use exact_candidate_receipt_v2::{
