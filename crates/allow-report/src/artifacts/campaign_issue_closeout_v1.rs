@@ -942,3 +942,83 @@ mod closeout_edge_tests {
     }
 }
 //
+//
+#[cfg(test)]
+mod closeout_final_coverage_tests {
+    use super::{
+        evaluate_campaign_closeout, CampaignAcceptanceRowV1, CampaignCloseoutRecordV1,
+        CampaignCloseoutVerdictV1, CampaignEvidenceClassV1, CampaignPrEvidenceV1,
+        CampaignPrStateV1, CampaignRepositoryStateV1,
+    };
+
+    #[test]
+    fn row_without_prs_or_checks_passes_with_evidence_identity() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "no-pr row".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: Vec::new(),
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaa".to_string(),
+        };
+        let snapshot = CampaignRepositoryStateV1 {
+            main_head: "aaaa".to_string(),
+            main_tree: "t".to_string(),
+            prs: Vec::new(),
+            checks: Vec::new(),
+            reachable_from_main: Vec::new(),
+        };
+        let outcome = evaluate_campaign_closeout(&record, &snapshot);
+        // A row without PRs has no semantic owner binding.
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+    }
+
+    #[test]
+    fn duplicate_with_rows_and_valid_replacement_evaluates_rows() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Duplicate,
+            decision_owner: "core/release".to_string(),
+            decision_reason: "tracked in the replacement".to_string(),
+            duplicate_of: Some(3744),
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: Vec::new(),
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaa".to_string(),
+        };
+        let snapshot = CampaignRepositoryStateV1 {
+            main_head: "aaaa".to_string(),
+            main_tree: "t".to_string(),
+            prs: Vec::new(),
+            checks: Vec::new(),
+            reachable_from_main: Vec::new(),
+        };
+        let outcome = evaluate_campaign_closeout(&record, &snapshot);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Duplicate);
+    }
+
+    #[test]
+    fn unsupported_verdict_label_matches() {
+        assert_eq!(
+            CampaignCloseoutVerdictV1::Unsupported.label(),
+            "unsupported"
+        );
+    }
+}
