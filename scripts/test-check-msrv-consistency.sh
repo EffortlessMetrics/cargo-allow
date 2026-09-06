@@ -92,7 +92,9 @@ import sys
 path, msrv = sys.argv[1], sys.argv[2]
 with open(path, encoding="utf-8") as handle:
     text = handle.read()
-stripped = re.sub("dtolnay/rust-toolchain@[0-9][^ \\\"\\n]*", "dtolnay/rust-toolchain", text)
+stripped, replaced = re.subn("dtolnay/rust-toolchain@[0-9][^ \\\"\n]*", "dtolnay/rust-toolchain", text)
+if replaced == 0:
+    sys.exit("fixture setup failed: no numeric toolchain pin was removed")
 with open(path, "w", encoding="utf-8") as handle:
     handle.write(stripped)
 PY

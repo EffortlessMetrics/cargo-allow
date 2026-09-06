@@ -46,9 +46,16 @@ printf 'MSRV source of truth: %s rust-version = %s\n' "${cargo_toml}" "${msrv}"
 # MSRV: the #3836 pre-gate and other lanes each carry their own pin, and
 # a single drifted pin would resolve that lane to the wrong compiler
 # while a presence-only check still reported green.
-if ! grep -qF "dtolnay/rust-toolchain@${msrv}.0" "${ci_workflow}"; then
-  fail "$(printf "%s carries no toolchain pin on the declared MSRV %s."     "${ci_workflow}" "${msrv}")"
+# Active uses only: a commented-out pin is not configuration, so the
+# comment lines are stripped before both the positive and the every-pin
+# checks.
+active_pins="$(grep -v "^[[:space:]]*#" "${ci_workflow}" | grep -oE "dtolnay/rust-toolchain@[0-9][^ ]*" || true)"
+if ! printf "%s\n" "${active_pins}" | grep -qF "dtolnay/rust-toolchain@${msrv}.0"; then
+  fail "$(printf "%s carries no active toolchain pin on the declared MSRV %s." \
+    "${ci_workflow}" "${msrv}")"
 fi
+off_msrv="$(printf "%s\n" "${active_pins}" \
+  | grep -vF "dtolnay/rust-toolchain@${msrv}.0" || true)"
 off_msrv="$(grep -oE "dtolnay/rust-toolchain@[0-9][^ ]*" "${ci_workflow}" \
   | grep -vF "dtolnay/rust-toolchain@${msrv}.0" || true)"
 if [[ -n "${off_msrv}" ]]; then
