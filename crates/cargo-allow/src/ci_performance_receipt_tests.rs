@@ -426,3 +426,68 @@ fn ci_performance_receipt_binds_the_collector_and_inventory() {
         );
     }
 }
+
+#[test]
+fn ci_performance_receipt_vocabulary_and_bounds_are_fully_labeled() {
+    // Every purpose and conclusion label is exercised, and the
+    // structural bounds fail closed.
+    for purpose in [
+        CiJobPurposeV1::StaticPreGate,
+        CiJobPurposeV1::CoreCompileTest,
+        CiJobPurposeV1::SharedConsumerTest,
+        CiJobPurposeV1::IntentExperimental,
+        CiJobPurposeV1::ProofExperimental,
+        CiJobPurposeV1::IntegratedDogfood,
+        CiJobPurposeV1::WindowsPlatform,
+        CiJobPurposeV1::Msrv,
+        CiJobPurposeV1::PackageInstall,
+        CiJobPurposeV1::Coverage,
+        CiJobPurposeV1::SecurityDependency,
+        CiJobPurposeV1::ReleaseRehearsal,
+        CiJobPurposeV1::ExternalReview,
+        CiJobPurposeV1::ArtifactDiagnostics,
+    ] {
+        assert!(!purpose.label().is_empty());
+    }
+    for conclusion in [
+        CiJobConclusionV1::Passed,
+        CiJobConclusionV1::Failed,
+        CiJobConclusionV1::Neutral,
+        CiJobConclusionV1::Cancelled,
+        CiJobConclusionV1::Skipped,
+        CiJobConclusionV1::Unknown,
+    ] {
+        assert!(!conclusion.label().is_empty());
+    }
+
+    // Run bound: seventeen runs exceed the sixteen-run bound.
+    let mut receipt = receipt_json(Vec::new());
+    let runs: Vec<serde_json::Value> = (0..17)
+        .map(|index| {
+            let mut one = run("success", vec![job_json(serde_json::json!({}))]);
+            one["run_id"] = serde_json::json!(index + 1);
+            one
+        })
+        .collect();
+    receipt["runs"] = serde_json::Value::Array(runs);
+    assert!(validate_json(&receipt).contains(&"run_bound_exceeded".to_string()));
+
+    // Limits bound: sixty-five limits exceed the sixty-four bound.
+    let mut receipt = receipt_json(vec![run("success", vec![job_json(serde_json::json!({}))])]);
+    let limits: Vec<serde_json::Value> = (0..65)
+        .map(|index| serde_json::json!(format!("limit-{index}")))
+        .collect();
+    receipt["limits"] = serde_json::Value::Array(limits);
+    assert!(validate_json(&receipt).contains(&"limits_bound_exceeded".to_string()));
+
+    // Job bound: sixty-five jobs in one run fail per-run.
+    let jobs: Vec<serde_json::Value> = (0..65)
+        .map(|index| job_json(serde_json::json!({"name": format!("job-{index}")})))
+        .collect();
+    let receipt = receipt_json(vec![run("success", jobs)]);
+    assert!(
+        validate_json(&receipt)
+            .iter()
+            .any(|code| code.starts_with("job_bound_exceeded"))
+    );
+}
