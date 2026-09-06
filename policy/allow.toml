@@ -19001,3 +19001,76 @@ glob = ".allow/revisions/3844-review-readiness-check.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11216"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs"
+owner = "core/policy"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the closeout workflow decision-law tests (#3846); every expect guards a retained-file read or an inline fixture parse whose failure is the property under test"
+evidence = ["issue:3846"]
+occurrence_limit = 4
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs"
+
+[[allow]]
+id = "allow-11217"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/campaign_membership_projection_tests.rs"
+owner = "core/policy"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the campaign membership projection tests (#3846); every expect guards a retained-file read or a hostile fixture parse whose rejection is the property under test"
+evidence = ["issue:3846"]
+occurrence_limit = 8
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/campaign_membership_projection_tests.rs"
+
+[[allow]]
+id = "allow-11218"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/evidence_sufficiency_gate_tests.rs"
+owner = "core/policy"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the evidence-sufficiency gate tests (#3846); every expect guards a retained-file read or a checked-inventory parse under fully controlled inputs"
+evidence = ["issue:3846"]
+occurrence_limit = 5
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/evidence_sufficiency_gate_tests.rs"
+
+[[allow]]
+id = "allow-11219"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3846-closeout-guard-law.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the closeout-guard expect ratchets added by the #3846 lane."
+evidence = ["issue:3846", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3846-closeout-guard-law.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3846-closeout-guard-law.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

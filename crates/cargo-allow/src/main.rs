@@ -175,6 +175,10 @@ mod changie_compat_matrix_tests;
 #[path = "allow_files_changie_admission_tests.rs"]
 mod allow_files_changie_admission_tests;
 #[cfg(test)]
+mod campaign_issue_closeout_workflow_tests;
+#[cfg(test)]
+mod campaign_membership_projection_tests;
+#[cfg(test)]
 mod candidate_preparation_plan_tests;
 #[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
@@ -195,6 +199,8 @@ mod effortless_repo_edit_parity_tests;
 mod effortless_repo_snapshot_parity_tests;
 #[cfg(test)]
 mod effortless_rust_source_index_parity_tests;
+#[cfg(test)]
+mod evidence_sufficiency_gate_tests;
 #[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]

@@ -1,0 +1,48 @@
+schema_version = 1
+# Revision note for the #3846 campaign issue closeout guard law.
+
+# This diff adds the typed decision-law proof surface for the campaign
+# issue closeout guard: campaign_membership_projection_tests,
+# evidence_sufficiency_gate_tests, and
+# campaign_issue_closeout_workflow_tests in the cargo-allow crate.
+# The runtime guard (scripts/verify-campaign-issue-closeout.py +
+# .github/workflows/campaign-issue-closeout.yml + the checked
+# denominator policy/campaign-issue-closeout.toml and evidence-surface
+# inventory) was already retained; these modules prove its law against
+# the checked authorities: the denominator is explicit, coherent
+# (unique issues, required-in-accepted, known verdicts, campaign
+# 3768), and scope authority only; the evidence gate rejects missing,
+# malformed, unknown, and projection-only backing for a Complete
+# closeout; the close-event decision reopens invalid closeouts with
+# one bounded, stable rejection comment, retains valid ones, ignores
+# issues outside the denominator, fails closed on provider failures,
+# never closes an issue, and never erases rejection history. The
+# source-exception additions receipt only the syntax-visible
+# constructs the new test fixtures introduce:
+# allow-11216/allow-11217/allow-11218 are glob-ratcheted expect
+# baselines for retained-file reads and hostile fixture parses, and
+# allow-11219 receipts this revision-note file itself per the per-note
+# receipt law. No existing exception is weakened, no expiry is
+# extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11216"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:50dc047b0fff0ba166aca643e2a53e5963589cc3bee2a613f79a41e2629c9a38"
+
+[[records]]
+allow_ids = ["allow-11217"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:83e4bdc61eba3680604b68d8f62bd98026363a2f927ffd02ff8c67e3911c006f"
+
+[[records]]
+allow_ids = ["allow-11218"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:23b89e39661b5c503cfad19888230dab52d09958a867def5ebdd972ad4b0278e"
+
+[[records]]
+allow_ids = ["allow-11219"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:02af1dfa24e2ac1205c7355d435b9b8ecb3c4c7cf2f1e905c11d1f31cfdf4639"
