@@ -19,6 +19,18 @@ OUTPUT_DIR="${OUTPUT_DIR:-target/exact-candidate-isolated-install}"
 
 cd "$ROOT"
 
+# Later stages change the working directory; pin every cross-stage input to
+# an absolute path so relative defaults cannot silently break.
+for __input in "$CANDIDATE_ARTIFACT" "$PACKAGES_DIR" "$OUTPUT_DIR"; do
+    case "$__input" in
+        /*) ;;
+        *) CANDIDATE_ARTIFACT="$ROOT/$CANDIDATE_ARTIFACT"
+           PACKAGES_DIR="$ROOT/$PACKAGES_DIR"
+           OUTPUT_DIR="$ROOT/$OUTPUT_DIR"
+           break ;;
+    esac
+done
+
 python3 - "$CANDIDATE_ARTIFACT" "$PACKAGES_DIR" <<'PY'
 import hashlib
 import json
@@ -144,7 +156,7 @@ cp "$saved_lock" "${extracted_bin_pkg}/Cargo.lock"
 
 echo "isolated-install: assembling the isolated local registry"
 candidate_args=()
-python3 - target/exact-candidate-isolated-install/consumed-rows.json <<'PY' > target/exact-candidate-isolated-install/candidate-args.txt
+python3 - target/exact-candidate-isolated-install/consumed-rows.json <<'PY' | tr -d '\015' > target/exact-candidate-isolated-install/candidate-args.txt
 import json
 import sys
 from pathlib import Path
@@ -154,7 +166,7 @@ for row in rows:
 PY
 while read -r flag name_version; do
     candidate_args+=("$flag" "$name_version")
-done < target/exact-candidate-isolated-install/candidate-args.txt
+done < <(tr -d '\015' < target/exact-candidate-isolated-install/candidate-args.txt)
 python3 scripts/exact-candidate-assemble-local-registry.py \
     --lockfile "$saved_lock" \
     --cargo-home "$warm_home" \
@@ -240,8 +252,10 @@ if [ "$install_exit" -ne 0 ]; then
 fi
 
 installed_bin="${install_root}/bin/cargo-allow"
-if [ ! -f "$installed_bin" ]; then
-    installed_bin="${install_root}/bin/cargo-allow.exe"
+# MSYS stat aliases the .exe name, so probe the .exe first; native python
+# opens the real file name.
+if [ -f "${installed_bin}.exe" ]; then
+    installed_bin="${installed_bin}.exe"
 fi
 installed_version_output="$(CARGO_HOME="$install_home" "$installed_bin" --version)"
 echo "isolated-install: installed binary reports ${installed_version_output}"

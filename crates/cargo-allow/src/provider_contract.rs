@@ -18,10 +18,8 @@ const DISCOVERY_ORDER: [&str; 3] = [
 const FORBIDDEN_PATH_PREFIXES: [&str; 2] = ["target/", "crates/"];
 const ENVIRONMENT_VARIABLE: &str = "CARGO_ALLOW_BIN";
 const CONFIG_RELATIVE_PATH: &str = ".allow/compatibility/proof-delegation.toml";
-const REQUIRED_CAPABILITIES: [&str; 2] = [
-    "cargo-allow.check.no-new",
-    "cargo-allow.capabilities.json",
-];
+const REQUIRED_CAPABILITIES: [&str; 2] =
+    ["cargo-allow.check.no-new", "cargo-allow.capabilities.json"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct ProviderContractV1 {

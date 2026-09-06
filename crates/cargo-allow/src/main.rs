@@ -55,7 +55,7 @@ mod plan_bindings;
 mod policy_config;
 pub mod precommit_tool;
 mod propose;
-pub mod provider_contract;
+mod provider_contract;
 mod prune;
 mod reference;
 mod refresh;
@@ -176,10 +176,16 @@ mod changie_compat_matrix_tests;
 #[path = "allow_files_changie_admission_tests.rs"]
 mod allow_files_changie_admission_tests;
 #[cfg(test)]
+mod campaign_issue_closeout_workflow_tests;
+#[cfg(test)]
+mod campaign_membership_projection_tests;
+#[cfg(test)]
 mod candidate_preparation_plan_tests;
 #[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
+#[cfg(test)]
+mod ci_performance_receipt_tests;
 #[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
@@ -197,6 +203,8 @@ mod effortless_repo_snapshot_parity_tests;
 #[cfg(test)]
 mod effortless_rust_source_index_parity_tests;
 #[cfg(test)]
+mod evidence_sufficiency_gate_tests;
+#[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]
 mod intent_edit_parity_tests;
@@ -207,7 +215,19 @@ mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
 #[cfg(test)]
+mod repository_release_controls_tests;
+#[cfg(test)]
+mod review_disposition_contract_tests;
+#[cfg(test)]
+mod review_disposition_currentness_tests;
+#[cfg(test)]
 mod review_packet_compiler_parity_tests;
+#[cfg(test)]
+mod review_readiness_check_tests;
+#[cfg(test)]
+mod review_readiness_events_tests;
+#[cfg(test)]
+mod review_readiness_transition_tests;
 
 #[cfg(test)]
 mod config_authority_denominator_tests;

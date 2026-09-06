@@ -7,10 +7,8 @@ use std::{
 };
 
 const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
-const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
-    "tool-identity",
-    "cargo-allow-provider-contract-v1",
-];
+const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] =
+    &["tool-identity", "cargo-allow-provider-contract-v1"];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {
@@ -207,7 +205,9 @@ fn schema_index_covers_reusable_component_contracts() -> Result<(), String> {
 fn schema_index_covers_self_description_contracts() -> Result<(), String> {
     let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
     if !index.contains("## Self-description contract (not a governed artifact)") {
-        return Err("schema index should distinguish self-description from governed artifacts".to_string());
+        return Err(
+            "schema index should distinguish self-description from governed artifacts".to_string(),
+        );
     }
     for name in SELF_DESCRIPTION_SCHEMA_NAMES {
         let schema_file = format!("{name}.schema.json");

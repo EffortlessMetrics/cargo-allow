@@ -32,6 +32,13 @@
 #   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
 
+# Child JSON helpers can emit CRLF line endings on Windows; a trailing CR
+# would corrupt every token and git-head comparison below.
+strip_cr() {
+  printf '%s' "$1" | tr -d '\r'
+}
+
+
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
 command -v python3 >/dev/null 2>&1 || { printf 'exact-candidate-package-set: error: python3 is required\n' >&2; exit 1; }
@@ -71,6 +78,9 @@ if [[ "${1:-}" != "--internal" ]]; then
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
   )
+  snapshot_root="$(strip_cr "${snapshot_root}")"
+  snapshot_token="$(strip_cr "${snapshot_token}")"
+  snapshot_head="$(strip_cr "${snapshot_head}")"
   if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
     PACKAGE_INPUT_DIR="$(python3 - "${package_input_source}" "${snapshot_root}" "${snapshot_head}" <<'PY'
 import hashlib
@@ -155,6 +165,8 @@ work_json="$(python3 "${lifecycle}" allocate --root "${exact_parent}" --purpose 
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
+work_dir="$(strip_cr "${work_dir}")"
+work_token="$(strip_cr "${work_token}")"
 packages_dir="${exact_parent}/packages"
 # Extracted packages must live outside the workspace tree; otherwise Cargo
 # walks up to the repo Cargo.toml and treats them as workspace members.
@@ -168,6 +180,8 @@ cargo_home="${offline_root}/cargo-home"
 local_registry_dir="${offline_root}/local-registry"
 install_cargo_home="${offline_root}/install-cargo-home"
 target_dir="${offline_root}/target"
+offline_root="$(strip_cr "${offline_root}")"
+offline_token="$(strip_cr "${offline_token}")"
 install_root="${exact_parent}/install"
 receipt="${exact_parent}/exact-candidate-package-set.receipt.json"
 crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"

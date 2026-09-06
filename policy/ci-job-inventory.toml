@@ -1,0 +1,208 @@
+# Checked proof-class inventory for cargo-allow CI jobs (#3835).
+# Every current Actions job classifies as one purpose bound to one
+# routing owner and one blocking posture, taken from the routing
+# sources (the workflow files), never inferred from the job name at
+# collection time. This file is measurement metadata only; it is not a
+# second impact classifier beside #2569 and does not change routing.
+
+schema = "cargo-allow.ci-job-inventory.v1"
+generation = 1
+routing_source = ".github/workflows/*.yml"
+
+[[jobs]]
+name = "test"
+purpose = "CoreCompileTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)"
+purpose = "CoreCompileTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-core-platforms (macos-14, aarch64-apple-darwin)"
+purpose = "CoreCompileTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-core-platforms (macos-15-intel, x86_64-apple-darwin)"
+purpose = "CoreCompileTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)"
+purpose = "WindowsPlatform"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "msrv"
+purpose = "Msrv"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "coverage"
+purpose = "Coverage"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "package-smoke"
+purpose = "PackageInstall"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "integrated-dogfood"
+purpose = "IntegratedDogfood"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "shallow-diff-smoke"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "feature-configuration-proof"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "product-candidates-interop"
+purpose = "SharedConsumerTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "cargo-deny"
+purpose = "SecurityDependency"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "compat-delegation (ubuntu-latest)"
+purpose = "SharedConsumerTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "compat-delegation (windows-latest)"
+purpose = "SharedConsumerTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-intent-experimental"
+purpose = "IntentExperimental"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-proof-experimental"
+purpose = "ProofExperimental"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-shared-protocol"
+purpose = "SharedConsumerTest"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "operator-latency"
+purpose = "ArtifactDiagnostics"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "review"
+purpose = "ExternalReview"
+routing_owner = "core/review"
+blocking = true
+
+[[jobs]]
+name = "changie-contract"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "changie-hook-contract"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "frozen-subject-lock"
+purpose = "StaticPreGate"
+routing_owner = "core/release"
+blocking = true
+
+[[jobs]]
+name = "review-readiness-publisher"
+purpose = "StaticPreGate"
+routing_owner = "core/review"
+blocking = false
+
+[[jobs]]
+name = "review-readiness"
+purpose = "StaticPreGate"
+routing_owner = "core/review"
+blocking = false
+
+[[jobs]]
+name = "verify"
+purpose = "StaticPreGate"
+routing_owner = "core/policy"
+blocking = false
+
+[[jobs]]
+name = "sentinel"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "feature-configuration-qualification"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = false
+
+[[jobs]]
+name = "preflight"
+purpose = "StaticPreGate"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "publish"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "install-smoke (windows-latest)"
+purpose = "PackageInstall"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "install-smoke (ubuntu-latest)"
+purpose = "PackageInstall"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "github-release"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false

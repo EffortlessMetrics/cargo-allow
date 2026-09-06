@@ -2,10 +2,12 @@ mod add;
 mod add_finding_plan;
 mod add_plan_application;
 mod adoption_plan;
+mod campaign_issue_closeout_v1;
 mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
+mod ci_performance_receipt_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -16,7 +18,9 @@ pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod final_freeze_replay_v1;
 mod final_readiness_v1;
+mod final_support_selection_v1;
 mod frozen_candidate_custody_v1;
+mod frozen_subject_lock_v1;
 mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
 mod list;
@@ -33,6 +37,8 @@ mod release_artifact_transfer_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
+mod review_disposition_v1;
+mod review_readiness_check_v1;
 mod why;
 mod worklist;
 
@@ -46,6 +52,13 @@ pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
     WritePosture, recommend_core_adoption_plan,
+};
+pub use campaign_issue_closeout_v1::{
+    CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_ID, CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_VERSION,
+    CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+    CampaignCloseoutRecordV1, CampaignCloseoutResultV1, CampaignCloseoutVerdictV1,
+    CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+    CampaignReviewPairV1, evaluate_campaign_closeout,
 };
 pub use candidate_preparation_apply_v1::{
     CANDIDATE_APPLY_CLAIM_BOUNDARY_V1, CANDIDATE_APPLY_RECEIPT_SCHEMA_V1,
@@ -74,6 +87,14 @@ pub use candidate_preparation_receipt_v1::{
     CandidateChangedFileV1, CandidateGraphRowV1, CandidatePreparationReceiptV1,
     CandidatePreparationStateV1, CandidateResolvedDecisionV1, CandidateValidationResultV1,
     CandidateValidationRowV1,
+};
+pub use ci_performance_receipt_v1::{
+    CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,
+    CI_PERFORMANCE_MAX_RUNS, CI_PERFORMANCE_RECEIPT_SCHEMA_ID,
+    CI_PERFORMANCE_RECEIPT_SCHEMA_VERSION, CiCacheClassV1, CiCacheObservationV1, CiEnvironmentV1,
+    CiJobConclusionV1, CiJobObservationV1, CiJobPurposeV1, CiPerformanceReceiptV1,
+    CiRunObservationV1, CiSourcePairV1, CiTimingBreakdownV1, render_ci_performance_receipt_human,
+    render_ci_performance_receipt_json, validate_ci_performance_receipt,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
@@ -141,9 +162,21 @@ pub use final_readiness_v1::{
     FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
     render_final_readiness_json, render_final_readiness_markdown,
 };
+pub use final_support_selection_v1::{
+    FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
+    FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
+    FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
+};
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
     CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,
+};
+pub use frozen_subject_lock_v1::{
+    CargoAllowFrozenSubjectLockV1, FROZEN_SUBJECT_LOCK_SCHEMA_ID,
+    FROZEN_SUBJECT_LOCK_SCHEMA_VERSION, FrozenSubjectChangeV1, FrozenSubjectInvalidationV1,
+    FrozenSubjectLockInputV1, FrozenSubjectPathClassV1, FrozenSubjectPathKindV1,
+    FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+    classify_frozen_subject_path, evaluate_frozen_subject_lock,
 };
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
@@ -154,6 +187,26 @@ pub use package_candidate_v2::{
     PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
     PackageCandidateV2Validation, render_package_candidate_v2, render_package_candidate_v2_bytes,
     validate_package_candidate_v2,
+};
+pub use review_disposition_v1::{
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
+    ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
+    ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,
+    ReviewReadinessStateV1, ReviewReadinessTransitionV1, ReviewRequiredCiV1,
+    ReviewTransitionRequestV1, evaluate_review_disposition, evaluate_review_readiness_transition,
+    parse_review_disposition_bytes, parse_review_live_source_bytes,
+    parse_review_transition_request_bytes, render_review_disposition_human,
+    render_review_disposition_json, review_semantic_identity,
+};
+pub use review_readiness_check_v1::{
+    REVIEW_READINESS_CHECK_CONTEXT, REVIEW_READINESS_CHECK_SCHEMA_ID,
+    REVIEW_READINESS_CHECK_SCHEMA_VERSION, ReviewReadinessBindingV1, ReviewReadinessConclusionV1,
+    ReviewReadinessDispositionInputV1, ReviewReadinessDraftStateV1, ReviewReadinessEventV1,
+    ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
+    evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
+    render_review_readiness_human, render_review_readiness_json,
 };
 
 pub use exact_candidate_receipt_v2::{

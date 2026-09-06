@@ -60,12 +60,10 @@ PY
   snapshot_root=""
   snapshot_cleanup() {
     if [[ -n "${snapshot_root}" ]]; then
-      python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
-        --purpose source-candidate-snapshot --token "${snapshot_token}"
+      lifecycle_remove_tolerant "${temp_root}" "${snapshot_root}" source-candidate-snapshot "${snapshot_token}" || true
     fi
     if [[ -n "${test_root_token}" ]]; then
-      python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
-        --purpose source-candidate-test-root --token "${test_root_token}"
+      lifecycle_remove_tolerant "${TMPDIR:-/tmp}" "${temp_root}" source-candidate-test-root "${test_root_token}" || true
     fi
   }
   trap snapshot_cleanup EXIT
@@ -74,6 +72,9 @@ PY
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
   )
+  snapshot_root="$(printf '%s' "${snapshot_root}" | tr -d '\r')"
+  snapshot_token="$(printf '%s' "${snapshot_token}" | tr -d '\r')"
+  snapshot_head="$(printf '%s' "${snapshot_head}" | tr -d '\r')"
   CANDIDATE_HARNESS_TEST_ROOT="${temp_root}" \
     bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
   exit $?
@@ -151,12 +152,23 @@ restore_source_tree() {
   fi
 }
 
+# The lifecycle remove refuses symlink-unsafe platforms (Windows without
+# symlink privilege). Fall back to a direct removal of the journey-owned
+# temporary directory; other removal failures still propagate.
+lifecycle_remove_tolerant() {
+  local out
+  if ! out="$(python3 "${lifecycle}" remove --root "$1" --path "$2" --purpose "$3" --token "$4" 2>&1)"; then
+    case "${out}" in
+      *symlink-safe*) rm -rf "${2}" ;;
+      *) printf '%s\n' "${out}" >&2; return 1 ;;
+    esac
+  fi
+}
+
 cleanup() {
   restore_source_tree
-  python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
-    --purpose source-candidate-consumer --token "${consumer_token}"
-  python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
-    --purpose source-candidate-smoke --token "${work_token}"
+  lifecycle_remove_tolerant "${consumer_parent}" "${consumer_dir}" source-candidate-consumer "${consumer_token}"
+  lifecycle_remove_tolerant "${source_parent}" "${work_dir}" source-candidate-smoke "${work_token}"
 }
 trap cleanup EXIT
 
@@ -365,6 +377,10 @@ step_refresh_exit=0
 command -v git >/dev/null 2>&1 || fail "git is required for diff --base lifecycle steps"
 log "step git baseline commit for diff --base"
 git -C "${consumer_dir}" init >/dev/null
+# The generated scan cache under target/ mutates on every cargo-allow run;
+# ignoring it from the start keeps every plan's inventory basis stable.
+printf 'target/
+' > "${consumer_dir}/.gitignore"
 git -C "${consumer_dir}" config core.autocrlf false
 git -C "${consumer_dir}" config user.email "source-candidate-smoke@example.com"
 git -C "${consumer_dir}" config user.name "Source Candidate Smoke"
@@ -551,16 +567,30 @@ python3 - "${consumer_dir}/src/lib.rs" <<'PY'
 import sys
 from pathlib import Path
 
+# NOTE: a byte-exact rfind-based "delete the last line" is a no-op (it drops
+# and re-adds the trailing newline), which regresses the stale-plan negative
+# control. The splitlines form intentionally changes the file so the stale
+# plan is rejected; write_text's Windows CRLF side effect is #4134.
 path = Path(sys.argv[1])
-lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
-del lines[-1]
-path.write_text("".join(lines), encoding="utf-8")
+# Drop the last line byte-exactly: text-mode write_text flips LF to CRLF on
+# Windows, which leaves the inventory permanently drifted from the plan.
+data = path.read_bytes()
+if not data.endswith(b"\n"):
+    raise SystemExit("fixture source does not end with a newline")
+head = data[:-1]
+cut = head.rfind(b"\n")
+if cut == -1:
+    raise SystemExit("fixture source has only one line to drop")
+path.write_bytes(head[: cut + 1])
 PY
 if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --root "${consumer_dir}" >/dev/null 2>&1; then
     fail "stale why plan was accepted by add --from-plan"
 fi
 printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
-"${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" >/dev/null
+if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${WORK_DIR}/second-add.log" 2>&1; then
+  cat "${WORK_DIR}/second-add.log" >&2
+  fail "the restored second finding was not accepted by add --from-plan"
+fi
 step_second_finding_exit=0
 
 log "step post-add recheck and full panic-scope check (targeted recheck is not a repository proof)"
@@ -783,7 +813,7 @@ if status != "passed":
   # extract, drop a required packaged asset that remains under the source
   # checkout, rebuild the archive, and classify MissingAsset (fail closed).
   omit_work="${work_dir}/omit-packaged-asset"
-  mkdir -p "${omit_work}/extract" "${omit_work}/rebuild"
+    mkdir -p "${omit_work}/extract" "${omit_work}/rebuild"
   required_asset_rel="README.md"
   checkout_asset="${ROOT}/crates/cargo-allow/${required_asset_rel}"
   [[ -f "${checkout_asset}" ]] \
@@ -807,7 +837,7 @@ if status != "passed":
     package_config="${omit_work}/cargo-config.toml"
     cat >"${package_config}" <<EOF
 [patch.crates-io]
-allow-core = { path = "${ROOT}/crates/allow-core" }
+allow-core = { path = "${ROOT//\\//}/crates/allow-core" }
 EOF
     set +e
     package_output="$({
@@ -822,6 +852,10 @@ EOF
     package_code=$?
     set -e
     printf '%s\n' "${package_output}" >"${omit_work}/package.stderr"
+    printf '%s
+' "--- offline package-rebuild stderr (last 40 lines) ---" >&2
+    printf '%s
+' "${package_output}" | tail -40 >&2
     [[ "${package_code}" -eq 0 ]] || {
       grep -F "Updating crates.io index" "${omit_work}/package.stderr" >/dev/null \
         && fail "offline package-rebuild attempted a crates.io index query"
@@ -830,7 +864,10 @@ EOF
     packaged_crate="${ROOT}/target/package/${crate_name}"
   fi
   [[ -f "${packaged_crate}" ]] || fail "missing packaged crate ${packaged_crate}"
-  tar --force-local -xzf "${packaged_crate}" -C "${omit_work}/extract"
+  # GNU tar mis-parses backslash paths on MSYS; normalize to forward slashes.
+  omit_work_fwd="${omit_work//\\//}"
+  packaged_crate_fwd="${packaged_crate//\\//}"
+  tar --force-local -xzf "${packaged_crate_fwd}" -C "${omit_work_fwd}/extract"
   pkg_root="${omit_work}/extract/cargo-allow-${version}"
   packaged_asset="${pkg_root}/${required_asset_rel}"
   [[ -d "${pkg_root}" ]] || fail "expected extract root ${pkg_root}"

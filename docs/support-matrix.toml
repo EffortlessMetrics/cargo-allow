@@ -155,3 +155,161 @@ security_response_target = "TODO: acknowledgement/patch timeframe for a reported
 backport_policy = "TODO: are fixes backported to the previous minor, or fix-forward only?"
 platform_commitment = "TODO: which ci_proven platforms are *committed* support versus best-effort?"
 msrv_bump_policy = "TODO: does raising the MSRV require a minor bump, and with what notice?"
+
+# ---------------------------------------------------------------------------
+# FINAL SELECTION (#3737) — the 0.2.0 release proof denominator.
+#
+# This section records which claims the prospective 0.2.0 final release
+# makes and explicitly declines. It is keyed to the typed release identity:
+# a version, tag, channel, or prerelease change stales the selection. The
+# two digests are recomputed from the typed model in
+# crates/allow-report/src/artifacts/final_support_selection_v1.rs — the one
+# implementation. Consumers (#2501, #3761, #3726, #3151, #2267) validate
+# these digests; they never restate the selected lists.
+#
+# This is the release *proof* denominator. Support *policy* tenure (how long
+# a release receives fixes, committed versus best-effort platforms,
+# backport rules) stays in [undecided] above and with #3777.
+# ---------------------------------------------------------------------------
+
+[final_selection]
+schema_id = "cargo-allow.final-support-selection.v1"
+schema_version = 1
+controlling_issue = 3737
+release_version = "0.2.0"
+release_tag = "v0.2.0"
+channel = "stable"
+github_prerelease = false
+identity_digest = "sha256:v1:bcdc6652a4f090df10bb8d5e251054b0c3767a05ec5172272a812627d8d28d02"
+selection_digest = "sha256:v1:e175c5da7aab215d335b42e054dfe46f98478a1511307e8ccde90f0502d94cd5"
+claim_boundary = "The machine-readable final-selection freeze for the 0.2.0 release proof denominator. It records which support, platform, channel, asset, sibling-product, pilot, and upgrade claims the final release makes and explicitly declines, bound to one typed release identity by recomputed digests. It is not a support policy, a channel-truth projection, installed-experience proof, or a publication authorization; unselected and not-proven rows narrow the release claims and never inherit success."
+
+[[final_selection.rows]]
+dimension = "rust"
+subject = "1.95"
+disposition = "selected"
+proof_owner = "ci.yml job `msrv`"
+required_evidence = "release-set `cargo check --locked --all-targets` plus `cargo test -p cargo-allow --bins --locked` pinned to Rust 1.95.0 with the resolved compiler verified"
+evidence_reference = ".github/workflows/ci.yml"
+claim_effect = "the final release claims Rust 1.95 compatibility for the cargo-allow release set only; sibling products claim no toolchain"
+staleness_inputs = ["workspace rust-version", "msrv cache key", "attested release-manifest MSRV"]
+
+[[final_selection.rows]]
+dimension = "platform"
+subject = "x86_64-unknown-linux-gnu"
+disposition = "selected"
+proof_owner = "ci.yml jobs `test`, `msrv`, and `test-core-platforms`"
+required_evidence = "full workspace suite on ubuntu-latest for every PR, plus the selected-candidate install/journey rows for the frozen candidate"
+evidence_reference = ".github/workflows/ci.yml"
+claim_effect = "the final release claims Linux x86_64 GNU support at the proven tier"
+staleness_inputs = ["runner inventory in ci.yml", "selected-candidate platform receipts"]
+
+[[final_selection.rows]]
+dimension = "platform"
+subject = "x86_64-pc-windows-msvc"
+disposition = "selected"
+proof_owner = "ci.yml job `test-core-platforms`"
+required_evidence = "release-set suite on windows-latest, plus the selected-candidate install/journey rows for the frozen candidate"
+evidence_reference = ".github/workflows/ci.yml"
+claim_effect = "the final release claims Windows x86_64 MSVC support at the proven tier"
+staleness_inputs = ["runner inventory in ci.yml", "selected-candidate platform receipts"]
+
+[[final_selection.rows]]
+dimension = "platform"
+subject = "aarch64-apple-darwin"
+disposition = "not_included"
+proof_owner = "ci.yml job `test-core-platforms` (bounded evidence only)"
+required_evidence = "bounded release-set suite on macos-14; bounded CI provenness is support evidence, never a selected final claim"
+evidence_reference = ".github/workflows/ci.yml"
+claim_effect = "the final release makes no macOS ARM support claim; the platform remains outside the selected denominator"
+staleness_inputs = ["runner inventory in ci.yml"]
+
+[[final_selection.rows]]
+dimension = "platform"
+subject = "x86_64-apple-darwin"
+disposition = "not_included"
+proof_owner = "ci.yml job `test-core-platforms` (bounded evidence only)"
+required_evidence = "bounded release-set suite on macos-15-intel; bounded CI provenness is support evidence, never a selected final claim"
+evidence_reference = ".github/workflows/ci.yml"
+claim_effect = "the final release makes no macOS Intel support claim; the platform remains outside the selected denominator"
+staleness_inputs = ["runner inventory in ci.yml"]
+
+[[final_selection.rows]]
+dimension = "channel"
+subject = "crates.io-exact-version-install"
+disposition = "selected"
+proof_owner = "release.yml `install-smoke` at tag push; registry observation before execution"
+required_evidence = "post-publication exact-version install smoke on the selected platforms, plus a current registry version/ownership observation (#3774) at execution"
+evidence_reference = ".github/workflows/release.yml"
+claim_effect = "the exact-version install command becomes a valid claim only after publication and observation succeed; it is never claimed for an unpublished candidate"
+staleness_inputs = ["registry version/owner observation", "published checksum equality"]
+
+[[final_selection.rows]]
+dimension = "channel"
+subject = "ordinary-latest-install"
+disposition = "selected"
+proof_owner = "registry version observation before execution"
+required_evidence = "the registry latest version observation agrees with the published final release at execution time"
+evidence_reference = "scripts/verify-crate-registry-version.sh"
+claim_effect = "the plain install command resolves to the final release only while the registry observation agrees; an observation mismatch blocks the claim"
+staleness_inputs = ["registry version/owner observation", "new upstream publication"]
+
+[[final_selection.rows]]
+dimension = "channel"
+subject = "prebuilt-binary-archive"
+disposition = "not_included"
+proof_owner = "#2464 (Linux archive) and #2474 (Windows archive)"
+required_evidence = "an installed archive experience qualification; release.yml may attach archive assets without any archive-install claim"
+evidence_reference = ".github/workflows/release.yml"
+claim_effect = "the final release claims no archive installation channel; attached assets are convenience artifacts only"
+staleness_inputs = ["#2464/#2474 qualification receipts"]
+
+[[final_selection.rows]]
+dimension = "channel"
+subject = "cargo-binstall"
+disposition = "not_included"
+proof_owner = "#2481"
+required_evidence = "binstall metadata plus an installed binstall experience qualification"
+evidence_reference = "Cargo.toml"
+claim_effect = "the final release claims no cargo-binstall channel; no binstall metadata exists"
+staleness_inputs = ["binstall metadata introduction"]
+
+[[final_selection.rows]]
+dimension = "sibling-product"
+subject = "cargo-intent-and-cargo-proof"
+disposition = "not_included"
+proof_owner = "policy/product-support-matrix.toml (per-product postures)"
+required_evidence = "the per-product support matrix: both siblings are opt-in experimental and outside the cargo-allow final closure"
+evidence_reference = "policy/product-support-matrix.toml"
+claim_effect = "installing cargo-allow never implies cargo-intent or cargo-proof are installed, supported, or stable"
+staleness_inputs = ["product-package topology rows", "per-product posture changes"]
+
+[[final_selection.rows]]
+dimension = "pilot"
+subject = "clean-repository"
+disposition = "not_proven"
+proof_owner = "#2466 (blocked on explicit target selection)"
+required_evidence = "a completed installed clean-repository adoption pilot receipt; until then the disposition stays not_proven"
+evidence_reference = "docs/dogfood"
+claim_effect = "the final release makes no clean-repository adoption claim and no low-friction adoption claim; NotProven is recorded, never rendered as proven"
+staleness_inputs = ["#2466 pilot receipt landing"]
+
+[[final_selection.rows]]
+dimension = "pilot"
+subject = "brownfield-repository"
+disposition = "not_included"
+proof_owner = "#2467 (NotIncludedBeforeFirstFinal posture)"
+required_evidence = "an explicit post-first-final brownfield pilot decision; the current posture excludes brownfield pilots from the first-final denominator"
+evidence_reference = "docs/dogfood"
+claim_effect = "the final release makes no brownfield migration claim; brownfield pilots are excluded before the first final, not failed"
+staleness_inputs = ["#2467 posture decision"]
+
+[[final_selection.rows]]
+dimension = "upgrade-rollback"
+subject = "0.1.11-to-final-to-0.1.11"
+disposition = "selected"
+proof_owner = "#2485 via the exact upgrade/rollback journey (#3853 successor)"
+required_evidence = "an UpgradeRollbackReceiptV1 current for the frozen candidate: exact 0.1.11 binary, exact final candidate binary, representative state, and owned write/restore sets"
+evidence_reference = "scripts/exact-upgrade-rollback-journey.sh"
+claim_effect = "the final release claims exact 0.1.11 upgrade and rollback only while the upgrade/rollback receipt is current for the frozen candidate; a stale receipt withdraws the claim"
+staleness_inputs = ["UpgradeRollbackReceiptV1 currentness", "frozen candidate identity"]

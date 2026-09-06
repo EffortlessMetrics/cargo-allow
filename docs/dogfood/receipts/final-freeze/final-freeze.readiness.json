@@ -1,0 +1,95 @@
+{
+  "schema_id": "cargo-allow.final-readiness.v1",
+  "schema_version": 1,
+  "graph_digest": "sha256:v1:c4e85db3cdc857ee7b74ce8da5c442b702f02e5a516e86892c6e3b1cea2e417d",
+  "verdict": "ready_for_freeze",
+  "repository": "EffortlessMetrics/cargo-allow",
+  "release_identity": {
+    "version": "0.2.0",
+    "tag": "v0.2.0",
+    "github_prerelease": false
+  },
+  "selected_upload_rows": 10,
+  "selected_shared_rows": 3,
+  "selected_package_rows": 13,
+  "merge_commit": "63248416c2bd73edd63e22f064a1f242afcc0622",
+  "post_merge_qualification": "current",
+  "custody_replay_feasible": true,
+  "custody_expires_before_authorization_window": false,
+  "support_only_evidence_ids": [
+    "incident-handoff"
+  ],
+  "supported_limitation_ids": [
+    "channel/cargo-binstall",
+    "channel/prebuilt-binary-archive",
+    "pilot/brownfield-repository",
+    "pilot/clean-repository",
+    "platform/aarch64-apple-darwin",
+    "platform/x86_64-apple-darwin",
+    "sibling-product/cargo-intent-and-cargo-proof"
+  ],
+  "required_evidence": [
+    {
+      "evidence_id": "asset-result",
+      "class": "asset_result",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "candidate-preparation",
+      "class": "candidate_artifact",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "installed-journey",
+      "class": "installed_journey",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "live-control-observation",
+      "class": "live_control_observation",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "manifest-result",
+      "class": "manifest_result",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "package-archive",
+      "class": "package_archive",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "release-rehearsal",
+      "class": "release_rehearsal",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "support-selection",
+      "class": "support_selection",
+      "result": "complete",
+      "currentness": "current"
+    },
+    {
+      "evidence_id": "upgrade-rollback-receipt",
+      "class": "upgrade_rollback_receipt",
+      "result": "complete",
+      "currentness": "current"
+    }
+  ],
+  "rows": [],
+  "remaining_reversible_work": [],
+  "remaining_irreversible_operations": [
+    "publish the GitHub release",
+    "push tag v0.2.0",
+    "upload 10 package rows to crates.io"
+  ],
+  "claim_boundary": "A deterministic final pre-freeze readiness verdict compiled from the exact current evidence graph, explicit campaign and support decisions, incident exclusions, and the post-merge subject. It decides only whether candidate freeze may begin; it does not generate package bytes, freeze, mint authorization, tag, upload, publish, or create any release state."
+}

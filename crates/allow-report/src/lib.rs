@@ -417,3 +417,62 @@ pub use artifacts::{
     RetainedArtifactBytesV1, RetainedExactArtifactV1, render_final_freeze_replay_json,
     render_final_freeze_replay_markdown, replay_final_freeze,
 };
+
+// Root re-exports for the #3845 campaign closeout verifier.
+pub use artifacts::{
+    CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_ID, CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_VERSION,
+    CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+    CampaignCloseoutRecordV1, CampaignCloseoutResultV1, CampaignCloseoutVerdictV1,
+    CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+    CampaignReviewPairV1, evaluate_campaign_closeout,
+};
+
+// Root re-exports for the #3928 frozen-subject lock contract.
+pub use artifacts::{
+    CargoAllowFrozenSubjectLockV1, FROZEN_SUBJECT_LOCK_SCHEMA_ID,
+    FROZEN_SUBJECT_LOCK_SCHEMA_VERSION, FrozenSubjectChangeV1, FrozenSubjectInvalidationV1,
+    FrozenSubjectLockInputV1, FrozenSubjectPathClassV1, FrozenSubjectPathKindV1,
+    FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
+    classify_frozen_subject_path, evaluate_frozen_subject_lock,
+};
+
+// Root re-exports for the #3843 review-disposition contract.
+pub use artifacts::{
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
+    ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
+    ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,
+    ReviewReadinessStateV1, ReviewReadinessTransitionV1, ReviewRequiredCiV1,
+    ReviewTransitionRequestV1, evaluate_review_disposition, evaluate_review_readiness_transition,
+    parse_review_disposition_bytes, parse_review_live_source_bytes,
+    parse_review_transition_request_bytes, render_review_disposition_human,
+    render_review_disposition_json, review_semantic_identity,
+};
+
+// Root re-exports for the #3835 CI performance receipt.
+pub use artifacts::{
+    CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,
+    CI_PERFORMANCE_MAX_RUNS, CI_PERFORMANCE_RECEIPT_SCHEMA_ID,
+    CI_PERFORMANCE_RECEIPT_SCHEMA_VERSION, CiCacheClassV1, CiCacheObservationV1, CiEnvironmentV1,
+    CiJobConclusionV1, CiJobObservationV1, CiJobPurposeV1, CiPerformanceReceiptV1,
+    CiRunObservationV1, CiSourcePairV1, CiTimingBreakdownV1, render_ci_performance_receipt_human,
+    render_ci_performance_receipt_json, validate_ci_performance_receipt,
+};
+
+// Root re-exports for the #3844 review-readiness check projection.
+pub use artifacts::{
+    REVIEW_READINESS_CHECK_CONTEXT, REVIEW_READINESS_CHECK_SCHEMA_ID,
+    REVIEW_READINESS_CHECK_SCHEMA_VERSION, ReviewReadinessBindingV1, ReviewReadinessConclusionV1,
+    ReviewReadinessDispositionInputV1, ReviewReadinessDraftStateV1, ReviewReadinessEventV1,
+    ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
+    evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
+    render_review_readiness_human, render_review_readiness_json,
+};
+
+// Root re-exports for the #3737 final support-selection freeze contract.
+pub use artifacts::{
+    FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
+    FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
+    FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
+};

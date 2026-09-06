@@ -10,9 +10,14 @@ use crate::{
     reference, refresh, vocabulary, why, worklist,
 };
 
+mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
+mod frozen_subject_lock_command;
 mod reconcile_package_publication_command;
+mod release_freeze_command;
 mod release_identity_command;
+mod review_disposition_command;
+mod review_readiness_command;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -124,6 +129,21 @@ pub(crate) enum CargoAllowCommand {
     /// Project release-candidate preparation without writing.
     #[command(hide = true)]
     PrepCandidate(candidate_preparation_command::PrepCandidateArgs),
+    /// Compose and replay the final release freeze from retained evidence.
+    #[command(hide = true)]
+    ReleaseFreeze(release_freeze_command::ReleaseFreezeArgs),
+    /// Evaluate the frozen-subject lock against ordinary mutation.
+    #[command(hide = true)]
+    FrozenSubjectLock(frozen_subject_lock_command::FrozenSubjectLockArgs),
+    /// Verify one campaign closeout record against the live state.
+    #[command(hide = true)]
+    CampaignCloseout(campaign_closeout_command::CampaignCloseoutArgs),
+    /// Verify one exact-head review disposition against a live source.
+    #[command(hide = true)]
+    ReviewDisposition(review_disposition_command::ReviewDispositionArgs),
+    /// Project review state onto the stable readiness check context.
+    #[command(hide = true)]
+    ReviewReadiness(review_readiness_command::ReviewReadinessArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -222,6 +242,19 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::PrepCandidate(args) => {
             candidate_preparation_command::cmd_prep_candidate(&args)
+        }
+        CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(&args),
+        CargoAllowCommand::FrozenSubjectLock(args) => {
+            frozen_subject_lock_command::cmd_frozen_subject_lock(&args)
+        }
+        CargoAllowCommand::CampaignCloseout(args) => {
+            campaign_closeout_command::cmd_campaign_closeout(&args)
+        }
+        CargoAllowCommand::ReviewDisposition(args) => {
+            review_disposition_command::cmd_review_disposition(&args)
+        }
+        CargoAllowCommand::ReviewReadiness(args) => {
+            review_readiness_command::cmd_review_readiness(&args)
         }
     }
 }
@@ -421,5 +454,10 @@ impl CargoAllowCommand {
         "release-identity",
         "reconcile-package-publication",
         "prep-candidate",
+        "release-freeze",
+        "frozen-subject-lock",
+        "campaign-closeout",
+        "review-disposition",
+        "review-readiness",
     ];
 }

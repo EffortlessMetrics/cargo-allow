@@ -1,0 +1,54 @@
+schema_version = 1
+# Revision note for the #3835 CI performance receipt.
+
+# This diff adds the typed CI performance receipt and its bounded
+# collector: CiPerformanceReceiptV1 / CiJobPurposeV1 /
+# CiTimingBreakdownV1 / CiCacheObservationV1 in allow-report, the
+# read-only scripts/collect-ci-performance.sh observation collector,
+# the checked proof-class inventory policy/ci-job-inventory.toml, and
+# the retained baseline docs/ci/receipts/ci-performance-baseline-v1.json
+# covering four same-day runs of the current topology (one failed, one
+# in-progress, two green). Measurement law: queue, setup, cache,
+# compile, test, provider, and artifact time are separate
+# observations; missing provider fields stay missing (never
+# zero-filled); every job's purpose binds to a routing owner from the
+# checked inventory, never the job name; rerun attempts are retained
+# as themselves; failed and cancelled runs are retained beside green
+# ones; cache-action presence is not a hit without byte evidence; one
+# workflow generation per receipt; local builds are not hosted
+# evidence; improvement targets are owned by #3753. The
+# source-exception additions receipt only the syntax-visible
+# constructs the new surfaces introduce: allow-11220 is a
+# glob-ratcheted expect baseline for the receipt tests, and
+# allow-11221/allow-11222/allow-11223 receipt the declarative
+# retained receipt, checked inventory, and collector files; the
+# allow-11224 record receipts this revision-note file itself per the
+# per-note receipt law. No existing exception is weakened, no expiry
+# is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11220"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d81f6fec189a12d8bcf6aa007e2e1773964a5d6078001075bf4cc6201f3c7ea"
+
+[[records]]
+allow_ids = ["allow-11221"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d2b6ff42687bfc7ee4f4adb9cfede7d702bca76a82def36cfe8a4b0bf6a3d88f"
+
+[[records]]
+allow_ids = ["allow-11222"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:41c359c2e16c362aafd58db53a03bffc909997b0ef88f5147dee0f30334e7621"
+
+[[records]]
+allow_ids = ["allow-11223"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d16c05a26f1a7987bbcb4bc30f4585127fbe537eb33dc0d8b74360016a0f09d"
+
+[[records]]
+allow_ids = ["allow-11224"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0b5d47c4f3c4ef323417a46655ed79df5a30681e22f3a029277edb6ee317305c"

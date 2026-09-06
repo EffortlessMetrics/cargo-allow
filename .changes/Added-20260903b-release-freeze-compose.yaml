@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Final freeze composition driver (#2501). Hidden read-only
+  `cargo-allow release-freeze compose` binds one clean committed subject
+  (commit/tree/Cargo.lock/topology digests, typed stable release identity),
+  verifies the `[final_selection]` section through its single typed digest
+  implementation, consumes bounded retained producer receipts (candidate
+  preparation final receipt or no-op parity row, exact-candidate package set
+  with real archive bytes, package-docs audit, eight-phase zero-upload
+  rehearsal with shared registry preflight, install journey, upgrade /
+  rollback journey, live release-control observation), composes the
+  production evidence graph, runs the final readiness aggregate, emits
+  CargoAllowFinalFreezeReceiptV1, and verifies the retained set with the
+  read-only replay contract. Missing, unbindable, or stale evidence yields
+  an Incomplete freeze with named blocking rows — never a fabricated
+  Complete. Also adds the read-only live ruleset observation script and
+  repairs two Windows-portability defects in the release producers surfaced
+  by the dogfood (CRLF child-JSON corruption of git-head/token comparisons;
+  non-.exe candidate binary assumption). No tag, token, upload, release, or
+  authorization path exists.
