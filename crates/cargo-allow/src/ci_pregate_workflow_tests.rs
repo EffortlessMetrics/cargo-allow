@@ -61,13 +61,20 @@ fn ci_pregate_workflow_defines_the_fast_tier_first() {
         (Some(pregate_position), Some(msrv_position)) => pregate_position < msrv_position,
         _ => false,
     };
-    assert!(
-        pregate_first,
-        "the pre-gate is the first job in the graph"
-    );
+    assert!(pregate_first, "the pre-gate is the first job in the graph");
     assert!(
         workflow.contains("ci-pregate evaluate"),
         "the pre-gate emits and evaluates the typed aggregate"
+    );
+    // The pinned linter predates the macos-15-intel label; the ignore
+    // is precise and the scoped gate stays on this workflow's graph.
+    assert!(
+        workflow.contains("label \"macos-15-intel\" is unknown"),
+        "the unknown-label ignore is precise"
+    );
+    assert!(
+        workflow.contains(".github/workflows/ci.yml"),
+        "the syntax gate scopes to this workflow's graph"
     );
 }
 

@@ -38,7 +38,11 @@ jobs:
           # lint findings (release.yml's deliberate interpolation);
           # widening the scope is recorded work for the tiering lane
           # after those are fixed.
-          /tmp/actionlint -color .github/workflows/ci.yml
+          # The pinned actionlint release predates GitHub's
+          # macos-15-intel label; the label is real and the measured
+          # baseline names that lane, so the unknown-label finding is
+          # ignored precisely.
+          /tmp/actionlint -color -ignore 'label "macos-15-intel" is unknown'             .github/workflows/ci.yml
       - name: Formatting
         id: fmt
         run: cargo fmt --all -- --check
@@ -70,9 +74,8 @@ jobs:
           done
           jq -n --arg schema "cargo-allow.ci-pregate-result.v1" --argjson version 1             --arg head "$PR_HEAD" --arg base "$PR_BASE" --argjson checks "$checks"             '{schema_id: $schema, schema_version: $version, head_sha: $head, base_sha: $base,
               checks: $checks, diagnostics_uploaded: [], limits:
-              ["actionlint scopes the syntax gate to ci.yml in stage 1; the other retained workflows carry pre-existing shellcheck findings",
+              ["actionlint scopes the syntax gate to ci.yml in stage 1; the other retained workflows carry pre-existing findings",
                "actionlint runs before the toolchain steps are recorded here; its outcome is carried by the job conclusion"],
-              improvement_targets_owner: "#3753",
               claim_boundary: "A typed reachability gate for the CI workflow graph: deterministic cheap checks decide whether expensive proof jobs may start."}'             > pregate-result.json
           # A toolchain failure skips the cargo steps and fails the job
           # before this step: model that as an instrument failure.
