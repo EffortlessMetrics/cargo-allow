@@ -8,6 +8,7 @@ mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
 mod ci_performance_receipt_v1;
+mod ci_pregate_result_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -95,6 +96,11 @@ pub use ci_performance_receipt_v1::{
     CiJobConclusionV1, CiJobObservationV1, CiJobPurposeV1, CiPerformanceReceiptV1,
     CiRunObservationV1, CiSourcePairV1, CiTimingBreakdownV1, render_ci_performance_receipt_human,
     render_ci_performance_receipt_json, validate_ci_performance_receipt,
+};
+pub use ci_pregate_result_v1::{
+    CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
+    CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
+    evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,

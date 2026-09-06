@@ -450,6 +450,13 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3836 Stage 1 pre-gate.
+pub use artifacts::{
+    CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
+    CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
+    evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
+};
+
 // Root re-exports for the #3835 CI performance receipt.
 pub use artifacts::{
     CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,

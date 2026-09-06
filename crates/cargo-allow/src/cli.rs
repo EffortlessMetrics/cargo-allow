@@ -12,6 +12,7 @@ use crate::{
 
 mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
+mod ci_pregate_command;
 mod frozen_subject_lock_command;
 mod reconcile_package_publication_command;
 mod release_freeze_command;
@@ -144,6 +145,9 @@ pub(crate) enum CargoAllowCommand {
     /// Project review state onto the stable readiness check context.
     #[command(hide = true)]
     ReviewReadiness(review_readiness_command::ReviewReadinessArgs),
+    /// Evaluate the Stage 1 pre-gate aggregate.
+    #[command(hide = true)]
+    CiPregate(ci_pregate_command::CiPregateArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -256,6 +260,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::ReviewReadiness(args) => {
             review_readiness_command::cmd_review_readiness(&args)
         }
+        CargoAllowCommand::CiPregate(args) => ci_pregate_command::cmd_ci_pregate(&args),
     }
 }
 
@@ -459,5 +464,6 @@ impl CargoAllowCommand {
         "campaign-closeout",
         "review-disposition",
         "review-readiness",
+        "ci-pregate",
     ];
 }

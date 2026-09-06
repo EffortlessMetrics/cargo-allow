@@ -6,10 +6,87 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Stage 1 pre-gate (#3836): one fast deterministic tier that rejects
+  # cheap source-controlled defects before the expensive proof jobs are
+  # provisioned. The selected denominator is the #3835-measured cheap,
+  # load-bearing set: workflow syntax (actionlint, pinned release +
+  # checksum), formatting, and the no-new source-exception guard. The
+  # typed result is emitted with `ci-pregate evaluate`; only a permit
+  # state exits zero. This changes workflow reachability only — the
+  # proof denominator stays #2569's, Clippy stays in Stage 2, and no
+  # release secrets are read here.
+  pregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Check workflow syntax (actionlint, pinned)
+        id: actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.7"
+          ACTIONLINT_SHA256: "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"             -o /tmp/actionlint.tar.gz
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint -color
+      - name: Formatting
+        id: fmt
+        run: cargo fmt --all -- --check
+      - name: Source-exception no-new guard
+        id: no_new
+        run: cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+      - name: Emit and evaluate the typed pre-gate result
+        if: always()
+        env:
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FMT_OUTCOME: ${{ steps.fmt.outcome || 'skipped' }}
+          NO_NEW_OUTCOME: ${{ steps.no_new.outcome || 'skipped' }}
+          ACTIONLINT_OUTCOME: ${{ steps.actionlint.outcome || 'skipped' }}
+        run: |
+          set -euo pipefail
+          outcome_to_state() {
+            case "$1" in
+              success) echo passed ;;
+              skipped) echo skipped ;;
+              *) echo failed ;;
+            esac
+          }
+          checks="[]"
+          for pair in "actionlint:$ACTIONLINT_OUTCOME" "fmt:$FMT_OUTCOME" "no-new:$NO_NEW_OUTCOME"; do
+            name="${pair%%:*}"
+            outcome="${pair#*:}"
+            checks="$(jq -c --arg n "$name" --arg s "$(outcome_to_state "$outcome")"               '. + [{name: $n, state: $s, not_applicable_reason: null}]' <<<"$checks")"
+          done
+          jq -n --arg schema "cargo-allow.ci-pregate-result.v1" --argjson version 1             --arg head "$PR_HEAD" --arg base "$PR_BASE" --argjson checks "$checks"             '{schema_id: $schema, schema_version: $version, head_sha: $head, base_sha: $base,
+              checks: $checks, diagnostics_uploaded: [], limits:
+              ["actionlint runs before the toolchain steps are recorded here; its outcome is carried by the job conclusion"],
+              improvement_targets_owner: "#3753",
+              claim_boundary: "A typed reachability gate for the CI workflow graph: deterministic cheap checks decide whether expensive proof jobs may start."}'             > pregate-result.json
+          # A toolchain failure skips the cargo steps and fails the job
+          # before this step: model that as an instrument failure.
+          if [ "${{ steps.fmt.outcome }}" = "" ] && [ "${{ steps.no_new.outcome }}" = "" ]; then
+            jq '.checks = [.checks[], {name: "toolchain", state: "instrument_failure", not_applicable_reason: null}]'               pregate-result.json > pregate-result.tmp && mv pregate-result.tmp pregate-result.json
+          fi
+          cargo run -p cargo-allow --locked -- ci-pregate evaluate             --result pregate-result.json --head "$PR_HEAD" --format human
+      - name: Upload pre-gate diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pregate-result
+          path: pregate-result.json
+          if-no-files-found: ignore
+
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
   msrv:
+    needs: pregate
     runs-on: ubuntu-latest
     # `rust-toolchain.toml` pins the floating `stable` channel for local
     # development. rustup ranks that file ABOVE `rustup default`, and `rustup
@@ -79,6 +156,7 @@ jobs:
   # a local run. Linux only for the narrow claim; the msrv lane above
   # separately proves Rust 1.95.
   package-smoke:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -193,6 +271,7 @@ jobs:
   # candidate set standalone because the interop smoke drives the
   # installed cargo-allow binary. Posture: experimental-informational.
   product-candidates-interop:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -277,6 +356,7 @@ jobs:
   # receipt/artifacts for review. This is a conservative catastrophic ceiling,
   # not a universal latency target or hardware claim.
   operator-latency:
+    needs: pregate
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -342,10 +422,10 @@ jobs:
           if-no-files-found: warn
 
   test:
+    needs: [pregate, package-smoke]
     # The cutover status lane restores the build receipts produced by the
     # package-smoke job; artifacts are only downloadable once that job
     # completes (#3469/#3552).
-    needs: package-smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -540,6 +620,7 @@ jobs:
   # audit exercise the products together and stay out of the
   # cargo-allow-required test lane. Posture: integrated-informational.
   integrated-dogfood:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -571,6 +652,7 @@ jobs:
         run: bash scripts/three-product-simplification-audit.sh
 
   test-core-platforms:
+    needs: pregate
     strategy:
       fail-fast: false
       matrix:
@@ -628,6 +710,7 @@ jobs:
   # with the exact installed candidate on Linux and a fresh build on
   # Windows.
   compat-delegation:
+    needs: pregate
     strategy:
       fail-fast: false
       matrix:
@@ -681,6 +764,7 @@ jobs:
   # themselves without gating the cargo-allow patch/release lanes.
   # Posture: experimental-informational.
   test-intent-experimental:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -698,6 +782,7 @@ jobs:
         run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
 
   test-proof-experimental:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -718,6 +803,7 @@ jobs:
   # part of the cargo-allow release set and keeps its own proof lane.
   # Posture: shared-protocol-informational.
   test-shared-protocol:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -732,6 +818,7 @@ jobs:
   # uploads coverage to Codecov. Kept separate from the main test job so
   # coverage instrumentation doesn't slow down PR feedback.
   coverage:
+    needs: pregate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

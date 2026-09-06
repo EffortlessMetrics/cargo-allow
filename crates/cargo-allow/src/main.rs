@@ -186,6 +186,10 @@ mod ci_lane_topology_tests;
 #[cfg(test)]
 mod ci_performance_receipt_tests;
 #[cfg(test)]
+mod ci_pregate_result_tests;
+#[cfg(test)]
+mod ci_pregate_workflow_tests;
+#[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
 mod compat_dependency_tests;
