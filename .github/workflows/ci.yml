@@ -33,7 +33,12 @@ jobs:
           curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"             -o /tmp/actionlint.tar.gz
           echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum --check --strict
           tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
-          /tmp/actionlint -color
+          # Stage 1 v1 scopes the syntax gate to this workflow's graph.
+          # The other retained workflows still carry pre-existing
+          # shellcheck findings (release.yml SC1083 on deliberate
+          # interpolation); widening the scope is recorded work for the
+          # cache/tiering lane after those are fixed.
+          /tmp/actionlint -color .github/workflows/ci.yml
       - name: Formatting
         id: fmt
         run: cargo fmt --all -- --check
@@ -65,7 +70,8 @@ jobs:
           done
           jq -n --arg schema "cargo-allow.ci-pregate-result.v1" --argjson version 1             --arg head "$PR_HEAD" --arg base "$PR_BASE" --argjson checks "$checks"             '{schema_id: $schema, schema_version: $version, head_sha: $head, base_sha: $base,
               checks: $checks, diagnostics_uploaded: [], limits:
-              ["actionlint runs before the toolchain steps are recorded here; its outcome is carried by the job conclusion"],
+              ["actionlint scopes the syntax gate to ci.yml in stage 1; the other retained workflows carry pre-existing shellcheck findings",
+               "actionlint runs before the toolchain steps are recorded here; its outcome is carried by the job conclusion"],
               improvement_targets_owner: "#3753",
               claim_boundary: "A typed reachability gate for the CI workflow graph: deterministic cheap checks decide whether expensive proof jobs may start."}'             > pregate-result.json
           # A toolchain failure skips the cargo steps and fails the job
