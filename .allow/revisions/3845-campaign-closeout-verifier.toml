@@ -31,3 +31,9 @@ allow_ids = ["allow-0875"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ad4d8dd11df98462d0a2324615aff0e52b652c7c50b7a770e7642cfc6674789e"
 reason = "Glob-ratcheted expect baseline (occurrence_limit=2) for the campaign-closeout coverage tests (#3845); covers the model and CLI fixture invariant-guarded expects. Replaces the initial single-expect ratchet after the corpus fixture code was refactored away from direct indexing."
+
+[[records]]
+allow_ids = ["allow-0873"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:15fdb06a0c90c214768bc817ad72e2dff3a13e5f3ce9d144364dfe9fde155aa1"
+reason = "Glob-ratcheted expect baseline (occurrence_limit=2) for the campaign-closeout CLI fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture git operations under fully controlled inputs."

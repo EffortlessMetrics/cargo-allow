@@ -18794,3 +18794,20 @@ review_after = "2026-12-04"
 [allow.selector]
 callee = "expect"
 glob = "crates/allow-report/src/artifacts/campaign_issue_closeout_v1.rs"
+
+[[allow]]
+id = "allow-0873"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the campaign-closeout CLI fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture git operations under fully controlled inputs"
+evidence = ["issue:3845"]
+occurrence_limit = 2
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
