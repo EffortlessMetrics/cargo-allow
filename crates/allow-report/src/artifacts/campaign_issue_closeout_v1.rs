@@ -858,3 +858,84 @@ mod closeout_coverage_tests {
     const HEAD: &str = "cccccccccccccccccccccccccccccccccccccccc";
     const BASE: &str = "dddddddddddddddddddddddddddddddddddddddd";
 }
+//
+#[cfg(test)]
+mod closeout_edge_tests {
+    use super::{
+        evaluate_campaign_closeout, CampaignAcceptanceRowV1, CampaignCheckEvidenceV1,
+        CampaignCheckOutcomeV1, CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1,
+        CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1,
+        CampaignRepositoryStateV1, CampaignReviewPairV1,
+    };
+
+    fn state() -> CampaignRepositoryStateV1 {
+        CampaignRepositoryStateV1 {
+            main_head: "aaaa".to_string(),
+            main_tree: "treetree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4000,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbb".to_string(),
+                head_sha: "cccc".to_string(),
+                base_sha: "dddd".to_string(),
+                merge_base: "dddd".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: vec![CampaignCheckEvidenceV1 {
+                name: "ci".to_string(),
+                required: true,
+                outcome: CampaignCheckOutcomeV1::Passed,
+            }],
+            reachable_from_main: vec![("bbbb".to_string(), true)],
+        }
+    }
+
+    fn full_record() -> CampaignCloseoutRecordV1 {
+        CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4000],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaa".to_string(),
+        }
+    }
+
+    #[test]
+    fn characterization_evidence_with_checks_passes_when_observation_not_demanded() {
+        let mut record = full_record();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::Characterization;
+        }
+        let outcome = evaluate_campaign_closeout(&record, &state());
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+    }
+
+    #[test]
+    fn current_observation_evidence_passes_without_checks() {
+        let mut record = full_record();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::CurrentObservation;
+        }
+        let outcome = evaluate_campaign_closeout(&record, &state());
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+    }
+
+    #[test]
+    fn pr_with_whitespace_around_semantic_owner_still_binds() {
+        let mut snapshot = state();
+        snapshot.prs[0].semantic_owner = " issue:3845 , other ".to_string();
+        let outcome = evaluate_campaign_closeout(&full_record(), &snapshot);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+    }
+}
