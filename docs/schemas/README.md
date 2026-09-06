@@ -145,12 +145,25 @@ The current V2 shape is defined by
 | Self-description | Schema ID | Producer |
 |---|---|---|
 | Tool identity | `cargo-allow.tool-identity.v1` | `cargo-allow tool identity --format json` |
+| [Provider descriptor](cargo-allow-provider-contract-v1.schema.json) | `proof.cargo-allow-provider-contract.v1` | `cargo-allow capabilities --provider-contract --format json` |
 
 The tool-identity contract carries `schema_id`/`schema_version` for
 self-description but is **not** a governed artifact: it omits
 `claim_boundary`, `scanner_limitations`, and `inventory`. Consumers should
 treat it as a build-provenance and compatibility-checking envelope, not as a
 source-tree scan result.
+
+The provider descriptor is also discovery-only, not a governed scan artifact or
+an analysis receipt. Its closed v1 schema requires all eleven descriptor fields,
+including the product/provider identity, read-only posture, ordered discovery
+routes, and the two required capabilities. `snapshot_bound` describes the
+provider contract; this command does not capture or verify a source snapshot,
+select policy, execute analysis, or advertise a request/receipt endpoint.
+`crates/cargo-allow/tests/provider_descriptor.rs` validates real command stdout
+with the Rust JSON Schema validator, rejects mutated output, and checks that
+catalog options fail without overwriting output. The existing sensor catalog
+remains a separate contract. Installed-provider negotiation and analysis remain
+under #2567/#3602; descriptor conformance alone does not prove interoperability.
 
 ## Supporting harness receipts (not governed artifacts)
 
@@ -372,8 +385,8 @@ approval.
 `migrate` summary artifacts always include `summary.lint_exception_entries`.
 The schema requires this renderer-emitted count. Those artifacts may also include
 `summary.evidence_entries`, `summary.entries_with_links`, `summary.link_entries`,
-`summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
-`summary.weak_evidence_references`, and
+`summary.broken_evidence_links`, `summary.weak_evidence_references`,
+`summary.unsafe_broken_evidence_links`, and
 `summary.unsafe_weak_evidence_references` as optional migration-health counts.
 The current renderer emits the lint count, emits `evidence_entries` as the total
 number of `evidence` values carried into the migrated canonical policy, emits
