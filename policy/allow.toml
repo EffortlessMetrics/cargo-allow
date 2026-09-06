@@ -18828,3 +18828,59 @@ review_after = "2026-12-05"
 [allow.selector]
 callee = "unwrap"
 glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
+
+[[allow]]
+id = "allow-11207"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/review_disposition_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the review-disposition CLI fixture tests (#3843); every expect guards an invariant established by immediately preceding fixture construction or serialization of known-good typed data under fully controlled inputs"
+evidence = ["issue:3843"]
+occurrence_limit = 11
+created = "2026-09-05"
+review_after = "2026-12-04"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/review_disposition_command.rs"
+
+[[allow]]
+id = "allow-11208"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/review_disposition_contract_tests.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the review-disposition contract tests (#3843); every expect guards an invariant established by immediately preceding fixture construction or serialization of known-good typed data under fully controlled inputs"
+evidence = ["issue:3843"]
+occurrence_limit = 10
+created = "2026-09-05"
+review_after = "2026-12-04"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/review_disposition_contract_tests.rs"
+
+[[allow]]
+id = "allow-11209"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3843-review-disposition-v1.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the review-disposition expect ratchets added by the #3843 lane."
+evidence = ["issue:3843", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-05"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3843-review-disposition-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3843-review-disposition-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

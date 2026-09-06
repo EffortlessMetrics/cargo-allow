@@ -1,0 +1,18 @@
+kind: Added
+body: >-
+  Review disposition and readiness transitions (#3843). Typed
+  ReviewDispositionV1 / ReviewFindingV1 / ReviewCurrentnessV1 /
+  ReviewReadinessTransitionV1 binding the reviewed source pair
+  (repository, PR, base/head refs and SHAs, merge base, full-diff
+  digest), review protocol generation, blocking and advisory findings
+  with stable ids, and the Draft/Ready transition consequence.
+  Currentness law stales a prior review deterministically on head,
+  base, merge-base, full-diff, protocol, scope, or identity movement;
+  readiness law permits Draft -> Ready only for current ReviewClean
+  with separately declared terminal-Passed conditions, permits Ready
+  -> Draft always, and never restores Ready from Stale, Partial,
+  Unsupported, or InstrumentFailure. Hidden read-only `cargo-allow
+  review-disposition check` command fails closed on instrument
+  failures and non-permitted readiness moves. No GitHub check is
+  published; no PR, live, tag, package, or release state is mutated;
+  check/control projection is owned by the next child (#3844).
