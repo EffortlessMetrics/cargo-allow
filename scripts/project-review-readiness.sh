@@ -112,14 +112,20 @@ project_pr() {
   # unique ancestor-bound record (the retained-review-ledger
   # bootstrap). Ambiguity fails closed; no match is the explicit
   # missing-disposition case.
-  local exact_matches=() ancestor_matches=() candidate bound_head
+  local exact_matches=() ancestor_matches=() malformed=() candidate bound_head
   if [ -d "${LEDGER_DIR}" ]; then
     for candidate in "${LEDGER_DIR}"/*.json; do
       [ -f "$candidate" ] || continue
+      # An unreadable or malformed retained record is review evidence
+      # that fails closed; it must never degrade to a missing review.
+      if ! jq -e . "$candidate" >/dev/null 2>&1; then
+        malformed+=("$candidate")
+        continue
+      fi
       bound_head="$(jq -r --arg repository "${GITHUB_REPOSITORY}" \
         --argjson pr "${pr_number}" \
         'select(.repository == $repository and .pr_number == $pr) | .head_sha // ""' \
-        "$candidate" 2>/dev/null || true)"
+        "$candidate")"
       [ -n "${bound_head}" ] || continue
       if [ "${bound_head}" = "${head_sha}" ]; then
         exact_matches+=("$candidate")
@@ -130,7 +136,13 @@ project_pr() {
   fi
 
   local disposition_args=() delta_args=() selected=""
-  if [ "${#exact_matches[@]}" -gt 1 ] || [ "${#ancestor_matches[@]}" -gt 1 ]; then
+  if [ "${#malformed[@]}" -gt 0 ]; then
+    publish "${head_sha}" "failure" \
+      "unreadable retained disposition records for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${malformed[*]}; malformed review evidence fails closed" \
+      "${base_sha}" "${merge_base}" "${diff_digest}" || return 1
+    rm -f "${live_file}"
+    return 1
+  elif [ "${#exact_matches[@]}" -gt 1 ] || [ "${#ancestor_matches[@]}" -gt 1 ]; then
     publish "${head_sha}" "failure" \
       "ambiguous retained dispositions for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: exact=${exact_matches[*]:-} ancestor=${ancestor_matches[*]:-}; disposition discovery fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" || return 1

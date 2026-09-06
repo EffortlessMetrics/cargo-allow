@@ -26,9 +26,23 @@ fn repository_release_controls_publish_one_stable_check_context() {
 
     let root = workspace_root();
     let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
+    let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
+    // The Actions job check is an implementation detail under a
+    // different name; the one stable `review-readiness` context is
+    // the published typed check run only, so branch protection can
+    // never observe a job-level success standing in for a neutral
+    // review.
     assert!(
-        workflow.contains("  review-readiness:"),
-        "the job id is the visible check context"
+        workflow.contains("  review-readiness-publisher:"),
+        "the publisher job is named distinctly from the published context"
+    );
+    assert!(
+        !workflow.contains("  review-readiness:\n"),
+        "the workflow must not create a competing check under the stable context name"
+    );
+    assert!(
+        script.contains(concat!("CHECK_NAME=", "\"review-readiness\"")),
+        "the adapter publishes the one stable check context"
     );
     assert!(
         workflow.contains("name: Review readiness"),
@@ -187,5 +201,11 @@ fn repository_release_controls_bind_the_disposition_location() {
     assert!(
         script.contains(r#"open_prs="$(gh pr list"#),
         "enumeration failure must fail the run instead of looking empty"
+    );
+    // An unreadable retained record is review evidence that fails
+    // closed; it never degrades to a missing review.
+    assert!(
+        script.contains("unreadable retained disposition records"),
+        "malformed ledger records fail closed"
     );
 }
