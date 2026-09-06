@@ -103,6 +103,38 @@ run_expect_failure "all toolchain pins removed" \
   CI_WORKFLOW="${all_removed}/.github/workflows/ci.yml" \
   RELEASE_WORKFLOW="${all_removed}/.github/workflows/release.yml" \
   bash scripts/check-msrv-consistency.sh
+
+# A run-script string naming the action is not an installed toolchain:
+# the pin must appear in a `uses:` declaration (#3836 review).
+non_uses="${work}/non-uses-pin"
+mkdir -p "${non_uses}/.github/workflows"
+cp Cargo.toml "${non_uses}/Cargo.toml"
+cp .github/workflows/ci.yml "${non_uses}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${non_uses}/.github/workflows/release.yml"
+python3 - "${non_uses}/.github/workflows/ci.yml" "${msrv}" <<'PY'
+import sys
+
+path, msrv = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+without_actions = []
+for line in text.splitlines():
+    if line.strip().startswith("- uses: dtolnay/rust-toolchain"):
+        continue
+    without_actions.append(line)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write("\n".join(without_actions) + "\n")
+with open(path, "a", encoding="utf-8") as handle:
+    handle.write(
+        "  # mentions dtolnay/rust-toolchain@${}.0 in a run-script "
+        "comment\n".format(msrv)
+    )
+PY
+run_expect_failure "non-uses mention is not a pin" \
+  env CARGO_TOML="${non_uses}/Cargo.toml" \
+  CI_WORKFLOW="${non_uses}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${non_uses}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
 drift_case "cache namespace drift" ".github/workflows/ci.yml" \
   "lane: msrv" "lane: msrv-drift"
 drift_case "attested release manifest drift" ".github/workflows/release.yml" \
