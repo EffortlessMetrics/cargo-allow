@@ -1,0 +1,21 @@
+kind: Added
+body: >-
+  CI performance receipt (#3835). Typed CiPerformanceReceiptV1 /
+  CiJobPurposeV1 / CiTimingBreakdownV1 / CiCacheObservationV1 measure
+  the current CI topology over one bounded window: separated queue,
+  setup, cache, compile, test, provider, and artifact time (missing
+  provider fields stay missing, never zero-filled); every job's proof
+  purpose binds to a routing owner from the checked inventory
+  `policy/ci-job-inventory.toml`, never the job name; rerun attempts
+  are retained as themselves; failed and cancelled runs are retained
+  beside green ones; cache-action presence is not a hit without byte
+  evidence; one workflow generation per receipt; local builds are not
+  hosted evidence. Read-only collector
+  `scripts/collect-ci-performance.sh` emits the observation from
+  provider run/job/step data. Retained baseline
+  `docs/ci/receipts/ci-performance-baseline-v1.json` covers four
+  same-day runs (one failed, one in-progress, two green) and names the
+  platform-matrix and repeated-suite work as the critical path and
+  redundant-work candidates for #3753; the receipt does not change
+  routing, caching, or proof selection and is not product or release
+  correctness evidence.

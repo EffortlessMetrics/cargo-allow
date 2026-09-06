@@ -450,6 +450,16 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3835 CI performance receipt.
+pub use artifacts::{
+    CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,
+    CI_PERFORMANCE_MAX_RUNS, CI_PERFORMANCE_RECEIPT_SCHEMA_ID,
+    CI_PERFORMANCE_RECEIPT_SCHEMA_VERSION, CiCacheClassV1, CiCacheObservationV1, CiEnvironmentV1,
+    CiJobConclusionV1, CiJobObservationV1, CiJobPurposeV1, CiPerformanceReceiptV1,
+    CiRunObservationV1, CiSourcePairV1, CiTimingBreakdownV1, render_ci_performance_receipt_human,
+    render_ci_performance_receipt_json, validate_ci_performance_receipt,
+};
+
 // Root re-exports for the #3844 review-readiness check projection.
 pub use artifacts::{
     REVIEW_READINESS_CHECK_CONTEXT, REVIEW_READINESS_CHECK_SCHEMA_ID,

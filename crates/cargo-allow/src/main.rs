@@ -184,6 +184,8 @@ mod candidate_preparation_plan_tests;
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
 #[cfg(test)]
+mod ci_performance_receipt_tests;
+#[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
 mod compat_dependency_tests;

@@ -1,0 +1,1338 @@
+{
+  "schema_id": "cargo-allow.ci-performance-receipt.v1",
+  "schema_version": 1,
+  "window_from": "2026-09-06T00:00:00Z",
+  "window_to": "2026-09-06T23:59:59Z",
+  "generation": 1,
+  "runs": [
+    {
+      "workflow": ".github/workflows/ci.yml",
+      "run_id": 34034492950,
+      "attempt": 1,
+      "event": "push",
+      "conclusion": "success",
+      "environment": "hosted",
+      "source_pair": {
+        "base_sha": "9b62915c",
+        "head_sha": "a9463e15528ed9cfb2d0c5f7a736c86c4226a6e5",
+        "generation": 1
+      },
+      "jobs": [
+        {
+          "name": "feature-configuration-proof",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971064",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 3,
+            "compile_seconds": null,
+            "test_seconds": 1,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971070",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 62,
+            "cache_seconds": 14,
+            "compile_seconds": null,
+            "test_seconds": 1010,
+            "provider_seconds": 16,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": true,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "product-candidates-interop",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971065",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 2,
+            "compile_seconds": 392,
+            "test_seconds": null,
+            "provider_seconds": 3,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "package-smoke",
+          "purpose": "package_install",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971071",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 7,
+            "compile_seconds": 483,
+            "test_seconds": null,
+            "provider_seconds": 115,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "integrated-dogfood",
+          "purpose": "integrated_dogfood",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971066",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 2,
+            "compile_seconds": 92,
+            "test_seconds": null,
+            "provider_seconds": 2,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "msrv",
+          "purpose": "msrv",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971069",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 10,
+            "cache_seconds": 5,
+            "compile_seconds": 168,
+            "test_seconds": null,
+            "provider_seconds": 1,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "operator-latency",
+          "purpose": "artifact_diagnostics",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971078",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 4,
+            "compile_seconds": 139,
+            "test_seconds": null,
+            "provider_seconds": 20,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (windows-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971075",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 38,
+            "cache_seconds": 17,
+            "compile_seconds": 38,
+            "test_seconds": null,
+            "provider_seconds": 188,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-intent-experimental",
+          "purpose": "intent_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971073",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 2,
+            "compile_seconds": 5,
+            "test_seconds": 37,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971072",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 5,
+            "compile_seconds": null,
+            "test_seconds": 333,
+            "provider_seconds": 5,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-proof-experimental",
+          "purpose": "proof_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971077",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 4,
+            "compile_seconds": 2,
+            "test_seconds": 18,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "cargo-deny",
+          "purpose": "security_dependency",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971076",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 0,
+            "cache_seconds": null,
+            "compile_seconds": 9,
+            "test_seconds": null,
+            "provider_seconds": 17,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+          "purpose": "windows_platform",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971079",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 29,
+            "cache_seconds": 7,
+            "compile_seconds": null,
+            "test_seconds": 744,
+            "provider_seconds": 8,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (ubuntu-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971074",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 15,
+            "cache_seconds": 3,
+            "compile_seconds": 67,
+            "test_seconds": null,
+            "provider_seconds": 67,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971081",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 16,
+            "cache_seconds": 4,
+            "compile_seconds": null,
+            "test_seconds": 287,
+            "provider_seconds": 4,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "coverage",
+          "purpose": "coverage",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971080",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 4,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 663,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "shallow-diff-smoke",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971083",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 14,
+            "cache_seconds": 2,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 91,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-shared-protocol",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971082",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 2,
+            "compile_seconds": null,
+            "test_seconds": 5,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971087",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 15,
+            "cache_seconds": 4,
+            "compile_seconds": 107,
+            "test_seconds": 1,
+            "provider_seconds": 439,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        }
+      ]
+    },
+    {
+      "workflow": ".github/workflows/ci.yml",
+      "run_id": 34033049396,
+      "attempt": 1,
+      "event": "pull_request",
+      "conclusion": "success",
+      "environment": "hosted",
+      "source_pair": {
+        "base_sha": "9b62915c",
+        "head_sha": "694de0c4de8beb7a3efd7edba6e7207dd63aa8d5",
+        "generation": 1
+      },
+      "jobs": [
+        {
+          "name": "coverage",
+          "purpose": "coverage",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971023",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 15,
+            "cache_seconds": 6,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 748,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "feature-configuration-proof",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971024",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 13,
+            "cache_seconds": 2,
+            "compile_seconds": null,
+            "test_seconds": 0,
+            "provider_seconds": 146,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (windows-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971021",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 32,
+            "cache_seconds": 10,
+            "compile_seconds": 36,
+            "test_seconds": null,
+            "provider_seconds": 174,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "product-candidates-interop",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971025",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 14,
+            "cache_seconds": 3,
+            "compile_seconds": 374,
+            "test_seconds": null,
+            "provider_seconds": 5,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "shallow-diff-smoke",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971026",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 2,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 84,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "msrv",
+          "purpose": "msrv",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971033",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 5,
+            "compile_seconds": 160,
+            "test_seconds": null,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-intent-experimental",
+          "purpose": "intent_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971027",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 14,
+            "cache_seconds": 3,
+            "compile_seconds": 4,
+            "test_seconds": 38,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-shared-protocol",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971028",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 3,
+            "compile_seconds": null,
+            "test_seconds": 4,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971038",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 29,
+            "cache_seconds": 14,
+            "compile_seconds": null,
+            "test_seconds": 757,
+            "provider_seconds": 7,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (ubuntu-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971032",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 13,
+            "cache_seconds": 4,
+            "compile_seconds": 79,
+            "test_seconds": null,
+            "provider_seconds": 78,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "package-smoke",
+          "purpose": "package_install",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971031",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 5,
+            "compile_seconds": 473,
+            "test_seconds": null,
+            "provider_seconds": 105,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "operator-latency",
+          "purpose": "artifact_diagnostics",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971030",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 2,
+            "compile_seconds": 127,
+            "test_seconds": null,
+            "provider_seconds": 18,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "cargo-deny",
+          "purpose": "security_dependency",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971034",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 1,
+            "cache_seconds": null,
+            "compile_seconds": 9,
+            "test_seconds": null,
+            "provider_seconds": 17,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971035",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 6,
+            "compile_seconds": null,
+            "test_seconds": 357,
+            "provider_seconds": 5,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+          "purpose": "windows_platform",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971039",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 33,
+            "cache_seconds": 9,
+            "compile_seconds": null,
+            "test_seconds": 830,
+            "provider_seconds": 9,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": true,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "integrated-dogfood",
+          "purpose": "integrated_dogfood",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971040",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 14,
+            "cache_seconds": 4,
+            "compile_seconds": 90,
+            "test_seconds": null,
+            "provider_seconds": 4,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971029",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 13,
+            "cache_seconds": 6,
+            "compile_seconds": null,
+            "test_seconds": 421,
+            "provider_seconds": 6,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-proof-experimental",
+          "purpose": "proof_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971041",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 4,
+            "compile_seconds": 2,
+            "test_seconds": 17,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "review-readiness",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/review",
+          "blocking": false,
+          "runner": "unknown",
+          "conclusion": "neutral",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": null,
+            "cache_seconds": null,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": null,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002971050",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 4,
+            "compile_seconds": 123,
+            "test_seconds": 2,
+            "provider_seconds": 493,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        }
+      ]
+    },
+    {
+      "workflow": ".github/workflows/ci.yml",
+      "run_id": 34019714684,
+      "attempt": 1,
+      "event": "push",
+      "conclusion": "failure",
+      "environment": "hosted",
+      "source_pair": {
+        "base_sha": "a5fbe0e0",
+        "head_sha": "a5fbe0e0b4d579ddcc9b3a5ddd182ddac6d6a65b",
+        "generation": 1
+      },
+      "jobs": [
+        {
+          "name": "shallow-diff-smoke",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968523",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 13,
+            "cache_seconds": 3,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 85,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "operator-latency",
+          "purpose": "artifact_diagnostics",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968524",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 2,
+            "compile_seconds": 128,
+            "test_seconds": null,
+            "provider_seconds": 19,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "product-candidates-interop",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968525",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 1,
+            "compile_seconds": 295,
+            "test_seconds": null,
+            "provider_seconds": 2,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968532",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 6,
+            "compile_seconds": null,
+            "test_seconds": 414,
+            "provider_seconds": 5,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "msrv",
+          "purpose": "msrv",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968530",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 7,
+            "compile_seconds": 161,
+            "test_seconds": null,
+            "provider_seconds": 1,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (ubuntu-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968529",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 3,
+            "compile_seconds": 98,
+            "test_seconds": null,
+            "provider_seconds": 86,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "integrated-dogfood",
+          "purpose": "integrated_dogfood",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968526",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 3,
+            "compile_seconds": 95,
+            "test_seconds": null,
+            "provider_seconds": 3,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "feature-configuration-proof",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968534",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 15,
+            "cache_seconds": 3,
+            "compile_seconds": null,
+            "test_seconds": 1,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "coverage",
+          "purpose": "coverage",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968527",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 13,
+            "cache_seconds": 6,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 744,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-proof-experimental",
+          "purpose": "proof_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968533",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 5,
+            "compile_seconds": 3,
+            "test_seconds": 18,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "cargo-deny",
+          "purpose": "security_dependency",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968528",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 3,
+            "cache_seconds": null,
+            "compile_seconds": 11,
+            "test_seconds": null,
+            "provider_seconds": 18,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "package-smoke",
+          "purpose": "package_install",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968536",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 10,
+            "cache_seconds": 6,
+            "compile_seconds": 468,
+            "test_seconds": null,
+            "provider_seconds": 103,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-intent-experimental",
+          "purpose": "intent_experimental",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968535",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 4,
+            "compile_seconds": 4,
+            "test_seconds": 36,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-shared-protocol",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968531",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 16,
+            "cache_seconds": 2,
+            "compile_seconds": null,
+            "test_seconds": 4,
+            "provider_seconds": 0,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "compat-delegation (windows-latest)",
+          "purpose": "shared_consumer_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968538",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 33,
+            "cache_seconds": 6,
+            "compile_seconds": 34,
+            "test_seconds": null,
+            "provider_seconds": 162,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+          "purpose": "windows_platform",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968539",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 27,
+            "cache_seconds": 8,
+            "compile_seconds": null,
+            "test_seconds": 744,
+            "provider_seconds": 7,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": true,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968537",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 11,
+            "cache_seconds": 3,
+            "compile_seconds": null,
+            "test_seconds": 343,
+            "provider_seconds": 4,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968540",
+          "conclusion": "failed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 41,
+            "cache_seconds": 15,
+            "compile_seconds": null,
+            "test_seconds": 897,
+            "provider_seconds": 3,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        },
+        {
+          "name": "test",
+          "purpose": "core_compile_test",
+          "routing_owner": "core/ci",
+          "blocking": true,
+          "runner": "GitHub Actions 1002968698",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 12,
+            "cache_seconds": 3,
+            "compile_seconds": 124,
+            "test_seconds": 3,
+            "provider_seconds": 497,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": false,
+          "cache": null,
+          "compute_minutes": null
+        }
+      ]
+    },
+    {
+      "workflow": "Campaign issue closeout guard",
+      "run_id": 34034529779,
+      "attempt": 1,
+      "event": "issues",
+      "conclusion": "success",
+      "environment": "hosted",
+      "source_pair": {
+        "base_sha": "9b62915c",
+        "head_sha": "a9463e15528ed9cfb2d0c5f7a736c86c4226a6e5",
+        "generation": 1
+      },
+      "jobs": [
+        {
+          "name": "verify",
+          "purpose": "static_pre_gate",
+          "routing_owner": "core/policy",
+          "blocking": false,
+          "runner": "GitHub Actions 1002971086",
+          "conclusion": "passed",
+          "timing": {
+            "queue_seconds": null,
+            "setup_seconds": 3,
+            "cache_seconds": null,
+            "compile_seconds": null,
+            "test_seconds": null,
+            "provider_seconds": 2,
+            "artifact_seconds": null
+          },
+          "first_failure": false,
+          "critical_path": true,
+          "cache": null,
+          "compute_minutes": null
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "base_sha is left empty by the collector for push events; the author binds it from git before retention",
+    "step-to-bucket classification is heuristic; the typed law keeps the buckets separate",
+    "cache classes stay unknown until restored/saved byte evidence is retained",
+    "queue time is not exposed per job by the provider; it stays missing, never zero-filled",
+    "window covers four same-day runs of the post-#4147 topology; distributions are not yet supported by the sample size",
+    "run 34034492950 was still in progress at collection; its unknown conclusion is retained as observed",
+    "critical-path flags are computed over passed jobs only; the failed macos-15 job carries first_failure instead"
+  ],
+  "critical_path_first_failure": [
+    "test-core-platforms (macos-15-intel, x86_64-apple-darwin)"
+  ],
+  "critical_path_full_matrix": [
+    "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+    "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
+    "coverage",
+    "test",
+    "package-smoke"
+  ],
+  "redundant_work_candidates": [
+    "test-core-platforms reruns the full cargo test matrix per platform without shared compile artifacts (windows 788-881s, macos-15 788-956s measured per run)",
+    "coverage recomputes the full test suite a second time per run (617-769s measured)",
+    "package-smoke recompiles the release profile per run (595-617s measured)"
+  ],
+  "cache_opportunities": [
+    "no job retains a cargo registry/target cache across runs (all cache observations absent)",
+    "windows and macos platform jobs recompile the dependency graph from cold every run"
+  ],
+  "improvement_targets_owner": "#3753",
+  "claim_boundary": "Measured current CI topology, proof purpose, timing, cache posture, critical path, and compute cost for one bounded observation window. It supplies the evidence for later tiering and caching decisions; it does not optimize CI, does not change routing or proof selection, and is not product or release correctness evidence."
+}
