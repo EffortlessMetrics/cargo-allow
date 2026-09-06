@@ -7,6 +7,10 @@ use std::{
 };
 
 const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
+const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
+    "tool-identity",
+    "cargo-allow-provider-contract-v1",
+];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {
@@ -141,7 +145,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
         // These are self-description/supporting contracts, not governed
         // source-tree artifacts (or they use a non-standard inventory shape).
         .filter(|name| {
-            name != "tool-identity"
+            !SELF_DESCRIPTION_SCHEMA_NAMES.contains(&name.as_str())
                 && name != "operator-latency"
                 && name != "operator-latency.v2"
                 && name != "release-manifest"
@@ -175,7 +179,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
 
     assert_eq!(
         governed, documented,
-        "every docs/schemas/*.schema.json file should be governed as an artifact or reusable component contract"
+        "every docs/schemas/*.schema.json file should be governed as an artifact or reusable component contract, or explicitly classified as self-description/supporting evidence"
     );
 }
 
@@ -193,6 +197,23 @@ fn schema_index_covers_reusable_component_contracts() -> Result<(), String> {
         if !index.contains(&schema_file) {
             return Err(format!(
                 "schema index should link reusable component {schema_file}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn schema_index_covers_self_description_contracts() -> Result<(), String> {
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
+    if !index.contains("## Self-description contract (not a governed artifact)") {
+        return Err("schema index should distinguish self-description from governed artifacts".to_string());
+    }
+    for name in SELF_DESCRIPTION_SCHEMA_NAMES {
+        let schema_file = format!("{name}.schema.json");
+        if !index.contains(&schema_file) {
+            return Err(format!(
+                "schema index should link self-description contract {schema_file}"
             ));
         }
     }
