@@ -166,6 +166,55 @@ run_expect_failure "run-script mention is not a pin" \
   CI_WORKFLOW="${run_script}/.github/workflows/ci.yml" \
   RELEASE_WORKFLOW="${run_script}/.github/workflows/release.yml" \
   bash scripts/check-msrv-consistency.sh
+
+# A single-quoted uses value is a valid YAML declaration and must be
+# pinned to the MSRV like the unquoted form.
+single_quoted="${work}/single-quoted-drift"
+mkdir -p "${single_quoted}/.github/workflows"
+cp Cargo.toml "${single_quoted}/Cargo.toml"
+cp .github/workflows/ci.yml "${single_quoted}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${single_quoted}/.github/workflows/release.yml"
+python3 - "${single_quoted}/.github/workflows/ci.yml" "${msrv}" <<'PY'
+import sys
+
+path, msrv = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+quoted = text.replace(
+    "uses: dtolnay/rust-toolchain@{}.0".format(msrv),
+    "uses: 'dtolnay/rust-toolchain@1.100.0'",
+    1,
+)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(quoted)
+PY
+run_expect_failure "single-quoted off-MSRV pin drift" \
+  env CARGO_TOML="${single_quoted}/Cargo.toml" \
+  CI_WORKFLOW="${single_quoted}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${single_quoted}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
+# A single-quoted pin on the MSRV remains consistent.
+single_quoted_ok="${work}/single-quoted-consistent"
+mkdir -p "${single_quoted_ok}/.github/workflows"
+cp Cargo.toml "${single_quoted_ok}/Cargo.toml"
+cp .github/workflows/ci.yml "${single_quoted_ok}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${single_quoted_ok}/.github/workflows/release.yml"
+python3 - "${single_quoted_ok}/.github/workflows/ci.yml" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+quoted = text.replace("- uses: dtolnay/rust-toolchain@1.95.0", "- uses: 'dtolnay/rust-toolchain@1.95.0'", 1)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(quoted)
+PY
+run_expect_success "single-quoted MSRV pin stays consistent" \
+  env CARGO_TOML="${single_quoted_ok}/Cargo.toml" \
+  CI_WORKFLOW="${single_quoted_ok}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${single_quoted_ok}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
 drift_case "cache namespace drift" ".github/workflows/ci.yml" \
   "lane: msrv" "lane: msrv-drift"
 drift_case "attested release manifest drift" ".github/workflows/release.yml" \
