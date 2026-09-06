@@ -18838,7 +18838,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the review-disposition CLI fixture tests (#3843); every expect guards an invariant established by immediately preceding fixture construction or serialization of known-good typed data under fully controlled inputs"
 evidence = ["issue:3843"]
-occurrence_limit = 11
+occurrence_limit = 14
 created = "2026-09-05"
 review_after = "2026-12-04"
 

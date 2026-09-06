@@ -1,7 +1,8 @@
 //! Contract tests for the #3843 review-disposition schema and model.
 
 use allow_report::{
-    CampaignEvidenceClassV1, IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_FINDINGS,
+    CampaignEvidenceClassV1, IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS,
+    REVIEW_DISPOSITION_MAX_FINDINGS, REVIEW_DISPOSITION_MAX_TEXT_LEN,
     REVIEW_DISPOSITION_MAX_THREADS, ReviewActorClassV1, ReviewCheckObservationV1,
     ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionV1, ReviewFindingSeverityV1,
     ReviewFindingV1, ReviewLiveSourceV1, ReviewReadinessStateV1, ReviewRequiredCiV1,
@@ -312,4 +313,141 @@ fn review_disposition_contract_requires_ci_ownership_or_an_observation_reference
             .iter()
             .any(|reason| reason.contains("required_ci"))
     );
+}
+
+#[test]
+fn review_disposition_contract_bounds_all_retained_strings() {
+    let oversized = "x".repeat(REVIEW_DISPOSITION_MAX_TEXT_LEN + 1);
+
+    let mut wide_scope = disposition();
+    wide_scope.scope_claim_boundary = oversized.clone();
+    let outcome = evaluate_review_disposition(&wide_scope, &live(), &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("scope_claim_boundary"))
+    );
+
+    let mut long_thread = disposition();
+    long_thread.threads_inspected = vec![oversized.clone()];
+    let outcome = evaluate_review_disposition(&long_thread, &live(), &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("threads_inspected"))
+    );
+
+    let mut long_reason = disposition();
+    long_reason.independent_review = IndependentReviewPostureV1::NotProven {
+        reason: oversized.clone(),
+    };
+    let outcome = evaluate_review_disposition(&long_reason, &live(), &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("independent_review.reason"))
+    );
+
+    let mut wide_live = live();
+    wide_live.scope_claim_boundary = oversized.clone();
+    let outcome = evaluate_review_disposition(&disposition(), &wide_live, &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("live.scope_claim_boundary"))
+    );
+}
+
+#[test]
+fn review_disposition_contract_bounds_the_transition_request() {
+    let mut empty_named = ready_request();
+    empty_named.required_checks = vec![
+        ReviewCheckObservationV1 {
+            name: String::new(),
+            outcome: allow_report::CampaignCheckOutcomeV1::Passed,
+        },
+        ReviewCheckObservationV1 {
+            name: String::new(),
+            outcome: allow_report::CampaignCheckOutcomeV1::Passed,
+        },
+    ];
+    let outcome = evaluate_review_disposition(&disposition(), &live(), &empty_named);
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("2 required check(s) carry an empty name"))
+    );
+
+    let mut oversized_name = ready_request();
+    oversized_name.required_checks = vec![ReviewCheckObservationV1 {
+        name: "y".repeat(REVIEW_DISPOSITION_MAX_TEXT_LEN + 1),
+        outcome: allow_report::CampaignCheckOutcomeV1::Passed,
+    }];
+    let outcome = evaluate_review_disposition(&disposition(), &live(), &oversized_name);
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("required_checks[0].name"))
+    );
+
+    let mut too_many = ready_request();
+    too_many.required_checks = (0..=REVIEW_DISPOSITION_MAX_CHECKS)
+        .map(|index| ReviewCheckObservationV1 {
+            name: format!("check-{index}"),
+            outcome: allow_report::CampaignCheckOutcomeV1::Passed,
+        })
+        .collect();
+    let outcome = evaluate_review_disposition(&disposition(), &live(), &too_many);
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("required_checks exceed"))
+    );
+}
+
+#[test]
+fn review_disposition_contract_requires_observed_evidence_for_a_clean_claim() {
+    for (class, label) in [
+        (CampaignEvidenceClassV1::Prose, "prose"),
+        (CampaignEvidenceClassV1::Foundation, "foundation"),
+        (
+            CampaignEvidenceClassV1::Characterization,
+            "characterization",
+        ),
+    ] {
+        let mut underived = disposition();
+        underived.evidence_class = class;
+        let outcome = evaluate_review_disposition(&underived, &live(), &ready_request());
+        assert_eq!(
+            outcome.currentness,
+            ReviewCurrentnessV1::Partial,
+            "{label} evidence cannot back a clean claim"
+        );
+        assert!(
+            outcome
+                .currentness_reasons
+                .iter()
+                .any(|reason| reason.contains("is insufficient for a clean claim"))
+        );
+        assert!(!outcome.transition.permitted);
+    }
+
+    let mut observed = disposition();
+    observed.evidence_class = CampaignEvidenceClassV1::ProductionCutover;
+    let outcome = evaluate_review_disposition(&observed, &live(), &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::ReviewClean);
 }

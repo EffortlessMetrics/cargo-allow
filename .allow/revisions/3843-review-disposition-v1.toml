@@ -22,7 +22,9 @@ schema_version = 1
 # moves fail closed. The source-exception additions receipt only the
 # syntax-visible constructs the new test fixtures introduce:
 # allow-11207/allow-11208 are glob-ratcheted expect baselines for
-# fixture serialization in the CLI and contract test modules, and
+# fixture serialization in the CLI and contract test modules (the CLI
+# ratchet covers 14 expects after the reviewer-repair pass added the
+# ready-to-ready gate test), and
 # allow-11209 receipts this revision-note file itself per the per-note
 # receipt law. No existing exception is weakened, no expiry is
 # extended, and no scope is broadened: the records below are
@@ -32,7 +34,7 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11207"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:c65fa82a25744c8d44d094dc781e717680f76955e07e16f9b40a0ead7de2df5e"
+after_fingerprint = "sha256:v1:58a11c7269d6f76bccb4b005428efde2aef83439b69ac6094b8e95bbc33442a1"
 
 [[records]]
 allow_ids = ["allow-11208"]

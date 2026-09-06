@@ -267,22 +267,70 @@ fn review_readiness_transition_demands_terminal_passed_outcomes() {
 }
 
 #[test]
-fn review_readiness_transition_treats_same_state_requests_as_noops() {
-    for state in [ReviewReadinessStateV1::Ready, ReviewReadinessStateV1::Draft] {
+fn review_readiness_transition_treats_draft_same_state_as_a_noop() {
+    let outcome = evaluate_review_disposition(
+        &blocking_disposition(),
+        &live(),
+        &request(
+            ReviewReadinessStateV1::Draft,
+            ReviewReadinessStateV1::Draft,
+            vec![],
+        ),
+    );
+    assert!(outcome.transition.permitted);
+    assert!(
+        outcome
+            .transition
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("already in the requested state"))
+    );
+}
+
+#[test]
+fn review_readiness_transition_never_keeps_ready_without_a_current_clean_review() {
+    for (disposition, label) in [
+        (blocking_disposition(), "blocked"),
+        (disposition_with(ReviewCurrentnessV1::Partial), "partial"),
+    ] {
         let outcome = evaluate_review_disposition(
-            &blocking_disposition(),
+            &disposition,
             &live(),
-            &request(state, state, vec![]),
+            &request(
+                ReviewReadinessStateV1::Ready,
+                ReviewReadinessStateV1::Ready,
+                vec![passed("ci")],
+            ),
         );
-        assert!(outcome.transition.permitted);
         assert!(
-            outcome
-                .transition
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("already in the requested state"))
+            !outcome.transition.permitted,
+            "a same-state ready request must not pass a {label} review through the gate"
         );
     }
+
+    let mut moved = live();
+    moved.head_sha = "cccc".to_string();
+    let stale_outcome = evaluate_review_disposition(
+        &disposition_with(ReviewCurrentnessV1::ReviewClean),
+        &moved,
+        &request(
+            ReviewReadinessStateV1::Ready,
+            ReviewReadinessStateV1::Ready,
+            vec![passed("ci")],
+        ),
+    );
+    assert!(!stale_outcome.transition.permitted);
+
+    let clean_outcome = evaluate_review_disposition(
+        &disposition_with(ReviewCurrentnessV1::ReviewClean),
+        &live(),
+        &request(
+            ReviewReadinessStateV1::Ready,
+            ReviewReadinessStateV1::Ready,
+            vec![passed("ci")],
+        ),
+    );
+    assert!(clean_outcome.transition.permitted);
 }
 
 #[test]

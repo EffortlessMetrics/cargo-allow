@@ -216,7 +216,9 @@ fn review_disposition_currentness_reports_moved_dimensions_in_a_fixed_order() {
     let mut all_moved = live();
     all_moved.repository = "owner/other".to_string();
     all_moved.pr_number = 5000;
+    all_moved.base_ref = "trunk".to_string();
     all_moved.base_sha = "cccc".to_string();
+    all_moved.head_ref = "renamed-branch".to_string();
     all_moved.head_sha = "dddd".to_string();
     all_moved.merge_base = "eeee".to_string();
     all_moved.diff_digest = "sha256:v1:elsewhere".to_string();
@@ -228,12 +230,54 @@ fn review_disposition_currentness_reports_moved_dimensions_in_a_fixed_order() {
         vec![
             "repository".to_string(),
             "pr_number".to_string(),
+            "base_ref".to_string(),
             "base_sha".to_string(),
+            "head_ref".to_string(),
             "head_sha".to_string(),
             "merge_base".to_string(),
             "reviewed_diff_digest".to_string(),
             "review_protocol".to_string(),
             "review_scope".to_string(),
         ]
+    );
+}
+
+#[test]
+fn review_disposition_currentness_stales_on_a_branch_ref_rename_alone() {
+    let mut renamed = live();
+    renamed.head_ref = "renamed-branch".to_string();
+    assert_eq!(renamed.head_sha, disposition().head_sha);
+    let outcome = evaluate_review_disposition(&disposition(), &renamed, &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::Stale);
+    assert!(
+        outcome
+            .stale_dimensions
+            .iter()
+            .any(|dimension| dimension == "head_ref")
+    );
+
+    let mut retargeted = live();
+    retargeted.base_ref = "trunk".to_string();
+    let outcome = evaluate_review_disposition(&disposition(), &retargeted, &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::Stale);
+    assert!(
+        outcome
+            .stale_dimensions
+            .iter()
+            .any(|dimension| dimension == "base_ref")
+    );
+}
+
+#[test]
+fn review_disposition_currentness_fails_a_zero_live_pr_number_as_an_instrument_failure() {
+    let mut malformed = live();
+    malformed.pr_number = 0;
+    let outcome = evaluate_review_disposition(&disposition(), &malformed, &ready_request());
+    assert_eq!(outcome.currentness, ReviewCurrentnessV1::InstrumentFailure);
+    assert!(
+        outcome
+            .currentness_reasons
+            .iter()
+            .any(|reason| reason.contains("live pr_number is zero"))
     );
 }

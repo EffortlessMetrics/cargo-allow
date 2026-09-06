@@ -438,8 +438,8 @@ pub use artifacts::{
 
 // Root re-exports for the #3843 review-disposition contract.
 pub use artifacts::{
-    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_FINDINGS, REVIEW_DISPOSITION_MAX_TEXT_LEN,
-    REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
     REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
     ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
     ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,

@@ -311,6 +311,49 @@ mod tests {
     }
 
     #[test]
+    fn check_fails_when_a_blocked_review_asks_to_remain_ready() {
+        let mut blocked = disposition();
+        blocked.claimed_verdict = ReviewCurrentnessV1::ReviewBlocked;
+        blocked.findings = vec![ReviewFindingV1 {
+            id: "BLK-001".to_string(),
+            severity: ReviewFindingSeverityV1::Blocking,
+            owned_seam: "crates/allow-match".to_string(),
+            source_path: "crates/allow-match/src/lib.rs".to_string(),
+            source_line: Some(40),
+            repair_route: "repair lane on the same head".to_string(),
+            claim_boundary: "blocking".to_string(),
+        }];
+        let mut ready_to_ready = request();
+        ready_to_ready.current_state = ReviewReadinessStateV1::Ready;
+        ready_to_ready.target_state = ReviewReadinessStateV1::Ready;
+        let disposition_path = write_json(
+            "stay-ready-disposition",
+            &serde_json::to_value(&blocked).expect("value"),
+        );
+        let live_path = write_json(
+            "stay-ready-live",
+            &serde_json::to_value(live()).expect("value"),
+        );
+        let request_path = write_json(
+            "stay-ready-request",
+            &serde_json::to_value(&ready_to_ready).expect("value"),
+        );
+        let args = ReviewDispositionArgs {
+            command: ReviewDispositionSubcommand::Check(ReviewDispositionCheckArgs {
+                disposition: disposition_path.clone(),
+                live: live_path.clone(),
+                request: request_path.clone(),
+                format: ReviewDispositionOutputFormat::Json,
+            }),
+        };
+        let outcome = cmd_review_disposition(&args);
+        cleanup(&disposition_path);
+        cleanup(&live_path);
+        cleanup(&request_path);
+        assert!(outcome.is_err());
+    }
+
+    #[test]
     fn evaluate_is_pure_across_repeated_calls() {
         let outcome_one = evaluate_review_disposition(&disposition(), &live(), &request());
         let outcome_two = evaluate_review_disposition(&disposition(), &live(), &request());

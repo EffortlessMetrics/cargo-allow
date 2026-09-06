@@ -42,6 +42,7 @@ pub const REVIEW_DISPOSITION_SCHEMA_VERSION: u32 = 1;
 /// evaluator itself, so a hostile or runaway record fails closed.
 pub const REVIEW_DISPOSITION_MAX_FINDINGS: usize = 512;
 pub const REVIEW_DISPOSITION_MAX_THREADS: usize = 512;
+pub const REVIEW_DISPOSITION_MAX_CHECKS: usize = 128;
 pub const REVIEW_DISPOSITION_MAX_TEXT_LEN: usize = 4096;
 
 const CLAIM_BOUNDARY: &str = "A read-only typed authority stating whether the reviewed source pair is clean, blocked, stale, or unavailable and what Draft/Ready transition it permits. It does not conduct review, does not publish a GitHub check, does not mutate PR state, live settings, tags, packages, or release state, and does not require a second human.";
@@ -315,12 +316,13 @@ fn fnv1a64(parts: &[String]) -> String {
     format!("fnv1a64:{hash:016x}")
 }
 
-/// Semantic identity of one disposition: an ordered digest over every
-/// source dimension that makes a prior review stale (repository, PR,
-/// base/head refs and SHAs, merge base, full-diff digest, protocol
-/// generation, reviewer scope, and the ordered finding set with its
-/// sources and severities). Volatile presentation fields — review
-/// timestamp, reviewer display identity, inspected threads, CI
+/// Semantic identity of one disposition: an ordered digest over the
+/// source dimensions whose movement makes a prior review stale
+/// (repository, PR, base/head refs and SHAs, merge base, full-diff
+/// digest, protocol generation, reviewer scope) plus the ordered
+/// finding set with its sources and severities, so the identity names
+/// the exact review of the exact pair. Volatile presentation fields —
+/// review timestamp, reviewer display identity, inspected threads, CI
 /// ownership metadata — are excluded, so they cannot change the
 /// identity of what was reviewed.
 #[must_use]
@@ -398,6 +400,44 @@ fn disposition_instrument_failures(disposition: &ReviewDispositionV1) -> Vec<Str
         if value.trim().is_empty() {
             failures.push(format!("{field} is empty"));
         }
+        if let Some(too_long) = text_too_long(field, value) {
+            failures.push(too_long);
+        }
+    }
+    // Bounds-only fields: reviewer display identity, envelope timestamp,
+    // and the required-CI pair are optional by law (either CI field may
+    // be empty when the other is retained).
+    for (field, value) in [
+        ("repository", &disposition.repository),
+        ("reviewer_identity", &disposition.reviewer_identity),
+        ("reviewed_at_utc", &disposition.reviewed_at_utc),
+        ("required_ci.owner", &disposition.required_ci.owner),
+        (
+            "required_ci.observation_ref",
+            &disposition.required_ci.observation_ref,
+        ),
+    ] {
+        if let Some(too_long) = text_too_long(field, value) {
+            failures.push(too_long);
+        }
+    }
+    for (index, thread) in disposition.threads_inspected.iter().enumerate() {
+        if let Some(too_long) = text_too_long(&format!("threads_inspected[{index}]"), thread) {
+            failures.push(too_long);
+        }
+    }
+    match &disposition.independent_review {
+        IndependentReviewPostureV1::NotProven { reason } => {
+            if let Some(too_long) = text_too_long("independent_review.reason", reason) {
+                failures.push(too_long);
+            }
+        }
+        IndependentReviewPostureV1::Proven { reference } => {
+            if let Some(too_long) = text_too_long("independent_review.reference", reference) {
+                failures.push(too_long);
+            }
+        }
+        IndependentReviewPostureV1::NotRetained => {}
     }
     if disposition.required_ci.owner.trim().is_empty()
         && disposition.required_ci.observation_ref.trim().is_empty()
@@ -413,17 +453,24 @@ fn disposition_instrument_failures(disposition: &ReviewDispositionV1) -> Vec<Str
             disposition.claimed_verdict.label()
         ));
     }
-    if disposition.findings.len() > REVIEW_DISPOSITION_MAX_FINDINGS {
-        failures.push(format!(
-            "findings exceed the {REVIEW_DISPOSITION_MAX_FINDINGS}-entry bound"
-        ));
+    if disposition.findings.len() > REVIEW_DISPOSITION_MAX_FINDINGS
+        || disposition.threads_inspected.len() > REVIEW_DISPOSITION_MAX_THREADS
+    {
+        // The per-finding scan is unnecessary work once a collection
+        // bound has already failed the record.
+        if disposition.findings.len() > REVIEW_DISPOSITION_MAX_FINDINGS {
+            failures.push(format!(
+                "findings exceed the {REVIEW_DISPOSITION_MAX_FINDINGS}-entry bound"
+            ));
+        }
+        if disposition.threads_inspected.len() > REVIEW_DISPOSITION_MAX_THREADS {
+            failures.push(format!(
+                "threads_inspected exceeds the {REVIEW_DISPOSITION_MAX_THREADS}-entry bound"
+            ));
+        }
+        return failures;
     }
-    if disposition.threads_inspected.len() > REVIEW_DISPOSITION_MAX_THREADS {
-        failures.push(format!(
-            "threads_inspected exceeds the {REVIEW_DISPOSITION_MAX_THREADS}-entry bound"
-        ));
-    }
-    let mut seen_ids: Vec<&str> = Vec::new();
+    let mut seen_ids: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
     for finding in &disposition.findings {
         if matches!(finding.severity, ReviewFindingSeverityV1::Blocking) {
             for (field, value) in [
@@ -437,9 +484,7 @@ fn disposition_instrument_failures(disposition: &ReviewDispositionV1) -> Vec<Str
                 }
             }
         }
-        if !seen_ids.contains(&finding.id.as_str()) {
-            seen_ids.push(&finding.id);
-        } else {
+        if !seen_ids.insert(finding.id.as_str()) {
             failures.push(format!("duplicate finding id: {}", finding.id));
         }
         for (field, value) in [
@@ -482,7 +527,11 @@ fn live_instrument_failures(live: &ReviewLiveSourceV1) -> Vec<String> {
     if live.repository.trim().is_empty() {
         failures.push("live repository is empty".to_string());
     }
+    if live.pr_number == 0 {
+        failures.push("live pr_number is zero".to_string());
+    }
     for (field, value) in [
+        ("repository", &live.repository),
         ("base_ref", &live.base_ref),
         ("base_sha", &live.base_sha),
         ("head_ref", &live.head_ref),
@@ -492,24 +541,48 @@ fn live_instrument_failures(live: &ReviewLiveSourceV1) -> Vec<String> {
         ("review_protocol", &live.review_protocol),
         ("scope_claim_boundary", &live.scope_claim_boundary),
     ] {
-        if value.trim().is_empty() {
+        if value.trim().is_empty() && field != "repository" {
             failures.push(format!("live {field} is empty"));
+        }
+        if let Some(too_long) = text_too_long(&format!("live.{field}"), value) {
+            failures.push(too_long);
         }
     }
     failures
 }
 
 fn request_instrument_failures(request: &ReviewTransitionRequestV1) -> Vec<String> {
-    request
+    let mut failures = Vec::new();
+    if request.required_checks.len() > REVIEW_DISPOSITION_MAX_CHECKS {
+        failures.push(format!(
+            "required_checks exceed the {REVIEW_DISPOSITION_MAX_CHECKS}-entry bound"
+        ));
+        return failures;
+    }
+    let empty_names = request
         .required_checks
         .iter()
         .filter(|check| check.name.trim().is_empty())
-        .map(|_| "a required check carries an empty name".to_string())
-        .collect()
+        .count();
+    if empty_names > 0 {
+        failures.push(format!(
+            "{empty_names} required check(s) carry an empty name"
+        ));
+    }
+    for (index, check) in request.required_checks.iter().enumerate() {
+        if let Some(too_long) =
+            text_too_long(&format!("required_checks[{index}].name"), &check.name)
+        {
+            failures.push(too_long);
+        }
+    }
+    failures
 }
 
 /// Load-bearing input dimensions whose movement stales a disposition,
-/// in fixed order.
+/// in fixed order. Ref movement stales even when the commits are
+/// unchanged: the effective comparison pair is named, not just
+/// content-addressed.
 fn stale_dimensions(disposition: &ReviewDispositionV1, live: &ReviewLiveSourceV1) -> Vec<String> {
     let mut stale = Vec::new();
     if disposition.repository != live.repository {
@@ -518,8 +591,14 @@ fn stale_dimensions(disposition: &ReviewDispositionV1, live: &ReviewLiveSourceV1
     if disposition.pr_number != live.pr_number {
         stale.push("pr_number".to_string());
     }
+    if disposition.base_ref != live.base_ref {
+        stale.push("base_ref".to_string());
+    }
     if disposition.base_sha != live.base_sha {
         stale.push("base_sha".to_string());
+    }
+    if disposition.head_ref != live.head_ref {
+        stale.push("head_ref".to_string());
     }
     if disposition.head_sha != live.head_sha {
         stale.push("head_sha".to_string());
@@ -539,6 +618,21 @@ fn stale_dimensions(disposition: &ReviewDispositionV1, live: &ReviewLiveSourceV1
     stale
 }
 
+/// Minimum evidence class for a clean claim: the reviewed pair must be
+/// an observed review execution, not prose or a model/schema artifact.
+const MIN_CLEAN_EVIDENCE_CLASS: CampaignEvidenceClassV1 =
+    CampaignEvidenceClassV1::CurrentObservation;
+
+fn evidence_class_label(class: CampaignEvidenceClassV1) -> &'static str {
+    match class {
+        CampaignEvidenceClassV1::Prose => "prose",
+        CampaignEvidenceClassV1::Foundation => "foundation",
+        CampaignEvidenceClassV1::Characterization => "characterization",
+        CampaignEvidenceClassV1::CurrentObservation => "current_observation",
+        CampaignEvidenceClassV1::ProductionCutover => "production_cutover",
+    }
+}
+
 /// Derive the currentness verdict from typed structure on a non-stale,
 /// instrument-clean disposition. Structure wins over the claim.
 fn derive_currentness(
@@ -553,6 +647,13 @@ fn derive_currentness(
         return ReviewCurrentnessV1::ReviewBlocked;
     }
     if disposition.claimed_verdict == ReviewCurrentnessV1::ReviewClean {
+        if disposition.evidence_class < MIN_CLEAN_EVIDENCE_CLASS {
+            reasons.push(format!(
+                "evidence class '{}' is insufficient for a clean claim; lexical wording does not prove review execution",
+                evidence_class_label(disposition.evidence_class)
+            ));
+            return ReviewCurrentnessV1::Partial;
+        }
         if matches!(disposition.actor_class, ReviewActorClassV1::Unavailable) {
             reasons.push(
                 "actor class is unavailable: an unavailable review is not proven clean".to_string(),
@@ -591,15 +692,15 @@ pub fn evaluate_review_readiness_transition(
 ) -> ReviewReadinessTransitionV1 {
     let from = request.current_state;
     let to = request.target_state;
-    if from == to {
-        return ReviewReadinessTransitionV1 {
-            from_state: from,
-            to_state: to,
-            permitted: true,
-            reasons: vec!["already in the requested state".to_string()],
-        };
-    }
     if to == ReviewReadinessStateV1::Draft {
+        if from == to {
+            return ReviewReadinessTransitionV1 {
+                from_state: from,
+                to_state: to,
+                permitted: true,
+                reasons: vec!["already in the requested state".to_string()],
+            };
+        }
         return ReviewReadinessTransitionV1 {
             from_state: from,
             to_state: to,
@@ -609,7 +710,13 @@ pub fn evaluate_review_readiness_transition(
             ],
         };
     }
+    // Target Ready: the standard rules apply whether the request comes
+    // from Draft or asks an already-ready PR to remain ready, so a
+    // blocked or stale review can never pass a same-state gate.
     let mut reasons = Vec::new();
+    if request.current_state == request.target_state {
+        reasons.push("already in the requested state; the ready state must still be supported by a current clean review".to_string());
+    }
     let permitted = match currentness {
         ReviewCurrentnessV1::ReviewClean => {
             let failing: Vec<&ReviewCheckObservationV1> = request

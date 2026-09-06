@@ -179,8 +179,8 @@ pub use package_candidate_v2::{
     validate_package_candidate_v2,
 };
 pub use review_disposition_v1::{
-    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_FINDINGS, REVIEW_DISPOSITION_MAX_TEXT_LEN,
-    REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
+    IndependentReviewPostureV1, REVIEW_DISPOSITION_MAX_CHECKS, REVIEW_DISPOSITION_MAX_FINDINGS,
+    REVIEW_DISPOSITION_MAX_TEXT_LEN, REVIEW_DISPOSITION_MAX_THREADS, REVIEW_DISPOSITION_SCHEMA_ID,
     REVIEW_DISPOSITION_SCHEMA_VERSION, ReviewActorClassV1, ReviewCheckObservationV1,
     ReviewCurrentnessV1, ReviewDispositionOutcomeV1, ReviewDispositionParseFailureV1,
     ReviewDispositionV1, ReviewFindingSeverityV1, ReviewFindingV1, ReviewLiveSourceV1,
