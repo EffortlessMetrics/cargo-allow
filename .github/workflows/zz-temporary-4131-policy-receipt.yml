@@ -18,7 +18,7 @@ jobs:
       github.repository == 'EffortlessMetrics/cargo-allow' &&
       github.ref == 'refs/heads/codex/2567-provider-contract'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - name: Check out the exact triggering head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - name: Append reviewed receipts and remove this workflow
+      - name: Append, verify, commit, and remove this workflow
         shell: bash
         env:
           EXPECTED_HEAD: ${{ github.sha }}
@@ -34,14 +34,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          git fetch --no-tags origin "${TARGET_BRANCH}"
-          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_HEAD}"
+          git fetch --no-tags origin "${TARGET_BRANCH}" main
+          test "$(git rev-parse "origin/${TARGET_BRANCH}")" = "${EXPECTED_HEAD}"
 
           python - <<'PY'
           from __future__ import annotations
 
-          import hashlib
-          import struct
           import textwrap
           import tomllib
           from pathlib import Path
@@ -54,176 +52,15 @@ jobs:
           newline = b"\r\n" if b"\r\n" in policy_bytes else b"\n"
           policy_text = policy_bytes.decode("utf-8")
 
-          entries = [
-              {
-                  "id": "allow-11231",
-                  "kind": "non_rust_file",
-                  "family": "documentation",
-                  "path": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
-                  "owner": "proof/provider",
-                  "classification": "provider_contract_schema",
-                  "reason": (
-                      "Published closed JSON Schema for the discovery-only cargo-allow provider "
-                      "descriptor introduced by PR #4131; it does not define or authorize request "
-                      "execution or analysis receipts."
-                  ),
-                  "evidence": [
-                      "issue:2567",
-                      "issue:4144",
-                      "doc:docs/schemas/README.md",
-                      "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
-                  ],
-                  "created": "2026-09-06",
-                  "review_after": "2027-03-06",
-                  "selector": {
-                      "ast_kind": "tracked_file",
-                      "symbol": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
-                      "target_fingerprint": "json",
-                      "glob": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
-                  },
-                  "last_seen": {"line": 1, "column": 1},
-              },
-              {
-                  "id": "allow-11232",
-                  "kind": "non_rust_file",
-                  "family": "configuration",
-                  "path": ".allow/revisions/4131-provider-contract-schema.toml",
-                  "owner": "core/policy",
-                  "classification": "ledger_change_note",
-                  "reason": (
-                      "Revision note authorizing the two bounded policy additions required to "
-                      "receipt the provider descriptor schema and this note itself for PR #4131."
-                  ),
-                  "evidence": [
-                      "pr:4131",
-                      "issue:2567",
-                      "doc:docs/how-to/manage-an-exception.md",
-                  ],
-                  "created": "2026-09-06",
-                  "review_after": "2027-03-06",
-                  "selector": {
-                      "ast_kind": "tracked_file",
-                      "symbol": ".allow/revisions/4131-provider-contract-schema.toml",
-                      "target_fingerprint": "toml",
-                      "glob": ".allow/revisions/4131-provider-contract-schema.toml",
-                  },
-                  "last_seen": {"line": 1, "column": 1},
-              },
+          identities = [
+              "allow-11231",
+              "allow-11232",
+              "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
+              ".allow/revisions/4131-provider-contract-schema.toml",
           ]
-
-          expected_fingerprints = {
-              "allow-11231": "sha256:v1:d7498b4478311ac2d602362b7837e603e9ed4f1c793a31e94f4b071940839eab",
-              "allow-11232": "sha256:v1:46774be4b8dc7d605665b34efd51f8e1970369549e64a7aa8e1717aadcb326e1",
-          }
-
-          def write_string(out: bytearray, value: str) -> None:
-              encoded = value.encode("utf-8")
-              out.extend(struct.pack(">Q", len(encoded)))
-              out.extend(encoded)
-
-          def write_optional_string(out: bytearray, value: str | None) -> None:
-              if value is None:
-                  out.append(0)
-              else:
-                  out.append(1)
-                  write_string(out, value)
-
-          def write_string_list(out: bytearray, values: list[str]) -> None:
-              out.extend(struct.pack(">Q", len(values)))
-              for value in values:
-                  write_string(out, value)
-
-          def write_optional_u32(out: bytearray, value: int | None) -> None:
-              if value is None:
-                  out.append(0)
-              else:
-                  out.append(1)
-                  out.extend(struct.pack(">I", value))
-
-          def fingerprint(entry: dict[str, object]) -> str:
-              selector = entry.get("selector", {})
-              assert isinstance(selector, dict)
-              canonical = bytearray()
-              write_string(canonical, "cargo-allow.allow-entry-fingerprint.v1")
-              write_string(canonical, str(entry["id"]))
-              write_string(canonical, str(entry["kind"]))
-              write_optional_string(canonical, entry.get("family"))
-              write_optional_string(canonical, entry.get("path"))
-              write_optional_string(canonical, entry.get("glob"))
-              write_string(canonical, str(entry["owner"]))
-              write_string(canonical, str(entry["classification"]))
-              write_string(canonical, str(entry["reason"]))
-              write_string_list(canonical, entry.get("evidence", []))
-              write_string_list(canonical, entry.get("links", []))
-              write_optional_u32(canonical, entry.get("occurrence_limit"))
-              write_optional_string(canonical, entry.get("created"))
-              write_optional_string(canonical, entry.get("review_after"))
-              write_optional_string(canonical, entry.get("expires"))
-              for field in [
-                  "ast_kind",
-                  "container",
-                  "callee",
-                  "macro_name",
-                  "lint",
-                  "symbol",
-                  "receiver_fingerprint",
-                  "target_fingerprint",
-                  "normalized_snippet_hash",
-              ]:
-                  write_optional_string(canonical, selector.get(field))
-              write_optional_u32(canonical, selector.get("line_hint"))
-              write_optional_string(canonical, selector.get("glob"))
-              last_seen = entry.get("last_seen")
-              if last_seen is None:
-                  canonical.append(0)
-              else:
-                  assert isinstance(last_seen, dict)
-                  canonical.append(1)
-                  canonical.extend(struct.pack(">I", int(last_seen["line"])))
-                  canonical.extend(struct.pack(">I", int(last_seen["column"])))
-              return "sha256:v1:" + hashlib.sha256(canonical).hexdigest()
-
-          known_answer = {
-              "id": "allow-11205",
-              "kind": "non_rust_file",
-              "family": "documentation",
-              "path": "docs/schemas/resolved-cargo-allow-config-v1.schema.json",
-              "owner": "core/policy",
-              "classification": "resolved_config_component_schema",
-              "reason": (
-                  "Defines the versioned reusable JSON component contract for the read-only "
-                  "source-exception configuration projection in issue #3875."
-              ),
-              "evidence": [
-                  "issue:3875",
-                  "doc:docs/schemas/README.md",
-                  "test:resolved_config_contract",
-              ],
-              "created": "2026-08-30",
-              "review_after": "2027-02-28",
-              "selector": {
-                  "ast_kind": "tracked_file",
-                  "symbol": "docs/schemas/resolved-cargo-allow-config-v1.schema.json",
-                  "target_fingerprint": "json",
-                  "glob": "docs/schemas/resolved-cargo-allow-config-v1.schema.json",
-              },
-              "last_seen": {"line": 1, "column": 1},
-          }
-          expected_known_answer = (
-              "sha256:v1:aaf8e969882c983e2e93cf40f7273a2c72554772f9a48b6bd63481c86e6a612f"
-          )
-          if fingerprint(known_answer) != expected_known_answer:
-              raise SystemExit("fingerprint implementation failed the retained allow-11205 oracle")
-
-          for entry in entries:
-              actual = fingerprint(entry)
-              expected = expected_fingerprints[str(entry["id"])]
-              if actual != expected:
-                  raise SystemExit(
-                      f"fingerprint mismatch for {entry['id']}: expected {expected}, got {actual}"
-                  )
-              if f'id = "{entry["id"]}"' in policy_text or str(entry["path"]) in policy_text:
-                  raise SystemExit(f"policy already contains {entry['id']} or {entry['path']}")
+          for identity in identities:
+              if identity in policy_text:
+                  raise SystemExit(f"policy already contains {identity}")
 
           block = textwrap.dedent(r'''
               [[allow]]
@@ -279,6 +116,9 @@ jobs:
               line = 1
               column = 1
           ''').strip("\n")
+          if any(line.rstrip(" \t") != line for line in block.splitlines()):
+              raise SystemExit("generated policy block contains trailing horizontal whitespace")
+
           policy_path.write_bytes(
               policy_bytes.rstrip(b"\r\n")
               + newline
@@ -304,6 +144,8 @@ jobs:
               after_fingerprint = "sha256:v1:46774be4b8dc7d605665b34efd51f8e1970369549e64a7aa8e1717aadcb326e1"
               reason = "Receipts this revision note's own bounded policy exception for PR #4131."
           ''').lstrip()
+          if any(line.rstrip(" \t") != line for line in revision.splitlines()):
+              raise SystemExit("generated revision note contains trailing horizontal whitespace")
           revision_path.parent.mkdir(parents=True, exist_ok=True)
           revision_path.write_text(revision, encoding="utf-8")
 
@@ -312,7 +154,20 @@ jobs:
           workflow_path.unlink()
           PY
 
-          git diff --check
+          git diff --check -- .allow/revisions/4131-provider-contract-schema.toml
+
+          cargo run -q -p cargo-allow --locked -- \
+            check --mode no-new --format markdown \
+            --receipt target/cargo-allow/provider-policy-check.receipt.json \
+            --output target/cargo-allow/provider-policy-check.md
+
+          cargo run -q -p cargo-allow --locked -- \
+            diff --base origin/main --require-change-note --format json \
+            --output target/cargo-allow/provider-policy-diff.json
+
+          git fetch --no-tags origin "${TARGET_BRANCH}"
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_HEAD}"
+
           git add -A
           expected_paths=$(printf '%s\n' \
             '.allow/revisions/4131-provider-contract-schema.toml' \
