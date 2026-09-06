@@ -230,3 +230,60 @@ fn ci_pregate_result_bounded_schema_rejects_unknown_fields() {
         "unknown provider fields (secrets) fail the bounded schema"
     );
 }
+
+#[test]
+fn ci_pregate_result_labels_cover_the_full_vocabulary() {
+    for (state, label, permits) in [
+        (CiPreGateStateV1::Complete, "complete", true),
+        (CiPreGateStateV1::Findings, "findings", false),
+        (CiPreGateStateV1::NotApplicable, "not_applicable", true),
+        (CiPreGateStateV1::Stale, "stale", false),
+        (CiPreGateStateV1::Cancelled, "cancelled", false),
+        (
+            CiPreGateStateV1::InstrumentFailure,
+            "instrument_failure",
+            false,
+        ),
+    ] {
+        assert_eq!(state.label(), label);
+        assert_eq!(state.permits_heavy_jobs(), permits);
+    }
+    for (state, label) in [
+        (CiPreGateCheckStateV1::Passed, "passed"),
+        (CiPreGateCheckStateV1::Failed, "failed"),
+        (CiPreGateCheckStateV1::NotApplicable, "not_applicable"),
+        (CiPreGateCheckStateV1::Skipped, "skipped"),
+        (CiPreGateCheckStateV1::Cancelled, "cancelled"),
+        (CiPreGateCheckStateV1::TimedOut, "timed_out"),
+        (
+            CiPreGateCheckStateV1::InstrumentFailure,
+            "instrument_failure",
+        ),
+    ] {
+        assert_eq!(state.label(), label);
+        assert_eq!(
+            state.is_passing_or_not_applicable(),
+            matches!(
+                state,
+                CiPreGateCheckStateV1::Passed | CiPreGateCheckStateV1::NotApplicable
+            )
+        );
+    }
+}
+
+#[test]
+fn ci_pregate_result_diagnostics_and_limits_round_trip() {
+    // The diagnostics and limits surfaces are carried (and never
+    // strengthen the aggregate) through the typed result.
+    let mut fixture = result("head1", vec![("fmt", CiPreGateCheckStateV1::Passed)]);
+    fixture.diagnostics_uploaded = vec!["pregate-result".to_string()];
+    fixture.limits = vec!["actionlint scopes the syntax gate to ci.yml".to_string()];
+    let bytes = serde_json::to_vec(&fixture).expect("fixture serializes");
+    let parsed: CiPreGateResultV1 =
+        serde_json::from_slice(&bytes).expect("the bounded fields round-trip");
+    assert_eq!(parsed, fixture);
+    assert_eq!(
+        evaluate_with(&parsed, "head1").state,
+        CiPreGateStateV1::Complete
+    );
+}

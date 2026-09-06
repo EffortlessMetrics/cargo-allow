@@ -129,6 +129,38 @@ mod tests {
     }
 
     #[test]
+    fn evaluate_renders_the_json_view_for_a_permitted_result() {
+        let result = allow_report::CiPreGateResultV1 {
+            schema_id: "cargo-allow.ci-pregate-result.v1".to_string(),
+            schema_version: 1,
+            head_sha: "same".to_string(),
+            base_sha: "base".to_string(),
+            checks: Vec::new(),
+            diagnostics_uploaded: Vec::new(),
+            limits: Vec::new(),
+            claim_boundary: "bounded".to_string(),
+        };
+        let path = std::env::temp_dir().join(format!("pregate-json-{}.json", std::process::id()));
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&result).expect("fixture serializes"),
+        )
+        .expect("fixture write succeeds");
+        let args = CiPregateArgs {
+            command: CiPregateSubcommand::Evaluate(CiPregateEvaluateArgs {
+                result: path.clone(),
+                head: "same".to_string(),
+                format: CiPregateOutputFormat::Json,
+            }),
+        };
+        let outcome = cmd_ci_pregate(&args);
+        let _ = std::fs::remove_file(&path);
+        // An empty selection is an instrument failure: the JSON view is
+        // still rendered before the nonzero exit.
+        assert!(outcome.is_err());
+    }
+
+    #[test]
     fn evaluate_permits_a_complete_result() {
         let result = allow_report::CiPreGateResultV1 {
             schema_id: "cargo-allow.ci-pregate-result.v1".to_string(),
