@@ -49,10 +49,16 @@ jobs:
 
           if test "${merge_status}" -ne 0; then
             conflicts=$(git diff --name-only --diff-filter=U | LC_ALL=C sort)
-            allowed=$(printf '%s\n' \
-              'crates/cargo-allow/src/main.rs' \
-              'policy/allow.toml' | LC_ALL=C sort)
-            test "${conflicts}" = "${allowed}"
+            test -n "${conflicts}"
+            while IFS= read -r conflict; do
+              case "${conflict}" in
+                crates/cargo-allow/src/main.rs|policy/allow.toml) ;;
+                *)
+                  echo "unexpected merge conflict: ${conflict}" >&2
+                  exit 1
+                  ;;
+              esac
+            done <<< "${conflicts}"
           fi
 
           python - <<'PY'
