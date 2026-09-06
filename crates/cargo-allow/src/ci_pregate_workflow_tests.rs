@@ -76,6 +76,10 @@ fn ci_pregate_workflow_defines_the_fast_tier_first() {
         workflow.contains(".github/workflows/ci.yml"),
         "the syntax gate scopes to this workflow's graph"
     );
+    assert!(
+        workflow.contains("-shellcheck="),
+        "the shellcheck layer stays off in stage 1 (recorded tiering work)"
+    );
 }
 
 #[test]

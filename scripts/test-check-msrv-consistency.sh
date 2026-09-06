@@ -77,6 +77,30 @@ msrv="$(awk '
 
 drift_case "toolchain pin drift" ".github/workflows/ci.yml" \
   "dtolnay/rust-toolchain@${msrv}.0" "dtolnay/rust-toolchain@1.100.0"
+
+# Removing every numeric toolchain pin must fail the positive existence
+# law, not just the off-MSRV rejection (#3836 review).
+all_removed="${work}/all-pins-removed"
+mkdir -p "${all_removed}/.github/workflows"
+cp Cargo.toml "${all_removed}/Cargo.toml"
+cp .github/workflows/ci.yml "${all_removed}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${all_removed}/.github/workflows/release.yml"
+python3 - "${all_removed}/.github/workflows/ci.yml" "${msrv}" <<'PY'
+import re
+import sys
+
+path, msrv = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+stripped = re.sub("dtolnay/rust-toolchain@[0-9][^ \\\"\\n]*", "dtolnay/rust-toolchain", text)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(stripped)
+PY
+run_expect_failure "all toolchain pins removed" \
+  env CARGO_TOML="${all_removed}/Cargo.toml" \
+  CI_WORKFLOW="${all_removed}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${all_removed}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
 drift_case "cache namespace drift" ".github/workflows/ci.yml" \
   "lane: msrv" "lane: msrv-drift"
 drift_case "attested release manifest drift" ".github/workflows/release.yml" \
