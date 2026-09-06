@@ -1025,7 +1025,6 @@ mod closeout_final_coverage_tests {
 #[cfg(test)]
 mod closeout_display_and_label_tests {
     use super::CampaignCloseoutVerdictV1;
-    use std::fmt::Display;
 
     #[test]
     fn all_nine_verdict_labels_match_display_output() {
@@ -1038,7 +1037,10 @@ mod closeout_display_and_label_tests {
             (CampaignCloseoutVerdictV1::Mismatch, "mismatch"),
             (CampaignCloseoutVerdictV1::NotProven, "not_proven"),
             (CampaignCloseoutVerdictV1::Unsupported, "unsupported"),
-            (CampaignCloseoutVerdictV1::InstrumentFailure, "instrument_failure"),
+            (
+                CampaignCloseoutVerdictV1::InstrumentFailure,
+                "instrument_failure",
+            ),
         ];
         for (verdict, expected) in cases {
             assert_eq!(format!("{verdict}"), expected);
