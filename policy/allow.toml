@@ -18445,3 +18445,56 @@ glob = ".allow/revisions/4126-config-authority-denominator.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11231"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+owner = "proof/provider"
+classification = "provider_contract_schema"
+reason = "Published closed JSON Schema for the discovery-only cargo-allow provider descriptor introduced by PR #4131; it does not define or authorize request execution or analysis receipts."
+evidence = [
+    "issue:2567",
+    "issue:4144",
+    "doc:docs/schemas/README.md",
+    "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
+]
+created = "2026-09-06"
+review_after = "2027-03-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11232"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4131-provider-contract-schema.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
+evidence = [
+    "pr:4131",
+    "issue:2567",
+    "doc:docs/how-to/manage-an-exception.md",
+]
+created = "2026-09-06"
+review_after = "2027-03-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4131-provider-contract-schema.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4131-provider-contract-schema.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

@@ -1,0 +1,15 @@
+# Revision note for #4131: discovery-only provider descriptor schema.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11231"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d7498b4478311ac2d602362b7837e603e9ed4f1c793a31e94f4b071940839eab"
+reason = "Receipts the closed provider-descriptor schema added for issue #2567; executable discovery remains in #4144."
+
+[[records]]
+allow_ids = ["allow-11232"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:46774be4b8dc7d605665b34efd51f8e1970369549e64a7aa8e1717aadcb326e1"
+reason = "Receipts this revision note's own bounded policy exception for PR #4131."
