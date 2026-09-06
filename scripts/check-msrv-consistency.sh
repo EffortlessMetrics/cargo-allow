@@ -49,9 +49,10 @@ printf 'MSRV source of truth: %s rust-version = %s\n' "${cargo_toml}" "${msrv}"
 # Active uses only: a commented-out pin is not configuration, so the
 # comment lines are stripped before both the positive and the every-pin
 # checks.
-# Only `uses:` declarations count: a run-script string or inline
-# comment naming the action is not an installed toolchain.
-active_pins="$(grep -v "^[[:space:]]*#" "${ci_workflow}"   | grep "uses:" | grep -oE "dtolnay/rust-toolchain@[0-9][^ ]*" || true)"
+# Only `uses:` key declarations count: a run-script line or inline
+# comment that merely mentions the action (even with a `uses:` word in
+# it) is not an installed toolchain.
+active_pins="$(grep -E '^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*"?dtolnay/rust-toolchain@[0-9]' "${ci_workflow}"   | grep -oE "dtolnay/rust-toolchain@[0-9][^ ]*" || true)"
 if ! printf "%s\n" "${active_pins}" | grep -qF "dtolnay/rust-toolchain@${msrv}.0"; then
   fail "$(printf "%s carries no active toolchain pin on the declared MSRV %s." \
     "${ci_workflow}" "${msrv}")"
