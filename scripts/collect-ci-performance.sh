@@ -55,8 +55,8 @@ for run_id in "$@"; do
         if .started_at == null then
           {key: bucket(.name // "unknown"), value: 0}
         else
-          ((.completed_at // .started_at) | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) as $end |
-          (.started_at | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) as $start |
+          ((.completed_at // .started_at) | split(".") | first | fromdateiso8601) as $end |
+          (.started_at | split(".") | first | fromdateiso8601) as $start |
           {key: bucket(.name // "unknown"), value: ([$end - $start, 0] | max)}
         end]
         | group_by(.key)
