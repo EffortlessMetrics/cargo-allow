@@ -1,0 +1,11 @@
+kind: Added
+summary: Expose the read-only cargo-allow provider contract descriptor
+body: >-
+  The cargo-allow capabilities command can now emit a versioned, snapshot-bound
+  read-only provider descriptor via --provider-contract. The descriptor has a
+  closed published schema, leaves the sensor-capabilities v1 catalog unchanged,
+  and does not advertise request execution or analysis receipts. Installed
+  descriptor observation remains tracked in #4144; bounded execution and the
+  first semantic analysis journey remain tracked in #3601 and #3602.
+component: cargo-allow
+"breaking": false

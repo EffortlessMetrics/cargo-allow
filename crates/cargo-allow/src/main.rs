@@ -55,6 +55,7 @@ mod plan_bindings;
 mod policy_config;
 pub mod precommit_tool;
 mod propose;
+mod provider_contract;
 mod prune;
 mod reference;
 mod refresh;
