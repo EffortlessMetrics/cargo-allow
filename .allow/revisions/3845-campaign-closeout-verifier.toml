@@ -37,3 +37,21 @@ allow_ids = ["allow-0873"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:15fdb06a0c90c214768bc817ad72e2dff3a13e5f3ce9d144364dfe9fde155aa1"
 reason = "Glob-ratcheted expect baseline (occurrence_limit=2) for the campaign-closeout CLI fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture git operations under fully controlled inputs."
+
+[[records]]
+allow_ids = ["allow-0873"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:15fdb06a0c90c214768bc817ad72e2dff3a13e5f3ce9d144364dfe9fde155aa1"
+reason = "Glob-ratcheted expect baseline (occurrence_limit=10) for the campaign-closeout CLI and fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture construction or git operation under fully controlled inputs."
+
+[[records]]
+allow_ids = ["allow-0873"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:afe7e692025000db3202cf1435bdf5434844a3c85a22c661d101cda390a3c0fc"
+reason = "Re-minted glob-ratcheted expect baseline (occurrence_limit=10) for the campaign-closeout CLI and fixture tests (#3845) after the duplicate-ratchet cleanup."
+
+[[records]]
+allow_ids = ["allow-0876"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:873987ac576bb6b03eee7927137f58263c8a39461b76906832c2d81d671ebf24"
+reason = "Glob-ratcheted unwrap baseline (occurrence_limit=4) for the campaign-closeout CLI and fixture tests (#3845); every unwrap is on a value constructed with known-good data immediately above."

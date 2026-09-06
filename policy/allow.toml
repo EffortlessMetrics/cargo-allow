@@ -18802,12 +18802,29 @@ family = "expect"
 glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
 owner = "core/release"
 classification = "reviewed_exception"
-reason = "Invariant-guarded expects in the campaign-closeout CLI fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture git operations under fully controlled inputs"
+reason = "Invariant-guarded expects in the campaign-closeout CLI and fixture tests (#3845); every expect guards an invariant established by immediately preceding fixture construction or git operation under fully controlled inputs"
 evidence = ["issue:3845"]
-occurrence_limit = 2
+occurrence_limit = 10
 created = "2026-09-06"
 review_after = "2026-12-05"
 
 [allow.selector]
 callee = "expect"
+glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
+
+[[allow]]
+id = "allow-0876"
+kind = "panic"
+family = "unwrap"
+glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Unwraps in the campaign-closeout CLI and fixture tests (#3845); every unwrap is on a value constructed with known-good data immediately above"
+evidence = ["issue:3845"]
+occurrence_limit = 4
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "unwrap"
 glob = "crates/cargo-allow/src/cli/campaign_closeout_command.rs"
