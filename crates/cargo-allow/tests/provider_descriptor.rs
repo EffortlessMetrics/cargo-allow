@@ -117,7 +117,11 @@ fn provider_descriptor_schema_rejects_mutated_real_output() -> TestResult {
         ("discovery_order", json!([])),
         (
             "discovery_order",
-            json!(["path_lookup", "compatibility_config", "explicit_environment"]),
+            json!([
+                "path_lookup",
+                "compatibility_config",
+                "explicit_environment"
+            ]),
         ),
         ("forbidden_path_prefixes", json!(["target/"])),
         ("forbidden_path_prefixes", json!(["target/", "target/"])),
