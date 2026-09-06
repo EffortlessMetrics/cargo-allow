@@ -230,10 +230,10 @@ mod tests {
 #[cfg(test)]
 mod evaluate_coverage_tests {
     use allow_report::{
-        evaluate_campaign_closeout, CampaignAcceptanceRowV1, CampaignCheckEvidenceV1,
-        CampaignCheckOutcomeV1, CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1,
-        CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1,
-        CampaignRepositoryStateV1,
+        CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+        CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
+        CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+        evaluate_campaign_closeout,
     };
 
     fn full_state() -> CampaignRepositoryStateV1 {
@@ -286,10 +286,12 @@ mod evaluate_coverage_tests {
         record.rows[0].required_checks = vec!["ci".to_string()];
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(outcome.row_outcomes[0]
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("insufficient")));
+        assert!(
+            outcome.row_outcomes[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
     }
 
     #[test]
@@ -299,10 +301,12 @@ mod evaluate_coverage_tests {
         record.rows[0].required_checks = vec!["ci".to_string()];
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(outcome.row_outcomes[0]
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("insufficient")));
+        assert!(
+            outcome.row_outcomes[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
     }
 
     #[test]
