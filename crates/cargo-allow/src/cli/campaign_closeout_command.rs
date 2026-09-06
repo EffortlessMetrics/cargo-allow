@@ -289,7 +289,12 @@ mod evaluate_coverage_tests {
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
         let first = outcome.row_outcomes.first().expect("row outcome present");
-        assert!(first.reasons.iter().any(|reason| reason.contains("insufficient")));
+        assert!(
+            first
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
     }
 
     #[test]
@@ -302,7 +307,12 @@ mod evaluate_coverage_tests {
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
         let first = outcome.row_outcomes.first().expect("row outcome present");
-        assert!(first.reasons.iter().any(|reason| reason.contains("insufficient")));
+        assert!(
+            first
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
     }
 
     #[test]
