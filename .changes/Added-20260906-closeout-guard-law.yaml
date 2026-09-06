@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Campaign issue closeout guard law proofs (#3846). Typed test
+  surfaces binding the retained runtime guard (issue-event workflow,
+  checked denominator, evidence-surface inventory, verifier script) to
+  its law: the membership projection is explicit, coherent, and scope
+  authority only; the evidence-sufficiency gate rejects missing,
+  malformed, unknown, and projection-only backing for a Complete
+  closeout; the close-event decision reopens invalid closeouts with
+  one bounded stable rejection comment, retains valid Complete,
+  NotPlanned, and Duplicate outcomes, ignores issues outside the
+  denominator, fails closed on provider failures, never closes an
+  issue, never erases rejection history, and requests only the
+  minimal permission set.
