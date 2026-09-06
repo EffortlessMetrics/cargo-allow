@@ -1,621 +1,102 @@
-//! Public, process-facing read-only provider contract for cargo-allow.
+//! Discovery-only read-only provider descriptor for cargo-allow.
 //!
-//! The contract is intentionally transport-only.  It carries exact snapshot
-//! and configuration identities without importing cargo-proof or cargo-intent
-//! types, so an installed cargo-allow binary can be consumed independently.
+//! The executable request, execution, and receipt protocol is intentionally
+//! outside this module. The descriptor is the process-facing compatibility
+//! surface consumed before those later operations are authorized.
 
-use effortless_repo_protocol::{
-    AnalysisReceiptEnvelopeV1, RepositorySnapshotKindV1, RepositorySnapshotV1,
-};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use serde::Serialize;
 
-pub const PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
-pub const PROVIDER_REQUEST_SCHEMA_ID: &str = "cargo-allow.analysis-request.v1";
-pub const PROVIDER_RECEIPT_SCHEMA_ID: &str = effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
-pub const PROVIDER_ID: &str = "proof.cargo-allow.v1";
+const PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
+const PROVIDER_ID: &str = "proof.cargo-allow.v1";
+const PRODUCT_NAME: &str = "cargo-allow";
+const ACCESS_POSTURE: &str = "read_only";
+const DISCOVERY_ORDER: [&str; 3] = [
+    "explicit_environment",
+    "compatibility_config",
+    "path_lookup",
+];
+const FORBIDDEN_PATH_PREFIXES: [&str; 2] = ["target/", "crates/"];
+const ENVIRONMENT_VARIABLE: &str = "CARGO_ALLOW_BIN";
+const CONFIG_RELATIVE_PATH: &str = ".allow/compatibility/proof-delegation.toml";
+const REQUIRED_CAPABILITIES: [&str; 2] = [
+    "cargo-allow.check.no-new",
+    "cargo-allow.capabilities.json",
+];
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ProviderCapabilityV1 {
-    SourceExceptionNoNew,
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub(crate) struct ProviderContractV1 {
+    pub(crate) schema_id: &'static str,
+    pub(crate) schema_version: u32,
+    pub(crate) provider_id: &'static str,
+    pub(crate) product_name: &'static str,
+    pub(crate) access_posture: &'static str,
+    pub(crate) snapshot_bound: bool,
+    pub(crate) discovery_order: [&'static str; 3],
+    pub(crate) forbidden_path_prefixes: [&'static str; 2],
+    pub(crate) environment_variable: &'static str,
+    pub(crate) config_relative_path: &'static str,
+    pub(crate) required_capabilities: [&'static str; 2],
 }
 
-impl ProviderCapabilityV1 {
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::SourceExceptionNoNew => "source_exception_no_new",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ProviderContractV1 {
-    pub schema_id: String,
-    pub schema_version: u32,
-    pub provider_id: String,
-    pub product_name: String,
-    pub access_posture: String,
-    pub snapshot_bound: bool,
-    pub discovery_order: Vec<String>,
-    pub forbidden_path_prefixes: Vec<String>,
-    pub environment_variable: String,
-    pub config_relative_path: String,
-    pub required_capabilities: Vec<String>,
-}
-
-pub fn provider_contract() -> ProviderContractV1 {
+pub(crate) const fn provider_contract() -> ProviderContractV1 {
     ProviderContractV1 {
-        schema_id: PROVIDER_CONTRACT_SCHEMA_ID.to_string(),
+        schema_id: PROVIDER_CONTRACT_SCHEMA_ID,
         schema_version: 1,
-        provider_id: PROVIDER_ID.to_string(),
-        product_name: "cargo-allow".to_string(),
-        access_posture: "read_only".to_string(),
+        provider_id: PROVIDER_ID,
+        product_name: PRODUCT_NAME,
+        access_posture: ACCESS_POSTURE,
         snapshot_bound: true,
-        discovery_order: vec![
-            "explicit_environment".to_string(),
-            "compatibility_config".to_string(),
-            "path_lookup".to_string(),
-        ],
-        forbidden_path_prefixes: vec!["target/".to_string(), "crates/".to_string()],
-        environment_variable: "CARGO_ALLOW_BIN".to_string(),
-        config_relative_path: ".allow/compatibility/proof-delegation.toml".to_string(),
-        required_capabilities: vec![
-            "cargo-allow.check.no-new".to_string(),
-            "cargo-allow.capabilities.json".to_string(),
-        ],
+        discovery_order: DISCOVERY_ORDER,
+        forbidden_path_prefixes: FORBIDDEN_PATH_PREFIXES,
+        environment_variable: ENVIRONMENT_VARIABLE,
+        config_relative_path: CONFIG_RELATIVE_PATH,
+        required_capabilities: REQUIRED_CAPABILITIES,
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AnalysisRequestV1 {
-    pub schema_id: String,
-    pub schema_version: u32,
-    pub capability: ProviderCapabilityV1,
-    pub snapshot: RepositorySnapshotV1,
-    pub config_identity: String,
-    pub policy_identity: Option<String>,
-    pub mode: String,
-    pub output_root: String,
-}
-
-/// Neutral receipt envelope used by cargo-proof for provider results.
-///
-/// Cargo-allow-specific result data belongs in `provider_payload`; keeping the
-/// shared envelope here prevents a future endpoint from advertising a schema
-/// that cargo-proof cannot deserialize.
-pub type AnalysisReceiptV1 = AnalysisReceiptEnvelopeV1;
-
-pub fn validate_request(request: &AnalysisRequestV1) -> Result<(), String> {
-    if request.schema_id != PROVIDER_REQUEST_SCHEMA_ID || request.schema_version != 1 {
-        return Err("unsupported cargo-allow analysis request schema".to_string());
-    }
-    if request.config_identity.trim().is_empty() {
-        return Err("analysis request config_identity is required".to_string());
-    }
-    if request.mode != "no-new" {
-        return Err("only the no-new read-only capability is supported".to_string());
-    }
-    if request.output_root.trim().is_empty() {
-        return Err("analysis request output_root is required".to_string());
-    }
-    validate_snapshot(&request.snapshot)?;
-    Ok(())
-}
-
-fn validate_snapshot(snapshot: &RepositorySnapshotV1) -> Result<(), String> {
-    if snapshot.schema_id != effortless_repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID {
-        return Err("analysis request snapshot schema is unsupported".to_string());
-    }
-    if snapshot.root_identity.trim().is_empty()
-        || snapshot.object_format.trim().is_empty()
-        || snapshot.dirty_state.trim().is_empty()
-        || snapshot.selected_source_closure.trim().is_empty()
-    {
-        return Err("analysis request snapshot identity is incomplete".to_string());
-    }
-    if !is_supported_dirty_state(&snapshot.dirty_state) {
-        return Err("analysis request snapshot dirty state is unsupported".to_string());
-    }
-    if !matches!(snapshot.object_format.as_str(), "sha1" | "sha256") {
-        return Err("analysis request snapshot object format is unsupported".to_string());
-    }
-    let object_id_len = if snapshot.object_format == "sha1" {
-        40
-    } else {
-        64
-    };
-    for (label, value) in [
-        ("head.commit", &snapshot.head.commit),
-        ("head.tree", &snapshot.head.tree),
-    ] {
-        if !is_object_id(value, object_id_len) {
-            return Err(format!("analysis request snapshot {label} is invalid"));
-        }
-    }
-    match snapshot.kind {
-        RepositorySnapshotKindV1::CommittedHead => {
-            if snapshot.base.is_some() || snapshot.merge_base.is_some() {
-                return Err("committed-head snapshot cannot carry range identities".to_string());
-            }
-        }
-        RepositorySnapshotKindV1::CommittedRange => {
-            let Some(base) = snapshot.base.as_ref() else {
-                return Err("committed-range snapshot requires a base revision".to_string());
-            };
-            if snapshot
-                .merge_base
-                .as_deref()
-                .is_some_and(|value| !is_object_id(value, object_id_len))
-                || !is_object_id(&base.commit, object_id_len)
-                || !is_object_id(&base.tree, object_id_len)
-            {
-                return Err("committed-range snapshot identity is invalid".to_string());
-            }
-        }
-    }
-    let mut selected_paths = HashSet::new();
-    for identity in &snapshot.selected_paths {
-        if !is_repository_relative_path(&identity.path)
-            || !selected_paths.insert(&identity.path)
-            || identity.present != identity.blob_oid.is_some()
-            || identity
-                .blob_oid
-                .as_deref()
-                .is_some_and(|value| !is_object_id(value, object_id_len))
-        {
-            return Err("analysis request selected path identity is invalid".to_string());
-        }
-    }
-    let expected_closure = selected_source_closure_hash(&snapshot.selected_paths);
-    if snapshot.selected_source_closure != expected_closure {
-        return Err("analysis request selected source closure is inconsistent".to_string());
-    }
-    Ok(())
-}
-
-fn is_supported_dirty_state(value: &str) -> bool {
-    [
-        effortless_repo_snapshot::RepositoryDirtyState::Clean,
-        effortless_repo_snapshot::RepositoryDirtyState::NotProbed,
-        effortless_repo_snapshot::RepositoryDirtyState::TrackedModified,
-        effortless_repo_snapshot::RepositoryDirtyState::StagedChanges,
-        effortless_repo_snapshot::RepositoryDirtyState::UntrackedPresent,
-        effortless_repo_snapshot::RepositoryDirtyState::SubmoduleOrNestedStateUnknown,
-        effortless_repo_snapshot::RepositoryDirtyState::PartialOrUnavailable,
-        effortless_repo_snapshot::RepositoryDirtyState::NotAGitRepository,
-        effortless_repo_snapshot::RepositoryDirtyState::InstrumentFailure,
-    ]
-    .into_iter()
-    .any(|state| state.as_str() == value)
-}
-
-fn is_object_id(value: &str, expected_len: usize) -> bool {
-    value.len() == expected_len && value.bytes().all(|byte| byte.is_ascii_hexdigit())
-}
-
-fn is_repository_relative_path(value: &str) -> bool {
-    #[cfg(windows)]
-    let drive_prefixed = value.as_bytes().get(1).is_some_and(|colon| {
-        *colon == b':'
-            && value
-                .as_bytes()
-                .first()
-                .is_some_and(u8::is_ascii_alphabetic)
-    });
-    #[cfg(not(windows))]
-    let drive_prefixed = false;
-    #[cfg(windows)]
-    let has_backslash = value.contains('\\');
-    #[cfg(not(windows))]
-    let has_backslash = false;
-    !value.is_empty()
-        && !value.contains('\0')
-        && !value.starts_with('/')
-        && !drive_prefixed
-        && !has_backslash
-        && value
-            .split('/')
-            .all(|component| !matches!(component, "" | "." | ".."))
-}
-
-fn selected_source_closure_hash(
-    selected: &[effortless_repo_protocol::SelectedPathIdentityV1],
-) -> String {
-    let mut selected = selected.to_vec();
-    selected.sort_by(|left, right| left.path.cmp(&right.path));
-    let mut canonical = Vec::new();
-    push_bound_value(&mut canonical, "cargo-allow.selected-source-closure.v1");
-    for identity in selected {
-        push_bound_value(&mut canonical, &identity.path);
-        push_bound_value(&mut canonical, if identity.present { "1" } else { "0" });
-        push_bound_value(&mut canonical, identity.blob_oid.as_deref().unwrap_or(""));
-    }
-    allow_core::sha256_v1_bytes(&canonical)
-}
-
-fn push_bound_value(output: &mut Vec<u8>, value: &str) {
-    output.extend_from_slice(&(value.len() as u64).to_be_bytes());
-    output.extend_from_slice(value.as_bytes());
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use effortless_repo_protocol::{
-        RepositorySnapshotV1, ResolvedRevisionV1, SelectedPathIdentityV1,
-    };
-
-    fn request() -> AnalysisRequestV1 {
-        AnalysisRequestV1 {
-            schema_id: PROVIDER_REQUEST_SCHEMA_ID.to_string(),
-            schema_version: 1,
-            capability: ProviderCapabilityV1::SourceExceptionNoNew,
-            snapshot: {
-                let mut snapshot = RepositorySnapshotV1::new_committed_head(
-                    "repo:test",
-                    "sha1",
-                    ResolvedRevisionV1 {
-                        requested: "HEAD".to_string(),
-                        commit: "a".repeat(40),
-                        tree: "b".repeat(40),
-                    },
-                );
-                snapshot.selected_source_closure =
-                    selected_source_closure_hash(&snapshot.selected_paths);
-                snapshot
-            },
-            config_identity: "sha256:v1:test".to_string(),
-            policy_identity: Some("policy:allow.toml".to_string()),
-            mode: "no-new".to_string(),
-            output_root: "target/cargo-allow".to_string(),
-        }
-    }
 
     #[test]
-    fn contract_advertises_only_read_only_no_new() {
+    fn contract_matches_discovery_v1() {
         let contract = provider_contract();
-        assert_eq!(contract.access_posture, "read_only");
+        assert_eq!(contract.schema_id, PROVIDER_CONTRACT_SCHEMA_ID);
+        assert_eq!(contract.schema_version, 1);
+        assert_eq!(contract.provider_id, PROVIDER_ID);
+        assert_eq!(contract.product_name, PRODUCT_NAME);
+        assert_eq!(contract.access_posture, ACCESS_POSTURE);
         assert!(contract.snapshot_bound);
-        assert!(
-            contract
-                .required_capabilities
-                .iter()
-                .any(|capability| capability == "cargo-allow.check.no-new")
-        );
+        assert_eq!(contract.discovery_order, DISCOVERY_ORDER);
+        assert_eq!(contract.forbidden_path_prefixes, FORBIDDEN_PATH_PREFIXES);
+        assert_eq!(contract.environment_variable, ENVIRONMENT_VARIABLE);
+        assert_eq!(contract.config_relative_path, CONFIG_RELATIVE_PATH);
+        assert_eq!(contract.required_capabilities, REQUIRED_CAPABILITIES);
     }
 
     #[test]
-    fn capability_name_is_stable() -> Result<(), String> {
-        if ProviderCapabilityV1::SourceExceptionNoNew.as_str() != "source_exception_no_new" {
-            return Err("provider capability name changed".to_string());
+    fn serialized_contract_exposes_only_discovery_metadata() -> Result<(), String> {
+        let value = serde_json::to_value(provider_contract()).map_err(|error| error.to_string())?;
+        let object = value
+            .as_object()
+            .ok_or_else(|| "provider descriptor must serialize as an object".to_string())?;
+        if object.len() != 11 {
+            return Err(format!(
+                "provider descriptor field count changed: expected 11, got {}",
+                object.len()
+            ));
         }
-        Ok(())
-    }
-
-    #[test]
-    fn capability_name_matches_serialized_request() -> Result<(), String> {
-        let encoded = serde_json::to_string(&request()).map_err(|error| error.to_string())?;
-        if !encoded.contains("\"capability\":\"source_exception_no_new\"") {
-            return Err("serialized provider capability name changed".to_string());
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_rejects_wrong_mode() {
-        let mut value = request();
-        value.mode = "audit".to_string();
-        let error = validate_request(&value).expect_err("unsupported mode must fail closed");
-        assert!(error.contains("no-new"));
-    }
-
-    #[test]
-    fn request_round_trips_without_lossy_identity() -> Result<(), String> {
-        let value = request();
-        validate_request(&value)?;
-        let encoded = serde_json::to_string(&value).map_err(|error| error.to_string())?;
-        let decoded: AnalysisRequestV1 =
-            serde_json::from_str(&encoded).map_err(|error| error.to_string())?;
-        if decoded != value {
-            return Err("provider request identity changed during JSON round-trip".to_string());
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_rejects_incomplete_snapshot_identity() {
-        let mut value = request();
-        value.snapshot.selected_source_closure.clear();
-        let error = validate_request(&value).expect_err("incomplete snapshot must fail closed");
-        assert!(error.contains("incomplete"));
-    }
-
-    #[test]
-    fn request_validation_rejects_missing_dirty_state() {
-        let mut value = request();
-        value.snapshot.dirty_state.clear();
-        let error = validate_request(&value).expect_err("dirty state is required");
-        assert!(error.contains("incomplete"));
-    }
-
-    #[test]
-    fn request_validation_rejects_unknown_dirty_state() {
-        let mut value = request();
-        value.snapshot.dirty_state = "forged".to_string();
-        let error = validate_request(&value).expect_err("unknown dirty state must fail closed");
-        assert_eq!(
-            error,
-            "analysis request snapshot dirty state is unsupported"
-        );
-    }
-
-    #[test]
-    fn request_validation_rejects_range_without_base() {
-        let mut value = request();
-        value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
-        let error = validate_request(&value).expect_err("range without base must fail closed");
-        assert!(error.contains("base revision"));
-    }
-
-    #[test]
-    fn request_validation_rejects_bad_top_level_fields() -> Result<(), String> {
-        let mut value = request();
-        value.schema_version = 2;
-        require_rejection(&value)?;
-        value = request();
-        value.config_identity.clear();
-        require_rejection(&value)?;
-        value = request();
-        value.output_root.clear();
-        require_rejection(&value)
-    }
-
-    #[test]
-    fn request_validation_rejects_bad_snapshot_schema_and_ids() -> Result<(), String> {
-        let mut value = request();
-        value.snapshot.schema_id = "other.snapshot.v1".to_string();
-        require_rejection(&value)?;
-        value = request();
-        value.snapshot.head.commit = "not-an-object-id".to_string();
-        require_rejection(&value)?;
-        value = request();
-        value.snapshot.head.tree = "not-an-object-id".to_string();
-        require_rejection(&value)
-    }
-
-    #[test]
-    fn request_validation_rejects_head_range_identity_conflicts() -> Result<(), String> {
-        let mut value = request();
-        value.snapshot.base = Some(value.snapshot.head.clone());
-        require_rejection(&value)?;
-
-        value = request();
-        value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
-        value.snapshot.base = Some(value.snapshot.head.clone());
-        value.snapshot.merge_base = Some("not-an-object-id".to_string());
-        require_rejection(&value)?;
-
-        value.snapshot.merge_base = None;
-        value.snapshot.base = Some(ResolvedRevisionV1 {
-            requested: "BASE".to_string(),
-            commit: String::new(),
-            tree: "b".repeat(40),
-        });
-        require_rejection(&value)
-    }
-
-    #[test]
-    fn request_validation_accepts_valid_committed_range() -> Result<(), String> {
-        let mut value = request();
-        value.snapshot.kind = RepositorySnapshotKindV1::CommittedRange;
-        value.snapshot.base = Some(value.snapshot.head.clone());
-        value.snapshot.merge_base = Some(value.snapshot.head.commit.clone());
-        validate_request(&value)
-    }
-
-    #[test]
-    fn request_validation_rejects_stale_source_closure() -> Result<(), String> {
-        let mut value = request();
-        value
-            .snapshot
-            .selected_paths
-            .push(effortless_repo_protocol::SelectedPathIdentityV1 {
-                path: "src/lib.rs".to_string(),
-                present: true,
-                blob_oid: Some("d".repeat(40)),
-            });
-        let error = match validate_request(&value) {
-            Ok(()) => return Err("stale closure was accepted".to_string()),
-            Err(error) => error,
-        };
-        if !error.contains("closure") {
-            return Err("stale closure error lost its reason".to_string());
-        }
-        Ok(())
-    }
-
-    fn request_with_selected_paths(paths: Vec<SelectedPathIdentityV1>) -> AnalysisRequestV1 {
-        let mut value = request();
-        value.snapshot.selected_paths = paths;
-        // Keep closure validation satisfied so it cannot hide a missing identity check.
-        value.snapshot.selected_source_closure =
-            selected_source_closure_hash(&value.snapshot.selected_paths);
-        value
-    }
-
-    fn require_selected_path_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
-        match validate_request(value) {
-            Err(error) if error == "analysis request selected path identity is invalid" => Ok(()),
-            result => Err(format!("expected selected-path rejection, got {result:?}")),
-        }
-    }
-
-    #[test]
-    fn request_validation_rejects_incoherent_selected_path() -> Result<(), String> {
-        for (present, blob_oid) in [
-            (true, None),
-            (false, Some("d".repeat(40))),
-            (true, Some("not-an-object-id".to_string())),
+        for executable_field in [
+            "request_schema",
+            "receipt_schema",
+            "analysis_request",
+            "analysis_receipt",
         ] {
-            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                path: "src/lib.rs".to_string(),
-                present,
-                blob_oid,
-            }]);
-            require_selected_path_rejection(&value)?;
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_enforces_selected_path_object_format() -> Result<(), String> {
-        for (format, width, wrong_width) in [("sha1", 40, 64), ("sha256", 64, 40)] {
-            for (blob_width, accepted) in [(width, true), (wrong_width, false)] {
-                let mut value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                    path: "src/lib.rs".to_string(),
-                    present: true,
-                    blob_oid: Some("d".repeat(blob_width)),
-                }]);
-                value.snapshot.object_format = format.to_string();
-                value.snapshot.head.commit = "a".repeat(width);
-                value.snapshot.head.tree = "b".repeat(width);
-                if accepted {
-                    validate_request(&value)?;
-                } else {
-                    require_selected_path_rejection(&value)?;
-                }
+            if object.contains_key(executable_field) {
+                return Err(format!(
+                    "discovery descriptor exposed executable field {executable_field}"
+                ));
             }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_rejects_invalid_repository_paths() -> Result<(), String> {
-        for path in [
-            "",
-            ".",
-            "..",
-            "../secret",
-            "/tmp/file",
-            "src//lib.rs",
-            "src/./lib.rs",
-            "src/../secret",
-            "src/lib.rs/",
-            "\0",
-            "\0src/lib.rs",
-            "src/nu\0l.rs",
-            "src/lib.rs\0",
-        ] {
-            for present in [false, true] {
-                let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                    path: path.to_string(),
-                    present,
-                    blob_oid: present.then(|| "d".repeat(40)),
-                }]);
-                require_selected_path_rejection(&value)
-                    .map_err(|error| format!("path {path:?}, present={present}: {error}"))?;
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_rejects_nul_path_after_json_round_trip() -> Result<(), String> {
-        let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-            path: "src/nu\0l.rs".to_string(),
-            present: true,
-            blob_oid: Some("d".repeat(40)),
-        }]);
-        let encoded = serde_json::to_string(&value).map_err(|error| error.to_string())?;
-        let decoded: AnalysisRequestV1 =
-            serde_json::from_str(&encoded).map_err(|error| error.to_string())?;
-        if decoded != value {
-            return Err("JSON transport changed the selected-path identity".to_string());
-        }
-        require_selected_path_rejection(&decoded)
-    }
-
-    #[test]
-    fn request_validation_accepts_repository_relative_paths() -> Result<(), String> {
-        for path in [
-            "src/lib.rs",
-            "src/with space.rs",
-            "src/unicode-λ.rs",
-            "src/.hidden.rs",
-        ] {
-            for present in [false, true] {
-                let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                    path: path.to_string(),
-                    present,
-                    blob_oid: present.then(|| "d".repeat(40)),
-                }]);
-                validate_request(&value)
-                    .map_err(|error| format!("path {path:?}, present={present}: {error}"))?;
-            }
-        }
-        Ok(())
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn request_validation_preserves_literal_unix_filename_bytes() -> Result<(), String> {
-        for path in [
-            "src/type:generated.rs",
-            r"src/literal\name.rs",
-            "src/line\nname.rs",
-        ] {
-            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                path: path.to_string(),
-                present: true,
-                blob_oid: Some("d".repeat(40)),
-            }]);
-            validate_request(&value).map_err(|error| format!("path {path:?}: {error}"))?;
-        }
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn request_validation_rejects_windows_noncanonical_paths() -> Result<(), String> {
-        for path in [
-            r"..\secret",
-            r"\tmp\file",
-            r"src\..\secret",
-            r"\\server\share\file",
-            r"\\?\C:\file",
-            r"C:\file",
-            "C:/file",
-            "C:file",
-            r"src\lib.rs",
-        ] {
-            let value = request_with_selected_paths(vec![SelectedPathIdentityV1 {
-                path: path.to_string(),
-                present: false,
-                blob_oid: None,
-            }]);
-            require_selected_path_rejection(&value)
-                .map_err(|error| format!("path {path:?}: {error}"))?;
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn request_validation_rejects_duplicate_selected_paths() -> Result<(), String> {
-        let path = SelectedPathIdentityV1 {
-            path: "src/lib.rs".to_string(),
-            present: false,
-            blob_oid: None,
-        };
-        let value = request_with_selected_paths(vec![path.clone(), path]);
-        require_selected_path_rejection(&value)
-    }
-
-    fn require_rejection(value: &AnalysisRequestV1) -> Result<(), String> {
-        if validate_request(value).is_ok() {
-            return Err("invalid provider request was accepted".to_string());
         }
         Ok(())
     }
