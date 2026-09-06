@@ -97,7 +97,9 @@ fn provider_descriptor_schema_rejects_mutated_real_output() -> TestResult {
             return Err(format!("schema accepted missing field {field}").into());
         }
         let mut null = instance.clone();
-        null[field] = Value::Null;
+        null.as_object_mut()
+            .ok_or("descriptor must remain an object")?
+            .insert(field.clone(), Value::Null);
         if validator.is_valid(&null) {
             return Err(format!("schema accepted null field {field}").into());
         }
@@ -135,7 +137,10 @@ fn provider_descriptor_schema_rejects_mutated_real_output() -> TestResult {
         ("receipt_schema", json!("repo.analysis-receipt.v1")),
     ] {
         let mut invalid_instance = instance.clone();
-        invalid_instance[field] = invalid;
+        invalid_instance
+            .as_object_mut()
+            .ok_or("descriptor must remain an object")?
+            .insert(field.to_string(), invalid);
         if validator.is_valid(&invalid_instance) {
             return Err(format!("schema accepted invalid {field}: {invalid_instance}").into());
         }
