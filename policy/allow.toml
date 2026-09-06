@@ -19189,7 +19189,7 @@ owner = "core/ci"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the pre-gate result law tests (#3836); every expect guards a retained-surface read or a hostile fixture parse whose rejection is the property under test"
 evidence = ["issue:3836"]
-occurrence_limit = 4
+occurrence_limit = 6
 created = "2026-09-06"
 review_after = "2026-12-05"
 
@@ -19223,7 +19223,7 @@ owner = "core/ci"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the pre-gate CLI fixture tests (#3836); every expect guards a serialization or write of known-good typed fixtures constructed immediately above"
 evidence = ["issue:3836"]
-occurrence_limit = 4
+occurrence_limit = 6
 created = "2026-09-06"
 review_after = "2026-12-05"
 
