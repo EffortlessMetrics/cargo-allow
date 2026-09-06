@@ -282,37 +282,35 @@ mod evaluate_coverage_tests {
     #[test]
     fn evaluate_handles_prose_evidence_with_checks_as_insufficient() {
         let mut record = full_record();
-        record.rows[0].required_evidence_class = CampaignEvidenceClassV1::Prose;
-        record.rows[0].required_checks = vec!["ci".to_string()];
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::Prose;
+            acceptance_row.required_checks = vec!["ci".to_string()];
+        }
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(
-            outcome.row_outcomes[0]
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("insufficient"))
-        );
+        let first = outcome.row_outcomes.first().expect("row outcome present");
+        assert!(first.reasons.iter().any(|reason| reason.contains("insufficient")));
     }
 
     #[test]
     fn evaluate_handles_foundation_evidence_with_checks_as_insufficient() {
         let mut record = full_record();
-        record.rows[0].required_evidence_class = CampaignEvidenceClassV1::Foundation;
-        record.rows[0].required_checks = vec!["ci".to_string()];
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::Foundation;
+            acceptance_row.required_checks = vec!["ci".to_string()];
+        }
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
-        assert!(
-            outcome.row_outcomes[0]
-                .reasons
-                .iter()
-                .any(|reason| reason.contains("insufficient"))
-        );
+        let first = outcome.row_outcomes.first().expect("row outcome present");
+        assert!(first.reasons.iter().any(|reason| reason.contains("insufficient")));
     }
 
     #[test]
     fn evaluate_skips_check_verification_for_zero_check_rows() {
         let mut record = full_record();
-        record.rows[0].required_checks = Vec::new();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_checks = Vec::new();
+        }
         let outcome = evaluate_campaign_closeout(&record, &full_state());
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
     }
