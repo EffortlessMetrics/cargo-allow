@@ -934,7 +934,9 @@ mod closeout_edge_tests {
     #[test]
     fn pr_with_whitespace_around_semantic_owner_still_binds() {
         let mut snapshot = state();
-        snapshot.prs[0].semantic_owner = " issue:3845 , other ".to_string();
+        for pr in &mut snapshot.prs {
+            pr.semantic_owner = " issue:3845 , other ".to_string();
+        }
         let outcome = evaluate_campaign_closeout(&full_record(), &snapshot);
         assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
     }
