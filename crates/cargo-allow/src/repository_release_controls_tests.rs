@@ -46,6 +46,7 @@ fn repository_release_controls_cover_every_readiness_relevant_event() {
         "synchronize",
         "ready_for_review",
         "converted_to_draft",
+        "edited",
     ] {
         assert!(
             workflow.contains(event),
@@ -122,14 +123,13 @@ fn repository_release_controls_never_mutate_or_self_require() {
         .lines()
         .filter(|line| line.contains("gh api"))
         .collect();
-    assert_eq!(
-        api_calls.len(),
-        1,
-        "exactly one gh api call is permitted (the check-run publish)"
+    assert!(
+        !api_calls.is_empty(),
+        "the adapter publishes the readiness check run through the API"
     );
     assert!(
-        api_calls[0].contains("check-runs"),
-        "the single gh api call publishes the readiness check run"
+        api_calls.iter().all(|call| call.contains("check-runs")),
+        "every gh api call targets the check-runs surface only"
     );
     // The workflow cannot make itself a required check: it publishes
     // a check run but configures no required context; live required-
@@ -167,5 +167,25 @@ fn repository_release_controls_bind_the_disposition_location() {
     assert!(
         script.contains("--head-delta-path"),
         "the adapter passes the head delta for the ledger-bootstrap proof"
+    );
+    // Ancestor-bound records feed the ledger bootstrap; exact-head
+    // records take precedence; base-changing edits recompute; the
+    // check run is updated in place instead of accumulating stale
+    // duplicates; and enumeration failures fail the run.
+    assert!(
+        script.contains("git merge-base --is-ancestor"),
+        "ancestor-bound records feed the ledger bootstrap"
+    );
+    assert!(
+        script.contains("check-runs/${existing_id}") && script.contains("-X PATCH"),
+        "the authoritative check run is updated in place"
+    );
+    assert!(
+        script.contains("PR_BASE_CHANGED"),
+        "base-changing edits map to the base-moved event"
+    );
+    assert!(
+        script.contains(r#"open_prs="$(gh pr list"#),
+        "enumeration failure must fail the run instead of looking empty"
     );
 }

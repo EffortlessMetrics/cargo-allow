@@ -1,17 +1,18 @@
 name: Review readiness
 
 # #3844: project the typed exact-head review state (#3843) onto one
-# stable `review-readiness` check context, published as a GitHub check
-# run at the PR head so success, neutral (missing disposition — never
-# clean), and failure are all visible conclusions. Pull-request events
-# recompute on every readiness-relevant change; pushes to main
-# recompute open pull requests against the new merge base so base
+# stable `review-readiness` check context, published as ONE
+# authoritative GitHub check run at the PR head so success, neutral
+# (missing disposition — never clean), and failure are all visible
+# conclusions. Pull-request events recompute on every readiness-
+# relevant change (including base-changing edits); pushes to main
+# recompute all open pull requests against the new merge base so base
 # movement cannot leave a stale green behind. Read-only over review
 # semantics: the only write is the review-readiness check run itself.
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, edited]
   push:
     branches: [main]
 
@@ -34,5 +35,6 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_EVENT_ACTION: ${{ github.event.action }}
+          PR_BASE_CHANGED: ${{ github.event.changes.base != null }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash scripts/project-review-readiness.sh
