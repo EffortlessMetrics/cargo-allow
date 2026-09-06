@@ -42,13 +42,28 @@ msrv="$(awk '
 msrv_ere="${msrv//./\\.}"
 printf 'MSRV source of truth: %s rust-version = %s\n' "${cargo_toml}" "${msrv}"
 
-if ! grep -qF "dtolnay/rust-toolchain@${msrv}.0" "${ci_workflow}"; then
-  actual="$(grep -o 'dtolnay/rust-toolchain@[0-9][^ ]*' "${ci_workflow}" | head -n 1 || true)"
-  fail "$(printf '%s pins %s but Cargo.toml declares rust-version = \"%s\".\n%s' \
-    "${ci_workflow}" "${actual:-no versioned toolchain}" "${msrv}" \
-    "       Pin dtolnay/rust-toolchain@${msrv}.0 or update rust-version.")"
+# Every versioned toolchain pin in the workflow graph must match the
+# MSRV: the #3836 pre-gate and other lanes each carry their own pin, and
+# a single drifted pin would resolve that lane to the wrong compiler
+# while a presence-only check still reported green.
+# Active uses only: a commented-out pin is not configuration, so the
+# comment lines are stripped before both the positive and the every-pin
+# checks.
+# Only `uses:` key declarations count: a run-script line or inline
+# comment that merely mentions the action (even with a `uses:` word in
+# it) is not an installed toolchain.
+active_pins="$(grep -E "^[[:space:]]*(-[[:space:]]*)?uses:[[:space:]]*[\"']?dtolnay/rust-toolchain@[0-9]" "${ci_workflow}"   | grep -oE "dtolnay/rust-toolchain@[0-9][^\"' ]*" || true)"
+if ! printf "%s\n" "${active_pins}" | grep -qF "dtolnay/rust-toolchain@${msrv}.0"; then
+  fail "$(printf "%s carries no active toolchain pin on the declared MSRV %s." \
+    "${ci_workflow}" "${msrv}")"
 fi
-printf 'ok %s pins dtolnay/rust-toolchain@%s.0\n' "${ci_workflow}" "${msrv}"
+off_msrv="$(printf "%s\n" "${active_pins}" \
+  | grep -vF "dtolnay/rust-toolchain@${msrv}.0" || true)"
+if [[ -n "${off_msrv}" ]]; then
+  fail "$(printf "%s pins off-MSRV toolchain(s): %s." \
+    "${ci_workflow}" "${off_msrv}")"
+fi
+printf 'ok %s pins dtolnay/rust-toolchain@%s.0 (all pins)\n' "${ci_workflow}" "${msrv}"
 
 if ! grep -qF "key: msrv-${msrv}" "${ci_workflow}" \
   && ! grep -qE '^[[:space:]]+lane:[[:space:]]+msrv[[:space:]]*$' "${ci_workflow}"; then

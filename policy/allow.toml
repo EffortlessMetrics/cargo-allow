@@ -19179,3 +19179,76 @@ glob = ".allow/revisions/3835-ci-performance-receipt.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11225"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_result_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate result law tests (#3836); every expect guards a retained-surface read or a hostile fixture parse whose rejection is the property under test"
+evidence = ["issue:3836"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_result_tests.rs"
+
+[[allow]]
+id = "allow-11226"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_workflow_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate workflow binding tests (#3836); every expect guards a retained-file read whose existence is the property under test"
+evidence = ["issue:3836"]
+occurrence_limit = 4
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_workflow_tests.rs"
+
+[[allow]]
+id = "allow-11227"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/ci_pregate_command.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate CLI fixture tests (#3836); every expect guards a serialization or write of known-good typed fixtures constructed immediately above"
+evidence = ["issue:3836"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/ci_pregate_command.rs"
+
+[[allow]]
+id = "allow-11228"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3836-ci-pregate.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the pre-gate expect ratchets added by the #3836 lane."
+evidence = ["issue:3836", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3836-ci-pregate.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3836-ci-pregate.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
