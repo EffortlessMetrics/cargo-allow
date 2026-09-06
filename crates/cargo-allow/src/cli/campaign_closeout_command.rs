@@ -1,0 +1,413 @@
+//! Read-only campaign closeout verification (#3845).
+//!
+//! Evaluates a declared campaign closeout record against a live
+//! repository/GitHub state snapshot and emits the bounded
+//! `CampaignCloseoutResultV1`. Both inputs are JSON files prepared by the
+//! caller; the command never contacts GitHub, never mutates issue/PR/tag
+//! state, and never performs the work it validates.
+
+use std::path::PathBuf;
+
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+#[cfg(test)]
+use allow_report::{
+    CampaignAcceptanceRowV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
+    CampaignPrEvidenceV1, CampaignPrStateV1,
+};
+use allow_report::{
+    CampaignCloseoutRecordV1, CampaignRepositoryStateV1, evaluate_campaign_closeout,
+};
+use clap::{Parser, Subcommand};
+
+/// Read-only campaign closeout verification (hidden automation tooling).
+#[derive(Debug, Clone, Parser)]
+#[command(disable_version_flag = true)]
+pub(crate) struct CampaignCloseoutArgs {
+    #[command(subcommand)]
+    pub(crate) command: CampaignCloseoutSubcommand,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub(crate) enum CampaignCloseoutSubcommand {
+    /// Evaluate one declared closeout record against a state snapshot.
+    #[command(hide = true)]
+    Evaluate(CampaignCloseoutEvaluateArgs),
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct CampaignCloseoutEvaluateArgs {
+    /// Declared closeout record JSON path.
+    #[arg(long)]
+    pub(crate) record: PathBuf,
+    /// Repository/GitHub state snapshot JSON path.
+    #[arg(long)]
+    pub(crate) state: PathBuf,
+    /// Output rendering.
+    #[arg(long, default_value = "json")]
+    pub(crate) format: CloseoutOutputFormat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub(crate) enum CloseoutOutputFormat {
+    Json,
+    Human,
+}
+
+pub(super) fn cmd_campaign_closeout(args: &CampaignCloseoutArgs) -> CargoAllowResult<()> {
+    let root = crate::cli::candidate_preparation_command::git_root().map_err(|reason| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("campaign-closeout requires a git worktree: {reason}"),
+        )
+    })?;
+    let CampaignCloseoutSubcommand::Evaluate(evaluate) = &args.command;
+    let record_bytes = std::fs::read(&evaluate.record).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "closeout record read {}: {error}",
+                evaluate.record.display()
+            ),
+        )
+    })?;
+    let record: CampaignCloseoutRecordV1 =
+        serde_json::from_slice(&record_bytes).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!("closeout record parse: {error}"),
+            )
+        })?;
+
+    let state_bytes = std::fs::read(&evaluate.state).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("state snapshot read {}: {error}", evaluate.state.display()),
+        )
+    })?;
+    let state: CampaignRepositoryStateV1 =
+        serde_json::from_slice(&state_bytes).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!("state snapshot parse: {error}"),
+            )
+        })?;
+
+    let _ = root;
+    let outcome = evaluate_campaign_closeout(&record, &state);
+    match evaluate.format {
+        CloseoutOutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outcome).map_err(|error| {
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::InstrumentFailure,
+                        format!("result serialization: {error}"),
+                    )
+                })?
+            );
+        }
+        CloseoutOutputFormat::Human => {
+            println!(
+                "campaign-closeout: issue={} verdict={}",
+                outcome.child_issue,
+                outcome.verdict.label()
+            );
+            for outcome_row in &outcome.row_outcomes {
+                println!(
+                    "  row {}: {}",
+                    outcome_row.row_id,
+                    outcome_row.verdict.label()
+                );
+            }
+            for reason in &outcome.blocking_reasons {
+                println!("  blocking: {reason}");
+            }
+        }
+    }
+
+    // RequiresInvalidation/Conflict/Mismatch/InstrumentFailure fail loudly;
+    // Complete/Partial/NotPlanned/Duplicate/NotProven/Stale are informative.
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evaluate_produces_complete_for_a_fully_evidenced_closeout() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "done".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4142],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        };
+        let state = CampaignRepositoryStateV1 {
+            main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            main_tree: "tree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4142,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                head_sha: "cccccccccccccccccccccccccccccccccccccccc".to_string(),
+                base_sha: "dddddddddddddddddddddddddddddddddddddddd".to_string(),
+                merge_base: "dddddddddddddddddddddddddddddddddddddddd".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: Vec::new(),
+            reachable_from_main: vec![(
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                true,
+            )],
+        };
+        let outcome = evaluate_campaign_closeout(&record, &state);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+        assert_eq!(outcome.schema_id, "cargo-allow.campaign-issue-closeout.v1");
+        assert_eq!(outcome.child_issue, 3845);
+    }
+
+    #[test]
+    fn evaluate_rejects_rows_with_unreachable_merges() {
+        let record = CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4000],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        };
+        let state = CampaignRepositoryStateV1 {
+            main_head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            main_tree: "tree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4000,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                head_sha: "cccc".to_string(),
+                base_sha: "dddd".to_string(),
+                merge_base: "eeee".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: Vec::new(),
+            reachable_from_main: vec![(
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+                false,
+            )],
+        };
+        let outcome = evaluate_campaign_closeout(&record, &state);
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        assert!(
+            outcome.row_outcomes[0]
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("not reachable"))
+        );
+    }
+}
+//
+#[cfg(test)]
+mod evaluate_coverage_tests {
+    use allow_report::{
+        CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+        CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1, CampaignEvidenceClassV1,
+        CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+        evaluate_campaign_closeout,
+    };
+
+    fn full_state() -> CampaignRepositoryStateV1 {
+        CampaignRepositoryStateV1 {
+            main_head: "aaaa".to_string(),
+            main_tree: "treetree".to_string(),
+            prs: vec![CampaignPrEvidenceV1 {
+                number: 4000,
+                state: CampaignPrStateV1::Merged,
+                merge_commit: "bbbb".to_string(),
+                head_sha: "cccc".to_string(),
+                base_sha: "dddd".to_string(),
+                merge_base: "dddd".to_string(),
+                semantic_owner: "issue:3845".to_string(),
+            }],
+            checks: vec![CampaignCheckEvidenceV1 {
+                name: "ci".to_string(),
+                required: true,
+                outcome: CampaignCheckOutcomeV1::Passed,
+            }],
+            reachable_from_main: vec![("bbbb".to_string(), true)],
+        }
+    }
+
+    fn full_record() -> CampaignCloseoutRecordV1 {
+        CampaignCloseoutRecordV1 {
+            parent_campaign: 3768,
+            child_issue: 3845,
+            claimed_verdict: CampaignCloseoutVerdictV1::Complete,
+            decision_owner: String::new(),
+            decision_reason: String::new(),
+            duplicate_of: None,
+            rows: vec![CampaignAcceptanceRowV1 {
+                row_id: "r1".to_string(),
+                description: "d".to_string(),
+                required_evidence_class: CampaignEvidenceClassV1::ProductionCutover,
+                pr_numbers: vec![4000],
+                review: None,
+                required_checks: Vec::new(),
+                evidence_identity: "sha256:v1:aa".to_string(),
+            }],
+            claimed_main_head: "aaaa".to_string(),
+        }
+    }
+
+    #[test]
+    fn evaluate_handles_prose_evidence_with_checks_as_insufficient() {
+        let mut record = full_record();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::Prose;
+            acceptance_row.required_checks = vec!["ci".to_string()];
+        }
+        let outcome = evaluate_campaign_closeout(&record, &full_state());
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        let first = outcome.row_outcomes.first().expect("row outcome present");
+        assert!(
+            first
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
+    }
+
+    #[test]
+    fn evaluate_handles_foundation_evidence_with_checks_as_insufficient() {
+        let mut record = full_record();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_evidence_class = CampaignEvidenceClassV1::Foundation;
+            acceptance_row.required_checks = vec!["ci".to_string()];
+        }
+        let outcome = evaluate_campaign_closeout(&record, &full_state());
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Partial);
+        let first = outcome.row_outcomes.first().expect("row outcome present");
+        assert!(
+            first
+                .reasons
+                .iter()
+                .any(|reason| reason.contains("insufficient"))
+        );
+    }
+
+    #[test]
+    fn evaluate_skips_check_verification_for_zero_check_rows() {
+        let mut record = full_record();
+        for acceptance_row in &mut record.rows {
+            acceptance_row.required_checks = Vec::new();
+        }
+        let outcome = evaluate_campaign_closeout(&record, &full_state());
+        assert_eq!(outcome.verdict, CampaignCloseoutVerdictV1::Complete);
+    }
+}
+//
+#[cfg(test)]
+mod cmd_coverage_tests {
+    use super::CampaignCloseoutArgs;
+    use super::CampaignCloseoutEvaluateArgs;
+    use super::CampaignCloseoutSubcommand;
+    use super::CloseoutOutputFormat;
+    use super::cmd_campaign_closeout;
+    use std::path::PathBuf;
+
+    fn args_with(record: &str, state: &str, format: CloseoutOutputFormat) -> CampaignCloseoutArgs {
+        CampaignCloseoutArgs {
+            command: CampaignCloseoutSubcommand::Evaluate(CampaignCloseoutEvaluateArgs {
+                record: PathBuf::from(record),
+                state: PathBuf::from(state),
+                format,
+            }),
+        }
+    }
+
+    #[test]
+    fn cmd_evaluate_runs_on_a_valid_record_and_state() {
+        let dir = std::env::temp_dir().join(format!(
+            "closeout-cmd-test-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("dirs");
+        std::fs::write(
+            dir.join("record.json"),
+            r#"{"parent_campaign":3768,"child_issue":1,"claimed_verdict":"complete","decision_owner":"","decision_reason":"","duplicate_of":null,"rows":[],"claimed_main_head":"aaaa"}"#,
+        )
+        .expect("record");
+        std::fs::write(
+            dir.join("state.json"),
+            r#"{"main_head":"aaaa","main_tree":"t","prs":[],"checks":[],"reachable_from_main":[]}"#,
+        )
+        .expect("state");
+        let args = args_with(
+            dir.join("record.json").to_str().unwrap(),
+            dir.join("state.json").to_str().unwrap(),
+            CloseoutOutputFormat::Json,
+        );
+        cmd_campaign_closeout(&args).expect("evaluate succeeds");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cmd_evaluate_reports_human_output_for_mismatch() {
+        let dir = std::env::temp_dir().join(format!(
+            "closeout-cmd-mismatch-{}-{}",
+            std::process::id(),
+            line!()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("dirs");
+        std::fs::write(
+            dir.join("record.json"),
+            r#"{"parent_campaign":3768,"child_issue":2,"claimed_verdict":"complete","decision_owner":"","decision_reason":"","duplicate_of":null,"rows":[],"claimed_main_head":"aaaa"}"#,
+        )
+        .expect("record");
+        std::fs::write(
+            dir.join("state.json"),
+            r#"{"main_head":"bbbb","main_tree":"t","prs":[],"checks":[],"reachable_from_main":[]}"#,
+        )
+        .expect("state");
+        let args = args_with(
+            dir.join("record.json").to_str().unwrap(),
+            dir.join("state.json").to_str().unwrap(),
+            CloseoutOutputFormat::Human,
+        );
+        cmd_campaign_closeout(&args).expect("evaluate succeeds");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cmd_evaluate_fails_on_missing_record() {
+        let args = args_with(
+            "nonexistent-record.json",
+            "nonexistent-state.json",
+            CloseoutOutputFormat::Json,
+        );
+        assert!(cmd_campaign_closeout(&args).is_err());
+    }
+}

@@ -10,6 +10,7 @@ use crate::{
     reference, refresh, vocabulary, why, worklist,
 };
 
+mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
 mod frozen_subject_lock_command;
 mod reconcile_package_publication_command;
@@ -132,6 +133,9 @@ pub(crate) enum CargoAllowCommand {
     /// Evaluate the frozen-subject lock against ordinary mutation.
     #[command(hide = true)]
     FrozenSubjectLock(frozen_subject_lock_command::FrozenSubjectLockArgs),
+    /// Verify one campaign closeout record against the live state.
+    #[command(hide = true)]
+    CampaignCloseout(campaign_closeout_command::CampaignCloseoutArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -234,6 +238,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(&args),
         CargoAllowCommand::FrozenSubjectLock(args) => {
             frozen_subject_lock_command::cmd_frozen_subject_lock(&args)
+        }
+        CargoAllowCommand::CampaignCloseout(args) => {
+            campaign_closeout_command::cmd_campaign_closeout(&args)
         }
     }
 }
@@ -435,5 +442,6 @@ impl CargoAllowCommand {
         "prep-candidate",
         "release-freeze",
         "frozen-subject-lock",
+        "campaign-closeout",
     ];
 }

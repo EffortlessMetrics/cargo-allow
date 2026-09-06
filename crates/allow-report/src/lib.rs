@@ -418,6 +418,15 @@ pub use artifacts::{
     render_final_freeze_replay_markdown, replay_final_freeze,
 };
 
+// Root re-exports for the #3845 campaign closeout verifier.
+pub use artifacts::{
+    CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_ID, CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_VERSION,
+    CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+    CampaignCloseoutRecordV1, CampaignCloseoutResultV1, CampaignCloseoutVerdictV1,
+    CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+    CampaignReviewPairV1, evaluate_campaign_closeout,
+};
+
 // Root re-exports for the #3928 frozen-subject lock contract.
 pub use artifacts::{
     CargoAllowFrozenSubjectLockV1, FROZEN_SUBJECT_LOCK_SCHEMA_ID,

@@ -2,6 +2,7 @@ mod add;
 mod add_finding_plan;
 mod add_plan_application;
 mod adoption_plan;
+mod campaign_issue_closeout_v1;
 mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
@@ -48,6 +49,13 @@ pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
     WritePosture, recommend_core_adoption_plan,
+};
+pub use campaign_issue_closeout_v1::{
+    CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_ID, CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_VERSION,
+    CampaignAcceptanceRowV1, CampaignCheckEvidenceV1, CampaignCheckOutcomeV1,
+    CampaignCloseoutRecordV1, CampaignCloseoutResultV1, CampaignCloseoutVerdictV1,
+    CampaignEvidenceClassV1, CampaignPrEvidenceV1, CampaignPrStateV1, CampaignRepositoryStateV1,
+    CampaignReviewPairV1, evaluate_campaign_closeout,
 };
 pub use candidate_preparation_apply_v1::{
     CANDIDATE_APPLY_CLAIM_BOUNDARY_V1, CANDIDATE_APPLY_RECEIPT_SCHEMA_V1,
