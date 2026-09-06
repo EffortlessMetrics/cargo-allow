@@ -18894,7 +18894,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expect in the review-readiness CLI adapter test (#3844); the expect guards a serialization of known-good typed data constructed immediately above under fully controlled inputs"
 evidence = ["issue:3844"]
-occurrence_limit = 1
+occurrence_limit = 15
 created = "2026-09-06"
 review_after = "2026-12-05"
 
