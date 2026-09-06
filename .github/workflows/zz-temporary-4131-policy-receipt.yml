@@ -1,0 +1,269 @@
+name: Temporary PR 4131 policy receipt
+
+on:
+  push:
+    branches:
+      - codex/2567-provider-contract
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-pr-4131-policy-receipt
+  cancel-in-progress: false
+
+jobs:
+  receipt:
+    if: >-
+      github.repository == 'EffortlessMetrics/cargo-allow' &&
+      github.ref == 'refs/heads/codex/2567-provider-contract'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the exact triggering head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Append reviewed receipts and remove this workflow
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+          TARGET_BRANCH: codex/2567-provider-contract
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags origin "${TARGET_BRANCH}"
+          test "$(git rev-parse FETCH_HEAD)" = "${EXPECTED_HEAD}"
+
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import struct
+          import tomllib
+          from pathlib import Path
+
+          policy_path = Path("policy/allow.toml")
+          revision_path = Path(".allow/revisions/4131-provider-contract-schema.toml")
+          workflow_path = Path(".github/workflows/zz-temporary-4131-policy-receipt.yml")
+
+          policy_bytes = policy_path.read_bytes()
+          newline = b"\r\n" if b"\r\n" in policy_bytes else b"\n"
+          policy_text = policy_bytes.decode("utf-8")
+
+          entries = [
+              {
+                  "id": "allow-11231",
+                  "kind": "non_rust_file",
+                  "family": "documentation",
+                  "path": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
+                  "owner": "proof/provider",
+                  "classification": "provider_contract_schema",
+                  "reason": (
+                      "Published closed JSON Schema for the discovery-only cargo-allow provider "
+                      "descriptor introduced by PR #4131; it does not define or authorize request "
+                      "execution or analysis receipts."
+                  ),
+                  "evidence": [
+                      "issue:2567",
+                      "issue:4144",
+                      "doc:docs/schemas/README.md",
+                      "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
+                  ],
+                  "created": "2026-09-06",
+                  "review_after": "2027-03-06",
+                  "selector": {
+                      "ast_kind": "tracked_file",
+                      "symbol": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
+                      "target_fingerprint": "json",
+                      "glob": "docs/schemas/cargo-allow-provider-contract-v1.schema.json",
+                  },
+                  "last_seen": {"line": 1, "column": 1},
+              },
+              {
+                  "id": "allow-11232",
+                  "kind": "non_rust_file",
+                  "family": "configuration",
+                  "path": ".allow/revisions/4131-provider-contract-schema.toml",
+                  "owner": "core/policy",
+                  "classification": "ledger_change_note",
+                  "reason": (
+                      "Revision note authorizing the two bounded policy additions required to "
+                      "receipt the provider descriptor schema and this note itself for PR #4131."
+                  ),
+                  "evidence": [
+                      "pr:4131",
+                      "issue:2567",
+                      "doc:docs/how-to/manage-an-exception.md",
+                  ],
+                  "created": "2026-09-06",
+                  "review_after": "2027-03-06",
+                  "selector": {
+                      "ast_kind": "tracked_file",
+                      "symbol": ".allow/revisions/4131-provider-contract-schema.toml",
+                      "target_fingerprint": "toml",
+                      "glob": ".allow/revisions/4131-provider-contract-schema.toml",
+                  },
+                  "last_seen": {"line": 1, "column": 1},
+              },
+          ]
+
+          expected_fingerprints = {
+              "allow-11231": "sha256:v1:7c8f065853bae8321183ecd72054353bd55a0c9822195ee2581fe4957ad1d2ba",
+              "allow-11232": "sha256:v1:dc4b64eae4b8047a4eedb27fbb26078106270845e3a20f0ac1fde6b4a6fc110",
+          }
+
+          def bound_value(out: bytearray, value: str) -> None:
+              encoded = value.encode("utf-8")
+              out.extend(struct.pack(">Q", len(encoded)))
+              out.extend(encoded)
+
+          def fingerprint(entry: dict[str, object]) -> str:
+              selector = entry["selector"]
+              assert isinstance(selector, dict)
+              last_seen = entry["last_seen"]
+              assert isinstance(last_seen, dict)
+              canonical = bytearray()
+              for value in [
+                  "cargo-allow.policy-entry.v1",
+                  str(entry["id"]),
+                  str(entry["kind"]),
+                  str(entry["family"]),
+                  str(entry["path"]),
+                  str(entry["owner"]),
+                  str(entry["classification"]),
+                  str(entry["reason"]),
+              ]:
+                  bound_value(canonical, value)
+              evidence = entry["evidence"]
+              assert isinstance(evidence, list)
+              for value in evidence:
+                  bound_value(canonical, str(value))
+              for value in [
+                  str(entry["created"]),
+                  str(entry["review_after"]),
+                  str(selector.get("ast_kind", "")),
+                  str(selector.get("container", "")),
+                  str(selector.get("callee", "")),
+                  str(selector.get("method", "")),
+                  str(selector.get("macro_name", "")),
+                  str(selector.get("lint", "")),
+                  str(selector.get("symbol", "")),
+                  str(selector.get("target_fingerprint", "")),
+                  str(selector.get("normalized_snippet_hash", "")),
+                  str(selector.get("glob", "")),
+                  str(last_seen.get("line", "")),
+                  str(last_seen.get("column", "")),
+              ]:
+                  bound_value(canonical, value)
+              return "sha256:v1:" + hashlib.sha256(canonical).hexdigest()
+
+          for entry in entries:
+              actual = fingerprint(entry)
+              expected = expected_fingerprints[str(entry["id"])]
+              if actual != expected:
+                  raise SystemExit(
+                      f"fingerprint mismatch for {entry['id']}: expected {expected}, got {actual}"
+                  )
+              if f'id = "{entry["id"]}"' in policy_text or str(entry["path"]) in policy_text:
+                  raise SystemExit(f"policy already contains {entry['id']} or {entry['path']}")
+
+          block = r'''
+
+          [[allow]]
+          id = "allow-11231"
+          kind = "non_rust_file"
+          family = "documentation"
+          path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+          owner = "proof/provider"
+          classification = "provider_contract_schema"
+          reason = "Published closed JSON Schema for the discovery-only cargo-allow provider descriptor introduced by PR #4131; it does not define or authorize request execution or analysis receipts."
+          evidence = [
+              "issue:2567",
+              "issue:4144",
+              "doc:docs/schemas/README.md",
+              "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
+          ]
+          created = "2026-09-06"
+          review_after = "2027-03-06"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+          target_fingerprint = "json"
+          glob = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+
+          [allow.last_seen]
+          line = 1
+          column = 1
+
+          [[allow]]
+          id = "allow-11232"
+          kind = "non_rust_file"
+          family = "configuration"
+          path = ".allow/revisions/4131-provider-contract-schema.toml"
+          owner = "core/policy"
+          classification = "ledger_change_note"
+          reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
+          evidence = [
+              "pr:4131",
+              "issue:2567",
+              "doc:docs/how-to/manage-an-exception.md",
+          ]
+          created = "2026-09-06"
+          review_after = "2027-03-06"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = ".allow/revisions/4131-provider-contract-schema.toml"
+          target_fingerprint = "toml"
+          glob = ".allow/revisions/4131-provider-contract-schema.toml"
+
+          [allow.last_seen]
+          line = 1
+          column = 1
+          '''.strip("\n")
+          policy_path.write_bytes(
+              policy_bytes.rstrip(b"\r\n") + newline + newline + block.encode("utf-8").replace(b"\n", newline) + newline
+          )
+
+          revision = '''schema_version = 1
+          reason = "Authorize only the provider descriptor schema and this retained review note for the discovery-only #4131 slice."
+          reviewer = "core/policy"
+          reviewed_at = "2026-09-06T00:00:00Z"
+          pr = 4131
+          issues = [2567, 4144]
+
+          [[change]]
+          kind = "added_allow"
+          id = "allow-11231"
+          after_fingerprint = "sha256:v1:7c8f065853bae8321183ecd72054353bd55a0c9822195ee2581fe4957ad1d2ba"
+
+          [[change]]
+          kind = "added_allow"
+          id = "allow-11232"
+          after_fingerprint = "sha256:v1:dc4b64eae4b8047a4eedb27fbb26078106270845e3a20f0ac1fde6b4a6fc110"
+          '''
+          revision_path.parent.mkdir(parents=True, exist_ok=True)
+          revision_path.write_text(revision, encoding="utf-8")
+
+          tomllib.loads(policy_path.read_text(encoding="utf-8"))
+          tomllib.loads(revision_path.read_text(encoding="utf-8"))
+          workflow_path.unlink()
+          PY
+
+          git diff --check
+          git add -A
+          expected_paths=$(printf '%s\n' \
+            '.allow/revisions/4131-provider-contract-schema.toml' \
+            '.github/workflows/zz-temporary-4131-policy-receipt.yml' \
+            'policy/allow.toml')
+          actual_paths=$(git diff --cached --name-only | LC_ALL=C sort)
+          test "${actual_paths}" = "$(printf '%s\n' "${expected_paths}" | LC_ALL=C sort)"
+
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git commit -m "chore(provider): receipt descriptor schema"
+          git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
