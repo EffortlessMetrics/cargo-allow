@@ -947,8 +947,7 @@ mod closeout_edge_tests {
 mod closeout_final_coverage_tests {
     use super::{
         CampaignAcceptanceRowV1, CampaignCloseoutRecordV1, CampaignCloseoutVerdictV1,
-        CampaignEvidenceClassV1,
-        CampaignRepositoryStateV1, evaluate_campaign_closeout,
+        CampaignEvidenceClassV1, CampaignRepositoryStateV1, evaluate_campaign_closeout,
     };
 
     #[test]
