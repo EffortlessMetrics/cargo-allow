@@ -52,9 +52,12 @@ fn repository_release_controls_cover_every_readiness_relevant_event() {
             "the readiness workflow must trigger on {event}"
         );
     }
+    // Base-branch movement fires no pull_request event; a push to the
+    // base branch must recompute open pull requests against the new
+    // merge base so a stale green cannot survive base movement.
     assert!(
-        !workflow.contains("push:"),
-        "the readiness check is pull-request scoped"
+        workflow.contains("branches: [main]"),
+        "the readiness workflow must recompute on base-branch movement"
     );
 }
 
@@ -75,12 +78,15 @@ fn repository_release_controls_use_minimum_permissions() {
         permissions_block.contains("pull-requests: read"),
         "pull-requests stays read-only: {permissions_block}"
     );
-    for forbidden in [
-        "issues:",
-        "checks:",
-        "contents: write",
-        "pull-requests: write",
-    ] {
+    // checks: write is the one granted write: publishing the typed
+    // check run is what makes a neutral (missing-disposition) result
+    // visible instead of a green check. Everything else stays
+    // read-only.
+    assert!(
+        permissions_block.contains("checks: write"),
+        "publishing the check conclusion requires checks: write: {permissions_block}"
+    );
+    for forbidden in ["issues:", "contents: write", "pull-requests: write"] {
         assert!(
             !permissions_block.contains(forbidden),
             "the readiness workflow must not request '{forbidden}'"
@@ -92,8 +98,9 @@ fn repository_release_controls_use_minimum_permissions() {
 fn repository_release_controls_never_mutate_or_self_require() {
     let root = workspace_root();
     let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
+    // The only GitHub write is publishing the review-readiness check
+    // run itself; every other mutation verb is absent.
     for mutation in [
-        "gh api",
         "gh pr merge",
         "gh pr ready",
         "gh pr edit",
@@ -111,14 +118,26 @@ fn repository_release_controls_never_mutate_or_self_require() {
         script.contains("review-readiness project"),
         "the adapter runs the typed projection"
     );
-    // The workflow cannot make itself a required check: it has no
-    // check-run write surface (permissions stay read-only) and never
-    // calls the check-runs API to register or update contexts; live
-    // required-context configuration is #2284's alone.
+    let api_calls: Vec<&str> = script
+        .lines()
+        .filter(|line| line.contains("gh api"))
+        .collect();
+    assert_eq!(
+        api_calls.len(),
+        1,
+        "exactly one gh api call is permitted (the check-run publish)"
+    );
+    assert!(
+        api_calls[0].contains("check-runs"),
+        "the single gh api call publishes the readiness check run"
+    );
+    // The workflow cannot make itself a required check: it publishes
+    // a check run but configures no required context; live required-
+    // context configuration is #2284's alone.
     let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
     assert!(
-        !workflow.contains("check-runs") && !workflow.contains("check_runs"),
-        "a source workflow cannot register or update its own check context"
+        !workflow.contains("required_status_check"),
+        "a source workflow cannot self-require"
     );
 }
 
@@ -137,5 +156,16 @@ fn repository_release_controls_bind_the_disposition_location() {
     assert!(
         script.contains("git merge-base"),
         "the adapter binds the effective merge base"
+    );
+    // Ambiguous disposition records fail closed, and the head delta
+    // is delivered so the projection can prove the review-ledger
+    // bootstrap.
+    assert!(
+        script.contains("ambiguous retained dispositions"),
+        "duplicate dispositions fail closed"
+    );
+    assert!(
+        script.contains("--head-delta-path"),
+        "the adapter passes the head delta for the ledger-bootstrap proof"
     );
 }

@@ -80,6 +80,7 @@ fn input(
         draft_state: ReviewReadinessDraftStateV1::Ready,
         event,
         prior_observation: prior,
+        head_delta_paths: Vec::new(),
     }
 }
 

@@ -69,12 +69,23 @@ fn input(
     event: ReviewReadinessEventV1,
     live_source: ReviewLiveSourceV1,
 ) -> ReviewReadinessProjectionInputV1 {
+    input_with_delta(disposition, draft_state, event, live_source, Vec::new())
+}
+
+fn input_with_delta(
+    disposition: ReviewReadinessDispositionInputV1,
+    draft_state: ReviewReadinessDraftStateV1,
+    event: ReviewReadinessEventV1,
+    live_source: ReviewLiveSourceV1,
+    head_delta_paths: Vec<String>,
+) -> ReviewReadinessProjectionInputV1 {
     ReviewReadinessProjectionInputV1 {
         disposition,
         live: live_source,
         draft_state,
         event,
         prior_observation: None,
+        head_delta_paths,
     }
 }
 
@@ -345,6 +356,64 @@ fn review_readiness_check_reports_nonterminal_check_observations_as_separate() {
     let parsed: ReviewCheckObservationV1 =
         serde_json::from_slice(&bytes).expect("observation parses");
     assert_eq!(parsed.outcome, CampaignCheckOutcomeV1::Nonterminal);
+}
+
+#[test]
+fn review_readiness_check_admits_a_ledger_only_head_delta() {
+    // A disposition committed inside its own PR moves the head it
+    // binds. The projection admits that movement only when the entire
+    // delta is review-disposition records.
+    let mut one_commit_ahead = live();
+    one_commit_ahead.head_sha = "cccc".to_string();
+    let mut ledger_delta = one_commit_ahead.clone();
+    ledger_delta.diff_digest = "sha256:v1:with-ledger".to_string();
+    let projection = evaluate_review_readiness_projection(&input_with_delta(
+        ReviewReadinessDispositionInputV1::Present(Box::new(clean_disposition())),
+        ReviewReadinessDraftStateV1::Ready,
+        ReviewReadinessEventV1::Synchronize,
+        ledger_delta,
+        vec![
+            ".allow/review-dispositions/4146-bbbb.json".to_string(),
+            ".allow/review-dispositions/index.json".to_string(),
+        ],
+    ));
+    assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Success);
+    assert!(projection.head_ledger_bootstrap);
+    assert!(
+        projection
+            .conclusion_reasons
+            .iter()
+            .any(|reason| reason.contains("review-ledger bootstrap"))
+    );
+
+    // Any non-ledger file in the delta is ordinary staleness.
+    let projection = evaluate_review_readiness_projection(&input_with_delta(
+        ReviewReadinessDispositionInputV1::Present(Box::new(clean_disposition())),
+        ReviewReadinessDraftStateV1::Ready,
+        ReviewReadinessEventV1::Synchronize,
+        one_commit_ahead,
+        vec![
+            ".allow/review-dispositions/4146-bbbb.json".to_string(),
+            "crates/allow-match/src/lib.rs".to_string(),
+        ],
+    ));
+    assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
+    assert!(!projection.head_ledger_bootstrap);
+}
+
+#[test]
+fn review_readiness_check_never_waives_base_movement_through_the_ledger() {
+    let mut moved_base = live();
+    moved_base.base_sha = "dddd".to_string();
+    moved_base.merge_base = "dddd".to_string();
+    let projection = evaluate_review_readiness_projection(&input_with_delta(
+        ReviewReadinessDispositionInputV1::Present(Box::new(clean_disposition())),
+        ReviewReadinessDraftStateV1::Ready,
+        ReviewReadinessEventV1::BaseMoved,
+        moved_base,
+        vec![".allow/review-dispositions/4146-bbbb.json".to_string()],
+    ));
+    assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
 }
 
 #[test]

@@ -213,6 +213,26 @@ pub struct ReviewReadinessProjectionInputV1 {
     pub event: ReviewReadinessEventV1,
     /// The prior retained observation, when one exists.
     pub prior_observation: Option<ReviewReadinessObservationV1>,
+    /// Paths changed between the disposition's bound head and the live
+    /// head, computed by the adapter from git. Empty when the heads are
+    /// equal or no disposition is present.
+    #[serde(default)]
+    pub head_delta_paths: Vec<String>,
+}
+
+/// The retained-review-ledger escape: a disposition committed inside
+/// the PR it covers necessarily moves the head it binds. The law
+/// admits that movement only when the entire head delta is
+/// review-disposition records under the declared ledger directory;
+/// anything else is ordinary staleness.
+pub const REVIEW_DISPOSITION_LEDGER_DIR: &str = ".allow/review-dispositions/";
+
+#[must_use]
+pub fn is_review_ledger_bootstrap(head_delta_paths: &[String]) -> bool {
+    !head_delta_paths.is_empty()
+        && head_delta_paths
+            .iter()
+            .all(|path| path.starts_with(REVIEW_DISPOSITION_LEDGER_DIR))
 }
 
 /// The projected check result, bound to the exact live pair.
@@ -235,6 +255,10 @@ pub struct ReviewReadinessProjectionV1 {
     /// pair than the live one: the old green is stale and must not be
     /// reused by any consumer.
     pub stale_green_invalidated: bool,
+    /// True when the disposition's bound head differs from the live
+    /// head and the entire delta is proven review-disposition records
+    /// (the retained-review-ledger bootstrap).
+    pub head_ledger_bootstrap: bool,
     pub binding: ReviewReadinessBindingV1,
     /// Owned so consumers can parse the JSON view back with serde.
     pub claim_boundary: String,
@@ -285,7 +309,26 @@ pub fn evaluate_review_readiness_projection(
                 target_state: ReviewReadinessStateV1::Ready,
                 required_checks: Vec::new(),
             };
-            let outcome = evaluate_review_disposition(disposition, &input.live, &request);
+            // The retained-review-ledger bootstrap: when the only head
+            // delta since the reviewed head is disposition records, the
+            // record's own commit does not stale the review. Base and
+            // merge-base movement still stale normally.
+            let bootstrap = disposition.head_sha != input.live.head_sha
+                && is_review_ledger_bootstrap(&input.head_delta_paths);
+            let effective_live;
+            let evaluation_live = if bootstrap {
+                conclusion_reasons.push(
+                    "review-ledger bootstrap: the head delta since the reviewed pair is review-disposition records only".to_string(),
+                );
+                let mut adjusted = input.live.clone();
+                adjusted.head_sha = disposition.head_sha.clone();
+                adjusted.diff_digest = disposition.reviewed_diff_digest.clone();
+                effective_live = adjusted;
+                &effective_live
+            } else {
+                &input.live
+            };
+            let outcome = evaluate_review_disposition(disposition, evaluation_live, &request);
             conclusion_reasons.extend(outcome.transition.reasons.iter().cloned());
             conclusion_reasons.extend(outcome.currentness_reasons.iter().cloned());
             let conclusion = match outcome.currentness {
@@ -330,6 +373,10 @@ pub fn evaluate_review_readiness_projection(
         conclusion_reasons,
         required_posture,
         stale_green_invalidated,
+        head_ledger_bootstrap: matches!(
+            &input.disposition,
+            ReviewReadinessDispositionInputV1::Present(disposition) if disposition.head_sha != input.live.head_sha
+        ) && is_review_ledger_bootstrap(&input.head_delta_paths),
         binding: binding(input, &disposition_identity),
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     }
@@ -370,6 +417,9 @@ pub fn render_review_readiness_human(projection: &ReviewReadinessProjectionV1) -
     ));
     if projection.stale_green_invalidated {
         lines.push("  stale green: invalidated".to_string());
+    }
+    if projection.head_ledger_bootstrap {
+        lines.push("  review-ledger bootstrap: applied".to_string());
     }
     for reason in &projection.conclusion_reasons {
         lines.push(format!("  reason: {reason}"));

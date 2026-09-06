@@ -32,13 +32,17 @@ pub(crate) enum ReviewReadinessSubcommand {
     Project(ReviewReadinessProjectArgs),
 }
 
+// snake_case so the adapter can pass GitHub's event action names
+// (`ready_for_review`, `converted_to_draft`) through unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+#[value(rename_all = "snake_case")]
 pub(crate) enum ReviewReadinessDraftStateArg {
     Draft,
     Ready,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+#[value(rename_all = "snake_case")]
 pub(crate) enum ReviewReadinessEventArg {
     Opened,
     Reopened,
@@ -70,6 +74,11 @@ pub(crate) struct ReviewReadinessProjectArgs {
     /// Prior retained check observation JSON path, when one exists.
     #[arg(long)]
     pub(crate) prior: Option<PathBuf>,
+    /// Paths changed between the disposition's bound head and the live
+    /// head (repeatable). Proves the review-ledger bootstrap when the
+    /// entire delta is disposition records.
+    #[arg(long = "head-delta-path")]
+    pub(crate) head_delta_paths: Vec<String>,
     /// Output rendering.
     #[arg(long, default_value = "json")]
     pub(crate) format: ReviewReadinessOutputFormat,
@@ -155,6 +164,7 @@ pub(super) fn cmd_review_readiness(args: &ReviewReadinessArgs) -> CargoAllowResu
         draft_state,
         event,
         prior_observation,
+        head_delta_paths: project.head_delta_paths.clone(),
     };
     let projection = evaluate_review_readiness_projection(&input);
     match project.format {
@@ -264,6 +274,7 @@ mod tests {
         draft_state: ReviewReadinessDraftStateArg,
         event: ReviewReadinessEventArg,
         prior: Option<PathBuf>,
+        head_delta_paths: Vec<String>,
         format: ReviewReadinessOutputFormat,
     ) -> ReviewReadinessArgs {
         ReviewReadinessArgs {
@@ -273,8 +284,31 @@ mod tests {
                 draft_state,
                 event,
                 prior,
+                head_delta_paths,
                 format,
             }),
+        }
+    }
+
+    #[test]
+    fn event_args_accept_github_action_names_verbatim() {
+        use clap::ValueEnum as _;
+        for name in [
+            "opened",
+            "reopened",
+            "synchronize",
+            "force_push",
+            "ready_for_review",
+            "converted_to_draft",
+            "base_moved",
+            "merge_base_moved",
+            "disposition_updated",
+            "workflow_config_moved",
+        ] {
+            assert!(
+                ReviewReadinessEventArg::from_str(name, false).is_ok(),
+                "the adapter must be able to pass '{name}' through unchanged"
+            );
         }
     }
 
@@ -310,6 +344,7 @@ mod tests {
                 ReviewReadinessDraftStateArg::Ready,
                 ReviewReadinessEventArg::ReadyForReview,
                 None,
+                Vec::new(),
                 format,
             ));
             assert!(outcome.is_ok());
@@ -343,6 +378,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Ready,
             ReviewReadinessEventArg::Synchronize,
             None,
+            Vec::new(),
             ReviewReadinessOutputFormat::Human,
         ));
         cleanup(&disposition_path);
@@ -362,6 +398,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Ready,
             ReviewReadinessEventArg::ConvertedToDraft,
             None,
+            Vec::new(),
             ReviewReadinessOutputFormat::Json,
         ));
         cleanup(&live_path);
@@ -386,6 +423,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Draft,
             ReviewReadinessEventArg::Opened,
             None,
+            Vec::new(),
             ReviewReadinessOutputFormat::Json,
         ));
         cleanup(&malformed_path);
@@ -405,6 +443,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Draft,
             ReviewReadinessEventArg::Opened,
             None,
+            Vec::new(),
             ReviewReadinessOutputFormat::Json,
         ));
         assert!(outcome.is_err());
@@ -438,6 +477,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Ready,
             ReviewReadinessEventArg::Reopened,
             Some(prior_path.clone()),
+            Vec::new(),
             ReviewReadinessOutputFormat::Human,
         ));
         cleanup(&prior_path);
@@ -464,6 +504,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Draft,
             ReviewReadinessEventArg::Opened,
             Some(prior_path.clone()),
+            Vec::new(),
             ReviewReadinessOutputFormat::Json,
         ));
         cleanup(&prior_path);
@@ -487,6 +528,7 @@ mod tests {
             ReviewReadinessDraftStateArg::Draft,
             ReviewReadinessEventArg::Opened,
             None,
+            Vec::new(),
             ReviewReadinessOutputFormat::Json,
         ));
         cleanup(&live_path);
