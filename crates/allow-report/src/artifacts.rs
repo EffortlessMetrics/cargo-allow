@@ -7,6 +7,7 @@ mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
+mod ci_cache_experiment_v1;
 mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
 mod diff;
@@ -88,6 +89,12 @@ pub use candidate_preparation_receipt_v1::{
     CandidateChangedFileV1, CandidateGraphRowV1, CandidatePreparationReceiptV1,
     CandidatePreparationStateV1, CandidateResolvedDecisionV1, CandidateValidationResultV1,
     CandidateValidationRowV1,
+};
+pub use ci_cache_experiment_v1::{
+    CI_CACHE_CLAIM_BOUNDARY, CI_CACHE_EXPERIMENT_SCHEMA_ID, CI_CACHE_EXPERIMENT_SCHEMA_VERSION,
+    CI_CACHE_MAX_LANES, CiCacheExperimentV1, CiCacheLaneObservationV1, CiCacheParityRowV1,
+    CiCachePostureV1, CiCacheTrustClassV1, CiCacheVerdictEvaluationV1, CiCacheVerdictV1,
+    evaluate_ci_cache_experiment, render_ci_cache_verdict_human, render_ci_cache_verdict_json,
 };
 pub use ci_performance_receipt_v1::{
     CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,
