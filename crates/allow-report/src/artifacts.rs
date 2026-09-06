@@ -7,6 +7,7 @@ mod candidate_preparation_apply_v1;
 mod candidate_preparation_operations_v1;
 mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
+mod ci_performance_receipt_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -86,6 +87,14 @@ pub use candidate_preparation_receipt_v1::{
     CandidateChangedFileV1, CandidateGraphRowV1, CandidatePreparationReceiptV1,
     CandidatePreparationStateV1, CandidateResolvedDecisionV1, CandidateValidationResultV1,
     CandidateValidationRowV1,
+};
+pub use ci_performance_receipt_v1::{
+    CI_PERFORMANCE_CLAIM_BOUNDARY, CI_PERFORMANCE_MAX_JOBS_PER_RUN, CI_PERFORMANCE_MAX_LIMITS,
+    CI_PERFORMANCE_MAX_RUNS, CI_PERFORMANCE_RECEIPT_SCHEMA_ID,
+    CI_PERFORMANCE_RECEIPT_SCHEMA_VERSION, CiCacheClassV1, CiCacheObservationV1, CiEnvironmentV1,
+    CiJobConclusionV1, CiJobObservationV1, CiJobPurposeV1, CiPerformanceReceiptV1,
+    CiRunObservationV1, CiSourcePairV1, CiTimingBreakdownV1, render_ci_performance_receipt_human,
+    render_ci_performance_receipt_json, validate_ci_performance_receipt,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
