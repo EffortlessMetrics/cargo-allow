@@ -450,6 +450,16 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3844 review-readiness check projection.
+pub use artifacts::{
+    REVIEW_READINESS_CHECK_CONTEXT, REVIEW_READINESS_CHECK_SCHEMA_ID,
+    REVIEW_READINESS_CHECK_SCHEMA_VERSION, ReviewReadinessBindingV1, ReviewReadinessConclusionV1,
+    ReviewReadinessDispositionInputV1, ReviewReadinessDraftStateV1, ReviewReadinessEventV1,
+    ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
+    evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
+    render_review_readiness_human, render_review_readiness_json,
+};
+
 // Root re-exports for the #3737 final support-selection freeze contract.
 pub use artifacts::{
     FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
