@@ -19252,3 +19252,81 @@ glob = ".allow/revisions/3836-ci-pregate.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11229"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_linux_cache_contract_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the Linux cache contract tests (#3963); every expect guards a retained-surface read, a known-good fixture serialization, or a hostile fixture whose rejection is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 7
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_linux_cache_contract_tests.rs"
+
+[[allow]]
+id = "allow-11230"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_cache_trust_boundary_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the cache trust-boundary tests (#3963); every expect guards a retained-surface read whose existence is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_cache_trust_boundary_tests.rs"
+
+[[allow]]
+id = "allow-11231"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/ci-cache-experiment-v1.json"
+owner = "core/ci"
+classification = "ci_cache_experiment"
+reason = "Retained Linux cache experiment receipt (#3963): four hosted observations of the trusted warm lane, one untrusted restore-only pull request, and the exact source/environment/action identities; the honest NeedsMoreData verdict with the missing cold/disabled/fallback coverage and rollback route. Measurement evidence only."
+evidence = ["issue:3963"]
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/ci-cache-experiment-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/ci-cache-experiment-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11232"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3963-ci-cache-experiment.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the Linux cache experiment ratchets and the retained receipt added by the #3963 lane."
+evidence = ["issue:3963", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3963-ci-cache-experiment.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3963-ci-cache-experiment.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

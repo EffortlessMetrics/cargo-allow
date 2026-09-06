@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Linux cache experiment contract (#3963). Typed
+  CiCacheExperimentV1 / CiCacheLaneObservationV1 / CiCacheParityRowV1
+  / CiCacheVerdictV1 measure the #3900 trust-separated Linux cache
+  policy against the #3835 baseline: every observation binds the
+  exact source, environment, toolchain, lock, action, and key
+  identities with the trust class, save authority, posture, separated
+  timing, restored bytes, and the semantic proof result. Verdict law:
+  Accepted requires cold/warm/disabled/fallback coverage, a two-warm
+  distribution, equal semantic results across compared postures, a
+  falsified untrusted no-save boundary, and a pinned action; parity
+  divergence, incidents, untrusted saves, and hit-without-bytes claims
+  fail the contract. Retained hosted evidence
+  (`docs/ci/receipts/ci-cache-experiment-v1.json`): three trusted
+  warm full-match runs and one untrusted restore-only pull request —
+  an honest NeedsMoreData verdict with the missing
+  cold/disabled/fallback coverage and the rollback route. Cache state
+  stays performance evidence only.

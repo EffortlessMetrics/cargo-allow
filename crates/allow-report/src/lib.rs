@@ -450,6 +450,14 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3963 Linux cache experiment.
+pub use artifacts::{
+    CI_CACHE_CLAIM_BOUNDARY, CI_CACHE_EXPERIMENT_SCHEMA_ID, CI_CACHE_EXPERIMENT_SCHEMA_VERSION,
+    CI_CACHE_MAX_LANES, CiCacheExperimentV1, CiCacheLaneObservationV1, CiCacheParityRowV1,
+    CiCachePostureV1, CiCacheTrustClassV1, CiCacheVerdictEvaluationV1, CiCacheVerdictV1,
+    evaluate_ci_cache_experiment, render_ci_cache_verdict_human, render_ci_cache_verdict_json,
+};
+
 // Root re-exports for the #3836 Stage 1 pre-gate.
 pub use artifacts::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
