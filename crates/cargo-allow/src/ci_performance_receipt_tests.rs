@@ -465,11 +465,14 @@ fn ci_performance_receipt_vocabulary_and_bounds_are_fully_labeled() {
     let runs: Vec<serde_json::Value> = (0..17)
         .map(|index| {
             let mut one = run("success", vec![job_json(serde_json::json!({}))]);
-            one["run_id"] = serde_json::json!(index + 1);
+            *one.pointer_mut("/run_id")
+                .expect("the fixture retains the run id") = serde_json::json!(index + 1);
             one
         })
         .collect();
-    receipt["runs"] = serde_json::Value::Array(runs);
+    *receipt
+        .pointer_mut("/runs")
+        .expect("the fixture retains the runs array") = serde_json::Value::Array(runs);
     assert!(validate_json(&receipt).contains(&"run_bound_exceeded".to_string()));
 
     // Limits bound: sixty-five limits exceed the sixty-four bound.
@@ -477,7 +480,9 @@ fn ci_performance_receipt_vocabulary_and_bounds_are_fully_labeled() {
     let limits: Vec<serde_json::Value> = (0..65)
         .map(|index| serde_json::json!(format!("limit-{index}")))
         .collect();
-    receipt["limits"] = serde_json::Value::Array(limits);
+    *receipt
+        .pointer_mut("/limits")
+        .expect("the fixture retains the limits array") = serde_json::Value::Array(limits);
     assert!(validate_json(&receipt).contains(&"limits_bound_exceeded".to_string()));
 
     // Job bound: sixty-five jobs in one run fail per-run.

@@ -19084,7 +19084,7 @@ owner = "core/ci"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the CI-performance receipt tests (#3835); every expect guards a retained-file read, a known-good fixture serialization or parse, or a hostile fixture whose rejection is the property under test"
 evidence = ["issue:3835"]
-occurrence_limit = 15
+occurrence_limit = 18
 created = "2026-09-06"
 review_after = "2026-12-05"
 
