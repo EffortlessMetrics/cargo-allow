@@ -13,7 +13,7 @@
       "conclusion": "success",
       "environment": "hosted",
       "source_pair": {
-        "base_sha": "9b62915c",
+        "base_sha": "9b62915c6fff8be6da2cdeaa820b4d5338fb9b09",
         "head_sha": "a9463e15528ed9cfb2d0c5f7a736c86c4226a6e5",
         "generation": 1
       },
@@ -37,7 +37,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
@@ -58,7 +58,7 @@
           "first_failure": false,
           "critical_path": true,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 18
         },
         {
           "name": "product-candidates-interop",
@@ -79,7 +79,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 6
         },
         {
           "name": "package-smoke",
@@ -100,7 +100,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 10
         },
         {
           "name": "integrated-dogfood",
@@ -121,7 +121,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "msrv",
@@ -142,7 +142,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 3
         },
         {
           "name": "operator-latency",
@@ -163,7 +163,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "compat-delegation (windows-latest)",
@@ -184,7 +184,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 4
         },
         {
           "name": "test-intent-experimental",
@@ -205,7 +205,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
@@ -226,7 +226,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 5
         },
         {
           "name": "test-proof-experimental",
@@ -247,7 +247,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "cargo-deny",
@@ -268,7 +268,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
@@ -289,7 +289,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 13
         },
         {
           "name": "compat-delegation (ubuntu-latest)",
@@ -310,7 +310,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
@@ -331,7 +331,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 5
         },
         {
           "name": "coverage",
@@ -352,7 +352,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 11
         },
         {
           "name": "shallow-diff-smoke",
@@ -373,7 +373,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "test-shared-protocol",
@@ -394,7 +394,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test",
@@ -415,7 +415,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 9
         }
       ]
     },
@@ -427,7 +427,7 @@
       "conclusion": "success",
       "environment": "hosted",
       "source_pair": {
-        "base_sha": "9b62915c",
+        "base_sha": "9b62915c6fff8be6da2cdeaa820b4d5338fb9b09",
         "head_sha": "694de0c4de8beb7a3efd7edba6e7207dd63aa8d5",
         "generation": 1
       },
@@ -451,7 +451,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 12
         },
         {
           "name": "feature-configuration-proof",
@@ -472,7 +472,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "compat-delegation (windows-latest)",
@@ -493,7 +493,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 4
         },
         {
           "name": "product-candidates-interop",
@@ -514,7 +514,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 6
         },
         {
           "name": "shallow-diff-smoke",
@@ -535,7 +535,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "msrv",
@@ -556,7 +556,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "test-intent-experimental",
@@ -577,7 +577,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "test-shared-protocol",
@@ -598,7 +598,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
@@ -619,7 +619,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 13
         },
         {
           "name": "compat-delegation (ubuntu-latest)",
@@ -640,7 +640,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "package-smoke",
@@ -661,7 +661,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 9
         },
         {
           "name": "operator-latency",
@@ -682,7 +682,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "cargo-deny",
@@ -703,7 +703,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
@@ -724,7 +724,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 6
         },
         {
           "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
@@ -745,7 +745,7 @@
           "first_failure": false,
           "critical_path": true,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 14
         },
         {
           "name": "integrated-dogfood",
@@ -766,7 +766,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
@@ -787,7 +787,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 7
         },
         {
           "name": "test-proof-experimental",
@@ -808,7 +808,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "review-readiness",
@@ -829,7 +829,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "test",
@@ -850,7 +850,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 10
         }
       ]
     },
@@ -862,7 +862,7 @@
       "conclusion": "failure",
       "environment": "hosted",
       "source_pair": {
-        "base_sha": "a5fbe0e0",
+        "base_sha": "c91ffdffafdb03c5afe790e362fdadeef62ebdd7",
         "head_sha": "a5fbe0e0b4d579ddcc9b3a5ddd182ddac6d6a65b",
         "generation": 1
       },
@@ -886,7 +886,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "operator-latency",
@@ -907,7 +907,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 2
         },
         {
           "name": "product-candidates-interop",
@@ -928,7 +928,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 5
         },
         {
           "name": "test-core-platforms (macos-14, aarch64-apple-darwin)",
@@ -949,7 +949,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 7
         },
         {
           "name": "msrv",
@@ -970,7 +970,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 3
         },
         {
           "name": "compat-delegation (ubuntu-latest)",
@@ -991,7 +991,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 3
         },
         {
           "name": "integrated-dogfood",
@@ -1012,7 +1012,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "feature-configuration-proof",
@@ -1033,7 +1033,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "coverage",
@@ -1054,7 +1054,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 12
         },
         {
           "name": "test-proof-experimental",
@@ -1075,7 +1075,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "cargo-deny",
@@ -1096,7 +1096,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "package-smoke",
@@ -1117,7 +1117,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 9
         },
         {
           "name": "test-intent-experimental",
@@ -1138,7 +1138,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 1
         },
         {
           "name": "test-shared-protocol",
@@ -1159,7 +1159,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         },
         {
           "name": "compat-delegation (windows-latest)",
@@ -1180,7 +1180,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 3
         },
         {
           "name": "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
@@ -1201,7 +1201,7 @@
           "first_failure": false,
           "critical_path": true,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 13
         },
         {
           "name": "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
@@ -1222,7 +1222,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 6
         },
         {
           "name": "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
@@ -1240,10 +1240,10 @@
             "provider_seconds": 3,
             "artifact_seconds": null
           },
-          "first_failure": false,
+          "first_failure": true,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 15
         },
         {
           "name": "test",
@@ -1264,7 +1264,7 @@
           "first_failure": false,
           "critical_path": false,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 10
         }
       ]
     },
@@ -1276,7 +1276,7 @@
       "conclusion": "success",
       "environment": "hosted",
       "source_pair": {
-        "base_sha": "9b62915c",
+        "base_sha": "9b62915c6fff8be6da2cdeaa820b4d5338fb9b09",
         "head_sha": "a9463e15528ed9cfb2d0c5f7a736c86c4226a6e5",
         "generation": 1
       },
@@ -1300,29 +1300,26 @@
           "first_failure": false,
           "critical_path": true,
           "cache": null,
-          "compute_minutes": null
+          "compute_minutes": 0
         }
       ]
     }
   ],
   "limits": [
-    "base_sha is left empty by the collector for push events; the author binds it from git before retention",
     "step-to-bucket classification is heuristic; the typed law keeps the buckets separate",
     "cache classes stay unknown until restored/saved byte evidence is retained",
     "queue time is not exposed per job by the provider; it stays missing, never zero-filled",
+    "compute minutes floor the hosted job duration to whole minutes",
     "window covers four same-day runs of the post-#4147 topology; distributions are not yet supported by the sample size",
-    "run 34034492950 was still in progress at collection; its unknown conclusion is retained as observed",
-    "critical-path flags are computed over passed jobs only; the failed macos-15 job carries first_failure instead"
+    "run 34034492950 was still in progress at collection; its unknown conclusion is retained as observed"
   ],
   "critical_path_first_failure": [
     "test-core-platforms (macos-15-intel, x86_64-apple-darwin)"
   ],
   "critical_path_full_matrix": [
-    "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
     "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
-    "coverage",
-    "test",
-    "package-smoke"
+    "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+    "verify"
   ],
   "redundant_work_candidates": [
     "test-core-platforms reruns the full cargo test matrix per platform without shared compile artifacts (windows 788-881s, macos-15 788-956s measured per run)",

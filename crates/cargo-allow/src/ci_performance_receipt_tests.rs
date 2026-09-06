@@ -134,16 +134,28 @@ fn ci_performance_receipt_keeps_timing_buckets_separate_and_honest() {
         assert_eq!(job.timing.compile_seconds, Some(100));
     }
 
-    // Negative control 4: missing timing stays missing; a zero-filled
-    // total over no parts fails the receipt.
+    // Negative control 4: missing timing stays missing. A concluded
+    // job with no duration observation at all is a zero-fill; a
+    // sub-minute job with measured compute carries Some(0) honestly.
     let zero_filled = receipt_json(vec![run(
+        "success",
+        vec![job_json(serde_json::json!({
+            "timing": {}, "compute_minutes": null
+        }))],
+    )]);
+    assert!(
+        validate_json(&zero_filled)
+            .iter()
+            .any(|code| code.starts_with("missing_timing_zero_filled"))
+    );
+    let honest_sub_minute = receipt_json(vec![run(
         "success",
         vec![job_json(serde_json::json!({
             "timing": {}, "compute_minutes": 0
         }))],
     )]);
     assert!(
-        validate_json(&zero_filled)
+        !validate_json(&honest_sub_minute)
             .iter()
             .any(|code| code.starts_with("missing_timing_zero_filled"))
     );
@@ -331,11 +343,14 @@ fn ci_performance_receipt_loads_the_retained_baseline() {
     );
     // The critical path is platform-dominated and the candidates name
     // redundant work without prescribing a mechanism.
+    assert!(!receipt.critical_path_full_matrix.is_empty());
     assert!(
         receipt
             .critical_path_full_matrix
-            .first()
-            .is_some_and(|first| first.contains("windows"))
+            .iter()
+            .any(|entry| entry.contains("windows") || entry.contains("macos")),
+        "the platform matrix dominates the observed critical path: {:?}",
+        receipt.critical_path_full_matrix
     );
     assert!(!receipt.redundant_work_candidates.is_empty());
 }

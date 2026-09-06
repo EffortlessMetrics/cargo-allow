@@ -170,3 +170,39 @@ name = "sentinel"
 purpose = "StaticPreGate"
 routing_owner = "core/ci"
 blocking = true
+
+[[jobs]]
+name = "feature-configuration-qualification"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = false
+
+[[jobs]]
+name = "preflight"
+purpose = "StaticPreGate"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "publish"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "install-smoke (windows-latest)"
+purpose = "PackageInstall"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "install-smoke (ubuntu-latest)"
+purpose = "PackageInstall"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "github-release"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false

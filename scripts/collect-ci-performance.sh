@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # Bounded read-only collector for the #3835 CI performance receipt.
 #
-# Emits one CiPerformanceReceiptV1 JSON observation for an explicit
-# list of workflow run ids. Job purpose, routing owner, and blocking
-# posture come from the checked inventory policy/ci-job-inventory.toml
-# (never inferred from the job name); per-job timing comes from the
-# provider's step observations classified into the bounded breakdown
-# buckets (heuristic classification, recorded as a limit); fields the
-# provider does not expose stay missing (never zero-filled). Read-only:
-# no workflow, routing, cache, or proof state is changed.
+# Emits one validated CiPerformanceReceiptV1 JSON observation for an
+# explicit list of workflow run ids. Job purpose, routing owner, and
+# blocking posture come from the checked inventory
+# policy/ci-job-inventory.toml (never inferred from the job name; a
+# missing row stays "uncategorized" and fails the typed validator).
+# Bucket timing sums only fully completed provider steps — unstarted
+# or in-progress steps contribute nothing and their buckets stay
+# missing, never zero. Failure-path and critical-path projections run
+# in the collector: the first failed job (start order) carries
+# first_failure; the longest passed job per run carries
+# critical_path; compute_minutes derives from completed job duration.
+# base_sha derives per event (the run's PR base or the head's parent).
+# Read-only: no workflow, routing, cache, or proof state is changed.
 #
 # Usage: collect-ci-performance.sh <run_id> [<run_id> ...]
 # Environment: GITHUB_REPOSITORY, GH_TOKEN, CI_PERFORMANCE_OUT,
@@ -25,6 +30,7 @@ GENERATION="${CI_PERFORMANCE_GENERATION:?CI_PERFORMANCE_GENERATION is required}"
 WINDOW_FROM="${CI_PERFORMANCE_WINDOW_FROM:?CI_PERFORMANCE_WINDOW_FROM is required}"
 WINDOW_TO="${CI_PERFORMANCE_WINDOW_TO:?CI_PERFORMANCE_WINDOW_TO is required}"
 INVENTORY="${CI_PERFORMANCE_INVENTORY:-policy/ci-job-inventory.toml}"
+MAX_JOBS_PER_RUN=64
 
 if [ "$#" -eq 0 ] || [ "$#" -gt 16 ]; then
   echo "collect-ci-performance: need 1..16 run ids" >&2
@@ -41,6 +47,17 @@ index=0
 for run_id in "$@"; do
   gh api "${API}/${run_id}" >"${work}/run-${index}.json"
   gh api "${API}/${run_id}/jobs?per_page=100" >"${work}/jobs-${index}.raw.json"
+  if [ "$(jq '.jobs | length' "${work}/jobs-${index}.raw.json")" -gt "$MAX_JOBS_PER_RUN" ]; then
+    echo "collect-ci-performance: run ${run_id} exceeds the ${MAX_JOBS_PER_RUN}-job bound" >&2
+    exit 1
+  fi
+  # base_sha: the run's PR base when associated with a pull request,
+  # otherwise the head commit's first parent (push/other events).
+  base_sha="$(jq -r '.pull_requests[0].base.sha // ""' "${work}/run-${index}.json")"
+  if [ -z "$base_sha" ]; then
+    head_sha="$(jq -r '.head_sha' "${work}/run-${index}.json")"
+    base_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}" --jq '.parents[0].sha' 2>/dev/null || echo '')"
+  fi
   jq --slurpfile inventory "${work}/inventory.json" '
     def bucket($name):
       ($name | ascii_downcase) as $n |
@@ -51,14 +68,13 @@ for run_id in "$@"; do
       elif ($n | test("^post ")) then "artifact"
       else "provider" end;
     [.jobs[] |
-      ([.steps[] |
-        if .started_at == null then
-          {key: bucket(.name // "unknown"), value: 0}
-        else
-          ((.completed_at // .started_at) | split(".") | first | fromdateiso8601) as $end |
-          (.started_at | split(".") | first | fromdateiso8601) as $start |
-          {key: bucket(.name // "unknown"), value: ([$end - $start, 0] | max)}
-        end]
+      # Only fully completed provider observations contribute to a
+      # bucket; unstarted and in-progress steps stay missing, never
+      # zero.
+      ([.steps[] | select(.started_at != null and .completed_at != null) |
+        ((.completed_at | .[:19] + "Z" | fromdateiso8601) -
+         (.started_at | .[:19] + "Z" | fromdateiso8601)) as $seconds |
+        {key: bucket(.name // "unknown"), value: $seconds}]
         | group_by(.key)
         | map({(.[0].key): (map(.value) | add)})
         | add // {}) as $buckets |
@@ -67,6 +83,8 @@ for run_id in "$@"; do
         conclusion: ((.conclusion // "unknown") as $c |
           {success: "passed", failure: "failed"}[$c] // $c),
         runner: (.runner_name // "unknown"),
+        started_at: .started_at,
+        completed_at: .completed_at,
         timing: {
           queue_seconds: null,
           setup_seconds: ($buckets.setup // null),
@@ -81,6 +99,7 @@ for run_id in "$@"; do
     --slurpfile run "${work}/run-${index}.json" \
     --slurpfile jobs "${work}/jobs-${index}.json" \
     --argjson generation "$GENERATION" \
+    --arg base_sha "$base_sha" \
     '. + [{
       workflow: $run[0].name,
       run_id: $run[0].id,
@@ -88,16 +107,15 @@ for run_id in "$@"; do
       event: $run[0].event,
       conclusion: ($run[0].conclusion // "unknown"),
       environment: "hosted",
-      source_pair: {base_sha: "", head_sha: $run[0].head_sha, generation: $generation},
+      source_pair: {base_sha: $base_sha, head_sha: $run[0].head_sha, generation: $generation},
       jobs: $jobs[0]
     }]' <<<"$runs_json")"
   index=$((index + 1))
 done
 
-# Join the checked inventory: purpose, routing owner, and blocking
-# posture per exact job name. Unmatched job names surface with owner
-# "uncategorized" so the typed validator and the author see them; the
-# inventory must grow rather than the collector guessing.
+# Join the checked inventory (purpose/owner/blocking per exact job
+# name), project the failure and critical paths, and derive compute
+# minutes from completed job durations.
 jq -n \
   --arg schema "cargo-allow.ci-performance-receipt.v1" \
   --argjson version 1 \
@@ -108,43 +126,70 @@ jq -n \
   --slurpfile inventory "${work}/inventory.json" '
   def snake: gsub("(?<a>[a-z])(?<b>[A-Z])"; "\(.a)_\(.b)") | ascii_downcase;
   def purpose_of($name):
-    ([$inventory[0].jobs[] | select(.name == $name) | .purpose] | first
-      | if . == null then null else (snake | sub("^msrv$"; "msrv")) end) // null;
+    ([$inventory[0].jobs[] | select(.name == $name) | .purpose] | first | if . == null then null else snake end) // null;
   def owner_of($name):
-    ([$inventory[0].jobs[] | select(.name == $name) | .routing_owner] | first) // null;
+    ([$inventory[0].jobs[] | select(.name == $name) | .routing_owner] | first) // "uncategorized";
   def blocking_of($name):
-    ([$inventory[0].jobs[] | select(.name == $name) | .blocking] | first) // null;
+    ([$inventory[0].jobs[] | select(.name == $name) | .blocking] | first) // false;
+  def total_seconds:
+    ((.timing.setup_seconds // 0) + (.timing.cache_seconds // 0) +
+     (.timing.compile_seconds // 0) + (.timing.test_seconds // 0) +
+     (.timing.provider_seconds // 0) + (.timing.artifact_seconds // 0));
+  def compute_minutes_of:
+    if .started_at != null and .completed_at != null then
+      (((.completed_at | .[:19] + "Z" | fromdateiso8601) -
+        (.started_at | .[:19] + "Z" | fromdateiso8601)) / 60 | floor)
+    else null end;
+  ([ $runs[] | . as $run |
+    ([ $run.jobs[] | {
+      name: .name,
+      purpose: (purpose_of(.name) // "artifact_diagnostics"),
+      routing_owner: owner_of(.name),
+      blocking: blocking_of(.name),
+      runner: .runner,
+      conclusion: .conclusion,
+      timing: .timing,
+      started_at: .started_at,
+      completed_at: .completed_at,
+      first_failure: false,
+      critical_path: false,
+      cache: null,
+      compute_minutes: compute_minutes_of
+    } ]) as $jobs |
+    ([$jobs[] | select(.conclusion == "failed")][0].name // "") as $first_failed_name |
+    ($jobs | [.[] | select(.conclusion == "passed") | total_seconds] | max // 0) as $max_passed |
+    {
+      workflow: $run.workflow, run_id: $run.run_id, attempt: $run.attempt,
+      event: $run.event, conclusion: $run.conclusion,
+      environment: $run.environment, source_pair: $run.source_pair,
+      jobs: [$jobs[] |
+        (.conclusion == "failed" and .name == $first_failed_name) as $is_first_failure |
+        (.conclusion == "passed" and (total_seconds) == $max_passed and $max_passed > 0) as $on_path |
+        .first_failure = $is_first_failure | .critical_path = $on_path |
+        {name, purpose, routing_owner, blocking, runner, conclusion, timing,
+         first_failure, critical_path, cache, compute_minutes}
+      ]
+    }
+  ]) as $transformed_runs |
+  ([$transformed_runs[] | .jobs[] | select(.conclusion == "failed" and .first_failure) | .name]
+    | (first // [])) as $first_failed_candidate |
+  (if ($first_failed_candidate | type) == "array" then $first_failed_candidate else [$first_failed_candidate] end) as $first_failure_list |
+  ([$transformed_runs[] | .jobs[] | select(.critical_path) | .name] | unique) as $full_matrix_list |
   {
     schema_id: $schema,
     schema_version: $version,
     window_from: $from,
     window_to: $to,
     generation: $generation,
-    runs: [$runs[] | {
-      workflow: .workflow, run_id: .run_id, attempt: .attempt, event: .event,
-      conclusion: .conclusion, environment: .environment, source_pair: .source_pair,
-      jobs: [.jobs[] | {
-        name: .name,
-        purpose: (purpose_of(.name) // "ArtifactDiagnostics"),
-        routing_owner: (owner_of(.name) // "uncategorized"),
-        blocking: (blocking_of(.name) // false),
-        runner: .runner,
-        conclusion: .conclusion,
-        timing: .timing,
-        first_failure: false,
-        critical_path: false,
-        cache: null,
-        compute_minutes: null
-      }]
-    }],
+    runs: $transformed_runs,
     limits: [
-      "base_sha is left empty by the collector for push events; the author binds it from git before retention",
       "step-to-bucket classification is heuristic; the typed law keeps the buckets separate",
       "cache classes stay unknown until restored/saved byte evidence is retained",
-      "queue time is not exposed per job by the provider; it stays missing, never zero-filled"
+      "queue time is not exposed per job by the provider; it stays missing, never zero-filled",
+      "compute minutes floor the hosted job duration to whole minutes"
     ],
-    critical_path_first_failure: [],
-    critical_path_full_matrix: [],
+    critical_path_first_failure: $first_failure_list,
+    critical_path_full_matrix: $full_matrix_list,
     redundant_work_candidates: [],
     cache_opportunities: [],
     improvement_targets_owner: "#3753",

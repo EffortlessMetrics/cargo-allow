@@ -253,6 +253,9 @@ pub fn validate_ci_performance_receipt(receipt: &CiPerformanceReceiptV1) -> Vec<
     if receipt.schema_id != CI_PERFORMANCE_RECEIPT_SCHEMA_ID {
         codes.push("schema_mismatch".to_string());
     }
+    if receipt.schema_version != CI_PERFORMANCE_RECEIPT_SCHEMA_VERSION {
+        codes.push("schema_version_mismatch".to_string());
+    }
     if receipt.runs.len() > CI_PERFORMANCE_MAX_RUNS {
         codes.push("run_bound_exceeded".to_string());
     }
@@ -294,7 +297,17 @@ pub fn validate_ci_performance_receipt(receipt: &CiPerformanceReceiptV1) -> Vec<
         if run.jobs.len() > CI_PERFORMANCE_MAX_JOBS_PER_RUN {
             codes.push(format!("job_bound_exceeded: {}", run.run_id));
         }
+        if run.source_pair.base_sha.trim().is_empty() {
+            // The exact source pair is the receipt's identity; an
+            // empty base cannot masquerade as one.
+            codes.push(format!("source_pair_base_missing: {}", run.run_id));
+        }
         for job in &run.jobs {
+            if job.routing_owner == "uncategorized" {
+                // The collector's sentinel for inventory misses: a job
+                // without an inventory row fails closed.
+                codes.push(format!("uncategorized_job: {}", job.name));
+            }
             if job.routing_owner.trim().is_empty() {
                 // Negative control 6: the job name alone never decides
                 // the purpose.
@@ -315,17 +328,15 @@ pub fn validate_ci_performance_receipt(receipt: &CiPerformanceReceiptV1) -> Vec<
                     codes.push(format!("cache_action_treated_as_hit: {}", job.name));
                 }
             }
-            // Negative control 4: missing timing stays missing; a
-            // zero total with no parts is a zero-fill.
-            let timing = job.timing;
-            let all_missing = timing.queue_seconds.is_none()
-                && timing.setup_seconds.is_none()
-                && timing.cache_seconds.is_none()
-                && timing.compile_seconds.is_none()
-                && timing.test_seconds.is_none()
-                && timing.provider_seconds.is_none()
-                && timing.artifact_seconds.is_none();
-            if all_missing && job.compute_minutes.is_some_and(|minutes| minutes == 0) {
+            // Negative control 4: missing timing stays missing. A
+            // concluded job must carry duration evidence (compute
+            // minutes derive from its start/completion); a concluded
+            // job with no duration observation at all is a zero-fill.
+            if matches!(
+                job.conclusion,
+                CiJobConclusionV1::Passed | CiJobConclusionV1::Failed
+            ) && job.compute_minutes.is_none()
+            {
                 codes.push(format!("missing_timing_zero_filled: {}", job.name));
             }
         }
