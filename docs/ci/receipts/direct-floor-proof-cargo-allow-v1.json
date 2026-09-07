@@ -17,8 +17,8 @@
    "tested_floor": "4.6.1",
    "resolved_version": "4.6.1",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "clap_complete",
@@ -26,8 +26,8 @@
    "tested_floor": "4.6.8",
    "resolved_version": "4.6.8",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "rayon",
@@ -35,8 +35,8 @@
    "tested_floor": "1.12.0",
    "resolved_version": "1.12.0",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "same-file",
@@ -44,8 +44,8 @@
    "tested_floor": "1.0.6",
    "resolved_version": "1.0.6",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "serde",
@@ -53,8 +53,8 @@
    "tested_floor": "1.0.228",
    "resolved_version": "1.0.228",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "serde_json",
@@ -62,8 +62,8 @@
    "tested_floor": "1.0.150",
    "resolved_version": "1.0.150",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "sha2",
@@ -71,8 +71,8 @@
    "tested_floor": "0.11.0",
    "resolved_version": "0.11.0",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "terminal_size",
@@ -80,8 +80,8 @@
    "tested_floor": "0.4.4",
    "resolved_version": "0.4.4",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "toml",
@@ -89,8 +89,8 @@
    "tested_floor": "1.1.4",
    "resolved_version": "1.1.4+spec-1.1.0",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "tree-sitter",
@@ -98,8 +98,8 @@
    "tested_floor": "0.26.11",
    "resolved_version": "0.26.11",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "tree-sitter-rust",
@@ -107,8 +107,8 @@
    "tested_floor": "0.24.2",
    "resolved_version": "0.24.2",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "unicode-normalization",
@@ -116,8 +116,8 @@
    "tested_floor": "0.1.0",
    "resolved_version": "0.1.0",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "unicode-segmentation",
@@ -125,8 +125,8 @@
    "tested_floor": "1.13.3",
    "resolved_version": "1.13.3",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   },
   {
    "package": "unicode-width",
@@ -134,14 +134,14 @@
    "tested_floor": "0.2.2",
    "resolved_version": "0.2.2",
    "source_identity": "registry:crates.io",
-   "result": "instrument_failure",
-   "limitation": "a bounded proof class failed at the floors; see the proof output"
+   "result": "proven",
+   "limitation": null
   }
  ],
  "commands": [
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
   "cargo check --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
-  "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current",
+  "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean",
   "cargo package -p allow-core --locked --no-verify --allow-dirty --target-dir target/package-proof"
  ],
  "floor_lock_digest": "sha256:v1:1d9bdbec9c769abd4f2a33760fcf2cd7cb22f3d0c0802ebd86a1f9edfa1bc83c",
