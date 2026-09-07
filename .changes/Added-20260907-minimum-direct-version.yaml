@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Direct minimum version contract (#3903 PR A). Typed
+  DirectMinimumVersionSetV1 / ProductDependencySetV1 /
+  DirectRequirementRowV1 / MinimumVersionProofRequestV1 /
+  MinimumVersionProofReceiptV1 / MinimumVersionRowResultV1 in
+  allow-report inventory the declared direct dependency floors by
+  product/package set and grade proofs of those floors under the
+  claimed MSRV. Law: the current Cargo.lock is never floor proof; a
+  compatible newer version cannot substitute for the declared floor; a
+  newer toolchain fails loudly; identity movement stales the receipt;
+  zero selected rows is an instrument failure; unavailable/yanked and
+  compile-incompatible dispositions stay distinct; one product's proof
+  never satisfies another's request; non-clean rows must carry
+  limitations. Fixture corpus: valid floor, too-low floor, unavailable
+  version, target-only edge, incompatible transitive combination. The
+  live workspace inventory is report-only and changes no dependency
+  requirement; cargo-intent and cargo-proof remain advisory.
+EOF

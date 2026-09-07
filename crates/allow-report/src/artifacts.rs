@@ -26,6 +26,7 @@ mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
+mod minimum_direct_version_v1;
 mod package_candidate_v2;
 mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
@@ -189,6 +190,14 @@ pub use frozen_subject_lock_v1::{
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
 pub use migrate::MigrateReport;
+pub use minimum_direct_version_v1::{
+    DirectDependencyClassV1, DirectMinimumVersionSetV1, DirectRequirementRowV1,
+    MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
+    MinimumFloorRowV1, MinimumProofEvaluationV1, MinimumProofVerdictV1,
+    MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
+    ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
+    render_minimum_proof_json,
+};
 pub use package_candidate_v2::{
     PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,
     PackageCandidateDependencyKindV2, PackageCandidateDependencyRowV2, PackageCandidateFamilyV2,
