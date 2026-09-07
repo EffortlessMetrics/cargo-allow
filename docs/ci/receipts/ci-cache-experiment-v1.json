@@ -60,5 +60,13 @@
     "provider latency and eviction behavior are outside repository-controlled attribution",
     "hosted evidence accumulation over the 12-control denominator is a follow-up activity; this contract only grades it"
   ],
-  "claim_boundary": "measured performance evidence for the current Linux CI cache policy only: a restore, hit, or save is never product, package, release, or proof identity, a cache hit never satisfies a selected phase, and no Linux result authorizes Windows reuse"
+  "claim_boundary": "measured performance evidence for the current Linux CI cache policy only: a restore, hit, or save is never product, package, release, or proof identity, a cache hit never satisfies a selected phase, and no Linux result authorizes Windows reuse",
+  "limits": [
+    "bounded window of four same-day runs; cold, disabled, fallback, corrupt, and provider-unavailable postures were not exercised in this window",
+    "hosted window facts excluded from the compiled lane (the contract's uniform coverage law forbids pooling across source states): run 34031032963 (head a9463e15, trusted, warm, full match, 187289866 bytes, 3s restore, success) and run 34034492950 (head a9463e15 parent-era push at a9463e15 parent state, trusted, warm, full match, 4s restore, success)",
+    "untrusted boundary observation, retained as trust evidence outside the compiled namespace: run 34049432706 (pull request #4149, head 0a7d60c5, restore-only, warm full match, 187289866 bytes, 4s restore, success, save authority absent)",
+    "acceptance-law gap to close in the inventory contract before Acceptance: the derived law does not yet require an untrusted restore-only row, and validate_run_record does not yet require restored bytes on a warm row; both gaps are named here and graded in the law tests",
+    "cross-posture parity for the same semantic receipt has not been compared yet",
+    "hosted runner image facts are observed labels, not immutable bytes (#3926)"
+  ]
 }

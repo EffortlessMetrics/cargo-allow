@@ -99,11 +99,32 @@ fn ci_cache_trust_boundary_source_restricts_saves_to_the_default_branch() {
     // the source instead of inferring it from intent.
     let root = workspace_root();
     let action = read_workspace_file(&root, ".github/actions/rust-cache/action.yml");
+    // Bind the assertion to the ACTIVE save-if field of the
+    // Swatinem/rust-cache step: a match inside a comment or an
+    // unrelated string must not satisfy it. Exactly one active field
+    // is allowed; missing or ambiguous matches fail.
+    let active_save_if: Vec<&str> = action
+        .lines()
+        .filter(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("save-if:") && !trimmed.starts_with("#")
+        })
+        .collect();
+    assert_eq!(
+        active_save_if.len(),
+        1,
+        "exactly one active save-if field is allowed: {active_save_if:?}"
+    );
     assert!(
-        action.contains(
-            "save-if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}"
+        active_save_if[0].contains(
+            "github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
         ),
-        "the save authority must stay bound to trusted default-branch runs"
+        "the save authority must stay bound to trusted default-branch runs: {active_save_if:?}"
+    );
+    assert!(
+        active_save_if[0].contains("github.event_name == 'push'")
+            && active_save_if[0].contains("github.event_name == 'workflow_dispatch'"),
+        "saves must stay restricted to push/dispatch events: {active_save_if:?}"
     );
     assert!(
         action.contains("prefix-key: cargo-allow-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml') }}"),

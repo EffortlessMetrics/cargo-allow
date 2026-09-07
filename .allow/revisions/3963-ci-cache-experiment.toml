@@ -4,10 +4,11 @@ schema_version = 1
 # This diff adds the typed Linux cache experiment contract:
 # CiCacheExperimentV1 / CiCacheLaneObservationV1 / CiCacheParityRowV1 /
 # CiCacheVerdictV1 in allow-report, the retained hosted-evidence
-# receipt docs/ci/receipts/ci-cache-experiment-v1.json (three trusted
-# main-run warm observations of the release-set lane with full-match
-# restore evidence and one untrusted restore-only pull-request run),
-# and the law tests binding the #3900 cache action to the trust,
+# receipt docs/ci/receipts/ci-cache-experiment-v1.json (the compiled
+# lane retains one trusted warm full-match main run; the window's
+# further warm runs and the untrusted restore-only pull request are
+# carried as named window facts in the limits), and the law tests
+# binding the #3900 cache action to the trust,
 # compatibility, parity, and measurement laws. Verdict law: Accepted
 # requires cold/warm/disabled/fallback coverage, a two-warm
 # distribution per lane, equal semantic results across compared
@@ -28,7 +29,7 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11229"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:50f410b775c609a0abe6666c15e29f9d769e1ef53c40608d139abc82c312cdfe"
+after_fingerprint = "sha256:v1:6c52aa86291d3d83960543d6de655b03ebd7201ca40bd178a2c5a9c7ebdf8cfd"
 
 [[records]]
 allow_ids = ["allow-11230"]

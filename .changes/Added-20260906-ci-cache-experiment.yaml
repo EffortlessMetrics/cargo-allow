@@ -12,8 +12,10 @@ body: >-
   falsified untrusted no-save boundary, and a pinned action; parity
   divergence, incidents, untrusted saves, and hit-without-bytes claims
   fail the contract. Retained hosted evidence
-  (`docs/ci/receipts/ci-cache-experiment-v1.json`): three trusted
-  warm full-match runs and one untrusted restore-only pull request —
-  an honest NeedsMoreData verdict with the missing
-  cold/disabled/fallback coverage and the rollback route. Cache state
-  stays performance evidence only.
+  (`docs/ci/receipts/ci-cache-experiment-v1.json`): the compiled lane
+  retains one trusted warm full-match main run; the same-day window's
+  further trusted warm runs and the untrusted restore-only pull
+  request are carried as named window facts in the receipt's limits
+  (the coverage law forbids pooling across source states). The honest
+  verdict is NeedsMoreData with the exact missing coverage and the
+  rollback route. Cache state stays performance evidence only.

@@ -187,3 +187,47 @@ fn ci_linux_cache_contract_json_view_parses_back() {
         serde_json::from_str(json.as_str()).expect("the JSON view parses back");
     assert_eq!(roundtrip, experiment);
 }
+
+#[test]
+fn ci_linux_cache_contract_names_the_law_gaps_before_acceptance() {
+    // Two inventory-law gaps must stay visible before any Acceptance:
+    // the derived law does not yet require an untrusted restore-only
+    // row, and validate_run_record does not yet require restored bytes
+    // on a warm row. The retained receipt names both.
+    let root = workspace_root();
+    let text = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-v1.json");
+    let experiment: CiCacheExperimentV1 =
+        serde_json::from_str(&text).expect("the retained receipt parses");
+    assert!(
+        experiment
+            .limits
+            .iter()
+            .any(|limit| limit.contains("does not yet require an untrusted restore-only row")),
+        "the untrusted-boundary acceptance gap must stay named"
+    );
+    assert!(
+        experiment
+            .limits
+            .iter()
+            .any(|limit| limit.contains("does not yet require restored bytes on a warm row")),
+        "the warm-bytes law gap must stay named"
+    );
+    // The compiled lane stays single-source (the contract forbids
+    // pooling across source states); the other hosted observations are
+    // carried as named window facts.
+    assert_eq!(experiment.runs.len(), 1);
+    assert!(
+        experiment
+            .limits
+            .iter()
+            .any(|limit| limit.contains("excluded from the compiled lane")),
+        "the excluded window facts must stay named with their run identities"
+    );
+    assert!(
+        experiment
+            .limits
+            .iter()
+            .any(|limit| limit.contains("run 34049432706")),
+        "the untrusted restore-only observation must stay named with its run identity"
+    );
+}

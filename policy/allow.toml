@@ -19262,7 +19262,7 @@ owner = "core/ci"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the Linux cache contract tests (#3963); every expect guards a retained-surface read, a known-good fixture serialization, or a hostile fixture whose rejection is the property under test"
 evidence = ["issue:3963"]
-occurrence_limit = 8
+occurrence_limit = 9
 created = "2026-09-06"
 review_after = "2026-12-05"
 
