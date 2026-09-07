@@ -20,3 +20,6 @@ unicode-segmentation.workspace = true
 unicode-width.workspace = true
 
 [dev-dependencies]
+
+[lints]
+workspace = true

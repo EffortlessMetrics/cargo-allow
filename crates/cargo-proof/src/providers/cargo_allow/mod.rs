@@ -1,11 +1,15 @@
 //! Cargo-allow proof provider (#2554, absorbed into cargo-proof #2938).
 mod adapter;
-mod contract;
 mod digest;
-mod discovery;
-mod process_protocol;
 
 pub use adapter::CargoAllowProofProviderV1;
+// The facade re-exports exist for the public provider surface; cfg(test)
+// builds of the crate legitimately consume them only through the glob in
+// the submodule tests, so the unused-import allowance is scoped here with
+// that exact reason (cargo-allow receipts this attribute).
+mod contract;
+mod discovery;
+mod process_protocol;
 pub use contract::{
     CARGO_ALLOW_PROOF_PROVIDER_ID, CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID,
     CargoAllowProviderContractV1, ProviderAccessPostureV1, ProviderContractError,
