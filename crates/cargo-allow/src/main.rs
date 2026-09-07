@@ -237,6 +237,10 @@ mod review_readiness_check_tests;
 mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
+#[cfg(test)]
+mod workspace_lint_inheritance_tests;
+#[cfg(test)]
+mod workspace_lint_policy_tests;
 
 #[cfg(test)]
 mod config_authority_denominator_tests;

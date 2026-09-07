@@ -42,6 +42,7 @@ mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
 mod worklist;
+mod workspace_lint_inventory_v1;
 
 pub use add::AddReport;
 pub use add_finding_plan::{
@@ -213,6 +214,12 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workspace_lint_inventory_v1::{
+    ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,
+    WORKSPACE_LINT_INVENTORY_SCHEMA_VERSION, WorkspaceLintFindingKindV1, WorkspaceLintFindingV1,
+    WorkspaceLintFindingsV1, WorkspaceLintInventoryV1, classify_workspace_lint_inventory,
+    render_workspace_lint_findings_human, render_workspace_lint_findings_json,
 };
 
 pub use exact_candidate_receipt_v2::{
