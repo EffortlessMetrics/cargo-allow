@@ -8,8 +8,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host (product closure default target)",
- "manifest_set_digest": "f39fbee96cf20336cac8f76587540cfd90d9e6656404fc46b3612059df6a0b12",
- "lock_digest": "3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+ "manifest_set_digest": "232a22b71289f0e4e4a4709755980907944200c58add01517eacc0c67683dbc1",
+ "lock_digest": "303d653e5797c70323194637fdabe247266cc21855a4ee8f6eef7387128f9145",
  "rows": [
   {
    "package": "clap",
@@ -17,8 +17,8 @@
    "tested_floor": "4.6.1",
    "resolved_version": "4.6.1",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "clap_complete",
@@ -26,8 +26,8 @@
    "tested_floor": "4.6.8",
    "resolved_version": "4.6.8",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "rayon",
@@ -35,8 +35,8 @@
    "tested_floor": "1.12.0",
    "resolved_version": "1.12.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "same-file",
@@ -44,8 +44,8 @@
    "tested_floor": "1.0.6",
    "resolved_version": "1.0.6",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "serde",
@@ -53,8 +53,8 @@
    "tested_floor": "1.0.228",
    "resolved_version": "1.0.228",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "serde_json",
@@ -62,8 +62,8 @@
    "tested_floor": "1.0.150",
    "resolved_version": "1.0.150",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "sha2",
@@ -71,8 +71,8 @@
    "tested_floor": "0.11.0",
    "resolved_version": "0.11.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "terminal_size",
@@ -80,8 +80,8 @@
    "tested_floor": "0.4.4",
    "resolved_version": "0.4.4",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "toml",
@@ -89,8 +89,8 @@
    "tested_floor": "1.1.4",
    "resolved_version": "1.1.4+spec-1.1.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "tree-sitter",
@@ -98,8 +98,8 @@
    "tested_floor": "0.26.11",
    "resolved_version": "0.26.11",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "tree-sitter-rust",
@@ -107,8 +107,8 @@
    "tested_floor": "0.24.2",
    "resolved_version": "0.24.2",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-normalization",
@@ -116,8 +116,8 @@
    "tested_floor": "0.1.0",
    "resolved_version": "0.1.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-segmentation",
@@ -125,8 +125,8 @@
    "tested_floor": "1.13.3",
    "resolved_version": "1.13.3",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-width",
@@ -134,8 +134,8 @@
    "tested_floor": "0.2.2",
    "resolved_version": "0.2.2",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   }
  ],
  "commands": [
@@ -144,7 +144,7 @@
   "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
   "cargo package -p allow-core --locked --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:505475274d0ff0d8ddc3db1a4ce248f9eba9a71d9bcf3b4886785176eacd9255",
+ "floor_lock_digest": "sha256:v1:1d9bdbec9c769abd4f2a33760fcf2cd7cb22f3d0c0802ebd86a1f9edfa1bc83c",
  "limitations": [
   "bounded proof: the check, test, package classes over the release-set closure, not every target or feature combination",
   "internal =0.2.0 workspace pins are proven by the same closure build",
