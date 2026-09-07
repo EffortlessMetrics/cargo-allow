@@ -8,45 +8,70 @@
 //! rustc, Clippy, build scripts, proc macros, macro expansion, type analysis, or
 //! MIR.
 
-use allow_core::{CargoAllowResult, Finding, read_text_file_capped};
+use allow_core::Finding;
+#[cfg(feature = "syntax")]
+use allow_core::{CargoAllowResult, read_text_file_capped};
+#[cfg(feature = "syntax")]
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(feature = "syntax")]
+use std::path::PathBuf;
 
+#[cfg(feature = "syntax")]
 mod finding_builder;
+#[cfg(feature = "syntax")]
 mod line_context;
+#[cfg(feature = "syntax")]
 mod line_facts;
+#[cfg(feature = "syntax")]
 mod line_findings;
+#[cfg(feature = "syntax")]
 mod line_index_findings;
+#[cfg(feature = "syntax")]
 mod line_lint_findings;
+#[cfg(feature = "syntax")]
 mod line_panic_findings;
+#[cfg(feature = "syntax")]
 mod line_scan;
+#[cfg(feature = "syntax")]
 mod line_unsafe_findings;
+#[cfg(feature = "syntax")]
 mod package;
 #[cfg(feature = "syntax")]
 mod root_bound_scan_cache;
+#[cfg(feature = "syntax")]
 mod safety_comments;
+#[cfg(feature = "syntax")]
 mod scan_cache;
+#[cfg(feature = "syntax")]
 mod scan_cache_store;
 mod scan_result;
 #[cfg(feature = "syntax")]
 mod syntax_coupling;
 #[cfg(feature = "syntax")]
 mod syntax_facts;
+#[cfg(feature = "syntax")]
 mod syntax_kinds;
 #[cfg(feature = "syntax")]
 mod syntax_tree;
 mod test_subjects;
+#[cfg(feature = "syntax")]
 mod text;
 
+#[cfg(feature = "syntax")]
 use line_scan::scan_source_lines;
+#[cfg(feature = "syntax")]
 use package::source_package_contexts;
 
+#[cfg(feature = "syntax")]
 pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 #[cfg(feature = "syntax")]
 pub use root_bound_scan_cache::{RootBoundScanCacheStore, ScanCacheTargetDispositionV1};
+#[cfg(feature = "syntax")]
 pub use scan_cache::ScanCache;
+#[cfg(feature = "syntax")]
 pub use scan_cache_store::ScanCacheStore;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
 #[cfg(feature = "syntax")]
@@ -177,6 +202,7 @@ pub fn scan_rust_files(
     })
 }
 
+#[cfg(feature = "syntax")]
 enum FileScanOutcome {
     Scanned(RustSourceScan),
     Skipped(String),

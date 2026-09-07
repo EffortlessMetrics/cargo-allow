@@ -41,3 +41,6 @@ provider-cargo-allow = []
 provider-hawk = []
 provider-ripr = []
 all-providers = ["provider-cargo-allow", "provider-hawk", "provider-ripr"]
+
+[lints]
+workspace = true
