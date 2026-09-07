@@ -258,3 +258,80 @@ fn minimum_direct_version_contract_views_derive_from_one_result() {
     assert!(human.contains("verdict=complete"));
     assert!(human.contains("claim boundary:"));
 }
+
+#[test]
+fn minimum_direct_version_contract_vocabulary_is_fully_labeled() {
+    // Every floor result label and cleanliness flag is exercised so the
+    // vocabulary cannot silently drift.
+    for (result, label, clean) in [
+        (MinimumFloorResultV1::Proven, "proven", true),
+        (MinimumFloorResultV1::FloorTooLow, "floor_too_low", false),
+        (
+            MinimumFloorResultV1::UnsupportedCombination,
+            "unsupported_combination",
+            false,
+        ),
+        (
+            MinimumFloorResultV1::ResolverFailure,
+            "resolver_failure",
+            false,
+        ),
+        (
+            MinimumFloorResultV1::PackageMetadataMismatch,
+            "package_metadata_mismatch",
+            false,
+        ),
+        (
+            MinimumFloorResultV1::InstrumentFailure,
+            "instrument_failure",
+            false,
+        ),
+        (MinimumFloorResultV1::NotClaimed, "not_claimed", false),
+    ] {
+        assert_eq!(result.label(), label);
+        assert_eq!(result.is_clean(), clean);
+    }
+    for (class, label) in [
+        (DirectDependencyClassV1::Normal, "normal"),
+        (DirectDependencyClassV1::Dev, "dev"),
+        (DirectDependencyClassV1::Build, "build"),
+    ] {
+        assert_eq!(class.label(), label);
+    }
+}
+
+#[test]
+fn minimum_direct_version_contract_schema_mismatch_is_named() {
+    let mut wrong = receipt(vec![row("serde", MinimumFloorResultV1::Proven)]);
+    wrong.schema_id = "not-the-schema".to_string();
+    let evaluation = evaluate_minimum_version_proof(&request(), &wrong);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("schema_mismatch"))
+    );
+}
+
+#[test]
+fn minimum_direct_version_contract_set_round_trips() {
+    // The typed denominator round-trips through serde unchanged.
+    let set: allow_report::DirectMinimumVersionSetV1 = serde_json::from_str(
+        r#"{
+        "schema_id": "cargo-allow.minimum-direct-version.v1",
+        "schema_version": 1,
+        "product_sets": [{
+            "product": "cargo-allow",
+            "packages": ["cargo-allow"],
+            "rows": [{"package": "serde", "requirement": "1.0",
+                      "class": "normal"}],
+            "manifest_set_digest": "m",
+            "lock_digest": "l",
+            "msrv": "1.95"
+        }],
+        "claim_boundary": "bounded"
+    }"#,
+    )
+    .expect("the typed set parses");
+    assert_eq!(set.product_sets[0].rows[0].package, "serde");
+}
