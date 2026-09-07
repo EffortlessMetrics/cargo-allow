@@ -243,6 +243,8 @@ mod workspace_lint_drift_guard_tests;
 mod workspace_lint_inheritance_tests;
 #[cfg(test)]
 mod workspace_lint_policy_tests;
+#[cfg(test)]
+mod workspace_lint_ratchets_tests;
 
 #[cfg(test)]
 mod config_authority_denominator_tests;

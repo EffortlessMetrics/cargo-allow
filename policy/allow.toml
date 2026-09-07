@@ -19464,3 +19464,20 @@ review_after = "2026-12-06"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/workspace_lint_drift_guard_tests.rs"
+
+[[allow]]
+id = "allow-11240"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_ratchets_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the lint ratchet selection tests (#3904 PR D); every expect guards a retained-manifest read whose content is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 3
+created = "2026-09-07"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_ratchets_tests.rs"
