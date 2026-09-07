@@ -315,7 +315,7 @@ done
 # they cannot pass inside the very run that refreshes those receipts.
 # The skip is recorded verbatim in the receipt's command list, and CI
 # still runs the meta-tests against every committed tree.
-DRIFT_TEST_SKIPS="-- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current"
+DRIFT_TEST_SKIPS="-- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean"
 check_cmd=""
 test_cmd=""
 package_cmd=""
@@ -338,7 +338,8 @@ fi
 if [[ -n "$test_cmd" ]]; then
   cargo test --locked "${check_args[@]}" \
     -- --skip minimum_direct_version_drift \
-    --skip check_exits_zero_when_every_release_set_receipt_is_current || test_status=$?
+    --skip check_exits_zero_when_every_release_set_receipt_is_current \
+    --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean || test_status=$?
 fi
 if [[ -n "$package_cmd" ]]; then
   cargo package -p "${CLOSURE[0]}" --locked --no-verify --allow-dirty \

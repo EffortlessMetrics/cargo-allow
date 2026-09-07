@@ -141,7 +141,7 @@
  "commands": [
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
   "cargo check --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
-  "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
+  "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current",
   "cargo package -p allow-core --locked --no-verify --allow-dirty --target-dir target/package-proof"
  ],
  "floor_lock_digest": "sha256:v1:1d9bdbec9c769abd4f2a33760fcf2cd7cb22f3d0c0802ebd86a1f9edfa1bc83c",
@@ -149,7 +149,8 @@
   "bounded proof: the check, test, package classes over the release-set closure, not every target or feature combination",
   "internal =0.2.0 workspace pins are proven by the same closure build",
   "dev-dependencies are exercised by the test class but are not certified floors",
-  "optional dependencies and non-default features stay outside the certified set"
+  "optional dependencies and non-default features stay outside the certified set",
+  "the drift meta-tests are excluded from the floored test class by name (they grade this proof's own retained receipts); CI runs them against every committed tree"
  ],
  "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package. Transitive minimal combinations are not certified."
 }
