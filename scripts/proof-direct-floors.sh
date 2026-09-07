@@ -47,7 +47,7 @@ import json
 import sys
 import tomllib
 
-data = tomllib.load(open(sys.argv[1], "rb"))
+data = tomllib.load(open(sys.argv[1], "rb"))  # floor inventory site
 deps = data["workspace"]["dependencies"]
 rows = []
 for name, spec in sorted(deps.items()):
