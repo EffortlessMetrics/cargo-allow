@@ -2,11 +2,14 @@
  "schema_id": "cargo-allow.minimum-direct-version.v1",
  "schema_version": 1,
  "product": "cargo-allow",
+ "package_roots": [
+  "cargo-allow"
+ ],
  "msrv": "1.95",
  "toolchain": "1.95.0",
- "target": "host (release-set default target)",
- "manifest_set_digest": "worktree-head",
- "lock_digest": "floor-candidate-lock",
+ "target": "host (product closure default target)",
+ "manifest_set_digest": "f39fbee96cf20336cac8f76587540cfd90d9e6656404fc46b3612059df6a0b12",
+ "lock_digest": "3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
  "rows": [
   {
    "package": "clap",
@@ -136,15 +139,17 @@
   }
  ],
  "commands": [
-  "cargo update -p <dep> --precise <floor> (per external direct dep)",
-  "cargo check --locked --workspace",
-  "cargo test -p cargo-allow --locked",
-  "cargo package -p allow-core --locked --no-verify --allow-dirty"
+  "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
+  "cargo check --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
+  "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
+  "cargo package -p allow-core --locked --no-verify --allow-dirty --target-dir target/package-proof"
  ],
  "floor_lock_digest": "sha256:v1:505475274d0ff0d8ddc3db1a4ce248f9eba9a71d9bcf3b4886785176eacd9255",
  "limitations": [
-  "bounded proof: the release-set test subset, not every target or feature combination",
-  "internal =0.2.0 workspace pins are proven by the same workspace build"
+  "bounded proof: the check, test, package classes over the release-set closure, not every target or feature combination",
+  "internal =0.2.0 workspace pins are proven by the same closure build",
+  "dev-dependencies are exercised by the test class but are not certified floors",
+  "optional dependencies and non-default features stay outside the certified set"
  ],
- "claim_boundary": "Exact selected proof of declared direct dependency floors for the cargo-allow release set at the claimed MSRV. Transitive minimal combinations are not certified."
+ "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package. Transitive minimal combinations are not certified."
 }

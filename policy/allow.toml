@@ -19725,3 +19725,93 @@ glob = ".allow/revisions/3903-advisory-products.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11254"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_version_selection.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the floor selection derivation module's own tests (#3903 PR D); every expect guards a registered product, a parse of the checked-in workspace manifests, or a digest derivation whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 5
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_version_selection.rs"
+
+[[allow]]
+id = "allow-11255"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/minimum_version_selection_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the drift command tests (#3903 PR D); every expect guards a fixture write or a workspace root resolution whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 3
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/minimum_version_selection_command.rs"
+
+[[allow]]
+id = "allow-11256"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the drift guard law and live grading tests (#3903 PR D); every expect guards a known-good typed fixture, a manifest-derived selection, or a retained receipt parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 6
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+
+[[allow]]
+id = "allow-11257"
+kind = "panic"
+family = "panic_macro"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Derivation and parse diagnostics in the live drift grading test (#3903 PR D); each panic names the exact product whose selection or retained receipt failed to derive or parse"
+evidence = ["issue:3903"]
+occurrence_limit = 3
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+macro_name = "panic"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+
+[[allow]]
+id = "allow-11258"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3903-minimum-version-drift.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the drift-guard source exceptions added by the #3903 PR D lane."
+evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3903-minimum-version-drift.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3903-minimum-version-drift.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

@@ -27,6 +27,7 @@ mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
 mod minimum_direct_version_v1;
+mod minimum_version_drift_v1;
 mod package_candidate_v2;
 mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
@@ -197,6 +198,13 @@ pub use minimum_direct_version_v1::{
     MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
     ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
     render_minimum_proof_json,
+};
+pub use minimum_version_drift_v1::{
+    DRIFT_RELEASE_SET_PRODUCT, MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID,
+    MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_VERSION, MinimumVersionDriftEvaluationV1,
+    MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
+    evaluate_minimum_version_drift, render_minimum_version_drift_human,
+    render_minimum_version_drift_json,
 };
 pub use package_candidate_v2::{
     PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,

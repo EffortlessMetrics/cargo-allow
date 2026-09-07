@@ -79,6 +79,7 @@
 | cargo-allow | cargo-allow.default | regex | dev | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | serde | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | serde_json | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
+| cargo-allow | cargo-allow.default | sha2 | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | terminal_size | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | toml | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-proof | cargo-proof.default | clap | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
