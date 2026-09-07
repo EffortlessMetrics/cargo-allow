@@ -148,7 +148,11 @@ moved = []
 for row in floors:
     if row["package"] in pin_failed:
         continue
-    locked = resolved.get(row["package"])
+    # Cargo can record a registry version with build metadata (e.g.
+    # 1.1.4+spec-1.1.0); SemVer precedence ignores it, so compare the
+    # version without the suffix.
+    locked_base = (resolved.get(row["package"]) or "").split("+")[0]
+    locked = locked_base
     if locked != row["floor"]:
         moved.append(row["package"] + ": locked at " + str(locked) + ", floor requires " + str(row["floor"]))
 print("; ".join(moved))
