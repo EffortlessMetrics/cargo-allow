@@ -255,7 +255,7 @@ pub(crate) fn manifest_set_digest(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("root manifest reads: {error}"))?;
     hasher.update(b"Cargo.toml");
     hasher.update([0u8]);
-    hasher.update(&root_manifest);
+    hasher.update(cr_stripped(&root_manifest));
     hasher.update([0u8]);
 
     let crates_dir = root.join("crates");
@@ -279,18 +279,30 @@ pub(crate) fn manifest_set_digest(root: &Path) -> Result<String, String> {
             .map_err(|error| format!("manifest {relative} reads: {error}"))?;
         hasher.update(relative.as_bytes());
         hasher.update([0u8]);
-        hasher.update(&bytes);
+        hasher.update(cr_stripped(&bytes));
         hasher.update([0u8]);
     }
     Ok(hex_sha256(hasher.finalize()))
 }
 
-/// The lock identity digest over the exact `Cargo.lock` bytes.
+/// Strip CR bytes so the hashed identity is line-ending independent: a
+/// CRLF checkout (Windows autocrlf) hashes the same as an LF checkout,
+/// mirroring the shell recipe's `tr -d '\r'`.
+fn cr_stripped(bytes: &[u8]) -> Vec<u8> {
+    bytes
+        .iter()
+        .copied()
+        .filter(|&byte| byte != b'\r')
+        .collect()
+}
+
+/// The lock identity digest over the `Cargo.lock` bytes, CR-stripped
+/// for line-ending independence.
 pub(crate) fn lock_digest(root: &Path) -> Result<String, String> {
     let bytes = std::fs::read(root.join("Cargo.lock"))
         .map_err(|error| format!("Cargo.lock reads: {error}"))?;
     let mut hasher = Sha256::new();
-    hasher.update(&bytes);
+    hasher.update(cr_stripped(&bytes));
     Ok(hex_sha256(hasher.finalize()))
 }
 

@@ -126,6 +126,9 @@ cargo --version
 # Identity digests are bound to the detached worktree's own inputs — the
 # exact manifests and the HEAD Cargo.lock the floor candidate starts
 # from — so uncommitted live-tree state can never certify a receipt.
+# The digests are line-ending independent: CR bytes are stripped from
+# the hashed stream so a CRLF checkout (Windows autocrlf) hashes the
+# same identity as an LF checkout.
 manifest_set_digest="$(
   {
     printf '%s\0' 'Cargo.toml'
@@ -137,9 +140,9 @@ manifest_set_digest="$(
         cat "$manifest"
         printf '\0'
       done
-  } | sha256sum | cut -d' ' -f1
+  } | tr -d '\r' | sha256sum | cut -d' ' -f1
 )"
-lock_digest="$(sha256sum Cargo.lock | cut -d' ' -f1)"
+lock_digest="$(tr -d '\r' < Cargo.lock | sha256sum | cut -d' ' -f1)"
 
 # 1. Derive the product's package closure and its external direct
 #    dependency floors from the checked-in manifests: starting at the
@@ -401,7 +404,7 @@ for row in floors:
         "limitation": limitation,
     })
 
-lock_bytes = open(lock_path, "rb").read()
+lock_bytes = open(lock_path, "rb").read().replace(b"\r", b"")
 floor_lock_digest = "sha256:v1:" + hashlib.sha256(lock_bytes).hexdigest()
 
 commands = ["cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)"]
