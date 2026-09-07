@@ -21,7 +21,19 @@
 set -euo pipefail
 
 MSRV="${CI_PROOF_MSRV:-1.95}"
-CLASSES="${CI_PROOF_CLASSES:-check,test,package}"
+PRODUCT="${CI_PROOF_PRODUCT:-cargo-allow}"
+# Report-only products stay advisory: check is the bounded proof class;
+# test/package enforcement requires the owning package-family authority.
+# An explicit CI_PROOF_CLASSES still wins.
+ADVISORY="${CI_PROOF_ADVISORY:-false}"
+CLASSES="${CI_PROOF_CLASSES:-}"
+if [ -z "$CLASSES" ]; then
+  if [[ "$ADVISORY" == "true" ]]; then
+    CLASSES="check"
+  else
+    CLASSES="check,test,package"
+  fi
+fi
 ROOT="$(git rev-parse --show-toplevel)"
 
 # Validate the class selection before anything runs: an empty or unknown
@@ -183,11 +195,12 @@ fi
 #    failures become resolver failures; a failed proof class becomes an
 #    instrument failure for every row (the failing crate is in the
 #    captured output).
-python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/floors.json" "$WORKTREE/pin-failures.json" \
+PRODUCT="$PRODUCT" python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/floors.json" "$WORKTREE/pin-failures.json" \
   "$check_status" "$test_status" "$package_status" "$MSRV" \
   "$manifest_set_digest" "$lock_digest" > "$OUT" <<'PY'
 import hashlib
 import json
+import os
 import sys
 import tomllib
 
@@ -195,6 +208,7 @@ lock_path, floors_path, pins_path = sys.argv[1], sys.argv[2], sys.argv[3]
 check_status, test_status, package_status = (int(v) for v in sys.argv[4:7])
 msrv = sys.argv[7]
 manifest_set_digest, lock_digest = sys.argv[8], sys.argv[9]
+product = os.environ.get("PRODUCT", "cargo-allow")
 
 lock = tomllib.load(open(lock_path, "rb"))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -235,7 +249,7 @@ floor_lock_digest = "sha256:v1:" + hashlib.sha256(lock_bytes).hexdigest()
 receipt = {
     "schema_id": "cargo-allow.minimum-direct-version.v1",
     "schema_version": 1,
-    "product": "cargo-allow",
+    "product": product,
     "msrv": msrv,
     "toolchain": msrv + ".0",
     "target": "host (release-set default target)",

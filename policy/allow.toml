@@ -19581,3 +19581,147 @@ glob = "scripts/proof-direct-floors.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11247"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the product isolation tests (#3903 PR C); every expect guards a known-good typed fixture or parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 4
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+
+[[allow]]
+id = "allow-11248"
+kind = "panic"
+family = "panic_macro"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Fixture panic in the product isolation tests (#3903); the panic is guarded by an is_some_and assertion and unreachable on the retained evidence"
+evidence = ["issue:3903"]
+occurrence_limit = 1
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "panic"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+
+[[allow]]
+id = "allow-11249"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the cargo-intent product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the product's experimental posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11250"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the cargo-proof product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the product's experimental posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11251"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the shared product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the shared crates' independent support posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11252"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/proof-advisory-products.sh"
+owner = "core/deps"
+classification = "advisory_floor_collector"
+reason = "Advisory product proof collector (#3903 PR C): runs the bounded check-class floor proof for the shared, cargo-intent, and cargo-proof products. Report-only; a failure never blocks the cargo-allow release set."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/proof-advisory-products.sh"
+target_fingerprint = "sh"
+glob = "scripts/proof-advisory-products.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11253"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3903-advisory-products.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the advisory product receipts added by the #3903 PR C lane."
+evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3903-advisory-products.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3903-advisory-products.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
