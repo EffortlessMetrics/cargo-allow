@@ -181,8 +181,14 @@ mod campaign_membership_projection_tests;
 #[cfg(test)]
 mod candidate_preparation_plan_tests;
 #[cfg(test)]
+mod ci_cache_fallback_parity_tests;
+#[cfg(test)]
+mod ci_cache_trust_boundary_tests;
+#[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
+#[cfg(test)]
+mod ci_linux_cache_contract_tests;
 #[cfg(test)]
 mod ci_performance_receipt_tests;
 #[cfg(test)]
