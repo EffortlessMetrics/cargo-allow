@@ -42,6 +42,7 @@ mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
 mod worklist;
+mod workspace_lint_drift_guard_v1;
 mod workspace_lint_inventory_v1;
 
 pub use add::AddReport;
@@ -214,6 +215,13 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workspace_lint_drift_guard_v1::{
+    WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
+    WorkspaceLintDriftClassV1, WorkspaceLintDriftFindingV1, WorkspaceLintDriftReportV1,
+    WorkspaceLintExceptionScopeV1, WorkspaceLintExceptionV1, WorkspaceLocalLintRowV1,
+    evaluate_workspace_lint_drift, render_workspace_lint_drift_human,
+    render_workspace_lint_drift_json,
 };
 pub use workspace_lint_inventory_v1::{
     ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,

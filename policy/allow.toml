@@ -19447,3 +19447,20 @@ normalized_snippet_hash = "fnv1a64:c3470fd25778d6ea"
 [allow.last_seen]
 line = 2
 column = 44
+
+[[allow]]
+id = "allow-11239"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_drift_guard_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the lint drift-guard law tests (#3904 PR C); every expect guards a known-good typed fixture or a retained-surface read whose existence is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 7
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_drift_guard_tests.rs"

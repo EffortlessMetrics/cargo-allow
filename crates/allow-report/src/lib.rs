@@ -450,6 +450,15 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3904 PR C lint drift guard.
+pub use artifacts::{
+    WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
+    WorkspaceLintDriftClassV1, WorkspaceLintDriftFindingV1, WorkspaceLintDriftReportV1,
+    WorkspaceLintExceptionScopeV1, WorkspaceLintExceptionV1, WorkspaceLocalLintRowV1,
+    evaluate_workspace_lint_drift, render_workspace_lint_drift_human,
+    render_workspace_lint_drift_json,
+};
+
 // Root re-exports for the #3904 workspace lint inventory.
 pub use artifacts::{
     ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,
