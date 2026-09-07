@@ -262,6 +262,9 @@ pub fn evaluate_minimum_version_proof(
     if receipt.schema_id != MINIMUM_DIRECT_VERSION_SCHEMA_ID {
         reasons.push("schema_mismatch".to_string());
     }
+    if receipt.schema_version != MINIMUM_DIRECT_VERSION_SCHEMA_VERSION {
+        reasons.push("schema_version_mismatch".to_string());
+    }
     if receipt.product != request.product {
         // Negative control 5: one product's proof cannot satisfy
         // another's request.
@@ -299,6 +302,12 @@ pub fn evaluate_minimum_version_proof(
         // Negative control 3: the tested floor must be the declared
         // floor's minimum; a compatible newer version cannot substitute
         // for it while still being labeled the declared floor.
+        if row.result == MinimumFloorResultV1::Proven && row.resolved_version != row.tested_floor {
+            reasons.push(format!(
+                "resolved substitution: {} resolved {} but the tested floor is {}",
+                floor.package, row.resolved_version, row.tested_floor
+            ));
+        }
         if row.tested_floor != floor.selected_floor {
             reasons.push(format!(
                 "floor substitution: {} was tested at {} but the declared floor selects {}",
@@ -343,6 +352,18 @@ pub fn evaluate_minimum_version_proof(
         .collect();
     if !unclean.is_empty() {
         reasons.push(format!("non-clean dispositions: {}", unclean.join(", ")));
+    }
+    // The receipt's execution evidence must name the proof commands and
+    // the selected target: an empty command list proves nothing, and a
+    // target other than the requested one is not this proof.
+    if receipt.commands.is_empty() {
+        reasons.push("receipt records no executed commands".to_string());
+    }
+    if receipt.target != request.target {
+        reasons.push(format!(
+            "target mismatch: receipt {} vs request {}",
+            receipt.target, request.target
+        ));
     }
 
     if !reasons.is_empty() {

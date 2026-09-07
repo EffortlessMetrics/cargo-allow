@@ -335,3 +335,56 @@ fn minimum_direct_version_contract_set_round_trips() {
     .expect("the typed set parses");
     assert_eq!(set.product_sets[0].rows[0].package, "serde");
 }
+
+#[test]
+fn minimum_direct_version_contract_resolved_version_must_equal_tested_floor() {
+    let mut receipt = receipt(vec![row("serde", MinimumFloorResultV1::Proven)]);
+    let mut row = row("serde", MinimumFloorResultV1::Proven);
+    row.resolved_version = "1.0.228".to_string();
+    receipt.rows = vec![row];
+    let evaluation = evaluate_minimum_version_proof(&request(), &receipt);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("resolved substitution")),
+        "the ambient lock version cannot silently stand in: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_contract_empty_commands_and_target_drift_are_named() {
+    let mut no_commands = receipt(vec![row("serde", MinimumFloorResultV1::Proven)]);
+    no_commands.commands = Vec::new();
+    no_commands.target = "aarch64-apple-darwin".to_string();
+    let evaluation = evaluate_minimum_version_proof(&request(), &no_commands);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("records no executed commands")),
+        "empty command evidence must be named"
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("target mismatch")),
+        "a drifted target must be named"
+    );
+}
+
+#[test]
+fn minimum_direct_version_contract_schema_version_drift_is_named() {
+    let mut receipt = receipt(vec![row("serde", MinimumFloorResultV1::Proven)]);
+    receipt.schema_version = 2;
+    let evaluation = evaluate_minimum_version_proof(&request(), &receipt);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("schema_version_mismatch")),
+        "unsupported schema versions must be named"
+    );
+}
