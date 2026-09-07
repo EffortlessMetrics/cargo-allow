@@ -16,4 +16,3 @@ body: >-
   version, target-only edge, incompatible transitive combination. The
   live workspace inventory is report-only and changes no dependency
   requirement; cargo-intent and cargo-proof remain advisory.
-EOF
