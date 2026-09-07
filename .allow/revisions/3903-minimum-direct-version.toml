@@ -38,3 +38,24 @@ after_fingerprint = "sha256:v1:8292a3516ff36ed4bb0c005ce40fc9a3901cccf9ebbb4f76b
 allow_ids = ["allow-11243"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:2efec8909736d32d57e050970e32106ac5f590ba2dcf47f9e71d2e11170ca760"
+
+[[records]]
+allow_ids = ["allow-11244"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:PENDING"
+
+[[records]]
+allow_ids = ["allow-11245"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c64479510db27fb673f48018bc5b51ff7d23e7a244368f9ca820496c7d8605a6"
+
+[[records]]
+allow_ids = ["allow-11246"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6a51236f9af5783e16db9c1a57e72941463d8982bd1163049a76b7ccc71ccdcd"
+
+[[records]]
+allow_ids = ["allow-11242"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:8292a3516ff36ed4bb0c005ce40fc9a3901cccf9ebbb4f76be4866544e363d7d"
+after_fingerprint = "sha256:v1:c1e1cd3b86092dc8475f75de3eb1d835fb3429460b38cef7dab3be6bbc9b58cd"

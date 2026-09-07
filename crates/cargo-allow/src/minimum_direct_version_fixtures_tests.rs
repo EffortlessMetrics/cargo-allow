@@ -249,3 +249,39 @@ fn minimum_direct_version_fixtures_live_workspace_inventory_is_report_only() {
     assert_eq!(set.product_sets.len(), 1);
     assert_eq!(set.product_sets[0].rows.len(), 1);
 }
+
+#[test]
+fn minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean() {
+    // The retained hosted receipt (#3903 PR B): the bounded check/test/
+    // package proof at the declared floors under the 1.95 toolchain.
+    let root = std::path::PathBuf::from(
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set"),
+    )
+    .join("../..")
+    .canonicalize()
+    .expect("workspace root resolves");
+    let text = std::fs::read_to_string(
+        root.join("docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"),
+    )
+    .expect("the retained proof receipt is present");
+    let receipt: MinimumVersionProofReceiptV1 =
+        serde_json::from_str(&text).expect("the retained receipt parses");
+    assert_eq!(receipt.msrv, "1.95");
+    assert_eq!(receipt.toolchain, "1.95.0");
+    assert!(
+        !receipt.rows.is_empty(),
+        "the retained receipt carries its floor rows"
+    );
+    assert!(
+        receipt
+            .rows
+            .iter()
+            .all(|row| row.result.is_clean() && row.limitation.is_none()),
+        "every retained row proved at its floor"
+    );
+    assert!(
+        receipt.floor_lock_digest.starts_with("sha256:v1:"),
+        "the floor candidate lock digest is retained"
+    );
+    assert!(!receipt.commands.is_empty());
+}
