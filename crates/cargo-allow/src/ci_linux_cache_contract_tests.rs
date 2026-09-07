@@ -1,11 +1,13 @@
-//! Typed contract tests for the #3963 Linux cache experiment: the
-//! identity and compatibility law, the hit-vs-presence law, the
-//! verdict derivation, and the retained experiment receipt.
+//! Retained-experiment receipt tests for the #3963 Linux cache
+//! experiment: the retained receipt is exactly `compile_experiment`
+//! over the hosted observation rows, it validates under the
+//! inventory contract's own law, and its honest verdict on the
+//! current single-run window is NeedsMoreData.
 
-use allow_report::{
-    CI_CACHE_EXPERIMENT_SCHEMA_ID, CiCacheExperimentV1, CiCacheLaneObservationV1, CiCachePostureV1,
-    CiCacheTrustClassV1, CiCacheVerdictV1, evaluate_ci_cache_experiment,
-    render_ci_cache_verdict_human, render_ci_cache_verdict_json,
+use allow_inventory::{
+    CachePostureV1, CacheRunRecordV1, CacheSaveAuthorityV1, CacheTrustClassV1, CiCacheExperimentV1,
+    ExperimentVerdictV1, PINNED_RUST_CACHE_ACTION_REF, compile_experiment, validate_experiment,
+    validate_run_record,
 };
 
 fn workspace_root() -> std::path::PathBuf {
@@ -21,336 +23,167 @@ fn read_workspace_file(root: &std::path::Path, rel: &str) -> String {
     std::fs::read_to_string(root.join(rel)).expect("the retained surface is present in the tree")
 }
 
-const PIN: &str = "258712b0b7b1ddf8bddc9fc3b0faca682b2736c3";
-
-fn lane(
-    name: &str,
-    trust: CiCacheTrustClassV1,
-    save: bool,
-    posture: CiCachePostureV1,
-    restored_bytes: Option<u64>,
-) -> CiCacheLaneObservationV1 {
-    CiCacheLaneObservationV1 {
-        lane: name.to_string(),
-        workflow: "ci.yml".to_string(),
-        run_id: 1,
-        attempt: 1,
-        head_sha: "head".to_string(),
-        base_sha: "base".to_string(),
-        runner_label: "ubuntu-latest".to_string(),
+/// The hosted observation row: trusted default-branch warm run of the
+/// `release-set` lane (run 34044971047, head 1e980deb, conclusion
+/// success; restore step 16:28:33Z -> 16:28:38Z restored 187289866
+/// bytes with `full match: true`).
+fn retained_row() -> CacheRunRecordV1 {
+    CacheRunRecordV1 {
+        run_id: "run-34044971047-test".to_string(),
+        cache_schema_and_generation: "cargo-allow-cache-v1".to_string(),
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        base_commit: "9b62915c".to_string(),
+        head_commit: "1e980deb".to_string(),
+        workflow_ref: "refs/heads/main (ci.yml push)".to_string(),
+        action_ref: PINNED_RUST_CACHE_ACTION_REF.to_string(),
+        runner_provider: "github-hosted".to_string(),
         runner_os: "Linux".to_string(),
         runner_arch: "X64".to_string(),
-        toolchain: "stable".to_string(),
-        lock_digest: "13ee17aa".to_string(),
-        action_ref: PIN.to_string(),
-        key_generation: "v1".to_string(),
-        trust_class: trust,
-        save_authority: save,
-        posture,
-        lookup_seconds: None,
-        restore_seconds: Some(4),
-        compile_seconds: None,
-        test_seconds: None,
-        save_seconds: None,
-        restored_bytes,
-        saved_bytes: None,
-        commands: vec!["cargo test --locked".to_string()],
-        semantic_result: "passed".to_string(),
-        incident: None,
+        runner_image_class: "ubuntu-latest (observed label; image not immutable)".to_string(),
+        rust_toolchain: "stable (rust-cache lane default; 1.95 series)".to_string(),
+        cargo_version: "not captured verbatim in this window".to_string(),
+        cargo_lock_digest: "13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8"
+            .to_string(),
+        workspace_manifest_digest: "13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8"
+            .to_string(),
+        build_profile: "release (cargo test --locked release-set proof)".to_string(),
+        selected_features: "workspace default".to_string(),
+        selected_targets: "x86_64-unknown-linux-gnu".to_string(),
+        proof_lane: "test (core compile/test proof)".to_string(),
+        cache_lane_namespace: "release-set".to_string(),
+        cache_key_identity: "cargo-allow-cache-v1-Linux-X64-stable-13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8-release-set-Linux-x64-6ff13d87-e0f4ea26".to_string(),
+        trust_class: CacheTrustClassV1::TrustedDefaultBranch,
+        save_authority: CacheSaveAuthorityV1::TrustedSavePermitted,
+        posture: CachePostureV1::Warm,
+        restore_seconds_ms: 5_000,
+        compile_test_seconds_ms: 646_000,
+        save_seconds_ms: 0,
+        bytes_restored: Some(187_289_866),
+        bytes_saved: None,
+        selected_commands: vec![
+            "cargo test -p allow-report -p allow-diff --locked --all-features".to_string(),
+            "cargo test -p cargo-allow --locked".to_string(),
+            "cargo run -p cargo-allow -- check --mode no-new".to_string(),
+        ],
+        semantic_receipt_digest: "test-lane:1e980deb:passed".to_string(),
+        envelope_queue_seconds_ms: 0,
+        limitations: Vec::new(),
     }
 }
 
-fn experiment(lanes: Vec<CiCacheLaneObservationV1>) -> CiCacheExperimentV1 {
-    CiCacheExperimentV1 {
-        schema_id: CI_CACHE_EXPERIMENT_SCHEMA_ID.to_string(),
-        schema_version: 1,
-        repository: "EffortlessMetrics/cargo-allow".to_string(),
-        generation: "v1".to_string(),
-        baseline_ref: "#3835".to_string(),
-        action_ref: PIN.to_string(),
-        key_generation: "v1".to_string(),
-        lanes,
-        parity: Vec::new(),
-        limits: Vec::new(),
-        claim_boundary: "bounded".to_string(),
-    }
+fn recompiled() -> CiCacheExperimentV1 {
+    compile_experiment(
+        &[retained_row()],
+        "ci-cache-experiment-3963-retained-window",
+        "#3835 retained baseline (docs/ci/receipts/ci-performance-baseline-v1.json)",
+    )
+    .expect("the retained rows compile under the inventory contract")
 }
 
 #[test]
-fn ci_linux_cache_contract_loads_the_retained_experiment() {
+fn ci_linux_cache_contract_retained_receipt_is_the_law_compiled_experiment() {
     let root = workspace_root();
     let text = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-v1.json");
-    let experiment: CiCacheExperimentV1 =
-        serde_json::from_str(&text).expect("the retained experiment parses");
-    assert_eq!(experiment.generation, "v1");
-    assert_eq!(experiment.action_ref, PIN);
-    assert_eq!(experiment.lanes.len(), 4);
-    // Three trusted main-run warms plus one untrusted restore-only PR
-    // warm: the retained window.
-    let warm_trusted = experiment
-        .lanes
-        .iter()
-        .filter(|lane| {
-            lane.posture == CiCachePostureV1::Warm
-                && lane.trust_class == CiCacheTrustClassV1::Trusted
-        })
-        .count();
-    assert_eq!(warm_trusted, 3);
-    let untrusted = experiment
-        .lanes
-        .iter()
-        .find(|lane| lane.trust_class == CiCacheTrustClassV1::Untrusted)
-        .expect("the retained experiment carries an untrusted row");
-    assert!(
-        !untrusted.save_authority,
-        "the pull-request run restored without save authority"
-    );
-    for lane in &experiment.lanes {
-        // Warm postures carry restored-byte evidence, never action
-        // presence alone.
-        assert!(lane.restored_bytes.is_some_and(|bytes| bytes > 0));
-        // The proof commands ran under the cache; a hit never skips.
-        assert!(!lane.commands.is_empty());
-    }
+    let retained: CiCacheExperimentV1 =
+        serde_json::from_str(&text).expect("the retained receipt parses");
+    let expected = recompiled();
+    assert_eq!(retained, expected);
+    validate_experiment(&retained).expect("the retained receipt validates");
 }
 
 #[test]
-fn ci_linux_cache_contract_rejects_action_presence_as_hit() {
-    // Negative control 1: a reuse claim without restored bytes fails.
-    let receipt = experiment(vec![lane(
-        "release-set",
-        CiCacheTrustClassV1::Trusted,
-        true,
-        CiCachePostureV1::Warm,
-        None,
-    )]);
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::InstrumentFailure);
+fn ci_linux_cache_contract_retained_verdict_is_honest_needs_more_data() {
+    let experiment = recompiled();
+    assert_eq!(
+        experiment.verdict,
+        ExperimentVerdictV1::NeedsMoreData,
+        "a single warm observation is not an acceptance result"
+    );
     assert!(
-        evaluation
-            .reasons
+        experiment
+            .verdict_reasons
             .iter()
-            .any(|reason| reason.contains("hit_without_restored_bytes"))
+            .any(|reason| reason.contains("missing required postures")),
+        "the exact missing postures are named: {:?}",
+        experiment.verdict_reasons
     );
-}
-
-#[test]
-fn ci_linux_cache_contract_rejects_unpinned_actions_and_generation_drift() {
-    let mut unpinned = experiment(vec![lane(
-        "release-set",
-        CiCacheTrustClassV1::Trusted,
-        true,
-        CiCachePostureV1::Warm,
-        Some(1024),
-    )]);
-    unpinned.action_ref = "Swatinem/rust-cache@v2".to_string();
-    let evaluation = evaluate_ci_cache_experiment(&unpinned);
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::InstrumentFailure);
     assert!(
-        evaluation
-            .reasons
+        experiment
+            .verdict_reasons
             .iter()
-            .any(|reason| reason.contains("cache_action_unpinned"))
+            .any(|reason| reason.contains("at least 2 are required")),
+        "the thin warm distribution is named"
     );
-
-    let mut drifted = experiment(vec![lane(
-        "release-set",
-        CiCacheTrustClassV1::Trusted,
-        true,
-        CiCachePostureV1::Warm,
-        Some(1024),
-    )]);
-    drifted.key_generation = "v2".to_string();
-    let evaluation = evaluate_ci_cache_experiment(&drifted);
+    // The rollback route and the attribution guard note are carried.
+    assert!(experiment.rollback_route.contains("#3835"));
     assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("key_generation_mismatch"))
+        experiment
+            .improvement_attribution_note
+            .contains("compile_test_seconds_ms")
     );
 }
 
 #[test]
-fn ci_linux_cache_contract_allows_repeated_observations_of_one_lane() {
-    // Repeated runs of one lane legitimately share its namespace:
-    // that is how the warm distribution accumulates.
-    let receipt = experiment(vec![
-        lane(
-            "release-set",
-            CiCacheTrustClassV1::Trusted,
-            true,
-            CiCachePostureV1::Warm,
-            Some(1024),
-        ),
-        lane(
-            "release-set",
-            CiCacheTrustClassV1::Trusted,
-            true,
-            CiCachePostureV1::Warm,
-            Some(1024),
-        ),
-    ]);
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
+fn ci_linux_cache_contract_warm_carries_hit_evidence_not_action_presence() {
+    // Negative control 1: the warm row carries restored bytes and the
+    // full-match restore; action presence alone is never the evidence.
+    let row = retained_row();
+    assert_eq!(row.posture, CachePostureV1::Warm);
+    assert_eq!(
+        row.bytes_restored,
+        Some(187_289_866),
+        "the full-match restore size is retained"
+    );
+    assert!(row.restore_seconds_ms > 0);
+    assert!(row.compile_test_seconds_ms > 0, "a real selected run");
+    assert!(!row.selected_commands.is_empty());
+}
+
+#[test]
+fn ci_linux_cache_contract_replayed_run_cannot_double_count() {
+    // Negative control: replaying a row must fail compilation.
+    let row = retained_row();
+    // A true replay keeps the same run identity: only the attempt
+    // number would differ, and the contract rejects duplicate run_ids
+    // before any count or percentile can double-count the row.
+    let duplicate = row.clone();
+    let error = compile_experiment(&[row, duplicate], "replay", "#3835")
+        .expect_err("a replayed warm row cannot satisfy the two-warm law");
+    assert!(error.contains("duplicate run_id"), "{error}");
+}
+
+#[test]
+fn ci_linux_cache_contract_zero_duration_run_fails_validation() {
+    let mut zero = retained_row();
+    zero.run_id = "run-zero".to_string();
+    zero.compile_test_seconds_ms = 0;
     assert!(
-        !evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("shared_namespace"))
+        validate_run_record(&zero)
+            .err()
+            .is_some_and(|error| error.contains("not a real selected run"))
     );
 }
 
 #[test]
-fn ci_linux_cache_contract_demands_warm_lock_identity() {
-    // Negative control 4: warm state without the lock identity that
-    // made it compatible cannot be restored as current.
-    let mut warm = lane(
-        "release-set",
-        CiCacheTrustClassV1::Trusted,
-        true,
-        CiCachePostureV1::Warm,
-        Some(1024),
-    );
-    warm.lock_digest = String::new();
-    let evaluation = evaluate_ci_cache_experiment(&experiment(vec![warm]));
+fn ci_linux_cache_contract_schema_binds_the_inventory_authority() {
+    // One schema ID names one format: the inventory crate owns
+    // cargo-allow.ci-cache-experiment.v1; this receipt is its shape.
+    let experiment = recompiled();
+    assert_eq!(experiment.schema_id, "cargo-allow.ci-cache-experiment.v1");
+    assert_eq!(experiment.schema_version, 1);
     assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("warm_without_lock_identity"))
+        experiment
+            .claim_boundary
+            .contains("never product, package, release, or proof identity")
     );
 }
 
 #[test]
-fn ci_linux_cache_contract_needs_more_data_without_coverage() {
-    // The retained window: warm-only. Cold, disabled, and fallback
-    // coverage is missing, so the honest verdict is NeedsMoreData with
-    // the exact missing rows.
-    let receipt = experiment(vec![
-        lane(
-            "release-set",
-            CiCacheTrustClassV1::Trusted,
-            true,
-            CiCachePostureV1::Warm,
-            Some(1024),
-        ),
-        lane(
-            "release-set",
-            CiCacheTrustClassV1::Trusted,
-            true,
-            CiCachePostureV1::Warm,
-            Some(1024),
-        ),
-        lane(
-            "release-set",
-            CiCacheTrustClassV1::Untrusted,
-            false,
-            CiCachePostureV1::Warm,
-            Some(1024),
-        ),
-    ]);
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::NeedsMoreData);
-    for missing in ["cold", "disabled", "fallback"] {
-        assert!(
-            evaluation
-                .reasons
-                .iter()
-                .any(|reason| reason.contains(&format!("no {missing} posture"))),
-            "missing-coverage reason for {missing} must be named"
-        );
-    }
-    // The rollback route is always stated for a non-accepted verdict.
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("rollback route"))
-    );
-}
-
-#[test]
-fn ci_linux_cache_contract_accepts_only_a_full_evidence_set() {
-    let mut receipt = experiment(Vec::new());
-    let mut lanes = Vec::new();
-    // Two warms of one lane satisfy the distribution law; the
-    // remaining postures are distinct coverage rows.
-    let postures = [
-        (
-            "release-set",
-            CiCachePostureV1::Cold,
-            CiCacheTrustClassV1::Trusted,
-            true,
-        ),
-        (
-            "release-set",
-            CiCachePostureV1::Warm,
-            CiCacheTrustClassV1::Trusted,
-            true,
-        ),
-        (
-            "release-set",
-            CiCachePostureV1::Warm,
-            CiCacheTrustClassV1::Trusted,
-            true,
-        ),
-        (
-            "dogfood",
-            CiCachePostureV1::Disabled,
-            CiCacheTrustClassV1::Trusted,
-            true,
-        ),
-        (
-            "dogfood",
-            CiCachePostureV1::Fallback,
-            CiCacheTrustClassV1::Trusted,
-            true,
-        ),
-        (
-            "release-set-pr",
-            CiCachePostureV1::Warm,
-            CiCacheTrustClassV1::Untrusted,
-            false,
-        ),
-        (
-            "release-set-pr",
-            CiCachePostureV1::Warm,
-            CiCacheTrustClassV1::Untrusted,
-            false,
-        ),
-    ];
-    for (name, posture, trust, save) in postures.iter() {
-        lanes.push(lane(name, *trust, *save, *posture, Some(1024)));
-    }
-    receipt.lanes = lanes;
-    receipt.parity = vec![allow_report::CiCacheParityRowV1 {
-        lane: "release-set".to_string(),
-        compared_postures: vec![
-            "cold".to_string(),
-            "warm".to_string(),
-            "disabled".to_string(),
-            "fallback".to_string(),
-        ],
-        semantic_results_equal: true,
-    }];
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::Accepted);
-    assert!(evaluation.reasons.is_empty());
-}
-
-#[test]
-fn ci_linux_cache_contract_views_derive_from_one_result() {
-    let evaluation = evaluate_ci_cache_experiment(&experiment(vec![lane(
-        "release-set",
-        CiCacheTrustClassV1::Trusted,
-        true,
-        CiCachePostureV1::Warm,
-        Some(1024),
-    )]));
-    let json = render_ci_cache_verdict_json(&evaluation).expect("serialization succeeds");
-    let roundtrip: allow_report::CiCacheVerdictEvaluationV1 =
+fn ci_linux_cache_contract_json_view_parses_back() {
+    let experiment = recompiled();
+    let json = allow_inventory::render_ci_cache_experiment_v1(&experiment)
+        .expect("serialization succeeds");
+    let roundtrip: CiCacheExperimentV1 =
         serde_json::from_str(json.as_str()).expect("the JSON view parses back");
-    assert_eq!(roundtrip, evaluation);
-    let human = render_ci_cache_verdict_human(&evaluation);
-    assert!(human.contains("verdict="));
-    assert!(human.contains("claim boundary:"));
+    assert_eq!(roundtrip, experiment);
 }

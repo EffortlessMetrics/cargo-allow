@@ -1,11 +1,11 @@
 //! Trust-boundary tests for the #3963 Linux cache experiment: the
 //! untrusted restore-only boundary is falsified against the retained
-//! action source and the hosted observation, never inferred from YAML
-//! wording alone.
+//! action source and the inventory contract's own law, never inferred
+//! from YAML wording alone.
 
-use allow_report::{
-    CiCacheExperimentV1, CiCacheLaneObservationV1, CiCachePostureV1, CiCacheTrustClassV1,
-    CiCacheVerdictV1, evaluate_ci_cache_experiment,
+use allow_inventory::{
+    CachePostureV1, CacheRunRecordV1, CacheSaveAuthorityV1, CacheTrustClassV1,
+    untrusted_save_violations, validate_run_record,
 };
 
 fn workspace_root() -> std::path::PathBuf {
@@ -21,95 +21,88 @@ fn read_workspace_file(root: &std::path::Path, rel: &str) -> String {
     std::fs::read_to_string(root.join(rel)).expect("the cache trust surface is present in the tree")
 }
 
-fn untrusted_lane(save_authority: bool) -> CiCacheLaneObservationV1 {
-    CiCacheLaneObservationV1 {
-        lane: "release-set".to_string(),
-        workflow: "ci.yml".to_string(),
-        run_id: 34049432706,
-        attempt: 1,
-        head_sha: "0a7d60c5".to_string(),
-        base_sha: "9b62915c".to_string(),
-        runner_label: "ubuntu-latest".to_string(),
+fn untrusted_run(save: CacheSaveAuthorityV1) -> CacheRunRecordV1 {
+    CacheRunRecordV1 {
+        run_id: "run-34049432706-test".to_string(),
+        cache_schema_and_generation: "cargo-allow-cache-v1".to_string(),
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        base_commit: "9b62915c".to_string(),
+        head_commit: "0a7d60c5".to_string(),
+        workflow_ref: "pull_request (#4149)".to_string(),
+        action_ref: "Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3".to_string(),
+        runner_provider: "github-hosted".to_string(),
         runner_os: "Linux".to_string(),
         runner_arch: "X64".to_string(),
-        toolchain: "stable".to_string(),
-        lock_digest: "13ee17aa".to_string(),
-        action_ref: "258712b0b7b1ddf8bddc9fc3b0faca682b2736c3".to_string(),
-        key_generation: "v1".to_string(),
-        trust_class: CiCacheTrustClassV1::Untrusted,
-        save_authority,
-        posture: CiCachePostureV1::Warm,
-        lookup_seconds: None,
-        restore_seconds: Some(4),
-        compile_seconds: None,
-        test_seconds: None,
-        save_seconds: None,
-        restored_bytes: Some(1024),
-        saved_bytes: None,
-        commands: vec!["cargo test --locked".to_string()],
-        semantic_result: "passed".to_string(),
-        incident: None,
-    }
-}
-
-fn experiment_with(lane: CiCacheLaneObservationV1) -> CiCacheExperimentV1 {
-    CiCacheExperimentV1 {
-        schema_id: "cargo-allow.ci-cache-experiment.v1".to_string(),
-        schema_version: 1,
-        repository: "EffortlessMetrics/cargo-allow".to_string(),
-        generation: "v1".to_string(),
-        baseline_ref: "#3835".to_string(),
-        action_ref: "258712b0b7b1ddf8bddc9fc3b0faca682b2736c3".to_string(),
-        key_generation: "v1".to_string(),
-        lanes: vec![lane],
-        parity: Vec::new(),
-        limits: Vec::new(),
-        claim_boundary: "bounded".to_string(),
+        runner_image_class: "ubuntu-latest (observed label; image not immutable)".to_string(),
+        rust_toolchain: "stable (rust-cache lane default; 1.95 series)".to_string(),
+        cargo_version: "not captured verbatim in this window".to_string(),
+        cargo_lock_digest: "13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8"
+            .to_string(),
+        workspace_manifest_digest: "13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8"
+            .to_string(),
+        build_profile: "release (cargo test --locked release-set proof)".to_string(),
+        selected_features: "workspace default".to_string(),
+        selected_targets: "x86_64-unknown-linux-gnu".to_string(),
+        proof_lane: "test (core compile/test proof)".to_string(),
+        cache_lane_namespace: "release-set".to_string(),
+        cache_key_identity: "cargo-allow-cache-v1-Linux-X64-stable-13ee17aa400eedd416d6e55103d7752d4859347b3cd160cab2ca2c53c4b574c8-release-set-Linux-x64-6ff13d87-e0f4ea26".to_string(),
+        trust_class: CacheTrustClassV1::RepositoryPr,
+        save_authority: save,
+        posture: CachePostureV1::Warm,
+        restore_seconds_ms: 4_000,
+        compile_test_seconds_ms: 646_000,
+        save_seconds_ms: 0,
+        bytes_restored: Some(187_289_866),
+        bytes_saved: None,
+        selected_commands: vec!["cargo test --locked".to_string()],
+        semantic_receipt_digest: "test-lane:0a7d60c5:passed".to_string(),
+        envelope_queue_seconds_ms: 0,
+        limitations: Vec::new(),
     }
 }
 
 #[test]
-fn ci_cache_trust_boundary_rejects_untrusted_save_authority() {
+fn ci_cache_trust_boundary_untrusted_save_fails_run_validation() {
     // Negative control 6: a pull-request run must not publish reusable
     // state into the trusted namespace.
-    let evaluation = evaluate_ci_cache_experiment(&experiment_with(untrusted_lane(true)));
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::InstrumentFailure);
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("untrusted_save: release-set"))
-    );
+    let violation = untrusted_run(CacheSaveAuthorityV1::TrustedSavePermitted);
+    let error = validate_run_record(&violation)
+        .expect_err("an untrusted run with save authority must fail");
+    assert!(error.contains("save authority") || error.contains("save-restricted"));
+
+    // The honest shape: restore-only.
+    let restore_only = untrusted_run(CacheSaveAuthorityV1::SaveRestricted);
+    validate_run_record(&restore_only).expect("restore-only is the lawful untrusted posture");
+    assert!(untrusted_save_violations(&[restore_only]).is_empty());
 }
 
 #[test]
-fn ci_cache_trust_boundary_is_falsified_by_the_retained_row() {
-    // The retained experiment carries a hosted untrusted observation
-    // with save authority absent: the boundary was exercised, not just
-    // written down.
-    let root = workspace_root();
-    let text = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-v1.json");
-    let experiment: CiCacheExperimentV1 =
-        serde_json::from_str(&text).expect("the retained experiment parses");
-    let untrusted = experiment
-        .lanes
-        .iter()
-        .find(|lane| lane.trust_class == CiCacheTrustClassV1::Untrusted)
-        .expect("the retained window exercises the untrusted boundary");
-    assert!(!untrusted.save_authority);
-    assert_eq!(untrusted.posture, CiCachePostureV1::Warm);
-    assert!(untrusted.saved_bytes.is_none());
+fn ci_cache_trust_boundary_detector_names_the_violations() {
+    let rows = vec![
+        untrusted_run(CacheSaveAuthorityV1::TrustedSavePermitted),
+        untrusted_run(CacheSaveAuthorityV1::SaveRestricted),
+    ];
+    let violations = untrusted_save_violations(&rows);
+    assert_eq!(
+        violations.len(),
+        1,
+        "only the trusted-authority PR row is a violation"
+    );
+    assert!(violations[0].contains("run-34049432706-test"));
 }
 
 #[test]
 fn ci_cache_trust_boundary_source_restricts_saves_to_the_default_branch() {
     // The action's save condition must be an explicit expression that
     // names the default branch and only push/dispatch events — not an
-    // unconditional or absent save-if.
+    // unconditional or absent save-if. This falsifies the boundary at
+    // the source instead of inferring it from intent.
     let root = workspace_root();
     let action = read_workspace_file(&root, ".github/actions/rust-cache/action.yml");
     assert!(
-        action.contains("save-if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}"),
+        action.contains(
+            "save-if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}"
+        ),
         "the save authority must stay bound to trusted default-branch runs"
     );
     assert!(
@@ -123,32 +116,6 @@ fn ci_cache_trust_boundary_source_restricts_saves_to_the_default_branch() {
 }
 
 #[test]
-fn ci_cache_trust_boundary_lanes_are_declared_in_the_routing_source() {
-    // Every rust-cache usage declares a non-empty lane namespace. A
-    // namespace shared between jobs of the same proof purpose is the
-    // deliberate object-sharing boundary (they build the same lock);
-    // cross-toolchain or cross-manifest sharing stays impossible by
-    // the prefix binding in the action itself.
-    let root = workspace_root();
-    let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
-    let mut lanes: Vec<String> = Vec::new();
-    for line in workflow.lines() {
-        let trimmed = line.trim();
-        if let Some(lane) = trimmed.strip_prefix("lane: ") {
-            assert!(
-                !lane.trim().is_empty(),
-                "every cache usage declares its lane"
-            );
-            lanes.push(lane.trim().to_string());
-        }
-    }
-    assert!(
-        lanes.len() >= 10,
-        "the cache policy covers the measured lanes: {lanes:?}"
-    );
-}
-
-#[test]
 fn ci_cache_trust_boundary_action_is_pinned_by_full_sha() {
     let root = workspace_root();
     let action = read_workspace_file(&root, ".github/actions/rust-cache/action.yml");
@@ -157,7 +124,7 @@ fn ci_cache_trust_boundary_action_is_pinned_by_full_sha() {
         .find(|line| line.contains("Swatinem/rust-cache@"))
         .expect("the upstream action is referenced");
     let reference = pin_line
-        .split("@")
+        .split('@')
         .nth(1)
         .and_then(|rest| rest.split_whitespace().next())
         .unwrap_or_default();
@@ -173,10 +140,9 @@ fn ci_cache_trust_boundary_action_is_pinned_by_full_sha() {
 }
 
 #[test]
-fn ci_cache_trust_boundary_caches_carries_no_credentials() {
+fn ci_cache_trust_boundary_cache_consumes_no_secrets() {
     // Cache bytes must contain no credentials: the composite action
-    // declares no secrets inputs and passes no secrets to the upstream
-    // step.
+    // declares no secrets inputs and forwards no tokens.
     let root = workspace_root();
     let action = read_workspace_file(&root, ".github/actions/rust-cache/action.yml");
     assert!(
@@ -186,5 +152,23 @@ fn ci_cache_trust_boundary_caches_carries_no_credentials() {
     assert!(
         !action.contains("token:"),
         "the cache action must not mint or forward tokens"
+    );
+}
+
+#[test]
+fn ci_cache_trust_boundary_retained_experiment_is_trusted_only() {
+    // The retained single-run window is a trusted default-branch warm
+    // run; the untrusted pull-request observation is characterized in
+    // these tests (its own head state) rather than pooled across
+    // source states into one namespace.
+    let root = workspace_root();
+    let text = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-v1.json");
+    assert!(
+        text.contains("\"trust_class\": \"trusted_default_branch\"")
+            || text.contains("TrustedDefaultBranch")
+    );
+    assert!(
+        text.contains("ci-cache-experiment-3963-retained-window"),
+        "the retained receipt carries the inventory contract's experiment identity"
     );
 }

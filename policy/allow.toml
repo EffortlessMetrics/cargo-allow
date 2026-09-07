@@ -19262,7 +19262,7 @@ owner = "core/ci"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the Linux cache contract tests (#3963); every expect guards a retained-surface read, a known-good fixture serialization, or a hostile fixture whose rejection is the property under test"
 evidence = ["issue:3963"]
-occurrence_limit = 7
+occurrence_limit = 8
 created = "2026-09-06"
 review_after = "2026-12-05"
 
@@ -19330,3 +19330,22 @@ glob = ".allow/revisions/3963-ci-cache-experiment.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11233"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_cache_fallback_parity_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expect in the cache fallback parity tests (#3963); the expect guards a known-good typed row whose validation success is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 1
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_cache_fallback_parity_tests.rs"
+
+

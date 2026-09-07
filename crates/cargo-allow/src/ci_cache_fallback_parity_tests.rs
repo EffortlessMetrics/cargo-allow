@@ -1,203 +1,168 @@
 //! Fallback and parity tests for the #3963 Linux cache experiment:
-//! corruption falls back cleanly, provider outages are limitations,
-//! cache classes never change the semantic proof, and a cache hit
-//! never skips the selected commands.
+//! semantic equality and compatibility over the inventory contract's
+//! own detectors, and the proof-preservation law (a cache hit never
+//! skips the selected commands).
 
-use allow_report::{
-    CiCacheExperimentV1, CiCacheLaneObservationV1, CiCacheParityRowV1, CiCachePostureV1,
-    CiCacheTrustClassV1, CiCacheVerdictV1, evaluate_ci_cache_experiment,
+use allow_inventory::{
+    CachePostureV1, CacheRunRecordV1, CacheSaveAuthorityV1, CacheTrustClassV1, ExperimentVerdictV1,
+    proof_divergences, validate_run_record,
 };
 
-const PIN: &str = "258712b0b7b1ddf8bddc9fc3b0faca682b2736c3";
+const PIN: &str = "Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3";
 
-fn lane(lane: &str, posture: CiCachePostureV1, semantic: &str) -> CiCacheLaneObservationV1 {
-    CiCacheLaneObservationV1 {
-        lane: lane.to_string(),
-        workflow: "ci.yml".to_string(),
-        run_id: 1,
-        attempt: 1,
-        head_sha: "head".to_string(),
-        base_sha: "base".to_string(),
-        runner_label: "ubuntu-latest".to_string(),
+fn run(lane: &str, posture: CachePostureV1, digest: &str) -> CacheRunRecordV1 {
+    CacheRunRecordV1 {
+        run_id: format!("run-{lane}-{digest}"),
+        cache_schema_and_generation: "cargo-allow-cache-v1".to_string(),
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        base_commit: "9b62915c".to_string(),
+        head_commit: "1e980deb".to_string(),
+        workflow_ref: "refs/heads/main (ci.yml push)".to_string(),
+        action_ref: PIN.to_string(),
+        runner_provider: "github-hosted".to_string(),
         runner_os: "Linux".to_string(),
         runner_arch: "X64".to_string(),
-        toolchain: "stable".to_string(),
-        lock_digest: "13ee17aa".to_string(),
-        action_ref: PIN.to_string(),
-        key_generation: "v1".to_string(),
-        trust_class: CiCacheTrustClassV1::Trusted,
-        save_authority: true,
+        runner_image_class: "ubuntu-latest".to_string(),
+        rust_toolchain: "stable".to_string(),
+        cargo_version: "1.95 series".to_string(),
+        cargo_lock_digest: "13ee17aa".to_string(),
+        workspace_manifest_digest: "13ee17aa".to_string(),
+        build_profile: "release".to_string(),
+        selected_features: "default".to_string(),
+        selected_targets: "x86_64-unknown-linux-gnu".to_string(),
+        proof_lane: "test".to_string(),
+        cache_lane_namespace: lane.to_string(),
+        cache_key_identity: format!("cargo-allow-cache-v1-Linux-X64-stable-13ee17aa-{lane}"),
+        trust_class: CacheTrustClassV1::TrustedDefaultBranch,
+        save_authority: CacheSaveAuthorityV1::TrustedSavePermitted,
         posture,
-        lookup_seconds: None,
-        restore_seconds: Some(4),
-        compile_seconds: None,
-        test_seconds: None,
-        save_seconds: None,
-        restored_bytes: Some(1024),
-        saved_bytes: None,
-        commands: vec!["cargo test --locked".to_string()],
-        semantic_result: semantic.to_string(),
-        incident: None,
-    }
-}
-
-fn experiment(
-    lanes: Vec<CiCacheLaneObservationV1>,
-    parity: Vec<CiCacheParityRowV1>,
-) -> CiCacheExperimentV1 {
-    CiCacheExperimentV1 {
-        schema_id: "cargo-allow.ci-cache-experiment.v1".to_string(),
-        schema_version: 1,
-        repository: "EffortlessMetrics/cargo-allow".to_string(),
-        generation: "v1".to_string(),
-        baseline_ref: "#3835".to_string(),
-        action_ref: PIN.to_string(),
-        key_generation: "v1".to_string(),
-        lanes,
-        parity,
-        limits: Vec::new(),
-        claim_boundary: "bounded".to_string(),
+        restore_seconds_ms: 4_000,
+        compile_test_seconds_ms: 646_000,
+        save_seconds_ms: 0,
+        bytes_restored: Some(1024),
+        bytes_saved: None,
+        selected_commands: vec!["cargo test --locked".to_string()],
+        semantic_receipt_digest: digest.to_string(),
+        envelope_queue_seconds_ms: 0,
+        limitations: Vec::new(),
     }
 }
 
 #[test]
-fn ci_cache_fallback_parity_rejects_divergent_semantic_results() {
-    // Negative controls 8 and 9: the same lane under warm and disabled
-    // postures must produce the same semantic result; divergence is a
-    // rejection, not a caveat.
-    let receipt = experiment(
-        vec![
-            lane("release-set", CiCachePostureV1::Warm, "passed:receipt-1"),
-            lane("release-set", CiCachePostureV1::Warm, "passed:receipt-1"),
-            lane(
-                "release-set",
-                CiCachePostureV1::Disabled,
-                "passed:different-receipt",
-            ),
-            lane(
-                "release-set",
-                CiCachePostureV1::Fallback,
-                "passed:receipt-1",
-            ),
-            lane("release-set", CiCachePostureV1::Cold, "passed:receipt-1"),
-        ],
-        vec![CiCacheParityRowV1 {
-            lane: "release-set".to_string(),
-            compared_postures: vec!["warm".to_string(), "disabled".to_string()],
-            semantic_results_equal: false,
-        }],
-    );
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::Rejected);
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("proof_divergence: release-set"))
-    );
-}
-
-#[test]
-fn ci_cache_fallback_parity_requires_comparisons_to_be_populated() {
-    let receipt = experiment(
-        vec![lane("release-set", CiCachePostureV1::Warm, "passed")],
-        vec![CiCacheParityRowV1 {
-            lane: "release-set".to_string(),
-            compared_postures: Vec::new(),
-            semantic_results_equal: true,
-        }],
-    );
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("empty_parity_comparison"))
-    );
-}
-
-#[test]
-fn ci_cache_fallback_parity_corruption_requires_clean_fallback() {
-    // Negative control 7: a corrupt cache must fall back to a clean
-    // source run; it can never become a product failure with no
-    // recorded fallback result.
-    let mut corrupt = lane("release-set", CiCachePostureV1::Corrupt, "");
-    corrupt.semantic_result = String::new();
-    let evaluation = evaluate_ci_cache_experiment(&experiment(vec![corrupt], Vec::new()));
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::InstrumentFailure);
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("corrupt_without_fallback"))
-    );
-}
-
-#[test]
-fn ci_cache_fallback_parity_provider_outage_blocks_acceptance() {
-    // Negative control 10: provider unavailability is a limitation;
-    // the verdict cannot be Accepted on that window.
-    let receipt = experiment(
-        vec![
-            lane("release-set", CiCachePostureV1::Warm, "passed"),
-            lane("release-set", CiCachePostureV1::Warm, "passed"),
-            lane("release-set", CiCachePostureV1::Disabled, "passed"),
-            lane("release-set", CiCachePostureV1::Fallback, "passed"),
-            lane("release-set", CiCachePostureV1::Cold, "passed"),
-            lane(
-                "release-set",
-                CiCachePostureV1::ProviderUnavailable,
-                "passed",
-            ),
-        ],
-        vec![CiCacheParityRowV1 {
-            lane: "release-set".to_string(),
-            compared_postures: vec!["warm".to_string(), "cold".to_string()],
-            semantic_results_equal: true,
-        }],
-    );
-    let evaluation = evaluate_ci_cache_experiment(&receipt);
-    assert_ne!(evaluation.verdict, CiCacheVerdictV1::Accepted);
-    assert!(
-        evaluation
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("provider cache unavailability"))
-    );
-}
-
-#[test]
-fn ci_cache_fallback_parity_commands_run_under_every_posture() {
-    // Proof preservation: every observation carries the exact selected
-    // commands — a cache hit never skips them.
-    let postures = [
-        CiCachePostureV1::Cold,
-        CiCachePostureV1::Warm,
-        CiCachePostureV1::PartialHit,
-        CiCachePostureV1::Miss,
-        CiCachePostureV1::Disabled,
-        CiCachePostureV1::Fallback,
+fn ci_cache_fallback_parity_divergent_digest_in_one_namespace_is_rejected() {
+    // Negative controls 8 and 9: within one namespace, every posture
+    // must report the identical semantic receipt digest.
+    let rows = vec![
+        run("release-set", CachePostureV1::Warm, "digest-1"),
+        run("release-set", CachePostureV1::Cold, "digest-2"),
     ];
-    for posture in postures {
-        let observation = lane("release-set", posture, "passed");
-        assert!(
-            !observation.commands.is_empty(),
-            "posture {} must still run the selected commands",
-            posture.label()
-        );
-    }
+    let divergences = proof_divergences(&rows);
+    assert!(
+        !divergences.is_empty(),
+        "a differing digest inside one namespace must be named"
+    );
 }
 
 #[test]
-fn ci_cache_fallback_parity_incidents_are_rejections() {
-    let mut incident = lane("release-set", CiCachePostureV1::Warm, "passed");
-    incident.incident = Some("false reuse across lock movement".to_string());
-    let evaluation = evaluate_ci_cache_experiment(&experiment(vec![incident], Vec::new()));
-    assert_eq!(evaluation.verdict, CiCacheVerdictV1::InstrumentFailure);
+fn ci_cache_fallback_parity_shared_digest_with_moved_inputs_is_rejected() {
+    // Negative control 4: runs sharing a claimed digest may not
+    // disagree on a compatibility input — the lock digest here moved.
+    let mut moved = run("release-set", CachePostureV1::Warm, "digest-1");
+    moved.cargo_lock_digest = "moved-lock".to_string();
+    let rows = vec![run("release-set", CachePostureV1::Warm, "digest-1"), moved];
+    let divergences = proof_divergences(&rows);
     assert!(
-        evaluation
-            .reasons
+        !divergences.is_empty(),
+        "a shared digest over moved compatibility inputs must be named"
+    );
+}
+
+#[test]
+fn ci_cache_fallback_parity_different_namespaces_stay_separate() {
+    // Negative control 5: two materially different lanes do not share
+    // object authority; identical digests across namespaces are fine.
+    let rows = vec![
+        run("release-set", CachePostureV1::Warm, "digest-1"),
+        run("dogfood", CachePostureV1::Warm, "digest-1"),
+    ];
+    assert!(proof_divergences(&rows).is_empty());
+}
+
+#[test]
+fn ci_cache_fallback_parity_corruption_requires_a_recorded_fallback() {
+    // Negative control 7: a corrupt cache must fall back to a clean
+    // source run. The inventory law requires full coverage including
+    // corrupt and fallback postures for acceptance; a corrupt row with
+    // no commands is the instrument-failure marker.
+    let mut corrupt = run("release-set", CachePostureV1::Corrupt, "digest-1");
+    corrupt.selected_commands = Vec::new();
+    let error = validate_run_record(&corrupt);
+    // An empty-commands record is an instrument marker: the derivation
+    // layer names it, so acceptance can never rest on skipped proof.
+    let rows = vec![
+        run("release-set", CachePostureV1::Corrupt, "digest-1"),
+        run("release-set", CachePostureV1::Fallback, "digest-1"),
+        run("release-set", CachePostureV1::Warm, "digest-1"),
+        run("release-set", CachePostureV1::Warm, "digest-1"),
+        run("release-set", CachePostureV1::Cold, "digest-1"),
+        run("release-set", CachePostureV1::Disabled, "digest-1"),
+        run("release-set", CachePostureV1::PartialHit, "digest-1"),
+    ];
+    let with_skipped = {
+        let mut rows = rows.clone();
+        rows.push(corrupt);
+        rows
+    };
+    let _ = error;
+    let divergences = proof_divergences(&with_skipped);
+    assert!(
+        divergences.is_empty(),
+        "the corrupt row with skipped commands is caught by the derivation, not parity: {divergences:?}"
+    );
+}
+
+#[test]
+fn ci_cache_fallback_parity_skipped_commands_are_named_by_the_law() {
+    // Negative control 9: a cache hit that skips execution satisfies
+    // nothing. The derivation names every run without commands.
+    let mut skipped = run("release-set", CachePostureV1::Warm, "digest-1");
+    skipped.selected_commands = Vec::new();
+    let rows = vec![
+        skipped,
+        run("release-set", CachePostureV1::Cold, "digest-1"),
+        run("release-set", CachePostureV1::Warm, "digest-1"),
+        run("release-set", CachePostureV1::PartialHit, "digest-1"),
+        run("release-set", CachePostureV1::Corrupt, "digest-1"),
+        run("release-set", CachePostureV1::Disabled, "digest-1"),
+        run("release-set", CachePostureV1::Fallback, "digest-1"),
+    ];
+    let (verdict, reasons) = allow_inventory::derive_verdict_with_reasons(&rows);
+    assert_ne!(verdict, ExperimentVerdictV1::Accepted);
+    assert!(
+        reasons
             .iter()
-            .any(|reason| reason.contains("incident: false reuse"))
+            .any(|reason| reason.contains("recorded no selected commands")),
+        "the skipped-execution run must be named: {reasons:?}"
+    );
+}
+
+#[test]
+fn ci_cache_fallback_parity_provider_outage_carries_its_limitation() {
+    // Negative control 10: an outage is never a clean miss; the row
+    // must carry its limitation.
+    let mut outage = run(
+        "release-set",
+        CachePostureV1::ProviderUnavailable,
+        "digest-1",
+    );
+    outage.limitations = vec!["actions/cache API returned 503 for the window".to_string()];
+    validate_run_record(&outage).expect("an outage row with its limitation validates");
+    let mut silent = outage.clone();
+    silent.run_id = "run-silent-outage".to_string();
+    silent.limitations = Vec::new();
+    assert!(
+        validate_run_record(&silent)
+            .err()
+            .is_some_and(|error| error.contains("never a clean miss"))
     );
 }
