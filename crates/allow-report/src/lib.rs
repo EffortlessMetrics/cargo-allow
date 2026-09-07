@@ -450,6 +450,14 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3904 workspace lint inventory.
+pub use artifacts::{
+    ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,
+    WORKSPACE_LINT_INVENTORY_SCHEMA_VERSION, WorkspaceLintFindingKindV1, WorkspaceLintFindingV1,
+    WorkspaceLintFindingsV1, WorkspaceLintInventoryV1, classify_workspace_lint_inventory,
+    render_workspace_lint_findings_human, render_workspace_lint_findings_json,
+};
+
 // Root re-exports for the #3836 Stage 1 pre-gate.
 pub use artifacts::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,

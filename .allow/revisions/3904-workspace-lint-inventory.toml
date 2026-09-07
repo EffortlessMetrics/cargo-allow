@@ -1,0 +1,38 @@
+schema_version = 1
+# Revision note for the #3904 PR A workspace lint inventory.
+
+# This diff adds the deterministic workspace lint inventory:
+# WorkspaceLintInventoryV1 / LintPackageRowV1 / DeclaredLintV1 /
+# ClippyCommandLaneV1 in allow-report, with the pure
+# classify_workspace_lint_inventory classifier naming the drift
+# classes the later cutover and drift-guard PRs close: missing
+# workspace inheritance for clippy-enforced packages, local weakening
+# (item-level allow counts in non-test source), test-only weakening,
+# MSRV-incompatible lint selection against the workspace rust-version
+# claim, and command-line drift for packages no clippy lane enforces.
+# PR A changes no effective lint level: the observation is
+# inventory-only, the changelog and the CI commands are untouched.
+# The source-exception additions receipt only the syntax-visible
+# constructs the new law tests introduce: allow-11236 and allow-11237
+# are glob-ratcheted expect baselines for retained-surface reads and
+# known-good fixture serialization, and the allow-11238 record
+# receipts this revision-note file itself per the per-note receipt
+# law. No existing exception is weakened, no expiry is extended, and
+# no scope is broadened: the records below are additions.
+# policy/allow.toml keeps its CRLF line-ending contract; the net
+# transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11236"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4373dc6a16153052599a197e153a51d681e3a32085a036c9349032c63a94d844"
+
+[[records]]
+allow_ids = ["allow-11237"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:90a5909649c4530d2d85cc57b3688c03426e4882d3c33307a9648ca308d6a68c"
+
+[[records]]
+allow_ids = ["allow-11238"]
+change_kinds = ["added_allow"]
+after_fingerprint = "PLACEHOLDER"
