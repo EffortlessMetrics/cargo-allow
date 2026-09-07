@@ -333,6 +333,10 @@ fn minimum_direct_version_contract_set_round_trips() {
     }"#,
     )
     .expect("the typed set parses");
+    let reserialized = serde_json::to_string_pretty(&set).expect("serialization succeeds");
+    let roundtrip: allow_report::DirectMinimumVersionSetV1 =
+        serde_json::from_str(reserialized.as_str()).expect("the round-trip parses");
+    assert_eq!(roundtrip, set, "serialization must not drift the set");
     assert_eq!(set.product_sets[0].rows[0].package, "serde");
 }
 
