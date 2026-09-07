@@ -19349,3 +19349,25 @@ callee = "expect"
 glob = "crates/cargo-allow/src/ci_cache_fallback_parity_tests.rs"
 
 
+
+[[allow]]
+id = "allow-11235"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+owner = "core/ci"
+classification = "ci_cache_window"
+reason = "Retained window facts for the Linux cache experiment (#3963): the same-day trusted warm runs and the untrusted restore-only pull request, each excluded from the compiled lane because the coverage law forbids pooling across source states. Trust and distribution evidence only."
+evidence = ["issue:3963"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1

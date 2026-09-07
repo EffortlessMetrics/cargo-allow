@@ -198,36 +198,38 @@ fn ci_linux_cache_contract_names_the_law_gaps_before_acceptance() {
     let text = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-v1.json");
     let experiment: CiCacheExperimentV1 =
         serde_json::from_str(&text).expect("the retained receipt parses");
+    // The compiled experiment carries the contract-declared
+    // limitations, including the Linux-only scope and the follow-up
+    // accumulation of the 12-control denominator.
     assert!(
         experiment
-            .limits
+            .limitations
             .iter()
-            .any(|limit| limit.contains("does not yet require an untrusted restore-only row")),
-        "the untrusted-boundary acceptance gap must stay named"
+            .any(|limit| limit.contains("evidence covers Linux lanes only")),
+        "the Linux-only scope must stay named"
     );
     assert!(
         experiment
-            .limits
+            .limitations
             .iter()
-            .any(|limit| limit.contains("does not yet require restored bytes on a warm row")),
-        "the warm-bytes law gap must stay named"
+            .any(|limit| limit.contains("follow-up activity")),
+        "the hosted-evidence accumulation must stay named as follow-up work"
     );
-    // The compiled lane stays single-source (the contract forbids
-    // pooling across source states); the other hosted observations are
-    // carried as named window facts.
     assert_eq!(experiment.runs.len(), 1);
+
+    // The full window — the further trusted warm runs and the
+    // untrusted restore-only pull request — is retained as named facts
+    // in the window evidence file, because the contract's coverage law
+    // forbids pooling across source states inside one compiled lane.
+    let window = read_workspace_file(&root, "docs/ci/receipts/ci-cache-experiment-window-v1.json");
+    for run_id in ["34031032963", "34034492950", "34049432706"] {
+        assert!(
+            window.contains(run_id),
+            "the window evidence must retain run {run_id}"
+        );
+    }
     assert!(
-        experiment
-            .limits
-            .iter()
-            .any(|limit| limit.contains("excluded from the compiled lane")),
-        "the excluded window facts must stay named with their run identities"
-    );
-    assert!(
-        experiment
-            .limits
-            .iter()
-            .any(|limit| limit.contains("run 34049432706")),
-        "the untrusted restore-only observation must stay named with its run identity"
+        window.contains("untrusted_restore_only") && window.contains("excluded_from_compiled_lane"),
+        "the window file must name the untrusted restore-only boundary fact and its exclusion"
     );
 }

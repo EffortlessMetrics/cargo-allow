@@ -1,0 +1,52 @@
+{
+  "schema_id": "cargo-allow.ci-cache-window.v1",
+  "window": "2026-09-06 same-day hosted runs of the post-#4149 topology",
+  "baseline_ref": "#3835 retained baseline (docs/ci/receipts/ci-performance-baseline-v1.json)",
+  "note": "Named window facts for the #3963 Linux cache experiment. These observations are excluded from the compiled lane because the inventory coverage law forbids pooling across source states (each run served a different head); they are retained as the hosted trust and distribution evidence the compiled experiment's limits point to.",
+  "observations": [
+    {
+      "kind": "trusted_warm",
+      "run_id": 34031032963,
+      "head": "a9463e15",
+      "conclusion": "success",
+      "lane_namespace": "release-set",
+      "trust_class": "trusted_default_branch",
+      "save_authority": "trusted_save_permitted",
+      "posture": "warm_full_match",
+      "restored_bytes": 187289866,
+      "restore_seconds": 3
+    },
+    {
+      "kind": "trusted_warm",
+      "run_id": 34034492950,
+      "head": "a9463e15",
+      "conclusion": "success",
+      "lane_namespace": "release-set",
+      "trust_class": "trusted_default_branch",
+      "save_authority": "trusted_save_permitted",
+      "posture": "warm_full_match",
+      "restored_bytes": 187289866,
+      "restore_seconds": 4
+    }
+  ],
+  "excluded_from_compiled_lane": [
+    {
+      "kind": "untrusted_restore_only",
+      "run_id": 34049432706,
+      "head": "0a7d60c5",
+      "conclusion": "success",
+      "lane_namespace": "release-set",
+      "trust_class": "repository_pr",
+      "save_authority": "save_restricted",
+      "posture": "warm_full_match",
+      "restored_bytes": 187289866,
+      "restore_seconds": 4,
+      "reason": "a pull-request run must never pool into the trusted compiled namespace; retained here as the falsified no-save boundary evidence"
+    }
+  ],
+  "named_law_gaps": [
+    "the inventory acceptance law does not yet require an untrusted restore-only row",
+    "the inventory validate_run_record law does not yet require restored bytes on a warm row"
+  ],
+  "claim_boundary": "Window facts only; these rows are evidence of the hosted trust boundary and distribution, not acceptance, product, package, or release identity."
+}
