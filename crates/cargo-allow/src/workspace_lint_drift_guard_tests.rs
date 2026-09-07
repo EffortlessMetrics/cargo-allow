@@ -342,10 +342,47 @@ fn workspace_lint_drift_guard_live_tree_is_clean_with_owned_weakening() {
     }
     assert!(packages.len() >= 22, "all 22 members are inventoried");
     let enforced: Vec<String> = packages.iter().map(|row| row.package.clone()).collect();
-    let report = evaluate_workspace_lint_drift(&packages, &[], &enforced, &owned_weakening, TODAY);
+    // The checked-in, explicitly reviewed weakening exception set: these
+    // packages' item-level allows are receipted in the cargo-allow ledger
+    // by the no-new guard. A package gaining allows without joining this
+    // reviewed set stays unowned drift and fails the guard.
+    let owned: Vec<String> = vec![
+        "allow-policy".to_string(),
+        "allow-report".to_string(),
+        "allow-rust".to_string(),
+        "cargo-allow".to_string(),
+    ];
+    let exceptions: Vec<WorkspaceLintExceptionV1> = owned
+        .iter()
+        .map(|package| WorkspaceLintExceptionV1 {
+            package: package.clone(),
+            scope: WorkspaceLintExceptionScopeV1::Weakening,
+            reason: "the package's item-level allow attributes are receipted in the \
+                     cargo-allow ledger by the no-new guard"
+                .to_string(),
+            expires_on: None,
+        })
+        .collect();
+    let report = evaluate_workspace_lint_drift(&packages, &[], &enforced, &exceptions, TODAY);
     assert!(
         report.clean,
-        "the live tree must satisfy the cutover law with owned weakening: {:?}",
+        "the live tree must satisfy the cutover law with the reviewed \
+         weakening set: {:?}",
         report.findings
+    );
+
+    // Negative live-style fixture: an existing member package gaining
+    // item-level allows without joining the reviewed set stays unowned
+    // drift.
+    let mut newcomer = package("allow-core");
+    newcomer.local_allow_count = 4;
+    let mut all = packages.clone();
+    all.push(newcomer);
+    let unowned = evaluate_workspace_lint_drift(&all, &[], &enforced, &exceptions, TODAY);
+    assert!(
+        unowned.findings.iter().any(|finding| finding.class
+            == WorkspaceLintDriftClassV1::UnownedWeakening
+            && finding.package == "allow-core"),
+        "a newly introduced unowned allow must fail the guard"
     );
 }
