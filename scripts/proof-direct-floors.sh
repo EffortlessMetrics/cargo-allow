@@ -103,6 +103,11 @@ for name, spec in sorted(deps.items()):
     rows.append({"package": name, "requirement": requirement, "floor": floor})
 print(json.dumps(rows, indent=1))
 PY
+floor_count="$(jq length floors.json)"
+if [ "$floor_count" -eq 0 ]; then
+  echo "proof-direct-floors: empty floor inventory; nothing to certify" >&2
+  exit 1
+fi
 
 # 2. Build the direct-floor candidate lock: regenerate from scratch, then
 #    pin each external direct dependency to its declared minimum. Pin
@@ -126,6 +131,28 @@ for row in floors:
 json.dump(failures, open("pin-failures.json", "w"), indent=1)
 PY
 pin_failures="$(cat pin-failures.json)"
+floor_move_failures="$(python3 - <<'PY'
+import json
+import tomllib
+
+lock = tomllib.load(open("Cargo.lock", "rb"))
+floors = json.load(open("floors.json", encoding="utf-8"))
+resolved = {}
+for package in lock.get("package", []):
+    resolved.setdefault(package["name"], package["version"])
+moved = []
+for row in floors:
+    locked = resolved.get(row["package"])
+    if locked is None or not locked.startswith(row["floor"]):
+        moved.append(row["package"] + ": locked at " + str(locked) + ", floor requires " + str(row["floor"]))
+print("; ".join(moved))
+PY
+)"
+if [ -n "$floor_move_failures" ]; then
+  echo "proof-direct-floors: pinned floors silently moved:" >&2
+  echo "$floor_move_failures" >&2
+  exit 6
+fi
 
 # 3. Bounded proof classes.
 check_status=0
