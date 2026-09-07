@@ -42,6 +42,7 @@ fn receipt(rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersionProofReceiptV1
         schema_id: "cargo-allow.minimum-direct-version.v1".to_string(),
         schema_version: 1,
         product: "cargo-allow".to_string(),
+        package_roots: vec!["cargo-allow".to_string()],
         msrv: "1.95".to_string(),
         toolchain: "1.95.0".to_string(),
         target: "x86_64-pc-windows-msvc".to_string(),

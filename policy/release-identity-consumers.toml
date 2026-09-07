@@ -68,13 +68,13 @@ claim_boundary = "Derives the version from the archive filename to compare it fo
 [[consumers]]
 id = "direct-floor-proof-workspace-reader"
 path = "scripts/proof-direct-floors.sh"
-role = "direct dependency floor inventory for the bounded floor proof (#3903)"
+role = "product closure direct dependency floor inventory for the bounded floor proof (#3903)"
 disposition = "non-semantic-formatting"
 owner = "#3903"
 marker_classes = ["workspace-reader"]
 exact_counts = [{ class = "workspace-reader", count = 1 }]
 sites = ["data = tomllib.load(open(sys.argv[1], \"rb\"))"]
-claim_boundary = "Reads workspace dependency metadata to enumerate declared direct floors; decides no release channel, tag, or prerelease semantics."
+claim_boundary = "Reads workspace and member manifest metadata to enumerate a product closure's declared direct floors; decides no release channel, tag, or prerelease semantics."
 
 [[consumers]]
 id = "changie-config"

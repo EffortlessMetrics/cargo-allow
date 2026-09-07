@@ -19589,9 +19589,9 @@ family = "expect"
 glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
 owner = "core/deps"
 classification = "reviewed_exception"
-reason = "Invariant-guarded expects in the product isolation tests (#3903 PR C); every expect guards a known-good typed fixture or parse whose success is the property under test"
+reason = "Invariant-guarded expects in the product isolation and manifest-derived floor inventory tests (#3903 PR C); every expect guards a known-good typed fixture, manifest parse, or receipt parse whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 4
+occurrence_limit = 21
 created = "2026-09-07"
 review_after = "2026-12-06"
 
@@ -19608,12 +19608,12 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Fixture panic in the product isolation tests (#3903); the panic is guarded by an is_some_and assertion and unreachable on the retained evidence"
 evidence = ["issue:3903"]
-occurrence_limit = 1
+occurrence_limit = 6
 created = "2026-09-07"
 review_after = "2026-12-06"
 
 [allow.selector]
-callee = "panic"
+macro_name = "panic"
 glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
 
 [[allow]]

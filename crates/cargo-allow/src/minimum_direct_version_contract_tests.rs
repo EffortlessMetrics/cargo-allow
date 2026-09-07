@@ -49,6 +49,7 @@ fn receipt(rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersionProofReceiptV1
         schema_id: MINIMUM_DIRECT_VERSION_SCHEMA_ID.to_string(),
         schema_version: 1,
         product: "cargo-allow".to_string(),
+        package_roots: vec!["cargo-allow".to_string()],
         msrv: "1.95".to_string(),
         toolchain: "1.95.0".to_string(),
         target: "x86_64-pc-windows-msvc".to_string(),
@@ -203,6 +204,41 @@ fn minimum_direct_version_contract_product_sets_stay_separate() {
             .iter()
             .any(|reason| reason.contains("product_mismatch")),
         "the product mismatch must be named even for a report-only product"
+    );
+}
+
+#[test]
+fn minimum_direct_version_contract_package_roots_must_match_the_request() {
+    // A receipt recorded against different package roots is not this
+    // request's proof even when the product label matches; receipts
+    // that predate root recording (empty roots) stay governed by the
+    // request's roots alone.
+    let mut roots_request = request();
+    roots_request.package_roots = vec!["allow-core".to_string()];
+    let evaluation = evaluate_minimum_version_proof(
+        &roots_request,
+        &receipt(vec![row("serde", MinimumFloorResultV1::Proven)]),
+    );
+    assert_eq!(
+        evaluation.verdict,
+        allow_report::MinimumProofVerdictV1::Incomplete
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("package_roots_mismatch")),
+        "the roots mismatch must be named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut legacy = receipt(vec![row("serde", MinimumFloorResultV1::Proven)]);
+    legacy.package_roots = Vec::new();
+    let legacy_evaluation = evaluate_minimum_version_proof(&request(), &legacy);
+    assert_eq!(
+        legacy_evaluation.verdict,
+        allow_report::MinimumProofVerdictV1::Complete,
+        "a legacy receipt without recorded roots is governed by the request"
     );
 }
 

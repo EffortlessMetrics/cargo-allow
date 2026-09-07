@@ -4,34 +4,44 @@ schema_version = 1
 # This diff adds the advisory product-scoped direct-floor proofs: the
 # shared, cargo-intent, and cargo-proof products each proved check-only
 # at the claimed 1.95 MSRV, report-only per their experimental and
-# independent support postures. The proof script is parameterized by
-# product (CI_PROOF_PRODUCT) and advisory posture (CI_PROOF_ADVISORY
-# downgrades the bounded classes to check), and
-# scripts/proof-advisory-products.sh collects all three advisory
-# products. The law tests prove product isolation: one product's
-# unsupported floor never fails another product's evaluation, and a
-# foreign receipt row is named as outside the request's selected
-# floors. The source-exception additions receipt only the
-# syntax-visible constructs the new surfaces introduce: allow-11247 is
-# the glob-ratcheted expect baseline for the product isolation tests,
-# allow-11248 is the fixture panic ratchet, allow-11249/11250/11251
-# receipt the three retained advisory receipt files, allow-11252
-# receipts the advisory collector script, and the allow-11253 record
-# receipts this revision-note file itself per the per-note receipt
-# law. No existing exception is weakened, no expiry is extended, and
-# no scope is broadened: the records below are additions.
+# independent support postures. Review repairs made the proof genuinely
+# product-scoped: scripts/proof-direct-floors.sh now derives each
+# product's package closure and that closure's own declared external
+# direct dependency floors from the checked-in manifests (normal and
+# build dependencies; dev-dependencies and optional dependencies stay
+# outside the certified set), runs the bounded proof classes against
+# the product's own packages, hashes the detached worktree's own
+# inputs, records the package roots in the receipt contract
+# (receipt.package_roots with an evaluator package_roots_mismatch law),
+# and emits commands and claim boundaries that cover only what actually
+# ran for the named product. The isolation tests now compare each
+# retained receipt's rows and roots against the authoritative
+# manifest-derived inventory, reject a foreign product receipt, and pin
+# the advisory collector's per-product identity. The
+# source-exception additions receipt only the syntax-visible constructs
+# the new surfaces introduce: allow-11247 is the glob-ratcheted expect
+# baseline for the product isolation and derivation-mirror tests
+# (loosened 4 -> 21 when the tests grew the manifest-derived mirror),
+# allow-11248 is the panic_macro ratchet for the derivation-mirror
+# diagnostics (loosened 1 -> 6; its selector names macro_name now that
+# the sites are macro_call findings), allow-11249/11250/11251 receipt
+# the three retained advisory receipt files, allow-11252 receipts the
+# advisory collector script, and the allow-11253 record receipts this
+# revision-note file itself per the per-note receipt law. No existing
+# exception is weakened beyond these reviewed ratchets, no expiry is
+# extended, and no scope is broadened: the records below are additions.
 # policy/allow.toml keeps its CRLF line-ending contract; the net
 # transition is append-only.
 
 [[records]]
 allow_ids = ["allow-11247"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:89754e31d7a146c40a3898c84752971c3f7429534f6b65be2ad52fa8016b89ef"
+after_fingerprint = "sha256:v1:800dc958c981d97088c0932b0931acfb660c3c8c287cc0521bf4ea6f82c3cc1a"
 
 [[records]]
 allow_ids = ["allow-11248"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:d5b5a11673ddf0329fccc8a205336a7d789b677bd3f123098cbf82e6f25f9db8"
+after_fingerprint = "sha256:v1:8f2c7a1f293443c56c4a2e46b133e24a636c75e038bba6a59cbe73ae25dc9b6f"
 
 [[records]]
 allow_ids = ["allow-11249"]
