@@ -19405,3 +19405,25 @@ review_after = "2026-12-06"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/workspace_lint_policy_tests.rs"
+
+[[allow]]
+id = "allow-11238"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3904-workspace-lint-inventory.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workspace lint inventory expect ratchets added by the #3904 PR A lane."
+evidence = ["issue:3904", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3904-workspace-lint-inventory.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3904-workspace-lint-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
