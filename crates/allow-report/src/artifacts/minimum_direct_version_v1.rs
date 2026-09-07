@@ -197,6 +197,11 @@ pub struct MinimumVersionProofReceiptV1 {
     pub schema_id: String,
     pub schema_version: u32,
     pub product: String,
+    /// The package roots whose dependency closure this receipt covers.
+    /// Empty on receipts that predate root recording; the request's
+    /// roots then govern the evaluation.
+    #[serde(default)]
+    pub package_roots: Vec<String>,
     pub msrv: String,
     /// The toolchain the proof actually ran under.
     pub toolchain: String,
@@ -271,6 +276,14 @@ pub fn evaluate_minimum_version_proof(
         reasons.push(format!(
             "product_mismatch: receipt {} vs request {}",
             receipt.product, request.product
+        ));
+    }
+    if !receipt.package_roots.is_empty() && receipt.package_roots != request.package_roots {
+        // A receipt recorded against different package roots is not
+        // this request's proof, even when the product label matches.
+        reasons.push(format!(
+            "package_roots_mismatch: receipt {:?} vs request {:?}",
+            receipt.package_roots, request.package_roots
         ));
     }
     if receipt.msrv != request.msrv {

@@ -228,6 +228,8 @@ mod minimum_direct_version_contract_tests;
 #[cfg(test)]
 mod minimum_direct_version_fixtures_tests;
 #[cfg(test)]
+mod minimum_direct_version_products_tests;
+#[cfg(test)]
 mod repository_release_controls_tests;
 #[cfg(test)]
 mod review_disposition_contract_tests;
