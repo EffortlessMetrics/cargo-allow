@@ -131,19 +131,25 @@ for row in floors:
 json.dump(failures, open("pin-failures.json", "w"), indent=1)
 PY
 pin_failures="$(cat pin-failures.json)"
+# Verify every pin that succeeded actually landed at the floor. Packages
+# whose pin failed are excluded here — they surface as resolver_failure
+# rows in the receipt instead of aborting before any receipt exists.
 floor_move_failures="$(python3 - <<'PY'
 import json
 import tomllib
 
 lock = tomllib.load(open("Cargo.lock", "rb"))
 floors = json.load(open("floors.json", encoding="utf-8"))
+pin_failed = set(json.load(open("pin-failures.json", encoding="utf-8")).keys())
 resolved = {}
 for package in lock.get("package", []):
     resolved.setdefault(package["name"], package["version"])
 moved = []
 for row in floors:
+    if row["package"] in pin_failed:
+        continue
     locked = resolved.get(row["package"])
-    if locked is None or not locked.startswith(row["floor"]):
+    if locked != row["floor"]:
         moved.append(row["package"] + ": locked at " + str(locked) + ", floor requires " + str(row["floor"]))
 print("; ".join(moved))
 PY
