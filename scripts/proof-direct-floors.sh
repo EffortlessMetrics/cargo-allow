@@ -13,17 +13,45 @@
 #
 # Environment:
 #   CI_PROOF_MSRV      claimed MSRV (default 1.95)
-#   CI_PROOF_OUT       receipt JSON output path (required)
-#   CI_PROOF_CLASSES   comma-separated bounded classes (default "check,test,package")
+#   CI_PROOF_OUT       receipt JSON output path (required; resolved to an
+#                      absolute path before the worktree is entered)
+#   CI_PROOF_CLASSES   comma-separated bounded classes (required; must
+#                      contain at least one known class)
 
 set -euo pipefail
 
 MSRV="${CI_PROOF_MSRV:-1.95}"
-OUT="${CI_PROOF_OUT:?CI_PROOF_OUT is required}"
 CLASSES="${CI_PROOF_CLASSES:-check,test,package}"
 ROOT="$(git rev-parse --show-toplevel)"
-WORKTREE="$(mktemp -d)"
 
+# Validate the class selection before anything runs: an empty or unknown
+# selection would skip every proof and still certify the rows (negative
+# control 10).
+IFS=',' read -r -a CLASS_LIST <<< "$CLASSES"
+known_class() {
+  case "$1" in
+    check | test | package) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+selected_any=false
+for class in "${CLASS_LIST[@]}"; do
+  known_class "$class" || {
+    echo "proof-direct-floors: unknown proof class '$class'" >&2
+    exit 1
+  }
+  selected_any=true
+done
+"$selected_any" || {
+  echo "proof-direct-floors: no proof class selected" >&2
+  exit 1
+}
+
+# Resolve the output path before the worktree changes the working directory.
+mkdir -p "$(dirname "$CI_PROOF_OUT")"
+OUT="$(cd "$(dirname "$CI_PROOF_OUT")" && pwd)/$(basename "$CI_PROOF_OUT")"
+
+WORKTREE="$(mktemp -d)"
 cleanup() {
   git worktree remove --force "$WORKTREE" >/dev/null 2>&1 || true
 }
@@ -38,6 +66,17 @@ export RUSTUP_TOOLCHAIN="$MSRV"
 rustc --version
 cargo --version
 
+# Identity digests computed from the proof inputs: the manifest set is the
+# root manifest plus every member manifest; the lock identity is the HEAD
+# Cargo.lock the floor candidate starts from.
+manifest_set_digest="$(
+  {
+    cat "$ROOT/Cargo.toml"
+    find crates -maxdepth 2 -name Cargo.toml | sort | xargs cat
+  } | sha256sum | cut -d' ' -f1
+)"
+lock_digest="$(sha256sum "$ROOT/Cargo.lock" | cut -d' ' -f1)"
+
 # 1. Derive the external direct dependency floors from the root
 #    manifest's [workspace.dependencies] (registry deps only; workspace
 #    path deps with exact =x.y.z pins are proven by the workspace build
@@ -47,7 +86,7 @@ import json
 import sys
 import tomllib
 
-data = tomllib.load(open(sys.argv[1], "rb"))  # floor inventory site
+data = tomllib.load(open(sys.argv[1], "rb"))
 deps = data["workspace"]["dependencies"]
 rows = []
 for name, spec in sorted(deps.items()):
@@ -68,9 +107,8 @@ PY
 # 2. Build the direct-floor candidate lock: regenerate from scratch, then
 #    pin each external direct dependency to its declared minimum. Pin
 #    failures (version does not exist or is yanked) are recorded as
-#    resolver failures for those rows, not silently dropped.
+#    resolver failures for those rows and fail the overall proof.
 rm -f Cargo.lock
-pin_failures="{}"
 python3 - <<'PY'
 import json
 import subprocess
@@ -109,7 +147,8 @@ fi
 #    instrument failure for every row (the failing crate is in the
 #    captured output).
 python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/floors.json" "$WORKTREE/pin-failures.json" \
-  "$check_status" "$test_status" "$package_status" "$MSRV" > "$OUT" <<'PY'
+  "$check_status" "$test_status" "$package_status" "$MSRV" \
+  "$manifest_set_digest" "$lock_digest" > "$OUT" <<'PY'
 import hashlib
 import json
 import sys
@@ -118,6 +157,7 @@ import tomllib
 lock_path, floors_path, pins_path = sys.argv[1], sys.argv[2], sys.argv[3]
 check_status, test_status, package_status = (int(v) for v in sys.argv[4:7])
 msrv = sys.argv[7]
+manifest_set_digest, lock_digest = sys.argv[8], sys.argv[9]
 
 lock = tomllib.load(open(lock_path, "rb"))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -162,8 +202,8 @@ receipt = {
     "msrv": msrv,
     "toolchain": msrv + ".0",
     "target": "host (release-set default target)",
-    "manifest_set_digest": "worktree-head",
-    "lock_digest": "floor-candidate-lock",
+    "manifest_set_digest": manifest_set_digest,
+    "lock_digest": lock_digest,
     "rows": rows,
     "commands": [
         "cargo update -p <dep> --precise <floor> (per external direct dep)",
@@ -183,6 +223,10 @@ PY
 
 overall=0
 if [[ "$check_status" -ne 0 || "$test_status" -ne 0 || "$package_status" -ne 0 ]]; then
+  overall=1
+fi
+if [[ -s "$WORKTREE/pin-failures.json" ]] &&
+  [[ "$(cat "$WORKTREE/pin-failures.json")" != "{}" ]]; then
   overall=1
 fi
 echo "proof-direct-floors: proof classes completed (overall=$overall)"

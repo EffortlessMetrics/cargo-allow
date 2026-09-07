@@ -40,11 +40,6 @@ change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:2efec8909736d32d57e050970e32106ac5f590ba2dcf47f9e71d2e11170ca760"
 
 [[records]]
-allow_ids = ["allow-11244"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:PENDING"
-
-[[records]]
 allow_ids = ["allow-11245"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:c64479510db27fb673f48018bc5b51ff7d23e7a244368f9ca820496c7d8605a6"
