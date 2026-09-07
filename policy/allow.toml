@@ -19491,7 +19491,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the direct minimum version contract tests (#3903 PR A); every expect guards a known-good typed fixture or parse whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 5
+occurrence_limit = 7
 created = "2026-09-07"
 review_after = "2026-12-06"
 
