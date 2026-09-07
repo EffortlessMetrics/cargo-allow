@@ -322,6 +322,7 @@ mod tests {
     fn disabled_provider_is_unavailable_in_read_only_projection() -> Result<(), String> {
         let registry =
             StaticProviderRegistryV1::selected().map_err(|error| error.as_str().to_string())?;
+        let _ = &registry;
         #[cfg(not(feature = "provider-hawk"))]
         if registry.provider_available("proof.hawk.v1") {
             return Err("disabled hawk provider was reported available".to_string());
