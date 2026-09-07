@@ -97,11 +97,13 @@ fn live_inventory() -> (WorkspaceLintInventoryV1, Vec<(String, u32, Vec<String>)
             test_only_weakenings,
         });
     }
+    let root_manifest = std::fs::read_to_string(root.join("Cargo.toml"))
+        .expect("the workspace manifest is retained");
     let inventory = WorkspaceLintInventoryV1 {
         schema_id: "cargo-allow.workspace-lint-inventory.v1".to_string(),
         schema_version: 1,
         rust_version_claim: "1.95".to_string(),
-        workspace_lints_declared: false,
+        workspace_lints_declared: root_manifest.contains("[workspace.lints"),
         packages,
         clippy_lanes: Vec::new(),
         limits: Vec::new(),
@@ -118,24 +120,26 @@ fn workspace_lint_inheritance_live_workspace_is_inventoried_honestly() {
         inventory.packages.len() >= 20,
         "the workspace members are all inventoried"
     );
+    // PR B cutover: the workspace declares lints and every member
+    // inherits them.
     assert!(
-        !inventory.workspace_lints_declared,
-        "PR A changes no effective lint level: no [workspace.lints] exists yet"
+        inventory.workspace_lints_declared,
+        "the cutover declares [workspace.lints] in the root manifest"
     );
     assert!(
         inventory
             .packages
             .iter()
-            .all(|package| !package.inherits_workspace_lints),
-        "no package has cut over to workspace inheritance yet (that is PR B)"
+            .all(|package| package.inherits_workspace_lints),
+        "every member inherits the workspace lints after the cutover"
     );
 }
 
 #[test]
-fn workspace_lint_inheritance_every_enforced_package_lacks_it_today() {
-    // The honest drift inventory: the release-set lane's thirteen
-    // packages are all clippy-enforced and none inherits workspace
-    // lints yet — the cutover PR closes exactly these findings.
+fn workspace_lint_inheritance_every_enforced_package_inherits_after_cutover() {
+    // The release-set lane's packages are clippy-enforced and all
+    // inherit the workspace lints after the PR B cutover: the
+    // missing-inheritance drift class is empty on the live tree.
     let root = workspace_root();
     let ci = read_workspace_file(&root, ".github/workflows/ci.yml");
     let all_lines: Vec<&str> = ci.lines().collect();
@@ -158,28 +162,19 @@ fn workspace_lint_inheritance_every_enforced_package_lacks_it_today() {
                 .split_whitespace()
                 .next()
                 .unwrap_or_default()
-                .trim_end_matches('\\')
+                .trim_end_matches(char::is_whitespace)
                 .to_string()
         })
         .filter(|name| !name.is_empty())
         .collect();
     assert!(enforced.len() >= 10, "the release-set lane is explicit");
 
-    let (mut inventory, _) = live_inventory();
-    inventory.clippy_lanes = vec![ClippyCommandLaneV1 {
-        lane: "release-set".to_string(),
-        workflow: "ci.yml".to_string(),
-        packages: enforced.clone(),
-        deny_flags: vec!["-D".to_string(), "warnings".to_string()],
-    }];
-    let findings = classify_workspace_lint_inventory(&inventory);
+    let (inventory, _) = live_inventory();
     for name in &enforced {
+        let row = inventory.packages.iter().find(|row| &row.package == name);
         assert!(
-            findings.findings.iter().any(|finding| {
-                finding.kind == WorkspaceLintFindingKindV1::MissingWorkspaceInheritance
-                    && finding.package == *name
-            }),
-            "missing inheritance must be named for {name}"
+            row.is_some_and(|row| row.inherits_workspace_lints),
+            "enforced package {name} must be inventoried and inherit the workspace lints"
         );
     }
 }
@@ -194,10 +189,14 @@ fn workspace_lint_inheritance_local_weakening_matches_the_live_count() {
         let row = inventory
             .packages
             .iter()
-            .find(|row| &row.package == package)
-            .expect("every manifest row is inventoried");
-        assert_eq!(row.local_allow_count, *allow_count, "package {package}");
-        assert_eq!(row.test_only_weakenings.len(), test_weakenings.len());
+            .find(|row| &row.package == package);
+        assert!(
+            row.is_some_and(|row| {
+                row.local_allow_count == *allow_count
+                    && row.test_only_weakenings.len() == test_weakenings.len()
+            }),
+            "package {package}: the inventoried counts must match the direct scan"
+        );
     }
     let total_local: u32 = inventory
         .packages
@@ -286,14 +285,21 @@ fn workspace_lint_inheritance_no_effective_change_is_provable() {
     // observational.
     let root = workspace_root();
     let root_manifest = read_workspace_file(&root, "Cargo.toml");
-    assert!(!root_manifest.contains("[workspace.lints"));
+    // The cutover preserves the accepted rule set exactly: the
+    // workspace tables deny the warnings group for both tools — the
+    // manifest-level equivalent of the CI `-D warnings` outcome — and
+    // nothing beyond that group was selected.
+    assert!(root_manifest.contains("[workspace.lints.rust]"));
+    assert!(root_manifest.contains("[workspace.lints.clippy]"));
+    assert!(!root_manifest.contains("pedantic"));
+    assert!(!root_manifest.contains("nursery"));
     let (inventory, _) = live_inventory();
-    assert!(!inventory.workspace_lints_declared);
+    assert!(inventory.workspace_lints_declared);
     assert!(
         inventory
             .packages
             .iter()
             .all(|row| row.declared_lints.is_empty()),
-        "no package declares local [lints] tables at inventory time"
+        "no package declares local [lints] tables; inheritance is uniform"
     );
 }

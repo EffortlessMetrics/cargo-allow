@@ -21,3 +21,6 @@ toml.workspace = true
 [[bench]]
 name = "inventory"
 harness = false
+
+[lints]
+workspace = true

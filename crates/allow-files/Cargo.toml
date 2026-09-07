@@ -23,3 +23,6 @@ harness = false
 # Embeddable Changie source sensor (#3587/#3588). Feature-disabled
 # consumers keep the current dependency and behavior surface.
 changie = ["dep:yaml-rust2"]
+
+[lints]
+workspace = true
