@@ -20161,7 +20161,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the workflow construction aggregate tests (#3907 PR D); every expect guards a live inventory derivation, a selected tool entry, or a fixture whose success is the property under test"
 evidence = ["issue:3907"]
-occurrence_limit = 10
+occurrence_limit = 12
 created = "2026-09-08"
 review_after = "2026-12-08"
 

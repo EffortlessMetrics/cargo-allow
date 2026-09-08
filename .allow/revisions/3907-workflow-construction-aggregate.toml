@@ -28,7 +28,7 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11272"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:48d429a257646dfc894a78dd8278a7874445fd17a34ca75bbabbc03feec386f5"
+after_fingerprint = "sha256:v1:de3ab7df84abc8463ccd964155cfb5bb899629d048841db60a51fb4da41234ce"
 
 [[records]]
 allow_ids = ["allow-11273"]

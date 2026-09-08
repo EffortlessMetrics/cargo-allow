@@ -245,7 +245,7 @@ fn workflow_construction_aggregate_instrument_failure_view_names_the_reasons() {
     // The aggregate's instrument-failure view carries the dominating
     // reason and the retention note, so stored artifacts explain
     // themselves.
-    let (inventory, syntax, security) = live_reports();
+    let (inventory, _syntax, security) = live_reports();
     let mut dead_syntax = syntax_tool_run(&inventory);
     dead_syntax.version = "0.0.1".to_string();
     let dead_syntax = evaluate_workflow_syntax_run(&dead_syntax, &inventory);
@@ -265,7 +265,7 @@ fn workflow_construction_aggregate_instrument_failure_view_names_the_reasons() {
 #[test]
 fn workflow_construction_aggregate_denominator_drift_fails_closed() {
     // Reports graded against different tree states cannot be combined.
-    let (inventory, mut syntax, _security) = live_reports();
+    let (inventory, mut syntax, security) = live_reports();
     syntax.denominator_digest = "sha256:v1:another-tree".to_string();
     let aggregate = aggregate_workflow_construction(&inventory, &syntax, &security);
     assert_eq!(
