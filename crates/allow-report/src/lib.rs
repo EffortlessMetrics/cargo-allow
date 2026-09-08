@@ -200,6 +200,17 @@ pub use artifacts::{
     render_minimum_version_drift_json,
 };
 
+// Workflow construction and security inventory (#3907 PR A).
+pub use artifacts::{
+    WORKFLOW_CONSTRUCTION_FAMILIES_ALL, WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_ID,
+    WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_VERSION, WorkflowConstructionExclusionV1,
+    WorkflowConstructionFamilyCoverageV1, WorkflowConstructionFamilyV1,
+    WorkflowConstructionInventoryV1, WorkflowConstructionSurfaceClassV1,
+    WorkflowConstructionSurfaceKindV1, WorkflowConstructionSurfaceV1, WorkflowSecurityFixtureV1,
+    WorkflowSecurityToolSelectionV1, WorkflowSecurityToolStatusV1, workflow_construction_inventory,
+    workflow_security_fixtures,
+};
+
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).
 pub use artifacts::{
     CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,

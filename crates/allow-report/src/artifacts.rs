@@ -43,6 +43,7 @@ mod release_operation_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
+mod workflow_construction_v1;
 mod worklist;
 mod workspace_lint_drift_guard_v1;
 mod workspace_lint_inventory_v1;
@@ -232,6 +233,15 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workflow_construction_v1::{
+    WORKFLOW_CONSTRUCTION_FAMILIES_ALL, WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_ID,
+    WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_VERSION, WorkflowConstructionExclusionV1,
+    WorkflowConstructionFamilyCoverageV1, WorkflowConstructionFamilyV1,
+    WorkflowConstructionInventoryV1, WorkflowConstructionSurfaceClassV1,
+    WorkflowConstructionSurfaceKindV1, WorkflowConstructionSurfaceV1, WorkflowSecurityFixtureV1,
+    WorkflowSecurityToolSelectionV1, WorkflowSecurityToolStatusV1, workflow_construction_inventory,
+    workflow_security_fixtures,
 };
 pub use workspace_lint_drift_guard_v1::{
     WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
