@@ -171,6 +171,113 @@ mod tests {
     use super::*;
 
     #[test]
+    fn evaluate_exits_zero_for_the_clean_live_aggregate() {
+        // Both lane tool runs derived from the live inventory with no
+        // findings produce a clean aggregate and exit zero.
+        let root = workspace_root();
+        let syntax_path =
+            std::env::temp_dir().join(format!("wf-constr-syntax-{}.json", std::process::id()));
+        let security_path =
+            std::env::temp_dir().join(format!("wf-constr-security-{}.json", std::process::id()));
+        let inventory =
+            workflow_construction_inventory(&root).expect("the live inventory compiles");
+        let selection = inventory
+            .tool_selections
+            .iter()
+            .find(|tool| tool.tool == "actionlint")
+            .expect("actionlint is selected");
+        let syntax_run = WorkflowSyntaxToolRunV1 {
+            tool: "actionlint".to_string(),
+            version: selection.version.clone().expect("selected version"),
+            pin_identity: selection.pin_identity.clone().expect("selected pin"),
+            arguments: vec!["-shellcheck=".to_string()],
+            covered: Vec::new(),
+            uncovered: Vec::new(),
+            raw_findings: Vec::new(),
+        };
+        std::fs::write(
+            &syntax_path,
+            serde_json::to_string(&syntax_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        let covered_workflows_examples: Vec<String> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(
+                    surface.kind,
+                    allow_report::WorkflowConstructionSurfaceKindV1::Workflow
+                        | allow_report::WorkflowConstructionSurfaceKindV1::CheckedExample
+                )
+            })
+            .map(|surface| surface.path.clone())
+            .collect();
+        let covered_workflows_actions: Vec<String> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(
+                    surface.kind,
+                    allow_report::WorkflowConstructionSurfaceKindV1::Workflow
+                        | allow_report::WorkflowConstructionSurfaceKindV1::LocalAction
+                )
+            })
+            .map(|surface| surface.path.clone())
+            .collect();
+        let uncovered: Vec<allow_report::WorkflowSyntaxUncoveredSurfaceV1> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                surface.kind == allow_report::WorkflowConstructionSurfaceKindV1::LocalAction
+            })
+            .map(|surface| allow_report::WorkflowSyntaxUncoveredSurfaceV1 {
+                path: surface.path.clone(),
+                reason: "pinned configuration does not inspect action manifests".to_string(),
+            })
+            .collect();
+        let syntax_run = WorkflowSyntaxToolRunV1 {
+            tool: "actionlint".to_string(),
+            version: "1.7.7".to_string(),
+            pin_identity: "sha256:023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+                .to_string(),
+            arguments: vec!["-shellcheck=".to_string()],
+            covered: covered_workflows_examples,
+            uncovered,
+            raw_findings: Vec::new(),
+        };
+        let security_run = WorkflowSecurityToolRunV1 {
+            tool: "zizmor".to_string(),
+            version: "1.30.0".to_string(),
+            offline_mode: true,
+            covered: covered_workflows_actions,
+            raw_findings: Vec::new(),
+        };
+        std::fs::write(
+            &syntax_path,
+            serde_json::to_string(&syntax_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        std::fs::write(
+            &security_path,
+            serde_json::to_string(&security_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        let args = WorkflowConstructionArgs {
+            command: WorkflowConstructionSubcommand::Aggregate(WorkflowConstructionAggregateArgs {
+                syntax_run: syntax_path.clone(),
+                security_run: security_path.clone(),
+                exceptions: root.join("policy/workflow-security-exceptions.toml"),
+                root: root.clone(),
+                format: WorkflowConstructionOutputFormat::Human,
+            }),
+        };
+        let outcome = cmd_workflow_construction(&args);
+        let _ = std::fs::remove_file(&syntax_path);
+        let _ = std::fs::remove_file(&security_path);
+        assert!(outcome.is_ok(), "a clean aggregate exits zero: {outcome:?}");
+    }
+
+    #[test]
     fn evaluate_fails_closed_on_a_malformed_syntax_run() {
         let root = workspace_root();
         let bad =

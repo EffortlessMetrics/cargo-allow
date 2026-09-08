@@ -33,7 +33,7 @@ after_fingerprint = "sha256:v1:de3ab7df84abc8463ccd964155cfb5bb899629d048841db60
 [[records]]
 allow_ids = ["allow-11273"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:77a6100bdec62a4be11a56c8e2bdc66662c6907ec4f7967e4baae03374e8b146"
+after_fingerprint = "sha256:v1:ea3e6be7eca267f5c9f6a34d2275e1ab602f05200bb4539675607249099b9e69"
 
 [[records]]
 allow_ids = ["allow-11274"]
