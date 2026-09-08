@@ -37,7 +37,10 @@ impl RustSyntaxContainer {
 }
 
 impl RustSyntaxTree {
-    pub fn root_kind(&self) -> &'static str {
+    /// The root node's kind, borrowed from this syntax tree.
+    ///
+    /// Use `to_owned()` when the kind must outlive the tree.
+    pub fn root_kind(&self) -> &str {
         self.tree.root_node().kind()
     }
 
