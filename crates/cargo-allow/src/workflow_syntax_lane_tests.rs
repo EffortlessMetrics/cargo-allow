@@ -67,6 +67,54 @@ fn matching_tool_run(
 }
 
 #[test]
+fn workflow_syntax_lane_wrong_tool_is_an_instrument_failure() {
+    // A run produced by a tool the inventory did not select proves
+    // nothing: the identity mismatch is an instrument failure.
+    let inventory = live_inventory();
+    let mut wrong_tool = matching_tool_run(&inventory);
+    wrong_tool.tool = "not-actionlint".to_string();
+    let report = evaluate_workflow_syntax_run(&wrong_tool, &inventory);
+    assert_eq!(report.result, WorkflowSyntaxLaneResultV1::InstrumentFailure);
+    assert!(
+        report
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("not the inventory's selected syntax analyzer")),
+        "the tool mismatch is named: {:?}",
+        report.limitations
+    );
+}
+
+#[test]
+fn workflow_syntax_lane_views_render_and_round_trip() {
+    let inventory = live_inventory();
+    let mut tool_run = matching_tool_run(&inventory);
+    tool_run.raw_findings = vec![WorkflowSyntaxRawFindingV1 {
+        message: "got unexpected character while lexing".to_string(),
+        filepath: ".github/workflows/ci.yml".to_string(),
+        line: 7,
+        column: 58,
+        kind: "expression".to_string(),
+        snippet: Some("      - run: echo \"${{ x }}\"".to_string()),
+        end_column: Some(58),
+    }];
+    let report = evaluate_workflow_syntax_run(&tool_run, &inventory);
+    let human = allow_report::render_workflow_syntax_human(&report);
+    assert!(
+        human.starts_with("workflow-syntax: tool=actionlint"),
+        "{human}"
+    );
+    assert!(
+        human.contains(".github/workflows/ci.yml:7:58 [expression]"),
+        "{human}"
+    );
+    let json = allow_report::render_workflow_syntax_json(&report).expect("json renders");
+    let parsed: allow_report::WorkflowSyntaxLaneReportV1 =
+        serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, report, "the JSON view round-trips");
+}
+
+#[test]
 fn workflow_syntax_lane_clean_pinned_run_is_current() {
     let inventory = live_inventory();
     let report = evaluate_workflow_syntax_run(&matching_tool_run(&inventory), &inventory);
