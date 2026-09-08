@@ -15,7 +15,7 @@ use allow_report::{
 fn family_markers(family: WorkflowConstructionFamilyV1) -> (&'static str, &'static str) {
     match family {
         WorkflowConstructionFamilyV1::SyntaxOrExpressionInvalid => {
-            ("never closed", "echo \"hello\"")
+            ("message }\"", "echo \"hello\"")
         }
         WorkflowConstructionFamilyV1::MutableOrUnresolvedActionRef => ("@v7", "# v7.0.1"),
         WorkflowConstructionFamilyV1::PermissionExcessOrAmbiguity => {
@@ -45,7 +45,7 @@ fn family_markers(family: WorkflowConstructionFamilyV1) -> (&'static str, &'stat
         }
         WorkflowConstructionFamilyV1::ShellOrCommandConstruction => ("| sh", "set -euo pipefail"),
         WorkflowConstructionFamilyV1::UnsupportedOrInstrumentFailure => {
-            ("may not know", "inputs:\n  payload:")
+            ("may not know", "payload:")
         }
     }
 }
