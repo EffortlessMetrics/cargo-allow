@@ -1,6 +1,8 @@
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    # Full proof runs on drafts too; review-readiness.yml handles Ready events.
+    # Avoid launching the same source proof twice on a draft-to-ready transition (#3753).
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   workflow_dispatch:
