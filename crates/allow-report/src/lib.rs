@@ -450,6 +450,33 @@ pub use artifacts::{
     render_review_disposition_json, review_semantic_identity,
 };
 
+// Root re-exports for the #3904 PR C lint drift guard.
+pub use artifacts::{
+    WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
+    WorkspaceLintDriftClassV1, WorkspaceLintDriftFindingV1, WorkspaceLintDriftReportV1,
+    WorkspaceLintExceptionScopeV1, WorkspaceLintExceptionV1, WorkspaceLocalLintRowV1,
+    evaluate_workspace_lint_drift, render_workspace_lint_drift_human,
+    render_workspace_lint_drift_json,
+};
+
+// Root re-exports for the #3903 direct minimum version contract.
+pub use artifacts::{
+    DirectDependencyClassV1, DirectMinimumVersionSetV1, DirectRequirementRowV1,
+    MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
+    MinimumFloorRowV1, MinimumProofEvaluationV1, MinimumProofVerdictV1,
+    MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
+    ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
+    render_minimum_proof_json,
+};
+
+// Root re-exports for the #3904 workspace lint inventory.
+pub use artifacts::{
+    ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,
+    WORKSPACE_LINT_INVENTORY_SCHEMA_VERSION, WorkspaceLintFindingKindV1, WorkspaceLintFindingV1,
+    WorkspaceLintFindingsV1, WorkspaceLintInventoryV1, classify_workspace_lint_inventory,
+    render_workspace_lint_findings_human, render_workspace_lint_findings_json,
+};
+
 // Root re-exports for the #3836 Stage 1 pre-gate.
 pub use artifacts::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,

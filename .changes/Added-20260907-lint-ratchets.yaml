@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Selected Rust lint ratchets (#3904 PR D). Five zero-finding-on-corpus
+  lints land at deny in [workspace.lints.rust]: unit_bindings,
+  ambiguous_negative_literals, invalid_reference_casting,
+  exported_private_dependencies, and non_ascii_idents — each
+  MSRV-compatible and denying a defect class the default warning set
+  misses. Deferred candidates (redundant_imports, negative_impls,
+  must_not_suspend, unreachable_pub — carrying characterized findings
+  on the current corpus) and rejected blanket groups (pedantic,
+  nursery) stay out of the active policy, asserted by
+  workspace_lint_ratchets_tests.rs.
