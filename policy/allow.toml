@@ -19839,6 +19839,40 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11260"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_inventory_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow construction inventory tests (#3907 PR A); every expect guards a live-tree surface lookup, a manifest parse, or a deterministic inventory derivation whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 10
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_inventory_tests.rs"
+
+[[allow]]
+id = "allow-11261"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_security_fixtures_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security fixture laws (#3907 PR A); every expect guards a fixture corpus lookup whose presence is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 6
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_security_fixtures_tests.rs"
+
+[[allow]]
 id = "allow-0921"
 kind = "non_rust_file"
 family = "configuration"
@@ -19855,6 +19889,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/review-dispositions/pr-4153.json"
 target_fingerprint = "json"
 glob = ".allow/review-dispositions/pr-4153.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11262"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-construction-inventory.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow construction inventory source exceptions added by the #3907 PR A lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-construction-inventory.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-construction-inventory.toml"
 
 [allow.last_seen]
 line = 1

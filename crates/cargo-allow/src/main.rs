@@ -247,6 +247,10 @@ mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
 #[cfg(test)]
+mod workflow_construction_inventory_tests;
+#[cfg(test)]
+mod workflow_security_fixtures_tests;
+#[cfg(test)]
 mod workspace_lint_drift_guard_tests;
 #[cfg(test)]
 mod workspace_lint_inheritance_tests;
