@@ -41,13 +41,19 @@ fn syntax_tool_run(
         })
         .map(|surface| surface.path.clone())
         .collect();
+    let uncovered: Vec<String> = inventory
+        .surfaces
+        .iter()
+        .filter(|surface| surface.kind == WorkflowConstructionSurfaceKindV1::LocalAction)
+        .map(|surface| surface.path.clone())
+        .collect();
     WorkflowSyntaxToolRunV1 {
         tool: "actionlint".to_string(),
         version: selection.version.clone().expect("selected version"),
         pin_identity: selection.pin_identity.clone().expect("selected pin"),
         arguments: vec!["-shellcheck=".to_string()],
         covered,
-        uncovered: Vec::new(),
+        uncovered,
         raw_findings: Vec::new(),
     }
 }
@@ -72,11 +78,18 @@ fn security_tool_run(
         })
         .map(|surface| surface.path.clone())
         .collect();
+    let uncovered: Vec<String> = inventory
+        .surfaces
+        .iter()
+        .filter(|surface| surface.kind == WorkflowConstructionSurfaceKindV1::LocalAction)
+        .map(|surface| surface.path.clone())
+        .collect();
     WorkflowSecurityToolRunV1 {
         tool: "zizmor".to_string(),
         version: selection.version.clone().expect("selected version"),
         offline_mode: true,
         covered,
+        uncovered,
         raw_findings: Vec::new(),
     }
 }
