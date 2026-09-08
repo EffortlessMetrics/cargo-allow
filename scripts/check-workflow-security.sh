@@ -66,19 +66,25 @@ fi
 
 # Offline: known-vulnerability audits needing network are out of scope
 # for this lane's evidence (#3907 PR C limitations).
+security_inputs=(.github/workflows .github/actions)
+if [[ -f action.yml ]]; then security_inputs+=(action.yml); fi
+if [[ -f action.yaml ]]; then security_inputs+=(action.yaml); fi
 set +e
-"${ZIZMOR}" --no-online-audits --format json --quiet .github/workflows .github/actions \
-  action.yml action.yaml \
+# --no-exit-codes pins the only outcomes to 0 (completed; the findings
+# JSON is the evidence, validated below) and 1 (tool failure): the
+# tool's own findings-found exit convention must not gate this lane,
+# because the JSON is what gets graded.
+"${ZIZMOR}" --no-online-audits --no-exit-codes --format json --quiet "${security_inputs[@]}" \
   > "${work}/raw.json" 2> "${work}/stderr.log"
 status=$?
 set -e
-# Exit 0 = no findings; exit 1 = findings reported (the JSON is the
-# evidence and is validated below). Any other exit is a crash: the
-# output must not become clean evidence even when it happens to parse.
+# Exit 0 = the run completed; the findings JSON is graded downstream.
+# Any other exit is a tool failure: partial output must not become
+# clean evidence even when it happens to parse.
 case ${status} in
-  0 | 1) ;;
+  0) ;;
   *)
-    echo "check-workflow-security: zizmor crashed (exit ${status})" >&2
+    echo "check-workflow-security: zizmor failed (exit ${status})" >&2
     cat "${work}/stderr.log" >&2
     exit 1
     ;;
