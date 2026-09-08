@@ -48,27 +48,81 @@ publish() {
   local output
   output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v1:%s\n\n%s' \
     "${base_sha}" "${merge_base}" "${diff_digest}" "${summary}")"
-  local existing_id
-  existing_id="$(gh api "${API}/commits/${head_sha}/check-runs?check_name=${CHECK_NAME}" \
-    --jq '.check_runs[] | select(.name == env.CHECK_NAME) | .id' 2>/dev/null | head -n 1 || true)"
+  # These functions run in conditional contexts, where Bash disables
+  # errexit. Check every API status explicitly, and keep raw tool
+  # diagnostics (which can contain credentials or response bodies) out
+  # of the publication log.
+  local existing_id api_status
+  if existing_id="$(gh api "${API}/commits/${head_sha}/check-runs?check_name=${CHECK_NAME}" \
+    --jq '.check_runs | map(select(.name == "review-readiness")) | first | .id // empty' 2>/dev/null)"; then
+    if [ -n "${existing_id}" ] && ! [[ "${existing_id}" =~ ^[0-9]+$ ]]; then
+      echo "review-readiness: instrument failure: check-run lookup returned an invalid id" >&2
+      return 1
+    fi
+  else
+    api_status=$?
+    printf 'review-readiness: instrument failure: check-run lookup failed (exit %s)\n' "${api_status}" >&2
+    return 1
+  fi
   if [ -n "${existing_id}" ]; then
-    gh api "${API}/check-runs/${existing_id}" -X PATCH \
+    if gh api "${API}/check-runs/${existing_id}" -X PATCH \
       -f "status=completed" \
       -f "conclusion=${conclusion}" \
       -f "output[title]=review-readiness: ${conclusion}" \
-      -f "output[summary]=${output}" >/dev/null
-    printf 'review-readiness: updated run %s -> %s at %s\n' \
-      "${existing_id}" "${conclusion}" "${head_sha:0:12}"
+      -f "output[summary]=${output}" >/dev/null 2>&1; then
+      printf 'review-readiness: updated run %s -> %s at %s\n' \
+        "${existing_id}" "${conclusion}" "${head_sha:0:12}"
+    else
+      api_status=$?
+      printf 'review-readiness: check-run PATCH failed (exit %s); no update confirmed\n' "${api_status}" >&2
+      return 1
+    fi
   else
-    gh api "${API}/check-runs" -X POST \
+    if gh api "${API}/check-runs" -X POST \
       -f "name=${CHECK_NAME}" \
       -f "head_sha=${head_sha}" \
       -f "status=completed" \
       -f "conclusion=${conclusion}" \
       -f "output[title]=review-readiness: ${conclusion}" \
-      -f "output[summary]=${output}" >/dev/null
-    printf 'review-readiness: published %s at %s\n' "${conclusion}" "${head_sha:0:12}"
+      -f "output[summary]=${output}" >/dev/null 2>&1; then
+      printf 'review-readiness: published %s at %s\n' "${conclusion}" "${head_sha:0:12}"
+    else
+      api_status=$?
+      printf 'review-readiness: check-run POST failed (exit %s); no publication confirmed\n' "${api_status}" >&2
+      return 1
+    fi
   fi
+}
+
+validate_projection() {
+  # Validate the v1 transport envelope, not review semantics. Only the
+  # typed projector decides readiness. Slurping requires exactly one
+  # complete document, including on empty output or a failed process.
+  jq -se --slurpfile live "$2" --arg event "$3" --argjson exit_code "$4" '
+    def nonblank: type == "string" and test("\\S");
+    length == 1 and (.[0] |
+      type == "object" and
+      .schema_id == "cargo-allow.review-readiness-check.v1" and
+      .schema_version == 1 and .check_context == "review-readiness" and
+      .repository == $live[0].repository and .pr_number == $live[0].pr_number and
+      .event == $event and
+      (.conclusion == "success" or .conclusion == "neutral" or .conclusion == "failure") and
+      (.conclusion_reasons | type == "array" and length > 0 and all(.[]; nonblank)) and
+      (.required_posture == "draft" or .required_posture == "ready") and
+      (.stale_green_invalidated | type == "boolean") and
+      (.head_ledger_bootstrap | type == "boolean") and
+      (.claim_boundary | nonblank) and
+      (.binding | type == "object" and
+        .repository == $live[0].repository and .pr_number == $live[0].pr_number and
+        .base_ref == $live[0].base_ref and .base_sha == $live[0].base_sha and
+        .head_ref == $live[0].head_ref and .head_sha == $live[0].head_sha and
+        .merge_base == $live[0].merge_base and .diff_digest == $live[0].diff_digest and
+        (.disposition_identity | type == "string")) and
+      # The CLI exits 1 after emitting a typed Failure. A compile error,
+      # crash, or contradictory success is not a review conclusion.
+      (($exit_code == 0 and .conclusion != "failure") or
+       ($exit_code == 1 and .conclusion == "failure")))
+  ' "$1" >/dev/null 2>&1
 }
 
 # project <pr_number> <event> -> publishes the check run for the PR.
@@ -137,16 +191,16 @@ project_pr() {
 
   local disposition_args=() delta_args=() selected=""
   if [ "${#malformed[@]}" -gt 0 ]; then
+    rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "unreadable retained disposition records for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${malformed[*]}; malformed review evidence fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" || return 1
-    rm -f "${live_file}"
     return 1
   elif [ "${#exact_matches[@]}" -gt 1 ] || [ "${#ancestor_matches[@]}" -gt 1 ]; then
+    rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "ambiguous retained dispositions for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: exact=${exact_matches[*]:-} ancestor=${ancestor_matches[*]:-}; disposition discovery fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" || return 1
-    rm -f "${live_file}"
     return 1
   elif [ "${#exact_matches[@]}" -eq 1 ]; then
     selected="${exact_matches[0]}"
@@ -172,22 +226,34 @@ project_pr() {
   fi
 
   local projection_file exit_code=0
-  projection_file="$(mktemp)"
+  if ! projection_file="$(mktemp)"; then
+    echo "review-readiness: instrument failure: could not allocate projection output" >&2
+    rm -f "${live_file}"
+    return 1
+  fi
   cargo run -p cargo-allow --locked -- review-readiness project \
     --live "${live_file}" \
     --draft-state "${draft_state}" \
     --event "${event}" \
     ${disposition_args[@]+"${disposition_args[@]}"} \
     ${delta_args[@]+"${delta_args[@]}"} \
-    --format json >"${projection_file}" || exit_code=$?
+    --format json >"${projection_file}" 2>/dev/null || exit_code=$?
+  if ! validate_projection "${projection_file}" "${live_file}" "${event}" "${exit_code}"; then
+    printf 'review-readiness: instrument failure: unusable projection (projector exit %s); no check published\n' "${exit_code}" >&2
+    rm -f "${live_file}" "${projection_file}"
+    return 1
+  fi
   rm -f "${live_file}"
 
   local conclusion summary
-  conclusion="$(jq -r '.conclusion' "${projection_file}")"
-  summary="$(jq -r '[.conclusion_reasons[]] | join("; ")' "${projection_file}")"
+  if ! conclusion="$(jq -er '.conclusion' "${projection_file}" 2>/dev/null)" ||
+    ! summary="$(jq -er '.conclusion_reasons | join("; ")' "${projection_file}" 2>/dev/null)"; then
+    echo "review-readiness: instrument failure: could not read validated projection; no check published" >&2
+    rm -f "${projection_file}"
+    return 1
+  fi
   if ! publish "${head_sha}" "${conclusion}" "${summary}" \
     "${base_sha}" "${merge_base}" "${diff_digest}"; then
-    echo "review-readiness: check-run publish refused (fork token downgrade?); the job status carries the conclusion" >&2
     rm -f "${projection_file}"
     return 1
   fi

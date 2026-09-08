@@ -1,0 +1,4 @@
+# Issue #4165: exact adapter characterization and this authored revision note.
+# The mock-only fixture runs no project builds or network calls and cannot
+# publish checks. These entries grant no review, merge, or release authority.
+schema_version = 1
