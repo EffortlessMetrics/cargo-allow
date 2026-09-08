@@ -55,6 +55,57 @@ def resolve_commit(commit_ref: str) -> str:
     return commit_sha
 
 
+def _is_ignored_rehearsal_artifact(entry: bytes) -> bool:
+    """Permit only known ignored output directories, never source lookalikes."""
+    if not entry.startswith(b"!! "):
+        return False
+    path = entry.removeprefix(b"!! ")
+    if path in {b"target/", b"__pycache__/", b"scripts/__pycache__/"}:
+        return True
+    match path.split(b"/"):
+        case [b"crates", crate, b"target", b""]:
+            return bool(crate)
+    return False
+
+
+def require_clean_checkout(commit_sha: str) -> None:
+    """Admit only the named checkout with no observed source changes.
+
+    Phases read the working tree, including untracked source such as Changie
+    inputs even when local ignore rules hide them. Only known ignored target
+    and Python cache directories may remain. Their outputs are not validated
+    here. This observes checkout state; it is not an immutable sandbox.
+    """
+    if resolve_commit("HEAD") != commit_sha:
+        raise ValueError("rehearsal commit does not match checkout HEAD")
+    result = subprocess.run(
+        [
+            "git", "--no-optional-locks",
+            "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+            "status", "--porcelain=v1", "-z", "--untracked-files=all",
+            "--ignored=matching",
+            "--ignore-submodules=none",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError("could not inspect rehearsal checkout status")
+    # NUL framing preserves unusual filenames. With --ignored=matching, an
+    # explicitly ignored directory is reported once without listing its cache.
+    if any(
+        not _is_ignored_rehearsal_artifact(entry)
+        for entry in result.stdout.split(b"\0") if entry
+    ):
+        raise ValueError(
+            "rehearsal requires a clean checkout with only known ignored artifacts"
+        )
+    if resolve_commit("HEAD") != commit_sha:
+        raise ValueError("checkout HEAD moved during rehearsal admission")
+
+
 def _file_characterization(path: Path) -> str:
     """Keep file presence explicit without upgrading it to semantic proof."""
     try:
@@ -572,6 +623,7 @@ def _write_receipt(path: Path, json_text: str) -> None:
 def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
     commit_sha = resolve_commit(commit_ref)
+    require_clean_checkout(commit_sha)
     lockfile_digest = compute_sha256(ROOT / "Cargo.lock")
     topology_digest = compute_sha256(
         ROOT / "policy/product-package-topology-v2.toml"
@@ -625,6 +677,7 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
     for phase_name, runner in phases.items():
         receipt["phases"][phase_name] = runner(receipt)
 
+    require_clean_checkout(commit_sha)
     receipt["aggregate_status"] = _aggregate_phase_status(receipt["phases"])
     return receipt
 
