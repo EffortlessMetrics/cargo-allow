@@ -26,6 +26,7 @@ mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
+mod minimum_direct_version_v1;
 mod package_candidate_v2;
 mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
@@ -42,6 +43,8 @@ mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
 mod worklist;
+mod workspace_lint_drift_guard_v1;
+mod workspace_lint_inventory_v1;
 
 pub use add::AddReport;
 pub use add_finding_plan::{
@@ -187,6 +190,14 @@ pub use frozen_subject_lock_v1::{
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
 pub use migrate::MigrateReport;
+pub use minimum_direct_version_v1::{
+    DirectDependencyClassV1, DirectMinimumVersionSetV1, DirectRequirementRowV1,
+    MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
+    MinimumFloorRowV1, MinimumProofEvaluationV1, MinimumProofVerdictV1,
+    MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
+    ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
+    render_minimum_proof_json,
+};
 pub use package_candidate_v2::{
     PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,
     PackageCandidateDependencyKindV2, PackageCandidateDependencyRowV2, PackageCandidateFamilyV2,
@@ -213,6 +224,19 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workspace_lint_drift_guard_v1::{
+    WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
+    WorkspaceLintDriftClassV1, WorkspaceLintDriftFindingV1, WorkspaceLintDriftReportV1,
+    WorkspaceLintExceptionScopeV1, WorkspaceLintExceptionV1, WorkspaceLocalLintRowV1,
+    evaluate_workspace_lint_drift, render_workspace_lint_drift_human,
+    render_workspace_lint_drift_json,
+};
+pub use workspace_lint_inventory_v1::{
+    ClippyCommandLaneV1, DeclaredLintV1, LintPackageRowV1, WORKSPACE_LINT_INVENTORY_SCHEMA_ID,
+    WORKSPACE_LINT_INVENTORY_SCHEMA_VERSION, WorkspaceLintFindingKindV1, WorkspaceLintFindingV1,
+    WorkspaceLintFindingsV1, WorkspaceLintInventoryV1, classify_workspace_lint_inventory,
+    render_workspace_lint_findings_human, render_workspace_lint_findings_json,
 };
 
 pub use exact_candidate_receipt_v2::{

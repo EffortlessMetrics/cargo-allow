@@ -22,3 +22,6 @@ proptest = "1.6"
 [[bench]]
 name = "matching"
 harness = false
+
+[lints]
+workspace = true
