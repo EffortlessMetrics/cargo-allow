@@ -39,6 +39,16 @@ default-members = [
 
 [workspace.lints.rust]
 warnings = "deny"
+# Individual ratchets from the #3904 PR D evaluation: each lint fired zero
+# findings on the characterized corpus, is MSRV-compatible (all predate
+# 1.74, the [lints] table itself), and denies a defect class the default
+# warning set misses. The deferred and rejected candidates are asserted
+# by workspace_lint_ratchets_tests.rs.
+unit_bindings = "deny"
+ambiguous_negative_literals = "deny"
+invalid_reference_casting = "deny"
+exported_private_dependencies = "deny"
+non_ascii_idents = "deny"
 
 [workspace.lints.clippy]
 warnings = "deny"
