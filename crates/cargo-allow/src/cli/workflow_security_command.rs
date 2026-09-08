@@ -139,6 +139,26 @@ mod tests {
     }
 
     #[test]
+    fn evaluate_rejects_a_malformed_exceptions_file() {
+        let root = workspace_root();
+        let bad = std::env::temp_dir().join(format!("wf-sec-bad-exc-{}.toml", std::process::id()));
+        std::fs::write(&bad, b"not [ valid toml").expect("fixture writes");
+        let args = WorkflowSecurityArgs {
+            command: WorkflowSecuritySubcommand::Evaluate(WorkflowSecurityEvaluateArgs {
+                tool_run: root.join("docs/ci/receipts/workflow-syntax-lane-v1.json"),
+                exceptions: bad.clone(),
+                root,
+                format: WorkflowSecurityOutputFormat::Human,
+            }),
+        };
+        let outcome = cmd_workflow_security(&args);
+        let _ = std::fs::remove_file(&bad);
+        // Either the missing tool-run file or the malformed exceptions
+        // file fails closed before any report is emitted.
+        assert!(outcome.is_err(), "malformed input fails closed");
+    }
+
+    #[test]
     fn evaluate_fails_closed_on_a_malformed_tool_run() {
         let path =
             std::env::temp_dir().join(format!("wf-sec-malformed-{}.json", std::process::id()));

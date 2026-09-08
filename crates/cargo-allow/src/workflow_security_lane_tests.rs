@@ -285,6 +285,51 @@ fn workflow_security_lane_fixtures_stay_separated_under_the_mapping() {
 }
 
 #[test]
+fn workflow_security_lane_views_render_and_round_trip() {
+    let inventory = live_inventory();
+    let exceptions = vec![WorkflowSecurityExceptionV1 {
+        path: ".github/workflows/release.yml".to_string(),
+        rule: "template-injection".to_string(),
+        owner: "core/release".to_string(),
+        reason: "deliberate".to_string(),
+        evidence: vec!["issue:3907".to_string()],
+        review_after: "2026-12-08".to_string(),
+    }];
+    let mut run = matching_tool_run(&inventory);
+    run.raw_findings = vec![raw_finding(
+        ".github/workflows/release.yml",
+        "template-injection",
+    )];
+    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions);
+    let human = allow_report::render_workflow_security_human(&report);
+    assert!(
+        human.starts_with("workflow-security: tool=zizmor version=1.30.0 result=findings"),
+        "{human}"
+    );
+    assert!(human.contains("exception_accepted"), "{human}");
+    assert!(human.contains("claim boundary:"), "{human}");
+    let json = allow_report::render_workflow_security_json(&report).expect("json renders");
+    let parsed: allow_report::WorkflowSecurityLaneReportV1 =
+        serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, report, "the JSON view round-trips");
+}
+
+#[test]
+fn workflow_security_lane_views_render_deterministically() {
+    let inventory = live_inventory();
+    let report = evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[]);
+    let human = allow_report::render_workflow_security_human(&report);
+    assert!(
+        human.starts_with("workflow-security: tool=zizmor version=1.30.0 result=clean"),
+        "{human}"
+    );
+    let json = allow_report::render_workflow_security_json(&report).expect("json renders");
+    let parsed: allow_report::WorkflowSecurityLaneReportV1 =
+        serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, report);
+}
+
+#[test]
 fn workflow_security_lane_checked_exceptions_reference_the_denominator() {
     // The checked-in exceptions file names only inventoried paths and
     // qualified rules, with owner, reason, evidence, and review date.

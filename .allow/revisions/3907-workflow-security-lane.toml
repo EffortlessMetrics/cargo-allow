@@ -33,12 +33,12 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11267"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:43b3ca691d0b58ae9b928a7d1d10695a38772dc5603a080b0d5c23a838471424"
+after_fingerprint = "sha256:v1:7e094e4b5cb33ba15dea04a4d479e3535577f57cbb801c1d105d96b0dd07be1a"
 
 [[records]]
 allow_ids = ["allow-11268"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:a1afb9d4c9d43c007dc83dcde92108c8c0697e18ec9129e13901219af6bbd767"
+after_fingerprint = "sha256:v1:28e86d204b8546546a67d0d5b22313c20860cf81221310f61b6ac67c27a1b8f7"
 
 [[records]]
 allow_ids = ["allow-11269"]

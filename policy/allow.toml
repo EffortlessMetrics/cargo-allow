@@ -20069,7 +20069,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the workflow security command tests (#3907 PR C); every expect guards a fixture write, a workspace root resolution, or an inventory derivation whose success is the property under test"
 evidence = ["issue:3907"]
-occurrence_limit = 3
+occurrence_limit = 4
 created = "2026-09-08"
 review_after = "2026-12-08"
 
@@ -20086,7 +20086,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the workflow security lane law tests (#3907 PR C); every expect guards a live inventory derivation, a selected tool entry, or an exceptions-file parse whose success is the property under test"
 evidence = ["issue:3907"]
-occurrence_limit = 12
+occurrence_limit = 17
 created = "2026-09-08"
 review_after = "2026-12-08"
 
