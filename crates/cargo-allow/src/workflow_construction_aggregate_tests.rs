@@ -241,6 +241,28 @@ fn workflow_construction_aggregate_instrument_failure_dominates() {
 }
 
 #[test]
+fn workflow_construction_aggregate_instrument_failure_view_names_the_reasons() {
+    // The aggregate's instrument-failure view carries the dominating
+    // reason and the retention note, so stored artifacts explain
+    // themselves.
+    let (inventory, syntax, security) = live_reports();
+    let mut dead_syntax = syntax_tool_run(&inventory);
+    dead_syntax.version = "0.0.1".to_string();
+    let dead_syntax = evaluate_workflow_syntax_run(&dead_syntax, &inventory);
+    let aggregate = aggregate_workflow_construction(&inventory, &dead_syntax, &security);
+    let human = allow_report::render_workflow_construction_aggregate_human(&aggregate);
+    assert!(
+        human.contains("result=instrument_failure") && human.contains("tool version drifted"),
+        "{human}"
+    );
+    let json = allow_report::render_workflow_construction_aggregate_json(&aggregate)
+        .expect("json renders");
+    let parsed: allow_report::WorkflowConstructionAggregateV1 =
+        serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, aggregate);
+}
+
+#[test]
 fn workflow_construction_aggregate_denominator_drift_fails_closed() {
     // Reports graded against different tree states cannot be combined.
     let (inventory, mut syntax, security) = live_reports();
