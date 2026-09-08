@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Keep `prune --allow-id` previews, receipts, and policy writes limited to the
+  selected stale entry. Unrelated stale entries remain in the ledger, selecting
+  a non-stale entry makes no change, and an unknown ID returns a usage error.

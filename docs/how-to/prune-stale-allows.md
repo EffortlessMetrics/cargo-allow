@@ -24,6 +24,17 @@ cargo-allow prune \
 Review the candidate list before writing. Do not prune entries that are
 ambiguous or poorly understood.
 
+On current source builds, select one entry for preview or removal:
+
+```bash
+cargo-allow prune --allow-id <allow-id> --dry-run
+```
+
+Keep the same `--allow-id` when using `--write` after review. The preview,
+receipt, and policy change contain only that selected stale entry. An existing
+entry that is not stale produces no removal; an unknown ID returns a usage
+error. Omitting `--allow-id` keeps the all-stale behavior shown above.
+
 ## Artifact Scope
 
 The `cargo-allow.prune.v1` JSON artifact is a cleanup candidate list, not a

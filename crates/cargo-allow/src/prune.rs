@@ -100,8 +100,23 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             None,
             true,
         )?;
+    let selected_id = args.allow_id.as_deref();
+    if let Some(id) = selected_id
+        && !cfg.allow.iter().any(|entry| entry.id == id)
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "allow entry id `{id}` was not found in policy; \
+                 run `cargo-allow list --format json` to see valid entry IDs"
+            ),
+        ));
+    }
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
-    let candidates = prune_stale_candidates(&cfg, &outcomes);
+    let candidates = prune_stale_candidates(&cfg, &outcomes)
+        .into_iter()
+        .filter(|candidate| selected_id.is_none_or(|id| candidate.id == id))
+        .collect::<Vec<_>>();
     let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
     receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
     let before_fingerprints = receipt_candidates
@@ -209,6 +224,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             portable_identity: format!("worktree:prune:{}:{}", policy_path, candidates.len()),
             policy_path,
             candidate_count: candidates.len(),
+            allow_id: args.allow_id.clone(),
             write_requested: args.write,
             dry_run: args.dry_run,
             completeness: crate::core_command_router::summary_completeness(&inventory_facts),
@@ -299,3 +315,7 @@ mod render_tests;
 #[cfg(test)]
 #[path = "prune_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "prune_selection_tests.rs"]
+mod selection_tests;
