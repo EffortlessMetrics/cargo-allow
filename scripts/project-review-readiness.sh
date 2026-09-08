@@ -130,23 +130,44 @@ validate_projection() {
 # refused publish (fork token downgrade); the caller aggregates.
 project_pr() {
   local pr_number="$1" event="$2"
-  local pr_json base_ref base_sha head_ref head_sha draft_state merge_base diff_digest
-  pr_json="$(gh pr view "$pr_number" --json baseRefName,baseRefOid,headRefName,headRefOid,isDraft)"
-  base_ref="$(jq -r .baseRefName <<<"$pr_json")"
-  base_sha="$(jq -r .baseRefOid <<<"$pr_json")"
-  head_ref="$(jq -r .headRefName <<<"$pr_json")"
-  head_sha="$(jq -r .headRefOid <<<"$pr_json")"
-  if [ "$(jq -r .isDraft <<<"$pr_json")" = "true" ]; then
-    draft_state="draft"
+  local pr_json base_ref base_sha head_ref head_sha draft_state merge_base diff_digest input_status
+  if pr_json="$(gh pr view "$pr_number" --json baseRefName,baseRefOid,headRefName,headRefOid,isDraft 2>/dev/null)"; then
+    :
   else
-    draft_state="ready"
+    input_status=$?
+    printf 'review-readiness: instrument failure: PR snapshot read failed (exit %s)\n' "${input_status}" >&2
+    return 1
   fi
-  merge_base="$(git merge-base "origin/${base_ref}" "${head_sha}")"
-  diff_digest="$(git diff "${merge_base}..${head_sha}" | sha256sum | cut -d' ' -f1)"
+  if ! base_ref="$(jq -er '.baseRefName | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
+    ! base_sha="$(jq -er '.baseRefOid | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
+    ! head_ref="$(jq -er '.headRefName | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
+    ! head_sha="$(jq -er '.headRefOid | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
+    ! draft_state="$(jq -er 'if .isDraft == true then "draft" elif .isDraft == false then "ready" else empty end' <<<"$pr_json" 2>/dev/null)"; then
+    echo "review-readiness: instrument failure: invalid PR snapshot" >&2
+    return 1
+  fi
+  if merge_base="$(git merge-base "origin/${base_ref}" "${head_sha}" 2>/dev/null)" && [ -n "${merge_base}" ]; then
+    :
+  else
+    input_status=$?
+    printf 'review-readiness: instrument failure: merge-base read failed (exit %s)\n' "${input_status}" >&2
+    return 1
+  fi
+  if diff_digest="$( { git diff "${merge_base}..${head_sha}" | sha256sum | cut -d' ' -f1; } 2>/dev/null)" &&
+    [[ "${diff_digest}" =~ ^[a-f0-9]{64}$ ]]; then
+    :
+  else
+    input_status=$?
+    printf 'review-readiness: instrument failure: diff digest read failed (exit %s)\n' "${input_status}" >&2
+    return 1
+  fi
 
   local live_file
-  live_file="$(mktemp)"
-  jq -n \
+  if ! live_file="$(mktemp 2>/dev/null)"; then
+    echo "review-readiness: instrument failure: could not allocate live input" >&2
+    return 1
+  fi
+  if ! jq -n \
     --arg repository "${GITHUB_REPOSITORY}" \
     --argjson pr_number "${pr_number}" \
     --arg base_ref "${base_ref}" \
@@ -160,7 +181,11 @@ project_pr() {
       head_ref: $head_ref, head_sha: $head_sha,
       merge_base: $merge_base, diff_digest: $diff_digest,
       review_protocol: "review-current-head-gen1",
-      scope_claim_boundary: ("pull-request:" + ($pr_number | tostring))}' >"${live_file}"
+      scope_claim_boundary: ("pull-request:" + ($pr_number | tostring))}' >"${live_file}" 2>/dev/null; then
+    echo "review-readiness: instrument failure: could not create live input" >&2
+    rm -f "${live_file}"
+    return 1
+  fi
 
   # Disposition discovery: one exact-head record first; then one
   # unique ancestor-bound record (the retained-review-ledger
@@ -176,15 +201,26 @@ project_pr() {
         malformed+=("$candidate")
         continue
       fi
-      bound_head="$(jq -r --arg repository "${GITHUB_REPOSITORY}" \
+      if ! bound_head="$(jq -r --arg repository "${GITHUB_REPOSITORY}" \
         --argjson pr "${pr_number}" \
         'select(.repository == $repository and .pr_number == $pr) | .head_sha // ""' \
-        "$candidate")"
+        "$candidate" 2>/dev/null)"; then
+        echo "review-readiness: instrument failure: could not read candidate disposition binding" >&2
+        rm -f "${live_file}"
+        return 1
+      fi
       [ -n "${bound_head}" ] || continue
       if [ "${bound_head}" = "${head_sha}" ]; then
         exact_matches+=("$candidate")
       elif git merge-base --is-ancestor "${bound_head}" "${head_sha}" 2>/dev/null; then
         ancestor_matches+=("$candidate")
+      else
+        input_status=$?
+        if [ "${input_status}" -ne 1 ]; then
+          printf 'review-readiness: instrument failure: disposition ancestry read failed (exit %s)\n' "${input_status}" >&2
+          rm -f "${live_file}"
+          return 1
+        fi
       fi
     done
   fi
@@ -211,22 +247,34 @@ project_pr() {
   if [ -n "${selected}" ]; then
     echo "review-readiness: retained disposition ${selected}"
     disposition_args=(--disposition "${selected}")
-    bound_head="$(jq -r '.head_sha // ""' "${selected}")"
+    if ! bound_head="$(jq -r '.head_sha // ""' "${selected}" 2>/dev/null)"; then
+      echo "review-readiness: instrument failure: could not read selected disposition binding" >&2
+      rm -f "${live_file}"
+      return 1
+    fi
     if [ -n "${bound_head}" ] && [ "${bound_head}" != "${head_sha}" ]; then
       # The retained-review-ledger bootstrap: pass the complete delta
       # so the projection can prove the head movement is disposition
       # records only and reject anything else.
-      local delta
+      local delta delta_output
+      if delta_output="$(git diff --name-only "${bound_head}..${head_sha}" 2>/dev/null)"; then
+        :
+      else
+        input_status=$?
+        printf 'review-readiness: instrument failure: disposition delta read failed (exit %s)\n' "${input_status}" >&2
+        rm -f "${live_file}"
+        return 1
+      fi
       while IFS= read -r delta; do
         [ -n "$delta" ] && delta_args+=(--head-delta-path "$delta")
-      done < <(git diff --name-only "${bound_head}..${head_sha}")
+      done <<<"${delta_output}"
     fi
   else
     echo "review-readiness: no retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}"
   fi
 
   local projection_file exit_code=0
-  if ! projection_file="$(mktemp)"; then
+  if ! projection_file="$(mktemp 2>/dev/null)"; then
     echo "review-readiness: instrument failure: could not allocate projection output" >&2
     rm -f "${live_file}"
     return 1
@@ -269,7 +317,13 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
   # enumeration is captured (not process-substituted) so a failed
   # gh pr list fails the run instead of looking like an empty list,
   # and the limit is raised past the 30-PR default page.
-  open_prs="$(gh pr list --state open --limit 1000 --json number --jq '.[].number')"
+  if open_prs="$(gh pr list --state open --limit 1000 --json number --jq '.[].number' 2>/dev/null)"; then
+    :
+  else
+    input_status=$?
+    printf 'review-readiness: instrument failure: open PR enumeration failed (exit %s)\n' "${input_status}" >&2
+    exit 1
+  fi
   while IFS= read -r open_pr; do
     [ -n "$open_pr" ] || continue
     echo "review-readiness: base movement recompute for PR #${open_pr}"

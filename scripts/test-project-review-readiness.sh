@@ -7,15 +7,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 mkdir -p "${ROOT}/target"
 work="$(mktemp -d "${ROOT}/target/review-readiness-fixture.XXXXXX")"
 trap 'rm -rf "${work}"' EXIT
-mkdir -p "${work}/bin" "${work}/repo" "${work}/tmp"
-export REAL_JQ
+mkdir -p "${work}/bin" "${work}/repo/.allow/review-dispositions" "${work}/tmp"
+export REAL_JQ REAL_MKTEMP
 REAL_JQ="$(command -v jq)"
+REAL_MKTEMP="$(command -v mktemp)"
 
 # Native jq on Git Bash otherwise emits CRLF into shell variables.
 cat >"${work}/bin/jq" <<'SH'
 #!/usr/bin/env bash
 case "${FIXTURE_JQ_FAILURE:-none}:$1:${2:-}" in
-  validate:-se:* | conclusion:-er:.conclusion | summary:-er:*)
+  validate:-se:* | conclusion:-er:.conclusion | summary:-er:.conclusion_reasons* | snapshot:-er:.baseRefName* | live:-n:* | candidate:-r:--arg | selected:-r:.head_sha*)
     printf 'private-jq-canary\n' >&2
     exit 27
     ;;
@@ -26,11 +27,42 @@ fi
 exec "${REAL_JQ}" "$@"
 SH
 
+cat >"${work}/bin/mktemp" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+count=0
+if [ -f "${FIXTURE_STATE}/mktemp-count" ]; then
+  read -r count <"${FIXTURE_STATE}/mktemp-count"
+fi
+count=$((count + 1))
+printf '%s\n' "${count}" >"${FIXTURE_STATE}/mktemp-count"
+if [ "${FIXTURE_MKTEMP_FAILURE}" -eq "${count}" ]; then
+  printf 'private-mktemp-canary\n' >&2
+  exit 31
+fi
+exec "${REAL_MKTEMP}" "$@"
+SH
+
 cat >"${work}/bin/git" <<'SH'
 #!/usr/bin/env bash
 case "$1" in
-  merge-base) printf '%040d\n' 1 ;;
-  diff) : ;;
+  merge-base)
+    if [ "$2" = --is-ancestor ]; then
+      exit "${FIXTURE_ANCESTRY_STATUS}"
+    fi
+    printf '%040d\n' 1
+    exit "${FIXTURE_MERGE_BASE_STATUS}"
+    ;;
+  diff)
+    printf 'private-git-canary\n' >&2
+    if [ "$2" = --name-only ]; then
+      # Even a failed command can emit a plausible partial bootstrap
+      # list. The adapter must check its status before consuming it.
+      printf '.allow/review-dispositions/fixture.json\n'
+      exit "${FIXTURE_DELTA_STATUS}"
+    fi
+    exit "${FIXTURE_DIFF_STATUS}"
+    ;;
   *) exit 90 ;;
 esac
 SH
@@ -38,6 +70,8 @@ SH
 cat >"${work}/bin/cargo" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
+touch "${FIXTURE_STATE}/projector-called"
+printf '%s\n' "$@" >"${FIXTURE_STATE}/projector-args"
 live="" event=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -72,9 +106,17 @@ cat >"${work}/bin/gh" <<'SH'
 set -euo pipefail
 case "$1 $2" in
   'pr view')
+    if [ "${FIXTURE_PR_STATUS}" -ne 0 ]; then
+      printf 'private-snapshot-canary\n' >&2
+      exit "${FIXTURE_PR_STATUS}"
+    fi
     printf '{"baseRefName":"main","baseRefOid":"%040d","headRefName":"fixture","headRefOid":"%040d","isDraft":false}\n' 1 2
     ;;
-  'pr list') printf '4165\n' ;;
+  'pr list')
+    printf 'private-enumeration-canary\n' >&2
+    printf '4165\n'
+    exit "${FIXTURE_ENUMERATION_STATUS}"
+    ;;
   api\ *)
     printf '%s\n' "$2" >>"${FIXTURE_STATE}/api-calls"
     if [[ "$2" == */commits/* ]]; then
@@ -103,7 +145,13 @@ export PR_NUMBER=4165 PR_EVENT_ACTION=synchronize PR_HEAD_SHA
 PR_HEAD_SHA="$(printf '%040d' 2)"
 unset CHECK_NAME
 
-fail() { printf 'FAIL %s: %s\n' "${case_name}" "$1" >&2; exit 1; }
+fail() {
+  printf 'FAIL %s: %s\n' "${case_name}" "$1" >&2
+  # This is entirely mocked output, bounded for diagnosing fixture
+  # failures; no real credentials or API responses enter this suite.
+  head -c 2000 "${FIXTURE_STATE}/log" >&2
+  exit 1
+}
 
 run_case() {
   local case_name="$1" expected_status="$2" expected_write="$3" expected_message="$4"
@@ -111,6 +159,14 @@ run_case() {
   export FIXTURE_STATE="${work}/${case_name}"
   mkdir -p "${FIXTURE_STATE}"
   printf '%s\n' "${check_runs}" >"${FIXTURE_STATE}/check-runs.json"
+  if [ "${FIXTURE_LEDGER}" = ancestor ]; then
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 3 \
+      >"${work}/repo/.allow/review-dispositions/fixture.json"
+  elif [ "${FIXTURE_LEDGER}" = array ]; then
+    printf '[]\n' >"${work}/repo/.allow/review-dispositions/fixture.json"
+  else
+    rm -f "${work}/repo/.allow/review-dispositions/fixture.json"
+  fi
   (
     cd "${work}/repo"
     bash "${ROOT}/scripts/project-review-readiness.sh"
@@ -141,12 +197,22 @@ run_case() {
   if [[ "${expected_message}" == *'unusable projection'* ]]; then
     [ ! -e "${FIXTURE_STATE}/api-calls" ] || fail "invalid projection reached the API"
   fi
+  if [[ "${case_name}" == input_* ]]; then
+    [ ! -e "${FIXTURE_STATE}/projector-called" ] || fail "invalid input reached the projector"
+    [ ! -e "${FIXTURE_STATE}/api-calls" ] || fail "invalid input reached the API"
+  fi
+  if [ "${case_name}" = ancestor_success ]; then
+    grep -Fxq -- '--head-delta-path' "${FIXTURE_STATE}/projector-args" || fail "missing bootstrap delta argument"
+    grep -Fxq '.allow/review-dispositions/fixture.json' "${FIXTURE_STATE}/projector-args" || fail "missing complete bootstrap path"
+  fi
   [ -z "$(find "${work}/tmp" -type f -print -quit)" ] || fail "temporary projection leaked"
   printf 'ok %s\n' "${case_name}"
 }
 
 export FIXTURE_OUTPUT=json FIXTURE_CARGO_STATUS=0 FIXTURE_CONCLUSION=success FIXTURE_FILTER=.
 export FIXTURE_LOOKUP_STATUS=0 FIXTURE_WRITE_STATUS=0 GITHUB_EVENT_NAME=pull_request
+export FIXTURE_PR_STATUS=0 FIXTURE_MERGE_BASE_STATUS=0 FIXTURE_DIFF_STATUS=0 FIXTURE_MKTEMP_FAILURE=0
+export FIXTURE_LEDGER=missing FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 FIXTURE_ENUMERATION_STATUS=0
 check_runs='{"check_runs":[]}'
 run_case create_success 0 POST 'published success'
 FIXTURE_CONCLUSION=neutral
@@ -176,6 +242,37 @@ run_case failed_jq_conclusion 1 none 'could not read validated projection'
 FIXTURE_JQ_FAILURE=summary
 run_case failed_jq_summary 1 none 'could not read validated projection'
 FIXTURE_JQ_FAILURE=none
+FIXTURE_PR_STATUS=28
+run_case input_failed_pr_read 1 none 'PR snapshot read failed (exit 28)'
+FIXTURE_PR_STATUS=0 FIXTURE_JQ_FAILURE=snapshot
+run_case input_failed_snapshot_parse 1 none 'invalid PR snapshot'
+FIXTURE_JQ_FAILURE=none FIXTURE_MERGE_BASE_STATUS=29
+run_case input_failed_merge_base 1 none 'merge-base read failed (exit 29)'
+FIXTURE_MERGE_BASE_STATUS=0 FIXTURE_DIFF_STATUS=29
+run_case input_failed_diff 1 none 'diff digest read failed (exit 29)'
+FIXTURE_DIFF_STATUS=0 FIXTURE_JQ_FAILURE=live
+run_case input_failed_live_json 1 none 'could not create live input'
+FIXTURE_JQ_FAILURE=none FIXTURE_MKTEMP_FAILURE=1
+run_case input_failed_live_temp 1 none 'could not allocate live input'
+FIXTURE_MKTEMP_FAILURE=2
+run_case input_failed_projection_temp 1 none 'could not allocate projection output'
+FIXTURE_MKTEMP_FAILURE=0
+FIXTURE_LEDGER=ancestor
+run_case ancestor_success 0 POST 'published success'
+FIXTURE_ANCESTRY_STATUS=1 FIXTURE_CONCLUSION=neutral
+run_case nonancestor_is_missing 0 POST 'published neutral'
+FIXTURE_ANCESTRY_STATUS=2 FIXTURE_CONCLUSION=success
+run_case input_failed_ancestry 1 none 'ancestry read failed (exit 2)'
+FIXTURE_ANCESTRY_STATUS=0 FIXTURE_JQ_FAILURE=candidate
+run_case input_failed_candidate_binding 1 none 'could not read candidate disposition binding'
+FIXTURE_JQ_FAILURE=selected
+run_case input_failed_selected_binding 1 none 'could not read selected disposition binding'
+FIXTURE_JQ_FAILURE=none FIXTURE_DELTA_STATUS=29
+run_case input_failed_partial_bootstrap_delta 1 none 'disposition delta read failed (exit 29)'
+FIXTURE_DELTA_STATUS=0 FIXTURE_LEDGER=missing
+FIXTURE_LEDGER=array
+run_case input_invalid_candidate_array 1 none 'could not read candidate disposition binding'
+FIXTURE_LEDGER=missing
 
 FIXTURE_OUTPUT=empty FIXTURE_CARGO_STATUS=101
 run_case failed_cargo_empty 1 none 'unusable projection (projector exit 101)'
@@ -210,5 +307,7 @@ GITHUB_EVENT_NAME=push FIXTURE_WRITE_STATUS=22
 run_case push_publication_failure 1 POST 'POST failed (exit 22)'
 FIXTURE_WRITE_STATUS=0
 run_case push_success 0 POST 'published success'
+FIXTURE_ENUMERATION_STATUS=26
+run_case input_failed_push_enumeration 1 none 'open PR enumeration failed (exit 26)'
 
 printf 'all review-readiness adapter characterization checks passed\n'
