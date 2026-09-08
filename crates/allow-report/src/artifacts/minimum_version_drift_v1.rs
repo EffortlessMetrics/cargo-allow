@@ -52,6 +52,7 @@ pub struct MinimumVersionDriftObservationV1 {
     pub product: String,
     pub package_roots: Vec<String>,
     pub msrv: String,
+    pub target: String,
     pub manifest_set_digest: String,
     pub lock_digest: String,
     pub floors: Vec<MinimumVersionDriftFloorRowV1>,
@@ -181,6 +182,12 @@ pub fn evaluate_minimum_version_drift(
         reasons.push(format!(
             "receipt toolchain {} does not match the claimed msrv {}",
             receipt.toolchain, observation.msrv
+        ));
+    }
+    if receipt.target != observation.target {
+        reasons.push(format!(
+            "target moved: receipt {} vs current {}",
+            receipt.target, observation.target
         ));
     }
     if receipt.commands.is_empty() {

@@ -19815,3 +19815,25 @@ glob = ".allow/revisions/3903-minimum-version-drift.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11259"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-proof-direct-floors.sh"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Characterization guard for the direct-floor proof lane (#3903 PR D): proves both proof scripts parse, the product registry and its fail-closed arm, the advisory collector's per-product pinning, the floored meta-test skips, and the line-ending-independent digest recipe."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-proof-direct-floors.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-proof-direct-floors.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

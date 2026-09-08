@@ -160,6 +160,10 @@ fn build_observation(
         msrv: workspace_msrv(root).map_err(|error| {
             CargoAllowError::with_kind(CargoAllowErrorKind::InvalidConfig, error)
         })?,
+        // The proof lane's constant target posture: the emitter records
+        // exactly this string, so a receipt produced under a different
+        // target is named by the drift evaluation.
+        target: "host (product closure default target)".to_string(),
         manifest_set_digest: manifest_set_digest(root)
             .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, error))?,
         lock_digest: lock_digest(root)

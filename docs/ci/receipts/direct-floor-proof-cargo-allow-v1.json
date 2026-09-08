@@ -149,7 +149,7 @@
   "bounded proof: the check, test, package classes over the release-set closure, not every target or feature combination",
   "internal =0.2.0 workspace pins are proven by the same closure build",
   "dev-dependencies are exercised by the test class but are not certified floors",
-  "optional dependencies and non-default features stay outside the certified set",
+  "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "the drift meta-tests are excluded from the floored test class by name (they grade this proof's own retained receipts); CI runs them against every committed tree"
  ],
  "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package. Transitive minimal combinations are not certified."

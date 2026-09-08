@@ -27,6 +27,7 @@ fn observation(product: &str) -> MinimumVersionDriftObservationV1 {
         product: product.to_string(),
         package_roots: vec![format!("{product}-root")],
         msrv: "1.95".to_string(),
+        target: "host (product closure default target)".to_string(),
         manifest_set_digest: "manifests-current".to_string(),
         lock_digest: "lock-current".to_string(),
         floors: vec![floor_row("serde")],
@@ -57,7 +58,7 @@ fn receipt(product: &str, rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersio
         package_roots: vec![format!("{product}-root")],
         msrv: "1.95".to_string(),
         toolchain: "1.95.0".to_string(),
-        target: "x86_64-unknown-linux-gnu".to_string(),
+        target: "host (product closure default target)".to_string(),
         manifest_set_digest: "manifests-current".to_string(),
         lock_digest: "lock-current".to_string(),
         rows,
@@ -378,6 +379,19 @@ fn minimum_direct_version_drift_rejects_altered_proof_details() {
         evaluation.reasons
     );
 
+    let mut target_moved = base_receipt();
+    target_moved.target = "aarch64-apple-darwin".to_string();
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&target_moved));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("target moved: receipt aarch64-apple-darwin")),
+        "the target mismatch is named: {:?}",
+        evaluation.reasons
+    );
+
     let mut commandless = base_receipt();
     commandless.commands = Vec::new();
     let evaluation = evaluate_minimum_version_drift(&base, Some(&commandless));
@@ -436,6 +450,7 @@ fn minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree
             product: product.to_string(),
             package_roots: selection.roots.clone(),
             msrv: msrv.clone(),
+            target: "host (product closure default target)".to_string(),
             manifest_set_digest: manifest_set_digest(&root).expect("the digest derives"),
             lock_digest: crate::minimum_version_selection::lock_digest(&root)
                 .expect("the digest derives"),

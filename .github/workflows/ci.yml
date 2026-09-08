@@ -132,6 +132,11 @@ jobs:
       # fail-closed behaviour is proven without installing real toolchains.
       - name: MSRV resolved toolchain guard characterization
         run: bash scripts/test-check-msrv-resolved.sh
+      # Proves the direct-floor proof lane's shell contracts (product
+      # registry, advisory pinning, meta-test skips, digest recipe) and
+      # its fail-closed posture without installing any toolchain.
+      - name: Direct-floor proof script characterization
+        run: bash scripts/test-proof-direct-floors.sh
       # The action tag IS the proven toolchain, not a dependency version: it
       # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
       # this action alone (.github/dependabot.yml); bumping it would keep CI
