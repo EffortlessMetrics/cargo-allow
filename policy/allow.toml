@@ -19837,3 +19837,91 @@ glob = "scripts/test-proof-direct-floors.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0921"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4153.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured independent review evidence for PR #4153 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4153.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4153.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0922"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4153-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4153 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4153-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4153-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4165-adapter-fixture"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-project-review-readiness.sh"
+owner = "core/release"
+classification = "review_readiness_adapter"
+reason = "Issue #4165 full-adapter characterization: mock Cargo/git/gh and real jq prove projection validation, explicit API failure propagation, redacted diagnostics, and successful create/update without builds, network, or live check publication."
+evidence = ["issue:4165", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-project-review-readiness.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-project-review-readiness.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4165-revision-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4165-readiness-publication.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Authored revision note for the two exact non-Rust file additions in issue #4165; receipts the mocked adapter fixture and this note without widening existing exception scope or changing review and release authority."
+evidence = ["issue:4165", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4165-readiness-publication.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4165-readiness-publication.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
