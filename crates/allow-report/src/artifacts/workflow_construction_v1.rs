@@ -871,12 +871,12 @@ pub fn workflow_construction_inventory(
         },
         WorkflowSecurityToolSelectionV1 {
             tool: "zizmor".to_string(),
-            role: "workflow security construction analyzer (candidate)".to_string(),
-            status: WorkflowSecurityToolStatusV1::CandidatePendingQualification,
-            version: None,
-            pin_identity: None,
-            scope: "will grade the same denominator as the syntax lane: workflows, local actions, and checked examples".to_string(),
-            update_law: "the version and provenance digest are pinned together at integration (PR C) only after the fixture corpus in this inventory qualifies the candidate against every finding family".to_string(),
+            role: "workflow security construction analyzer".to_string(),
+            status: WorkflowSecurityToolStatusV1::Selected,
+            version: Some("1.30.0".to_string()),
+            pin_identity: Some("release:v1.30.0:offline-audits".to_string()),
+            scope: "grades the same denominator as the syntax lane plus local composite action manifests: workflows and .github/actions action manifests".to_string(),
+            update_law: "the version is pinned together with the qualification result against the fixture corpus; bumping the version requires re-running the fixture qualification (#3907 PR C)".to_string(),
         },
     ];
 

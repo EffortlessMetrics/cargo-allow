@@ -194,19 +194,23 @@ fn workflow_construction_inventory_tool_selections_match_the_workflow_pins() {
         .tool_selections
         .iter()
         .find(|tool| tool.tool == "zizmor")
-        .expect("the security candidate is declared");
-    assert_eq!(
-        security.status,
-        WorkflowSecurityToolStatusV1::CandidatePendingQualification
+        .expect("the security analyzer is declared");
+    assert_eq!(security.status, WorkflowSecurityToolStatusV1::Selected);
+    assert_eq!(security.version.as_deref(), Some("1.30.0"));
+    assert!(
+        security
+            .pin_identity
+            .as_deref()
+            .unwrap_or("")
+            .contains("v1.30.0"),
+        "the pin records the qualified release: {:?}",
+        security.pin_identity
     );
     assert!(
-        security.version.is_none(),
-        "no version before qualification"
-    );
-    assert!(security.pin_identity.is_none());
-    assert!(
-        security.update_law.contains("qualifies the candidate"),
-        "the law requires fixture qualification first"
+        security
+            .update_law
+            .contains("re-running the fixture qualification"),
+        "the law requires re-qualification on bump"
     );
 }
 

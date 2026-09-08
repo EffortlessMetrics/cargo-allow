@@ -20,6 +20,7 @@ mod release_freeze_command;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;
+mod workflow_security_command;
 mod workflow_syntax_command;
 
 #[derive(Debug, Parser)]
@@ -156,6 +157,9 @@ pub(crate) enum CargoAllowCommand {
     /// Grade the pinned syntax lane over the construction denominator.
     #[command(hide = true)]
     WorkflowSyntax(workflow_syntax_command::WorkflowSyntaxArgs),
+    /// Grade the qualified security lane over the denominator.
+    #[command(hide = true)]
+    WorkflowSecurity(workflow_security_command::WorkflowSecurityArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -274,6 +278,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::WorkflowSyntax(args) => {
             workflow_syntax_command::cmd_workflow_syntax(&args)
+        }
+        CargoAllowCommand::WorkflowSecurity(args) => {
+            workflow_security_command::cmd_workflow_security(&args)
         }
     }
 }
@@ -481,5 +488,6 @@ impl CargoAllowCommand {
         "ci-pregate",
         "min-version-drift",
         "workflow-syntax",
+        "workflow-security",
     ];
 }

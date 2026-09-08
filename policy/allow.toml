@@ -20059,3 +20059,95 @@ glob = ".allow/revisions/3907-workflow-syntax-lane.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11267"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_security_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security command tests (#3907 PR C); every expect guards a fixture write, a workspace root resolution, or an inventory derivation whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 3
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_security_command.rs"
+
+[[allow]]
+id = "allow-11268"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_security_lane_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security lane law tests (#3907 PR C); every expect guards a live inventory derivation, a selected tool entry, or an exceptions-file parse whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 12
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_security_lane_tests.rs"
+
+[[allow]]
+id = "allow-11269"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-security.sh"
+owner = "core/deps"
+classification = "workflow_security_collector"
+reason = "Qualified security lane runner (#3907 PR C): runs the qualified zizmor release offline over the construction denominator's workflows and local actions, flattens its JSON findings preserving native rule identity, and emits the tool-run JSON the workflow-security CLI grades. Read-only over the live tree; advisory exit contract."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-security.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-security.sh"
+
+[[allow]]
+id = "allow-11270"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/workflow-security-exceptions.toml"
+owner = "core/deps"
+classification = "workflow_security_exceptions"
+reason = "Exact reviewed exceptions for the qualified security lane (#3907 PR C): (path, rule) granularity naming owner, deliberate-reason, evidence, and review date; the advisory findings beneath stay visible."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/workflow-security-exceptions.toml"
+target_fingerprint = "toml"
+glob = "policy/workflow-security-exceptions.toml"
+
+[[allow]]
+id = "allow-11271"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-security-lane.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow security lane source exceptions added by the #3907 PR C lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-security-lane.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-security-lane.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

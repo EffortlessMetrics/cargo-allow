@@ -44,6 +44,7 @@ mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
 mod workflow_construction_v1;
+mod workflow_security_lane_v1;
 mod workflow_syntax_lane_v1;
 mod worklist;
 mod workspace_lint_drift_guard_v1;
@@ -243,6 +244,13 @@ pub use workflow_construction_v1::{
     WorkflowConstructionSurfaceKindV1, WorkflowConstructionSurfaceV1, WorkflowSecurityFixtureV1,
     WorkflowSecurityToolSelectionV1, WorkflowSecurityToolStatusV1, workflow_construction_inventory,
     workflow_security_fixtures,
+};
+pub use workflow_security_lane_v1::{
+    WORKFLOW_SECURITY_LANE_SCHEMA_ID, WORKFLOW_SECURITY_LANE_SCHEMA_VERSION,
+    WorkflowSecurityDispositionV1, WorkflowSecurityExceptionV1, WorkflowSecurityFindingV1,
+    WorkflowSecurityLaneReportV1, WorkflowSecurityLaneResultV1, WorkflowSecurityRawFindingV1,
+    WorkflowSecurityToolRunV1, evaluate_workflow_security_run, render_workflow_security_human,
+    render_workflow_security_json, workflow_security_rule_family,
 };
 pub use workflow_syntax_lane_v1::{
     WORKFLOW_SYNTAX_LANE_SCHEMA_ID, WORKFLOW_SYNTAX_LANE_SCHEMA_VERSION, WorkflowSyntaxFindingV1,

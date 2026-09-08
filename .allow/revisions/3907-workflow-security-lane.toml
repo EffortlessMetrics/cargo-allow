@@ -1,0 +1,56 @@
+schema_version = 1
+# Revision note for the #3907 PR C workflow security lane.
+
+# This diff lands the qualified security construction lane: a typed
+# WorkflowSecurityLaneReportV1 in allow-report grades the qualified
+# zizmor release's machine-readable findings over the construction
+# denominator — every current workflow and local composite action —
+# preserving the native rule identity alongside the
+# construction-family mapping (template-injection, dangerous-triggers,
+# artipacked, unpinned-uses, excessive-permissions, self-repository,
+# and superfluous-actions map to declared families; unknown idents
+# land in unsupported_or_instrument_failure). Exact reviewed
+# exceptions at (path, rule) granularity reduce the advisory signal
+# without broadening anything: the release workflows' deliberate
+# tag-payload and authorization-input interpolations are
+# exception-accepted by core/release, every other finding stays open,
+# and the result remains findings so the signal stays visible until
+# the aggregate lane selects enforcement. The inventory's zizmor tool
+# selection is promoted from candidate-pending-qualification to
+# selected at version 1.30.0 with the offline-audits pin, completing
+# the fixture qualification this lane's laws consume. The
+# source-exception additions receipt only the syntax-visible
+# constructs the new surfaces introduce: allow-11267 is the expect
+# ratchet for the workflow security command tests, allow-11268 the
+# lane law tests' expect ratchet, allow-11269 receipts the security
+# lane runner script, allow-11270 receipts the exact exceptions file,
+# and allow-11271 receipts this revision-note file itself per the
+# per-note receipt law. No existing exception is weakened, no expiry
+# is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11267"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43b3ca691d0b58ae9b928a7d1d10695a38772dc5603a080b0d5c23a838471424"
+
+[[records]]
+allow_ids = ["allow-11268"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a1afb9d4c9d43c007dc83dcde92108c8c0697e18ec9129e13901219af6bbd767"
+
+[[records]]
+allow_ids = ["allow-11269"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d09d56c942e68c483220c3c9b02b89e2f0d360149598e506b68b93ead50062aa"
+
+[[records]]
+allow_ids = ["allow-11270"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:997bd196ab96d05b78499ee554bb76ba64f1ebb7fc44491d3981becf40d77b29"
+
+[[records]]
+allow_ids = ["allow-11271"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:084488935ac8d2faf3e258c536a22317927af1df83f9fbe8360d460b032c0b9f"
