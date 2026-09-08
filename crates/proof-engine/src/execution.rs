@@ -549,11 +549,15 @@ mod tests {
     };
 
     fn spec() -> Result<ExecutionSpecV1, String> {
-        let program = std::env::current_exe()
-            .map_err(|error| error.to_string())?
-            .display()
-            .to_string();
-        let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let program = executable.display().to_string();
+        // Self-exec clears the environment, including LLVM_PROFILE_FILE.
+        // Keep default coverage output beside the built test artifact rather
+        // than in the caller's source checkout (#4184).
+        let cwd = executable
+            .parent()
+            .ok_or_else(|| "test executable has no parent directory".to_string())?
+            .to_path_buf();
         let reviewed_invocation = CommandInvocationSpecV1 {
             schema_id: COMMAND_INVOCATION_SPEC_SCHEMA_ID.to_string(),
             command_id: "test".to_string(),
