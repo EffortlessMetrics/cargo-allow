@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::artifacts::workflow_construction_v1::WorkflowConstructionInventoryV1;
 use crate::artifacts::workflow_security_lane_v1::{
-    WorkflowSecurityLaneReportV1, WorkflowSecurityLaneResultV1,
+    WorkflowSecurityDispositionV1, WorkflowSecurityLaneReportV1, WorkflowSecurityLaneResultV1,
 };
 use crate::artifacts::workflow_syntax_lane_v1::{
     WorkflowSyntaxLaneReportV1, WorkflowSyntaxLaneResultV1,
@@ -109,21 +109,23 @@ pub fn aggregate_workflow_construction(
         instrument.push("security lane schema mismatch".to_string());
     }
 
-    // Aggregate result: instrument failure dominates findings.
+    // Aggregate result: aggregate instrument failures dominate; then a
+    // lane-level instrument failure dominates findings; findings stay
+    // visible (open or exception-accepted) rather than collapsing to
+    // clean; only two clean lanes are clean.
     let open_security_findings = security
         .findings
         .iter()
-        .filter(|finding| {
-            finding.disposition
-                == crate::artifacts::workflow_security_lane_v1::WorkflowSecurityDispositionV1::Open
-        })
+        .filter(|finding| finding.disposition == WorkflowSecurityDispositionV1::Open)
         .count() as u32;
     let accepted_security_findings = (security.findings.len() as u32) - open_security_findings;
-    let result = if syntax.result == WorkflowSyntaxLaneResultV1::InstrumentFailure
-        || security.result == WorkflowSecurityLaneResultV1::InstrumentFailure
-    {
+    let lane_failure = syntax.result == WorkflowSyntaxLaneResultV1::InstrumentFailure
+        || security.result == WorkflowSecurityLaneResultV1::InstrumentFailure;
+    let lane_findings = syntax.result == WorkflowSyntaxLaneResultV1::Findings
+        || security.result == WorkflowSecurityLaneResultV1::Findings;
+    let result = if !instrument.is_empty() || lane_failure {
         WorkflowConstructionAggregateResultV1::InstrumentFailure
-    } else if !syntax.findings.is_empty() || open_security_findings > 0 {
+    } else if lane_findings {
         WorkflowConstructionAggregateResultV1::Findings
     } else {
         WorkflowConstructionAggregateResultV1::Clean
