@@ -3,6 +3,7 @@ use cargo_intent::{
     change_status_staged_precommit, emit_frame, exit_code_for_family, load_config,
 };
 use clap::{Parser, Subcommand, ValueEnum};
+use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -88,8 +89,82 @@ pub enum PhaseArg {
     Precommit,
 }
 
+// Cargo supplies its subcommand name at argv[1]; all other native arguments
+// belong to the existing parser, including later values with the same spelling.
+fn cargo_arguments(args: impl IntoIterator<Item = OsString>) -> impl Iterator<Item = OsString> {
+    let mut args = args.into_iter();
+    let executable = args.next();
+    let mut args = args.peekable();
+    let _ = args.next_if(|arg| arg == OsStr::new("intent"));
+    executable.into_iter().chain(args)
+}
+
+#[cfg(test)]
+mod cargo_argument_tests {
+    use super::*;
+
+    #[test]
+    fn prefix_normalization_preserves_later_product_name_values() -> Result<(), String> {
+        let cases: &[&[&str]] = &[
+            &["cargo-intent", "--root", "intent", "identity"],
+            &["cargo-intent", "intent", "--root", "intent", "identity"],
+        ];
+        for args in cases {
+            let cli = CargoIntentCli::try_parse_from(cargo_arguments(
+                args.iter().map(|arg| OsString::from(*arg)),
+            ))
+            .map_err(|error| error.to_string())?;
+            if cli.root.as_os_str() != OsStr::new("intent")
+                || !matches!(cli.command, Some(CargoIntentCommand::Identity))
+            {
+                return Err("prefix normalization changed the root or command".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn prefix_normalization_rejects_repeated_and_unknown_commands() -> Result<(), String> {
+        for extra in ["intent", "proof", "unknown-subcommand"] {
+            let args = ["cargo-intent", "intent", extra, "identity"].map(OsString::from);
+            if CargoIntentCli::try_parse_from(cargo_arguments(args)).is_ok() {
+                return Err(format!("an extra subcommand must remain invalid: {extra}"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(any(unix, windows))]
+    fn prefix_normalization_preserves_non_utf8_argument_values() -> Result<(), String> {
+        #[cfg(unix)]
+        let native = {
+            use std::os::unix::ffi::OsStringExt;
+            OsString::from_vec(vec![b'p', 0xff])
+        };
+        #[cfg(windows)]
+        let native = {
+            use std::os::windows::ffi::OsStringExt;
+            OsString::from_wide(&[0x0070, 0xd800])
+        };
+        let args = [
+            OsString::from("cargo-intent"),
+            OsString::from("intent"),
+            OsString::from("--root"),
+            native.clone(),
+            OsString::from("identity"),
+        ];
+        let cli = CargoIntentCli::try_parse_from(cargo_arguments(args))
+            .map_err(|error| error.to_string())?;
+        if cli.root.as_os_str() != native.as_os_str() {
+            return Err("prefix normalization changed a native argument value".to_string());
+        }
+        Ok(())
+    }
+}
+
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
-    let cli = CargoIntentCli::parse();
+    let cli = CargoIntentCli::parse_from(cargo_arguments(std::env::args_os()));
     let config = load_config(&cli.root, cli.config.as_deref())?;
     let output_format = OutputFormat::from(cli.format);
     match cli.command {
