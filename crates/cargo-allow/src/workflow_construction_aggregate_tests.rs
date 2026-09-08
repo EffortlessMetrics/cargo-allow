@@ -265,7 +265,7 @@ fn workflow_construction_aggregate_instrument_failure_view_names_the_reasons() {
 #[test]
 fn workflow_construction_aggregate_denominator_drift_fails_closed() {
     // Reports graded against different tree states cannot be combined.
-    let (inventory, mut syntax, security) = live_reports();
+    let (inventory, mut syntax, _security) = live_reports();
     syntax.denominator_digest = "sha256:v1:another-tree".to_string();
     let aggregate = aggregate_workflow_construction(&inventory, &syntax, &security);
     assert_eq!(
