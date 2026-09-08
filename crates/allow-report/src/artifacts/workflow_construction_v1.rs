@@ -212,11 +212,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "${{ github.event.head_commit.message }}"
-        # the expression above is never closed: ${{ without }}
+      - run: echo "${{ github.event.head_commit.message }"
 "#
             .to_string(),
-            rationale: "An unclosed expression is invalid workflow grammar; a syntax analyzer must report it rather than skip the file.".to_string(),
+            rationale: "The expression closes with a single brace, which is invalid expression grammar in executable workflow syntax; a syntax analyzer must report it rather than skip the file.".to_string(),
         },
         WorkflowSecurityFixtureV1 {
             id: "wf-syntax-clean".to_string(),
@@ -353,6 +352,8 @@ jobs:
             positive: false,
             yaml: r#"name: unprivileged pr
 on: pull_request
+permissions:
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -361,7 +362,7 @@ jobs:
       - run: make test
 "#
             .to_string(),
-            rationale: "pull_request executes with a read-only token against the merge ref; untrusted content carries no write authority.".to_string(),
+            rationale: "pull_request executes with an explicitly read-only token against the merge ref; untrusted content carries no write authority.".to_string(),
         },
         WorkflowSecurityFixtureV1 {
             id: "wf-credentials-persist".to_string(),
@@ -434,10 +435,11 @@ jobs:
             family: WorkflowConstructionFamilyV1::UnsafeCheckoutOrRefSelection,
             positive: true,
             yaml: r#"name: untrusted ref selection
-on: workflow_dispatch
-inputs:
-  ref:
-    description: branch to test
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: branch to test
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -551,10 +553,11 @@ jobs:
             family: WorkflowConstructionFamilyV1::UnsupportedOrInstrumentFailure,
             positive: false,
             yaml: r#"name: expression a qualified evaluator handles
-on: workflow_call
-inputs:
-  payload:
-    type: string
+on:
+  workflow_call:
+    inputs:
+      payload:
+        type: string
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -565,6 +568,38 @@ jobs:
             rationale: "With the workflow_call inputs declared, a qualified evaluator resolves the expression and reports no finding; silence here is honest only when the tool could evaluate.".to_string(),
         },
     ]
+}
+
+/// Recursively collect the workspace-relative paths of every
+/// `action.yml`/`action.yaml` manifest beneath `dir`, at any nesting
+/// depth, so a composite action added below another action's directory
+/// stays inside the denominator.
+fn collect_action_manifests(
+    dir: &std::path::Path,
+    root: &std::path::Path,
+    out: &mut Vec<String>,
+) -> Result<(), String> {
+    let entries = std::fs::read_dir(dir)
+        .map_err(|error| format!("actions dir {}: {error}", dir.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("actions dir entry: {error}"))?;
+        let entry_path = entry.path();
+        if entry_path.is_dir() {
+            collect_action_manifests(&entry_path, root, out)?;
+        } else {
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            if file_name == "action.yml" || file_name == "action.yaml" {
+                let relative = entry_path
+                    .strip_prefix(root)
+                    .map_err(|error| format!("action manifest {}: {error}", entry_path.display()))?
+                    .to_string_lossy()
+                    .to_string()
+                    .replace('\\', "/");
+                out.push(relative);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Compile the deterministic workflow-construction inventory for the
@@ -615,7 +650,8 @@ pub fn workflow_construction_inventory(
     }
 
     // Local composite actions: the repository-level action plus every
-    // nested .github/actions/<name>/action.yml|yaml.
+    // action manifest anywhere beneath .github/actions, at any nesting
+    // depth.
     for path in ["action.yml", "action.yaml"] {
         if root.join(path).is_file() {
             push_surface(
@@ -628,26 +664,16 @@ pub fn workflow_construction_inventory(
     }
     let actions_dir = root.join(".github/actions");
     if actions_dir.is_dir() {
-        let entries =
-            std::fs::read_dir(&actions_dir).map_err(|error| format!("actions dir: {error}"))?;
         let mut action_paths: Vec<String> = Vec::new();
-        for entry in entries {
-            let entry = entry.map_err(|error| format!("actions dir entry: {error}"))?;
-            let dir_name = entry.file_name().to_string_lossy().to_string();
-            for file_name in ["action.yml", "action.yaml"] {
-                let relative = format!(".github/actions/{dir_name}/{file_name}");
-                if root.join(&relative).is_file() {
-                    action_paths.push(relative);
-                }
-            }
-        }
+        collect_action_manifests(&actions_dir, root, &mut action_paths)?;
         action_paths.sort();
         for path in &action_paths {
             push_surface(
                 path.clone(),
                 WorkflowConstructionSurfaceKindV1::LocalAction,
                 WorkflowConstructionSurfaceClassV1::Current,
-                "local composite action executed by repository workflows".to_string(),
+                "local composite action executed by repository workflows or other actions"
+                    .to_string(),
             )?;
         }
     }
@@ -701,42 +727,107 @@ pub fn workflow_construction_inventory(
         }
     }
 
-    // Local `uses: ./.` references: workflow -> local action/workflow
-    // edges, detected source-visibly (PR A fidelity; no YAML parser).
-    let mut edges: Vec<(String, String)> = Vec::new();
-    for workflow in &workflow_paths {
-        let text = std::fs::read_to_string(root.join(workflow))
-            .map_err(|error| format!("workflow {workflow} reads: {error}"))?;
-        for line in text.lines() {
-            let trimmed = line.trim_start();
-            if let Some(rest) = trimmed.strip_prefix("- uses: ./.") {
-                let referenced = rest
-                    .split('#')
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .trim_end_matches('\r');
-                if referenced.is_empty() {
-                    continue;
-                }
-                edges.push((workflow.clone(), referenced.to_string()));
-            }
+    // The denominator is the tracked source tree: an untracked YAML
+    // file must not move the inventory or its digest. Fail closed when
+    // the repository cannot be interrogated.
+    for surface in &surfaces {
+        let tracked = std::process::Command::new("git")
+            .args([
+                "-C",
+                &root.to_string_lossy(),
+                "ls-files",
+                "--error-unmatch",
+                &surface.path,
+            ])
+            .output()
+            .map_err(|error| format!("git ls-files for {}: {error}", surface.path))?;
+        if !tracked.status.success() {
+            return Err(format!(
+                "inventoried surface {} is not tracked in git",
+                surface.path
+            ));
         }
     }
-    for (workflow, referenced) in &edges {
-        // A local action reference names its directory; resolve it to
-        // the inventoried action manifest before binding the edge.
-        // `referenced` is the `uses: ./.` tail (the leading dot of the
-        // workspace-relative path was consumed by the prefix strip). A
-        // local action reference names its directory; resolve it to the
-        // inventoried action manifest before binding the edge.
-        let workspace_relative = format!(".{referenced}");
-        let mut candidates = vec![workspace_relative.clone()];
-        candidates.push(format!("{workspace_relative}/action.yml"));
-        candidates.push(format!("{workspace_relative}/action.yaml"));
+
+    // Local `uses: ./.` references: edges from workflows and from local
+    // action manifests (one composite action may invoke another),
+    // detected source-visibly (PR A fidelity; no YAML parser). Job-level
+    // reusable-workflow calls and step-level uses are both matched; an
+    // unresolvable local reference fails closed.
+    let mut edges: Vec<(String, String)> = Vec::new();
+    let mut referencing_surfaces: Vec<String> = Vec::new();
+    for surface in &surfaces {
+        if matches!(
+            surface.kind,
+            WorkflowConstructionSurfaceKindV1::Workflow
+                | WorkflowConstructionSurfaceKindV1::LocalAction
+        ) {
+            referencing_surfaces.push(surface.path.clone());
+        }
+    }
+    for referencing in &referencing_surfaces {
+        let text = std::fs::read_to_string(root.join(referencing))
+            .map_err(|error| format!("surface {referencing} reads: {error}"))?;
+        let referencing_dir = std::path::Path::new(referencing)
+            .parent()
+            .map(|parent| parent.to_string_lossy().to_string())
+            .unwrap_or_default();
+        for line in text.lines() {
+            let trimmed = line.trim_start();
+            let trimmed = trimmed.strip_prefix("- ").unwrap_or(trimmed);
+            let Some(rest) = trimmed.strip_prefix("uses: ") else {
+                continue;
+            };
+            let target = rest
+                .split('#')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_end_matches('\r');
+            let Some(local) = target.strip_prefix("./") else {
+                continue;
+            };
+            if local.is_empty() {
+                continue;
+            }
+            // Root-anchored forms (./.github/..., ./examples/...) are
+            // already workspace-relative once the leading ./ is
+            // stripped; any other local form resolves against the
+            // referencing manifest's directory.
+            let resolved = if local.starts_with(".github/")
+                || local.starts_with("examples/")
+                || referencing_dir.is_empty()
+            {
+                // Already workspace-relative.
+                local.to_string()
+            } else {
+                format!("{referencing_dir}/{local}")
+            };
+            let manifest_candidates = [
+                resolved.clone(),
+                format!("{resolved}/action.yml"),
+                format!("{resolved}/action.yaml"),
+            ];
+            if !surfaces
+                .iter()
+                .any(|surface| manifest_candidates.contains(&surface.path))
+            {
+                return Err(format!(
+                    "{referencing} references local path {target}, which is not an inventoried surface"
+                ));
+            }
+            edges.push((referencing.clone(), resolved));
+        }
+    }
+    for (referencing, resolved) in &edges {
+        let manifest_candidates = [
+            resolved.clone(),
+            format!("{resolved}/action.yml"),
+            format!("{resolved}/action.yaml"),
+        ];
         for surface in &mut surfaces {
-            if candidates.contains(&surface.path) {
-                surface.referenced_by.push(workflow.clone());
+            if manifest_candidates.contains(&surface.path) {
+                surface.referenced_by.push(referencing.clone());
             }
         }
     }
