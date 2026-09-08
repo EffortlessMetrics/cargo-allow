@@ -8,8 +8,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host (product closure default target)",
- "manifest_set_digest": "232a22b71289f0e4e4a4709755980907944200c58add01517eacc0c67683dbc1",
- "lock_digest": "303d653e5797c70323194637fdabe247266cc21855a4ee8f6eef7387128f9145",
+ "manifest_set_digest": "5e0287e8d75b63d6038d344fac4bcfc22190e5ae35755b1a94654e81a2081a50",
+ "lock_digest": "0d406084dd2ac60921381c854b7af40da46d80e60467f5a93919654ea063da1f",
  "rows": [
   {
    "package": "clap",
@@ -144,7 +144,7 @@
   "cargo test --locked -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean",
   "cargo package -p allow-core --locked --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:1d9bdbec9c769abd4f2a33760fcf2cd7cb22f3d0c0802ebd86a1f9edfa1bc83c",
+ "floor_lock_digest": "sha256:v1:161fd4b04f51e3996b62375e655019eb9d82bf828bd00a2e80d6415cb3a03760",
  "limitations": [
   "bounded proof: the check, test, package classes over the release-set closure, not every target or feature combination",
   "internal =0.2.0 workspace pins are proven by the same closure build",
