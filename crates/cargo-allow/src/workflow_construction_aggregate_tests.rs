@@ -100,7 +100,9 @@ fn workflow_construction_aggregate_clean_when_both_lanes_are_clean() {
     let aggregate = aggregate_workflow_construction(&inventory, &syntax, &security);
     assert_eq!(
         aggregate.result,
-        WorkflowConstructionAggregateResultV1::Clean
+        WorkflowConstructionAggregateResultV1::Clean,
+        "the live aggregate drifted: {:?}",
+        aggregate.limitations
     );
     assert_eq!(aggregate.syntax_lane.result, "clean");
     assert_eq!(aggregate.security_lane.result, "clean");
