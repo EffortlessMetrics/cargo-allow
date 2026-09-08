@@ -74,10 +74,28 @@ def require_clean_checkout(commit_sha: str) -> None:
     Phases read the working tree, including untracked source such as Changie
     inputs even when local ignore rules hide them. Only known ignored target
     and Python cache directories may remain. Their outputs are not validated
-    here. This observes checkout state; it is not an immutable sandbox.
+    here. Index flags that hide tracked changes (including sparse checkout)
+    are unsupported. This observes checkout state; it is not an immutable
+    sandbox.
     """
     if resolve_commit("HEAD") != commit_sha:
         raise ValueError("rehearsal commit does not match checkout HEAD")
+    index = subprocess.run(
+        [
+            "git", "--no-optional-locks", "-c", "core.fsmonitor=false",
+            "ls-files", "--cached", "-v", "-z",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    if index.returncode != 0:
+        raise ValueError("could not inspect rehearsal checkout index flags")
+    # Only ordinary tracked entries are supported: S marks skip-worktree;
+    # lowercase tags mark assume-unchanged. Inspect without clearing flags.
+    if any(not entry.startswith(b"H ") for entry in index.stdout.split(b"\0") if entry):
+        raise ValueError("rehearsal checkout has unsupported index flags or entries")
     result = subprocess.run(
         [
             "git", "--no-optional-locks",

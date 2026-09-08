@@ -287,6 +287,27 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt("HEAD")
         self.require_no_phases()
 
+    def test_index_flags_are_rejected_without_mutating_the_index(self) -> None:
+        source = self.root / "Cargo.lock"
+        original = source.read_bytes()
+        for flag in ("assume-unchanged", "skip-worktree"):
+            for changed in (False, True):
+                with self.subTest(flag=flag, changed=changed):
+                    self.git("update-index", f"--{flag}", "Cargo.lock")
+                    if changed:
+                        source.write_bytes(original + b"# hidden change\n")
+                    # Prove this is the status blind spot, not ordinary dirt.
+                    self.assertEqual(self.git("status", "--porcelain"), "")
+                    index = (self.root / ".git/index").read_bytes()
+                    try:
+                        with self.assertRaisesRegex(ValueError, "index flags"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                        self.require_no_phases()
+                        self.assertEqual((self.root / ".git/index").read_bytes(), index)
+                    finally:
+                        source.write_bytes(original)
+                        self.git("update-index", f"--no-{flag}", "Cargo.lock")
+
     def add_untracked_source(self) -> None:
         path = self.root / ".changes/untracked.md"
         path.parent.mkdir(exist_ok=True)
@@ -350,6 +371,35 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.assertNotIn("secret-canary", str(caught.exception))
         self.require_no_phases()
 
+    def test_index_inspection_failures_reach_cli_without_a_receipt(self) -> None:
+        run = subprocess.run
+        output = self.root / "target/rejected.json"
+        for failure in (
+            subprocess.CompletedProcess([], 128, b"secret-canary", b"secret-canary"),
+            OSError("fixture Git unavailable"),
+            subprocess.TimeoutExpired("git ls-files", 15),
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                def fail_index(command, **kwargs):
+                    if "ls-files" in command:
+                        if isinstance(failure, Exception):
+                            raise failure
+                        return failure
+                    return run(command, **kwargs)
+
+                stderr = io.StringIO()
+                stdout = io.StringIO()
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=fail_index), \
+                     mock.patch.object(sys, "argv", [
+                         str(REHEARSAL_PATH), "--commit", "HEAD", "--output", str(output),
+                     ]), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(stdout):
+                    self.assertEqual(REHEARSAL.main(), 2)
+                self.assertFalse(output.exists())
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn("instrumentation failed", stderr.getvalue())
+                self.assertNotIn("secret-canary", stderr.getvalue())
+                self.require_no_phases()
+
     def test_head_movement_during_admission_stops_before_phases(self) -> None:
         run = subprocess.run
 
@@ -372,6 +422,24 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.phases[0].side_effect = change_source
         with self.assertRaises(ValueError):
             REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_hidden_source_after_phases_cannot_return_a_receipt(self) -> None:
+        source = self.root / "Cargo.lock"
+        original = source.read_bytes()
+        for flag in ("assume-unchanged", "skip-worktree"):
+            with self.subTest(flag=flag):
+                def change_source(receipt):
+                    self.git("update-index", f"--{flag}", "Cargo.lock")
+                    source.write_bytes(original + b"# hidden phase change\n")
+                    return "Incomplete"
+
+                self.phases[0].side_effect = change_source
+                try:
+                    with self.assertRaisesRegex(ValueError, "index flags"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                finally:
+                    source.write_bytes(original)
+                    self.git("update-index", f"--no-{flag}", "Cargo.lock")
 
     def test_untracked_source_after_phases_cannot_return_a_receipt(self) -> None:
         def change_source(receipt):

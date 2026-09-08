@@ -2,4 +2,5 @@ kind: Fixed
 body: >-
   Reject release rehearsal receipts for a different checkout commit or
   source changes before or after phase execution, including ignored release
-  inputs outside the known build and cache directories.
+  inputs outside the known build and cache directories. Reject unsupported
+  index flags that can hide tracked changes.
