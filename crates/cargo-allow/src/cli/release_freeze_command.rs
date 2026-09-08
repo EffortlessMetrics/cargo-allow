@@ -782,6 +782,26 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::Rehearsal => {
+            // The producer emits canonical identities. Missing or different
+            // evidence must not inherit the currently selected freeze subject.
+            for (field, expected) in [
+                ("commit_sha", subject.commit.as_str()),
+                (
+                    "subject_lockfile_digest",
+                    subject.cargo_lock_digest.as_str(),
+                ),
+                ("subject_topology_digest", subject.topology_digest.as_str()),
+            ] {
+                match value.get(field).and_then(Json::as_str) {
+                    Some(found) if found == expected => {}
+                    Some(_) => notes.push(format!(
+                        "fail:rehearsal {field} differs from the freeze subject"
+                    )),
+                    None => notes.push(format!(
+                        "fail:rehearsal {field} is missing or is not a string"
+                    )),
+                }
+            }
             let version = value
                 .pointer("/release_identity/version")
                 .and_then(Json::as_str)
@@ -1739,10 +1759,10 @@ mod tests {
             commit: "0123456789abcdef0123456789abcdef01234567".to_string(),
             tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
             cargo_lock_digest:
-                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                "sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                     .to_string(),
             topology_digest:
-                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                "sha256:v1:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
                     .to_string(),
             frozen_at_utc: "2026-09-03T00:00:00Z".to_string(),
         }
@@ -1766,7 +1786,11 @@ mod tests {
         })
     }
 
-    fn rehearsal_value(phases: u32, boundary: &str) -> serde_json::Value {
+    fn rehearsal_value(
+        subject: &SubjectIdentity,
+        phases: u32,
+        boundary: &str,
+    ) -> serde_json::Value {
         let mut phase_map = serde_json::Map::new();
         for index in 0..phases.saturating_sub(1) {
             phase_map.insert(
@@ -1779,6 +1803,9 @@ mod tests {
             serde_json::Value::String(boundary.into()),
         );
         serde_json::json!({
+            "commit_sha": subject.commit,
+            "subject_lockfile_digest": subject.cargo_lock_digest,
+            "subject_topology_digest": subject.topology_digest,
             "release_identity": { "version": "0.2.0", "tag": "v0.2.0" },
             "phases": phase_map
         })
@@ -1840,32 +1867,181 @@ mod tests {
     }
 
     #[test]
-    fn rehearsal_binding_requires_all_phases_and_open_authorization() {
+    fn rehearsal_binding_requires_all_phases_and_open_authorization() -> Result<(), String> {
         let subject = subject();
         let full = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value(8, "Incomplete"),
+            &rehearsal_value(&subject, 8, "Incomplete"),
         );
-        assert!(
-            !full.iter().any(|note| note.starts_with("fail:")),
-            "{full:?}"
-        );
+        if full.iter().any(|note| note.starts_with("fail:")) {
+            return Err(format!("exact-subject rehearsal was rejected: {full:?}"));
+        }
 
         let short = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value(7, "Incomplete"),
+            &rehearsal_value(&subject, 7, "Incomplete"),
         );
-        assert!(short.iter().any(|note| note.starts_with("fail:")));
+        if !short.iter().any(|note| note.starts_with("fail:")) {
+            return Err("rehearsal with a missing phase was accepted".to_string());
+        }
 
         // A rehearsal that consumed authorization can never feed a freeze.
         let authorized = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value(8, "Complete"),
+            &rehearsal_value(&subject, 8, "Complete"),
         );
-        assert!(authorized.iter().any(|note| note.starts_with("fail:")));
+        if !authorized.iter().any(|note| note.starts_with("fail:")) {
+            return Err("rehearsal with consumed authorization was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    const REHEARSAL_SUBJECT_FIELDS: [&str; 3] = [
+        "commit_sha",
+        "subject_lockfile_digest",
+        "subject_topology_digest",
+    ];
+
+    fn require_rehearsal_subject_rejection(
+        subject: &SubjectIdentity,
+        receipt: &serde_json::Value,
+        field: &str,
+    ) -> Result<(), String> {
+        let notes = bind_evidence(subject, FreezeEvidenceRole::Rehearsal, receipt);
+        let expected = format!("fail:rehearsal {field} ");
+        if notes.len() != 1 || !notes.iter().any(|note| note.starts_with(&expected)) {
+            return Err(format!("expected only {field} rejection, got {notes:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rehearsal_binding_rejects_each_missing_subject_field() -> Result<(), String> {
+        let subject = subject();
+        for field in REHEARSAL_SUBJECT_FIELDS {
+            let mut receipt = rehearsal_value(&subject, 8, "Incomplete");
+            receipt
+                .as_object_mut()
+                .ok_or("rehearsal fixture must be an object")?
+                .remove(field);
+            require_rehearsal_subject_rejection(&subject, &receipt, field)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rehearsal_binding_rejects_malformed_subject_fields() -> Result<(), String> {
+        let subject = subject();
+        for field in REHEARSAL_SUBJECT_FIELDS {
+            let valid = rehearsal_value(&subject, 8, "Incomplete");
+            let expected = valid
+                .get(field)
+                .and_then(serde_json::Value::as_str)
+                .ok_or("subject fixture must be a string")?;
+            for malformed in [
+                serde_json::Value::Null,
+                serde_json::json!(false),
+                serde_json::json!(1),
+                serde_json::json!([]),
+                serde_json::json!({}),
+                serde_json::json!(""),
+                serde_json::json!("not-an-identity"),
+                serde_json::json!(format!(" {expected}")),
+                serde_json::json!(expected.to_uppercase()),
+                serde_json::json!(expected.replace("sha256:v1:", "sha256:")),
+            ] {
+                // The legacy-digest case does not alter a commit string.
+                if malformed.as_str() == Some(expected) {
+                    continue;
+                }
+                let mut receipt = valid.clone();
+                *receipt.get_mut(field).ok_or("subject field is missing")? = malformed;
+                require_rehearsal_subject_rejection(&subject, &receipt, field)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rehearsal_binding_rejects_changed_same_version_subjects() -> Result<(), String> {
+        let subject = subject();
+        for (field, changed) in [
+            ("commit_sha", "f".repeat(40)),
+            (
+                "subject_lockfile_digest",
+                format!("sha256:v1:{}", "f".repeat(64)),
+            ),
+            (
+                "subject_topology_digest",
+                format!("sha256:v1:{}", "f".repeat(64)),
+            ),
+        ] {
+            let mut receipt = rehearsal_value(&subject, 8, "Incomplete");
+            *receipt.get_mut(field).ok_or("subject field is missing")? = changed.into();
+            require_rehearsal_subject_rejection(&subject, &receipt, field)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rehearsal_binding_mismatch_reaches_required_graph_node() -> Result<(), String> {
+        let subject = subject();
+        for changed_field in [
+            None,
+            Some("commit_sha"),
+            Some("subject_lockfile_digest"),
+            Some("subject_topology_digest"),
+        ] {
+            let mut receipt = rehearsal_value(&subject, 8, "Incomplete");
+            if let Some(field) = changed_field {
+                let changed = if field == "commit_sha" {
+                    "f".repeat(40)
+                } else {
+                    format!("sha256:v1:{}", "f".repeat(64))
+                };
+                *receipt.get_mut(field).ok_or("subject field is missing")? = changed.into();
+            }
+            let input = super::EvidenceInput {
+                role: FreezeEvidenceRole::Rehearsal,
+                path: "rehearsal.json".into(),
+                sha256: super::sha256_v1_bytes(
+                    &serde_json::to_vec(&receipt).map_err(|error| error.to_string())?,
+                ),
+                binding_notes: bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &receipt),
+                value: receipt,
+            };
+            let graph = super::build_evidence_graph(&subject, &selection(), &[input], &[], None);
+            let node = graph
+                .nodes
+                .iter()
+                .find(|node| node.evidence_id == "release-rehearsal")
+                .ok_or("required rehearsal node is missing")?;
+            let expected = if changed_field.is_some() {
+                FinalEvidenceNodeResultV1::Mismatch
+            } else {
+                FinalEvidenceNodeResultV1::Complete
+            };
+            if !node.required || node.result != expected {
+                return Err(format!(
+                    "subject change {changed_field:?}: required={} result={:?}, expected {expected:?}",
+                    node.required, node.result
+                ));
+            }
+            let evaluation = super::evaluate_final_evidence_graph(&graph);
+            let rejected = evaluation.findings.iter().any(|finding| {
+                finding.kind == allow_report::FinalEvidenceFindingKindV1::NonCurrentNode
+                    && finding.evidence_id.as_deref() == Some("release-rehearsal")
+            });
+            if rejected != changed_field.is_some() {
+                return Err(format!(
+                    "subject change {changed_field:?}: rehearsal evaluator rejection={rejected}"
+                ));
+            }
+        }
+        Ok(())
     }
 
     #[test]
@@ -2068,7 +2244,7 @@ expected_registry_checksum = "sha256:cccc"
             path: std::path::PathBuf::from("rehearsal.json"),
             sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
                 .to_string(),
-            value: rehearsal_value(8, "Incomplete"),
+            value: rehearsal_value(&subject, 8, "Incomplete"),
             binding_notes: Vec::new(),
         };
         let evidence = vec![package_set, rehearsal];
@@ -2374,7 +2550,7 @@ mod compose_fixture_tests {
         )
         .to_string();
         let rehearsal = format!(
-            "{{\"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
+            "{{\"commit_sha\": \"{commit}\", \"subject_lockfile_digest\": \"{cargo_lock_sha}\", \"subject_topology_digest\": \"{topology_sha}\", \"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
         );
         write(&evidence_dir, "rehearsal.json", rehearsal.as_bytes());
 

@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Reject same-version release rehearsal evidence with missing or mismatched
+  commit, Cargo.lock, or topology identity before freeze graph composition.
