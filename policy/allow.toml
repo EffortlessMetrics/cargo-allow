@@ -19981,3 +19981,81 @@ glob = ".allow/revisions/4165-readiness-publication.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11263"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_syntax_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow syntax command tests (#3907 PR B); every expect guards a fixture write, a workspace root resolution, a retained receipt parse, or the inventory selection whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 8
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_syntax_command.rs"
+
+[[allow]]
+id = "allow-11264"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_syntax_lane_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow syntax lane law tests (#3907 PR B); every expect guards a live inventory derivation or a selected tool entry whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 8
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_syntax_lane_tests.rs"
+
+[[allow]]
+id = "allow-11265"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-syntax.sh"
+owner = "core/deps"
+classification = "workflow_syntax_collector"
+reason = "Pinned syntax lane runner (#3907 PR B): fetches the exact actionlint release the pregate pins, runs it over the construction denominator's covered surfaces, and emits the tool-run JSON the workflow-syntax CLI grades. Read-only over the live tree."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-syntax.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-syntax.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11266"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-syntax-lane.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow syntax lane source exceptions added by the #3907 PR B lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-syntax-lane.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-syntax-lane.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
