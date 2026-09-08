@@ -49,6 +49,7 @@ mod intent_provider;
 mod kind_filter;
 mod list;
 mod migrate;
+mod minimum_version_selection;
 mod mutation_apply;
 mod mutation_lock;
 mod plan_bindings;
@@ -225,6 +226,8 @@ mod intent_model_parity_tests;
 mod intent_protocol_parity_tests;
 #[cfg(test)]
 mod minimum_direct_version_contract_tests;
+#[cfg(test)]
+mod minimum_direct_version_drift_tests;
 #[cfg(test)]
 mod minimum_direct_version_fixtures_tests;
 #[cfg(test)]

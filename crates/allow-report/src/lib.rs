@@ -191,6 +191,15 @@ pub use artifacts::{
     PostMergeReconciliationResultV1, ReconciliationDispositionV1,
 };
 
+// Direct minimum version drift guard (#3903 PR D).
+pub use artifacts::{
+    DRIFT_RELEASE_SET_PRODUCT, MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID,
+    MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_VERSION, MinimumVersionDriftEvaluationV1,
+    MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
+    evaluate_minimum_version_drift, render_minimum_version_drift_human,
+    render_minimum_version_drift_json,
+};
+
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).
 pub use artifacts::{
     CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,

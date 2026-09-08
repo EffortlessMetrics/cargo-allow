@@ -14,6 +14,7 @@ mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
 mod ci_pregate_command;
 mod frozen_subject_lock_command;
+mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
 mod release_freeze_command;
 mod release_identity_command;
@@ -148,6 +149,9 @@ pub(crate) enum CargoAllowCommand {
     /// Evaluate the Stage 1 pre-gate aggregate.
     #[command(hide = true)]
     CiPregate(ci_pregate_command::CiPregateArgs),
+    /// Grade the retained direct-floor receipts against the live tree.
+    #[command(hide = true)]
+    MinVersionDrift(minimum_version_selection_command::MinVersionDriftArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -261,6 +265,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
             review_readiness_command::cmd_review_readiness(&args)
         }
         CargoAllowCommand::CiPregate(args) => ci_pregate_command::cmd_ci_pregate(&args),
+        CargoAllowCommand::MinVersionDrift(args) => {
+            minimum_version_selection_command::cmd_min_version_drift(&args)
+        }
     }
 }
 
@@ -465,5 +472,6 @@ impl CargoAllowCommand {
         "review-disposition",
         "review-readiness",
         "ci-pregate",
+        "min-version-drift",
     ];
 }
