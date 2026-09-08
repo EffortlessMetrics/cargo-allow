@@ -1,0 +1,90 @@
+{
+ "schema_id": "cargo-allow.minimum-direct-version.v1",
+ "schema_version": 1,
+ "product": "cargo-proof",
+ "package_roots": [
+  "cargo-proof"
+ ],
+ "msrv": "1.95",
+ "toolchain": "1.95.0",
+ "target": "host (product closure default target)",
+ "manifest_set_digest": "f39fbee96cf20336cac8f76587540cfd90d9e6656404fc46b3612059df6a0b12",
+ "lock_digest": "3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+ "rows": [
+  {
+   "package": "clap",
+   "declared_requirement": "4.6.1",
+   "tested_floor": "4.6.1",
+   "resolved_version": "4.6.1",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "serde",
+   "declared_requirement": "1.0.228",
+   "tested_floor": "1.0.228",
+   "resolved_version": "1.0.228",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "serde_json",
+   "declared_requirement": "1.0.150",
+   "tested_floor": "1.0.150",
+   "resolved_version": "1.0.150",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "sha2",
+   "declared_requirement": "0.11.0",
+   "tested_floor": "0.11.0",
+   "resolved_version": "0.11.0",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "toml",
+   "declared_requirement": "1.1.4",
+   "tested_floor": "1.1.4",
+   "resolved_version": "1.1.4+spec-1.1.0",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "tree-sitter",
+   "declared_requirement": "0.26.11",
+   "tested_floor": "0.26.11",
+   "resolved_version": "0.26.11",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  },
+  {
+   "package": "tree-sitter-rust",
+   "declared_requirement": "0.24.2",
+   "tested_floor": "0.24.2",
+   "resolved_version": "0.24.2",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
+  }
+ ],
+ "commands": [
+  "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
+  "cargo check --locked -p cargo-proof -p effortless-repo-protocol -p effortless-rust-source-index -p intent-protocol -p proof-orchestrator -p proof-protocol"
+ ],
+ "floor_lock_digest": "sha256:v1:a465520d5aba653b9eca15c8cc8b20492b1d3840d1a51cd54ae252d661afe121",
+ "limitations": [
+  "bounded proof: the check classes over the cargo-proof closure, not every target or feature combination",
+  "advisory: report-only product rows never gate the cargo-allow release set",
+  "dev-dependencies are exercised by the test class but are not certified floors",
+  "optional dependencies and non-default features stay outside the certified set"
+ ],
+ "claim_boundary": "Advisory, report-only proof of the cargo-proof package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
+}

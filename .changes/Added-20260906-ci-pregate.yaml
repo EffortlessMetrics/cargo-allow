@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Stage 1 CI pre-gate (#3836). Typed CiPreGateResultV1 /
+  CiPreGateStateV1 aggregate and a fast deterministic `pregate` job
+  (actionlint with a pinned checksum, cargo fmt, the no-new
+  source-exception guard) that every measured-heavy proof job now
+  depends on through explicit `needs:` edges; only the typed permit
+  states (complete, or a reasoned not-applicable) start them. Stale
+  heads, empty selections, unexplained waivers, skipped or cancelled
+  checks, and instrument failures are never green; artifact uploads
+  under failure never strengthen the aggregate; no secrets are read;
+  Clippy stays in Stage 2; and the gate changes workflow reachability
+  only — proof routing stays #2569 and release-sensitive routing
+  stays #3794. Hidden read-only `cargo-allow ci-pregate evaluate`
+  emits and evaluates the typed aggregate.

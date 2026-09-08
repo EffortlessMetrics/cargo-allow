@@ -19,3 +19,6 @@ toml.workspace = true
 
 [dev-dependencies]
 effortless-repo-protocol = { path = "../effortless-repo-protocol" }
+
+[lints]
+workspace = true

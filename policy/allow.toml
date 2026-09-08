@@ -19181,7 +19181,553 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11225"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_result_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate result law tests (#3836); every expect guards a retained-surface read or a hostile fixture parse whose rejection is the property under test"
+evidence = ["issue:3836"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_result_tests.rs"
+
+[[allow]]
+id = "allow-11226"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_workflow_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate workflow binding tests (#3836); every expect guards a retained-file read whose existence is the property under test"
+evidence = ["issue:3836"]
+occurrence_limit = 4
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_pregate_workflow_tests.rs"
+
+[[allow]]
+id = "allow-11227"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/ci_pregate_command.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the pre-gate CLI fixture tests (#3836); every expect guards a serialization or write of known-good typed fixtures constructed immediately above"
+evidence = ["issue:3836"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/ci_pregate_command.rs"
+
+[[allow]]
+id = "allow-11228"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3836-ci-pregate.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the pre-gate expect ratchets added by the #3836 lane."
+evidence = ["issue:3836", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3836-ci-pregate.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3836-ci-pregate.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11229"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_linux_cache_contract_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the Linux cache contract tests (#3963); every expect guards a retained-surface read, a known-good fixture serialization, or a hostile fixture whose rejection is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 9
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_linux_cache_contract_tests.rs"
+
+[[allow]]
+id = "allow-11230"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_cache_trust_boundary_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the cache trust-boundary tests (#3963); every expect guards a retained-surface read whose existence is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 6
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_cache_trust_boundary_tests.rs"
+
+[[allow]]
 id = "allow-11231"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/ci-cache-experiment-v1.json"
+owner = "core/ci"
+classification = "ci_cache_experiment"
+reason = "Retained Linux cache experiment receipt (#3963): four hosted observations of the trusted warm lane, one untrusted restore-only pull request, and the exact source/environment/action identities; the honest NeedsMoreData verdict with the missing cold/disabled/fallback coverage and rollback route. Measurement evidence only."
+evidence = ["issue:3963"]
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/ci-cache-experiment-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/ci-cache-experiment-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11232"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3963-ci-cache-experiment.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the Linux cache experiment ratchets and the retained receipt added by the #3963 lane."
+evidence = ["issue:3963", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-06"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3963-ci-cache-experiment.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3963-ci-cache-experiment.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11233"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/ci_cache_fallback_parity_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expect in the cache fallback parity tests (#3963); the expect guards a known-good typed row whose validation success is the property under test"
+evidence = ["issue:3963"]
+occurrence_limit = 1
+created = "2026-09-06"
+review_after = "2026-12-05"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/ci_cache_fallback_parity_tests.rs"
+
+[[allow]]
+id = "allow-11235"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+owner = "core/ci"
+classification = "ci_cache_window"
+reason = "Retained window facts for the Linux cache experiment (#3963): the same-day trusted warm runs and the untrusted restore-only pull request, each excluded from the compiled lane because the coverage law forbids pooling across source states. Trust and distribution evidence only."
+evidence = ["issue:3963"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/ci-cache-experiment-window-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11236"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_inheritance_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workspace lint inheritance parity tests (#3904 PR A); every expect guards a retained-surface read or a live-workspace fact whose existence is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 8
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_inheritance_tests.rs"
+
+[[allow]]
+id = "allow-11237"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_policy_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workspace lint policy classification tests (#3904 PR A); every expect guards a known-good serialization or parse whose success is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 2
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_policy_tests.rs"
+
+[[allow]]
+id = "allow-11238"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3904-workspace-lint-inventory.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workspace lint inventory expect ratchets added by the #3904 PR A lane."
+evidence = ["issue:3904", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3904-workspace-lint-inventory.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3904-workspace-lint-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0906"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-proof/src/providers/cargo_allow/mod.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "cfg_attr expect(dead_code) marks the provider machinery that is dead under single-provider feature configs and consumed under all-providers; the marker is config-conditional so the expectation self-verifies across configs (#3904 PR B)"
+evidence = ["issue:3904"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "expect(dead_code))]"
+normalized_snippet_hash = "fnv1a64:c3470fd25778d6ea"
+
+[allow.last_seen]
+line = 2
+column = 44
+
+[[allow]]
+id = "allow-11239"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_drift_guard_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the lint drift-guard law tests (#3904 PR C); every expect guards a known-good typed fixture or a retained-surface read whose existence is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 7
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_drift_guard_tests.rs"
+
+[[allow]]
+id = "allow-11240"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_ratchets_tests.rs"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the lint ratchet selection tests (#3904 PR D); every expect guards a retained-manifest read whose content is the property under test"
+evidence = ["issue:3904"]
+occurrence_limit = 3
+created = "2026-09-07"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workspace_lint_ratchets_tests.rs"
+
+[[allow]]
+id = "allow-11241"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_contract_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the direct minimum version contract tests (#3903 PR A); every expect guards a known-good typed fixture or parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 7
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_contract_tests.rs"
+
+[[allow]]
+id = "allow-11242"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_fixtures_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the direct minimum version fixture tests (#3903 PR A); every expect guards a retained-manifest read whose existence is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 7
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_fixtures_tests.rs"
+
+[[allow]]
+id = "allow-11243"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3903-minimum-direct-version.toml"
+owner = "core/deps"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the direct minimum version expect ratchets added by the #3903 PR A lane."
+evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3903-minimum-direct-version.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3903-minimum-direct-version.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11245"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"
+owner = "core/deps"
+classification = "direct_floor_proof"
+reason = "Retained hosted direct-floor proof receipt (#3903 PR B): the bounded check/test/package proof of the cargo-allow release set at the declared floors under the 1.95 toolchain, fourteen Proven rows. Measurement evidence only."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11246"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/proof-direct-floors.sh"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Bounded read-only direct-floor proof collector (#3903 PR B): builds the exact floor candidate in a detached worktree, pins every external direct dependency to its declared minimum, runs the bounded proof classes, and emits the typed receipt. Mutates only the temporary worktree."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/proof-direct-floors.sh"
+target_fingerprint = "sh"
+glob = "scripts/proof-direct-floors.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11247"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the product isolation and manifest-derived floor inventory tests (#3903 PR C); every expect guards a known-good typed fixture, manifest parse, or receipt parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 21
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+
+[[allow]]
+id = "allow-11248"
+kind = "panic"
+family = "panic_macro"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Fixture panic in the product isolation tests (#3903); the panic is guarded by an is_some_and assertion and unreachable on the retained evidence"
+evidence = ["issue:3903"]
+occurrence_limit = 6
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+macro_name = "panic"
+glob = "crates/cargo-allow/src/minimum_direct_version_products_tests.rs"
+
+[[allow]]
+id = "allow-11249"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the cargo-intent product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the product's experimental posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11250"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the cargo-proof product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the product's experimental posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11251"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+owner = "core/deps"
+classification = "advisory_floor_proof"
+reason = "Retained advisory floor proof for the shared product (#3903 PR C): check-class proof of the declared direct floors at 1.95, report-only per the shared crates' independent support posture."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+target_fingerprint = "json"
+glob = "docs/ci/receipts/direct-floor-proof-shared-v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11252"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/proof-advisory-products.sh"
+owner = "core/deps"
+classification = "advisory_floor_collector"
+reason = "Advisory product proof collector (#3903 PR C): runs the bounded check-class floor proof for the shared, cargo-intent, and cargo-proof products. Report-only; a failure never blocks the cargo-allow release set."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/proof-advisory-products.sh"
+target_fingerprint = "sh"
+glob = "scripts/proof-advisory-products.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11253"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3903-advisory-products.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the advisory product receipts added by the #3903 PR C lane."
+evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3903-advisory-products.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3903-advisory-products.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4131-provider-schema"
 kind = "non_rust_file"
 family = "documentation"
 path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
@@ -19208,7 +19754,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11232"
+id = "allow-4131-provider-revision"
 kind = "non_rust_file"
 family = "configuration"
 path = ".allow/revisions/4131-provider-contract-schema.toml"

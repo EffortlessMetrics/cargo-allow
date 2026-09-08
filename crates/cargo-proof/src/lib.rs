@@ -22,7 +22,7 @@ mod dry_run_cmd;
 mod exit;
 mod identity;
 mod plan;
-mod providers;
+pub mod providers;
 mod receipt_projection;
 mod receipt_status;
 mod render;

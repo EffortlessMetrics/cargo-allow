@@ -182,10 +182,20 @@ mod campaign_membership_projection_tests;
 #[cfg(test)]
 mod candidate_preparation_plan_tests;
 #[cfg(test)]
+mod ci_cache_fallback_parity_tests;
+#[cfg(test)]
+mod ci_cache_trust_boundary_tests;
+#[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
 #[cfg(test)]
+mod ci_linux_cache_contract_tests;
+#[cfg(test)]
 mod ci_performance_receipt_tests;
+#[cfg(test)]
+mod ci_pregate_result_tests;
+#[cfg(test)]
+mod ci_pregate_workflow_tests;
 #[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
@@ -215,6 +225,12 @@ mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
 #[cfg(test)]
+mod minimum_direct_version_contract_tests;
+#[cfg(test)]
+mod minimum_direct_version_fixtures_tests;
+#[cfg(test)]
+mod minimum_direct_version_products_tests;
+#[cfg(test)]
 mod repository_release_controls_tests;
 #[cfg(test)]
 mod review_disposition_contract_tests;
@@ -228,6 +244,14 @@ mod review_readiness_check_tests;
 mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
+#[cfg(test)]
+mod workspace_lint_drift_guard_tests;
+#[cfg(test)]
+mod workspace_lint_inheritance_tests;
+#[cfg(test)]
+mod workspace_lint_policy_tests;
+#[cfg(test)]
+mod workspace_lint_ratchets_tests;
 
 #[cfg(test)]
 mod config_authority_denominator_tests;
