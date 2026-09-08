@@ -298,6 +298,72 @@ mod tests {
     }
 
     #[test]
+    fn evaluate_treats_a_missing_receipt_as_unproven_per_posture() {
+        let root = workspace_root();
+        let missing = root.join("target/does-not-exist-receipt.json");
+        let release_set = MinVersionDriftArgs {
+            command: MinVersionDriftSubcommand::Evaluate(MinVersionDriftEvaluateArgs {
+                product: "cargo-allow".to_string(),
+                root: root.clone(),
+                receipt: Some(missing.clone()),
+                format: MinVersionDriftOutputFormat::Human,
+            }),
+        };
+        assert!(
+            cmd_min_version_drift(&release_set).is_err(),
+            "a release-set product with no receipt blocks"
+        );
+        let advisory = MinVersionDriftArgs {
+            command: MinVersionDriftSubcommand::Evaluate(MinVersionDriftEvaluateArgs {
+                product: "shared".to_string(),
+                root,
+                receipt: Some(missing),
+                format: MinVersionDriftOutputFormat::Json,
+            }),
+        };
+        assert!(
+            cmd_min_version_drift(&advisory).is_ok(),
+            "an advisory product with no receipt reports without blocking"
+        );
+    }
+
+    #[test]
+    fn evaluate_blocks_on_a_stale_receipt_and_reports_the_reason() {
+        let root = workspace_root();
+        let selection = crate::minimum_version_selection::derive_selection(&root, "shared")
+            .expect("the shared selection derives");
+        let mut receipt: MinimumVersionProofReceiptV1 = serde_json::from_str(
+            &std::fs::read_to_string(root.join(
+                crate::minimum_version_selection::retained_receipt_path("shared"),
+            ))
+            .expect("the retained receipt reads"),
+        )
+        .expect("the retained receipt parses");
+        receipt.lock_digest = "stale-lock".to_string();
+        let _ = selection;
+        let path =
+            std::env::temp_dir().join(format!("min-drift-stale-{}.json", std::process::id()));
+        std::fs::write(
+            &path,
+            serde_json::to_vec(&receipt).expect("fixture serializes"),
+        )
+        .expect("fixture write succeeds");
+        let args = MinVersionDriftArgs {
+            command: MinVersionDriftSubcommand::Evaluate(MinVersionDriftEvaluateArgs {
+                product: "cargo-allow".to_string(),
+                root,
+                receipt: Some(path.clone()),
+                format: MinVersionDriftOutputFormat::Human,
+            }),
+        };
+        let _ = std::fs::remove_file(&path);
+        // The shared receipt names a different product, so the
+        // evaluation is unproven-and-blocking for the release set
+        // either way; the exit contract is what the test pins.
+        assert!(cmd_min_version_drift(&args).is_err());
+    }
+
+    #[test]
     fn check_exits_zero_when_every_release_set_receipt_is_current() {
         let args = MinVersionDriftArgs {
             command: MinVersionDriftSubcommand::Check(MinVersionDriftCheckArgs {

@@ -519,6 +519,55 @@ shared = "0.9"
     }
 
     #[test]
+    fn derivation_fails_closed_on_git_and_conflicting_requirements() {
+        let root = write_fixture_workspace(true);
+        let alpha = root.join("crates/alpha/Cargo.toml");
+        let original = std::fs::read_to_string(&alpha).expect("alpha reads");
+
+        std::fs::write(
+            &alpha,
+            original.replace(
+                "skipped = { version = \"0.4\", optional = true }",
+                "evil = { git = \"https://example.com/evil\" }",
+            ),
+        )
+        .expect("alpha writes");
+        let error = derive_selection_for_roots(&root, vec!["alpha".to_string()])
+            .expect_err("a git dependency fails closed");
+        assert!(error.contains("git dependency"), "{error}");
+
+        std::fs::write(
+            &alpha,
+            original.replace(
+                "skipped = { version = \"0.4\", optional = true }",
+                "shared = \"0.5\"",
+            ),
+        )
+        .expect("alpha writes");
+        let error =
+            derive_selection_for_roots(&root, vec!["alpha".to_string(), "beta".to_string()])
+                .expect_err("conflicting requirements fail closed");
+        assert!(error.contains("conflicting requirements"), "{error}");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn default_enables_walks_feature_edges_transitively() {
+        let manifest: toml::Table = r#"
+[features]
+default = ["a"]
+a = ["b"]
+b = ["dep:target-dep"]
+c = ["dep:other"]
+"#
+        .parse()
+        .expect("fixture parses");
+        assert!(default_enables(&manifest, "target-dep"));
+        assert!(!default_enables(&manifest, "other"));
+        assert!(!default_enables(&manifest, "unrelated"));
+    }
+
+    #[test]
     fn digest_is_line_ending_independent_and_binds_members_outside_crates() {
         let lf_root = write_fixture_workspace(true);
         let crlf_root = write_fixture_workspace(false);

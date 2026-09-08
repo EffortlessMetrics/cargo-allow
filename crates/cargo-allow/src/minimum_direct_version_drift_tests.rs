@@ -7,9 +7,9 @@
 //! against the live manifest-derived observation.
 
 use allow_report::{
-    DRIFT_RELEASE_SET_PRODUCT, MinimumFloorResultV1, MinimumVersionDriftFloorRowV1,
-    MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1, MinimumVersionProofReceiptV1,
-    MinimumVersionRowResultV1, evaluate_minimum_version_drift,
+    DRIFT_RELEASE_SET_PRODUCT, MinimumFloorResultV1, MinimumVersionDriftEvaluationV1,
+    MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
+    MinimumVersionProofReceiptV1, MinimumVersionRowResultV1, evaluate_minimum_version_drift,
 };
 
 use crate::minimum_version_selection::{derive_selection, manifest_set_digest, workspace_msrv};
@@ -256,6 +256,26 @@ fn minimum_direct_version_drift_legacy_roots_binding_stays_optional() {
         "no roots movement is invented for a legacy receipt: {:?}",
         evaluation.reasons
     );
+}
+
+#[test]
+fn minimum_direct_version_drift_views_render_deterministically() {
+    let evaluation = evaluate_minimum_version_drift(
+        &observation("shared"),
+        Some(&receipt(
+            "shared",
+            vec![row("serde", MinimumFloorResultV1::Proven)],
+        )),
+    );
+    let human = allow_report::render_minimum_version_drift_human(&evaluation);
+    assert!(
+        human.starts_with("minimum-version-drift: product=shared verdict=current"),
+        "{human}"
+    );
+    assert!(human.contains("claim boundary:"), "{human}");
+    let json = allow_report::render_minimum_version_drift_json(&evaluation).expect("json renders");
+    let parsed: MinimumVersionDriftEvaluationV1 = serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, evaluation, "the JSON view round-trips");
 }
 
 #[test]

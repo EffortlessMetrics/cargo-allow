@@ -19735,7 +19735,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the floor selection derivation module's own tests (#3903 PR D); every expect guards a registered product, a parse of the checked-in workspace manifests, a fixture workspace write, or a digest derivation whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 14
+occurrence_limit = 18
 created = "2026-09-07"
 review_after = "2026-12-06"
 
@@ -19750,9 +19750,9 @@ family = "expect"
 glob = "crates/cargo-allow/src/cli/minimum_version_selection_command.rs"
 owner = "core/deps"
 classification = "reviewed_exception"
-reason = "Invariant-guarded expects in the drift command tests (#3903 PR D); every expect guards a fixture write or a workspace root resolution whose success is the property under test"
+reason = "Invariant-guarded expects in the drift command tests (#3903 PR D); every expect guards a fixture write, a workspace root resolution, a manifest-derived selection, or a retained receipt parse whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 3
+occurrence_limit = 8
 created = "2026-09-07"
 review_after = "2026-12-06"
 
@@ -19769,7 +19769,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the drift guard law and live grading tests (#3903 PR D); every expect guards a known-good typed fixture, a manifest-derived selection, or a retained receipt parse whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 6
+occurrence_limit = 7
 created = "2026-09-07"
 review_after = "2026-12-06"
 
