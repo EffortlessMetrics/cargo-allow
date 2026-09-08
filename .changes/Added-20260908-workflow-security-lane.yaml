@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Workflow security lane (#3907 PR C). The qualified zizmor 1.30.0
+  release runs offline over the construction denominator — every
+  current workflow and local composite action — and its findings are
+  graded into the typed WorkflowSecurityLaneReportV1 preserving
+  native rule identity and mapping into construction families.
+  Exact reviewed exceptions at (path, rule) granularity reduce the
+  advisory signal without broadening anything; findings stay visible
+  and the lane remains advisory until the aggregate lane selects
+  enforcement.

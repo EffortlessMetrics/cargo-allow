@@ -6,3 +6,4 @@ target/
 policy/allow.proposed.toml
 .zcode/
 __pycache__/
+tool-run*.json
