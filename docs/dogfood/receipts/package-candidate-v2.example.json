@@ -5,7 +5,7 @@
   "topology_digest": "sha256:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
   "repository_commit": "fd23dd87eb0a1b4d2036693c278bd7f3627bb615",
   "repository_tree": "4a4d01bc9420a3fc06887e6d1c4b35f6b3770b53",
-  "cargo_lock_digest": "sha256:3bcc13b66eaee80465a8b86cb15a9f00a78ece35f401215b8cd4219b5d5971a6",
+  "cargo_lock_digest": "sha256:303d653e5797c70323194637fdabe247266cc21855a4ee8f6eef7387128f9145",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
   "root_package_name": "cargo-allow",
@@ -533,6 +533,11 @@
         },
         {
           "package_name": "serde_json",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "sha2",
           "package_version": "workspace",
           "dependency_kind": "external"
         },
