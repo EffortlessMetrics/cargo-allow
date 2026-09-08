@@ -251,6 +251,8 @@ mod workflow_construction_inventory_tests;
 #[cfg(test)]
 mod workflow_security_fixtures_tests;
 #[cfg(test)]
+mod workflow_syntax_lane_tests;
+#[cfg(test)]
 mod workspace_lint_drift_guard_tests;
 #[cfg(test)]
 mod workspace_lint_inheritance_tests;

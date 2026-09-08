@@ -96,6 +96,25 @@ jobs:
           path: pregate-result.json
           if-no-files-found: ignore
 
+  # The pinned syntax/expression lane (#3907 PR B): the exact actionlint
+  # release the pregate pins runs over the full construction denominator
+  # (workflows + checked examples) and the findings are graded into the
+  # typed lane report. Advisory at this stage; enforcement selection is
+  # the aggregate lane's authority (PR D under #2283/#2284).
+  workflow-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: workflow-syntax
+      - name: Pinned syntax lane over the construction denominator
+        run: bash scripts/check-workflow-syntax.sh
+
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).

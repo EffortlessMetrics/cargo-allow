@@ -211,6 +211,14 @@ pub use artifacts::{
     workflow_security_fixtures,
 };
 
+// Workflow syntax lane (#3907 PR B).
+pub use artifacts::{
+    WORKFLOW_SYNTAX_LANE_SCHEMA_ID, WORKFLOW_SYNTAX_LANE_SCHEMA_VERSION, WorkflowSyntaxFindingV1,
+    WorkflowSyntaxLaneReportV1, WorkflowSyntaxLaneResultV1, WorkflowSyntaxRawFindingV1,
+    WorkflowSyntaxToolRunV1, WorkflowSyntaxUncoveredSurfaceV1, evaluate_workflow_syntax_run,
+    render_workflow_syntax_human, render_workflow_syntax_json,
+};
+
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).
 pub use artifacts::{
     CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,
