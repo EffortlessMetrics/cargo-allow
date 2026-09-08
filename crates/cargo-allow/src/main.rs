@@ -224,6 +224,12 @@ mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
 #[cfg(test)]
+mod minimum_direct_version_contract_tests;
+#[cfg(test)]
+mod minimum_direct_version_fixtures_tests;
+#[cfg(test)]
+mod minimum_direct_version_products_tests;
+#[cfg(test)]
 mod repository_release_controls_tests;
 #[cfg(test)]
 mod review_disposition_contract_tests;
@@ -238,9 +244,13 @@ mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
 #[cfg(test)]
+mod workspace_lint_drift_guard_tests;
+#[cfg(test)]
 mod workspace_lint_inheritance_tests;
 #[cfg(test)]
 mod workspace_lint_policy_tests;
+#[cfg(test)]
+mod workspace_lint_ratchets_tests;
 
 #[cfg(test)]
 mod config_authority_denominator_tests;

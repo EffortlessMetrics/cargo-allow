@@ -1,0 +1,56 @@
+schema_version = 1
+# Revision note for the #3903 PR A direct minimum version contract.
+
+# This diff adds the typed direct minimum version contract:
+# DirectMinimumVersionSetV1 / ProductDependencySetV1 /
+# DirectRequirementRowV1 / MinimumVersionProofRequestV1 /
+# MinimumVersionProofReceiptV1 / MinimumVersionRowResultV1 in
+# allow-report, with evaluate_minimum_version_proof encoding the
+# negative controls (the current lock is never floor proof; compatible
+# newer versions cannot substitute for the declared floor; a newer
+# toolchain fails loudly; identity movement stales the receipt; zero
+# selected rows is an instrument failure; unavailable and
+# compile-incompatible dispositions stay distinct; one product's proof
+# never satisfies another's request). The fixture corpus covers a
+# valid floor, a too-low floor, an unavailable version, a target-only
+# edge, and an incompatible transitive combination; the live
+# workspace inventory is report-only and changes no dependency
+# requirement. The source-exception additions receipt only the
+# syntax-visible constructs the new law and fixture tests introduce:
+# allow-11241 and allow-11242 are glob-ratcheted expect baselines, and
+# the allow-11243 record receipts this revision-note file itself per
+# the per-note receipt law. No existing exception is weakened, no
+# expiry is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11241"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5220082f6f3c55d3c47a7414cc52dcd6531dd1f4ca5a56266280046a7cc72691"
+
+[[records]]
+allow_ids = ["allow-11242"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8292a3516ff36ed4bb0c005ce40fc9a3901cccf9ebbb4f76be4866544e363d7d"
+
+[[records]]
+allow_ids = ["allow-11243"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2efec8909736d32d57e050970e32106ac5f590ba2dcf47f9e71d2e11170ca760"
+
+[[records]]
+allow_ids = ["allow-11245"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c64479510db27fb673f48018bc5b51ff7d23e7a244368f9ca820496c7d8605a6"
+
+[[records]]
+allow_ids = ["allow-11246"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6a51236f9af5783e16db9c1a57e72941463d8982bd1163049a76b7ccc71ccdcd"
+
+[[records]]
+allow_ids = ["allow-11242"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:8292a3516ff36ed4bb0c005ce40fc9a3901cccf9ebbb4f76be4866544e363d7d"
+after_fingerprint = "sha256:v1:c1e1cd3b86092dc8475f75de3eb1d835fb3429460b38cef7dab3be6bbc9b58cd"
