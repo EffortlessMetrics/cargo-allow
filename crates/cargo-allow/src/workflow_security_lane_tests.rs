@@ -330,6 +330,50 @@ fn workflow_security_lane_views_render_deterministically() {
 }
 
 #[test]
+fn workflow_security_lane_candidate_status_tool_is_an_instrument_failure() {
+    // A run graded against an inventory whose security tool is still a
+    // candidate pending qualification is an instrument failure: the
+    // analyzer had not yet been qualified when the findings were
+    // produced.
+    let mut inventory = live_inventory();
+    for selection in &mut inventory.tool_selections {
+        if selection.tool == "zizmor" {
+            selection.status =
+                allow_report::WorkflowSecurityToolStatusV1::CandidatePendingQualification;
+        }
+    }
+    let report = evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[]);
+    assert_eq!(
+        report.result,
+        WorkflowSecurityLaneResultV1::InstrumentFailure
+    );
+    assert!(
+        report.limitations.iter().any(
+            |limitation| limitation.contains("still a candidate pending fixture qualification")
+        ),
+        "the candidate status is named: {:?}",
+        report.limitations
+    );
+
+    // The instrument-failure view renders with its label and reasons.
+    let human = allow_report::render_workflow_security_human(&report);
+    assert!(human.contains("result=instrument_failure"), "{human}");
+    let json = allow_report::render_workflow_security_json(&report).expect("json renders");
+    let parsed: allow_report::WorkflowSecurityLaneReportV1 =
+        serde_json::from_str(&json).expect("json parses");
+    assert_eq!(parsed, report);
+}
+
+#[test]
+fn workflow_security_lane_disposition_labels_are_stable() {
+    assert_eq!(WorkflowSecurityDispositionV1::Open.label(), "open");
+    assert_eq!(
+        WorkflowSecurityDispositionV1::ExceptionAccepted.label(),
+        "exception_accepted"
+    );
+}
+
+#[test]
 fn workflow_security_lane_checked_exceptions_reference_the_denominator() {
     // The checked-in exceptions file names only inventoried paths and
     // qualified rules, with owner, reason, evidence, and review date.
