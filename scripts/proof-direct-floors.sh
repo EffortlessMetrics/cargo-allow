@@ -180,6 +180,28 @@ def declared_requirement(spec):
         return spec
     return spec["version"]
 
+def default_enables(manifest, dep):
+    # Whether a default feature transitively enables the dependency
+    # (dep:x edges or legacy same-name feature edges). The certified
+    # set is the default-feature compile set: an optional dependency a
+    # default feature enables is compiled — and certifiable — by the
+    # proof classes.
+    features = manifest.get("features", {})
+    seen = set()
+    stack = list(features.get("default", []))
+    while stack:
+        feature = stack.pop()
+        if feature in seen:
+            continue
+        seen.add(feature)
+        for edge in features.get(feature, []):
+            name = edge[4:] if edge.startswith("dep:") else edge
+            if name == dep:
+                return True
+            if name in features:
+                stack.append(name)
+    return False
+
 closure = []
 seen = set()
 stack = sorted(roots, reverse=True)
@@ -196,6 +218,7 @@ while stack:
     manifest = tomllib.load(open(f"{name_dir[name]}/Cargo.toml", "rb"))
     for table in ("dependencies", "build-dependencies"):
         for dep, spec in manifest.get(table, {}).items():
+            member_optional = isinstance(spec, dict) and spec.get("optional")
             inherited = isinstance(spec, dict) and spec.get("workspace")
             if inherited:
                 if dep not in ws_deps:
@@ -203,10 +226,12 @@ while stack:
                 spec = ws_deps[dep]
             if isinstance(spec, dict) and "git" in spec:
                 fail(f"{name} declares a git dependency {dep}; out of proof scope")
-            if isinstance(spec, dict) and spec.get("optional"):
-                # Optional dependencies are not part of the default
-                # feature set the proof classes compile; they stay out
-                # of the closure and the certified floor inventory.
+            resolved_optional = isinstance(spec, dict) and spec.get("optional")
+            if (member_optional or resolved_optional) and not default_enables(manifest, dep):
+                # Optional dependencies stay out of the closure and the
+                # certified floor inventory unless a default feature
+                # enables them; an explicit optional = false never
+                # excludes a dependency.
                 continue
             if isinstance(spec, dict) and "path" in spec:
                 # An inherited spec's path is workspace-root relative; a
@@ -423,7 +448,9 @@ if product == "cargo-allow":
         "not every target or feature combination",
         "internal =0.2.0 workspace pins are proven by the same closure build",
         "dev-dependencies are exercised by the test class but are not certified floors",
-        "optional dependencies and non-default features stay outside the certified set",
+        "the certified set is the closure's default-feature compile set: optional "
+        "dependencies enabled by a default feature are certified; optional "
+        "dependencies no default feature enables stay outside it",
         "the drift meta-tests are excluded from the floored test class by name "
         "(they grade this proof's own retained receipts); CI runs them against "
         "every committed tree",
@@ -441,7 +468,9 @@ else:
         "not every target or feature combination",
         "advisory: report-only product rows never gate the cargo-allow release set",
         "dev-dependencies are exercised by the test class but are not certified floors",
-        "optional dependencies and non-default features stay outside the certified set",
+        "the certified set is the closure's default-feature compile set: optional "
+        "dependencies enabled by a default feature are certified; optional "
+        "dependencies no default feature enables stay outside it",
     ]
 
 receipt = {

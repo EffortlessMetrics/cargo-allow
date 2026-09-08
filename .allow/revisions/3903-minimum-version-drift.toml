@@ -19,7 +19,9 @@ schema_version = 1
 # the live grading test pins every retained receipt to the current
 # tree. The source-exception additions receipt only the
 # syntax-visible constructs the new surfaces introduce: allow-11254 is
-# the expect ratchet for the selection module's own tests,
+# the expect ratchet for the selection module's own tests (including
+# the synthetic fixture workspace that pins the optional-dependency
+# default-feature rule and the line-ending-independent digest),
 # allow-11255 the drift command tests' expect ratchet, allow-11256 the
 # drift law and live grading tests' expect ratchet, allow-11257 the
 # live grading test's macro_name-scoped panic ratchet, and the
@@ -32,7 +34,7 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11254"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:557c003e9f94ef3f86efee77a1bec41911ca6543e71cc9129564bff6228e96a4"
+after_fingerprint = "sha256:v1:20ea95601f5a318f958a278db3afaf0106322fe37da54567ab1fce5daf7032ef"
 
 [[records]]
 allow_ids = ["allow-11255"]

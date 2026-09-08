@@ -258,6 +258,141 @@ fn minimum_direct_version_drift_legacy_roots_binding_stays_optional() {
 }
 
 #[test]
+fn minimum_direct_version_drift_empty_denominator_fails_closed() {
+    // Empty observation floors plus empty receipt rows must not pass
+    // as current: the release set cannot be current without proving
+    // any dependency floor.
+    let mut empty = observation("cargo-allow");
+    empty.floors = Vec::new();
+    let evaluation =
+        evaluate_minimum_version_drift(&empty, Some(&receipt("cargo-allow", Vec::new())));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation.blocking,
+        "an empty release-set denominator blocks"
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("empty floor denominator")),
+        "the empty denominator is named: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_drift_rejects_altered_proof_details() {
+    // A receipt whose package names and Proven dispositions stay
+    // intact but whose proof details moved is incomplete, with the
+    // exact alteration named: declared requirement, tested floor,
+    // resolved substitution, schema identity, toolchain, and command
+    // evidence each gate the current verdict.
+    let base = observation("cargo-allow");
+    let base_receipt = || {
+        receipt(
+            "cargo-allow",
+            vec![row("serde", MinimumFloorResultV1::Proven)],
+        )
+    };
+
+    let mut requirement_moved = base.clone();
+    for floor in &mut requirement_moved.floors {
+        floor.declared_requirement = "1.1".to_string();
+    }
+    let evaluation = evaluate_minimum_version_drift(&requirement_moved, Some(&base_receipt()));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("declared requirement moved for serde")),
+        "the requirement movement is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut floor_moved = base.clone();
+    for floor in &mut floor_moved.floors {
+        floor.selected_floor = "1.0.200".to_string();
+    }
+    let evaluation = evaluate_minimum_version_drift(&floor_moved, Some(&base_receipt()));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("tested floor moved for serde")),
+        "the floor movement is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut substituted = base_receipt();
+    for row in &mut substituted.rows {
+        row.resolved_version = "1.0.228".to_string();
+    }
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&substituted));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("resolved substitution for serde")),
+        "the substitution is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut schema_moved = base_receipt();
+    schema_moved.schema_id = "cargo-allow.some-other-contract.v1".to_string();
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&schema_moved));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("receipt schema cargo-allow.some-other-contract.v1")),
+        "the schema mismatch is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut version_moved = base_receipt();
+    version_moved.schema_version = 2;
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&version_moved));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("receipt schema version 2")),
+        "the schema version mismatch is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut toolchain_moved = base_receipt();
+    toolchain_moved.toolchain = "1.96.0".to_string();
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&toolchain_moved));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation.reasons.iter().any(|reason| reason
+            .contains("receipt toolchain 1.96.0 does not match the claimed msrv 1.95")),
+        "the toolchain mismatch is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut commandless = base_receipt();
+    commandless.commands = Vec::new();
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&commandless));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("receipt records no executed commands")),
+        "the missing command evidence is named: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
 fn minimum_direct_version_drift_blocking_follows_the_release_set_only() {
     // Negative control 10: the identical stale state blocks for the
     // cargo-allow release set and stays advisory for a report-only

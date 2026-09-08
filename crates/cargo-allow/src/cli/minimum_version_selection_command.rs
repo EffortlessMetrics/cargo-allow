@@ -92,8 +92,23 @@ pub(super) fn cmd_min_version_drift(args: &MinVersionDriftArgs) -> CargoAllowRes
                     receipt.as_ref(),
                 ));
             }
-            for evaluation in &evaluations {
-                render(evaluation, check.format)?;
+            // One valid machine-readable document: the JSON view is a
+            // single array of the evaluations, while the human view
+            // renders one block per product.
+            if check.format == MinVersionDriftOutputFormat::Json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&evaluations).map_err(|error| {
+                        CargoAllowError::with_kind(
+                            CargoAllowErrorKind::InstrumentFailure,
+                            format!("evaluation serialization: {error}"),
+                        )
+                    })?
+                );
+            } else {
+                for evaluation in &evaluations {
+                    render(evaluation, check.format)?;
+                }
             }
             let blocked: Vec<&MinimumVersionDriftEvaluationV1> = evaluations
                 .iter()

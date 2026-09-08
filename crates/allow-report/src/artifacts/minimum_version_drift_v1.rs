@@ -20,7 +20,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::artifacts::minimum_direct_version_v1::{
-    MinimumFloorResultV1, MinimumVersionProofReceiptV1,
+    MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
+    MinimumVersionProofReceiptV1,
 };
 
 pub const MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID: &str =
@@ -157,12 +158,67 @@ pub fn evaluate_minimum_version_drift(
         return finish(MinimumVersionDriftVerdictV1::Stale, reasons);
     }
 
-    // Identity-current: grade floor coverage in both directions.
+    // Identity-current: grade the receipt's full proof contract, not
+    // merely package-name coverage — schema identity, toolchain,
+    // execution evidence, complete floor-row identity, and non-clean
+    // dispositions all stay visible.
+    if observation.floors.is_empty() {
+        reasons.push("empty floor denominator: no floor rows were selected".to_string());
+    }
+    if receipt.schema_id != MINIMUM_DIRECT_VERSION_SCHEMA_ID {
+        reasons.push(format!(
+            "receipt schema {} is not {}",
+            receipt.schema_id, MINIMUM_DIRECT_VERSION_SCHEMA_ID
+        ));
+    }
+    if receipt.schema_version != MINIMUM_DIRECT_VERSION_SCHEMA_VERSION {
+        reasons.push(format!(
+            "receipt schema version {} is not {}",
+            receipt.schema_version, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION
+        ));
+    }
+    if !receipt.toolchain.starts_with(&observation.msrv) {
+        reasons.push(format!(
+            "receipt toolchain {} does not match the claimed msrv {}",
+            receipt.toolchain, observation.msrv
+        ));
+    }
+    if receipt.commands.is_empty() {
+        reasons.push("receipt records no executed commands".to_string());
+    }
     for floor in &observation.floors {
-        if !receipt.rows.iter().any(|row| row.package == floor.package) {
+        let Some(row) = receipt.rows.iter().find(|row| row.package == floor.package) else {
             reasons.push(format!(
                 "no receipt row for declared floor {}",
                 floor.package
+            ));
+            continue;
+        };
+        if row.declared_requirement != floor.declared_requirement {
+            reasons.push(format!(
+                "declared requirement moved for {}: receipt {} vs current {}",
+                floor.package, row.declared_requirement, floor.declared_requirement
+            ));
+        }
+        if row.tested_floor != floor.selected_floor {
+            reasons.push(format!(
+                "tested floor moved for {}: receipt {} vs current {}",
+                floor.package, row.tested_floor, floor.selected_floor
+            ));
+        }
+        // A proven row must have resolved exactly the tested floor; a
+        // compatible newer version proves nothing about the floor.
+        // Registry build metadata (+spec-1.1.0) carries no SemVer
+        // precedence, so the comparison uses the base version.
+        let resolved_base = row
+            .resolved_version
+            .split('+')
+            .next()
+            .unwrap_or(&row.resolved_version);
+        if row.result == MinimumFloorResultV1::Proven && resolved_base != row.tested_floor {
+            reasons.push(format!(
+                "resolved substitution for {}: resolved {} but the tested floor is {}",
+                floor.package, row.resolved_version, row.tested_floor
             ));
         }
     }

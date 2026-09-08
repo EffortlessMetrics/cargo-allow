@@ -19733,9 +19733,9 @@ family = "expect"
 glob = "crates/cargo-allow/src/minimum_version_selection.rs"
 owner = "core/deps"
 classification = "reviewed_exception"
-reason = "Invariant-guarded expects in the floor selection derivation module's own tests (#3903 PR D); every expect guards a registered product, a parse of the checked-in workspace manifests, or a digest derivation whose success is the property under test"
+reason = "Invariant-guarded expects in the floor selection derivation module's own tests (#3903 PR D); every expect guards a registered product, a parse of the checked-in workspace manifests, a fixture workspace write, or a digest derivation whose success is the property under test"
 evidence = ["issue:3903"]
-occurrence_limit = 5
+occurrence_limit = 14
 created = "2026-09-07"
 review_after = "2026-12-06"
 
