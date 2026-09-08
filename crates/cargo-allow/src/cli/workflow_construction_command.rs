@@ -1,0 +1,199 @@
+//! Read-only aggregate over the pinned syntax lane and the qualified
+//! security lane (#3907 PR D).
+//!
+//! Advisory exit contract: a completed aggregate — clean or with
+//! findings — exits zero so the hosted lane reports without blocking;
+//! only an aggregate instrument failure exits nonzero. The report is
+//! always emitted first and can be retained under failure without
+//! masking the result. Enforcement selection is the #2283/#2284
+//! authority.
+
+use std::path::PathBuf;
+
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_report::{
+    WorkflowSecurityToolRunV1, WorkflowSyntaxToolRunV1, aggregate_workflow_construction,
+    evaluate_workflow_security_run, evaluate_workflow_syntax_run,
+    render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
+    workflow_construction_inventory,
+};
+use clap::{Parser, Subcommand};
+
+/// Read-only workflow construction aggregate (hidden automation
+/// tooling).
+#[derive(Debug, Clone, Parser)]
+#[command(disable_version_flag = true)]
+pub(crate) struct WorkflowConstructionArgs {
+    #[command(subcommand)]
+    pub(crate) command: WorkflowConstructionSubcommand,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub(crate) enum WorkflowConstructionSubcommand {
+    /// Aggregate the two lane tool runs into the stable semantic
+    /// report.
+    #[command(hide = true)]
+    Aggregate(WorkflowConstructionAggregateArgs),
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct WorkflowConstructionAggregateArgs {
+    /// Syntax-lane tool-run JSON (scripts/check-workflow-syntax.sh).
+    #[arg(long)]
+    pub(crate) syntax_run: PathBuf,
+    /// Security-lane tool-run JSON
+    /// (scripts/check-workflow-security.sh).
+    #[arg(long)]
+    pub(crate) security_run: PathBuf,
+    /// Reviewed exceptions TOML for the security lane.
+    #[arg(long)]
+    pub(crate) exceptions: PathBuf,
+    /// Repository root the inventory compiles against (defaults to the
+    /// current directory).
+    #[arg(long, default_value = ".")]
+    pub(crate) root: PathBuf,
+    /// Output rendering.
+    #[arg(long, default_value = "json")]
+    pub(crate) format: WorkflowConstructionOutputFormat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub(crate) enum WorkflowConstructionOutputFormat {
+    Json,
+    Human,
+}
+
+pub(super) fn cmd_workflow_construction(args: &WorkflowConstructionArgs) -> CargoAllowResult<()> {
+    let WorkflowConstructionSubcommand::Aggregate(aggregate_args) = &args.command;
+    let syntax_run: WorkflowSyntaxToolRunV1 = read_json(&aggregate_args.syntax_run)?;
+    let security_run: WorkflowSecurityToolRunV1 = read_json(&aggregate_args.security_run)?;
+
+    let exception_bytes = std::fs::read(&aggregate_args.exceptions).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "exceptions read {}: {error}",
+                aggregate_args.exceptions.display()
+            ),
+        )
+    })?;
+    #[derive(serde::Deserialize)]
+    struct ExceptionsDoc {
+        #[serde(default)]
+        exceptions: Vec<allow_report::WorkflowSecurityExceptionV1>,
+    }
+    let exceptions_doc: ExceptionsDoc = toml::from_slice(&exception_bytes).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("exceptions parse: {error}"),
+        )
+    })?;
+
+    let root = &aggregate_args.root;
+    let inventory = workflow_construction_inventory(root)
+        .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::InvalidConfig, error))?;
+    let syntax_report = evaluate_workflow_syntax_run(&syntax_run, &inventory);
+    // UTC today as ISO (YYYY-MM-DD); expired exceptions stop applying.
+    let today = std::process::Command::new("date")
+        .arg("-u")
+        .arg("+%Y-%m-%d")
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InstrumentFailure,
+                "cannot determine today's UTC date for exception expiry".to_string(),
+            )
+        })?;
+    let security_report = evaluate_workflow_security_run(
+        &security_run,
+        &inventory,
+        &exceptions_doc.exceptions,
+        &today,
+    );
+
+    let aggregate = aggregate_workflow_construction(&inventory, &syntax_report, &security_report);
+    match aggregate_args.format {
+        WorkflowConstructionOutputFormat::Json => {
+            println!(
+                "{}",
+                render_workflow_construction_aggregate_json(&aggregate).map_err(|error| {
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::InstrumentFailure,
+                        format!("aggregate serialization: {error}"),
+                    )
+                })?
+            );
+        }
+        WorkflowConstructionOutputFormat::Human => {
+            println!(
+                "{}",
+                render_workflow_construction_aggregate_human(&aggregate)
+            );
+        }
+    }
+
+    // Advisory: a completed aggregate — clean or with findings — exits
+    // zero; the evidence is never masked by a blocking exit. Only an
+    // aggregate instrument failure exits nonzero.
+    if aggregate.result == allow_report::WorkflowConstructionAggregateResultV1::InstrumentFailure {
+        Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::PolicyViolation,
+            format!(
+                "workflow construction aggregate is an instrument failure; resolve the lanes: {}",
+                aggregate.limitations.join("; ")
+            ),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn read_json<T: serde::de::DeserializeOwned>(path: &PathBuf) -> CargoAllowResult<T> {
+    let bytes = std::fs::read(path).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("tool run read {}: {error}", path.display()),
+        )
+    })?;
+    serde_json::from_slice(&bytes).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("tool run {}: {error}", path.display()),
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evaluate_fails_closed_on_a_malformed_syntax_run() {
+        let root = workspace_root();
+        let bad =
+            std::env::temp_dir().join(format!("wf-constr-malformed-{}.json", std::process::id()));
+        std::fs::write(&bad, "{ not json }").expect("fixture writes");
+        let args = WorkflowConstructionArgs {
+            command: WorkflowConstructionSubcommand::Aggregate(WorkflowConstructionAggregateArgs {
+                syntax_run: bad.clone(),
+                security_run: root.join("policy/workflow-security-exceptions.toml"),
+                exceptions: root.join("policy/workflow-security-exceptions.toml"),
+                root,
+                format: WorkflowConstructionOutputFormat::Human,
+            }),
+        };
+        let outcome = cmd_workflow_construction(&args);
+        let _ = std::fs::remove_file(&bad);
+        assert!(outcome.is_err(), "a malformed syntax run fails closed");
+    }
+
+    fn workspace_root() -> PathBuf {
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is set"))
+            .join("../..")
+            .canonicalize()
+            .expect("workspace root resolves")
+    }
+}

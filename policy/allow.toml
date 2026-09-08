@@ -20151,3 +20151,77 @@ glob = ".allow/revisions/3907-workflow-security-lane.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11272"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_aggregate_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow construction aggregate tests (#3907 PR D); every expect guards a live inventory derivation, a selected tool entry, or a fixture whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 10
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_aggregate_tests.rs"
+
+[[allow]]
+id = "allow-11273"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_construction_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the aggregate command tests (#3907 PR D); every expect guards a fixture write or a workspace root resolution whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 3
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_construction_command.rs"
+
+[[allow]]
+id = "allow-11274"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-construction.sh"
+owner = "core/deps"
+classification = "workflow_construction_aggregate_runner"
+reason = "Aggregate lane runner (#3907 PR D): drives both lane scripts in fetch-only mode, grades them through the workflow-construction CLI, and retains the aggregate artifact even under instrument failure. Read-only over the live tree."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-construction.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-construction.sh"
+
+[[allow]]
+id = "allow-11275"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow construction aggregate source exceptions added by the #3907 PR D lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

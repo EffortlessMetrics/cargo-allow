@@ -43,6 +43,7 @@ mod release_operation_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
+mod workflow_construction_aggregate_v1;
 mod workflow_construction_v1;
 mod workflow_security_lane_v1;
 mod workflow_syntax_lane_v1;
@@ -235,6 +236,12 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workflow_construction_aggregate_v1::{
+    WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_ID, WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_VERSION,
+    WorkflowConstructionAggregateLaneV1, WorkflowConstructionAggregateResultV1,
+    WorkflowConstructionAggregateV1, aggregate_workflow_construction,
+    render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
 };
 pub use workflow_construction_v1::{
     WORKFLOW_CONSTRUCTION_FAMILIES_ALL, WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_ID,

@@ -1,0 +1,23 @@
+{
+  "schema_id": "cargo-allow.workflow-construction-aggregate.v1",
+  "schema_version": 1,
+  "denominator_digest": "sha256:v1:3fd2b0681f4ca3078113335da6ec2e8189e2488e789538826db25b535d910c9c",
+  "syntax_lane": {
+    "lane": "syntax",
+    "result": "clean",
+    "finding_count": 0
+  },
+  "security_lane": {
+    "lane": "security",
+    "result": "findings",
+    "finding_count": 110
+  },
+  "result": "findings",
+  "open_security_findings": 97,
+  "accepted_security_findings": 13,
+  "syntax_findings": 0,
+  "limitations": [
+    "advisory: this aggregate does not gate; enforcement selection is the #2283/#2284 authority"
+  ],
+  "claim_boundary": "Stable semantic aggregate over the pinned syntax lane and the qualified security lane: per-lane results are preserved verbatim, an instrument failure dominates findings, and the advisory posture holds until the aggregate lane's authority (#2283/#2284) selects enforcement. No workflow is mutated and no network lookup enters ordinary cargo-allow scans."
+}

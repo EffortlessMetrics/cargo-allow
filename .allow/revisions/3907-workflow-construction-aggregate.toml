@@ -1,0 +1,46 @@
+schema_version = 1
+# Revision note for the #3907 PR D workflow construction aggregate.
+
+# This diff lands the stable semantic aggregate: a typed
+# WorkflowConstructionAggregateV1 in allow-report combines the pinned
+# syntax lane report and the qualified security lane report over the
+# same denominator digest into one report whose result is clean only
+# when both lanes are clean; an instrument failure in either lane
+# dominates findings, findings stay visible with their dispositions
+# (open and exception-accepted are counted separately), and
+# denominator drift between the lanes fails closed. The hidden
+# workflow-construction aggregate CLI emits the report; the aggregate
+# runner script drives both lane scripts in fetch-only mode and
+# retains the aggregate artifact even under instrument failure; the
+# advisory workflow-construction CI job uploads the artifact with
+# if-always retention so the evidence is never masked by the exit.
+# Enforcement selection is the #2283/#2284 authority and remains
+# unwired here. The source-exception additions receipt only the
+# syntax-visible constructs the new surfaces introduce: allow-11272 is
+# the expect ratchet for the aggregate tests, allow-11273 the
+# aggregate command tests' expect ratchet, allow-11274 receipts the
+# aggregate runner script, and allow-11275 receipts this revision-note
+# file itself per the per-note receipt law. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened: the
+# records below are additions. policy/allow.toml keeps its CRLF
+# line-ending contract; the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11272"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:48d429a257646dfc894a78dd8278a7874445fd17a34ca75bbabbc03feec386f5"
+
+[[records]]
+allow_ids = ["allow-11273"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:77a6100bdec62a4be11a56c8e2bdc66662c6907ec4f7967e4baae03374e8b146"
+
+[[records]]
+allow_ids = ["allow-11274"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:91e5774d23e3ed5cf000327bc43eae6f17ae6629d98c941a9dfcd4402af01f78"
+
+[[records]]
+allow_ids = ["allow-11275"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:42efadca14f830fa2f48270ea8a50e2a243957a3dc90ab3a46a45cf44ea8e317"
