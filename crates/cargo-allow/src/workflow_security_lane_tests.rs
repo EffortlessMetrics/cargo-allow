@@ -21,6 +21,8 @@ fn workspace_root() -> PathBuf {
         .expect("workspace root resolves")
 }
 
+const TODAY: &str = "2026-09-08";
+
 fn live_inventory() -> allow_report::WorkflowConstructionInventoryV1 {
     workflow_construction_inventory(&workspace_root()).expect("the live inventory compiles")
 }
@@ -70,7 +72,8 @@ fn raw_finding(path: &str, ident: &str) -> WorkflowSecurityRawFindingV1 {
 #[test]
 fn workflow_security_lane_clean_run_is_clean() {
     let inventory = live_inventory();
-    let report = evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[]);
+    let report =
+        evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[], TODAY);
     assert_eq!(report.result, WorkflowSecurityLaneResultV1::Clean);
     assert!(report.findings.is_empty());
     assert_eq!(report.schema_id, "cargo-allow.workflow-security-lane.v1");
@@ -83,7 +86,7 @@ fn workflow_security_lane_tool_identity_drift_is_an_instrument_failure() {
     let inventory = live_inventory();
     let mut version_drift = matching_tool_run(&inventory);
     version_drift.version = "0.9.0".to_string();
-    let report = evaluate_workflow_security_run(&version_drift, &inventory, &[]);
+    let report = evaluate_workflow_security_run(&version_drift, &inventory, &[], TODAY);
     assert_eq!(
         report.result,
         WorkflowSecurityLaneResultV1::InstrumentFailure
@@ -100,7 +103,7 @@ fn workflow_security_lane_tool_identity_drift_is_an_instrument_failure() {
 
     let mut wrong_tool = matching_tool_run(&inventory);
     wrong_tool.tool = "not-zizmor".to_string();
-    let report = evaluate_workflow_security_run(&wrong_tool, &inventory, &[]);
+    let report = evaluate_workflow_security_run(&wrong_tool, &inventory, &[], TODAY);
     assert_eq!(
         report.result,
         WorkflowSecurityLaneResultV1::InstrumentFailure
@@ -118,7 +121,7 @@ fn workflow_security_lane_tool_identity_drift_is_an_instrument_failure() {
     denominator_drift
         .covered
         .retain(|path| path.ends_with("ci.yml"));
-    let report = evaluate_workflow_security_run(&denominator_drift, &inventory, &[]);
+    let report = evaluate_workflow_security_run(&denominator_drift, &inventory, &[], TODAY);
     assert_eq!(
         report.result,
         WorkflowSecurityLaneResultV1::InstrumentFailure
@@ -141,7 +144,7 @@ fn workflow_security_lane_out_of_scope_finding_is_an_instrument_failure() {
         "examples/github-actions/cargo-allow-check.yml",
         "artipacked",
     )];
-    let report = evaluate_workflow_security_run(&run, &inventory, &[]);
+    let report = evaluate_workflow_security_run(&run, &inventory, &[], TODAY);
     assert_eq!(
         report.result,
         WorkflowSecurityLaneResultV1::InstrumentFailure
@@ -165,7 +168,7 @@ fn workflow_security_lane_native_rule_identity_is_preserved_and_mapped() {
         raw_finding(".github/workflows/ci.yml", "artipacked"),
         raw_finding(".github/workflows/ci.yml", "never-seen-check"),
     ];
-    let report = evaluate_workflow_security_run(&run, &inventory, &[]);
+    let report = evaluate_workflow_security_run(&run, &inventory, &[], TODAY);
     assert_eq!(report.findings.len(), 3);
     let by_rule: BTreeSet<&str> = report
         .findings
@@ -220,7 +223,7 @@ fn workflow_security_lane_exact_exceptions_apply_and_others_stay_open() {
         raw_finding(".github/workflows/release.yml", "artipacked"),
         raw_finding(".github/workflows/ci.yml", "template-injection"),
     ];
-    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions);
+    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions, TODAY);
     assert_eq!(report.findings.len(), 3);
     let accepted: Vec<_> = report
         .findings
@@ -300,7 +303,7 @@ fn workflow_security_lane_views_render_and_round_trip() {
         ".github/workflows/release.yml",
         "template-injection",
     )];
-    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions);
+    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions, TODAY);
     let human = allow_report::render_workflow_security_human(&report);
     assert!(
         human.starts_with("workflow-security: tool=zizmor version=1.30.0 result=findings"),
@@ -317,7 +320,8 @@ fn workflow_security_lane_views_render_and_round_trip() {
 #[test]
 fn workflow_security_lane_views_render_deterministically() {
     let inventory = live_inventory();
-    let report = evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[]);
+    let report =
+        evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[], TODAY);
     let human = allow_report::render_workflow_security_human(&report);
     assert!(
         human.starts_with("workflow-security: tool=zizmor version=1.30.0 result=clean"),
@@ -342,7 +346,8 @@ fn workflow_security_lane_candidate_status_tool_is_an_instrument_failure() {
                 allow_report::WorkflowSecurityToolStatusV1::CandidatePendingQualification;
         }
     }
-    let report = evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[]);
+    let report =
+        evaluate_workflow_security_run(&matching_tool_run(&inventory), &inventory, &[], TODAY);
     assert_eq!(
         report.result,
         WorkflowSecurityLaneResultV1::InstrumentFailure
@@ -371,6 +376,75 @@ fn workflow_security_lane_disposition_labels_are_stable() {
         WorkflowSecurityDispositionV1::ExceptionAccepted.label(),
         "exception_accepted"
     );
+}
+
+#[test]
+fn workflow_security_lane_wrong_tool_name_fails_closed() {
+    let inventory = live_inventory();
+    let mut wrong = matching_tool_run(&inventory);
+    wrong.tool = "actionlint".to_string();
+    wrong.version = "1.7.7".to_string();
+    let report = evaluate_workflow_security_run(&wrong, &inventory, &[], TODAY);
+    assert_eq!(
+        report.result,
+        WorkflowSecurityLaneResultV1::InstrumentFailure
+    );
+    assert!(
+        report
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("is not the qualified security analyzer")),
+        "the wrong analyzer is named: {:?}",
+        report.limitations
+    );
+}
+
+#[test]
+fn workflow_security_lane_online_runs_are_not_offline_evidence() {
+    let inventory = live_inventory();
+    let mut online = matching_tool_run(&inventory);
+    online.offline_mode = false;
+    let report = evaluate_workflow_security_run(&online, &inventory, &[], TODAY);
+    assert_eq!(
+        report.result,
+        WorkflowSecurityLaneResultV1::InstrumentFailure
+    );
+    assert!(
+        report
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("not produced in offline mode")),
+        "the online-mode mismatch is named: {:?}",
+        report.limitations
+    );
+}
+
+#[test]
+fn workflow_security_lane_expired_exceptions_stop_applying() {
+    // An exception past its review_after date stops applying: the
+    // finding returns to open advisory signal and must be re-reviewed
+    // to be suppressed again.
+    let inventory = live_inventory();
+    let exceptions = vec![WorkflowSecurityExceptionV1 {
+        path: ".github/workflows/release.yml".to_string(),
+        rule: "template-injection".to_string(),
+        owner: "core/release".to_string(),
+        reason: "deliberate".to_string(),
+        evidence: vec!["issue:3907".to_string()],
+        review_after: "2026-01-01".to_string(),
+    }];
+    let mut run = matching_tool_run(&inventory);
+    run.raw_findings = vec![raw_finding(
+        ".github/workflows/release.yml",
+        "template-injection",
+    )];
+    let report = evaluate_workflow_security_run(&run, &inventory, &exceptions, "2026-09-08");
+    assert_eq!(
+        report.findings[0].disposition,
+        WorkflowSecurityDispositionV1::Open,
+        "the expired exception no longer applies"
+    );
+    assert_eq!(report.findings[0].exception_owner, None);
 }
 
 #[test]

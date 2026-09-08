@@ -171,10 +171,16 @@ fn exception_applies<'a>(
     finding_path: &str,
     finding_rule: &str,
     exceptions: &'a [WorkflowSecurityExceptionV1],
+    today: &str,
 ) -> Option<&'a WorkflowSecurityExceptionV1> {
-    exceptions
-        .iter()
-        .find(|exception| exception.path == finding_path && exception.rule == finding_rule)
+    // An expired exception stops applying: the finding returns to open
+    // advisory signal and must be re-reviewed to be suppressed again.
+    // Dates are ISO (YYYY-MM-DD), so lexicographic order is date order.
+    exceptions.iter().find(|exception| {
+        exception.path == finding_path
+            && exception.rule == finding_rule
+            && exception.review_after.as_str() >= today
+    })
 }
 
 /// Grade one validated tool run against the workflow construction
@@ -184,9 +190,27 @@ pub fn evaluate_workflow_security_run(
     tool_run: &WorkflowSecurityToolRunV1,
     inventory: &WorkflowConstructionInventoryV1,
     exceptions: &[WorkflowSecurityExceptionV1],
+    today: &str,
 ) -> WorkflowSecurityLaneReportV1 {
     let mut instrument: Vec<String> = Vec::new();
 
+    if tool_run.tool != "zizmor" {
+        // The qualified security analyzer for this lane is zizmor; a
+        // run from any other tool is not this lane's evidence even if
+        // some inventory entry shares its version.
+        instrument.push(format!(
+            "tool {} is not the qualified security analyzer (zizmor)",
+            tool_run.tool
+        ));
+    }
+    if !tool_run.offline_mode {
+        // An online run's evidence includes network-sourced audits the
+        // lane cannot account for; it is never this lane's offline
+        // evidence.
+        instrument.push(
+            "tool run was not produced in offline mode; online audits are outside the lane's evidence".to_string(),
+        );
+    }
     let selection = inventory
         .tool_selections
         .iter()
@@ -248,7 +272,7 @@ pub fn evaluate_workflow_security_run(
             continue;
         }
         let family = workflow_security_rule_family(&raw.ident);
-        let applying = exception_applies(&raw.path, &raw.ident, exceptions);
+        let applying = exception_applies(&raw.path, &raw.ident, exceptions, today);
         let (disposition, exception_owner) = if let Some(exception) = applying {
             (
                 WorkflowSecurityDispositionV1::ExceptionAccepted,

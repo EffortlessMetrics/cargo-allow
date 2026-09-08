@@ -66,11 +66,29 @@ fi
 
 # Offline: known-vulnerability audits needing network are out of scope
 # for this lane's evidence (#3907 PR C limitations).
+security_inputs=(.github/workflows .github/actions)
+if [[ -f action.yml ]]; then security_inputs+=(action.yml); fi
+if [[ -f action.yaml ]]; then security_inputs+=(action.yaml); fi
 set +e
-"${ZIZMOR}" --no-online-audits --format json --quiet .github/workflows .github/actions \
+# --no-exit-codes pins the only outcomes to 0 (completed; the findings
+# JSON is the evidence, validated below) and 1 (tool failure): the
+# tool's own findings-found exit convention must not gate this lane,
+# because the JSON is what gets graded.
+"${ZIZMOR}" --no-online-audits --no-exit-codes --format json --quiet "${security_inputs[@]}" \
   > "${work}/raw.json" 2> "${work}/stderr.log"
 status=$?
 set -e
+# Exit 0 = the run completed; the findings JSON is graded downstream.
+# Any other exit is a tool failure: partial output must not become
+# clean evidence even when it happens to parse.
+case ${status} in
+  0) ;;
+  *)
+    echo "check-workflow-security: zizmor failed (exit ${status})" >&2
+    cat "${work}/stderr.log" >&2
+    exit 1
+    ;;
+esac
 [[ -s "${work}/raw.json" ]] || {
   echo "check-workflow-security: zizmor produced no findings JSON (exit ${status})" >&2
   cat "${work}/stderr.log" >&2
@@ -102,8 +120,22 @@ def location_path(finding):
 rows = []
 for finding in raw:
     path = location_path(finding)
-    if not path or path not in covered:
-        continue
+    if not path:
+        # A finding whose location cannot be resolved must not vanish:
+        # fail the lane as an instrument failure.
+        print(
+            "check-workflow-security: finding with unresolvable location: "
+            + json.dumps(finding)[:200],
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if path not in covered:
+        print(
+            "check-workflow-security: finding names out-of-scope path "
+            + json.dumps(path),
+            file=sys.stderr,
+        )
+        sys.exit(1)
     det = finding.get("determinations", {})
     annotation = ""
     line = 0
