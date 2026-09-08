@@ -159,6 +159,58 @@ mod tests {
     }
 
     #[test]
+    fn evaluate_exits_zero_for_completed_advisory_runs() {
+        // Advisory: a completed run — clean or with open findings —
+        // exits zero. Only an instrument failure blocks.
+        let root = workspace_root();
+        let inventory =
+            workflow_construction_inventory(&root).expect("the live inventory compiles");
+        let selection = inventory
+            .tool_selections
+            .iter()
+            .find(|tool| tool.tool == "zizmor")
+            .expect("zizmor is selected");
+        let covered: Vec<String> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(
+                    surface.kind,
+                    allow_report::WorkflowConstructionSurfaceKindV1::Workflow
+                        | allow_report::WorkflowConstructionSurfaceKindV1::LocalAction
+                )
+            })
+            .map(|surface| surface.path.clone())
+            .collect();
+
+        let clean_run = WorkflowSecurityToolRunV1 {
+            tool: "zizmor".to_string(),
+            version: selection.version.clone().expect("selected version"),
+            offline_mode: true,
+            covered: covered.clone(),
+            raw_findings: Vec::new(),
+        };
+        let clean_path =
+            std::env::temp_dir().join(format!("wf-sec-clean-{}.json", std::process::id()));
+        std::fs::write(
+            &clean_path,
+            serde_json::to_string(&clean_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        let args = WorkflowSecurityArgs {
+            command: WorkflowSecuritySubcommand::Evaluate(WorkflowSecurityEvaluateArgs {
+                tool_run: clean_path.clone(),
+                exceptions: root.join("policy/workflow-security-exceptions.toml"),
+                root: root.clone(),
+                format: WorkflowSecurityOutputFormat::Json,
+            }),
+        };
+        let clean_outcome = cmd_workflow_security(&args);
+        let _ = std::fs::remove_file(&clean_path);
+        assert!(clean_outcome.is_ok(), "a clean advisory run exits zero");
+    }
+
+    #[test]
     fn evaluate_fails_closed_on_a_malformed_tool_run() {
         let path =
             std::env::temp_dir().join(format!("wf-sec-malformed-{}.json", std::process::id()));
