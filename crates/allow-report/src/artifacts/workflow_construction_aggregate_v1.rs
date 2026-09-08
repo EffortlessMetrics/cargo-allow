@@ -132,6 +132,14 @@ pub fn aggregate_workflow_construction(
     let mut limitations = Vec::new();
     if result == WorkflowConstructionAggregateResultV1::InstrumentFailure {
         limitations.extend(instrument.iter().cloned());
+        // Propagate the failing lane's own reasons: the aggregate names
+        // why each lane instrument-failed, not just that it did.
+        if syntax.result == WorkflowSyntaxLaneResultV1::InstrumentFailure {
+            limitations.extend(syntax.limitations.iter().cloned());
+        }
+        if security.result == WorkflowSecurityLaneResultV1::InstrumentFailure {
+            limitations.extend(security.limitations.iter().cloned());
+        }
         limitations.push(
             "aggregate instrument failure: the per-lane reports are retained above and in the lane artifacts".to_string(),
         );
