@@ -250,13 +250,13 @@ pub use artifacts::{
 
 // Dependency graph evidence adjacency (#3920 PR C).
 pub use artifacts::{
-    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS,
-    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION,
-    DependencyEvidenceAttachmentV1, DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1,
-    DependencyEvidenceDispositionV1, DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat,
-    DependencyGraphEvidenceReceiptV1, DependencyGraphEvidenceResultV1,
-    DependencyGraphEvidenceRowV1, attach_dependency_graph_evidence,
-    render_dependency_graph_evidence,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_REF_LEN,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID,
+    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION, DependencyEvidenceAttachmentV1,
+    DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
+    DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat, DependencyGraphEvidenceReceiptV1,
+    DependencyGraphEvidenceResultV1, DependencyGraphEvidenceRowV1,
+    attach_dependency_graph_evidence, render_dependency_graph_evidence,
 };
 
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).

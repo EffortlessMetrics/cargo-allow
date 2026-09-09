@@ -20327,7 +20327,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph evidence law tests (#3920 PR C); every expect guards an enrichment whose success or failure is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 16
+occurrence_limit = 19
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -20414,7 +20414,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph evidence CLI tests (#3920 PR C); every expect guards fixture construction or an outcome the test asserts on"
 evidence = ["issue:3920"]
-occurrence_limit = 12
+occurrence_limit = 14
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -20438,3 +20438,22 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3920-dependency-graph-evidence.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3920-dependency-graph-evidence.toml"
+
+[[allow]]
+id = "allow-11288"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the source-identity law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_old_source_evidence_never_binds_a_source_change"
+symbol = "fresh_source.records[0]"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"

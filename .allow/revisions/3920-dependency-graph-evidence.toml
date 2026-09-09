@@ -19,15 +19,21 @@ schema_version = 1
 # and the CLI test module, allow-11282 through allow-11285 receipt
 # the guarded single-record/first-row accesses in the law tests, and
 # allow-11287 receipts this revision-note file itself per the
-# per-note receipt law. No existing exception is weakened, no expiry
-# is extended, and no scope is broadened: the records below are
-# additions. policy/allow.toml keeps its CRLF line-ending contract;
-# the net transition is append-only.
+# per-note receipt law, and allow-11288 receipts the
+# source-identity law test's guarded access added during review.
+# Review also raised the expect ratchets to their shipped counts,
+# made the receipt result keep every moved row decision-required
+# regardless of evidence, bound records to source identity and
+# bundles to the exact manifest-set/lockfile digests, and rejected
+# duplicate or oversize authority scopes. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened: the
+# records below are additions. policy/allow.toml keeps its CRLF
+# line-ending contract; the net transition is append-only.
 
 [[records]]
 allow_ids = ["allow-11281"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:18979865a27503b5c26929776403a0e41c59ee04097eceabae89ed516ac72121"
+after_fingerprint = "sha256:v1:f1c545e917531dc19c27cefda35474f1e8fed57b7667d0f9e447cfe1d980b09e"
 
 [[records]]
 allow_ids = ["allow-11282"]
@@ -52,9 +58,14 @@ after_fingerprint = "sha256:v1:f529d68e0b106f74d55421e906b9955be625d5c45ca38a97a
 [[records]]
 allow_ids = ["allow-11286"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:7b46820f9024ed13f5ed072b7d119d4dad9d334398540f9d23c75acac2d66e0b"
+after_fingerprint = "sha256:v1:572f44ca6d868a11b093eaa318080c8af51524e289369b0a4abc40aabf224b3c"
 
 [[records]]
 allow_ids = ["allow-11287"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:5527b90bfb4050859b6ab6014d67dbd1fd63aa87c918d37fd4fabd6dad0d05ea"
+
+[[records]]
+allow_ids = ["allow-11288"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e1333a823de5b94d1f1522915d34324b91cf87a3d84e2fde8abd07349f586e53"

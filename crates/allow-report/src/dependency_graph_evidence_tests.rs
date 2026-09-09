@@ -68,6 +68,10 @@ fn bundle(records: Vec<DependencyEvidenceRecordV1>) -> DependencyEvidenceBundleV
         ],
         base_commit: "aaa111".to_string(),
         head_commit: "bbb222".to_string(),
+        base_manifest_set_digest: "sha256:v1:base".to_string(),
+        head_manifest_set_digest: "sha256:v1:head".to_string(),
+        base_lock_digest: "sha256:v1:base-lock".to_string(),
+        head_lock_digest: "sha256:v1:head-lock".to_string(),
         product: "cargo-allow".to_string(),
         target: "x86_64-unknown-linux-gnu".to_string(),
         records,
@@ -85,6 +89,7 @@ fn record(
         authority,
         package_name: package.to_string(),
         version: version.to_string(),
+        source: "registry".to_string(),
         reference: format!("{}:opaque-ref", authority.reference_scheme()),
         finding,
         advisory,
@@ -205,13 +210,178 @@ fn dependency_graph_evidence_advisory_residue_stays_a_decision() {
     .expect("advisory human view renders");
     assert!(human.contains("(advisory)"), "advisory residue is labeled");
 
-    // With the same record resolved as current evidence the same
-    // shape is fully current.
+    // With the same record resolved as current evidence the row's
+    // adjacency is current, but the moved row keeps the receipt at
+    // decision-required: a passing authority never resolves the
+    // movement itself (negative control 11).
     bundle.records[0].advisory = false;
     let enriched = attach_dependency_graph_evidence(&delta, &bundle).expect("enrichment succeeds");
     assert_eq!(
+        enriched.rows[0].disposition,
+        DependencyEvidenceDispositionV1::EvidenceCurrent
+    );
+    assert_eq!(
         enriched.result,
-        DependencyGraphEvidenceResultV1::EvidenceCurrent
+        DependencyGraphEvidenceResultV1::DecisionRequired
+    );
+}
+
+#[test]
+fn dependency_graph_evidence_moved_rows_stay_decision_required_under_full_coverage() {
+    // The reviewer's exact case: cargo-deny is the only scoped
+    // authority and its record is current for a downgraded package.
+    // The row's adjacency is current, yet the downgrade itself keeps
+    // the receipt decision-required.
+    let delta = receipt(vec![row(
+        DependencyGraphDeltaKindV1::PackageDowngraded,
+        "toml",
+        "0.8.1",
+    )]);
+    let mut deny_only = bundle(vec![record(
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        "toml",
+        "0.8.1",
+        false,
+        false,
+    )]);
+    deny_only.authorities_in_scope = vec![DependencyEvidenceAuthorityV1::CargoDeny];
+    let enriched =
+        attach_dependency_graph_evidence(&delta, &deny_only).expect("enrichment succeeds");
+    assert_eq!(
+        enriched.rows[0].disposition,
+        DependencyEvidenceDispositionV1::EvidenceCurrent,
+        "the deny evidence is current for the exact identity"
+    );
+    assert_eq!(
+        enriched.result,
+        DependencyGraphEvidenceResultV1::DecisionRequired,
+        "the downgrade is never erased by a passing authority"
+    );
+    assert_eq!(
+        enriched.rows[0].kind,
+        crate::DependencyGraphDeltaKindV1::PackageDowngraded
+    );
+}
+
+#[test]
+fn dependency_graph_evidence_old_source_evidence_never_binds_a_source_change() {
+    // A source or checksum change keeps the same name and version;
+    // evidence minted for the base source must not bind the head
+    // side's row.
+    let identity = delta_identity();
+    let source_row = DependencyGraphDeltaRowV1 {
+        kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
+        class: crate::DependencyClassV1::Normal,
+        package_name: "widget".to_string(),
+        base_version: "1.0.0".to_string(),
+        head_version: "1.0.0".to_string(),
+        base_requirement: String::new(),
+        head_requirement: String::new(),
+        base_source: "registry+https://crates.io".to_string(),
+        head_source: "git+https://example/widget".to_string(),
+        base_checksum: "old".to_string(),
+        head_checksum: "new".to_string(),
+    };
+    let delta = DependencyGraphDeltaReceiptV1 {
+        schema_id: crate::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID.to_string(),
+        schema_version: crate::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION,
+        identity,
+        rows: vec![source_row],
+        complete: true,
+        limitations: vec![],
+        claim_boundary: "bounded".to_string(),
+    };
+    let mut stale_source = bundle(vec![record(
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        "widget",
+        "1.0.0",
+        false,
+        false,
+    )]);
+    stale_source.authorities_in_scope = vec![DependencyEvidenceAuthorityV1::CargoDeny];
+    let enriched =
+        attach_dependency_graph_evidence(&delta, &stale_source).expect("enrichment succeeds");
+    assert_eq!(
+        enriched.rows[0].disposition,
+        DependencyEvidenceDispositionV1::EvidenceMissing,
+        "registry-minted evidence does not bind the git side"
+    );
+
+    // Evidence minted for the head source binds.
+    let mut fresh_source = stale_source;
+    fresh_source.records[0].source = "git+https://example/widget".to_string();
+    let enriched =
+        attach_dependency_graph_evidence(&delta, &fresh_source).expect("enrichment succeeds");
+    assert_eq!(
+        enriched.rows[0].disposition,
+        DependencyEvidenceDispositionV1::EvidenceCurrent
+    );
+}
+
+#[test]
+fn dependency_graph_evidence_digest_movement_fails_closed() {
+    // Commits alone do not bind: each input digest movement stales
+    // the bundle even when every commit label matches.
+    let delta = receipt(vec![row(
+        DependencyGraphDeltaKindV1::PackageUpgraded,
+        "serde",
+        "1.0.228",
+    )]);
+    let digest_fields = [
+        "base_manifest_set_digest",
+        "head_manifest_set_digest",
+        "base_lock_digest",
+        "head_lock_digest",
+    ];
+    for field in digest_fields {
+        let mut stale = bundle(vec![]);
+        match field {
+            "base_manifest_set_digest" => {
+                stale.base_manifest_set_digest = "sha256:v1:moved".to_string();
+            }
+            "head_manifest_set_digest" => {
+                stale.head_manifest_set_digest = "sha256:v1:moved".to_string();
+            }
+            "base_lock_digest" => stale.base_lock_digest = "sha256:v1:moved".to_string(),
+            _ => stale.head_lock_digest = "sha256:v1:moved".to_string(),
+        }
+        assert!(
+            attach_dependency_graph_evidence(&delta, &stale).is_err(),
+            "a {field} movement stales the bundle"
+        );
+    }
+}
+
+#[test]
+fn dependency_graph_evidence_rejects_invalid_scopes() {
+    // The authority set has exactly five members: a larger scope or a
+    // duplicated entry is malformed input, not a wider denominator.
+    let delta = receipt(vec![row(
+        DependencyGraphDeltaKindV1::PackageUpgraded,
+        "serde",
+        "1.0.228",
+    )]);
+    let mut oversized = bundle(vec![]);
+    oversized.authorities_in_scope = vec![
+        DependencyEvidenceAuthorityV1::MinimumVersion,
+        DependencyEvidenceAuthorityV1::DependencyFeature,
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        DependencyEvidenceAuthorityV1::PackageCandidate,
+        DependencyEvidenceAuthorityV1::SupportMatrix,
+        DependencyEvidenceAuthorityV1::CargoDeny,
+    ];
+    assert!(
+        attach_dependency_graph_evidence(&delta, &oversized).is_err(),
+        "a scope beyond the five-authority set fails closed"
+    );
+    let mut duplicated = bundle(vec![]);
+    duplicated.authorities_in_scope = vec![
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        DependencyEvidenceAuthorityV1::CargoDeny,
+    ];
+    assert!(
+        attach_dependency_graph_evidence(&delta, &duplicated).is_err(),
+        "a duplicated scope entry fails closed"
     );
 }
 

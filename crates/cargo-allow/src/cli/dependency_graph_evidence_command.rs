@@ -74,6 +74,20 @@ pub(super) fn cmd_dependency_graph_evidence(
                 format!("delta receipt parses: {error}"),
             )
         })?;
+    if delta.schema_id != allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID
+        || delta.schema_version != allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "delta receipt is `{}` v{}; this lane compiles `{}` v{} only",
+                delta.schema_id,
+                delta.schema_version,
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID,
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION
+            ),
+        ));
+    }
     let bundle_bytes = std::fs::read(&evaluate.bundle).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
@@ -152,7 +166,7 @@ mod tests {
         COUNTER.fetch_add(1, Ordering::SeqCst)
     }
 
-    fn delta_receipt_json() -> String {
+    fn delta_receipt_json_with(schema_id: &str, schema_version: u32) -> String {
         let identity = DependencyGraphDeltaIdentityV1 {
             base_commit: "aaa111".to_string(),
             head_commit: "bbb222".to_string(),
@@ -177,8 +191,8 @@ mod tests {
             head_checksum: String::new(),
         };
         let receipt = DependencyGraphDeltaReceiptV1 {
-            schema_id: allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID.to_string(),
-            schema_version: allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION,
+            schema_id: schema_id.to_string(),
+            schema_version,
             identity,
             rows: vec![row],
             complete: true,
@@ -190,18 +204,20 @@ mod tests {
 
     fn bundle_json(reference: &str) -> String {
         let bundle = DependencyEvidenceBundleV1 {
-            authorities_in_scope: vec![
-                DependencyEvidenceAuthorityV1::MinimumVersion,
-                DependencyEvidenceAuthorityV1::CargoDeny,
-            ],
+            authorities_in_scope: vec![DependencyEvidenceAuthorityV1::CargoDeny],
             base_commit: "aaa111".to_string(),
             head_commit: "bbb222".to_string(),
+            base_manifest_set_digest: "sha256:v1:base".to_string(),
+            head_manifest_set_digest: "sha256:v1:head".to_string(),
+            base_lock_digest: "sha256:v1:base-lock".to_string(),
+            head_lock_digest: "sha256:v1:head-lock".to_string(),
             product: "cargo-allow".to_string(),
             target: "x86_64-unknown-linux-gnu".to_string(),
             records: vec![DependencyEvidenceRecordV1 {
                 authority: DependencyEvidenceAuthorityV1::CargoDeny,
                 package_name: "serde".to_string(),
                 version: "1.0.228".to_string(),
+                source: "registry".to_string(),
                 reference: reference.to_string(),
                 finding: false,
                 advisory: false,
@@ -212,10 +228,58 @@ mod tests {
 
     #[test]
     fn evaluate_renders_the_enriched_receipt_to_the_output_file() {
-        let delta_path = unique_temp("delta");
-        let bundle_path = unique_temp("bundle");
-        let output_path = unique_temp("out");
-        std::fs::write(&delta_path, delta_receipt_json()).expect("delta fixture writes");
+        run_with_delta(delta_receipt_json_with(
+            allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID,
+            allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION,
+        ));
+    }
+
+    #[test]
+    fn evaluate_rejects_foreign_schema_identity() {
+        // A receipt under another schema id or version carries foreign
+        // semantics; enriching it as current v1 evidence fails closed.
+        let foreign_id = delta_receipt_json_with("cargo-allow.dependency-graph-delta.v1", 1);
+        assert!(
+            run_and_expect_err(foreign_id),
+            "a foreign schema id fails closed"
+        );
+        let foreign_version = delta_receipt_json_with(
+            allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID,
+            allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION + 1,
+        );
+        assert!(
+            run_and_expect_err(foreign_version),
+            "a foreign schema version fails closed"
+        );
+    }
+
+    fn run_and_expect_err(delta_json: String) -> bool {
+        let delta_path = unique_temp("delta-foreign");
+        let bundle_path = unique_temp("bundle-foreign");
+        std::fs::write(&delta_path, delta_json).expect("delta fixture writes");
+        std::fs::write(&bundle_path, bundle_json("deny:cargo-deny-run-42"))
+            .expect("bundle fixture writes");
+        let args = DependencyGraphEvidenceArgs {
+            command: DependencyGraphEvidenceSubcommand::Evaluate(
+                DependencyGraphEvidenceEvaluateArgs {
+                    delta: delta_path.clone(),
+                    bundle: bundle_path.clone(),
+                    format: DependencyGraphEvidenceOutputFormat::Json,
+                    output: None,
+                },
+            ),
+        };
+        let outcome = cmd_dependency_graph_evidence(&args);
+        let _ = std::fs::remove_file(&delta_path);
+        let _ = std::fs::remove_file(&bundle_path);
+        outcome.is_err()
+    }
+
+    fn run_with_delta(delta_json: String) {
+        let delta_path = unique_temp("delta-happy");
+        let bundle_path = unique_temp("bundle-happy");
+        let output_path = unique_temp("out-happy");
+        std::fs::write(&delta_path, delta_json).expect("delta fixture writes");
         std::fs::write(&bundle_path, bundle_json("deny:cargo-deny-run-42"))
             .expect("bundle fixture writes");
         let args = DependencyGraphEvidenceArgs {
@@ -245,7 +309,14 @@ mod tests {
     fn evaluate_fails_closed_on_identity_mismatch() {
         let delta_path = unique_temp("delta-stale");
         let bundle_path = unique_temp("bundle-stale");
-        std::fs::write(&delta_path, delta_receipt_json()).expect("delta fixture writes");
+        std::fs::write(
+            &delta_path,
+            delta_receipt_json_with(
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID,
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION,
+            ),
+        )
+        .expect("delta fixture writes");
         let mut bundle = bundle_json("deny:cargo-deny-run-42");
         // Point the bundle at a different head commit: stale evidence.
         bundle = bundle.replace("\"bbb222\"", "\"ccc333\"");
@@ -270,7 +341,14 @@ mod tests {
     fn evaluate_fails_closed_on_free_text_references() {
         let delta_path = unique_temp("delta-comment");
         let bundle_path = unique_temp("bundle-comment");
-        std::fs::write(&delta_path, delta_receipt_json()).expect("delta fixture writes");
+        std::fs::write(
+            &delta_path,
+            delta_receipt_json_with(
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_ID,
+                allow_report::DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION,
+            ),
+        )
+        .expect("delta fixture writes");
         std::fs::write(
             &bundle_path,
             bundle_json("looks fine to me, no concerns raised"),

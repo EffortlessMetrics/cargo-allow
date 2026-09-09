@@ -108,8 +108,14 @@ impl DependencyEvidenceDispositionV1 {
 pub struct DependencyEvidenceRecordV1 {
     pub authority: DependencyEvidenceAuthorityV1,
     pub package_name: String,
-    /// The exact resolved version the evidence covers.
+    /// The exact resolved version the evidence covers. Requirement-
+    /// only rows carry no version on the row and bind by name and
+    /// source instead.
     pub version: String,
+    /// The exact Cargo source identity the evidence covers; evidence
+    /// minted for one source never binds the other side of a source
+    /// or checksum change.
+    pub source: String,
     /// Typed reference (`receipt:...`, `policy:...`, `deny:...`).
     pub reference: String,
     /// The authority flags this row as a policy finding.
@@ -125,10 +131,15 @@ pub struct DependencyEvidenceRecordV1 {
 pub struct DependencyEvidenceBundleV1 {
     /// Authorities whose coverage is expected for moved rows in this
     /// run; a moved row without a binding record for an in-scope
-    /// authority is EvidenceMissing.
+    /// authority is EvidenceMissing. Duplicates and entries beyond
+    /// the five-authority set are malformed input.
     pub authorities_in_scope: Vec<DependencyEvidenceAuthorityV1>,
     pub base_commit: String,
     pub head_commit: String,
+    pub base_manifest_set_digest: String,
+    pub head_manifest_set_digest: String,
+    pub base_lock_digest: String,
+    pub head_lock_digest: String,
     pub product: String,
     pub target: String,
     pub records: Vec<DependencyEvidenceRecordV1>,
@@ -213,18 +224,40 @@ pub fn attach_dependency_graph_evidence(
     bundle: &DependencyEvidenceBundleV1,
 ) -> Result<DependencyGraphEvidenceReceiptV1, String> {
     // Identity movement between the delta and the bundle stales the
-    // evidence: an old receipt can never stay current (negative
-    // control 10).
+    // evidence: an old receipt can never stay current. Commits alone
+    // are not enough: the exact manifest-set and lockfile inputs the
+    // delta compiled must match too (negative control 10).
     if bundle.base_commit != delta.identity.base_commit
         || bundle.head_commit != delta.identity.head_commit
+        || bundle.base_manifest_set_digest != delta.identity.base_manifest_set_digest
+        || bundle.head_manifest_set_digest != delta.identity.head_manifest_set_digest
+        || bundle.base_lock_digest != delta.identity.base_lock_digest
+        || bundle.head_lock_digest != delta.identity.head_lock_digest
         || bundle.product != delta.identity.product
         || bundle.target != delta.identity.target
     {
-        return Err(
-            "evidence bundle identity does not match the delta receipt (base/head/product/target); \
-             the evidence is stale for this delta"
-                .to_string(),
-        );
+        return Err("evidence bundle identity does not match the delta receipt \
+             (base/head/digests/product/target); the evidence is stale for this delta"
+            .to_string());
+    }
+    if bundle.authorities_in_scope.len() > 5 {
+        return Err(format!(
+            "authorities_in_scope lists {} entries; the authority set has exactly five",
+            bundle.authorities_in_scope.len()
+        ));
+    }
+    for (index, authority) in bundle.authorities_in_scope.iter().enumerate() {
+        if bundle
+            .authorities_in_scope
+            .iter()
+            .skip(index + 1)
+            .any(|other| other == authority)
+        {
+            return Err(format!(
+                "authorities_in_scope repeats {}",
+                authority.as_str()
+            ));
+        }
     }
     if delta.rows.len() > DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS {
         return Err(format!(
@@ -253,14 +286,30 @@ pub fn attach_dependency_graph_evidence(
 
     let mut rows = Vec::with_capacity(delta.rows.len());
     for delta_row in &delta.rows {
-        let binding_version = if delta_row.kind == DependencyGraphDeltaKindV1::PackageRemoved {
+        let removed = delta_row.kind == DependencyGraphDeltaKindV1::PackageRemoved;
+        let binding_version = if removed {
             delta_row.base_version.as_str()
         } else {
             delta_row.head_version.as_str()
         };
+        let binding_source = if removed {
+            delta_row.base_source.as_str()
+        } else {
+            delta_row.head_source.as_str()
+        };
         let mut attachments: Vec<DependencyEvidenceAttachmentV1> = Vec::new();
         for record in &bundle.records {
-            if record.package_name != delta_row.package_name || record.version != binding_version {
+            if record.package_name != delta_row.package_name {
+                continue;
+            }
+            // A row without a resolved version (requirement-only
+            // movement) binds by name and source; a record minted for
+            // one source never binds the other side of a source or
+            // checksum change.
+            if !binding_version.is_empty() && record.version != binding_version {
+                continue;
+            }
+            if !binding_source.is_empty() && record.source != binding_source {
                 continue;
             }
             // A current record binds this exact identity. Evidence is
@@ -341,7 +390,16 @@ pub fn attach_dependency_graph_evidence(
     // receipt clean: every row must be current with zero advisory
     // residue, and an empty denominator is a decision, not a clean
     // result (negative control 11 and the zero-denominator law).
-    let result = if delta.rows.is_empty() || !delta.complete {
+    // Every semantic movement stays decision-required at the receipt
+    // level no matter how complete its evidence: the owning policy
+    // selects consequences (negative control 11). EvidenceCurrent
+    // means a complete, non-empty delta whose every row carries no
+    // semantic movement and whose adjacency is fully current with
+    // zero advisory residue.
+    let any_moved = delta.rows.iter().any(|row| {
+        row.kind.is_semantic() && row.kind != DependencyGraphDeltaKindV1::NoSemanticGraphChange
+    });
+    let result = if delta.rows.is_empty() || !delta.complete || any_moved {
         DependencyGraphEvidenceResultV1::DecisionRequired
     } else if rows.iter().all(|row| {
         row.disposition == DependencyEvidenceDispositionV1::EvidenceCurrent
@@ -367,6 +425,13 @@ pub fn attach_dependency_graph_evidence(
     })
 }
 
+/// Escape a validated typed reference for one Markdown table cell:
+/// pipes and backticks cannot corrupt the table or inline code.
+#[must_use]
+fn escape_markdown_cell(reference: &str) -> String {
+    reference.replace('|', "\\|").replace('`', "'")
+}
+
 /// Render the receipt as deterministic human Markdown from the same
 /// semantic result the JSON carries.
 #[must_use]
@@ -379,13 +444,11 @@ fn render_dependency_graph_evidence_human(receipt: &DependencyGraphEvidenceRecei
         receipt.complete
     ));
     out.push_str(&format!(
-        "Delta: `{}` `{}` base `{}` head `{}` product `{}` target `{}`\n\n",
+        "Delta: product `{}` target `{}` base `{}` head `{}`\n\n",
         receipt.delta_identity.product,
         receipt.delta_identity.target,
         receipt.delta_identity.base_commit,
-        receipt.delta_identity.head_commit,
-        receipt.delta_identity.product,
-        receipt.delta_identity.target
+        receipt.delta_identity.head_commit
     ));
     out.push_str("| Row | Kind | Disposition | Attachments |\n|---|---|---|---|\n");
     for row in &receipt.rows {
@@ -395,9 +458,15 @@ fn render_dependency_graph_evidence_human(receipt: &DependencyGraphEvidenceRecei
             row.attachments
                 .iter()
                 .map(|attachment| {
+                    let reference = if attachment.reference.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" `{}`", escape_markdown_cell(&attachment.reference))
+                    };
                     format!(
-                        "{} `{}`{}",
+                        "{}{} `{}`{}",
                         attachment.authority.as_str(),
+                        reference,
                         attachment.disposition.as_str(),
                         if attachment.advisory {
                             " (advisory)"
