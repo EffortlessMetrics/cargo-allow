@@ -14,7 +14,6 @@ classification = "reviewed_lint_exception"
 reason = "Fixture keeps lint suppression with stale last_seen for refresh receipt proof."
 evidence = ["test:refresh-receipt-fixture"]
 created = "2026-05-09"
-review_after = "2026-09-09"
 expires = "2026-12-31"
 
 [allow.selector]

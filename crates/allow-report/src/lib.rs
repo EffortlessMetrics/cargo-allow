@@ -228,6 +228,14 @@ pub use artifacts::{
     render_workflow_security_json, workflow_security_rule_family,
 };
 
+// Workflow construction aggregate (#3907 PR D).
+pub use artifacts::{
+    WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_ID, WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_VERSION,
+    WorkflowConstructionAggregateLaneV1, WorkflowConstructionAggregateResultV1,
+    WorkflowConstructionAggregateV1, aggregate_workflow_construction,
+    render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
+};
+
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).
 pub use artifacts::{
     CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,

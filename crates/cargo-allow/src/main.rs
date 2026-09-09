@@ -247,6 +247,8 @@ mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
 #[cfg(test)]
+mod workflow_construction_aggregate_tests;
+#[cfg(test)]
 mod workflow_construction_inventory_tests;
 #[cfg(test)]
 mod workflow_security_fixtures_tests;
