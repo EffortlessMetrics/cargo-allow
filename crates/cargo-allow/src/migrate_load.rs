@@ -434,7 +434,7 @@ called_by = [".github/workflows/ci.yml"]
 owner = "release/ci"
 reason = "Installs cargo-deny in the deny job."
 created = "2026-05-09"
-review_after = "2026-09-09"
+review_after = "2027-03-09"
 "#
     }
 
