@@ -236,6 +236,13 @@ pub use artifacts::{
     render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
 };
 
+// Dependency graph delta contract (#3920 PR A).
+pub use artifacts::{
+    DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
+    DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
+    DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+};
+
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).
 pub use artifacts::{
     CrateFeatureInventoryV1, CrateOptionalDependencyV1, FEATURE_CONFIGURATION_MATRIX_ID,
