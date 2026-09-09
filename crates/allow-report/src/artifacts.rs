@@ -113,7 +113,9 @@ pub use ci_pregate_result_v1::{
     CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
 };
-pub use dependency_graph_delta_compiler::compile_dependency_graph_delta;
+pub use dependency_graph_delta_compiler::{
+    compile_dependency_graph_delta, validate_lock_document, validate_manifest_document,
+};
 #[cfg(test)]
 pub(crate) use dependency_graph_delta_compiler::{
     parse_lock_packages, parse_manifest_requirements,

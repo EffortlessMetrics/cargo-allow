@@ -425,3 +425,43 @@ fn default_identity() -> DependencyGraphDeltaIdentityV1 {
         target: "x86_64-unknown-linux-gnu".to_string(),
     }
 }
+
+#[test]
+fn dependency_graph_delta_compiler_resolves_workspace_in_merged_manifests() {
+    // A synthesized merged member manifest carries its own
+    // [workspace.dependencies]; inherited requirement movement is
+    // visible without a separate workspace input.
+    let identity = default_identity();
+    let base =
+        "[workspace.dependencies]\ntoml = \"1\"\n\n[dependencies]\ntoml = { workspace = true }\n";
+    let head = "[workspace.dependencies]\ntoml = \"1\"\n\n[dependencies]\n";
+    let receipt = compile_dependency_graph_delta(&identity, base, head, "", "")
+        .expect("merged manifests compile");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::DirectRequirementRemoved
+            && row.package_name == "toml"),
+        "the inherited requirement removal is detected: {:?}",
+        receipt.rows
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_unions_member_features_with_inherited() {
+    // Cargo unions member-local features with the inherited spec's
+    // features; adding or removing a member feature must move the
+    // delta's feature set even though the workspace table is
+    // unchanged.
+    let identity = default_identity();
+    let base = "[workspace.dependencies]\nserde = { version = \"1\", features = [\"std\"] }\n\n[dependencies]\nserde = { workspace = true }\n";
+    let head = "[workspace.dependencies]\nserde = { version = \"1\", features = [\"std\"] }\n\n[dependencies]\nserde = { workspace = true, features = [\"derive\"] }\n";
+    let receipt = compile_dependency_graph_delta(&identity, base, head, "", "")
+        .expect("merged manifests compile");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::FeatureActivationChanged
+            && row.package_name == "serde"),
+        "the member-local feature activation is detected: {:?}",
+        receipt.rows
+    );
+}

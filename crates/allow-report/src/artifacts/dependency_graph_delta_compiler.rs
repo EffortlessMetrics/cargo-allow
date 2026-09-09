@@ -108,7 +108,14 @@ pub(crate) fn parse_manifest_requirements(
             let ws_deps = workspace_deps
                 .and_then(|ws| ws.get("dependencies"))
                 .and_then(toml::Value::as_table);
-            match ws_deps.and_then(|table| table.get(name.as_str())) {
+            // Cargo unions member-local features with the inherited
+            // spec's features; the same union is what the delta must
+            // see or a member-only feature change disappears.
+            let member_features = match spec {
+                toml::Value::String(_) => Vec::new(),
+                table => spec_features(table),
+            };
+            let mut features = match ws_deps.and_then(|table| table.get(name.as_str())) {
                 Some(ws_spec) => match ws_spec {
                     toml::Value::String(version) => (version.clone(), Vec::new()),
                     table => (
@@ -121,7 +128,11 @@ pub(crate) fn parse_manifest_requirements(
                     ),
                 },
                 None => (String::new(), Vec::new()),
-            }
+            };
+            features.1.extend(member_features);
+            features.1.sort();
+            features.1.dedup();
+            features
         } else {
             match spec {
                 toml::Value::String(version) => (version.clone(), Vec::new()),
@@ -146,6 +157,37 @@ pub(crate) fn parse_manifest_requirements(
     requirements
 }
 
+/// Validate one manifest document strictly for the producer
+/// boundary: parse errors are malformed input, not an empty set.
+pub fn validate_manifest_document(text: &str) -> Result<(), String> {
+    toml::from_str::<toml::Value>(text)
+        .map(|_| ())
+        .map_err(|error| format!("manifest document does not parse: {error}"))
+}
+
+/// Validate one lockfile document strictly for the producer boundary:
+/// a lock parses as TOML and carries at least one `[[package]]` entry.
+pub fn validate_lock_document(text: &str) -> Result<(), String> {
+    let value: toml::Value =
+        toml::from_str(text).map_err(|error| format!("lock document does not parse: {error}"))?;
+    let empty = value
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .map(|entries| entries.is_empty())
+        .unwrap_or(true);
+    if empty {
+        return Err("lock document carries no [[package]] entries".to_string());
+    }
+    Ok(())
+}
+
+/// Parse one manifest text's `[workspace]` table for inherited
+/// requirement resolution; unparseable text contributes nothing.
+fn parse_workspace_dependencies(manifest: &str) -> Option<toml::Value> {
+    let value: toml::Value = toml::from_str(manifest).ok()?;
+    value.get("workspace").cloned()
+}
+
 /// Extract a sorted, deduplicated feature list from one dependency
 /// spec table. String specs carry no features.
 fn spec_features(spec: &toml::Value) -> Vec<String> {
@@ -167,6 +209,10 @@ fn spec_features(spec: &toml::Value) -> Vec<String> {
 
 /// Compile one base/head pair into the typed delta receipt. Pure and
 /// deterministic: the same inputs always produce the same output.
+/// Workspace-inherited requirements (`workspace = true`) are resolved
+/// from each manifest's own `[workspace.dependencies]` table when the
+/// manifest text carries one, so a merged member-dep manifest can be
+/// compiled with the same entry point.
 pub fn compile_dependency_graph_delta(
     identity: &DependencyGraphDeltaIdentityV1,
     base_manifest: &str,
@@ -174,11 +220,38 @@ pub fn compile_dependency_graph_delta(
     base_lock: &str,
     head_lock: &str,
 ) -> Result<DependencyGraphDeltaReceiptV1, String> {
+    compile_dependency_graph_delta_with_workspace(
+        identity,
+        base_manifest,
+        head_manifest,
+        Some(base_manifest),
+        Some(head_manifest),
+        base_lock,
+        head_lock,
+    )
+}
+
+/// Compile one base/head pair with explicit workspace manifest texts
+/// for `workspace = true` requirement resolution. `None` leaves
+/// inherited entries unresolved (empty requirement).
+pub fn compile_dependency_graph_delta_with_workspace(
+    identity: &DependencyGraphDeltaIdentityV1,
+    base_manifest: &str,
+    head_manifest: &str,
+    base_workspace_manifest: Option<&str>,
+    head_workspace_manifest: Option<&str>,
+    base_lock: &str,
+    head_lock: &str,
+) -> Result<DependencyGraphDeltaReceiptV1, String> {
     let mut rows = Vec::new();
 
-    // Parse both manifests for direct requirements.
-    let base_reqs = parse_manifest_requirements(base_manifest, None);
-    let head_reqs = parse_manifest_requirements(head_manifest, None);
+    // Parse both manifests for direct requirements, resolving
+    // `workspace = true` entries against each side's own
+    // [workspace.dependencies] table.
+    let base_workspace = base_workspace_manifest.and_then(parse_workspace_dependencies);
+    let head_workspace = head_workspace_manifest.and_then(parse_workspace_dependencies);
+    let base_reqs = parse_manifest_requirements(base_manifest, base_workspace.as_ref());
+    let head_reqs = parse_manifest_requirements(head_manifest, head_workspace.as_ref());
     let base_req_map: std::collections::BTreeMap<&str, &str> = base_reqs
         .iter()
         .map(|req| (req.name.as_str(), req.requirement.as_str()))
