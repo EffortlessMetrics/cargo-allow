@@ -20274,7 +20274,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 20
+occurrence_limit = 21
 created = "2026-09-09"
 review_after = "2026-12-09"
 

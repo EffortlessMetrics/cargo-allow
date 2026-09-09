@@ -482,17 +482,21 @@ fn is_version_down(base: &str, head: &str) -> bool {
 /// differing version requirements. A major-version floor change is a
 /// raise or a lowering; movement within the same major that adds
 /// segment precision to the floor narrows the accepted range, and
-/// removing precision broadens it.
+/// removing precision broadens it. Requirements whose floor cannot be
+/// read as a plain integer (comparator prefixes such as `^` or `>=`,
+/// non-numeric floors) cannot be ordered from syntax alone and fail
+/// closed instead of guessing a polarity.
 fn classify_requirement_movement(base: &str, head: &str) -> DependencyGraphDeltaKindV1 {
-    let major = |requirement: &str| -> u64 {
+    let floor_major = |requirement: &str| -> Option<u64> {
         requirement
             .split('.')
             .next()
             .and_then(|part| part.parse::<u64>().ok())
-            .unwrap_or(0)
+    };
+    let (Some(base_major), Some(head_major)) = (floor_major(base), floor_major(head)) else {
+        return DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure;
     };
     let segments = |requirement: &str| -> usize { requirement.split('.').count() };
-    let (base_major, head_major) = (major(base), major(head));
     if head_major > base_major {
         return DependencyGraphDeltaKindV1::DirectRequirementRaised;
     }
@@ -508,7 +512,9 @@ fn classify_requirement_movement(base: &str, head: &str) -> DependencyGraphDelta
             } else if is_version_down(base, head) {
                 DependencyGraphDeltaKindV1::DirectRequirementLowered
             } else {
-                DependencyGraphDeltaKindV1::RequirementRangeBroadened
+                // Textually different but numerically identical floors:
+                // no requirement boundary moved.
+                DependencyGraphDeltaKindV1::NoSemanticGraphChange
             }
         }
     }

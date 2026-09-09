@@ -6,8 +6,9 @@
 //! serializes and round-trips.
 
 use allow_report::{
-    DependencyClassV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
-    DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+    DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DependencyClassV1, DependencyGraphDeltaIdentityV1,
+    DependencyGraphDeltaKindV1, DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1,
+    dependency_graph_delta_fixtures,
 };
 
 fn all_kinds() -> Vec<DependencyGraphDeltaKindV1> {
@@ -189,7 +190,7 @@ fn dependency_graph_delta_receipt_serializes_and_round_trips() {
         head_checksum: "new".to_string(),
     };
     let receipt = DependencyGraphDeltaReceiptV1 {
-        schema_id: "cargo-allow.dependency-graph-delta.v1".to_string(),
+        schema_id: DEPENDENCY_GRAPH_DELTA_SCHEMA_ID.to_string(),
         schema_version: 1,
         identity,
         rows: vec![row],

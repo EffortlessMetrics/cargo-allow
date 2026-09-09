@@ -221,11 +221,44 @@ fn dependency_graph_delta_compiler_classifies_within_major_requirement_movement(
         kinds
     );
     assert!(
+        kinds.contains(&("flat", DependencyGraphDeltaKindV1::NoSemanticGraphChange)),
+        "an equal-valued textual change moved no boundary: {:?}",
+        kinds
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_fails_closed_on_unorderable_requirements() {
+    // Comparator-prefixed requirements cannot be ordered from syntax
+    // alone: the movement is visible but its polarity is an instrument
+    // failure, never a guessed direction.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\ncaret = \"^1.0\"\n",
+        "[dependencies]\ncaret = \"^2.0\"\n",
+        "",
+        "",
+    )
+    .expect("compilation succeeds");
+    let kinds: Vec<_> = receipt
+        .rows
+        .iter()
+        .map(|row| (row.package_name.as_str(), row.kind))
+        .collect();
+    assert!(
         kinds.contains(&(
-            "flat",
-            DependencyGraphDeltaKindV1::RequirementRangeBroadened
+            "caret",
+            DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
         )),
-        "an equal-valued textual change is not a raise: {:?}",
+        "the unorderable movement fails closed: {:?}",
+        kinds
+    );
+    assert!(
+        !kinds
+            .iter()
+            .any(|(name, kind)| *name == "caret" && kind.is_semantic()),
+        "no polarity is guessed for the unorderable movement: {:?}",
         kinds
     );
 }

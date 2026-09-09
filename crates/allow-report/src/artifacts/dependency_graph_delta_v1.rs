@@ -10,7 +10,10 @@
 
 use serde::{Deserialize, Serialize};
 
-pub const DEPENDENCY_GRAPH_DELTA_SCHEMA_ID: &str = "cargo-allow.dependency-graph-delta.v1";
+/// Distinct from allow-diff's `cargo-allow.dependency-graph-delta.v1`
+/// evaluation receipt: this identity names the allow-report compiler
+/// receipt whose rows are compiled from exact manifest/lockfile text.
+pub const DEPENDENCY_GRAPH_DELTA_SCHEMA_ID: &str = "cargo-allow.dependency-graph-delta-compiler.v1";
 pub const DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION: u32 = 1;
 
 /// The delta kind for one dependency graph row.
