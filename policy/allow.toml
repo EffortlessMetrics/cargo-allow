@@ -20178,7 +20178,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the aggregate command tests (#3907 PR D); every expect guards a fixture write or a workspace root resolution whose success is the property under test"
 evidence = ["issue:3907"]
-occurrence_limit = 13
+occurrence_limit = 19
 created = "2026-09-08"
 review_after = "2026-12-08"
 

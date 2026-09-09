@@ -181,25 +181,6 @@ mod tests {
             std::env::temp_dir().join(format!("wf-constr-security-{}.json", std::process::id()));
         let inventory =
             workflow_construction_inventory(&root).expect("the live inventory compiles");
-        let selection = inventory
-            .tool_selections
-            .iter()
-            .find(|tool| tool.tool == "actionlint")
-            .expect("actionlint is selected");
-        let syntax_run = WorkflowSyntaxToolRunV1 {
-            tool: "actionlint".to_string(),
-            version: selection.version.clone().expect("selected version"),
-            pin_identity: selection.pin_identity.clone().expect("selected pin"),
-            arguments: vec!["-shellcheck=".to_string()],
-            covered: Vec::new(),
-            uncovered: Vec::new(),
-            raw_findings: Vec::new(),
-        };
-        std::fs::write(
-            &syntax_path,
-            serde_json::to_string(&syntax_run).expect("serializes"),
-        )
-        .expect("fixture writes");
         let covered_workflows_examples: Vec<String> = inventory
             .surfaces
             .iter()
@@ -275,6 +256,102 @@ mod tests {
         let _ = std::fs::remove_file(&syntax_path);
         let _ = std::fs::remove_file(&security_path);
         assert!(outcome.is_ok(), "a clean aggregate exits zero: {outcome:?}");
+    }
+
+    #[test]
+    fn evaluate_reports_instrument_failure_and_exits_nonzero() {
+        // A tool run whose pin drifted makes the syntax lane an
+        // instrument failure; the aggregate reports it and the command
+        // exits nonzero, but the human view is still printed.
+        let root = workspace_root();
+        let syntax_path =
+            std::env::temp_dir().join(format!("wf-constr-dead-{}.json", std::process::id()));
+        let security_path =
+            std::env::temp_dir().join(format!("wf-constr-dead-sec-{}.json", std::process::id()));
+        let mut syntax_run = syntax_tool_run_for_test(&root);
+        syntax_run.version = "0.0.1".to_string();
+        std::fs::write(
+            &syntax_path,
+            serde_json::to_string(&syntax_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        let security_run = security_tool_run_for_test(&root);
+        std::fs::write(
+            &security_path,
+            serde_json::to_string(&security_run).expect("serializes"),
+        )
+        .expect("fixture writes");
+        let args = WorkflowConstructionArgs {
+            command: WorkflowConstructionSubcommand::Aggregate(WorkflowConstructionAggregateArgs {
+                syntax_run: syntax_path.clone(),
+                security_run: security_path.clone(),
+                exceptions: root.join("policy/workflow-security-exceptions.toml"),
+                root: root.clone(),
+                format: WorkflowConstructionOutputFormat::Human,
+            }),
+        };
+        let outcome = cmd_workflow_construction(&args);
+        let _ = std::fs::remove_file(&syntax_path);
+        let _ = std::fs::remove_file(&security_path);
+        assert!(outcome.is_err(), "an instrument failure exits nonzero");
+    }
+
+    fn syntax_tool_run_for_test(root: &std::path::Path) -> WorkflowSyntaxToolRunV1 {
+        let inventory = workflow_construction_inventory(root).expect("the live inventory compiles");
+        let selection = inventory
+            .tool_selections
+            .iter()
+            .find(|tool| tool.tool == "actionlint")
+            .expect("actionlint is selected");
+        let covered: Vec<String> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(
+                    surface.kind,
+                    allow_report::WorkflowConstructionSurfaceKindV1::Workflow
+                        | allow_report::WorkflowConstructionSurfaceKindV1::CheckedExample
+                )
+            })
+            .map(|surface| surface.path.clone())
+            .collect();
+        WorkflowSyntaxToolRunV1 {
+            tool: "actionlint".to_string(),
+            version: selection.version.clone().expect("selected version"),
+            pin_identity: selection.pin_identity.clone().expect("selected pin"),
+            arguments: vec!["-shellcheck=".to_string()],
+            covered,
+            uncovered: Vec::new(),
+            raw_findings: Vec::new(),
+        }
+    }
+
+    fn security_tool_run_for_test(root: &std::path::Path) -> WorkflowSecurityToolRunV1 {
+        let inventory = workflow_construction_inventory(root).expect("the live inventory compiles");
+        let selection = inventory
+            .tool_selections
+            .iter()
+            .find(|tool| tool.tool == "zizmor")
+            .expect("zizmor is selected");
+        let covered: Vec<String> = inventory
+            .surfaces
+            .iter()
+            .filter(|surface| {
+                matches!(
+                    surface.kind,
+                    allow_report::WorkflowConstructionSurfaceKindV1::Workflow
+                        | allow_report::WorkflowConstructionSurfaceKindV1::LocalAction
+                )
+            })
+            .map(|surface| surface.path.clone())
+            .collect();
+        WorkflowSecurityToolRunV1 {
+            tool: "zizmor".to_string(),
+            version: selection.version.clone().expect("selected version"),
+            offline_mode: true,
+            covered,
+            raw_findings: Vec::new(),
+        }
     }
 
     #[test]
