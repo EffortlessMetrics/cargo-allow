@@ -213,6 +213,53 @@ mod tests {
     }
 
     #[test]
+    fn compile_prints_the_receipt_to_stdout_without_an_output_path() {
+        // The producer lane's default rendering covers the stdout
+        // branch; cargo test captures the output.
+        let base_manifest = write("bm-stdout", "[dependencies]\nserde = \"1\"\n");
+        let head_manifest = write("hm-stdout", "[dependencies]\nserde = \"1\"\n");
+        let base_lock = write(
+            "bl-stdout",
+            "[[package]]\nname = \"serde\"\nversion = \"1.0.200\"\n",
+        );
+        let head_lock = write(
+            "hl-stdout",
+            "[[package]]\nname = \"serde\"\nversion = \"1.0.228\"\n",
+        );
+        let args = compile_args(base_manifest, head_manifest, base_lock, head_lock, None);
+        let outcome = cmd_dependency_graph_delta(&args);
+        assert!(outcome.is_ok(), "the stdout path compiles: {outcome:?}");
+    }
+
+    #[test]
+    fn compile_fails_closed_on_a_missing_input_file() {
+        let base_manifest = unique_temp("missing");
+        let head_manifest = write("hm-missing", "[dependencies]\nserde = \"1\"\n");
+        let base_lock = write(
+            "bl-missing",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let head_lock = write(
+            "hl-missing",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let args = compile_args(base_manifest, head_manifest, base_lock, head_lock, None);
+        let outcome = cmd_dependency_graph_delta(&args);
+        assert!(outcome.is_err(), "an unreadable input fails immediately");
+    }
+
+    #[test]
+    fn compile_fails_closed_on_a_malformed_head_lock() {
+        let base_manifest = write("bm-hl", "[dependencies]\nserde = \"1\"\n");
+        let head_manifest = write("hm-hl", "[dependencies]\nserde = \"1\"\n");
+        let base_lock = write("bl-hl", "[[package]]\nname = \"serde\"\nversion = \"1\"\n");
+        let head_lock = write("hl-hl", "prose, not a lockfile");
+        let args = compile_args(base_manifest, head_manifest, base_lock, head_lock, None);
+        let outcome = cmd_dependency_graph_delta(&args);
+        assert!(outcome.is_err(), "a malformed head lock fails immediately");
+    }
+
+    #[test]
     fn compile_fails_closed_on_empty_required_input() {
         let base_manifest = write("bm-empty", "");
         let head_manifest = write("hm", "[dependencies]\nserde = \"1\"\n");
