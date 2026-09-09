@@ -181,12 +181,13 @@ fn dependency_graph_delta_compiler_handles_empty_inputs() {
 fn dependency_graph_delta_compiler_classifies_within_major_requirement_movement() {
     // Same-major movement with equal floor precision compares the
     // numeric floors; losing floor precision broadens the accepted
-    // range.
+    // range. Crossing a major boundary is a raise or a lowering even
+    // when precision is unchanged.
     let identity = default_identity();
     let receipt = compile_dependency_graph_delta(
         &identity,
-        "[dependencies]\nleft = \"1.2\"\nright = \"1.0.5\"\n",
-        "[dependencies]\nleft = \"1.5\"\nright = \"1.0\"\n",
+        "[dependencies]\nleft = \"1.2\"\nright = \"1.0.5\"\nrise = \"0.8\"\nsink = \"1.5\"\nflat = \"01.0\"\n",
+        "[dependencies]\nleft = \"1.5\"\nright = \"1.0\"\nrise = \"1\"\nsink = \"1.2\"\nflat = \"1.0\"\n",
         "",
         "",
     )
@@ -208,6 +209,94 @@ fn dependency_graph_delta_compiler_classifies_within_major_requirement_movement(
         )),
         "the precision loss is detected as a broadened range: {:?}",
         kinds
+    );
+    assert!(
+        kinds.contains(&("rise", DependencyGraphDeltaKindV1::DirectRequirementRaised)),
+        "the major-boundary raise is detected: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&("sink", DependencyGraphDeltaKindV1::DirectRequirementLowered)),
+        "the same-precision lowering is detected: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&(
+            "flat",
+            DependencyGraphDeltaKindV1::RequirementRangeBroadened
+        )),
+        "an equal-valued textual change is not a raise: {:?}",
+        kinds
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_receipts_direct_requirement_add_and_remove() {
+    // A direct requirement that appears or disappears is its own row;
+    // a head-only requirement means the package's stable resolution is
+    // not described as lock-only movement.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\nkeeper = \"1\"\nghost = \"0.8\"\n",
+        "[dependencies]\nkeeper = \"1\"\narrival = \"1\"\n",
+        "[[package]]\nname = \"keeper\"\nversion = \"1.0.0\"\n\n\
+         [[package]]\nname = \"arrival\"\nversion = \"1.0.0\"\n\n\
+         [[package]]\nname = \"ghost\"\nversion = \"0.8.0\"\n",
+        "[[package]]\nname = \"keeper\"\nversion = \"1.0.0\"\n\n\
+         [[package]]\nname = \"arrival\"\nversion = \"1.0.0\"\n",
+    )
+    .expect("compilation succeeds");
+    let kinds: Vec<_> = receipt
+        .rows
+        .iter()
+        .map(|row| (row.package_name.as_str(), row.kind))
+        .collect();
+    assert!(
+        kinds.contains(&(
+            "arrival",
+            DependencyGraphDeltaKindV1::DirectRequirementAdded
+        )),
+        "the added requirement is detected: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&(
+            "ghost",
+            DependencyGraphDeltaKindV1::DirectRequirementRemoved
+        )),
+        "the removed requirement is detected: {:?}",
+        kinds
+    );
+    assert!(
+        !kinds.contains(&(
+            "arrival",
+            DependencyGraphDeltaKindV1::LockOnlyResolutionChanged
+        )),
+        "a head-only requirement is not lock-only: {:?}",
+        kinds
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_tolerates_malformed_inputs() {
+    // Unparseable manifest or lock text contributes no rows; lock
+    // entries without a usable name or version are skipped.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies\n",
+        "[dependencies]\nserde = \"1\"\n",
+        "not a lockfile [[",
+        "[[package]]\nversion = \"1.0\"\n\n[[package]]\nname = \"\"\nversion = \"1.0\"\n",
+    )
+    .expect("malformed inputs compile without crashing");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::DirectRequirementAdded
+            && row.package_name == "serde"),
+        "the requirement from the parseable side is detected: {:?}",
+        receipt.rows
     );
 }
 
@@ -232,6 +321,21 @@ fn dependency_graph_delta_compiler_resolves_workspace_inherited_requirements() {
         .expect("the serde requirement is found");
     assert_eq!(serde.requirement, "1.0");
     assert!(serde.features.is_empty());
+
+    let table_doc: toml::Value = toml::from_str(
+        "[workspace]\n[workspace.dependencies]\nserde = { version = \"1.0\", features = [\"derive\"] }\n",
+    )
+    .expect("table-form workspace parses");
+    let table_requirements = crate::artifacts::parse_manifest_requirements(
+        manifest,
+        Some(table_doc.get("workspace").expect("workspace table present")),
+    );
+    let serde = table_requirements
+        .iter()
+        .find(|req| req.name == "serde")
+        .expect("the table-form serde requirement is found");
+    assert_eq!(serde.requirement, "1.0");
+    assert_eq!(serde.features, vec!["derive".to_string()]);
 
     let unresolvable = crate::artifacts::parse_manifest_requirements(manifest, None);
     let serde = unresolvable
