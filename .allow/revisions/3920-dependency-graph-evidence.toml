@@ -1,0 +1,60 @@
+schema_version = 1
+# Revision note for the #3920 PR C dependency graph evidence
+# adjacency lane.
+
+# This diff lands the typed evidence enrichment for one exact
+# dependency graph delta: DependencyGraphEvidenceReceiptV1 in
+# allow-report attaches the linked authorities (#3903 minimum
+# versions, #2038 feature policy, #1897 cargo-deny, #2924 packaging,
+# #3359 support selection) to each compiled delta row by exact
+# package identity, with the observed-movement / policy-finding /
+# evidence-current / evidence-missing / needs-decision vocabulary. A
+# cargo-deny pass never erases a downgrade; advisory evidence stays a
+# decision; in-scope coverage gaps are evidence-missing; identity
+# movement stales the bundle; free-text commentary fails closed. The
+# hidden dependency-graph-evidence evaluate CLI emits the enriched
+# receipt. The source-exception additions receipt only the
+# syntax-visible constructs the new surfaces introduce: allow-11281
+# and allow-11286 are the expect ratchets for the evidence law tests
+# and the CLI test module, allow-11282 through allow-11285 receipt
+# the guarded single-record/first-row accesses in the law tests, and
+# allow-11287 receipts this revision-note file itself per the
+# per-note receipt law. No existing exception is weakened, no expiry
+# is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11281"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:94b8e396f3dd163a3fd17336a250e86c937d8dd67c90f72b08d4359041e53530"
+
+[[records]]
+allow_ids = ["allow-11282"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2e9d9e7516071be2a8e81e52f58e7390ca9b8fc276b76e4bd7c3e180e247490a"
+
+[[records]]
+allow_ids = ["allow-11283"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:99acb3277c15badf877c1bc35656a0e9605d604ddbaf28ec10db118651928486"
+
+[[records]]
+allow_ids = ["allow-11284"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ab8f511958c7ffe3b6f8161cee5b3ada296aff216852e6ed3506bec4a6172cc4"
+
+[[records]]
+allow_ids = ["allow-11285"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f529d68e0b106f74d55421e906b9955be625d5c45ca38a97ae618f4c3136b8c4"
+
+[[records]]
+allow_ids = ["allow-11286"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7b46820f9024ed13f5ed072b7d119d4dad9d334398540f9d23c75acac2d66e0b"
+
+[[records]]
+allow_ids = ["allow-11287"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5527b90bfb4050859b6ab6014d67dbd1fd63aa87c918d37fd4fabd6dad0d05ea"

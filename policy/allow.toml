@@ -20317,3 +20317,124 @@ review_after = "2026-12-09"
 ast_kind = "index_expr"
 container = "dependency_graph_delta_parser_preserves_lock_identity_and_order"
 glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+[[allow]]
+id = "allow-11281"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph evidence law tests (#3920 PR C); every expect guards an enrichment whose success or failure is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 14
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+
+[[allow]]
+id = "allow-11282"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded first-row access in the deny-pass law test (#3920 PR C); the fixture delta has exactly one row by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_cargo_deny_pass_never_erases_a_downgrade"
+
+[[allow]]
+id = "allow-11283"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the advisory-residue law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_advisory_residue_stays_a_decision"
+symbol = "bundle.records[0]"
+
+[[allow]]
+id = "allow-11284"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the commentary-rejection law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_rejects_free_text_references"
+symbol = "comment.records[0]"
+
+[[allow]]
+id = "allow-11285"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the wrong-scheme rejection law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_rejects_free_text_references"
+symbol = "wrong_scheme.records[0]"
+
+[[allow]]
+id = "allow-11286"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_evidence_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph evidence CLI tests (#3920 PR C); every expect guards fixture construction or an outcome the test asserts on"
+evidence = ["issue:3920"]
+occurrence_limit = 12
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+
+[[allow]]
+id = "allow-11287"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-evidence.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph evidence adjacency source exceptions added by the #3920 PR C lane."
+evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-evidence.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-evidence.toml"
