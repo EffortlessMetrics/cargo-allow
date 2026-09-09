@@ -25,6 +25,8 @@ mod audit_remediation;
 #[cfg(test)]
 mod audit_remediation_tests;
 mod contracts;
+#[cfg(test)]
+mod dependency_graph_delta_compiler_tests;
 mod diff;
 mod diff_finding_detail;
 #[cfg(test)]

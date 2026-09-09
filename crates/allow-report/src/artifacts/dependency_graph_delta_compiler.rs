@@ -23,11 +23,14 @@ pub(crate) struct LockPackage {
 pub(crate) struct ManifestRequirement {
     pub name: String,
     pub requirement: String,
+    pub features: Vec<String>,
     pub class: DependencyClassV1,
 }
 
 /// Parse a Cargo.lock's `[[package]]` entries into deterministic
-/// (name-sorted) rows. Path-only entries (no source) are skipped.
+/// (name-sorted) rows. Workspace members and path dependencies carry
+/// no source; they are retained with an empty source so first-party
+/// movement stays visible.
 pub(crate) fn parse_lock_packages(lock_text: &str) -> Vec<LockPackage> {
     let mut packages = Vec::new();
     let value: toml::Value = match toml::from_str(lock_text) {
@@ -95,7 +98,7 @@ pub(crate) fn parse_manifest_requirements(
     let mut requirements = Vec::new();
     for (name, spec) in deps {
         let class = DependencyClassV1::Normal;
-        let requirement = if spec
+        let (requirement, features) = if spec
             .get("workspace")
             .and_then(toml::Value::as_bool)
             .unwrap_or(false)
@@ -106,31 +109,60 @@ pub(crate) fn parse_manifest_requirements(
                 .and_then(|ws| ws.get("dependencies"))
                 .and_then(toml::Value::as_table);
             match ws_deps.and_then(|table| table.get(name.as_str())) {
-                Some(ws_spec) => ws_spec
-                    .get("version")
-                    .and_then(toml::Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
-                None => String::new(),
+                Some(ws_spec) => match ws_spec {
+                    toml::Value::String(version) => (version.clone(), Vec::new()),
+                    table => (
+                        table
+                            .get("version")
+                            .and_then(toml::Value::as_str)
+                            .unwrap_or("")
+                            .to_string(),
+                        spec_features(table),
+                    ),
+                },
+                None => (String::new(), Vec::new()),
             }
         } else {
             match spec {
-                toml::Value::String(version) => version.clone(),
-                table => table
-                    .get("version")
-                    .and_then(toml::Value::as_str)
-                    .unwrap_or("")
-                    .to_string(),
+                toml::Value::String(version) => (version.clone(), Vec::new()),
+                table => (
+                    table
+                        .get("version")
+                        .and_then(toml::Value::as_str)
+                        .unwrap_or("")
+                        .to_string(),
+                    spec_features(table),
+                ),
             }
         };
         requirements.push(ManifestRequirement {
             name: name.clone(),
             requirement,
+            features,
             class,
         });
     }
     requirements.sort_by(|a, b| a.name.cmp(&b.name));
     requirements
+}
+
+/// Extract a sorted, deduplicated feature list from one dependency
+/// spec table. String specs carry no features.
+fn spec_features(spec: &toml::Value) -> Vec<String> {
+    let mut features: Vec<String> = spec
+        .get("features")
+        .and_then(toml::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(toml::Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    features.sort();
+    features.dedup();
+    features
 }
 
 /// Compile one base/head pair into the typed delta receipt. Pure and
@@ -165,37 +197,67 @@ pub fn compile_dependency_graph_delta(
         all_names.insert(name);
     }
 
+    let base_req_by_name: std::collections::BTreeMap<&str, &ManifestRequirement> = base_reqs
+        .iter()
+        .map(|req| (req.name.as_str(), req))
+        .collect();
+    let head_req_by_name: std::collections::BTreeMap<&str, &ManifestRequirement> = head_reqs
+        .iter()
+        .map(|req| (req.name.as_str(), req))
+        .collect();
+
     // Classify direct requirement changes.
     for name in &all_names {
         let base_req = base_req_map.get(name);
         let head_req = head_req_map.get(name);
         match (base_req, head_req) {
             (Some(base), Some(head)) => {
-                if base == head {
-                    continue;
+                // A spec whose kind changed (e.g. version -> git) leaves
+                // one side empty; the lock-level source row carries that
+                // signal, so requirement polarity is only classified
+                // between two parseable version requirements.
+                if !base.is_empty() && !head.is_empty() && base != head {
+                    let kind = classify_requirement_movement(base, head);
+                    rows.push(DependencyGraphDeltaRowV1 {
+                        kind,
+                        class: DependencyClassV1::Normal,
+                        package_name: name.to_string(),
+                        base_version: String::new(),
+                        head_version: String::new(),
+                        base_requirement: base.to_string(),
+                        head_requirement: head.to_string(),
+                        base_source: String::new(),
+                        head_source: String::new(),
+                        base_checksum: String::new(),
+                        head_checksum: String::new(),
+                    });
                 }
-                let kind = if is_range_lowered(base, head) {
-                    DependencyGraphDeltaKindV1::DirectRequirementLowered
-                } else if is_range_raised(base, head) {
-                    DependencyGraphDeltaKindV1::DirectRequirementRaised
-                } else if is_range_narrowed(base, head) {
-                    DependencyGraphDeltaKindV1::RequirementRangeNarrowed
-                } else {
-                    DependencyGraphDeltaKindV1::RequirementRangeBroadened
-                };
-                rows.push(DependencyGraphDeltaRowV1 {
-                    kind,
-                    class: DependencyClassV1::Normal,
-                    package_name: name.to_string(),
-                    base_version: String::new(),
-                    head_version: String::new(),
-                    base_requirement: base.to_string(),
-                    head_requirement: head.to_string(),
-                    base_source: String::new(),
-                    head_source: String::new(),
-                    base_checksum: String::new(),
-                    head_checksum: String::new(),
-                });
+                // Feature activation is manifest-visible: an added or
+                // removed feature list is emitted even when the version
+                // requirement text is unchanged.
+                let base_features = base_req_by_name
+                    .get(name)
+                    .map(|req| req.features.clone())
+                    .unwrap_or_default();
+                let head_features = head_req_by_name
+                    .get(name)
+                    .map(|req| req.features.clone())
+                    .unwrap_or_default();
+                if base_features != head_features {
+                    rows.push(DependencyGraphDeltaRowV1 {
+                        kind: DependencyGraphDeltaKindV1::FeatureActivationChanged,
+                        class: DependencyClassV1::Normal,
+                        package_name: name.to_string(),
+                        base_version: String::new(),
+                        head_version: String::new(),
+                        base_requirement: base.to_string(),
+                        head_requirement: head.to_string(),
+                        base_source: String::new(),
+                        head_source: String::new(),
+                        base_checksum: String::new(),
+                        head_checksum: String::new(),
+                    });
+                }
             }
             (None, Some(head)) => {
                 rows.push(DependencyGraphDeltaRowV1 {
@@ -292,37 +354,63 @@ pub fn compile_dependency_graph_delta(
                     && base.checksum != head.checksum;
                 let version_up = is_version_up(&base.version, &head.version);
                 let version_down = is_version_down(&base.version, &head.version);
-                if source_changed || checksum_changed {
+                // The direct requirement is unchanged when both manifests
+                // name the package with the same parseable requirement;
+                // packages absent from both manifests (transitive) also
+                // carry no requirement movement.
+                let requirement_unchanged = match (base_req_map.get(*name), head_req_map.get(*name))
+                {
+                    (Some(b), Some(h)) => b == h,
+                    (None, None) => true,
+                    _ => false,
+                };
+                if version_up || version_down {
+                    // Version movement is its own row (an upgrade or a
+                    // downgrade, never a "compatible update"), and when
+                    // the manifest requirement did not move, an
+                    // additional row marks the movement as lock-only
+                    // resolution. A version bump legitimately rotates
+                    // the checksum, so it is not classified as a
+                    // source/checksum identity change.
+                    let movement_kind = if version_up {
+                        DependencyGraphDeltaKindV1::PackageUpgraded
+                    } else {
+                        DependencyGraphDeltaKindV1::PackageDowngraded
+                    };
+                    rows.push(DependencyGraphDeltaRowV1 {
+                        kind: movement_kind,
+                        class: DependencyClassV1::Normal,
+                        package_name: name.to_string(),
+                        base_version: base.version.clone(),
+                        head_version: head.version.clone(),
+                        base_requirement: String::new(),
+                        head_requirement: String::new(),
+                        base_source: base.source.clone(),
+                        head_source: head.source.clone(),
+                        base_checksum: base.checksum.clone(),
+                        head_checksum: head.checksum.clone(),
+                    });
+                    if requirement_unchanged {
+                        rows.push(DependencyGraphDeltaRowV1 {
+                            kind: DependencyGraphDeltaKindV1::LockOnlyResolutionChanged,
+                            class: DependencyClassV1::Normal,
+                            package_name: name.to_string(),
+                            base_version: base.version.clone(),
+                            head_version: head.version.clone(),
+                            base_requirement: String::new(),
+                            head_requirement: String::new(),
+                            base_source: base.source.clone(),
+                            head_source: head.source.clone(),
+                            base_checksum: base.checksum.clone(),
+                            head_checksum: head.checksum.clone(),
+                        });
+                    }
+                } else if source_changed || checksum_changed {
+                    // Same resolved version but a different origin or
+                    // content identity: count parity does not establish
+                    // graph identity.
                     rows.push(DependencyGraphDeltaRowV1 {
                         kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
-                        class: DependencyClassV1::Normal,
-                        package_name: name.to_string(),
-                        base_version: base.version.clone(),
-                        head_version: head.version.clone(),
-                        base_requirement: String::new(),
-                        head_requirement: String::new(),
-                        base_source: base.source.clone(),
-                        head_source: head.source.clone(),
-                        base_checksum: base.checksum.clone(),
-                        head_checksum: head.checksum.clone(),
-                    });
-                } else if version_up {
-                    rows.push(DependencyGraphDeltaRowV1 {
-                        kind: DependencyGraphDeltaKindV1::PackageUpgraded,
-                        class: DependencyClassV1::Normal,
-                        package_name: name.to_string(),
-                        base_version: base.version.clone(),
-                        head_version: head.version.clone(),
-                        base_requirement: String::new(),
-                        head_requirement: String::new(),
-                        base_source: base.source.clone(),
-                        head_source: head.source.clone(),
-                        base_checksum: base.checksum.clone(),
-                        head_checksum: head.checksum.clone(),
-                    });
-                } else if version_down {
-                    rows.push(DependencyGraphDeltaRowV1 {
-                        kind: DependencyGraphDeltaKindV1::PackageDowngraded,
                         class: DependencyClassV1::Normal,
                         package_name: name.to_string(),
                         base_version: base.version.clone(),
@@ -390,16 +478,38 @@ fn is_version_down(base: &str, head: &str) -> bool {
     compare_versions(base, head) == std::cmp::Ordering::Greater
 }
 
-fn is_range_raised(base: &str, head: &str) -> bool {
-    compare_versions(base, head) == std::cmp::Ordering::Less
-}
-
-fn is_range_lowered(base: &str, head: &str) -> bool {
-    compare_versions(base, head) == std::cmp::Ordering::Greater
-}
-
-fn is_range_narrowed(base: &str, head: &str) -> bool {
-    let base_parts: Vec<&str> = base.split('.').collect();
-    let head_parts: Vec<&str> = head.split('.').collect();
-    head_parts.len() > base_parts.len()
+/// Classify one direct requirement movement between two non-empty,
+/// differing version requirements. A major-version floor change is a
+/// raise or a lowering; movement within the same major that adds
+/// segment precision to the floor narrows the accepted range, and
+/// removing precision broadens it.
+fn classify_requirement_movement(base: &str, head: &str) -> DependencyGraphDeltaKindV1 {
+    let major = |requirement: &str| -> u64 {
+        requirement
+            .split('.')
+            .next()
+            .and_then(|part| part.parse::<u64>().ok())
+            .unwrap_or(0)
+    };
+    let segments = |requirement: &str| -> usize { requirement.split('.').count() };
+    let (base_major, head_major) = (major(base), major(head));
+    if head_major > base_major {
+        return DependencyGraphDeltaKindV1::DirectRequirementRaised;
+    }
+    if head_major < base_major {
+        return DependencyGraphDeltaKindV1::DirectRequirementLowered;
+    }
+    match segments(head).cmp(&segments(base)) {
+        std::cmp::Ordering::Greater => DependencyGraphDeltaKindV1::RequirementRangeNarrowed,
+        std::cmp::Ordering::Less => DependencyGraphDeltaKindV1::RequirementRangeBroadened,
+        std::cmp::Ordering::Equal => {
+            if is_version_up(base, head) {
+                DependencyGraphDeltaKindV1::DirectRequirementRaised
+            } else if is_version_down(base, head) {
+                DependencyGraphDeltaKindV1::DirectRequirementLowered
+            } else {
+                DependencyGraphDeltaKindV1::RequirementRangeBroadened
+            }
+        }
+    }
 }

@@ -113,6 +113,10 @@ pub use ci_pregate_result_v1::{
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
 };
 pub use dependency_graph_delta_compiler::compile_dependency_graph_delta;
+#[cfg(test)]
+pub(crate) use dependency_graph_delta_compiler::{
+    parse_lock_packages, parse_manifest_requirements,
+};
 pub use dependency_graph_delta_v1::{
     DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
     DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,

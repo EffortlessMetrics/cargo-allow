@@ -4,11 +4,10 @@
 //! falsifying fixture corpus; deterministic inputs produce
 //! deterministic outputs.
 
-use crate::artifacts::dependency_graph_delta_v1::{
-    DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
+use crate::{
+    DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1, compile_dependency_graph_delta,
+    dependency_graph_delta_fixtures,
 };
-use crate::artifacts::dependency_graph_delta_compiler::compile_dependency_graph_delta;
-use crate::artifacts::dependency_graph_delta_v1::dependency_graph_delta_fixtures;
 
 #[test]
 fn dependency_graph_delta_compiler_classifies_fixtures() {
@@ -21,10 +20,10 @@ fn dependency_graph_delta_compiler_classifies_fixtures() {
         let identity = default_identity();
         let receipt = compile_dependency_graph_delta(
             &identity,
-            &fixture.base_manifest,
-            &fixture.head_manifest,
-            &fixture.base_lock,
-            &fixture.head_lock,
+            fixture.base_manifest,
+            fixture.head_manifest,
+            fixture.base_lock,
+            fixture.head_lock,
         )
         .expect("compilation succeeds for well-formed inputs");
         assert!(
@@ -48,18 +47,18 @@ fn dependency_graph_delta_compiler_is_deterministic() {
     let identity = default_identity();
     let first = compile_dependency_graph_delta(
         &identity,
-        &fixture.base_manifest,
-        &fixture.head_manifest,
-        &fixture.base_lock,
-        &fixture.head_lock,
+        fixture.base_manifest,
+        fixture.head_manifest,
+        fixture.base_lock,
+        fixture.head_lock,
     )
     .expect("first compilation succeeds");
     let second = compile_dependency_graph_delta(
         &identity,
-        &fixture.base_manifest,
-        &fixture.head_manifest,
-        &fixture.base_lock,
-        &fixture.head_lock,
+        fixture.base_manifest,
+        fixture.head_manifest,
+        fixture.base_lock,
+        fixture.head_lock,
     )
     .expect("second compilation succeeds");
     assert_eq!(first, second);
@@ -77,11 +76,10 @@ fn dependency_graph_delta_compiler_detects_upgrade() {
     )
     .expect("compilation succeeds");
     assert!(
-        receipt
-            .rows
-            .iter()
-            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
-                && row.package_name == "serde"),
+        receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                && row.package_name == "serde"
+        ),
         "the upgrade is detected: {:?}",
         receipt.rows
     );
@@ -177,6 +175,105 @@ fn dependency_graph_delta_compiler_handles_empty_inputs() {
     let receipt = compile_dependency_graph_delta(&identity, "", "", "", "")
         .expect("empty inputs compile without error");
     assert!(receipt.rows.is_empty());
+}
+
+#[test]
+fn dependency_graph_delta_compiler_classifies_within_major_requirement_movement() {
+    // Same-major movement with equal floor precision compares the
+    // numeric floors; losing floor precision broadens the accepted
+    // range.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\nleft = \"1.2\"\nright = \"1.0.5\"\n",
+        "[dependencies]\nleft = \"1.5\"\nright = \"1.0\"\n",
+        "",
+        "",
+    )
+    .expect("compilation succeeds");
+    let kinds: Vec<_> = receipt
+        .rows
+        .iter()
+        .map(|row| (row.package_name.as_str(), row.kind))
+        .collect();
+    assert!(
+        kinds.contains(&("left", DependencyGraphDeltaKindV1::DirectRequirementRaised)),
+        "the floor raise within one major is detected: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&(
+            "right",
+            DependencyGraphDeltaKindV1::RequirementRangeBroadened
+        )),
+        "the precision loss is detected as a broadened range: {:?}",
+        kinds
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_resolves_workspace_inherited_requirements() {
+    // Workspace-inherited entries resolve their requirement from the
+    // workspace root's [workspace.dependencies]; unresolvable entries
+    // and string specs degrade to an empty requirement with no
+    // features.
+    let manifest = "[dependencies]\nserde = { workspace = true }\n";
+    let workspace_doc: toml::Value =
+        toml::from_str("[workspace]\n[workspace.dependencies]\nserde = \"1.0\"\n")
+            .expect("workspace table parses");
+    let workspace_table = workspace_doc
+        .get("workspace")
+        .expect("workspace table present");
+    let requirements =
+        crate::artifacts::parse_manifest_requirements(manifest, Some(workspace_table));
+    let serde = requirements
+        .iter()
+        .find(|req| req.name == "serde")
+        .expect("the serde requirement is found");
+    assert_eq!(serde.requirement, "1.0");
+    assert!(serde.features.is_empty());
+
+    let unresolvable = crate::artifacts::parse_manifest_requirements(manifest, None);
+    let serde = unresolvable
+        .iter()
+        .find(|req| req.name == "serde")
+        .expect("the unresolvable serde requirement is still recorded");
+    assert_eq!(serde.requirement, "");
+
+    let string_spec =
+        crate::artifacts::parse_manifest_requirements("[dependencies]\ntoml = \"1\"\n", None);
+    let toml_req = string_spec
+        .iter()
+        .find(|req| req.name == "toml")
+        .expect("the string-spec requirement is found");
+    assert_eq!(toml_req.requirement, "1");
+    assert!(toml_req.features.is_empty());
+}
+
+#[test]
+fn dependency_graph_delta_parser_preserves_lock_identity_and_order() {
+    // Rows are name-sorted and carry native Cargo identity fields;
+    // path-only entries are retained with an empty source.
+    let lock = "[[package]]\nname = \"zeta\"\nversion = \"1.0\"\nsource = \"registry\"\nchecksum = \"c\"\n\n\
+                [[package]]\nname = \"local-path\"\nversion = \"0.5\"\n\n\
+                [[package]]\nname = \"alpha\"\nversion = \"2.0\"\nsource = \"registry\"\nchecksum = \"a\"\n";
+    let packages = crate::artifacts::parse_lock_packages(lock);
+    let names: Vec<&str> = packages
+        .iter()
+        .map(|package| package.name.as_str())
+        .collect();
+    assert_eq!(
+        names,
+        vec!["alpha", "local-path", "zeta"],
+        "rows are name-sorted"
+    );
+    let path_entry = &packages[1];
+    assert_eq!(path_entry.version, "0.5");
+    assert_eq!(path_entry.source, "");
+    let alpha = &packages[0];
+    assert_eq!(alpha.version, "2.0");
+    assert_eq!(alpha.source, "registry");
+    assert_eq!(alpha.checksum, "a");
 }
 
 fn default_identity() -> DependencyGraphDeltaIdentityV1 {

@@ -20274,7 +20274,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 9
+occurrence_limit = 15
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -20298,4 +20298,22 @@ review_after = "2026-12-09"
 [allow.selector]
 ast_kind = "index_expr"
 container = "dependency_graph_delta_compiler_classifies_fixtures"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+[[allow]]
+id = "allow-11280"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded indexing in the dependency graph delta parser coverage test (#3920 PR B); the row positions are pinned by the deterministic name-sort assertion"
+evidence = ["issue:3920"]
+occurrence_limit = 2
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_delta_parser_preserves_lock_identity_and_order"
 glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
