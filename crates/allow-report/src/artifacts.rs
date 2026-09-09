@@ -124,6 +124,7 @@ pub use dependency_graph_delta_v1::{
     DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
 };
 pub use dependency_graph_evidence_v1::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS,
     DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION,
     DependencyEvidenceAttachmentV1, DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1,
     DependencyEvidenceDispositionV1, DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat,

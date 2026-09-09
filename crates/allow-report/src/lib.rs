@@ -250,6 +250,7 @@ pub use artifacts::{
 
 // Dependency graph evidence adjacency (#3920 PR C).
 pub use artifacts::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS,
     DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION,
     DependencyEvidenceAttachmentV1, DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1,
     DependencyEvidenceDispositionV1, DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat,

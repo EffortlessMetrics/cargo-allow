@@ -4,6 +4,7 @@
 //! on identity movement, and rejects free-text commentary.
 
 use crate::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS,
     DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
     DependencyEvidenceRecordV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
     DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, DependencyGraphEvidenceReceiptV1,
@@ -197,6 +198,12 @@ fn dependency_graph_evidence_advisory_residue_stays_a_decision() {
             .iter()
             .any(|attachment| attachment.advisory)
     );
+    let human = crate::render_dependency_graph_evidence(
+        &enriched,
+        crate::DependencyGraphEvidenceFormat::Human,
+    )
+    .expect("advisory human view renders");
+    assert!(human.contains("(advisory)"), "advisory residue is labeled");
 
     // With the same record resolved as current evidence the same
     // shape is fully current.
@@ -341,6 +348,16 @@ fn dependency_graph_evidence_unmoved_rows_stay_observed_without_authority() {
         enriched.result,
         DependencyGraphEvidenceResultV1::DecisionRequired
     );
+    let human = crate::render_dependency_graph_evidence(
+        &enriched,
+        crate::DependencyGraphEvidenceFormat::Human,
+    )
+    .expect("unmoved human view renders");
+    let em_dash: char = '\u{2014}';
+    assert!(
+        human.contains(em_dash),
+        "a row with no attachments renders the empty placeholder"
+    );
 }
 
 #[test]
@@ -415,4 +432,112 @@ fn dependency_graph_evidence_is_deterministic_and_round_trips() {
     .expect("human renders");
     assert!(human.contains("`serde`"));
     assert!(human.contains("evidence_current") || human.contains("decision_required"));
+}
+
+#[test]
+fn dependency_graph_evidence_vocabulary_and_bounds_are_total() {
+    // Every authority and disposition names itself and declares the
+    // typed reference scheme its records must carry; oversize inputs
+    // fail closed on the bound instead of widening the denominator.
+    for (authority, name, scheme) in [
+        (
+            DependencyEvidenceAuthorityV1::MinimumVersion,
+            "minimum_version",
+            "receipt",
+        ),
+        (
+            DependencyEvidenceAuthorityV1::DependencyFeature,
+            "dependency_feature",
+            "policy",
+        ),
+        (
+            DependencyEvidenceAuthorityV1::CargoDeny,
+            "cargo_deny",
+            "deny",
+        ),
+        (
+            DependencyEvidenceAuthorityV1::PackageCandidate,
+            "package_candidate",
+            "receipt",
+        ),
+        (
+            DependencyEvidenceAuthorityV1::SupportMatrix,
+            "support_matrix",
+            "policy",
+        ),
+    ] {
+        assert_eq!(authority.as_str(), name);
+        assert_eq!(authority.reference_scheme(), scheme);
+    }
+    for (disposition, name) in [
+        (
+            DependencyEvidenceDispositionV1::ObservedMovement,
+            "observed_movement",
+        ),
+        (
+            DependencyEvidenceDispositionV1::PolicyFinding,
+            "policy_finding",
+        ),
+        (
+            DependencyEvidenceDispositionV1::EvidenceCurrent,
+            "evidence_current",
+        ),
+        (
+            DependencyEvidenceDispositionV1::EvidenceMissing,
+            "evidence_missing",
+        ),
+        (
+            DependencyEvidenceDispositionV1::NeedsDecision,
+            "needs_decision",
+        ),
+    ] {
+        assert_eq!(disposition.as_str(), name);
+    }
+    assert_eq!(
+        DependencyGraphEvidenceResultV1::DecisionRequired.as_str(),
+        "decision_required"
+    );
+    assert_eq!(
+        DependencyGraphEvidenceResultV1::EvidenceCurrent.as_str(),
+        "evidence_current"
+    );
+
+    let oversized = receipt(
+        (0..=DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS)
+            .map(|index| {
+                row(
+                    DependencyGraphDeltaKindV1::PackageUpgraded,
+                    &format!("pkg-{index}"),
+                    "1.0.0",
+                )
+            })
+            .collect(),
+    );
+    assert!(
+        attach_dependency_graph_evidence(&oversized, &bundle(vec![])).is_err(),
+        "a delta beyond the row bound fails closed"
+    );
+
+    let oversized_bundle = bundle(
+        (0..=DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS)
+            .map(|index| {
+                record(
+                    DependencyEvidenceAuthorityV1::CargoDeny,
+                    &format!("pkg-{index}"),
+                    "1.0.228",
+                    false,
+                    false,
+                )
+            })
+            .collect(),
+    );
+    let small = receipt(vec![row(
+        DependencyGraphDeltaKindV1::PackageUpgraded,
+        "serde",
+        "1.0.228",
+    )]);
+    assert!(
+        attach_dependency_graph_evidence(&small, &oversized_bundle).is_err(),
+        "a bundle beyond the record bound fails closed"
+    );
 }

@@ -20327,7 +20327,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph evidence law tests (#3920 PR C); every expect guards an enrichment whose success or failure is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 14
+occurrence_limit = 16
 created = "2026-09-09"
 review_after = "2026-12-09"
 
