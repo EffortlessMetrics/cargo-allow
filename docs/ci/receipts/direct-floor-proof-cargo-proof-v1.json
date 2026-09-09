@@ -8,8 +8,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host (product closure default target)",
- "manifest_set_digest": "5e0287e8d75b63d6038d344fac4bcfc22190e5ae35755b1a94654e81a2081a50",
- "lock_digest": "0d406084dd2ac60921381c854b7af40da46d80e60467f5a93919654ea063da1f",
+ "manifest_set_digest": "0cc7ac8b80d7ba163a305e0217aaabf7fd471a0b582a5c32bcce2fbd8a4674fe",
+ "lock_digest": "0d534b066fcc4db1fd01fae560255a82bb906ef214b8a7aa7f30e030f934f8ea",
  "rows": [
   {
    "package": "clap",
@@ -79,7 +79,7 @@
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
   "cargo check --locked -p cargo-proof -p effortless-repo-protocol -p effortless-rust-source-index -p intent-protocol -p proof-orchestrator -p proof-protocol"
  ],
- "floor_lock_digest": "sha256:v1:900de4c4eef0183e9cc02ed9ea09efa52721f83e2f4989fd0820c6b995bd23f2",
+ "floor_lock_digest": "sha256:v1:bbd49c71360d940370a93717794eea76ca9e70ee09d6381010c425305e0b15ef",
  "limitations": [
   "bounded proof: the check classes over the cargo-proof closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",
