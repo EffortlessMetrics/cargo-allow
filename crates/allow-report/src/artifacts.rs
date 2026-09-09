@@ -11,6 +11,7 @@ mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
 mod dependency_graph_delta_compiler;
 mod dependency_graph_delta_v1;
+mod dependency_graph_evidence_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -121,6 +122,15 @@ pub use dependency_graph_delta_v1::{
     DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
     DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
     DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+};
+pub use dependency_graph_evidence_v1::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_REF_LEN,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID,
+    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION, DependencyEvidenceAttachmentV1,
+    DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
+    DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat, DependencyGraphEvidenceReceiptV1,
+    DependencyGraphEvidenceResultV1, DependencyGraphEvidenceRowV1,
+    attach_dependency_graph_evidence, render_dependency_graph_evidence,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,

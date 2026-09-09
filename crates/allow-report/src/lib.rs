@@ -27,6 +27,8 @@ mod audit_remediation_tests;
 mod contracts;
 #[cfg(test)]
 mod dependency_graph_delta_compiler_tests;
+#[cfg(test)]
+mod dependency_graph_evidence_tests;
 mod diff;
 mod diff_finding_detail;
 #[cfg(test)]
@@ -244,6 +246,17 @@ pub use artifacts::{
     DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
     DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
     DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+};
+
+// Dependency graph evidence adjacency (#3920 PR C).
+pub use artifacts::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_REF_LEN,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID,
+    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION, DependencyEvidenceAttachmentV1,
+    DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
+    DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat, DependencyGraphEvidenceReceiptV1,
+    DependencyGraphEvidenceResultV1, DependencyGraphEvidenceRowV1,
+    attach_dependency_graph_evidence, render_dependency_graph_evidence,
 };
 
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).

@@ -13,6 +13,7 @@ use crate::{
 mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
 mod ci_pregate_command;
+mod dependency_graph_evidence_command;
 mod frozen_subject_lock_command;
 mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
@@ -164,6 +165,9 @@ pub(crate) enum CargoAllowCommand {
     /// Aggregate the construction lanes into one semantic report.
     #[command(hide = true)]
     WorkflowConstruction(workflow_construction_command::WorkflowConstructionArgs),
+    /// Attach evidence authorities to one compiled dependency delta.
+    #[command(hide = true)]
+    DependencyGraphEvidence(dependency_graph_evidence_command::DependencyGraphEvidenceArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -288,6 +292,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::WorkflowConstruction(args) => {
             workflow_construction_command::cmd_workflow_construction(&args)
+        }
+        CargoAllowCommand::DependencyGraphEvidence(args) => {
+            dependency_graph_evidence_command::cmd_dependency_graph_evidence(&args)
         }
     }
 }
@@ -497,5 +504,6 @@ impl CargoAllowCommand {
         "workflow-syntax",
         "workflow-security",
         "workflow-construction",
+        "dependency-graph-evidence",
     ];
 }
