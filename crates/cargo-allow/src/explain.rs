@@ -216,7 +216,7 @@ fn entry_scope_paths(entry: &AllowEntry) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn missing_allow_entry_error(id: &str) -> CargoAllowError {
+pub(crate) fn missing_allow_entry_error(id: &str) -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::Usage,
         format!("no allow entry `{id}`; run `cargo-allow list` to see valid IDs"),
