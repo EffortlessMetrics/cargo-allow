@@ -207,6 +207,8 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod dependency_graph_delta_tests;
+#[cfg(test)]
 mod effortless_repo_edit_parity_tests;
 #[cfg(test)]
 mod effortless_repo_snapshot_parity_tests;

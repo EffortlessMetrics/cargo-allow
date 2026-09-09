@@ -20225,3 +20225,42 @@ glob = ".allow/revisions/3907-workflow-construction-aggregate.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11276"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/dependency_graph_delta_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta contract tests (#3920 PR A); every expect guards a fixture corpus lookup or a serde round-trip whose success is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 10
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/dependency_graph_delta_tests.rs"
+
+[[allow]]
+id = "allow-11277"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-delta.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph delta source exceptions added by the #3920 PR A lane."
+evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-delta.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-delta.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
