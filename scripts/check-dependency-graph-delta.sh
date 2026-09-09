@@ -94,11 +94,15 @@ manifest_paths = [line.strip() for line in open(sys.argv[2], encoding="utf-8") i
 for member_path in sorted(manifest_paths):
     doc = show_base(sys.argv[4], member_path) if sys.argv[4] != "HEAD" else None
     if doc is None and sys.argv[4] == "HEAD":
+        # A missing or unparseable head manifest is a broken review
+        # tree: fail closed instead of compiling an incomplete set.
         try:
             doc = load(member_path)
-        except (OSError, tomllib.TOMLDecodeError):
-            doc = None
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise SystemExit(f"head member manifest {member_path} fails to load: {error}")
     if doc is None:
+        # Base side: a member absent from the base tree is a crate
+        # added by this PR; nothing to merge for it.
         continue
     for name, spec in doc.get("dependencies", {}).items():
         normalized = inline(spec)
@@ -181,4 +185,7 @@ echo "----------------------------------"
 # decision_required — exits zero. Only the instrument-failure exits
 # above are blocking, and PR D publishes the retained artifact for
 # the owning policy to calibrate consequences against.
+echo "check-dependency-graph-delta: bounded-denominator limitations:" >&2
+echo "  - member requirement specs collapse by dependency name; per-member manifest edits that do not move the workspace-wide union or the lockfile are outside this lane" >&2
+echo "  - duplicate lockfile versions are keyed by package name; movement in a shadowed duplicate version needs the follow-up keyed-by-full-identity compiler" >&2
 echo "check-dependency-graph-delta: delta and evidence artifacts retained (advisory)"

@@ -61,7 +61,15 @@ fn read_input(path: &PathBuf, what: &str) -> CargoAllowResult<String> {
             format!("{what} read {}: {error}", path.display()),
         )
     })?;
-    let text = String::from_utf8_lossy(&bytes).replace('\r', "");
+    // Invalid UTF-8 is malformed input: lossy replacement would
+    // collapse distinct malformed sources onto one digest.
+    let owned = String::from_utf8(bytes).map_err(|_| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("{what} {} is not valid UTF-8", path.display()),
+        )
+    })?;
+    let text = owned.replace('\r', "");
     if text.trim().is_empty() {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
@@ -80,15 +88,24 @@ pub(super) fn cmd_dependency_graph_delta(args: &DependencyGraphDeltaArgs) -> Car
     let head_manifest = read_input(&compile.head_manifest, "head manifest")?;
     let base_lock = read_input(&compile.base_lock, "base lock")?;
     let head_lock = read_input(&compile.head_lock, "head lock")?;
-    // A Cargo.lock always carries [[package]] entries; non-empty text
-    // without them is malformed input, not an empty graph.
-    for (name, text) in [("base lock", &base_lock), ("head lock", &head_lock)] {
-        if !text.contains("[[package]]") {
+    // The compiler's fixtures may be tolerant, but a producer must
+    // validate: malformed documents fail immediately instead of
+    // compiling into an apparently-empty complete receipt.
+    for (name, text) in [
+        ("base manifest", &base_manifest),
+        ("head manifest", &head_manifest),
+        ("base lock", &base_lock),
+        ("head lock", &head_lock),
+    ] {
+        let outcome = if name.contains("lock") {
+            allow_report::validate_lock_document(text)
+        } else {
+            allow_report::validate_manifest_document(text)
+        };
+        if let Err(reason) = outcome {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
-                format!(
-                    "{name} carries no [[package]] entries; refusing to compile malformed input"
-                ),
+                format!("{name}: {reason}"),
             ));
         }
     }
@@ -285,5 +302,47 @@ mod tests {
             outcome.is_err(),
             "a lock without package entries is malformed input"
         );
+    }
+    #[test]
+    fn compile_fails_closed_on_invalid_utf8_input() {
+        // Lossy replacement would collapse distinct malformed inputs
+        // onto one digest; invalid bytes are rejected outright.
+        let base_manifest = unique_temp("bm-utf8");
+        std::fs::write(
+            &base_manifest,
+            b"[dependencies]\nserde = \"1\"\n# \xff\xfe\n",
+        )
+        .expect("fixture writes");
+        let head_manifest = write("hm-utf8", "[dependencies]\nserde = \"1\"\n");
+        let base_lock = write(
+            "bl-utf8",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let head_lock = write(
+            "hl-utf8",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let args = compile_args(base_manifest, head_manifest, base_lock, head_lock, None);
+        let outcome = cmd_dependency_graph_delta(&args);
+        assert!(outcome.is_err(), "invalid UTF-8 fails closed");
+    }
+
+    #[test]
+    fn compile_fails_closed_on_a_malformed_manifest_document() {
+        // TOML-shaped but unparseable: the substring era accepted
+        // this; strict document validation rejects it.
+        let base_manifest = write("bm-malformed", "[[package]]\ninvalid =");
+        let head_manifest = write("hm-malformed", "[dependencies]\nserde = \"1\"\n");
+        let base_lock = write(
+            "bl-malformed",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let head_lock = write(
+            "hl-malformed",
+            "[[package]]\nname = \"serde\"\nversion = \"1\"\n",
+        );
+        let args = compile_args(base_manifest, head_manifest, base_lock, head_lock, None);
+        let outcome = cmd_dependency_graph_delta(&args);
+        assert!(outcome.is_err(), "a malformed manifest fails closed");
     }
 }

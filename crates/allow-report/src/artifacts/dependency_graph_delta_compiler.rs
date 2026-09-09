@@ -108,7 +108,14 @@ pub(crate) fn parse_manifest_requirements(
             let ws_deps = workspace_deps
                 .and_then(|ws| ws.get("dependencies"))
                 .and_then(toml::Value::as_table);
-            match ws_deps.and_then(|table| table.get(name.as_str())) {
+            // Cargo unions member-local features with the inherited
+            // spec's features; the same union is what the delta must
+            // see or a member-only feature change disappears.
+            let member_features = match spec {
+                toml::Value::String(_) => Vec::new(),
+                table => spec_features(table),
+            };
+            let mut features = match ws_deps.and_then(|table| table.get(name.as_str())) {
                 Some(ws_spec) => match ws_spec {
                     toml::Value::String(version) => (version.clone(), Vec::new()),
                     table => (
@@ -121,7 +128,11 @@ pub(crate) fn parse_manifest_requirements(
                     ),
                 },
                 None => (String::new(), Vec::new()),
-            }
+            };
+            features.1.extend(member_features);
+            features.1.sort();
+            features.1.dedup();
+            features
         } else {
             match spec {
                 toml::Value::String(version) => (version.clone(), Vec::new()),
@@ -144,6 +155,30 @@ pub(crate) fn parse_manifest_requirements(
     }
     requirements.sort_by(|a, b| a.name.cmp(&b.name));
     requirements
+}
+
+/// Validate one manifest document strictly for the producer
+/// boundary: parse errors are malformed input, not an empty set.
+pub fn validate_manifest_document(text: &str) -> Result<(), String> {
+    toml::from_str::<toml::Value>(text)
+        .map(|_| ())
+        .map_err(|error| format!("manifest document does not parse: {error}"))
+}
+
+/// Validate one lockfile document strictly for the producer boundary:
+/// a lock parses as TOML and carries at least one `[[package]]` entry.
+pub fn validate_lock_document(text: &str) -> Result<(), String> {
+    let value: toml::Value =
+        toml::from_str(text).map_err(|error| format!("lock document does not parse: {error}"))?;
+    let empty = value
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .map(|entries| entries.is_empty())
+        .unwrap_or(true);
+    if empty {
+        return Err("lock document carries no [[package]] entries".to_string());
+    }
+    Ok(())
 }
 
 /// Parse one manifest text's `[workspace]` table for inherited

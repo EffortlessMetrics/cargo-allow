@@ -172,6 +172,10 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          # Pin the review head: on pull_request events the default
+          # checkout is GitHub's synthetic merge commit, and the
+          # receipt must bind the submitted head instead.
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
         with:
