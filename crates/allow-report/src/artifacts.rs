@@ -9,6 +9,7 @@ mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
 mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
+mod dependency_graph_delta_compiler;
 mod dependency_graph_delta_v1;
 mod diff;
 mod doctor;
@@ -110,6 +111,11 @@ pub use ci_pregate_result_v1::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
     CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
+};
+pub use dependency_graph_delta_compiler::compile_dependency_graph_delta;
+#[cfg(test)]
+pub(crate) use dependency_graph_delta_compiler::{
+    parse_lock_packages, parse_manifest_requirements,
 };
 pub use dependency_graph_delta_v1::{
     DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,

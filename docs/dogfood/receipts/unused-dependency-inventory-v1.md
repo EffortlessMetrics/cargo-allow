@@ -48,6 +48,7 @@
 | allow-report | allow-report.default | allow-policy | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-report | allow-report.default | serde | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-report | allow-report.default | serde_json | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
+| allow-report | allow-report.default | toml | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-report | allow-report.default | unicode-segmentation | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-report | allow-report.default | unicode-width | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | allow-rust | allow-rust.default | allow-core | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
