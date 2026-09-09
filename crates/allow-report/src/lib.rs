@@ -237,6 +237,7 @@ pub use artifacts::{
 };
 
 // Dependency graph delta contract (#3920 PR A).
+pub use artifacts::compile_dependency_graph_delta;
 pub use artifacts::{
     DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
     DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,

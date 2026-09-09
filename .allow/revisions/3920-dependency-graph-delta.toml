@@ -29,3 +29,13 @@ after_fingerprint = "sha256:v1:7760c40fb57f08fa1367ca32631e7165922e21ca5dc28232e
 allow_ids = ["allow-11277"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:dd9cfce81346c2a42dbe593f05170d19777f6dea00ef07e468c548a26165413e"
+
+[[records]]
+allow_ids = ["allow-11278"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:15d8f23c38b2c5cff7048901bc903c432ded6afeae532349d7ef716c9c5f14c2"
+
+[[records]]
+allow_ids = ["allow-11279"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0f7c9528e48674b7d0e963f4fbb0eef2b8c0984ee3faecc623fd8348991c3aed"
