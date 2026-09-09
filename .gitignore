@@ -12,3 +12,5 @@ tool-run*.json
 tool-run.json
 tool-run-security.json
 workflow-construction-aggregate.json
+dependency-graph-delta.json
+dependency-graph-evidence-summary.md

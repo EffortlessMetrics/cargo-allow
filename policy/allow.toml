@@ -20274,7 +20274,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 21
+occurrence_limit = 22
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -20457,3 +20457,55 @@ ast_kind = "index_expr"
 container = "dependency_graph_evidence_old_source_evidence_never_binds_a_source_change"
 symbol = "fresh_source.records[0]"
 glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+
+[[allow]]
+id = "allow-11289"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-dependency-graph-delta.sh"
+owner = "core/deps"
+classification = "dependency_graph_delta_lane"
+reason = "Compiles one exact base/head manifest/lockfile pair, enriches it with the linked evidence authorities, and retains both artifacts for review (#3920 PR D); advisory exit contract with immediate failure on malformed or empty required inputs."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-dependency-graph-delta.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-dependency-graph-delta.sh"
+
+[[allow]]
+id = "allow-11290"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_delta_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta compile CLI tests (#3920 PR D); every expect guards fixture construction or an outcome the test asserts on."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_delta_command.rs"
+
+[[allow]]
+id = "allow-11291"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-routing.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph routing source exceptions added by the #3920 PR D lane."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-routing.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-routing.toml"

@@ -425,3 +425,23 @@ fn default_identity() -> DependencyGraphDeltaIdentityV1 {
         target: "x86_64-unknown-linux-gnu".to_string(),
     }
 }
+
+#[test]
+fn dependency_graph_delta_compiler_resolves_workspace_in_merged_manifests() {
+    // A synthesized merged member manifest carries its own
+    // [workspace.dependencies]; inherited requirement movement is
+    // visible without a separate workspace input.
+    let identity = default_identity();
+    let base =
+        "[workspace.dependencies]\ntoml = \"1\"\n\n[dependencies]\ntoml = { workspace = true }\n";
+    let head = "[workspace.dependencies]\ntoml = \"1\"\n\n[dependencies]\n";
+    let receipt = compile_dependency_graph_delta(&identity, base, head, "", "")
+        .expect("merged manifests compile");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::DirectRequirementRemoved
+            && row.package_name == "toml"),
+        "the inherited requirement removal is detected: {:?}",
+        receipt.rows
+    );
+}

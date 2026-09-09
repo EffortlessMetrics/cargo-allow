@@ -161,6 +161,35 @@ jobs:
           path: workflow-construction-aggregate.json
           if-no-files-found: warn
 
+  # One exact base/head dependency graph delta for review (#3920 PR D).
+  # Advisory until the owning policy selects blocking consequences;
+  # malformed/empty inputs fail immediately inside the script.
+  dependency-graph-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: dependency-graph-delta
+      - name: Compile and enrich the base/head delta
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-dependency-graph-delta.sh
+      - name: Retain the delta and evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-graph-delta
+          path: |
+            dependency-graph-delta.json
+            dependency-graph-evidence-summary.md
+          if-no-files-found: warn
+
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).

@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Dependency graph delta review surface (#3920 PR D). The hidden
+  dependency-graph-delta compile CLI binds the exact input digests and
+  compiles one base/head pair; the check-dependency-graph-delta lane
+  synthesizes per-side merged member manifests with
+  workspace-inherited requirements resolved from each side's own
+  workspace table, runs the compiler and evidence enrichment, and
+  retains both artifacts for review. The job exits early when no
+  manifest, lockfile, or dependency-policy input changed, fails
+  immediately on malformed or empty required inputs, and stays
+  advisory for ordinary movement until the owning policy selects
+  blocking consequences; a stable required context is proposed to
+  #2283 only after calibration.

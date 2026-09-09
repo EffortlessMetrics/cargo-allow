@@ -146,6 +146,13 @@ pub(crate) fn parse_manifest_requirements(
     requirements
 }
 
+/// Parse one manifest text's `[workspace]` table for inherited
+/// requirement resolution; unparseable text contributes nothing.
+fn parse_workspace_dependencies(manifest: &str) -> Option<toml::Value> {
+    let value: toml::Value = toml::from_str(manifest).ok()?;
+    value.get("workspace").cloned()
+}
+
 /// Extract a sorted, deduplicated feature list from one dependency
 /// spec table. String specs carry no features.
 fn spec_features(spec: &toml::Value) -> Vec<String> {
@@ -167,6 +174,10 @@ fn spec_features(spec: &toml::Value) -> Vec<String> {
 
 /// Compile one base/head pair into the typed delta receipt. Pure and
 /// deterministic: the same inputs always produce the same output.
+/// Workspace-inherited requirements (`workspace = true`) are resolved
+/// from each manifest's own `[workspace.dependencies]` table when the
+/// manifest text carries one, so a merged member-dep manifest can be
+/// compiled with the same entry point.
 pub fn compile_dependency_graph_delta(
     identity: &DependencyGraphDeltaIdentityV1,
     base_manifest: &str,
@@ -174,11 +185,38 @@ pub fn compile_dependency_graph_delta(
     base_lock: &str,
     head_lock: &str,
 ) -> Result<DependencyGraphDeltaReceiptV1, String> {
+    compile_dependency_graph_delta_with_workspace(
+        identity,
+        base_manifest,
+        head_manifest,
+        Some(base_manifest),
+        Some(head_manifest),
+        base_lock,
+        head_lock,
+    )
+}
+
+/// Compile one base/head pair with explicit workspace manifest texts
+/// for `workspace = true` requirement resolution. `None` leaves
+/// inherited entries unresolved (empty requirement).
+pub fn compile_dependency_graph_delta_with_workspace(
+    identity: &DependencyGraphDeltaIdentityV1,
+    base_manifest: &str,
+    head_manifest: &str,
+    base_workspace_manifest: Option<&str>,
+    head_workspace_manifest: Option<&str>,
+    base_lock: &str,
+    head_lock: &str,
+) -> Result<DependencyGraphDeltaReceiptV1, String> {
     let mut rows = Vec::new();
 
-    // Parse both manifests for direct requirements.
-    let base_reqs = parse_manifest_requirements(base_manifest, None);
-    let head_reqs = parse_manifest_requirements(head_manifest, None);
+    // Parse both manifests for direct requirements, resolving
+    // `workspace = true` entries against each side's own
+    // [workspace.dependencies] table.
+    let base_workspace = base_workspace_manifest.and_then(parse_workspace_dependencies);
+    let head_workspace = head_workspace_manifest.and_then(parse_workspace_dependencies);
+    let base_reqs = parse_manifest_requirements(base_manifest, base_workspace.as_ref());
+    let head_reqs = parse_manifest_requirements(head_manifest, head_workspace.as_ref());
     let base_req_map: std::collections::BTreeMap<&str, &str> = base_reqs
         .iter()
         .map(|req| (req.name.as_str(), req.requirement.as_str()))
