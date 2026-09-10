@@ -368,11 +368,9 @@ fn cr_stripped(bytes: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-/// Whether a default feature of the member transitively enables the
-/// dependency (`dep:x` edges or legacy same-name feature edges). The
-/// certified set is the default-feature compile set: an optional
-/// dependency a default feature enables is compiled — and certifiable
-/// — by the proof classes.
+/// Expand local feature edges from defaults and forwarded requests.
+/// Retain dependency activation and forwarding tokens for the caller's
+/// optional-dependency selection and downstream feature propagation.
 fn expanded_features(manifest: &toml::Table, requested: &BTreeSet<String>) -> BTreeSet<String> {
     let features = manifest.get("features").and_then(toml::Value::as_table);
     let Some(features) = features else {
