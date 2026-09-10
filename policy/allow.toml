@@ -18410,7 +18410,7 @@ path = "policy/config-authority-consumers.toml"
 owner = "cargo-allow maintainers"
 classification = "reviewed_exception"
 reason = "Checked configuration-authority consumer denominator for #3876 shadow-resolver recurrence guard."
-evidence = ["#3876"]
+evidence = ["issue:3876"]
 created = "2026-09-03"
 review_after = "2026-12-02"
 
@@ -18432,7 +18432,7 @@ path = ".allow/revisions/4126-config-authority-denominator.toml"
 owner = "cargo-allow maintainers"
 classification = "reviewed_exception"
 reason = "Revision receipt for the #3876 configuration-authority denominator policy exception."
-evidence = ["#3876"]
+evidence = ["issue:3876"]
 created = "2026-09-03"
 review_after = "2026-12-02"
 
