@@ -1,0 +1,10 @@
+kind: Tested
+body: >-
+  The cargo-intent and cargo-proof Cargo dispatch integration fixtures
+  are bounded: every direct and Cargo-mediated invocation polls to a
+  named deadline and terminates plus reaps the fixture-owned tree on
+  timeout (taskkill tree kill on Windows, direct kill where Cargo
+  execs). Controlled hanging-child cases cover the direct and
+  Cargo-mediated lifecycles, explicit cleanup reports deterministic
+  removal failures through an injected remover, and Drop remains
+  best-effort only.
