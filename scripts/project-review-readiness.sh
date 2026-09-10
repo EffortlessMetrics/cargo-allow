@@ -17,7 +17,10 @@
 # adapter iterates ALL open pull requests and republishes each
 # readiness result bound to the new merge base; base changes through a
 # PR edit are recomputed through the `edited` event with the base
-# change flag. Neither path can leave a stale green behind.
+# change flag. Acquisition and final readback reject observed source
+# movement; neither provides an atomic lock against later changes or
+# concurrent publishers. Acquisition failure does not invalidate an
+# already existing check. Aggregate ordering remains separate (#3839).
 #
 # Disposition digest recipe (binds the retained record to the exact
 # pair): `git diff <merge_base>..<head_sha>` hashed with sha256sum.
@@ -33,19 +36,90 @@
 
 set -euo pipefail
 
-: "${PR_HEAD_SHA:?PR_HEAD_SHA is required}"
 : "${GH_TOKEN:?GH_TOKEN is required}"
 API="repos/${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 CHECK_NAME="review-readiness"
 LEDGER_DIR=".allow/review-dispositions"
 
+valid_commit() {
+  [[ "$1" =~ ^([a-f0-9]{40}|[a-f0-9]{64})$ ]]
+}
+
+read_pr_snapshot() {
+  local raw status
+  if raw="$(gh pr view "$1" --repo "${GITHUB_REPOSITORY}" \
+    --json state,baseRefName,headRefName,headRefOid,isDraft 2>/dev/null)"; then
+    :
+  else
+    status=$?
+    printf 'review-readiness: instrument failure: PR snapshot read failed (exit %s); no check published\n' "$status" >&2
+    return 1
+  fi
+  # Exactly one open, typed snapshot. Canonical serialization also makes
+  # the final comparison independent of provider JSON property order.
+  if ! jq -cse '
+    def refname: type == "string" and length > 0 and
+      (test("[\u0000-\u0020\u007f]") | not);
+    if length == 1 and (.[0] | type == "object" and .state == "OPEN" and
+      (.baseRefName | refname) and (.headRefName | refname) and
+      (.headRefOid | type == "string" and test("^([a-f0-9]{40}|[a-f0-9]{64})$")) and
+      (.isDraft | type == "boolean"))
+    then .[0] | {state, baseRefName, headRefName, headRefOid, isDraft}
+    else error("invalid snapshot") end' <<<"$raw" 2>/dev/null; then
+    echo 'review-readiness: instrument failure: invalid PR snapshot; no check published' >&2
+    return 1
+  fi
+}
+
+read_base_sha() {
+  local encoded raw status sha
+  if ! encoded="$(jq -nr --arg ref "$1" '$ref | @uri' 2>/dev/null)"; then
+    echo 'review-readiness: instrument failure: could not encode base ref; no check published' >&2
+    return 1
+  fi
+  if raw="$(gh api "${API}/git/ref/heads/${encoded}" 2>/dev/null)"; then
+    :
+  else
+    status=$?
+    printf 'review-readiness: instrument failure: base ref read failed (exit %s); no check published\n' "$status" >&2
+    return 1
+  fi
+  if ! sha="$(jq -ers --arg ref "refs/heads/$1" '
+    if length == 1 and (.[0] | type == "object" and .ref == $ref and
+      .object.type == "commit" and
+      (.object.sha | type == "string" and test("^([a-f0-9]{40}|[a-f0-9]{64})$")))
+    then .[0].object.sha else error("invalid ref") end' <<<"$raw" 2>/dev/null)"; then
+    echo 'review-readiness: instrument failure: invalid base ref; no check published' >&2
+    return 1
+  fi
+  printf '%s\n' "$sha"
+}
+
+require_current_pair() {
+  local current base_ref current_base
+  if ! current="$(read_pr_snapshot "$1")"; then return 1; fi
+  if [ "$current" != "$2" ]; then
+    echo 'review-readiness: PR changed during projection; no check published' >&2
+    return 1
+  fi
+  if ! base_ref="$(jq -er '.baseRefName' <<<"$current" 2>/dev/null)"; then
+    echo 'review-readiness: instrument failure: could not read current base name; no check published' >&2
+    return 1
+  fi
+  if ! current_base="$(read_base_sha "$base_ref")"; then return 1; fi
+  if [ "$current_base" != "$3" ]; then
+    echo 'review-readiness: base moved during projection; no check published' >&2
+    return 1
+  fi
+}
+
 publish() {
-  # publish <head_sha> <conclusion> <summary> <base_sha> <merge_base> <diff_digest>
+  # publish <head_sha> <conclusion> <summary> <base_sha> <merge_base> <diff_digest> <pr> <snapshot>
   # Update the authoritative run for this head when one exists; create
   # it otherwise. Pair identity is part of the published output so a
-  # stale result can never masquerade as current.
+  # consumer can identify the observed pair. This is not an atomic CAS.
   local head_sha="$1" conclusion="$2" summary="$3" base_sha="$4" merge_base="$5" diff_digest="$6"
-  local output
+  local pr_number="$7" pr_snapshot="$8" output
   output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v1:%s\n\n%s' \
     "${base_sha}" "${merge_base}" "${diff_digest}" "${summary}")"
   # These functions run in conditional contexts, where Bash disables
@@ -64,6 +138,9 @@ publish() {
     printf 'review-readiness: instrument failure: check-run lookup failed (exit %s)\n' "${api_status}" >&2
     return 1
   fi
+  # Fence every write, including discovery failures, after lookup. Do
+  # not relabel an already computed projection if any observed field moved.
+  if ! require_current_pair "$pr_number" "$pr_snapshot" "$base_sha"; then return 1; fi
   if [ -n "${existing_id}" ]; then
     if gh api "${API}/check-runs/${existing_id}" -X PATCH \
       -f "status=completed" \
@@ -131,23 +208,54 @@ validate_projection() {
 project_pr() {
   local pr_number="$1" event="$2"
   local pr_json base_ref base_sha head_ref head_sha draft_state merge_base diff_digest input_status
-  if pr_json="$(gh pr view "$pr_number" --json baseRefName,baseRefOid,headRefName,headRefOid,isDraft 2>/dev/null)"; then
+  if ! pr_json="$(read_pr_snapshot "$pr_number")"; then return 1; fi
+  if ! base_ref="$(jq -er '.baseRefName' <<<"$pr_json" 2>/dev/null)" ||
+    ! head_ref="$(jq -er '.headRefName' <<<"$pr_json" 2>/dev/null)" ||
+    ! head_sha="$(jq -er '.headRefOid' <<<"$pr_json" 2>/dev/null)" ||
+    ! draft_state="$(jq -er 'if .isDraft then "draft" else "ready" end' <<<"$pr_json" 2>/dev/null)"; then
+    echo 'review-readiness: instrument failure: invalid PR snapshot' >&2
+    return 1
+  fi
+  if [ "${GITHUB_EVENT_NAME}" != push ] && [ "$head_sha" != "${PR_HEAD_SHA:-}" ]; then
+    echo 'review-readiness: stale or missing PR event head; no check published' >&2
+    return 1
+  fi
+  if ! base_sha="$(read_base_sha "$base_ref")"; then return 1; fi
+  # Acquire immutable objects, not tracking refs or a new checkout. Fork
+  # heads must be reachable through the base repository's PR objects;
+  # an unavailable object is a failure even if cached history looks usable.
+  if git fetch --no-tags --no-write-fetch-head --refmap= origin "$base_sha" "$head_sha" >/dev/null 2>&1; then
     :
   else
     input_status=$?
-    printf 'review-readiness: instrument failure: PR snapshot read failed (exit %s)\n' "${input_status}" >&2
+    printf 'review-readiness: instrument failure: object fetch failed (exit %s)\n' "$input_status" >&2
     return 1
   fi
-  if ! base_ref="$(jq -er '.baseRefName | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
-    ! base_sha="$(jq -er '.baseRefOid | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
-    ! head_ref="$(jq -er '.headRefName | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
-    ! head_sha="$(jq -er '.headRefOid | select(type == "string" and test("\\S"))' <<<"$pr_json" 2>/dev/null)" ||
-    ! draft_state="$(jq -er 'if .isDraft == true then "draft" elif .isDraft == false then "ready" else empty end' <<<"$pr_json" 2>/dev/null)"; then
-    echo "review-readiness: instrument failure: invalid PR snapshot" >&2
-    return 1
+  local object observed checkout parents
+  for object in "$base_sha" "$head_sha"; do
+    if ! observed="$(git rev-parse --verify "${object}^{commit}" 2>/dev/null)" || [ "$observed" != "$object" ]; then
+      echo 'review-readiness: instrument failure: fetched commit object did not verify' >&2
+      return 1
+    fi
+  done
+  if [ "${GITHUB_EVENT_NAME}" != push ]; then
+    if ! valid_commit "${GITHUB_SHA:-}" ||
+      ! checkout="$(git rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || [ "$checkout" != "$GITHUB_SHA" ]; then
+      echo 'review-readiness: instrument failure: event checkout subject mismatch' >&2
+      return 1
+    fi
+    if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)" ||
+      [ "$parents" != "$GITHUB_SHA $base_sha $head_sha" ]; then
+      echo 'review-readiness: instrument failure: event synthetic parents mismatch' >&2
+      return 1
+    fi
   fi
-  if merge_base="$(git merge-base "origin/${base_ref}" "${head_sha}" 2>/dev/null)" && [ -n "${merge_base}" ]; then
-    :
+  # A main-push checkout is not a synthetic subject for each enumerated PR.
+  if merge_base="$(git merge-base --all "$base_sha" "$head_sha" 2>/dev/null)"; then
+    if ! valid_commit "$merge_base"; then
+      echo 'review-readiness: instrument failure: merge-base is missing or nonunique' >&2
+      return 1
+    fi
   else
     input_status=$?
     printf 'review-readiness: instrument failure: merge-base read failed (exit %s)\n' "${input_status}" >&2
@@ -230,13 +338,13 @@ project_pr() {
     rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "unreadable retained disposition records for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${malformed[*]}; malformed review evidence fails closed" \
-      "${base_sha}" "${merge_base}" "${diff_digest}" || return 1
+      "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
     return 1
   elif [ "${#exact_matches[@]}" -gt 1 ] || [ "${#ancestor_matches[@]}" -gt 1 ]; then
     rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "ambiguous retained dispositions for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: exact=${exact_matches[*]:-} ancestor=${ancestor_matches[*]:-}; disposition discovery fails closed" \
-      "${base_sha}" "${merge_base}" "${diff_digest}" || return 1
+      "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
     return 1
   elif [ "${#exact_matches[@]}" -eq 1 ]; then
     selected="${exact_matches[0]}"
@@ -301,7 +409,7 @@ project_pr() {
     return 1
   fi
   if ! publish "${head_sha}" "${conclusion}" "${summary}" \
-    "${base_sha}" "${merge_base}" "${diff_digest}"; then
+    "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json"; then
     rm -f "${projection_file}"
     return 1
   fi
@@ -317,7 +425,7 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
   # enumeration is captured (not process-substituted) so a failed
   # gh pr list fails the run instead of looking like an empty list,
   # and the limit is raised past the 30-PR default page.
-  if open_prs="$(gh pr list --state open --limit 1000 --json number --jq '.[].number' 2>/dev/null)"; then
+  if open_prs="$(gh pr list --repo "${GITHUB_REPOSITORY}" --state open --limit 1000 --json number --jq '.[].number' 2>/dev/null)"; then
     :
   else
     input_status=$?
