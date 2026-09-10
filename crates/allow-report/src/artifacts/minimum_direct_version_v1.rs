@@ -314,8 +314,15 @@ pub fn evaluate_minimum_version_proof(
         };
         // Negative control 3: the tested floor must be the declared
         // floor's minimum; a compatible newer version cannot substitute
-        // for it while still being labeled the declared floor.
-        if row.result == MinimumFloorResultV1::Proven && row.resolved_version != row.tested_floor {
+        // for it while still being labeled the declared floor. Registry
+        // build metadata (+spec-1.1.0) carries no SemVer precedence, so
+        // the comparison uses the base version.
+        let resolved_base = row
+            .resolved_version
+            .split('+')
+            .next()
+            .unwrap_or(&row.resolved_version);
+        if row.result == MinimumFloorResultV1::Proven && resolved_base != row.tested_floor {
             reasons.push(format!(
                 "resolved substitution: {} resolved {} but the tested floor is {}",
                 floor.package, row.resolved_version, row.tested_floor

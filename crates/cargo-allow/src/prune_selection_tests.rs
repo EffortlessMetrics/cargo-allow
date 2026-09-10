@@ -230,7 +230,27 @@ fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
                 "--write",
             ],
         "summary apply command widened selected preview to bulk removal",
-    )
+    )?;
+    with_fixture(|fixture| {
+        use clap::Parser;
+        let mut argv = vec!["cargo-allow".to_owned()];
+        argv.extend(action.args.clone());
+        argv.extend([
+            "--root".to_owned(),
+            fixture.root.to_string_lossy().into_owned(),
+        ]);
+        let parsed = crate::CargoAllowCli::try_parse_from(argv)?;
+        let Some(crate::CargoAllowCommand::Prune(args)) = parsed.command else {
+            return Err("summary action did not parse as prune".into());
+        };
+        let mut expected = load_policy(&fixture.policy)?;
+        expected.allow.retain(|entry| entry.id != "allow-stale-a");
+        cmd_prune(&args)?;
+        require(
+            load_policy(&fixture.policy)? == expected,
+            "executing the summary action changed an unselected entry",
+        )
+    })
 }
 
 #[test]

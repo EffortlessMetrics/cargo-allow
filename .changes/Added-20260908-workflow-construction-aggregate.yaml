@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Workflow construction aggregate (#3907 PR D). Typed
+  WorkflowConstructionAggregateV1 in allow-report combines the pinned
+  syntax lane report and the qualified security lane report over the
+  same denominator into one stable semantic report: an instrument
+  failure in either lane dominates findings, findings stay visible
+  with open and exception-accepted dispositions counted separately,
+  and denominator drift between the lanes fails closed. The hidden
+  workflow-construction aggregate CLI emits the report; the advisory
+  workflow-construction CI job retains the aggregate artifact even
+  under failure. Enforcement selection remains the #2283/#2284
+  authority.

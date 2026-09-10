@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  prune --allow-id now enforces its selection before any preview,
+  removed block, mutation receipt, or policy write is derived. An
+  unknown id fails closed before any output; a known id that is not
+  stale is a no-op; and a selected write removes only the selected
+  entry instead of every stale candidate. Unfiltered prune behavior
+  is unchanged.

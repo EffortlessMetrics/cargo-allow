@@ -43,7 +43,7 @@ classification = "reviewed_lint_exception"
 reason = "Fixture keeps an explicit lint suppression linked to policy."
 policy_id = "clippy-unwrap-policy"
 created = "2026-05-09"
-review_after = "2026-09-09"
+review_after = "2027-03-09"
 "#,
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("clippy policy write: {err}")));
@@ -103,7 +103,7 @@ classification = "reviewed_unsafe_boundary"
 reason = "Caller validates pointer before read."
 evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
 created = "2026-05-09"
-review_after = "2026-09-09"
+review_after = "2027-03-09"
 
 [allow.selector]
 kind = "unsafe-block"

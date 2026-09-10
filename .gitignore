@@ -6,3 +6,11 @@ target/
 policy/allow.proposed.toml
 .zcode/
 __pycache__/
+tool-run*.json
+
+# Construction lane scratch artifacts (#3907)
+tool-run.json
+tool-run-security.json
+workflow-construction-aggregate.json
+dependency-graph-delta.json
+dependency-graph-evidence-summary.md

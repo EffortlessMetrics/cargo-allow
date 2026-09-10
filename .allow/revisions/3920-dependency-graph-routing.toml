@@ -1,0 +1,52 @@
+schema_version = 1
+# Revision note for the #3920 PR D dependency graph routing lane.
+
+# This diff lands the review surface for the dependency graph delta:
+# a hidden dependency-graph-delta compile CLI that binds the exact
+# input digests and compiles one base/head pair, and the
+# check-dependency-graph-delta lane that synthesizes per-side merged
+# member manifests (workspace-inherited requirements resolved from
+# each side's own workspace table), runs the compiler and the
+# evidence enrichment, and retains both artifacts. The lane exits
+# early when no manifest, lockfile, or dependency-policy input
+# changed, fails immediately on malformed or empty required inputs,
+# and stays advisory for ordinary movement until the owning policy
+# selects blocking consequences. The compiler gained a
+# workspace-aware entry point so inherited requirement movement is
+# visible without changing the existing signature's behavior. The
+# source-exception changes receipt only the syntax-visible constructs
+# the new surfaces introduce: allow-11278's expect ratchet rises by
+# the one merged-manifest law test expect, allow-11289 receipts the
+# lane script, allow-11290 is the compile CLI test expect ratchet,
+# and allow-11291 receipts this revision-note file itself per the
+# per-note receipt law. Review repairs also strictened the producer:
+# invalid UTF-8 and malformed TOML documents fail closed, workspace-
+# inherited member features union, the PR head (not the synthetic
+# merge commit) is checked out and bound, head member manifests fail
+# closed on load errors, and the bounded-denominator limitations are
+# surfaced in the lane output.
+# per-note receipt law. No existing exception is weakened, no expiry
+# is extended, and no scope is broadened beyond the recorded ratchet
+# rise. policy/allow.toml keeps its CRLF line-ending contract; the
+# net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11278"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:b0b90dbafc6c9a1aced1201281d6645185754e2dde7c06fd152efa33f6284876"
+after_fingerprint = "sha256:v1:2842598be1a7467d7f1aed2d8a78ed2ad9275c9f6e7dc9328720df3d484437b3"
+
+[[records]]
+allow_ids = ["allow-11289"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e5656eed6ec9304dabb384521194910a23963f215cc592961f6b242d71b7504c"
+
+[[records]]
+allow_ids = ["allow-11290"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c70d5a6b2692f3ddafc7b79364a93c4610bee5e86df4b25015ea14058db23406"
+
+[[records]]
+allow_ids = ["allow-11291"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e218f11f217544da8ad6a6e4c864c73ecf26e2af5adfbe40750067dfac9d49b4"
