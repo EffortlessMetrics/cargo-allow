@@ -228,6 +228,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             policy_path,
             candidate_count: candidates.len(),
             allow_id: args.allow_id.clone(),
+            include_untracked: args.include_untracked,
             write_requested: args.write,
             dry_run: args.dry_run,
             completeness: crate::core_command_router::summary_completeness(&inventory_facts),

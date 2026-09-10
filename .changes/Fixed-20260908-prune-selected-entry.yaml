@@ -1,5 +1,5 @@
 kind: Fixed
 body: >-
-  Preserve `--allow-id` in the apply command emitted by a selected prune
-  preview so following that command cannot broaden removal to unrelated stale
-  entries.
+  Preserve `--allow-id` and `--include-untracked` in the apply command emitted
+  by a prune preview so following that command keeps the reviewed selection
+  and source inventory.

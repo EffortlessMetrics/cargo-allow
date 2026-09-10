@@ -797,6 +797,7 @@ pub struct PruneSummaryFactsV1 {
     pub policy_path: String,
     pub candidate_count: usize,
     pub allow_id: Option<String>,
+    pub include_untracked: bool,
     pub write_requested: bool,
     pub dry_run: bool,
     pub completeness: CompletenessV1,
@@ -811,6 +812,7 @@ pub fn core_command_summary_from_prune(
         policy_path,
         candidate_count,
         allow_id,
+        include_untracked,
         write_requested,
         dry_run: _,
         completeness,
@@ -840,6 +842,9 @@ pub fn core_command_summary_from_prune(
         ];
         if let Some(id) = allow_id {
             args.extend(["--allow-id".to_string(), id]);
+        }
+        if include_untracked {
+            args.push("--include-untracked".to_string());
         }
         args.push("--write".to_string());
         Some(

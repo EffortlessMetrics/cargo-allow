@@ -34,6 +34,8 @@ Keep the same `--allow-id` when using `--write` after review. The preview,
 receipt, and policy change contain only that selected stale entry. An existing
 entry that is not stale produces no removal; an unknown ID returns a usage
 error. Omitting `--allow-id` keeps the all-stale behavior shown above.
+The preview's command-summary apply action also preserves `--include-untracked`
+when selected, so the follow-up scan uses the same inventory option.
 
 ## Artifact Scope
 

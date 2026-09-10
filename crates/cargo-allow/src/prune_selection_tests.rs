@@ -38,6 +38,22 @@ impl Fixture {
     fn artifact(&self) -> Result<Value, Box<dyn std::error::Error>> {
         Ok(serde_json::from_slice(&fs::read(&self.output)?)?)
     }
+
+    fn apply_action(&self, args: &[String]) -> TestResult {
+        use clap::Parser;
+        let mut argv = vec!["cargo-allow".to_owned()];
+        argv.extend_from_slice(args);
+        argv.extend([
+            "--root".to_owned(),
+            self.root.to_string_lossy().into_owned(),
+        ]);
+        let parsed = crate::CargoAllowCli::try_parse_from(argv)?;
+        let Some(crate::CargoAllowCommand::Prune(args)) = parsed.command else {
+            return Err("summary action did not parse as prune".into());
+        };
+        cmd_prune(&args)?;
+        Ok(())
+    }
 }
 
 fn require(condition: bool, message: &str) -> TestResult {
@@ -213,6 +229,7 @@ fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
         policy_path: "policy/allow.toml".to_owned(),
         candidate_count: 1,
         allow_id: Some("allow-stale-a".to_owned()),
+        include_untracked: false,
         write_requested: false,
         dry_run: true,
         completeness: effortless_repo_protocol::CompletenessV1::Complete,
@@ -232,23 +249,66 @@ fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
         "summary apply command widened selected preview to bulk removal",
     )?;
     with_fixture(|fixture| {
-        use clap::Parser;
-        let mut argv = vec!["cargo-allow".to_owned()];
-        argv.extend(action.args.clone());
-        argv.extend([
-            "--root".to_owned(),
-            fixture.root.to_string_lossy().into_owned(),
-        ]);
-        let parsed = crate::CargoAllowCli::try_parse_from(argv)?;
-        let Some(crate::CargoAllowCommand::Prune(args)) = parsed.command else {
-            return Err("summary action did not parse as prune".into());
-        };
         let mut expected = load_policy(&fixture.policy)?;
         expected.allow.retain(|entry| entry.id != "allow-stale-a");
-        cmd_prune(&args)?;
+        fixture.apply_action(&action.args)?;
         require(
             load_policy(&fixture.policy)? == expected,
             "executing the summary action changed an unselected entry",
+        )
+    })
+}
+
+#[test]
+fn prune_summary_apply_preserves_untracked_inventory() -> TestResult {
+    use crate::core_command_summary::{PruneSummaryFactsV1, core_command_summary_from_prune};
+    with_fixture(|fixture| {
+        // Track only the policy: docs/live.md must remain an untracked finding.
+        for args in [
+            ["init", "--quiet"].as_slice(),
+            ["add", "--", "policy/allow.toml"].as_slice(),
+        ] {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&fixture.root)
+                .env_remove("GIT_DIR")
+                .env_remove("GIT_WORK_TREE")
+                .env_remove("GIT_INDEX_FILE")
+                .env_remove("GIT_COMMON_DIR")
+                .env_remove("GIT_OBJECT_DIRECTORY")
+                .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
+                .output()?;
+            if !output.status.success() {
+                return Err(format!(
+                    "git fixture setup: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                )
+                .into());
+            }
+        }
+        let mut preview = fixture.args(None, false);
+        preview.include_untracked = true;
+        cmd_prune(&preview)?;
+        require_candidates(&fixture.artifact()?, &["allow-stale-a", "allow-stale-b"])?;
+
+        let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
+            repository_identity: "local-repository:test".to_owned(),
+            portable_identity: "worktree:prune:policy/allow.toml:2".to_owned(),
+            policy_path: "policy/allow.toml".to_owned(),
+            candidate_count: 2,
+            allow_id: None,
+            include_untracked: true,
+            write_requested: false,
+            dry_run: true,
+            completeness: effortless_repo_protocol::CompletenessV1::Complete,
+        })?;
+        let action = summary.primary_action.ok_or("missing apply action")?;
+        let mut expected = load_policy(&fixture.policy)?;
+        expected.allow.retain(|entry| entry.id == "allow-live");
+        fixture.apply_action(&action.args)?;
+        require(
+            load_policy(&fixture.policy)? == expected,
+            "summary apply removed the untracked live entry excluded by preview",
         )
     })
 }
