@@ -841,7 +841,7 @@ pub fn core_command_summary_from_prune(
             policy_path.clone(),
         ];
         if let Some(id) = allow_id {
-            args.extend(["--allow-id".to_string(), id]);
+            args.push(format!("--allow-id={id}"));
         }
         if include_untracked {
             args.push("--include-untracked".to_string());

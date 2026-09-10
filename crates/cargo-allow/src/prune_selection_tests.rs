@@ -242,8 +242,7 @@ fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
                 "--stale",
                 "--config",
                 "policy/allow.toml",
-                "--allow-id",
-                "allow-stale-a",
+                "--allow-id=allow-stale-a",
                 "--write",
             ],
         "summary apply command widened selected preview to bulk removal",
@@ -255,6 +254,41 @@ fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
         require(
             load_policy(&fixture.policy)? == expected,
             "executing the summary action changed an unselected entry",
+        )
+    })
+}
+
+#[test]
+fn prune_summary_apply_preserves_hyphen_leading_id() -> TestResult {
+    use crate::core_command_summary::{PruneSummaryFactsV1, core_command_summary_from_prune};
+    with_fixture(|fixture| {
+        let mut config = load_policy(&fixture.policy)?;
+        let selected = config
+            .allow
+            .iter_mut()
+            .find(|entry| entry.id == "allow-stale-a")
+            .ok_or("missing selected fixture entry")?;
+        selected.id = "--write".to_owned();
+        fs::write(&fixture.policy, render_policy(&config))?;
+        cmd_prune(&fixture.args(Some("--write"), false))?;
+        require_candidates(&fixture.artifact()?, &["--write"])?;
+        let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
+            repository_identity: "local-repository:test".to_owned(),
+            portable_identity: "worktree:prune:policy/allow.toml:1".to_owned(),
+            policy_path: "policy/allow.toml".to_owned(),
+            candidate_count: 1,
+            allow_id: Some("--write".to_owned()),
+            include_untracked: false,
+            write_requested: false,
+            dry_run: true,
+            completeness: effortless_repo_protocol::CompletenessV1::Complete,
+        })?;
+        let action = summary.primary_action.ok_or("missing apply action")?;
+        config.allow.retain(|entry| entry.id != "--write");
+        fixture.apply_action(&action.args)?;
+        require(
+            load_policy(&fixture.policy)? == config,
+            "hyphen-leading ID action changed an unselected entry",
         )
     })
 }
