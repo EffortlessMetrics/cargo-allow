@@ -1,0 +1,28 @@
+schema_version = 1
+# Revision note for the #4173 performance source provenance lane.
+
+# The CI performance collector now derives each historical run's
+# source pair from immutable evidence of the executed run: a
+# pull_request run's synthetic merge commit parents are the executed
+# base and head, push and other events use the head's first parent,
+# and contradictory or parentless shapes fail as unavailable instead
+# of silently substituting current PR metadata. The fixture harness
+# scripts/test-collect-ci-performance.sh proves a moved association
+# still yields the executed pair, repeated collection is stable, and
+# malformed provider output writes no receipt. The source-exception
+# additions receipt only the new harness surface: allow-9261 receipts
+# the harness script and allow-9262 receipts this revision-note file
+# itself per the per-note receipt law. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened.
+# policy/allow.toml keeps its CRLF line-ending contract; the net
+# transition is append-only.
+
+[[records]]
+allow_ids = ["allow-9261"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e07058cd983d2b4404305a199df88e5b16d4747589a64457a72b209b096cd984"
+
+[[records]]
+allow_ids = ["allow-9262"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ccb343accd76472f221f888de16dd4897d9d4833872c702005b1f0ab47ed390c"
