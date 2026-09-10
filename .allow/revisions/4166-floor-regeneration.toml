@@ -6,6 +6,10 @@ schema_version = 1
 # occurrence count, approval classification, or lifecycle date is broadened.
 # The exact transition fingerprints were derived from 653cf7c3 against fb3908b7
 # and reviewed against the appended entries, not treated as generated approval.
+# The retained receipt's reason also stops hardcoding the prior hosted location
+# and fourteen-row result. Its observed execution and row facts belong in the
+# receipt; the single-package archive scope stays explicit. Ownership, selector,
+# classification, evidence, and lifecycle metadata remain unchanged.
 
 [[records]]
 allow_ids = ["allow-0963"]
@@ -31,3 +35,9 @@ after_fingerprint = "sha256:v1:b3985efe34ac8903a31eb6900c97c7cc6819a6de8af511146
 allow_ids = ["allow-0967"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:d1974f54a456cd1cb0474b2dadf1022e4b239ac6abc673cf92ac7cbbe2ba7310"
+
+[[records]]
+allow_ids = ["allow-11245"]
+change_kinds = ["reason_changed"]
+before_fingerprint = "sha256:v1:c64479510db27fb673f48018bc5b51ff7d23e7a244368f9ca820496c7d8605a6"
+after_fingerprint = "sha256:v1:21aa9ec848fced1a9af3b86783d01b3270e183c7a6ec4bfb3eccb61185836a33"
