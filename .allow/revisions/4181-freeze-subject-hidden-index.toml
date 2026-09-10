@@ -10,7 +10,8 @@ schema_version = 1
 # receipt is returned. The expect ratchet for the composition module
 # rises by the new acceptance tests' invariant-guarded expects. No
 # existing exception is weakened beyond the recorded ratchet rise, no
-# expiry is extended, and no scope is broadened. policy/allow.toml
+# receipt law, allow-9260 receipts this revision-note file itself.
+# No expiry is extended, and no scope is broadened. policy/allow.toml
 # keeps its CRLF line-ending contract; the net transition is the
 # recorded ratchet rise only.
 
@@ -19,3 +20,8 @@ allow_ids = ["allow-0862"]
 change_kinds = ["occurrence_limit_loosened"]
 before_fingerprint = "sha256:v1:63b1236cddb06af70c12e94945b5608368dfe1dc65ea2d0f72c1cae49c6c00de"
 after_fingerprint = "sha256:v1:d1f83397b272e579213d0d60ef2f3e191ac699f2c9df263671f9ee7adfd7436f"
+
+[[records]]
+allow_ids = ["allow-9260"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7c841d389ed21c20b6a405df685940bb26c0816293a1d9d9246669b3a17ca7d4"
