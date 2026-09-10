@@ -1,3 +1,33 @@
 schema_version = 1
-# Exact source-file exception fingerprints are generated from the committed diff.
-# #4166 owns the bounded collector and its protocol/fixture files.
+# #4166 owns this producer/consumer regeneration repair. These five additions
+# retain the protocol documentation, observed-identity collector, two bounded
+# fixture drivers, and this revision note. Selectors name individual files;
+# core/deps owns their reasons and review dates. No existing exception scope,
+# occurrence count, approval classification, or lifecycle date is broadened.
+# The exact transition fingerprints were derived from 653cf7c3 against fb3908b7
+# and reviewed against the appended entries, not treated as generated approval.
+
+[[records]]
+allow_ids = ["allow-0963"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:53ed1a46c11456ce0112c7f8e3b351473e2c0ed0ff3e43d26af76e416064853d"
+
+[[records]]
+allow_ids = ["allow-0964"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6ff3c577f60a740b23fbd82fbe6360c28d221054b54bbfdfac181d06106dd647"
+
+[[records]]
+allow_ids = ["allow-0965"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:abd675579680aa4c71cdbe46f9587173c815611237ad0d9cb4739e2aae84ce08"
+
+[[records]]
+allow_ids = ["allow-0966"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b3985efe34ac8903a31eb6900c97c7cc6819a6de8af511146e8726f12ec47a10"
+
+[[records]]
+allow_ids = ["allow-0967"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d1974f54a456cd1cb0474b2dadf1022e4b239ac6abc673cf92ac7cbbe2ba7310"
