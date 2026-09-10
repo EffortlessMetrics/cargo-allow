@@ -227,6 +227,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             portable_identity: format!("worktree:prune:{}:{}", policy_path, candidates.len()),
             policy_path,
             candidate_count: candidates.len(),
+            allow_id: args.allow_id.clone(),
+            include_untracked: args.include_untracked,
             write_requested: args.write,
             dry_run: args.dry_run,
             completeness: crate::core_command_router::summary_completeness(&inventory_facts),
@@ -317,3 +319,7 @@ mod render_tests;
 #[cfg(test)]
 #[path = "prune_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "prune_selection_tests.rs"]
+mod selection_tests;
