@@ -1,0 +1,42 @@
+schema_version = 1
+# Revision note for the #3907 PR A workflow construction inventory.
+
+# This diff lands the workflow construction denominator: a typed
+# WorkflowConstructionInventoryV1 in allow-report walks every current
+# workflow, local composite action (repository-level and nested), and
+# checked example, classifies the documented dogfood construction
+# fixtures as intentionally-invalid surfaces, records the local
+# `uses: ./.` reference edges that bind nested actions to their
+# callers, and names the YAML-adjacent configuration surfaces that
+# were considered and excluded. The report-only inventory also selects
+# the pinned syntax analyzer (actionlint 1.7.7 with its release-asset
+# digest, matching the pregate workflow's pin) and records the
+# security construction analyzer as a candidate pending fixture
+# qualification, with the fixture corpus — eleven finding families,
+# each carrying positive and negative fragments for interpolation,
+# permissions, privileged triggers, credential persistence, secret
+# exposure, checkout/ref selection, nested actions, shell
+# construction, expression validity, action references, and
+# unsupported-expression honesty — embedded as typed vocabulary
+# evidence. The source-exception additions receipt only the
+# syntax-visible constructs the new surfaces introduce: allow-11260 is
+# the expect ratchet for the live inventory tests, allow-11261 the
+# fixture law tests' expect ratchet, and no existing exception is
+# weakened, no expiry is extended, and no scope is broadened: the
+# records below are additions. policy/allow.toml keeps its CRLF
+# line-ending contract; the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11260"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4a8db1c7d62bc4645f302509aec8ac0c2002615a9453a5bdef86db3951435877"
+
+[[records]]
+allow_ids = ["allow-11261"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f30c80c8eea2e29cd2d9288a1a64a9bb4233f6a563ab79bccf1de845e2909bec"
+
+[[records]]
+allow_ids = ["allow-11262"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:264bdf8e2f8fc2c47f253ead6d8943cb31b5468b46a3b9af8c5623318f62d68d"

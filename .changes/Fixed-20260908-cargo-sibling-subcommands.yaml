@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Accept Cargo's subcommand argument in cargo-intent and cargo-proof so
+  cargo intent and cargo proof preserve direct-binary identity, help, version,
+  and native argument handling.

@@ -1,18 +1,21 @@
 //! Product-isolation tests for the #3903 PR C advisory product rows:
 //! one product's unsupported floor never fails another product's
 //! evaluation, each product receipt certifies exactly its own package
-//! closure and declared floors (derived here from the checked-in
-//! manifests), report-only products stay advisory (check is their
-//! bounded proof class and their receipts claim no unexecuted
-//! commands), and the shell registry stays the exact mirror of this
-//! file's registry.
+//! closure and declared floors (derived from the checked-in manifests
+//! through the shared selection module), report-only products stay
+//! advisory (check is their bounded proof class and their receipts
+//! claim no unexecuted commands), and the shell registry stays the
+//! exact mirror of the shared registry.
 
 use allow_report::{
     DirectDependencyClassV1, MinimumFloorResultV1, MinimumFloorRowV1, MinimumProofVerdictV1,
     MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
     evaluate_minimum_version_proof,
 };
-use std::collections::{BTreeMap, BTreeSet};
+
+use crate::minimum_version_selection::{
+    derive_selection as shared_derive_selection, product_roots as shared_product_roots,
+};
 
 fn floor(package: &str, requirement: &str, selected: &str) -> MinimumFloorRowV1 {
     MinimumFloorRowV1 {
@@ -86,201 +89,24 @@ fn workspace_root() -> std::path::PathBuf {
     .expect("workspace root resolves")
 }
 
-/// The product registry: each product maps to the package roots whose
-/// dependency closure a receipt certifies. scripts/proof-direct-floors.sh
-/// must stay this registry's exact mirror (asserted by
-/// `minimum_direct_version_products_script_registry_matches`).
 fn product_roots(product: &str) -> &'static [&'static str] {
-    match product {
-        "cargo-allow" => &["cargo-allow"],
-        "shared" => &[
-            "effortless-repo-protocol",
-            "effortless-repo-snapshot",
-            "effortless-repo-edit",
-            "effortless-rust-source-index",
-        ],
-        "cargo-intent" => &["cargo-intent"],
-        "cargo-proof" => &["cargo-proof"],
-        // Mirrors the shell registry's fail-closed arm: an unregistered
-        // product selects no roots and the derivation refuses below.
-        _other => &[],
-    }
+    shared_product_roots(product).expect("test products stay registered")
 }
 
-/// Resolve a member-relative dependency path against its member
-/// directory (`crates/<dir>/../x` style paths normalize the same way
-/// the shell derivation does).
-fn normalize_member_path(base: &str, relative: &str) -> String {
-    let joined = format!("{base}/{relative}");
-    let mut parts: Vec<&str> = Vec::new();
-    for component in joined.split('/') {
-        match component {
-            "" | "." => {}
-            ".." => {
-                parts.pop();
-            }
-            other => parts.push(other),
-        }
-    }
-    parts.join("/")
-}
-
-/// One product's derived proof selection: the closure's member packages
-/// and the closure's declared external direct dependency floors
-/// (package, requirement, floor), sorted by package — the same
-/// derivation scripts/proof-direct-floors.sh performs on the
-/// checked-in manifests.
-#[derive(Debug)]
+/// The tests' view of the shared selection: (package, requirement,
+/// floor) triples plus the closure membership.
 struct ProductSelection {
     closure: Vec<String>,
     floors: Vec<(String, String, String)>,
 }
 
-/// The workspace-wide dependency graph the derivation walks: the
-/// workspace dependency specs plus the package-name <-> manifest-dir
-/// maps for every checked-in member.
-#[derive(Debug)]
-struct DependencyGraph {
-    ws_deps: toml::Table,
-    name_dir: BTreeMap<String, String>,
-    dir_name: BTreeMap<String, String>,
-}
-
-fn load_dependency_graph(root: &std::path::Path) -> DependencyGraph {
-    let ws_text =
-        std::fs::read_to_string(root.join("Cargo.toml")).expect("the root manifest reads");
-    let ws: toml::Table = ws_text.parse().expect("the root manifest parses");
-    let workspace = ws.get("workspace").expect("the workspace table");
-    let ws_deps = workspace
-        .get("dependencies")
-        .and_then(toml::Value::as_table)
-        .expect("workspace dependencies table")
-        .clone();
-    let members: Vec<String> = workspace
-        .get("members")
-        .and_then(toml::Value::as_array)
-        .expect("workspace members array")
-        .iter()
-        .map(|value| value.as_str().expect("member path string").to_string())
-        .collect();
-
-    let mut name_dir: BTreeMap<String, String> = BTreeMap::new();
-    let mut dir_name: BTreeMap<String, String> = BTreeMap::new();
-    for member in &members {
-        let text = std::fs::read_to_string(root.join(member).join("Cargo.toml"))
-            .unwrap_or_else(|err| panic!("member manifest {member} reads: {err}"));
-        let manifest: toml::Table = text.parse().expect("member manifest parses");
-        let name = manifest
-            .get("package")
-            .and_then(|package| package.get("name"))
-            .and_then(toml::Value::as_str)
-            .expect("package name string")
-            .to_string();
-        name_dir.insert(name.clone(), member.clone());
-        dir_name.insert(member.clone(), name);
-    }
-    DependencyGraph {
-        ws_deps,
-        name_dir,
-        dir_name,
-    }
-}
-
 fn derive_selection(root: &std::path::Path, product: &str) -> ProductSelection {
-    let roots = product_roots(product);
-    assert!(
-        !roots.is_empty(),
-        "product {product} is not in the registry; refusing to derive an empty selection"
-    );
-    let graph = load_dependency_graph(root);
-
-    let mut closure: Vec<String> = Vec::new();
-    let mut seen: BTreeSet<String> = BTreeSet::new();
-    let mut floors: Vec<(String, String, String)> = Vec::new();
-    let mut requirements: BTreeMap<String, String> = BTreeMap::new();
-    let mut stack: Vec<String> = roots.iter().rev().map(|name| (*name).to_string()).collect();
-    while let Some(name) = stack.pop() {
-        if !seen.insert(name.clone()) {
-            continue;
-        }
-        let member = graph
-            .name_dir
-            .get(&name)
-            .unwrap_or_else(|| panic!("product root {name} is not a workspace member"));
-        closure.push(name.clone());
-        let text = std::fs::read_to_string(root.join(member).join("Cargo.toml"))
-            .unwrap_or_else(|err| panic!("closure manifest {member} reads: {err}"));
-        let manifest: toml::Table = text.parse().expect("closure manifest parses");
-        for table in ["dependencies", "build-dependencies"] {
-            let Some(deps) = manifest.get(table).and_then(toml::Value::as_table) else {
-                continue;
-            };
-            for (dep, spec) in deps {
-                let inherited = spec
-                    .get("workspace")
-                    .and_then(toml::Value::as_bool)
-                    .unwrap_or(false);
-                let resolved: &toml::Value = if inherited {
-                    graph.ws_deps.get(dep).unwrap_or_else(|| {
-                        panic!("{name} inherits {dep}, but the workspace does not declare it")
-                    })
-                } else {
-                    spec
-                };
-                if let Some(table) = resolved.as_table() {
-                    assert!(
-                        !table.contains_key("git"),
-                        "{name} declares a git dependency {dep}; out of proof scope"
-                    );
-                    if table.contains_key("optional") {
-                        // Mirrors the shell derivation: optional
-                        // dependencies stay outside the certified
-                        // default-feature set.
-                        continue;
-                    }
-                    if let Some(path) = table.get("path").and_then(toml::Value::as_str) {
-                        let target = if inherited {
-                            path.to_string()
-                        } else {
-                            normalize_member_path(
-                                graph.name_dir.get(&name).expect("member dir"),
-                                path,
-                            )
-                        };
-                        let target_name = graph.dir_name.get(&target).unwrap_or_else(|| {
-                            panic!("{name} path dependency {dep} leaves the workspace ({target})")
-                        });
-                        stack.push(target_name.clone());
-                        continue;
-                    }
-                }
-                let requirement = resolved.as_str().map(str::to_string).unwrap_or_else(|| {
-                    resolved
-                        .get("version")
-                        .and_then(toml::Value::as_str)
-                        .expect("version string")
-                        .to_string()
-                });
-                if let Some(recorded) = requirements.get(dep.as_str()) {
-                    assert_eq!(
-                        *recorded, requirement,
-                        "{dep} is declared with conflicting requirements"
-                    );
-                    continue;
-                }
-                requirements.insert(dep.clone(), requirement.clone());
-                let mut parts: Vec<String> = requirement.split('.').map(str::to_string).collect();
-                while parts.len() < 3 {
-                    parts.push("0".to_string());
-                }
-                parts.truncate(3);
-                floors.push((dep.clone(), requirement, parts.join(".")));
-            }
-        }
+    let shared = shared_derive_selection(root, product)
+        .unwrap_or_else(|error| panic!("the {product} selection derives: {error}"));
+    ProductSelection {
+        closure: shared.closure,
+        floors: shared.floors,
     }
-    floors.sort();
-    closure.sort();
-    ProductSelection { closure, floors }
 }
 
 #[test]
@@ -406,10 +232,10 @@ fn minimum_direct_version_products_keep_advisory_posture() {
 
 #[test]
 fn minimum_direct_version_products_script_registry_matches() {
-    // The shell registry is the proof lane's authority; this file's
-    // registry must stay its exact mirror, and the shell must fail
-    // closed on an unregistered product rather than mint a label-only
-    // receipt.
+    // The shell registry is the proof lane's authority; the shared
+    // selection module's registry must stay its exact mirror, and the
+    // shell must fail closed on an unregistered product rather than
+    // mint a label-only receipt.
     let script = std::fs::read_to_string(workspace_root().join("scripts/proof-direct-floors.sh"))
         .expect("the proof script reads");
     let body_start = script
@@ -428,8 +254,8 @@ fn minimum_direct_version_products_script_registry_matches() {
             .match_indices(needle)
             .any(|(index, _)| index > body_start && index < body_end)
     };
-    for product in ["cargo-allow", "shared", "cargo-intent", "cargo-proof"] {
-        for package_root in product_roots(product) {
+    for (product, roots) in crate::minimum_version_selection::PRODUCT_ROOTS {
+        for package_root in *roots {
             assert!(
                 in_registry_body(package_root),
                 "the shell registry must map {product} to root {package_root}"
@@ -578,9 +404,10 @@ fn minimum_direct_version_products_retained_advisory_receipts_are_clean() {
 
 #[test]
 fn minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure() {
-    // The merged release-set receipt (PR B) predates root recording
-    // (empty roots): it still parses under the extended contract, and
-    // its rows are exactly the cargo-allow product closure's declared
+    // The retained release-set receipt (regenerated by PR D with the
+    // product-scoped script): it records the cargo-allow roots, runs
+    // the full check/test/package classes over the closure, and its
+    // rows are exactly the cargo-allow product closure's declared
     // floors derived from the checked-in manifests.
     let root = workspace_root();
     let text = std::fs::read_to_string(
@@ -590,9 +417,27 @@ fn minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure() {
     let receipt: MinimumVersionProofReceiptV1 =
         serde_json::from_str(&text).expect("the retained receipt parses");
     let selection = derive_selection(&root, "cargo-allow");
+    assert_eq!(
+        receipt.package_roots,
+        product_roots("cargo-allow")
+            .iter()
+            .map(|name| (*name).to_string())
+            .collect::<Vec<_>>(),
+        "the release-set receipt records the cargo-allow roots"
+    );
     assert!(
-        receipt.package_roots.is_empty(),
-        "the PR B receipt predates root recording"
+        receipt
+            .commands
+            .iter()
+            .any(|command| command.starts_with("cargo test --locked")),
+        "the release-set receipt ran the test class"
+    );
+    assert!(
+        receipt
+            .commands
+            .iter()
+            .any(|command| command.starts_with("cargo package -p")),
+        "the release-set receipt ran the package class"
     );
     assert_eq!(
         receipt.rows.len(),

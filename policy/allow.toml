@@ -18410,7 +18410,7 @@ path = "policy/config-authority-consumers.toml"
 owner = "cargo-allow maintainers"
 classification = "reviewed_exception"
 reason = "Checked configuration-authority consumer denominator for #3876 shadow-resolver recurrence guard."
-evidence = ["#3876"]
+evidence = ["issue:3876"]
 created = "2026-09-03"
 review_after = "2026-12-02"
 
@@ -18432,7 +18432,7 @@ path = ".allow/revisions/4126-config-authority-denominator.toml"
 owner = "cargo-allow maintainers"
 classification = "reviewed_exception"
 reason = "Revision receipt for the #3876 configuration-authority denominator policy exception."
-evidence = ["#3876"]
+evidence = ["issue:3876"]
 created = "2026-09-03"
 review_after = "2026-12-02"
 
@@ -19725,3 +19725,787 @@ glob = ".allow/revisions/3903-advisory-products.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11254"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_version_selection.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the floor selection derivation module's own tests (#3903 PR D); every expect guards a registered product, a parse of the checked-in workspace manifests, a fixture workspace write, or a digest derivation whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 18
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_version_selection.rs"
+
+[[allow]]
+id = "allow-11255"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/minimum_version_selection_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the drift command tests (#3903 PR D); every expect guards a fixture write, a workspace root resolution, a manifest-derived selection, or a retained receipt parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 8
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/minimum_version_selection_command.rs"
+
+[[allow]]
+id = "allow-11256"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the drift guard law and live grading tests (#3903 PR D); every expect guards a known-good typed fixture, a manifest-derived selection, or a retained receipt parse whose success is the property under test"
+evidence = ["issue:3903"]
+occurrence_limit = 7
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+
+[[allow]]
+id = "allow-11257"
+kind = "panic"
+family = "panic_macro"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Derivation and parse diagnostics in the live drift grading test (#3903 PR D); each panic names the exact product whose selection or retained receipt failed to derive or parse"
+evidence = ["issue:3903"]
+occurrence_limit = 3
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+macro_name = "panic"
+glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
+
+[[allow]]
+id = "allow-11258"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3903-minimum-version-drift.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the drift-guard source exceptions added by the #3903 PR D lane."
+evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3903-minimum-version-drift.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3903-minimum-version-drift.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11259"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-proof-direct-floors.sh"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Characterization guard for the direct-floor proof lane (#3903 PR D): proves both proof scripts parse, the product registry and its fail-closed arm, the advisory collector's per-product pinning, the floored meta-test skips, and the line-ending-independent digest recipe."
+evidence = ["issue:3903"]
+created = "2026-09-07"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-proof-direct-floors.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-proof-direct-floors.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11260"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_inventory_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow construction inventory tests (#3907 PR A); every expect guards a live-tree surface lookup, a manifest parse, or a deterministic inventory derivation whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 10
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_inventory_tests.rs"
+
+[[allow]]
+id = "allow-11261"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_security_fixtures_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security fixture laws (#3907 PR A); every expect guards a fixture corpus lookup whose presence is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 6
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_security_fixtures_tests.rs"
+
+[[allow]]
+id = "allow-0921"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4153.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured independent review evidence for PR #4153 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4153.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4153.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11262"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-construction-inventory.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow construction inventory source exceptions added by the #3907 PR A lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-construction-inventory.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-construction-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0922"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4153-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4153 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4153-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4153-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4165-adapter-fixture"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-project-review-readiness.sh"
+owner = "core/release"
+classification = "review_readiness_adapter"
+reason = "Issue #4165 full-adapter characterization: mock Cargo/git/gh and real jq prove projection validation, explicit API failure propagation, redacted diagnostics, and successful create/update without builds, network, or live check publication."
+evidence = ["issue:4165", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-project-review-readiness.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-project-review-readiness.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4165-revision-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4165-readiness-publication.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Authored revision note for the two exact non-Rust file additions in issue #4165; receipts the mocked adapter fixture and this note without widening existing exception scope or changing review and release authority."
+evidence = ["issue:4165", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4165-readiness-publication.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4165-readiness-publication.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11263"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_syntax_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow syntax command tests (#3907 PR B); every expect guards a fixture write, a workspace root resolution, a retained receipt parse, or the inventory selection whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 8
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_syntax_command.rs"
+
+[[allow]]
+id = "allow-11264"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_syntax_lane_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow syntax lane law tests (#3907 PR B); every expect guards a live inventory derivation or a selected tool entry whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 8
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_syntax_lane_tests.rs"
+
+[[allow]]
+id = "allow-11265"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-syntax.sh"
+owner = "core/deps"
+classification = "workflow_syntax_collector"
+reason = "Pinned syntax lane runner (#3907 PR B): fetches the exact actionlint release the pregate pins, runs it over the construction denominator's covered surfaces, and emits the tool-run JSON the workflow-syntax CLI grades. Read-only over the live tree."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-syntax.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-syntax.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11266"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-syntax-lane.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow syntax lane source exceptions added by the #3907 PR B lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-syntax-lane.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-syntax-lane.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11267"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_security_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security command tests (#3907 PR C); every expect guards a fixture write, a workspace root resolution, or an inventory derivation whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 9
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_security_command.rs"
+
+[[allow]]
+id = "allow-11268"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_security_lane_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow security lane law tests (#3907 PR C); every expect guards a live inventory derivation, a selected tool entry, or an exceptions-file parse whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 18
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_security_lane_tests.rs"
+
+[[allow]]
+id = "allow-11269"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-security.sh"
+owner = "core/deps"
+classification = "workflow_security_collector"
+reason = "Qualified security lane runner (#3907 PR C): runs the qualified zizmor release offline over the construction denominator's workflows and local actions, flattens its JSON findings preserving native rule identity, and emits the tool-run JSON the workflow-security CLI grades. Read-only over the live tree; advisory exit contract."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-security.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-security.sh"
+
+[[allow]]
+id = "allow-11270"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/workflow-security-exceptions.toml"
+owner = "core/deps"
+classification = "workflow_security_exceptions"
+reason = "Exact reviewed exceptions for the qualified security lane (#3907 PR C): (path, rule) granularity naming owner, deliberate-reason, evidence, and review date; the advisory findings beneath stay visible."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/workflow-security-exceptions.toml"
+target_fingerprint = "toml"
+glob = "policy/workflow-security-exceptions.toml"
+
+[[allow]]
+id = "allow-11271"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-security-lane.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow security lane source exceptions added by the #3907 PR C lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-security-lane.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-security-lane.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11272"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_aggregate_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the workflow construction aggregate tests (#3907 PR D); every expect guards a live inventory derivation, a selected tool entry, or a fixture whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 12
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/workflow_construction_aggregate_tests.rs"
+
+[[allow]]
+id = "allow-11273"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_construction_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the aggregate command tests (#3907 PR D); every expect guards a fixture write or a workspace root resolution whose success is the property under test"
+evidence = ["issue:3907"]
+occurrence_limit = 19
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/workflow_construction_command.rs"
+
+[[allow]]
+id = "allow-11274"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-workflow-construction.sh"
+owner = "core/deps"
+classification = "workflow_construction_aggregate_runner"
+reason = "Aggregate lane runner (#3907 PR D): drives both lane scripts in fetch-only mode, grades them through the workflow-construction CLI, and retains the aggregate artifact even under instrument failure. Read-only over the live tree."
+evidence = ["issue:3907"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-workflow-construction.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-workflow-construction.sh"
+
+[[allow]]
+id = "allow-11275"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the workflow construction aggregate source exceptions added by the #3907 PR D lane."
+evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-08"
+review_after = "2026-12-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3907-workflow-construction-aggregate.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11276"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/dependency_graph_delta_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta contract tests (#3920 PR A); every expect guards a fixture corpus lookup or a serde round-trip whose success is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 10
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/dependency_graph_delta_tests.rs"
+
+[[allow]]
+id = "allow-11277"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-delta.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph delta source exceptions added by the #3920 PR A lane."
+evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-delta.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-delta.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11278"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 23
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+[[allow]]
+id = "allow-11279"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded indexing in the dependency graph delta compiler tests (#3920 PR B); the fixture lock entry lookup is bounded by the compilation precondition"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_delta_compiler_classifies_fixtures"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+[[allow]]
+id = "allow-11280"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded indexing in the dependency graph delta parser coverage test (#3920 PR B); the row positions are pinned by the deterministic name-sort assertion"
+evidence = ["issue:3920"]
+occurrence_limit = 2
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_delta_parser_preserves_lock_identity_and_order"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+[[allow]]
+id = "allow-11281"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph evidence law tests (#3920 PR C); every expect guards an enrichment whose success or failure is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 19
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+
+[[allow]]
+id = "allow-11282"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded first-row access in the deny-pass law test (#3920 PR C); the fixture delta has exactly one row by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_cargo_deny_pass_never_erases_a_downgrade"
+
+[[allow]]
+id = "allow-11283"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the advisory-residue law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_advisory_residue_stays_a_decision"
+symbol = "bundle.records[0]"
+
+[[allow]]
+id = "allow-11284"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the commentary-rejection law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_rejects_free_text_references"
+symbol = "comment.records[0]"
+
+[[allow]]
+id = "allow-11285"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the wrong-scheme rejection law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_rejects_free_text_references"
+symbol = "wrong_scheme.records[0]"
+
+[[allow]]
+id = "allow-11286"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_evidence_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph evidence CLI tests (#3920 PR C); every expect guards fixture construction or an outcome the test asserts on"
+evidence = ["issue:3920"]
+occurrence_limit = 14
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+
+[[allow]]
+id = "allow-11287"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-evidence.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph evidence adjacency source exceptions added by the #3920 PR C lane."
+evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-evidence.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-evidence.toml"
+
+[[allow]]
+id = "allow-11288"
+kind = "panic"
+family = "indexing"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Guarded single-record access in the source-identity law test (#3920 PR C); the fixture bundle has exactly one record by construction"
+evidence = ["issue:3920"]
+occurrence_limit = 1
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "dependency_graph_evidence_old_source_evidence_never_binds_a_source_change"
+symbol = "fresh_source.records[0]"
+glob = "crates/allow-report/src/dependency_graph_evidence_tests.rs"
+
+[[allow]]
+id = "allow-11289"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-dependency-graph-delta.sh"
+owner = "core/deps"
+classification = "dependency_graph_delta_lane"
+reason = "Compiles one exact base/head manifest/lockfile pair, enriches it with the linked evidence authorities, and retains both artifacts for review (#3920 PR D); advisory exit contract with immediate failure on malformed or empty required inputs."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-dependency-graph-delta.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-dependency-graph-delta.sh"
+
+[[allow]]
+id = "allow-11290"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_delta_command.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta compile CLI tests (#3920 PR D); every expect guards fixture construction or an outcome the test asserts on."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/src/cli/dependency_graph_delta_command.rs"
+
+[[allow]]
+id = "allow-11291"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3920-dependency-graph-routing.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the dependency graph routing source exceptions added by the #3920 PR D lane."
+evidence = ["issue:3920"]
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3920-dependency-graph-routing.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3920-dependency-graph-routing.toml"

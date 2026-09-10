@@ -1,0 +1,16 @@
+# Issue #4165: exact adapter characterization and this authored revision note.
+# The mock-only fixture runs no project builds or network calls and cannot
+# publish checks. These entries grant no review, merge, or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4165-adapter-fixture"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a86ee77f392f49ff04082356d95645110d838848134d8c8d63d467825950988e"
+reason = "Retain the exact mock-only adapter fixture for #4165; it proves failure propagation and transport validation without compiling code, contacting GitHub, or performing review."
+
+[[records]]
+allow_ids = ["allow-4165-revision-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bf9134b46d11424e5689d4eb7a861a1e97f5dacaf865e667571f97166ffda4c4"
+reason = "Receipt this authored note for the two exact file additions; existing policy entries and review, merge, and release authority are preserved."
