@@ -94,19 +94,7 @@ pub(super) fn cmd_workflow_construction(args: &WorkflowConstructionArgs) -> Carg
         .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::InvalidConfig, error))?;
     let syntax_report = evaluate_workflow_syntax_run(&syntax_run, &inventory);
     // UTC today as ISO (YYYY-MM-DD); expired exceptions stop applying.
-    let today = std::process::Command::new("date")
-        .arg("-u")
-        .arg("+%Y-%m-%d")
-        .output()
-        .ok()
-        .filter(|output| output.status.success())
-        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_string())
-        .ok_or_else(|| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::InstrumentFailure,
-                "cannot determine today's UTC date for exception expiry".to_string(),
-            )
-        })?;
+    let today = super::workflow_date::today_utc()?;
     let security_report = evaluate_workflow_security_run(
         &security_run,
         &inventory,
