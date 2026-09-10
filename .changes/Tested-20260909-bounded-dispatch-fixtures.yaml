@@ -1,4 +1,4 @@
-kind: Tested
+kind: Fixed
 body: >-
   The cargo-intent and cargo-proof Cargo dispatch integration fixtures
   are bounded: every direct and Cargo-mediated invocation polls to a
