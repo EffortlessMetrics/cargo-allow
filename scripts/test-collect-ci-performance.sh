@@ -58,17 +58,21 @@ mk_jobs 902 >"$work/fixtures/jobs-missing-log.json"
 # The pregate job log: the typed pre-gate step echoed the executed
 # base/head with expanded values at run time. This is the immutable
 # provenance record; the nested PR association has moved to B1/H1.
-cat >"$work/fixtures/pregate-log-pr.txt" <<EOF
-2026-09-08T01:00:40.0000000Z ##[group]Run jq -n --arg schema cargo-allow.ci-pregate-result.v1
-2026-09-08T01:00:40.1000000Z jq -n --arg schema cargo-allow.ci-pregate-result.v1 --argjson version 1 \\
-2026-09-08T01:00:40.2000000Z   --arg head $H0 --arg base $B0 \\
-2026-09-08T01:00:41.0000000Z ##[endgroup]
+cat >"$work/fixtures/pregate-log-pr.txt" <<'EOF'
+2026-09-08T01:00:40.1000000Z jq -n --arg schema cargo-allow.ci-pregate-result.v1 --argjson version 1 \
+2026-09-08T01:00:40.2000000Z   --arg head "$PR_HEAD" --arg base "$PR_BASE" --argjson checks "$checks" \
+2026-09-08T01:00:40.3000000Z ##[endgroup]
+2026-09-08T01:00:40.4000000Z env:
+2026-09-08T01:00:40.5000000Z   PR_HEAD: H0PLACEHOLDER
+2026-09-08T01:00:40.6000000Z   PR_BASE: B0PLACEHOLDER
 EOF
+sed -i "s/H0PLACEHOLDER/$H0/; s/B0PLACEHOLDER/$B0/" "$work/fixtures/pregate-log-pr.txt"
 
 # A contradictory record: the pregate log names a head that is not the
 # run's head. Provenance is unavailable; no substitution occurs.
 cat >"$work/fixtures/pregate-log-contradictory.txt" <<EOF
-2026-09-08T01:00:40.2000000Z   --arg head $H1 --arg base $B0 \\
+2026-09-08T01:00:40.5000000Z   PR_HEAD: $H1
+2026-09-08T01:00:40.6000000Z   PR_BASE: $B0
 EOF
 
 # Missing provenance: the log records no executed pair.

@@ -71,8 +71,10 @@ for run_id in "$@"; do
       exit 1
     fi
     pregate_log="$(gh api "repos/${GITHUB_REPOSITORY}/actions/jobs/${pregate_job_id}/logs" 2>/dev/null || true)"
-    base_sha="$(printf '%s' "$pregate_log" | grep -oE -- '--arg base [0-9a-f]{40}' | head -1 | grep -oE '[0-9a-f]{40}' || true)"
-    recorded_head="$(printf '%s' "$pregate_log" | grep -oE -- '--arg head [0-9a-f]{40}' | head -1 | grep -oE '[0-9a-f]{40}' || true)"
+    # The logged script shows variable references; the step's env dump
+    # above it carries the expanded values GitHub resolved at run time.
+    base_sha="$(printf '%s' "$pregate_log" | grep -oE 'PR_BASE: [0-9a-f]{40}' | head -1 | grep -oE '[0-9a-f]{40}' || true)"
+    recorded_head="$(printf '%s' "$pregate_log" | grep -oE 'PR_HEAD: [0-9a-f]{40}' | head -1 | grep -oE '[0-9a-f]{40}' || true)"
     if [ -z "$base_sha" ] || [ -z "$recorded_head" ]; then
       echo "collect-ci-performance: run ${run_id} pregate log is missing or does not record the executed pair; the executed source pair is unavailable" >&2
       exit 1
