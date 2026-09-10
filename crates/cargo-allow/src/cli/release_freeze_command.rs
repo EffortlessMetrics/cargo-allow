@@ -842,6 +842,47 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                     subject.version
                 ));
             }
+            // Subject binding (#4175): a same-version rehearsal from a
+            // different source subject must not read as current. Each
+            // documented subject field is required and compared exactly
+            // (digest payloads modulo the typed prefix spelling).
+            let commit_sha = value.pointer("/commit_sha").and_then(Json::as_str);
+            match commit_sha {
+                None => notes.push("fail:rehearsal receipt records no commit_sha".to_string()),
+                Some(sha) if sha != subject.commit => notes.push(format!(
+                    "fail:rehearsal commit {sha:?} is not the selected subject commit {:?}",
+                    subject.commit
+                )),
+                _ => {}
+            }
+            for (label, recorded, selected) in [
+                (
+                    "lockfile",
+                    value
+                        .pointer("/subject_lockfile_digest")
+                        .and_then(Json::as_str),
+                    subject.cargo_lock_digest.as_str(),
+                ),
+                (
+                    "topology",
+                    value
+                        .pointer("/subject_topology_digest")
+                        .and_then(Json::as_str),
+                    subject.topology_digest.as_str(),
+                ),
+            ] {
+                match recorded {
+                    None => notes.push(format!(
+                        "fail:rehearsal receipt records no subject_{label}_digest"
+                    )),
+                    Some(digest) if hex_payload(digest) != hex_payload(selected) => notes.push(
+                        format!(
+                            "fail:rehearsal subject_{label}_digest {digest:?} is not the selected subject {selected:?}"
+                        ),
+                    ),
+                    _ => {}
+                }
+            }
             match value.pointer("/phases").and_then(Json::as_object) {
                 None => notes.push("fail:rehearsal receipt records no phases".to_string()),
                 Some(phases) => {
@@ -865,23 +906,16 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::PackageDocs => {
-            // The basis generator records digests without the typed `v1`
-            // segment; compare the hex payload so either spelling binds.
-            fn hex_of(digest: &str) -> &str {
-                digest
-                    .trim_start_matches("sha256:")
-                    .trim_start_matches("v1:")
-            }
             for (key, expected) in [
                 ("commit", subject.commit.as_str()),
                 ("tree", subject.tree.as_str()),
-                ("cargo_lock_sha256", hex_of(&subject.cargo_lock_digest)),
-                ("topology_sha256", hex_of(&subject.topology_digest)),
+                ("cargo_lock_sha256", hex_payload(&subject.cargo_lock_digest)),
+                ("topology_sha256", hex_payload(&subject.topology_digest)),
             ] {
                 match value
                     .pointer(&format!("/basis/{key}"))
                     .and_then(Json::as_str)
-                    .map(|found| hex_of(found).to_string())
+                    .map(|found| hex_payload(found).to_string())
                 {
                     Some(found) if found == expected => {}
                     Some(found) => notes.push(format!(
@@ -1732,6 +1766,14 @@ fn str_field(value: &Json, key: &str) -> Option<String> {
     value.get(key).and_then(Json::as_str).map(str::to_string)
 }
 
+/// The hex payload of a digest, so either the typed `sha256:v1:<hex>`
+/// spelling or the bare hex spelling binds.
+fn hex_payload(digest: &str) -> &str {
+    digest
+        .trim_start_matches("sha256:")
+        .trim_start_matches("v1:")
+}
+
 /// Line endings are not content for the admitted text inputs; the
 /// committed-blob comparison normalizes CRLF to LF. Lone carriage
 /// returns are content and stay distinct.
@@ -1818,6 +1860,14 @@ mod tests {
     }
 
     fn rehearsal_value(phases: u32, boundary: &str) -> serde_json::Value {
+        rehearsal_value_for(&subject(), phases, boundary)
+    }
+
+    fn rehearsal_value_for(
+        subject: &SubjectIdentity,
+        phases: u32,
+        boundary: &str,
+    ) -> serde_json::Value {
         let mut phase_map = serde_json::Map::new();
         for index in 0..phases.saturating_sub(1) {
             phase_map.insert(
@@ -1831,7 +1881,10 @@ mod tests {
         );
         serde_json::json!({
             "release_identity": { "version": "0.2.0", "tag": "v0.2.0" },
-            "phases": phase_map
+            "phases": phase_map,
+            "commit_sha": subject.commit,
+            "subject_lockfile_digest": subject.cargo_lock_digest,
+            "subject_topology_digest": subject.topology_digest,
         })
     }
 
@@ -1917,6 +1970,74 @@ mod tests {
             &rehearsal_value(8, "Complete"),
         );
         assert!(authorized.iter().any(|note| note.starts_with("fail:")));
+
+        // Subject binding (#4175): a same-version receipt from another
+        // source subject must not read as current. Each documented
+        // subject field has its own negative control, plus the
+        // missing-field case the old helper silently accepted.
+        let stranger = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Rehearsal,
+            &rehearsal_value_for(
+                &SubjectIdentity {
+                    commit: "ffffffffffffffffffffffffffffffffffffffff".to_string(),
+                    version: "0.2.0".to_string(),
+                    tag: "v0.2.0".to_string(),
+                    channel: "stable".to_string(),
+                    tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+                    cargo_lock_digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .to_string(),
+                    topology_digest:
+                        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                            .to_string(),
+                    frozen_at_utc: "2026-09-03T00:00:00Z".to_string(),
+                },
+                8,
+                "Incomplete",
+            ),
+        );
+        assert!(
+            stranger
+                .iter()
+                .any(|note| note.contains("is not the selected subject commit")),
+            "a foreign commit is rejected: {stranger:?}"
+        );
+        let mut missing_commit = rehearsal_value_for(&subject, 8, "Incomplete");
+        missing_commit
+            .as_object_mut()
+            .expect("object")
+            .remove("commit_sha");
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &missing_commit)
+                .iter()
+                .any(|note| note.contains("records no commit_sha")),
+            "a missing commit_sha fails closed"
+        );
+        let mut wrong_lock = rehearsal_value_for(&subject, 8, "Incomplete");
+        wrong_lock.as_object_mut().expect("object").insert(
+            "subject_lockfile_digest".to_string(),
+            serde_json::json!(
+                "sha256:v1:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ),
+        );
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &wrong_lock)
+                .iter()
+                .any(|note| note.contains("subject_lockfile_digest")),
+            "a foreign lockfile digest is rejected"
+        );
+        let mut missing_topology = rehearsal_value_for(&subject, 8, "Incomplete");
+        missing_topology
+            .as_object_mut()
+            .expect("object")
+            .remove("subject_topology_digest");
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &missing_topology)
+                .iter()
+                .any(|note| note.contains("records no subject_topology_digest")),
+            "a missing topology digest fails closed"
+        );
     }
 
     #[test]
@@ -2174,6 +2295,70 @@ expected_registry_checksum = "sha256:cccc"
         // carrying result=Incident escalates the whole graph evaluation and
         // could never replay into equivalence.
         assert_eq!(incident_node.result, FinalEvidenceNodeResultV1::Complete);
+    }
+
+    #[test]
+    fn rejected_rehearsal_evidence_cannot_become_complete_by_subject_assignment() {
+        // A foreign-subject rehearsal receipt binds with fail: notes;
+        // the graph node it produces must stay a Mismatch on the
+        // required rehearsal row even though node_for stamps the
+        // current freeze subject and Current-style provenance onto
+        // every node (#4175).
+        let subject = subject();
+        let stranger_subject = SubjectIdentity {
+            commit: "ffffffffffffffffffffffffffffffffffffffff".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+            cargo_lock_digest:
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .to_string(),
+            topology_digest:
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                    .to_string(),
+            frozen_at_utc: "2026-09-03T00:00:00Z".to_string(),
+        };
+        let binding_notes = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Rehearsal,
+            &rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+        );
+        assert!(binding_notes.iter().any(|note| note.starts_with("fail:")));
+
+        let rehearsal = super::EvidenceInput {
+            role: FreezeEvidenceRole::Rehearsal,
+            path: std::path::PathBuf::from("rehearsal.json"),
+            sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+                .to_string(),
+            value: rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+            binding_notes,
+        };
+        let package_set = super::EvidenceInput {
+            role: FreezeEvidenceRole::PackageSet,
+            path: std::path::PathBuf::from("receipt.json"),
+            sha256: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                .to_string(),
+            value: package_set_value("0.2.0", "Passed"),
+            binding_notes: Vec::new(),
+        };
+        let graph = super::build_evidence_graph(
+            &subject,
+            &selection(),
+            &[package_set, rehearsal],
+            &Vec::new(),
+            Some("sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+        );
+        let rehearsal_node = graph
+            .nodes
+            .iter()
+            .find(|node| node.evidence_id == "release-rehearsal")
+            .expect("rehearsal node");
+        assert_eq!(
+            rehearsal_node.result,
+            FinalEvidenceNodeResultV1::Mismatch,
+            "rejected rehearsal evidence stays a Mismatch node"
+        );
     }
 }
 
@@ -2569,6 +2754,12 @@ mod compose_fixture_tests {
         .to_string();
         let rehearsal = format!(
             "{{\"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
+        )
+        .replace(
+            "\"shared_prerequisites\"",
+            &format!(
+                "\"commit_sha\": \"{commit}\", \"subject_lockfile_digest\": \"{cargo_lock_sha}\", \"subject_topology_digest\": \"{topology_sha}\", \"shared_prerequisites\""
+            ),
         );
         write(&evidence_dir, "rehearsal.json", rehearsal.as_bytes());
 
