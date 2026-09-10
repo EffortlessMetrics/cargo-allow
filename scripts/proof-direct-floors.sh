@@ -120,8 +120,9 @@ cd "$WORKTREE"
 # The MSRV toolchain compiles the proof: a newer toolchain would break
 # negative control 7 (a newer Rust must not satisfy the rows silently).
 export RUSTUP_TOOLCHAIN="$MSRV"
-rustc --version
-cargo --version
+python3 scripts/floor_execution_identity.py "$MSRV" > execution-identity.json
+host_target="$(jq -r '.host' execution-identity.json)"
+cat execution-identity.json
 
 # Identity digests are bound to the detached worktree's own inputs — the
 # exact manifests and the HEAD Cargo.lock the floor candidate starts
@@ -130,17 +131,22 @@ cargo --version
 # the hashed stream so a CRLF checkout (Windows autocrlf) hashes the
 # same identity as an LF checkout.
 manifest_set_digest="$(
-  {
-    printf '%s\0' 'Cargo.toml'
-    cat Cargo.toml
-    printf '\0'
-    find crates -maxdepth 2 -name Cargo.toml -print0 | sort -z |
-      while IFS= read -r -d '' manifest; do
-        printf '%s\0' "$manifest"
-        cat "$manifest"
-        printf '\0'
-      done
-  } | tr -d '\r' | sha256sum | cut -d' ' -f1
+  python3 - <<'PY'
+import hashlib
+from pathlib import Path
+import tomllib
+
+root_manifest = Path("Cargo.toml")
+workspace = tomllib.loads(root_manifest.read_text(encoding="utf-8"))["workspace"]
+paths = {path.as_posix() for path in Path("crates").glob("*/Cargo.toml")}
+paths.update(f"{member}/Cargo.toml" for member in workspace["members"])
+digest = hashlib.sha256()
+for relative in ["Cargo.toml", *sorted(paths)]:
+    digest.update(relative.encode("utf-8") + b"\0")
+    digest.update(Path(relative).read_bytes().replace(b"\r", b""))
+    digest.update(b"\0")
+print(digest.hexdigest())
+PY
 )"
 lock_digest="$(tr -d '\r' < Cargo.lock | sha256sum | cut -d' ' -f1)"
 
@@ -180,44 +186,48 @@ def declared_requirement(spec):
         return spec
     return spec["version"]
 
-def default_enables(manifest, dep):
-    # Whether a default feature transitively enables the dependency
-    # (dep:x edges or legacy same-name feature edges). The certified
-    # set is the default-feature compile set: an optional dependency a
-    # default feature enables is compiled — and certifiable — by the
-    # proof classes.
+def expanded_features(manifest, requested):
     features = manifest.get("features", {})
     seen = set()
-    stack = list(features.get("default", []))
+    stack = list(requested)
     while stack:
         feature = stack.pop()
         if feature in seen:
             continue
         seen.add(feature)
-        for edge in features.get(feature, []):
-            name = edge[4:] if edge.startswith("dep:") else edge
-            if name == dep:
-                return True
-            if name in features:
-                stack.append(name)
-    return False
+        stack.extend(features.get(feature, []))
+    return seen
+
+
+def enables(features, manifest, dep):
+    namespaced = "dep:" + dep
+    implicit = not any(
+        namespaced in edges for edges in manifest.get("features", {}).values()
+    )
+    return (implicit and dep in features) or namespaced in features or any(
+        feature.startswith(dep + "/") for feature in features
+    )
 
 closure = []
-seen = set()
+processed = {}
+requested = {name: {"default"} for name in roots}
 stack = sorted(roots, reverse=True)
 requirements = {}
 floors = []
 while stack:
     name = stack.pop()
-    if name in seen:
-        continue
     if name not in name_dir:
         fail(f"product root {name} is not a workspace member")
-    seen.add(name)
-    closure.append(name)
+    if processed.get(name) == requested[name]:
+        continue
+    processed[name] = set(requested[name])
+    if name not in closure:
+        closure.append(name)
     manifest = tomllib.load(open(f"{name_dir[name]}/Cargo.toml", "rb"))
+    features = expanded_features(manifest, requested[name])
     for table in ("dependencies", "build-dependencies"):
         for dep, spec in manifest.get(table, {}).items():
+            member_spec = spec
             member_optional = isinstance(spec, dict) and spec.get("optional")
             inherited = isinstance(spec, dict) and spec.get("workspace")
             if inherited:
@@ -227,7 +237,7 @@ while stack:
             if isinstance(spec, dict) and "git" in spec:
                 fail(f"{name} declares a git dependency {dep}; out of proof scope")
             resolved_optional = isinstance(spec, dict) and spec.get("optional")
-            if (member_optional or resolved_optional) and not default_enables(manifest, dep):
+            if (member_optional or resolved_optional) and not enables(features, manifest, dep):
                 # Optional dependencies stay out of the closure and the
                 # certified floor inventory unless a default feature
                 # enables them; an explicit optional = false never
@@ -242,7 +252,18 @@ while stack:
                     target = posixpath.normpath(posixpath.join(name_dir[name], spec["path"]))
                 if target not in dir_name:
                     fail(f"{name} path dependency {dep} leaves the workspace ({target})")
-                stack.append(dir_name[target])
+                target_name = dir_name[target]
+                # Every closure member is selected with -p by the proof
+                # classes, so it receives its own defaults as well.
+                wanted = requested.setdefault(target_name, {"default"})
+                for source in (member_spec, spec):
+                    if isinstance(source, dict):
+                        wanted.update(source.get("features", []))
+                for feature in features:
+                    for prefix in (dep + "/", dep + "?/"):
+                        if feature.startswith(prefix):
+                            wanted.add(feature[len(prefix):])
+                stack.append(target_name)
                 continue
             requirement = declared_requirement(spec)
             if dep in requirements:
@@ -338,39 +359,43 @@ check_args=()
 for member in "${CLOSURE[@]}"; do
   check_args+=(-p "$member")
 done
-# The floored test class excludes the two drift meta-tests by name:
+# The floored test class excludes only retained-output meta-tests:
 # they grade the proof's own retained receipts against the tree, so
 # they cannot pass inside the very run that refreshes those receipts.
 # The skip is recorded verbatim in the receipt's command list, and CI
 # still runs the meta-tests against every committed tree.
-DRIFT_TEST_SKIPS="-- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean"
+DRIFT_TEST_SKIPS=(
+  --skip minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree
+  --skip check_exits_zero_when_every_release_set_receipt_is_current
+  --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean
+  --skip minimum_direct_version_products_retained_advisory_receipts_are_clean
+  --skip minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure
+)
 check_cmd=""
 test_cmd=""
 package_cmd=""
 if [[ " ${CLASS_LIST[*]} " == *" check "* ]]; then
-  check_cmd="cargo check --locked ${check_args[*]}"
+  check_cmd="cargo check --locked --target $host_target ${check_args[*]}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" test "* ]]; then
-  test_cmd="cargo test --locked ${check_args[*]} ${DRIFT_TEST_SKIPS}"
+  test_cmd="cargo test --locked --target $host_target ${check_args[*]} -- ${DRIFT_TEST_SKIPS[*]}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" package "* ]]; then
-  package_cmd="cargo package -p ${CLOSURE[0]} --locked --no-verify --allow-dirty --target-dir target/package-proof"
+  package_cmd="cargo package -p ${CLOSURE[0]} --locked --target $host_target --no-verify --allow-dirty --target-dir target/package-proof"
 fi
 
 check_status=0
 test_status=0
 package_status=0
 if [[ -n "$check_cmd" ]]; then
-  cargo check --locked "${check_args[@]}" || check_status=$?
+  cargo check --locked --target "$host_target" "${check_args[@]}" || check_status=$?
 fi
 if [[ -n "$test_cmd" ]]; then
-  cargo test --locked "${check_args[@]}" \
-    -- --skip minimum_direct_version_drift \
-    --skip check_exits_zero_when_every_release_set_receipt_is_current \
-    --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean || test_status=$?
+  cargo test --locked --target "$host_target" "${check_args[@]}" \
+    -- "${DRIFT_TEST_SKIPS[@]}" || test_status=$?
 fi
 if [[ -n "$package_cmd" ]]; then
-  cargo package -p "${CLOSURE[0]}" --locked --no-verify --allow-dirty \
+  cargo package -p "${CLOSURE[0]}" --locked --target "$host_target" --no-verify --allow-dirty \
     --target-dir target/package-proof || package_status=$?
 fi
 
@@ -398,6 +423,7 @@ msrv = sys.argv[7]
 manifest_set_digest, lock_digest = sys.argv[8], sys.argv[9]
 product = os.environ["PRODUCT"]
 package_roots = json.loads(os.environ["ROOTS_JSON"])
+execution = json.load(open("execution-identity.json", encoding="utf-8"))
 
 lock = tomllib.load(open(lock_path, "rb"))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -440,11 +466,13 @@ if product == "cargo-allow":
     claim_boundary = (
         "Exact selected proof of the cargo-allow release set's declared direct "
         "dependency floors at the claimed MSRV, over the release set's package "
-        f"closure under the bounded classes: {class_text}. Transitive minimal "
+        f"closure under the bounded classes: {class_text} (package is a "
+        "single-package archive sample, not closure packaging). Transitive minimal "
         "combinations are not certified."
     )
     limitations = [
-        f"bounded proof: the {class_text} classes over the release-set closure, "
+        f"bounded proof: selected check/test classes cover the release-set closure; "
+        "package covers only the package named by its command, "
         "not every target or feature combination",
         "internal =0.2.0 workspace pins are proven by the same closure build",
         "dev-dependencies are exercised by the test class but are not certified floors",
@@ -473,14 +501,21 @@ else:
         "dependencies no default feature enables stay outside it",
     ]
 
+limitations.append(
+    f"observed rustc {execution['toolchain']}; cargo {execution['cargo']}; "
+    f"host {execution['host']}; every selected class explicitly targets that host"
+)
+if os.environ["PACKAGE_CMD"]:
+    limitations.append("package is a single-package --no-verify archive sample; see its exact command")
+
 receipt = {
     "schema_id": "cargo-allow.minimum-direct-version.v1",
     "schema_version": 1,
     "product": product,
     "package_roots": package_roots,
     "msrv": msrv,
-    "toolchain": msrv + ".0",
-    "target": "host (product closure default target)",
+    "toolchain": execution["toolchain"],
+    "target": execution["target"],
     "manifest_set_digest": manifest_set_digest,
     "lock_digest": lock_digest,
     "rows": rows,

@@ -203,8 +203,11 @@ pub struct MinimumVersionProofReceiptV1 {
     #[serde(default)]
     pub package_roots: Vec<String>,
     pub msrv: String,
-    /// The toolchain the proof actually ran under.
+    /// Observed stable rustc release, including its patch component.
     pub toolchain: String,
+    /// A concrete requested target, or `host:<observed-triple>` for the
+    /// collector's explicit host target. The historical unobserved host
+    /// placeholder remains decodable but cannot satisfy live host selection.
     pub target: String,
     /// Manifest-set and lock digests the proof ran against (must match
     /// the request or the receipt is stale).
@@ -356,9 +359,9 @@ pub fn evaluate_minimum_version_proof(
     }
 
     // Negative control 7: a newer toolchain does not satisfy silently.
-    if receipt.toolchain != request.msrv && !receipt.toolchain.starts_with(&request.msrv) {
+    if !toolchain_matches_msrv(&receipt.toolchain, &request.msrv) {
         reasons.push(format!(
-            "toolchain {} is newer than the claimed MSRV {}; the rows cannot silently pass",
+            "toolchain {} does not match the claimed MSRV {}; the rows cannot silently pass",
             receipt.toolchain, request.msrv
         ));
         return finish(MinimumProofVerdictV1::InstrumentFailure, reasons);
@@ -379,7 +382,7 @@ pub fn evaluate_minimum_version_proof(
     if receipt.commands.is_empty() {
         reasons.push("receipt records no executed commands".to_string());
     }
-    if receipt.target != request.target {
+    if !target_matches_selection(&receipt.target, &request.target) {
         reasons.push(format!(
             "target mismatch: receipt {} vs request {}",
             receipt.target, request.target
@@ -418,6 +421,95 @@ pub fn render_minimum_proof_human(evaluation: &MinimumProofEvaluationV1) -> Stri
     }
     lines.push(format!("  claim boundary: {}", evaluation.claim_boundary));
     lines.join("\n")
+}
+
+/// Match stable version components, never textual prefixes (1.950 is not 1.95).
+pub(super) fn toolchain_matches_msrv(toolchain: &str, msrv: &str) -> bool {
+    fn numeric(text: &str) -> Option<Vec<&str>> {
+        let parts: Vec<&str> = text.split('.').collect();
+        if parts.iter().any(|part| {
+            part.is_empty()
+                || !part.bytes().all(|byte| byte.is_ascii_digit())
+                || (part.len() > 1 && part.starts_with('0'))
+        }) {
+            return None;
+        }
+        Some(parts)
+    }
+    let (Some(actual), Some(requested)) = (numeric(toolchain), numeric(msrv)) else {
+        return false;
+    };
+    actual.len() == 3 && (2..=3).contains(&requested.len()) && actual.starts_with(&requested)
+}
+
+/// A static host selection requires an observed host triple. The old
+/// unobserved placeholder remains decodable but cannot prove a live selection.
+pub(super) fn target_matches_selection(actual: &str, requested: &str) -> bool {
+    if actual.is_empty() || requested.is_empty() {
+        return false;
+    }
+    if requested != "host (product closure default target)" {
+        return actual == requested;
+    }
+    let Some(host) = actual.strip_prefix("host:") else {
+        return false;
+    };
+    let components: Vec<&str> = host.split('-').collect();
+    components.len() >= 3
+        && components.iter().all(|part| {
+            !part.is_empty()
+                && part
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+        })
+}
+
+#[cfg(test)]
+mod execution_identity_tests {
+    use super::{target_matches_selection, toolchain_matches_msrv};
+
+    #[test]
+    fn stable_msrv_requires_exact_numeric_components() -> Result<(), String> {
+        for (actual, requested, expected) in [
+            ("1.95.0", "1.95", true),
+            ("1.95.2", "1.95", true),
+            ("1.95.2", "1.95.0", false),
+            ("1.950.0", "1.95", false),
+            ("1.96.0", "1.95", false),
+            ("1.95.0-nightly", "1.95", false),
+            ("1.95", "1.95", false),
+            ("", "", false),
+        ] {
+            if toolchain_matches_msrv(actual, requested) != expected {
+                return Err(format!(
+                    "incorrect MSRV identity result: {actual} / {requested}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn host_selection_requires_an_observed_triple() -> Result<(), String> {
+        let host_selection = "host (product closure default target)";
+        for (actual, requested, expected) in [
+            ("host:x86_64-pc-windows-msvc", host_selection, true),
+            ("host:aarch64-apple-darwin", host_selection, true),
+            (host_selection, host_selection, false),
+            ("host:", host_selection, false),
+            ("host:a--b", host_selection, false),
+            ("", "", false),
+            ("x86_64-pc-windows-msvc", "x86_64-pc-windows-msvc", true),
+            ("x86_64-pc-windows-msvc", "aarch64-apple-darwin", false),
+        ] {
+            if target_matches_selection(actual, requested) != expected {
+                return Err(format!(
+                    "incorrect target identity result: {actual} / {requested}"
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 /// JSON view of the evaluation.

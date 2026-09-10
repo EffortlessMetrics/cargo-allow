@@ -20509,3 +20509,113 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3920-dependency-graph-routing.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3920-dependency-graph-routing.toml"
+
+[[allow]]
+id = "allow-0963"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/direct-floor-proof.md"
+owner = "core/deps"
+classification = "direct_floor_contract"
+reason = "Regeneration protocol for #4166: documents committed inputs, forwarded feature selection, observed execution identity, precise bootstrap exclusions, and bounded package sample claims."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/direct-floor-proof.md"
+target_fingerprint = "md"
+glob = "docs/ci/direct-floor-proof.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0964"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_execution_identity.py"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Observe rustc and Cargo verbose identities for #4166 and reject an unavailable or mismatched stable MSRV or host before the detached floor proof runs. Invokes only the explicitly selected local toolchain version commands."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_execution_identity.py"
+target_fingerprint = "py"
+glob = "scripts/floor_execution_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0965"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_execution_identity.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Accept/reject controls for #4166 observed execution identity and the exact retained-output bootstrap exclusions; synthetic fixtures do not claim real floor execution."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_execution_identity.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_execution_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0966"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_selection.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Manifest-only #4166 controls execute the producer selection block against current manifests and isolated fixtures to prove activated versus inactive optional floors and feature propagation."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_selection.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_selection.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0967"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4166-floor-regeneration.toml"
+owner = "core/deps"
+classification = "ledger_change_note"
+reason = "Exact revision note for the five reviewed documentation and Python file entries required by #4166; records source-file exceptions without broadening existing selectors or extending lifecycle metadata."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4166-floor-regeneration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4166-floor-regeneration.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

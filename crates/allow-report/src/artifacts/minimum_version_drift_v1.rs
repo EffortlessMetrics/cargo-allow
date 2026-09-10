@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::artifacts::minimum_direct_version_v1::{
     MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
-    MinimumVersionProofReceiptV1,
+    MinimumVersionProofReceiptV1, target_matches_selection, toolchain_matches_msrv,
 };
 
 pub const MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID: &str =
@@ -178,13 +178,13 @@ pub fn evaluate_minimum_version_drift(
             receipt.schema_version, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION
         ));
     }
-    if !receipt.toolchain.starts_with(&observation.msrv) {
+    if !toolchain_matches_msrv(&receipt.toolchain, &observation.msrv) {
         reasons.push(format!(
             "receipt toolchain {} does not match the claimed msrv {}",
             receipt.toolchain, observation.msrv
         ));
     }
-    if receipt.target != observation.target {
+    if !target_matches_selection(&receipt.target, &observation.target) {
         reasons.push(format!(
             "target moved: receipt {} vs current {}",
             receipt.target, observation.target

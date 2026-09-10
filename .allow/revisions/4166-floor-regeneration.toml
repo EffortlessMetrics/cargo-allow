@@ -1,0 +1,3 @@
+schema_version = 1
+# Exact source-file exception fingerprints are generated from the committed diff.
+# #4166 owns the bounded collector and its protocol/fixture files.

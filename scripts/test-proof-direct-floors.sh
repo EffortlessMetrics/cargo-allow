@@ -77,3 +77,6 @@ fi
 grep -q "unknown product 'not-a-product'" "${work}/out.log" ||
   fail "unregistered product error names the product"
 ok "unregistered product fails closed"
+
+python3 scripts/test_floor_selection.py
+python3 scripts/test_floor_execution_identity.py
