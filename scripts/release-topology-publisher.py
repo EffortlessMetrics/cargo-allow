@@ -280,15 +280,24 @@ def registry_checksum(name: str, version: str) -> str | None:
     return checksum_digest(checksum, f"crates.io checksum for {name} {version}")
 
 
+def package_target_dir() -> Path:
+    return ROOT / "target"
+
+
 def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -> None:
-    command = ["cargo", "package", "--workspace", "--locked", "--no-verify"]
+    # Receipts retain worktree-relative archive paths. Bind Cargo's output to
+    # the reader's directory even when ambient target configuration differs.
+    command = [
+        "cargo", "package", "--workspace", "--locked", "--no-verify",
+        "--target-dir", str(package_target_dir()),
+    ]
     for name in sorted(packages.keys() - selected):
         command.extend(["--exclude", name])
     run(command)
 
 
 def package_crate(name: str, version: str) -> tuple[Path, str]:
-    crate_path = ROOT / "target/package" / f"{name}-{version}.crate"
+    crate_path = package_target_dir() / "package" / f"{name}-{version}.crate"
     if not crate_path.is_file():
         fail(f"cargo package did not create {crate_path.relative_to(ROOT)}")
     return crate_path, sha256_file(crate_path)

@@ -49,6 +49,7 @@ mod intent_provider;
 mod kind_filter;
 mod list;
 mod migrate;
+mod minimum_version_selection;
 mod mutation_apply;
 mod mutation_lock;
 mod plan_bindings;
@@ -206,6 +207,8 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod dependency_graph_delta_tests;
+#[cfg(test)]
 mod effortless_repo_edit_parity_tests;
 #[cfg(test)]
 mod effortless_repo_snapshot_parity_tests;
@@ -226,6 +229,8 @@ mod intent_protocol_parity_tests;
 #[cfg(test)]
 mod minimum_direct_version_contract_tests;
 #[cfg(test)]
+mod minimum_direct_version_drift_tests;
+#[cfg(test)]
 mod minimum_direct_version_fixtures_tests;
 #[cfg(test)]
 mod minimum_direct_version_products_tests;
@@ -243,6 +248,16 @@ mod review_readiness_check_tests;
 mod review_readiness_events_tests;
 #[cfg(test)]
 mod review_readiness_transition_tests;
+#[cfg(test)]
+mod workflow_construction_aggregate_tests;
+#[cfg(test)]
+mod workflow_construction_inventory_tests;
+#[cfg(test)]
+mod workflow_security_fixtures_tests;
+#[cfg(test)]
+mod workflow_security_lane_tests;
+#[cfg(test)]
+mod workflow_syntax_lane_tests;
 #[cfg(test)]
 mod workspace_lint_drift_guard_tests;
 #[cfg(test)]

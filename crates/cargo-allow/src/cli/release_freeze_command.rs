@@ -445,6 +445,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
 /// The exact source subject the freeze binds. Collected from the clean
 /// committed HEAD; a dirty worktree is an instrument failure because the
 /// packaged archives must come from the committed tree.
+#[derive(Debug)]
 struct SubjectIdentity {
     version: String,
     tag: String,
@@ -464,8 +465,43 @@ impl SubjectIdentity {
                 "the worktree is dirty; the freeze binds the committed subject only",
             ));
         }
+        // Ordinary status cannot see assume-unchanged or skip-worktree
+        // edits: flagged files keep a clean status while their working
+        // bytes diverge from the committed blob. Reject every hidden
+        // index state conservatively instead of pairing the committed
+        // identity with unverified working bytes.
+        let flags = git(root, &["ls-files", "-v", "-z"])?;
+        for record in flags.split('\0').filter(|record| !record.is_empty()) {
+            let tag = record.chars().next().unwrap_or('?');
+            if tag == 'S' || tag.is_ascii_lowercase() {
+                return Err(instrument(
+                    "the index carries hidden state (assume-unchanged or skip-worktree); the freeze cannot pair committed identity with unverified working bytes",
+                ));
+            }
+        }
         let commit = git(root, &["rev-parse", "HEAD"])?;
         let tree = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        // Defense in depth for the three admitted inputs: read each
+        // working file exactly once, verify it against its HEAD blob,
+        // and compute the receipt digests from those same verified
+        // bytes so no unguarded second read can escape the binding.
+        // Line endings are checkout framing, not content.
+        let mut verified = std::collections::BTreeMap::new();
+        for path in [WORKSPACE_MANIFEST_PATH, CARGO_LOCK_PATH, TOPOLOGY_PATH] {
+            let committed = strip_line_endings(&git(root, &["show", &format!("HEAD:{path}")])?);
+            let raw = std::fs::read(root.join(path))
+                .map_err(|error| instrument(format!("read {path}: {error}")))?;
+            let working = strip_line_endings(
+                &String::from_utf8(raw.clone())
+                    .map_err(|error| instrument(format!("{path}: {error}")))?,
+            );
+            if committed != working {
+                return Err(instrument(format!(
+                    "working bytes for {path} differ from the committed subject; the freeze binds the committed bytes only"
+                )));
+            }
+            verified.insert(path, raw);
+        }
         let manifest = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
         let declared = manifest
             .lines()
@@ -486,9 +522,23 @@ impl SubjectIdentity {
             ));
         }
         let projection = CandidateReleaseIdentityProjectionShim::from_version(&parsed);
-        let cargo_lock_digest = sha256_repo_file(root, CARGO_LOCK_PATH)?;
-        let topology_digest = sha256_repo_file(root, TOPOLOGY_PATH)?;
+        let cargo_lock_digest = sha256_v1_bytes(
+            verified
+                .get(CARGO_LOCK_PATH)
+                .expect("verified input is present"),
+        );
+        let topology_digest = sha256_v1_bytes(
+            verified
+                .get(TOPOLOGY_PATH)
+                .expect("verified input is present"),
+        );
         let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
+        // The subject must not move while it is being collected.
+        let commit_now = git(root, &["rev-parse", "HEAD"])?;
+        let tree_now = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        if commit_now != commit || tree_now != tree {
+            return Err(instrument("the subject moved during collection"));
+        }
         Ok(Self {
             version: declared,
             tag: projection.tag,
@@ -1702,16 +1752,17 @@ fn str_field(value: &Json, key: &str) -> Option<String> {
     value.get(key).and_then(Json::as_str).map(str::to_string)
 }
 
+/// Line endings are not content for the admitted text inputs; the
+/// committed-blob comparison normalizes CRLF to LF. Lone carriage
+/// returns are content and stay distinct.
+fn strip_line_endings(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
     let bytes = std::fs::read(root.join(relative))
         .map_err(|error| instrument(format!("read {relative}: {error}")))?;
     String::from_utf8(bytes).map_err(|error| instrument(format!("{relative}: {error}")))
-}
-
-fn sha256_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
-    let bytes = std::fs::read(root.join(relative))
-        .map_err(|error| instrument(format!("read {relative}: {error}")))?;
-    Ok(sha256_v1_bytes(&bytes))
 }
 
 fn git(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
@@ -2414,6 +2465,149 @@ mod compose_fixture_tests {
             row("platform", "x86_64-unknown-linux-gnu", "selected"),
             row("pilot", "clean-repository", "not_proven"),
         )
+    }
+
+    /// Minimal committed subject fixture: manifest, lock, topology,
+    /// gitignore committed on a clean HEAD.
+    fn committed_subject_fixture() -> PathBuf {
+        static NONCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let root =
+            std::env::temp_dir().join(format!("freeze-subject-{}-{nonce}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root");
+
+        git(&root, &["init"]);
+        git(&root, &["config", "user.email", "freeze@example.invalid"]);
+        git(&root, &["config", "user.name", "freeze fixture"]);
+        write(
+            &root,
+            "Cargo.toml",
+            b"# fixture workspace\nversion = \"0.2.0\"\n",
+        );
+        write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
+        write(
+            &root,
+            "policy/product-package-topology-v2.toml",
+            b"[[package]]\ncargo_package_name = \"shared\"\n",
+        );
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-m", "fixture subject"]);
+        root
+    }
+
+    #[test]
+    fn collect_accepts_a_genuinely_clean_subject() {
+        let root = committed_subject_fixture();
+        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
+        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("clean subject: {err}")));
+        assert_eq!(subject.commit, commit);
+        assert_eq!(subject.tree, tree);
+        assert_eq!(
+            subject.cargo_lock_digest,
+            format!("sha256:v1:{}", hex(b"fixture-lock-bytes\n"))
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_rejects_an_assume_unchanged_hidden_lock() {
+        // Ordinary status is empty for this edit; the collector must
+        // still reject it before pairing identity with bytes.
+        let root = committed_subject_fixture();
+        git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"]);
+        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n").expect("hidden edit");
+        assert!(
+            git(&root, &["status", "--porcelain"]).trim().is_empty(),
+            "the fixture reproduces the status blind spot"
+        );
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("a hidden assume-unchanged edit is rejected");
+        assert!(
+            err.to_string().contains("hidden state")
+                || err
+                    .to_string()
+                    .contains("differ from the committed subject"),
+            "the rejection names the hidden input problem: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_rejects_a_skip_worktree_hidden_topology() {
+        let root = committed_subject_fixture();
+        git(
+            &root,
+            &[
+                "update-index",
+                "--skip-worktree",
+                "policy/product-package-topology-v2.toml",
+            ],
+        );
+        std::fs::write(
+            root.join("policy/product-package-topology-v2.toml"),
+            b"[[package]]\ncargo_package_name = \"tampered\"\n",
+        )
+        .expect("hidden edit");
+        assert!(
+            git(&root, &["status", "--porcelain"]).trim().is_empty(),
+            "the fixture reproduces the status blind spot"
+        );
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("a hidden skip-worktree edit is rejected");
+        assert!(
+            err.to_string().contains("hidden state")
+                || err
+                    .to_string()
+                    .contains("differ from the committed subject"),
+            "the rejection names the hidden input problem: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_accepts_crlf_checkout_framing_of_committed_content() {
+        // A Windows autocrlf checkout shows CRLF working bytes over an
+        // LF blob: the content is identical and must be accepted, with
+        // the receipt digests computed from the exact working bytes.
+        let root = committed_subject_fixture();
+        std::fs::write(
+            root.join("Cargo.lock"),
+            b"fixture-lock-bytes
+",
+        )
+        .expect("crlf edit");
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crlf subject: {err}")));
+        assert_eq!(
+            subject.cargo_lock_digest,
+            format!(
+                "sha256:v1:{}",
+                hex(b"fixture-lock-bytes
+")
+            )
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_still_rejects_ordinary_dirty_subjects() {
+        let root = committed_subject_fixture();
+        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n").expect("ordinary edit");
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("an ordinary dirty worktree stays rejected");
+        assert!(
+            err.to_string().contains("dirty"),
+            "the ordinary dirty rejection is unchanged: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
     }
 
     #[test]

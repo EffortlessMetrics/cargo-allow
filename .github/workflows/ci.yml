@@ -96,6 +96,104 @@ jobs:
           path: pregate-result.json
           if-no-files-found: ignore
 
+  # The pinned syntax/expression lane (#3907 PR B): the exact actionlint
+  # release the pregate pins runs over the full construction denominator
+  # (workflows + checked examples) and the findings are graded into the
+  # typed lane report. Advisory at this stage; enforcement selection is
+  # the aggregate lane's authority (PR D under #2283/#2284).
+  workflow-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: workflow-syntax
+      - name: Pinned syntax lane over the construction denominator
+        run: bash scripts/check-workflow-syntax.sh
+
+  # The qualified security construction lane (#3907 PR C): the
+  # qualified zizmor release runs offline over the full denominator and
+  # the findings are graded with exact reviewed exceptions. Advisory:
+  # completed runs always exit zero; enforcement selection is the
+  # aggregate lane's authority (PR D under #2283/#2284).
+  workflow-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: workflow-security
+      - name: Qualified security lane over the construction denominator
+        run: bash scripts/check-workflow-security.sh
+
+  # The workflow construction aggregate (#3907 PR D): one stable
+  # semantic report combining the syntax and security lanes over the
+  # same denominator. Advisory: the aggregate does not gate;
+  # enforcement selection is the #2283/#2284 authority. The aggregate
+  # JSON is retained even when the aggregate carries findings or an
+  # instrument failure.
+  workflow-construction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: workflow-construction
+      - name: Construction aggregate over the denominator
+        run: bash scripts/check-workflow-construction.sh
+      - name: Retain the aggregate artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: workflow-construction-aggregate
+          path: workflow-construction-aggregate.json
+          if-no-files-found: warn
+
+  # One exact base/head dependency graph delta for review (#3920 PR D).
+  # Advisory until the owning policy selects blocking consequences;
+  # malformed/empty inputs fail immediately inside the script.
+  dependency-graph-delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          # Pin the review head: on pull_request events the default
+          # checkout is GitHub's synthetic merge commit, and the
+          # receipt must bind the submitted head instead.
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: dependency-graph-delta
+      - name: Compile and enrich the base/head delta
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-dependency-graph-delta.sh
+      - name: Retain the delta and evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-graph-delta
+          path: |
+            dependency-graph-delta.json
+            dependency-graph-evidence-summary.md
+          if-no-files-found: warn
+
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
@@ -134,6 +232,11 @@ jobs:
       # fail-closed behaviour is proven without installing real toolchains.
       - name: MSRV resolved toolchain guard characterization
         run: bash scripts/test-check-msrv-resolved.sh
+      # Proves the direct-floor proof lane's shell contracts (product
+      # registry, advisory pinning, meta-test skips, digest recipe) and
+      # its fail-closed posture without installing any toolchain.
+      - name: Direct-floor proof script characterization
+        run: bash scripts/test-proof-direct-floors.sh
       # The action tag IS the proven toolchain, not a dependency version: it
       # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
       # this action alone (.github/dependabot.yml); bumping it would keep CI
