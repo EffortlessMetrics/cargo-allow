@@ -871,16 +871,17 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                     subject.topology_digest.as_str(),
                 ),
             ] {
-                match recorded {
-                    None => notes.push(format!(
+                match (recorded, hex_payload(recorded.unwrap_or(""))) {
+                    (None, _) => notes.push(format!(
                         "fail:rehearsal receipt records no subject_{label}_digest"
                     )),
-                    Some(digest) if hex_payload(digest) != hex_payload(selected) => notes.push(
-                        format!(
-                            "fail:rehearsal subject_{label}_digest {digest:?} is not the selected subject {selected:?}"
-                        ),
-                    ),
-                    _ => {}
+                    (_, None) => notes.push(format!(
+                        "fail:rehearsal subject_{label}_digest {recorded:?} is not a documented digest spelling"
+                    )),
+                    (Some(_), Some(payload)) if payload == hex_payload(selected).unwrap_or(selected) => {}
+                    (Some(recorded_digest), _) => notes.push(format!(
+                        "fail:rehearsal subject_{label}_digest {recorded_digest:?} is not the selected subject {selected:?}"
+                    )),
                 }
             }
             match value.pointer("/phases").and_then(Json::as_object) {
@@ -906,22 +907,39 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::PackageDocs => {
-            for (key, expected) in [
-                ("commit", subject.commit.as_str()),
-                ("tree", subject.tree.as_str()),
-                ("cargo_lock_sha256", hex_payload(&subject.cargo_lock_digest)),
-                ("topology_sha256", hex_payload(&subject.topology_digest)),
-            ] {
-                match value
+            // commit/tree are exact identity strings; the two sha256
+            // rows go through the strict digest-payload parser.
+            let expected: [(&str, &str, bool); 4] = [
+                ("commit", subject.commit.as_str(), false),
+                ("tree", subject.tree.as_str(), false),
+                (
+                    "cargo_lock_sha256",
+                    hex_payload(&subject.cargo_lock_digest).unwrap_or_default(),
+                    true,
+                ),
+                (
+                    "topology_sha256",
+                    hex_payload(&subject.topology_digest).unwrap_or_default(),
+                    true,
+                ),
+            ];
+            for (key, expected, is_digest) in expected {
+                let found = value
                     .pointer(&format!("/basis/{key}"))
                     .and_then(Json::as_str)
-                    .map(|found| hex_payload(found).to_string())
-                {
-                    Some(found) if found == expected => {}
-                    Some(found) => notes.push(format!(
+                    .map(|found| {
+                        if is_digest {
+                            hex_payload(found)
+                        } else {
+                            Some(found)
+                        }
+                    });
+                match found {
+                    Some(Some(found)) if found == expected => {}
+                    Some(Some(found)) => notes.push(format!(
                         "fail:package-docs basis {key} {found} does not bind the freeze subject"
                     )),
-                    None => notes.push(format!("fail:package-docs basis has no {key}")),
+                    _ => notes.push(format!("fail:package-docs basis has no {key}")),
                 }
             }
             let version = value
@@ -1766,12 +1784,20 @@ fn str_field(value: &Json, key: &str) -> Option<String> {
     value.get(key).and_then(Json::as_str).map(str::to_string)
 }
 
-/// The hex payload of a digest, so either the typed `sha256:v1:<hex>`
-/// spelling or the bare hex spelling binds.
-fn hex_payload(digest: &str) -> &str {
-    digest
-        .trim_start_matches("sha256:")
-        .trim_start_matches("v1:")
+/// The hex payload of a digest, accepting only the documented
+/// spellings — bare 64-char lowercase hex, `sha256:<hex>`, or
+/// `sha256:v1:<hex>`. Repeated, partial, or non-hex prefixes are
+/// malformed and fail closed instead of binding.
+fn hex_payload(digest: &str) -> Option<&str> {
+    let payload = digest
+        .strip_prefix("sha256:v1:")
+        .or_else(|| digest.strip_prefix("sha256:"))
+        .unwrap_or(digest);
+    (payload.len() == 64
+        && payload
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()))
+    .then_some(payload)
 }
 
 /// Line endings are not content for the admitted text inputs; the
@@ -2026,6 +2052,19 @@ mod tests {
                 .iter()
                 .any(|note| note.contains("subject_lockfile_digest")),
             "a foreign lockfile digest is rejected"
+        );
+        let mut malformed = rehearsal_value_for(&subject, 8, "Incomplete");
+        malformed.as_object_mut().expect("object").insert(
+            "subject_lockfile_digest".to_string(),
+            serde_json::json!(
+                "sha256:sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+        );
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &malformed)
+                .iter()
+                .any(|note| note.contains("is not a documented digest spelling")),
+            "a repeated-prefix digest spelling fails closed"
         );
         let mut missing_topology = rehearsal_value_for(&subject, 8, "Incomplete");
         missing_topology

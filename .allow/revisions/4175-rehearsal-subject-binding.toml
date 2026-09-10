@@ -19,7 +19,7 @@ schema_version = 1
 allow_ids = ["allow-0862"]
 change_kinds = ["occurrence_limit_loosened"]
 before_fingerprint = "sha256:v1:9a9cab302830fce76521ac8f912496b35cb0b636addc2d2efb17dee831592d9b"
-after_fingerprint = "sha256:v1:045639455aa4c851df3041935ca424dcd283eda80b57913d3386a8df04721f38"
+after_fingerprint = "sha256:v1:788d7d907653897709911df048d5fdc05a7454d91e2a5b5a3f1c1fa988676c26"
 
 [[records]]
 allow_ids = ["allow-9263"]
