@@ -20527,3 +20527,39 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
+
+[[allow]]
+id = "allow-9261"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-collect-ci-performance.sh"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Discriminating fixture harness for the CI performance collector's historical source provenance (#4173); a fake gh serves recorded provider responses so no live GitHub call is made."
+evidence = ["issue:4173"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-collect-ci-performance.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-collect-ci-performance.sh"
+
+[[allow]]
+id = "allow-9262"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4173-performance-source-provenance.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the performance source provenance source exceptions added by the #4173 lane."
+evidence = ["issue:4173", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4173-performance-source-provenance.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4173-performance-source-provenance.toml"

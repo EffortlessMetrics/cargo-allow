@@ -51,12 +51,32 @@ for run_id in "$@"; do
     echo "collect-ci-performance: run ${run_id} exceeds the ${MAX_JOBS_PER_RUN}-job bound" >&2
     exit 1
   fi
-  # base_sha: the run's PR base when associated with a pull request,
-  # otherwise the head commit's first parent (push/other events).
-  base_sha="$(jq -r '.pull_requests[0].base.sha // ""' "${work}/run-${index}.json")"
-  if [ -z "$base_sha" ]; then
-    head_sha="$(jq -r '.head_sha' "${work}/run-${index}.json")"
-    base_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}" --jq '.parents[0].sha' 2>/dev/null || echo '')"
+  # Historical source provenance comes from immutable evidence of the
+  # executed run, never from the mutable PR association (nested
+  # pull_requests metadata moves after the run). GitHub creates the
+  # pull_request merge commit at run time, so its parents ARE the
+  # executed base/head pair; push and other events execute the head
+  # itself, whose first parent is the base. A contradictory shape
+  # (a pull_request head without exactly two parents, a parentless
+  # push head) leaves the executed pair unavailable and fails instead
+  # of silently substituting current metadata.
+  event="$(jq -r '.event' "${work}/run-${index}.json")"
+  head_sha="$(jq -r '.head_sha' "${work}/run-${index}.json")"
+  parents_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head_sha}" --jq '[.parents[].sha]')"
+  parent_count="$(jq 'length' <<<"$parents_json")"
+  base_sha=""
+  if [ "$event" = "pull_request" ]; then
+    if [ "$parent_count" -eq 2 ]; then
+      base_sha="$(jq -r '.[0]' <<<"$parents_json")"
+    else
+      echo "collect-ci-performance: run ${run_id} is a pull_request run whose head ${head_sha} does not have exactly two parents (got ${parent_count}); the executed source pair is unavailable" >&2
+      exit 1
+    fi
+  elif [ "$parent_count" -ge 1 ]; then
+    base_sha="$(jq -r '.[0]' <<<"$parents_json")"
+  else
+    echo "collect-ci-performance: run ${run_id} head ${head_sha} has no parent; the executed source pair is unavailable" >&2
+    exit 1
   fi
   jq --slurpfile inventory "${work}/inventory.json" '
     def bucket($name):
