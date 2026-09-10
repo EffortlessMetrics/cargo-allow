@@ -18538,7 +18538,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the release-freeze composition module, its fixture helpers, and the full-path fixture repository test (#2501); every expect follows immediately preceding fixture construction whose inputs the test controls, and the composed digests are recomputed from committed policy data and retained receipt bytes only"
 evidence = ["issue:2501"]
-occurrence_limit = 19
+occurrence_limit = 27
 created = "2026-09-04"
 review_after = "2026-12-03"
 

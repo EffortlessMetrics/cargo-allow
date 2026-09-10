@@ -1,0 +1,21 @@
+schema_version = 1
+# Revision note for the #4181 freeze-subject hidden-index hardening.
+
+# The release-freeze subject collector now rejects hidden worktree
+# inputs before pairing committed identity with working bytes:
+# assume-unchanged and skip-worktree index states fail admission
+# conservatively, each admitted input (workspace manifest, Cargo.lock,
+# topology) is byte-verified against its HEAD blob modulo line
+# endings, and the subject is re-checked for movement before the
+# receipt is returned. The expect ratchet for the composition module
+# rises by the new acceptance tests' invariant-guarded expects. No
+# existing exception is weakened beyond the recorded ratchet rise, no
+# expiry is extended, and no scope is broadened. policy/allow.toml
+# keeps its CRLF line-ending contract; the net transition is the
+# recorded ratchet rise only.
+
+[[records]]
+allow_ids = ["allow-0862"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:63b1236cddb06af70c12e94945b5608368dfe1dc65ea2d0f72c1cae49c6c00de"
+after_fingerprint = "sha256:v1:d1f83397b272e579213d0d60ef2f3e191ac699f2c9df263671f9ee7adfd7436f"
