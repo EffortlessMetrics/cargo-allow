@@ -481,17 +481,26 @@ impl SubjectIdentity {
         }
         let commit = git(root, &["rev-parse", "HEAD"])?;
         let tree = git(root, &["rev-parse", "HEAD^{tree}"])?;
-        // Defense in depth for the three admitted inputs: pair the
-        // committed identity with working bytes only after each input
-        // matches its HEAD blob (line endings are not content here).
+        // Defense in depth for the three admitted inputs: read each
+        // working file exactly once, verify it against its HEAD blob,
+        // and compute the receipt digests from those same verified
+        // bytes so no unguarded second read can escape the binding.
+        // Line endings are checkout framing, not content.
+        let mut verified = std::collections::BTreeMap::new();
         for path in [WORKSPACE_MANIFEST_PATH, CARGO_LOCK_PATH, TOPOLOGY_PATH] {
-            let committed = strip_carriage_returns(&git(root, &["show", &format!("HEAD:{path}")])?);
-            let working = strip_carriage_returns(&read_repo_file(root, path)?);
+            let committed = strip_line_endings(&git(root, &["show", &format!("HEAD:{path}")])?);
+            let raw = std::fs::read(root.join(path))
+                .map_err(|error| instrument(format!("read {path}: {error}")))?;
+            let working = strip_line_endings(
+                &String::from_utf8(raw.clone())
+                    .map_err(|error| instrument(format!("{path}: {error}")))?,
+            );
             if committed != working {
                 return Err(instrument(format!(
                     "working bytes for {path} differ from the committed subject; the freeze binds the committed bytes only"
                 )));
             }
+            verified.insert(path, raw);
         }
         let manifest = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
         let declared = manifest
@@ -513,8 +522,16 @@ impl SubjectIdentity {
             ));
         }
         let projection = CandidateReleaseIdentityProjectionShim::from_version(&parsed);
-        let cargo_lock_digest = sha256_repo_file(root, CARGO_LOCK_PATH)?;
-        let topology_digest = sha256_repo_file(root, TOPOLOGY_PATH)?;
+        let cargo_lock_digest = sha256_v1_bytes(
+            verified
+                .get(CARGO_LOCK_PATH)
+                .expect("verified input is present"),
+        );
+        let topology_digest = sha256_v1_bytes(
+            verified
+                .get(TOPOLOGY_PATH)
+                .expect("verified input is present"),
+        );
         let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
         // The subject must not move while it is being collected.
         let commit_now = git(root, &["rev-parse", "HEAD"])?;
@@ -1716,21 +1733,16 @@ fn str_field(value: &Json, key: &str) -> Option<String> {
 }
 
 /// Line endings are not content for the admitted text inputs; the
-/// committed-blob comparison normalizes them away.
-fn strip_carriage_returns(text: &str) -> String {
-    text.replace('\r', "")
+/// committed-blob comparison normalizes CRLF to LF. Lone carriage
+/// returns are content and stay distinct.
+fn strip_line_endings(text: &str) -> String {
+    text.replace("\r\n", "\n")
 }
 
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
     let bytes = std::fs::read(root.join(relative))
         .map_err(|error| instrument(format!("read {relative}: {error}")))?;
     String::from_utf8(bytes).map_err(|error| instrument(format!("{relative}: {error}")))
-}
-
-fn sha256_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
-    let bytes = std::fs::read(root.join(relative))
-        .map_err(|error| instrument(format!("read {relative}: {error}")))?;
-    Ok(sha256_v1_bytes(&bytes))
 }
 
 fn git(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
@@ -2378,6 +2390,32 @@ mod compose_fixture_tests {
                     .to_string()
                     .contains("differ from the committed subject"),
             "the rejection names the hidden input problem: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_accepts_crlf_checkout_framing_of_committed_content() {
+        // A Windows autocrlf checkout shows CRLF working bytes over an
+        // LF blob: the content is identical and must be accepted, with
+        // the receipt digests computed from the exact working bytes.
+        let root = committed_subject_fixture();
+        std::fs::write(
+            root.join("Cargo.lock"),
+            b"fixture-lock-bytes
+",
+        )
+        .expect("crlf edit");
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crlf subject: {err}")));
+        assert_eq!(
+            subject.cargo_lock_digest,
+            format!(
+                "sha256:v1:{}",
+                hex(b"fixture-lock-bytes
+")
+            )
         );
         std::fs::remove_dir_all(&root).expect("fixture removal");
     }
