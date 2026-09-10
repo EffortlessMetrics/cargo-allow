@@ -109,8 +109,37 @@ fn repository_release_controls_use_minimum_permissions() {
     }
 }
 
+fn validate_readiness_api_calls(script: &str) -> Result<(), String> {
+    let mut found_check_run = false;
+    for call in script
+        .lines()
+        .filter(|line| line.contains("gh api"))
+        .map(|line| {
+            line.split_once("gh api ")
+                .map_or(line, |(_, call)| call)
+                .trim()
+        })
+    {
+        // Exact retained command-start shapes, not a general shell parser.
+        // In particular, ref acquisition has no continuation or flags that
+        // could override the default GET or implicitly select POST.
+        match call {
+            r#""${API}/git/ref/heads/${encoded}" 2>/dev/null)"; then"# => {}
+            r#""${API}/commits/${head_sha}/check-runs?check_name=${CHECK_NAME}" \"#
+            | r#""${API}/check-runs/${existing_id}" -X PATCH \"#
+            | r#""${API}/check-runs" -X POST \"# => found_check_run = true,
+            _ => return Err(format!("unexpected readiness API command: {call}")),
+        }
+    }
+    if found_check_run {
+        Ok(())
+    } else {
+        Err("the adapter must retain its check-run API surface".to_owned())
+    }
+}
+
 #[test]
-fn repository_release_controls_never_mutate_or_self_require() {
+fn repository_release_controls_never_mutate_or_self_require() -> Result<(), String> {
     let root = workspace_root();
     let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
     // The only GitHub write is publishing the review-readiness check
@@ -133,18 +162,7 @@ fn repository_release_controls_never_mutate_or_self_require() {
         script.contains("review-readiness project"),
         "the adapter runs the typed projection"
     );
-    let api_calls: Vec<&str> = script
-        .lines()
-        .filter(|line| line.contains("gh api"))
-        .collect();
-    assert!(
-        !api_calls.is_empty(),
-        "the adapter publishes the readiness check run through the API"
-    );
-    assert!(
-        api_calls.iter().all(|call| call.contains("check-runs")),
-        "every gh api call targets the check-runs surface only"
-    );
+    validate_readiness_api_calls(&script)?;
     // The workflow cannot make itself a required check: it publishes
     // a check run but configures no required context; live required-
     // context configuration is #2284's alone.
@@ -153,6 +171,39 @@ fn repository_release_controls_never_mutate_or_self_require() {
         !workflow.contains("required_status_check"),
         "a source workflow cannot self-require"
     );
+    Ok(())
+}
+
+#[test]
+fn repository_release_controls_reject_ref_writes_and_unrelated_api_calls() -> Result<(), String> {
+    let root = workspace_root();
+    let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
+    let read = r#"gh api "${API}/git/ref/heads/${encoded}" 2>/dev/null)"; then"#;
+    if script.matches(read).count() != 1 {
+        return Err("the ref-read control must replace exactly one real acquisition".to_owned());
+    }
+    validate_readiness_api_calls(&script)?;
+    for replacement in [
+        r#"gh api "${API}/git/ref/heads/${encoded}" -X PATCH 2>/dev/null)"; then"#,
+        r#"gh api "${API}/git/ref/heads/${encoded}" --method POST 2>/dev/null)"; then"#,
+        r#"gh api "${API}/git/ref/heads/${encoded}" -f sha=changed 2>/dev/null)"; then"#,
+        r#"gh api "${API}/git/ref/heads/${encoded}" --input payload.json 2>/dev/null)"; then"#,
+        "gh api \"${API}/git/ref/heads/${encoded}\" \\\n  -X PATCH 2>/dev/null)\"; then",
+        r#"gh api "${API}/git/matching-refs/heads/${encoded}" 2>/dev/null)"; then"#,
+        r#"gh api "${API}/git/ref/tags/${encoded}" 2>/dev/null)"; then"#,
+        r#"gh api "${API}/issues?label=check-runs" 2>/dev/null)"; then"#,
+    ] {
+        let changed = script.replace(read, replacement);
+        if validate_readiness_api_calls(&changed).is_ok() {
+            return Err(format!("API surface guard admitted: {replacement}"));
+        }
+    }
+    for missing_check_run in ["no API calls", read] {
+        if validate_readiness_api_calls(missing_check_run).is_ok() {
+            return Err("API surface guard admitted a missing check-run surface".to_owned());
+        }
+    }
+    Ok(())
 }
 
 #[test]

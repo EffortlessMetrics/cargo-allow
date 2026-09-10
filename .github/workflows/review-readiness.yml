@@ -7,8 +7,10 @@ name: Review readiness
 # conclusions. Pull-request events recompute on every readiness-
 # relevant change (including base-changing edits); pushes to main
 # recompute all open pull requests against the new merge base so base
-# movement cannot leave a stale green behind. Read-only over review
-# semantics: the only write is the review-readiness check run itself.
+# movement is checked during acquisition and before publication. These
+# observations are not an atomic lock against later movement or concurrent
+# publishers. Read-only over review semantics: the only write is the
+# review-readiness check run itself.
 
 on:
   pull_request:
