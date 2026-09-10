@@ -18538,7 +18538,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the release-freeze composition module, its fixture helpers, and the full-path fixture repository test (#2501); every expect follows immediately preceding fixture construction whose inputs the test controls, and the composed digests are recomputed from committed policy data and retained receipt bytes only"
 evidence = ["issue:2501"]
-occurrence_limit = 19
+occurrence_limit = 31
 created = "2026-09-04"
 review_after = "2026-12-03"
 
@@ -20509,3 +20509,21 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3920-dependency-graph-routing.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3920-dependency-graph-routing.toml"
+
+[[allow]]
+id = "allow-9260"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the freeze-subject hidden-index hardening ratchet rise added by the #4181 lane."
+evidence = ["issue:4181", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
