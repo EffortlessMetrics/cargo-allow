@@ -16,13 +16,8 @@ fn date_at(now: SystemTime) -> CargoAllowResult<String> {
         )
         .with_cause(&error)
     })?;
-    let days = i64::try_from(elapsed.as_secs() / 86_400).map_err(|error| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InstrumentFailure,
-            "UTC date for exception expiry exceeds the supported day range",
-        )
-        .with_cause(&error)
-    })?;
+    // Even u64::MAX seconds / 86_400 fits in i64; conversion cannot fail.
+    let days = (elapsed.as_secs() / 86_400) as i64;
     let epoch = SimpleDate {
         year: 1970,
         month: 1,
