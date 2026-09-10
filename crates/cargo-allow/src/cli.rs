@@ -23,6 +23,7 @@ mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;
 mod workflow_construction_command;
+mod workflow_date;
 mod workflow_security_command;
 mod workflow_syntax_command;
 
