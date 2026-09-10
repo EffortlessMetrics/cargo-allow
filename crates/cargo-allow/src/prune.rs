@@ -8,6 +8,7 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
+    explain::missing_allow_entry_error,
     load_selected_mutation_policy, load_world_from_resolved_policy_with_options,
     portable_relative_under_root, resolve_source_tree_root, select_mutation_policy,
 };
@@ -102,6 +103,23 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
+    // --allow-id selects one entry before any preview, receipt,
+    // summary, or write derives from the candidate set (#4176): an
+    // unknown id fails before any output; a known id that is not
+    // stale is a no-op with no unrelated candidate.
+    let candidates = match args.allow_id.as_deref() {
+        Some(selected) => {
+            if !cfg.allow.iter().any(|entry| entry.id == selected) {
+                return Err(missing_allow_entry_error(selected));
+            }
+            let selected_candidates: Vec<_> = candidates
+                .into_iter()
+                .filter(|candidate| candidate.id == selected)
+                .collect();
+            selected_candidates
+        }
+        None => candidates,
+    };
     let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
     receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
     let before_fingerprints = receipt_candidates
@@ -209,6 +227,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             portable_identity: format!("worktree:prune:{}:{}", policy_path, candidates.len()),
             policy_path,
             candidate_count: candidates.len(),
+            allow_id: args.allow_id.clone(),
+            include_untracked: args.include_untracked,
             write_requested: args.write,
             dry_run: args.dry_run,
             completeness: crate::core_command_router::summary_completeness(&inventory_facts),
@@ -299,3 +319,7 @@ mod render_tests;
 #[cfg(test)]
 #[path = "prune_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "prune_selection_tests.rs"]
+mod selection_tests;

@@ -126,6 +126,9 @@ cargo --version
 # Identity digests are bound to the detached worktree's own inputs — the
 # exact manifests and the HEAD Cargo.lock the floor candidate starts
 # from — so uncommitted live-tree state can never certify a receipt.
+# The digests are line-ending independent: CR bytes are stripped from
+# the hashed stream so a CRLF checkout (Windows autocrlf) hashes the
+# same identity as an LF checkout.
 manifest_set_digest="$(
   {
     printf '%s\0' 'Cargo.toml'
@@ -137,9 +140,9 @@ manifest_set_digest="$(
         cat "$manifest"
         printf '\0'
       done
-  } | sha256sum | cut -d' ' -f1
+  } | tr -d '\r' | sha256sum | cut -d' ' -f1
 )"
-lock_digest="$(sha256sum Cargo.lock | cut -d' ' -f1)"
+lock_digest="$(tr -d '\r' < Cargo.lock | sha256sum | cut -d' ' -f1)"
 
 # 1. Derive the product's package closure and its external direct
 #    dependency floors from the checked-in manifests: starting at the
@@ -177,6 +180,28 @@ def declared_requirement(spec):
         return spec
     return spec["version"]
 
+def default_enables(manifest, dep):
+    # Whether a default feature transitively enables the dependency
+    # (dep:x edges or legacy same-name feature edges). The certified
+    # set is the default-feature compile set: an optional dependency a
+    # default feature enables is compiled — and certifiable — by the
+    # proof classes.
+    features = manifest.get("features", {})
+    seen = set()
+    stack = list(features.get("default", []))
+    while stack:
+        feature = stack.pop()
+        if feature in seen:
+            continue
+        seen.add(feature)
+        for edge in features.get(feature, []):
+            name = edge[4:] if edge.startswith("dep:") else edge
+            if name == dep:
+                return True
+            if name in features:
+                stack.append(name)
+    return False
+
 closure = []
 seen = set()
 stack = sorted(roots, reverse=True)
@@ -193,6 +218,7 @@ while stack:
     manifest = tomllib.load(open(f"{name_dir[name]}/Cargo.toml", "rb"))
     for table in ("dependencies", "build-dependencies"):
         for dep, spec in manifest.get(table, {}).items():
+            member_optional = isinstance(spec, dict) and spec.get("optional")
             inherited = isinstance(spec, dict) and spec.get("workspace")
             if inherited:
                 if dep not in ws_deps:
@@ -200,10 +226,12 @@ while stack:
                 spec = ws_deps[dep]
             if isinstance(spec, dict) and "git" in spec:
                 fail(f"{name} declares a git dependency {dep}; out of proof scope")
-            if isinstance(spec, dict) and spec.get("optional"):
-                # Optional dependencies are not part of the default
-                # feature set the proof classes compile; they stay out
-                # of the closure and the certified floor inventory.
+            resolved_optional = isinstance(spec, dict) and spec.get("optional")
+            if (member_optional or resolved_optional) and not default_enables(manifest, dep):
+                # Optional dependencies stay out of the closure and the
+                # certified floor inventory unless a default feature
+                # enables them; an explicit optional = false never
+                # excludes a dependency.
                 continue
             if isinstance(spec, dict) and "path" in spec:
                 # An inherited spec's path is workspace-root relative; a
@@ -310,6 +338,12 @@ check_args=()
 for member in "${CLOSURE[@]}"; do
   check_args+=(-p "$member")
 done
+# The floored test class excludes the two drift meta-tests by name:
+# they grade the proof's own retained receipts against the tree, so
+# they cannot pass inside the very run that refreshes those receipts.
+# The skip is recorded verbatim in the receipt's command list, and CI
+# still runs the meta-tests against every committed tree.
+DRIFT_TEST_SKIPS="-- --skip minimum_direct_version_drift --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean"
 check_cmd=""
 test_cmd=""
 package_cmd=""
@@ -317,7 +351,7 @@ if [[ " ${CLASS_LIST[*]} " == *" check "* ]]; then
   check_cmd="cargo check --locked ${check_args[*]}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" test "* ]]; then
-  test_cmd="cargo test --locked ${check_args[*]}"
+  test_cmd="cargo test --locked ${check_args[*]} ${DRIFT_TEST_SKIPS}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" package "* ]]; then
   package_cmd="cargo package -p ${CLOSURE[0]} --locked --no-verify --allow-dirty --target-dir target/package-proof"
@@ -330,7 +364,10 @@ if [[ -n "$check_cmd" ]]; then
   cargo check --locked "${check_args[@]}" || check_status=$?
 fi
 if [[ -n "$test_cmd" ]]; then
-  cargo test --locked "${check_args[@]}" || test_status=$?
+  cargo test --locked "${check_args[@]}" \
+    -- --skip minimum_direct_version_drift \
+    --skip check_exits_zero_when_every_release_set_receipt_is_current \
+    --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean || test_status=$?
 fi
 if [[ -n "$package_cmd" ]]; then
   cargo package -p "${CLOSURE[0]}" --locked --no-verify --allow-dirty \
@@ -392,7 +429,7 @@ for row in floors:
         "limitation": limitation,
     })
 
-lock_bytes = open(lock_path, "rb").read()
+lock_bytes = open(lock_path, "rb").read().replace(b"\r", b"")
 floor_lock_digest = "sha256:v1:" + hashlib.sha256(lock_bytes).hexdigest()
 
 commands = ["cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)"]
@@ -411,7 +448,12 @@ if product == "cargo-allow":
         "not every target or feature combination",
         "internal =0.2.0 workspace pins are proven by the same closure build",
         "dev-dependencies are exercised by the test class but are not certified floors",
-        "optional dependencies and non-default features stay outside the certified set",
+        "the certified set is the closure's default-feature compile set: optional "
+        "dependencies enabled by a default feature are certified; optional "
+        "dependencies no default feature enables stay outside it",
+        "the drift meta-tests are excluded from the floored test class by name "
+        "(they grade this proof's own retained receipts); CI runs them against "
+        "every committed tree",
     ]
 else:
     claim_boundary = (
@@ -426,7 +468,9 @@ else:
         "not every target or feature combination",
         "advisory: report-only product rows never gate the cargo-allow release set",
         "dev-dependencies are exercised by the test class but are not certified floors",
-        "optional dependencies and non-default features stay outside the certified set",
+        "the certified set is the closure's default-feature compile set: optional "
+        "dependencies enabled by a default feature are certified; optional "
+        "dependencies no default feature enables stay outside it",
     ]
 
 receipt = {

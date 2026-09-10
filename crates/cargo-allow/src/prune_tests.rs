@@ -710,3 +710,249 @@ fn test_outcome(
         score: 100,
     }
 }
+
+#[test]
+fn cmd_prune_allow_id_selects_only_that_stale_entry_for_preview_and_write() {
+    // Two stale entries and one live entry: selecting one stale id
+    // confines preview rows, removed blocks, receipt ids, and the
+    // write to exactly that entry (#4176).
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+    cfg.allow.push(non_rust_prune_fixture_entry(
+        "allow-stale-a",
+        "docs/stale-a.md",
+    ));
+    cfg.allow.push(non_rust_prune_fixture_entry(
+        "allow-stale-b",
+        "docs/stale-b.md",
+    ));
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    // Selected dry-run: only the selected id is previewed.
+    let preview_path = root.join("prune-selected.json");
+    cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        allow_id: Some("allow-stale-a".to_string()),
+        dry_run: true,
+        write: false,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(preview_path.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("selected preview: {err}")));
+    let preview = fs::read_to_string(&preview_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("preview read: {err}")));
+    let parsed: serde_json::Value = serde_json::from_str(&preview)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("preview parse: {err}")));
+    let changed: Vec<&str> = parsed
+        .pointer("/mutation_receipt/changed_allow_ids")
+        .and_then(serde_json::Value::as_array)
+        .map(|ids| ids.iter().filter_map(|id| id.as_str()).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        changed,
+        vec!["allow-stale-a"],
+        "the selection confines the receipt"
+    );
+    let removed = parsed
+        .pointer("/removed_toml_blocks")
+        .and_then(serde_json::Value::as_array)
+        .map(|blocks| blocks.len())
+        .unwrap_or_default();
+    assert_eq!(
+        removed, 1,
+        "only the selected entry is previewed for removal"
+    );
+
+    // Selected write: only the selected entry leaves the policy.
+    cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        allow_id: Some("allow-stale-a".to_string()),
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(root.join("prune-write.json")),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("selected write: {err}")));
+
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(
+        rendered.contains("allow-live"),
+        "the live entry is untouched"
+    );
+    assert!(
+        rendered.contains("allow-stale-b"),
+        "the unselected stale entry is untouched"
+    );
+    assert!(
+        !rendered.contains("allow-stale-a"),
+        "only the selected entry is removed"
+    );
+
+    // A second selected preview for the removed id fails closed as an
+    // unknown id - it never silently broadens to the remaining stale
+    // entry.
+    let second_preview_path = root.join("prune-selected-2.json");
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        allow_id: Some("allow-stale-a".to_string()),
+        dry_run: true,
+        write: false,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(second_preview_path.clone()),
+    })
+    .expect_err("a removed id is unknown, never a broadened selection");
+    assert!(
+        err.to_string().contains("allow-stale-a"),
+        "the error names the removed id: {err}"
+    );
+    assert!(!second_preview_path.exists(), "no artifact is produced");
+    let rendered_after = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy re-read: {err}")));
+    assert!(
+        rendered_after.contains("allow-stale-b"),
+        "the remaining stale entry is still untouched"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_prune_allow_id_selecting_a_live_entry_is_a_noop() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-stale", "docs/stale.md"));
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    let output_path = root.join("prune-live.json");
+    cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        allow_id: Some("allow-live".to_string()),
+        dry_run: false,
+        write: true,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(output_path.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("live selection: {err}")));
+
+    let artifact = fs::read_to_string(&output_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("artifact read: {err}")));
+    let parsed: serde_json::Value = serde_json::from_str(&artifact)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("artifact parse: {err}")));
+    assert_eq!(
+        parsed.pointer("/mutation_receipt/changed_allow_ids"),
+        Some(&serde_json::Value::Array(Vec::new())),
+        "no unrelated candidate rides along"
+    );
+    assert_eq!(
+        parsed
+            .pointer("/written_path")
+            .and_then(serde_json::Value::as_str),
+        None,
+        "a live selection performs no policy write"
+    );
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(rendered.contains("allow-live") && rendered.contains("allow-stale"));
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_prune_allow_id_unknown_fails_before_output() {
+    let root = prune_fixture_dir();
+    let policy_dir = root.join("policy");
+    let docs_dir = root.join("docs");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(&docs_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(docs_dir.join("live.md"), "# live\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("live doc: {err}")));
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_prune_fixture_entry("allow-live", "docs/live.md"));
+    let policy_path = policy_dir.join("allow.toml");
+    fs::write(&policy_path, render_policy(&cfg))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+    let output_path = root.join("prune-unknown.json");
+    let err = cmd_prune(&PruneArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy_path.clone()),
+        stale: true,
+        allow_id: Some("allow-ghost".to_string()),
+        dry_run: true,
+        write: false,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: Some(output_path.clone()),
+    })
+    .expect_err("an unknown id fails before any output");
+    assert!(
+        err.to_string().contains("allow-ghost"),
+        "the error names the unknown id: {err}"
+    );
+    assert!(
+        !output_path.exists(),
+        "no output artifact is created for an unknown id"
+    );
+    let rendered = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy read: {err}")));
+    assert!(rendered.contains("allow-live"), "the policy is unchanged");
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}

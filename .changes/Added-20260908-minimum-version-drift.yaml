@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Direct minimum version drift guard (#3903 PR D). Typed
+  MinimumVersionDriftObservationV1 / MinimumVersionDriftEvaluationV1 in
+  allow-report grade each retained direct-floor proof against the live
+  tree (product roots, claimed MSRV, target, manifest-set and lock
+  digests, and the closure-derived floor inventory from the shared
+  selection module), so dependency, feature, target, MSRV,
+  package-set, or manifest movement reruns or stales the affected
+  request instead of silently passing on old evidence. Identity
+  movement is stale, missing or wrong-product receipts are unproven,
+  coverage gaps and non-clean dispositions are incomplete, and only
+  release-set (cargo-allow) drift blocks; advisory products report the
+  same verdicts without blocking. The hidden min-version-drift
+  evaluate/check CLI exposes the guard with that exit contract, and a
+  live grading test pins every retained receipt to the current tree.

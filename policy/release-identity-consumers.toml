@@ -370,3 +370,14 @@ disposition = "typed-consumer"
 marker_classes = []
 sites = ["fn on_candidate_release_line("]
 claim_boundary = "Candidate-line classification parses the workspace version through the typed ReleaseVersionV1 authority (grammar and channel) and compares only the validated core against the campaign line constant; the former raw starts_with prefix test, which accepted malformed forms like 0.2.0foo, is deleted. Documented here because the guard scans only the non-Rust surfaces."
+
+[[consumers]]
+id = "dependency-graph-delta-lane"
+path = "scripts/check-dependency-graph-delta.sh"
+role = "dependency graph delta compile lane"
+disposition = "non-semantic-formatting"
+marker_classes = ["workspace-reader"]
+sites = [
+  "handle.write(\"[workspace.dependencies]\\n\")",
+]
+claim_boundary = "The lane synthesizes per-side merged member manifests for the dependency graph delta compiler and never reads, infers, or compares a release version or channel; the [workspace token is dependency-table synthesis feeding the bounded compiler, not a workspace version reader."
