@@ -77,16 +77,107 @@ class TestCandidateIdentity(unittest.TestCase):
         self.assertNotIn("synthetic-private", diagnostic.getvalue())
         return status, receipt, run, diagnostic.getvalue()
 
-    def test_candidate_runs_directly_with_observed_digest(self) -> None:
+    def test_candidate_runs_from_verified_private_copy(self) -> None:
+        observed = []
+
+        def observe_copy(command, **kwargs):
+            observed.append(Path(command[0]).read_bytes())
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+
         with mock.patch.dict(os.environ, {"CARGO_REGISTRY_TOKEN": "synthetic-private-token"}):
-            status, receipt, run, diagnostic = self.invoke()
+            status, receipt, run, diagnostic = self.invoke(error=observe_copy)
         self.assertEqual(status, "Complete")
         self.assertEqual(receipt["release_identity"]["version"], "0.2.0")
-        self.assertEqual(run.call_args.args[0],
-                         [str(self.candidate), "release-identity", "--version", "0.2.0"])
+        launched = Path(run.call_args.args[0][0])
+        self.assertNotEqual(launched, self.candidate)
+        self.assertEqual(observed, [self.candidate.read_bytes()])
+        self.assertEqual(run.call_args.args[0][1:],
+                         ["release-identity", "--version", "0.2.0"])
+        self.assertFalse(launched.parent.exists())
+        self.assertTrue(self.candidate.exists())
         self.assertNotIn("CARGO_REGISTRY_TOKEN", run.call_args.kwargs["env"])
         self.assertIn(self.digest, diagnostic)
         self.assertEqual(run.call_count, 1)
+
+    def test_private_copy_preserves_executable_suffix_and_mode(self) -> None:
+        self.candidate = self.candidate.with_suffix(".exe")
+        self.candidate.write_bytes(b"identified candidate bytes")
+        observed = []
+
+        def observe_copy(command, **kwargs):
+            copy = Path(command[0])
+            observed.append((copy.suffix, copy.stat().st_mode))
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+
+        status, _, _, _ = self.invoke(error=observe_copy)
+        self.assertEqual(status, "Complete")
+        self.assertEqual(observed[0][0], ".exe")
+        if os.name != "nt":
+            self.assertEqual(observed[0][1] & 0o777, 0o500)
+
+    def test_private_copy_is_cleaned_after_child_failure_or_timeout(self) -> None:
+        for timeout in (False, True):
+            with self.subTest(timeout=timeout):
+                observed = []
+
+                def fail_child(command, **kwargs):
+                    observed.append(Path(command[0]))
+                    if timeout:
+                        raise subprocess.TimeoutExpired(command, 300)
+                    return subprocess.CompletedProcess([], 2, "", "")
+
+                status, receipt, _, _ = self.invoke(error=fail_child)
+                self.assertNotEqual(status, "Complete")
+                self.assertNotIn("release_identity", receipt)
+                self.assertFalse(observed[0].parent.exists())
+                self.assertTrue(self.candidate.exists())
+
+    def test_private_copy_failure_does_not_execute_or_expose_paths(self) -> None:
+        copies = []
+
+        def fail_copy(source, destination):
+            copies.append(destination)
+            raise OSError("synthetic-private-copy-path")
+
+        with mock.patch.object(REHEARSAL.shutil, "copyfile", side_effect=fail_copy):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+        run.assert_not_called()
+        self.assertFalse(copies[0].parent.exists())
+
+    def test_private_copy_digest_mismatch_does_not_execute(self) -> None:
+        copies = []
+
+        def invalid_copy(source, destination):
+            copies.append(destination)
+            destination.write_bytes(b"different copied bytes")
+
+        with mock.patch.object(REHEARSAL.shutil, "copyfile", side_effect=invalid_copy):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("candidate_digest_mismatch", diagnostic)
+        run.assert_not_called()
+        self.assertFalse(copies[0].parent.exists())
+
+    def test_private_copy_cleanup_failure_cannot_be_complete(self) -> None:
+        temporary_directory = tempfile.TemporaryDirectory
+
+        @contextlib.contextmanager
+        def cleanup_failure(**kwargs):
+            with temporary_directory(**kwargs) as directory:
+                yield directory
+            raise OSError("synthetic-private-cleanup-path")
+
+        with mock.patch.object(REHEARSAL.tempfile, "TemporaryDirectory",
+                               side_effect=cleanup_failure):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+        self.assertFalse(Path(run.call_args.args[0][0]).parent.exists())
 
     def test_missing_candidate_does_not_fall_back(self) -> None:
         status, receipt, run, diagnostic = self.invoke(

@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -118,42 +121,54 @@ def run_phase_release_identity(
     The workspace version is read as the identity source and validated through
     ``cargo-allow release-identity``; this phase records the validated fields
     without re-deriving grammar, tag, or channel. An integration caller may
-    supply its just-built executable and observed digest. That establishes
-    selection and before/after bytes, not executable-to-source attestation.
+    supply its just-built executable and observed digest. A verified private
+    copy isolates execution from replacement of the original candidate path.
+    This is not executable-to-source attestation or isolation from a hostile
+    process with access to the private copy.
     """
     try:
         version = _workspace_version()
-        command = [
-            "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
-        ]
-        if candidate_executable is not None or candidate_sha256 is not None:
-            if (
-                candidate_executable is None
-                or candidate_sha256 is None
-                or not candidate_sha256.startswith("sha256:v1:")
-                or len(candidate_sha256) != 74
-                or any(char not in "0123456789abcdef" for char in candidate_sha256[10:])
-                or not candidate_executable.is_absolute()
-            ):
-                return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_selection_invalid")
-            if not candidate_executable.is_file():
-                return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_unavailable")
-            if compute_sha256(candidate_executable) != candidate_sha256:
-                return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
-            command = [str(candidate_executable)]
-        result = subprocess.run(
-            command + ["release-identity", "--version", version],
-            cwd=ROOT,
-            env=_sanitized_environment(),
-            capture_output=True,
-            text=True,
-            timeout=300,
-            check=False,
-        )
-        if candidate_executable is not None:
-            if compute_sha256(candidate_executable) != candidate_sha256:
-                return _identity_failure(PHASE_MISMATCH, "candidate_changed")
-            print(f"release_identity: candidate_observed {candidate_sha256}", file=sys.stderr)
+        with contextlib.ExitStack() as candidates:
+            command = [
+                "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+            ]
+            if candidate_executable is not None or candidate_sha256 is not None:
+                if (
+                    candidate_executable is None
+                    or candidate_sha256 is None
+                    or not candidate_sha256.startswith("sha256:v1:")
+                    or len(candidate_sha256) != 74
+                    or any(char not in "0123456789abcdef" for char in candidate_sha256[10:])
+                    or not candidate_executable.is_absolute()
+                ):
+                    return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_selection_invalid")
+                if not candidate_executable.is_file():
+                    return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_unavailable")
+                if compute_sha256(candidate_executable) != candidate_sha256:
+                    return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
+                private_dir = candidates.enter_context(
+                    tempfile.TemporaryDirectory(prefix="cargo-allow-identity-")
+                )
+                snapshot = Path(private_dir) / ("candidate" + candidate_executable.suffix)
+                shutil.copyfile(candidate_executable, snapshot)
+                snapshot.chmod(0o500)
+                if compute_sha256(snapshot) != candidate_sha256:
+                    return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
+                command = [str(snapshot)]
+            result = subprocess.run(
+                command + ["release-identity", "--version", version],
+                cwd=ROOT,
+                env=_sanitized_environment(),
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
+            )
+            if candidate_executable is not None:
+                if (compute_sha256(snapshot) != candidate_sha256
+                        or compute_sha256(candidate_executable) != candidate_sha256):
+                    return _identity_failure(PHASE_MISMATCH, "candidate_changed")
+                print(f"release_identity: candidate_observed {candidate_sha256}", file=sys.stderr)
     except subprocess.TimeoutExpired:
         return _identity_failure(PHASE_INSTRUMENT_FAILURE, "child_timeout")
     except (OSError, ValueError, subprocess.SubprocessError):
