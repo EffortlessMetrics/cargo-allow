@@ -11,6 +11,21 @@ dependencies to their declared floors, and executes the requested proof classes.
 Uncommitted edits are not proof inputs. Manifest and original-lock digests bind
 the source inputs; the floor-lock digest binds the executed dependency candidate.
 
+Before executing classes, the collector places its JSON scratch under the
+ignored root `target/floor-proof` directory and commits only the derived
+`Cargo.lock` in its detached temporary checkout. An unchanged lock reuses the
+source commit. Derivation rejects other tracked, staged, untracked, ignored
+source, and hidden-index changes. It verifies the single original parent,
+lock-only tree delta, and clean checkout. This gives strict rehearsal admission
+the actual committed floor subject without weakening its clean-source checks.
+The local derived commit uses a command-scoped `cargo-allow floor proof`
+identity, disables commit hooks and signing, and is never pushed. No repository
+or global Git identity setting is changed. The collector removes its
+temporary worktree on exit; its companion preserves original source, derived
+commit/tree, and executed lock digest. These identities describe a local proof
+candidate, not an upstream commit or release qualification. See
+[#4217](https://github.com/EffortlessMetrics/cargo-allow/issues/4217).
+
 Selection follows inherited and member dependency features, local feature
 edges, and strong/weak feature forwarding to a fixed point. Every package in the
 closure is selected with `-p`, so each package's defaults also participate.
@@ -78,6 +93,14 @@ Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
 invalid product/class rejection, observed MSRV rejection, the exact five test
 exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
 controls do not compile packages or establish real floor compatibility.
+The same command runs real-Git derived-source controls for lock-only changes,
+unchanged locks, attached checkouts, and rejected source/index changes. The
+producer simulation separately rejects derivation failure before any class runs.
+For an integration subject containing #4177's strict admission, run
+`python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
+This reproduces the original four root scratch files plus modified lock,
+requires their rejection, and then requires admission of the derived subject.
+Selecting an older rehearsal script without strict admission fails explicitly.
 
 Legacy receipt admission belongs to the Rust consumer, not this producer.
 `minimum_direct_version_contract_package_roots_must_match_the_request` rejects
