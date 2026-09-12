@@ -146,12 +146,36 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
 }
 
 #[test]
+fn rehearsal_candidate_selection_controls() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let output = Command::new("python")
+        .arg(root.join("scripts/test-release-rehearsal.py"))
+        .arg("TestCandidateIdentity")
+        .arg("-q")
+        .current_dir(&root)
+        .output()?;
+    require(
+        output.status.success(),
+        &format!(
+            "candidate selection controls failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    Ok(())
+}
+
+#[test]
 fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let script = root.join("scripts/release-rehearsal.py");
     require(script.is_file(), "release rehearsal script is missing")?;
     let candidate = Path::new(env!("CARGO_BIN_EXE_cargo-allow")).canonicalize()?;
-    let candidate_digest = format!("sha256:v1:{:x}", Sha256::digest(std::fs::read(&candidate)?));
+    let digest: String = Sha256::digest(std::fs::read(&candidate)?)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let candidate_digest = format!("sha256:v1:{digest}");
+    eprintln!("rehearsal candidate: {candidate_digest}");
 
     let output = Command::new("python")
         .arg(&script)

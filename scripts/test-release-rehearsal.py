@@ -41,6 +41,9 @@ class TestCandidateIdentity(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.candidate = Path(directory.name) / "candidate"
         self.candidate.write_bytes(b"identified candidate bytes")
+        environment = mock.patch.dict(os.environ, {}, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
         self.digest = REHEARSAL.compute_sha256(self.candidate)
         self.projection = {
             "schema": "cargo-allow.release-identity.v1",
