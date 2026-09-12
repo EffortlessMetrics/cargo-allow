@@ -56,3 +56,28 @@ after_fingerprint = "sha256:v1:d2904952ea40ba843ef1bc1259668560e03206f6ca2500632
 allow_ids = ["allow-4166-protocol-shell"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:84705c68af33c0d96a5591f38af43d5396d9f43464dfe3a650d2c15bd6ebadc4"
+
+# Exact 62c25f71 -> a7ebeb88 transitions: four generated selection companions.
+# Reviewed selectors each name one Markdown evidence file, owned by core/deps.
+# These retain activation explanations bound to the companion JSON bytes;
+# they grant no new proof class, source attestation, or dependency exception.
+
+[[records]]
+allow_ids = ["allow-4166-selection-cargo-allow"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9739292de4fd9930de852f6989407189ffb716e74575b98b3f37275033049dc7"
+
+[[records]]
+allow_ids = ["allow-4166-selection-cargo-intent"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4cf6e3fbb03d0025a41e257e401964c88111d945dd2152773de288e31e9fff0f"
+
+[[records]]
+allow_ids = ["allow-4166-selection-cargo-proof"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a127017d69f54d7417022b0c78044a131f93553b3fd2f37da05479fa72e23352"
+
+[[records]]
+allow_ids = ["allow-4166-selection-shared"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f544227c98b84a00e553f74d3acc09d69687518b7f37317e33cbe6000282c0cc"
