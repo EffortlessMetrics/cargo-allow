@@ -7,12 +7,12 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: shared
 - Package roots: effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit, effortless-rust-source-index
 - Selected closure: effortless-repo-edit, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index
-- Starting source commit: 6a926432d0d6eb81bdb412df6c8ccdff4188bc01
+- Starting source commit: badbec1b40f3170bf7b1402fe57e8f119c4173dd
 - Receipt: direct-floor-proof-shared-v1.json
-- Receipt SHA-256: sha256:v1:86062b8d2c3630f7558040d2e03b742ef73abd175c847be9f11e5ebf939014f5
-- Manifest-set digest: 0cc7ac8b80d7ba163a305e0217aaabf7fd471a0b582a5c32bcce2fbd8a4674fe
-- Starting lock digest: 0d534b066fcc4db1fd01fae560255a82bb906ef214b8a7aa7f30e030f934f8ea
-- Executed floor-lock digest: sha256:v1:d08a21d28c1a627734698c14442fbec18116110cc771b860e1513574aa1ee22c
+- Receipt SHA-256: sha256:v1:da036373d7bc13b0846e3990faac530dce801de055b6062fa529ada8a937b442
+- Manifest-set digest: adc5877bce43d8d972a162d62069cb0fd1ea983713f4f0e1a66d357d7ddc4d75
+- Starting lock digest: 63bec58292d7d47d0c2f94ebd34a71bf2f1a78444e1cf38ce92bfc58c989dc15
+- Executed floor-lock digest: sha256:v1:668bf71c1eb6967868f69ef426468a05e067854ba048976d04c21f00f354c821
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
 | --- | --- | --- | --- | --- | --- |
