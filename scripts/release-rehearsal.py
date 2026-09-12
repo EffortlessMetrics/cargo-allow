@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -103,40 +106,110 @@ def _workspace_version() -> str:
     raise ValueError("Cargo.toml has no [workspace.package] version")
 
 
-def run_phase_release_identity(receipt: dict[str, Any]) -> str:
+def _identity_failure(status: str, reason: str) -> str:
+    """Expose a bounded category, never child output or environment values."""
+    print(f"release_identity: {reason}", file=sys.stderr)
+    return status
+
+
+def run_phase_release_identity(
+    receipt: dict[str, Any], *, candidate_executable: Path | None = None,
+    candidate_sha256: str | None = None,
+) -> str:
     """Consume the typed release-identity projection for the workspace candidate.
 
     The workspace version is read as the identity source and validated through
     ``cargo-allow release-identity``; this phase records the validated fields
-    without re-deriving grammar, tag, or channel.
+    without re-deriving grammar, tag, or channel. An integration caller may
+    supply its just-built executable and observed digest. A verified private
+    copy isolates execution from replacement of the original candidate path.
+    This is not executable-to-source attestation or isolation from a hostile
+    process with access to the private copy.
     """
     try:
         version = _workspace_version()
-        result = subprocess.run(
-            [
+        with contextlib.ExitStack() as candidates:
+            command = [
                 "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
-                "release-identity", "--version", version,
-            ],
-            cwd=ROOT,
-            env=_sanitized_environment(),
-            capture_output=True,
-            text=True,
-            timeout=300,
-            check=False,
-        )
+            ]
+            if candidate_executable is not None or candidate_sha256 is not None:
+                if (
+                    candidate_executable is None
+                    or candidate_sha256 is None
+                    or not candidate_sha256.startswith("sha256:v1:")
+                    or len(candidate_sha256) != 74
+                    or any(char not in "0123456789abcdef" for char in candidate_sha256[10:])
+                    or not candidate_executable.is_absolute()
+                ):
+                    return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_selection_invalid")
+                if not candidate_executable.is_file():
+                    return _identity_failure(PHASE_INSTRUMENT_FAILURE, "candidate_unavailable")
+                if compute_sha256(candidate_executable) != candidate_sha256:
+                    return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
+                private_dir = candidates.enter_context(
+                    tempfile.TemporaryDirectory(prefix="cargo-allow-identity-")
+                )
+                snapshot = Path(private_dir) / ("candidate" + candidate_executable.suffix)
+                shutil.copyfile(candidate_executable, snapshot)
+                snapshot.chmod(0o500)
+                if compute_sha256(snapshot) != candidate_sha256:
+                    return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
+                command = [str(snapshot)]
+            result = subprocess.run(
+                command + ["release-identity", "--version", version],
+                cwd=ROOT,
+                env=_sanitized_environment(),
+                capture_output=True,
+                text=True,
+                timeout=300,
+                check=False,
+            )
+            if candidate_executable is not None:
+                if (compute_sha256(snapshot) != candidate_sha256
+                        or compute_sha256(candidate_executable) != candidate_sha256):
+                    return _identity_failure(PHASE_MISMATCH, "candidate_changed")
+                print(f"release_identity: candidate_observed {candidate_sha256}", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        return _identity_failure(PHASE_INSTRUMENT_FAILURE, "child_timeout")
     except (OSError, ValueError, subprocess.SubprocessError):
-        return PHASE_INSTRUMENT_FAILURE
+        return _identity_failure(PHASE_INSTRUMENT_FAILURE, "instrument_unavailable")
     if result.returncode != 0:
-        return PHASE_MISMATCH
+        return _identity_failure(PHASE_MISMATCH, "child_failed")
     try:
         projection = json.loads(result.stdout)
     except json.JSONDecodeError:
-        return PHASE_INSTRUMENT_FAILURE
+        return _identity_failure(PHASE_INSTRUMENT_FAILURE, "identity_json_invalid")
     if (
-        projection.get("schema") != "cargo-allow.release-identity.v1"
+        not isinstance(projection, dict)
+        or projection.get("schema") != "cargo-allow.release-identity.v1"
         or projection.get("result") != "validated"
+        or projection.get("version") != version
+        or projection.get("tag") != "v" + version
+        or projection.get("tag_source") != "derived"
+        or projection.get("channel") not in ("stable", "release_candidate")
+        or not isinstance(projection.get("github_prerelease"), bool)
+        or "rc_ordinal" not in projection
     ):
-        return PHASE_MISMATCH
+        return _identity_failure(PHASE_MISMATCH, "identity_projection_invalid")
+    # This invocation omits --tag, so it must receive the derived projection.
+    # Check the relationships carried by that projection without parsing the
+    # version grammar again; ReleaseVersionV1 remains the grammar authority.
+    ordinal = projection["rc_ordinal"]
+    if projection["channel"] == "stable":
+        consistent = (
+            ordinal is None
+            and not projection["github_prerelease"]
+            and "-" not in version
+        )
+    else:
+        consistent = (
+            type(ordinal) is int
+            and 0 < ordinal <= 4294967295
+            and projection["github_prerelease"]
+            and version.endswith(f"-rc.{ordinal}")
+        )
+    if not consistent:
+        return _identity_failure(PHASE_MISMATCH, "identity_projection_invalid")
     receipt["release_identity"] = {
         "schema": projection["schema"],
         "version": projection["version"],
@@ -569,8 +642,13 @@ def _write_receipt(path: Path, json_text: str) -> None:
             os.close(descriptor)
 
 
-def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
+def build_rehearsal_receipt(
+    commit_ref: str, *, candidate_executable: Path | None = None,
+    candidate_sha256: str | None = None,
+) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
+    if (candidate_executable is None) != (candidate_sha256 is None):
+        raise ValueError("candidate executable and SHA-256 must be supplied together")
     commit_sha = resolve_commit(commit_ref)
     lockfile_digest = compute_sha256(ROOT / "Cargo.lock")
     topology_digest = compute_sha256(
@@ -612,7 +690,10 @@ def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
     }
 
     phases: dict[str, Callable[[dict[str, Any]], str]] = {
-        "release_identity": run_phase_release_identity,
+        "release_identity": lambda target: run_phase_release_identity(
+            target, candidate_executable=candidate_executable,
+            candidate_sha256=candidate_sha256,
+        ),
         "candidate_package_set": run_phase_candidate_package_set,
         "shared_prerequisites": run_phase_shared_prerequisites,
         "publisher_state_machine": run_phase_publisher_state_machine,
@@ -635,10 +716,17 @@ def main() -> int:
     )
     parser.add_argument("--commit", default="HEAD", help="Exact Git commit or ref")
     parser.add_argument("--output", help="Path to write receipt JSON")
+    parser.add_argument("--candidate-executable", type=Path,
+                        help="Absolute path to the caller's just-built cargo-allow")
+    parser.add_argument("--candidate-sha256",
+                        help="Paired executable digest in sha256:v1:<hex> form")
     args = parser.parse_args()
 
     try:
-        receipt = build_rehearsal_receipt(args.commit)
+        receipt = build_rehearsal_receipt(
+            args.commit, candidate_executable=args.candidate_executable,
+            candidate_sha256=args.candidate_sha256,
+        )
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"release rehearsal instrumentation failed: {error}", file=sys.stderr)
         return 2
@@ -656,4 +744,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
