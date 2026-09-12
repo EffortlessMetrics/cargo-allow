@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Bind topology packaging to the worktree artifact directory so an external
+  Cargo target directory cannot cause missing archives or stale package checksums.

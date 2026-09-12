@@ -445,6 +445,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
 /// The exact source subject the freeze binds. Collected from the clean
 /// committed HEAD; a dirty worktree is an instrument failure because the
 /// packaged archives must come from the committed tree.
+#[derive(Debug)]
 struct SubjectIdentity {
     version: String,
     tag: String,
@@ -464,8 +465,43 @@ impl SubjectIdentity {
                 "the worktree is dirty; the freeze binds the committed subject only",
             ));
         }
+        // Ordinary status cannot see assume-unchanged or skip-worktree
+        // edits: flagged files keep a clean status while their working
+        // bytes diverge from the committed blob. Reject every hidden
+        // index state conservatively instead of pairing the committed
+        // identity with unverified working bytes.
+        let flags = git(root, &["ls-files", "-v", "-z"])?;
+        for record in flags.split('\0').filter(|record| !record.is_empty()) {
+            let tag = record.chars().next().unwrap_or('?');
+            if tag == 'S' || tag.is_ascii_lowercase() {
+                return Err(instrument(
+                    "the index carries hidden state (assume-unchanged or skip-worktree); the freeze cannot pair committed identity with unverified working bytes",
+                ));
+            }
+        }
         let commit = git(root, &["rev-parse", "HEAD"])?;
         let tree = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        // Defense in depth for the three admitted inputs: read each
+        // working file exactly once, verify it against its HEAD blob,
+        // and compute the receipt digests from those same verified
+        // bytes so no unguarded second read can escape the binding.
+        // Line endings are checkout framing, not content.
+        let mut verified = std::collections::BTreeMap::new();
+        for path in [WORKSPACE_MANIFEST_PATH, CARGO_LOCK_PATH, TOPOLOGY_PATH] {
+            let committed = strip_line_endings(&git(root, &["show", &format!("HEAD:{path}")])?);
+            let raw = std::fs::read(root.join(path))
+                .map_err(|error| instrument(format!("read {path}: {error}")))?;
+            let working = strip_line_endings(
+                &String::from_utf8(raw.clone())
+                    .map_err(|error| instrument(format!("{path}: {error}")))?,
+            );
+            if committed != working {
+                return Err(instrument(format!(
+                    "working bytes for {path} differ from the committed subject; the freeze binds the committed bytes only"
+                )));
+            }
+            verified.insert(path, raw);
+        }
         let manifest = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
         let declared = manifest
             .lines()
@@ -486,9 +522,23 @@ impl SubjectIdentity {
             ));
         }
         let projection = CandidateReleaseIdentityProjectionShim::from_version(&parsed);
-        let cargo_lock_digest = sha256_repo_file(root, CARGO_LOCK_PATH)?;
-        let topology_digest = sha256_repo_file(root, TOPOLOGY_PATH)?;
+        let cargo_lock_digest = sha256_v1_bytes(
+            verified
+                .get(CARGO_LOCK_PATH)
+                .expect("verified input is present"),
+        );
+        let topology_digest = sha256_v1_bytes(
+            verified
+                .get(TOPOLOGY_PATH)
+                .expect("verified input is present"),
+        );
         let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
+        // The subject must not move while it is being collected.
+        let commit_now = git(root, &["rev-parse", "HEAD"])?;
+        let tree_now = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        if commit_now != commit || tree_now != tree {
+            return Err(instrument("the subject moved during collection"));
+        }
         Ok(Self {
             version: declared,
             tag: projection.tag,
@@ -792,6 +842,48 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                     subject.version
                 ));
             }
+            // Subject binding (#4175): a same-version rehearsal from a
+            // different source subject must not read as current. Each
+            // documented subject field is required and compared exactly
+            // (digest payloads modulo the typed prefix spelling).
+            let commit_sha = value.pointer("/commit_sha").and_then(Json::as_str);
+            match commit_sha {
+                None => notes.push("fail:rehearsal receipt records no commit_sha".to_string()),
+                Some(sha) if sha != subject.commit => notes.push(format!(
+                    "fail:rehearsal commit {sha:?} is not the selected subject commit {:?}",
+                    subject.commit
+                )),
+                _ => {}
+            }
+            for (label, recorded, selected) in [
+                (
+                    "lockfile",
+                    value
+                        .pointer("/subject_lockfile_digest")
+                        .and_then(Json::as_str),
+                    subject.cargo_lock_digest.as_str(),
+                ),
+                (
+                    "topology",
+                    value
+                        .pointer("/subject_topology_digest")
+                        .and_then(Json::as_str),
+                    subject.topology_digest.as_str(),
+                ),
+            ] {
+                match (recorded, hex_payload(recorded.unwrap_or(""))) {
+                    (None, _) => notes.push(format!(
+                        "fail:rehearsal receipt records no subject_{label}_digest"
+                    )),
+                    (_, None) => notes.push(format!(
+                        "fail:rehearsal subject_{label}_digest {recorded:?} is not a documented digest spelling"
+                    )),
+                    (Some(_), Some(payload)) if payload == hex_payload(selected).unwrap_or(selected) => {}
+                    (Some(recorded_digest), _) => notes.push(format!(
+                        "fail:rehearsal subject_{label}_digest {recorded_digest:?} is not the selected subject {selected:?}"
+                    )),
+                }
+            }
             match value.pointer("/phases").and_then(Json::as_object) {
                 None => notes.push("fail:rehearsal receipt records no phases".to_string()),
                 Some(phases) => {
@@ -815,29 +907,39 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::PackageDocs => {
-            // The basis generator records digests without the typed `v1`
-            // segment; compare the hex payload so either spelling binds.
-            fn hex_of(digest: &str) -> &str {
-                digest
-                    .trim_start_matches("sha256:")
-                    .trim_start_matches("v1:")
-            }
-            for (key, expected) in [
-                ("commit", subject.commit.as_str()),
-                ("tree", subject.tree.as_str()),
-                ("cargo_lock_sha256", hex_of(&subject.cargo_lock_digest)),
-                ("topology_sha256", hex_of(&subject.topology_digest)),
-            ] {
-                match value
+            // commit/tree are exact identity strings; the two sha256
+            // rows go through the strict digest-payload parser.
+            let expected: [(&str, &str, bool); 4] = [
+                ("commit", subject.commit.as_str(), false),
+                ("tree", subject.tree.as_str(), false),
+                (
+                    "cargo_lock_sha256",
+                    hex_payload(&subject.cargo_lock_digest).unwrap_or_default(),
+                    true,
+                ),
+                (
+                    "topology_sha256",
+                    hex_payload(&subject.topology_digest).unwrap_or_default(),
+                    true,
+                ),
+            ];
+            for (key, expected, is_digest) in expected {
+                let found = value
                     .pointer(&format!("/basis/{key}"))
                     .and_then(Json::as_str)
-                    .map(|found| hex_of(found).to_string())
-                {
-                    Some(found) if found == expected => {}
-                    Some(found) => notes.push(format!(
+                    .map(|found| {
+                        if is_digest {
+                            hex_payload(found)
+                        } else {
+                            Some(found)
+                        }
+                    });
+                match found {
+                    Some(Some(found)) if found == expected => {}
+                    Some(Some(found)) => notes.push(format!(
                         "fail:package-docs basis {key} {found} does not bind the freeze subject"
                     )),
-                    None => notes.push(format!("fail:package-docs basis has no {key}")),
+                    _ => notes.push(format!("fail:package-docs basis has no {key}")),
                 }
             }
             let version = value
@@ -1682,16 +1784,33 @@ fn str_field(value: &Json, key: &str) -> Option<String> {
     value.get(key).and_then(Json::as_str).map(str::to_string)
 }
 
+/// The hex payload of a digest, accepting only the documented
+/// spellings — bare 64-char lowercase hex, `sha256:<hex>`, or
+/// `sha256:v1:<hex>`. Repeated, partial, or non-hex prefixes are
+/// malformed and fail closed instead of binding.
+fn hex_payload(digest: &str) -> Option<&str> {
+    let payload = digest
+        .strip_prefix("sha256:v1:")
+        .or_else(|| digest.strip_prefix("sha256:"))
+        .unwrap_or(digest);
+    (payload.len() == 64
+        && payload
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()))
+    .then_some(payload)
+}
+
+/// Line endings are not content for the admitted text inputs; the
+/// committed-blob comparison normalizes CRLF to LF. Lone carriage
+/// returns are content and stay distinct.
+fn strip_line_endings(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
     let bytes = std::fs::read(root.join(relative))
         .map_err(|error| instrument(format!("read {relative}: {error}")))?;
     String::from_utf8(bytes).map_err(|error| instrument(format!("{relative}: {error}")))
-}
-
-fn sha256_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
-    let bytes = std::fs::read(root.join(relative))
-        .map_err(|error| instrument(format!("read {relative}: {error}")))?;
-    Ok(sha256_v1_bytes(&bytes))
 }
 
 fn git(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
@@ -1767,6 +1886,14 @@ mod tests {
     }
 
     fn rehearsal_value(phases: u32, boundary: &str) -> serde_json::Value {
+        rehearsal_value_for(&subject(), phases, boundary)
+    }
+
+    fn rehearsal_value_for(
+        subject: &SubjectIdentity,
+        phases: u32,
+        boundary: &str,
+    ) -> serde_json::Value {
         let mut phase_map = serde_json::Map::new();
         for index in 0..phases.saturating_sub(1) {
             phase_map.insert(
@@ -1780,7 +1907,10 @@ mod tests {
         );
         serde_json::json!({
             "release_identity": { "version": "0.2.0", "tag": "v0.2.0" },
-            "phases": phase_map
+            "phases": phase_map,
+            "commit_sha": subject.commit,
+            "subject_lockfile_digest": subject.cargo_lock_digest,
+            "subject_topology_digest": subject.topology_digest,
         })
     }
 
@@ -1866,6 +1996,87 @@ mod tests {
             &rehearsal_value(8, "Complete"),
         );
         assert!(authorized.iter().any(|note| note.starts_with("fail:")));
+
+        // Subject binding (#4175): a same-version receipt from another
+        // source subject must not read as current. Each documented
+        // subject field has its own negative control, plus the
+        // missing-field case the old helper silently accepted.
+        let stranger = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Rehearsal,
+            &rehearsal_value_for(
+                &SubjectIdentity {
+                    commit: "ffffffffffffffffffffffffffffffffffffffff".to_string(),
+                    version: "0.2.0".to_string(),
+                    tag: "v0.2.0".to_string(),
+                    channel: "stable".to_string(),
+                    tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+                    cargo_lock_digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .to_string(),
+                    topology_digest:
+                        "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                            .to_string(),
+                    frozen_at_utc: "2026-09-03T00:00:00Z".to_string(),
+                },
+                8,
+                "Incomplete",
+            ),
+        );
+        assert!(
+            stranger
+                .iter()
+                .any(|note| note.contains("is not the selected subject commit")),
+            "a foreign commit is rejected: {stranger:?}"
+        );
+        let mut missing_commit = rehearsal_value_for(&subject, 8, "Incomplete");
+        missing_commit
+            .as_object_mut()
+            .expect("object")
+            .remove("commit_sha");
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &missing_commit)
+                .iter()
+                .any(|note| note.contains("records no commit_sha")),
+            "a missing commit_sha fails closed"
+        );
+        let mut wrong_lock = rehearsal_value_for(&subject, 8, "Incomplete");
+        wrong_lock.as_object_mut().expect("object").insert(
+            "subject_lockfile_digest".to_string(),
+            serde_json::json!(
+                "sha256:v1:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            ),
+        );
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &wrong_lock)
+                .iter()
+                .any(|note| note.contains("subject_lockfile_digest")),
+            "a foreign lockfile digest is rejected"
+        );
+        let mut malformed = rehearsal_value_for(&subject, 8, "Incomplete");
+        malformed.as_object_mut().expect("object").insert(
+            "subject_lockfile_digest".to_string(),
+            serde_json::json!(
+                "sha256:sha256:v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+        );
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &malformed)
+                .iter()
+                .any(|note| note.contains("is not a documented digest spelling")),
+            "a repeated-prefix digest spelling fails closed"
+        );
+        let mut missing_topology = rehearsal_value_for(&subject, 8, "Incomplete");
+        missing_topology
+            .as_object_mut()
+            .expect("object")
+            .remove("subject_topology_digest");
+        assert!(
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &missing_topology)
+                .iter()
+                .any(|note| note.contains("records no subject_topology_digest")),
+            "a missing topology digest fails closed"
+        );
     }
 
     #[test]
@@ -2124,6 +2335,70 @@ expected_registry_checksum = "sha256:cccc"
         // could never replay into equivalence.
         assert_eq!(incident_node.result, FinalEvidenceNodeResultV1::Complete);
     }
+
+    #[test]
+    fn rejected_rehearsal_evidence_cannot_become_complete_by_subject_assignment() {
+        // A foreign-subject rehearsal receipt binds with fail: notes;
+        // the graph node it produces must stay a Mismatch on the
+        // required rehearsal row even though node_for stamps the
+        // current freeze subject and Current-style provenance onto
+        // every node (#4175).
+        let subject = subject();
+        let stranger_subject = SubjectIdentity {
+            commit: "ffffffffffffffffffffffffffffffffffffffff".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+            cargo_lock_digest:
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .to_string(),
+            topology_digest:
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                    .to_string(),
+            frozen_at_utc: "2026-09-03T00:00:00Z".to_string(),
+        };
+        let binding_notes = bind_evidence(
+            &subject,
+            FreezeEvidenceRole::Rehearsal,
+            &rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+        );
+        assert!(binding_notes.iter().any(|note| note.starts_with("fail:")));
+
+        let rehearsal = super::EvidenceInput {
+            role: FreezeEvidenceRole::Rehearsal,
+            path: std::path::PathBuf::from("rehearsal.json"),
+            sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+                .to_string(),
+            value: rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+            binding_notes,
+        };
+        let package_set = super::EvidenceInput {
+            role: FreezeEvidenceRole::PackageSet,
+            path: std::path::PathBuf::from("receipt.json"),
+            sha256: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                .to_string(),
+            value: package_set_value("0.2.0", "Passed"),
+            binding_notes: Vec::new(),
+        };
+        let graph = super::build_evidence_graph(
+            &subject,
+            &selection(),
+            &[package_set, rehearsal],
+            &Vec::new(),
+            Some("sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+        );
+        let rehearsal_node = graph
+            .nodes
+            .iter()
+            .find(|node| node.evidence_id == "release-rehearsal")
+            .expect("rehearsal node");
+        assert_eq!(
+            rehearsal_node.result,
+            FinalEvidenceNodeResultV1::Mismatch,
+            "rejected rehearsal evidence stays a Mismatch node"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -2238,6 +2513,149 @@ mod compose_fixture_tests {
             row("platform", "x86_64-unknown-linux-gnu", "selected"),
             row("pilot", "clean-repository", "not_proven"),
         )
+    }
+
+    /// Minimal committed subject fixture: manifest, lock, topology,
+    /// gitignore committed on a clean HEAD.
+    fn committed_subject_fixture() -> PathBuf {
+        static NONCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let root =
+            std::env::temp_dir().join(format!("freeze-subject-{}-{nonce}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("root");
+
+        git(&root, &["init"]);
+        git(&root, &["config", "user.email", "freeze@example.invalid"]);
+        git(&root, &["config", "user.name", "freeze fixture"]);
+        write(
+            &root,
+            "Cargo.toml",
+            b"# fixture workspace\nversion = \"0.2.0\"\n",
+        );
+        write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
+        write(
+            &root,
+            "policy/product-package-topology-v2.toml",
+            b"[[package]]\ncargo_package_name = \"shared\"\n",
+        );
+        git(&root, &["add", "-A"]);
+        git(&root, &["commit", "-m", "fixture subject"]);
+        root
+    }
+
+    #[test]
+    fn collect_accepts_a_genuinely_clean_subject() {
+        let root = committed_subject_fixture();
+        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
+        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("clean subject: {err}")));
+        assert_eq!(subject.commit, commit);
+        assert_eq!(subject.tree, tree);
+        assert_eq!(
+            subject.cargo_lock_digest,
+            format!("sha256:v1:{}", hex(b"fixture-lock-bytes\n"))
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_rejects_an_assume_unchanged_hidden_lock() {
+        // Ordinary status is empty for this edit; the collector must
+        // still reject it before pairing identity with bytes.
+        let root = committed_subject_fixture();
+        git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"]);
+        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n").expect("hidden edit");
+        assert!(
+            git(&root, &["status", "--porcelain"]).trim().is_empty(),
+            "the fixture reproduces the status blind spot"
+        );
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("a hidden assume-unchanged edit is rejected");
+        assert!(
+            err.to_string().contains("hidden state")
+                || err
+                    .to_string()
+                    .contains("differ from the committed subject"),
+            "the rejection names the hidden input problem: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_rejects_a_skip_worktree_hidden_topology() {
+        let root = committed_subject_fixture();
+        git(
+            &root,
+            &[
+                "update-index",
+                "--skip-worktree",
+                "policy/product-package-topology-v2.toml",
+            ],
+        );
+        std::fs::write(
+            root.join("policy/product-package-topology-v2.toml"),
+            b"[[package]]\ncargo_package_name = \"tampered\"\n",
+        )
+        .expect("hidden edit");
+        assert!(
+            git(&root, &["status", "--porcelain"]).trim().is_empty(),
+            "the fixture reproduces the status blind spot"
+        );
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("a hidden skip-worktree edit is rejected");
+        assert!(
+            err.to_string().contains("hidden state")
+                || err
+                    .to_string()
+                    .contains("differ from the committed subject"),
+            "the rejection names the hidden input problem: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_accepts_crlf_checkout_framing_of_committed_content() {
+        // A Windows autocrlf checkout shows CRLF working bytes over an
+        // LF blob: the content is identical and must be accepted, with
+        // the receipt digests computed from the exact working bytes.
+        let root = committed_subject_fixture();
+        std::fs::write(
+            root.join("Cargo.lock"),
+            b"fixture-lock-bytes
+",
+        )
+        .expect("crlf edit");
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("crlf subject: {err}")));
+        assert_eq!(
+            subject.cargo_lock_digest,
+            format!(
+                "sha256:v1:{}",
+                hex(b"fixture-lock-bytes
+")
+            )
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
+    }
+
+    #[test]
+    fn collect_still_rejects_ordinary_dirty_subjects() {
+        let root = committed_subject_fixture();
+        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n").expect("ordinary edit");
+
+        let err = super::SubjectIdentity::collect(&root, "0.2.0")
+            .expect_err("an ordinary dirty worktree stays rejected");
+        assert!(
+            err.to_string().contains("dirty"),
+            "the ordinary dirty rejection is unchanged: {err}"
+        );
+        std::fs::remove_dir_all(&root).expect("fixture removal");
     }
 
     #[test]
@@ -2375,6 +2793,12 @@ mod compose_fixture_tests {
         .to_string();
         let rehearsal = format!(
             "{{\"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
+        )
+        .replace(
+            "\"shared_prerequisites\"",
+            &format!(
+                "\"commit_sha\": \"{commit}\", \"subject_lockfile_digest\": \"{cargo_lock_sha}\", \"subject_topology_digest\": \"{topology_sha}\", \"shared_prerequisites\""
+            ),
         );
         write(&evidence_dir, "rehearsal.json", rehearsal.as_bytes());
 

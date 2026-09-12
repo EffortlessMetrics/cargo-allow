@@ -442,6 +442,18 @@ jobs:
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.
+  # Historical source provenance for the CI performance collector
+  # (#4173): discriminating fixture harness, no live GitHub calls.
+  collect-performance-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Collector provenance fixtures
+        run: bash scripts/test-collect-ci-performance.sh
+
   shallow-diff-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15

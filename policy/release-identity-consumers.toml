@@ -381,3 +381,28 @@ sites = [
   "handle.write(\"[workspace.dependencies]\\n\")",
 ]
 claim_boundary = "The lane synthesizes per-side merged member manifests for the dependency graph delta compiler and never reads, infers, or compares a release version or channel; the [workspace token is dependency-table synthesis feeding the bounded compiler, not a workspace version reader."
+
+[[consumers]]
+id = "direct-floor-selection-fixtures"
+path = "scripts/test_floor_selection.py"
+role = "manifest selection and digest controls for direct-floor regeneration"
+disposition = "historical-fixture-only"
+owner = "#4166"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 3 }]
+sites = [
+  "def test_digest_binds_declared_members_outside_crates_and_ignores_crlf(self):",
+  "def test_forwarding_revisits_members_and_keeps_inactive_optional_out(self):",
+]
+claim_boundary = "The workspace markers occur in synthetic manifests used to test dependency-feature selection and digest binding. The live-selection control reads direct dependency floors through the producer; this fixture driver never infers a product release version, tag, channel, or prerelease posture."
+
+[[consumers]]
+id = "direct-floor-protocol-fixtures"
+path = "scripts/test_floor_protocol.py"
+role = "synthetic process fixture for the direct-floor producer"
+disposition = "historical-fixture-only"
+owner = "#4228"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 3 }]
+sites = ["def run_producer("]
+claim_boundary = "The workspace markers construct temporary fixture manifests for the real floor producer. The driver does not classify product release versions, tags, or channels; observed Rust/Cargo versions are synthetic execution-identity inputs."

@@ -553,7 +553,14 @@ mod tests {
             .map_err(|error| error.to_string())?
             .display()
             .to_string();
-        let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+        // Keep the self-executed child's incidental output (e.g. a
+        // default coverage profile) beside the built test binary
+        // instead of polluting the caller's source directory.
+        let cwd = std::env::current_exe()
+            .map_err(|error| error.to_string())?
+            .parent()
+            .ok_or_else(|| "test executable has no parent directory".to_string())?
+            .to_path_buf();
         let reviewed_invocation = CommandInvocationSpecV1 {
             schema_id: COMMAND_INVOCATION_SPEC_SCHEMA_ID.to_string(),
             command_id: "test".to_string(),

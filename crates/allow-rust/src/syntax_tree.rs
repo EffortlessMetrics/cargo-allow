@@ -37,7 +37,36 @@ impl RustSyntaxContainer {
 }
 
 impl RustSyntaxTree {
-    pub fn root_kind(&self) -> &'static str {
+    /// The root node's kind, borrowed from this syntax tree.
+    ///
+    /// Use `to_owned()` when the kind must outlive the tree.
+    ///
+    /// ```
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = allow_rust::parse_rust_syntax("fn main() {}")?;
+    /// let kind = tree.root_kind().to_owned();
+    /// drop(tree);
+    /// if kind != "source_file" {
+    ///     return Err("unexpected root kind".into());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// The borrowed kind cannot be retained after dropping the tree:
+    ///
+    /// ```compile_fail,E0505
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let tree = allow_rust::parse_rust_syntax("fn main() {}")?;
+    /// let kind = tree.root_kind();
+    /// drop(tree);
+    /// if kind != "source_file" {
+    ///     return Err("unexpected root kind".into());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn root_kind(&self) -> &str {
         self.tree.root_node().kind()
     }
 
