@@ -18538,7 +18538,7 @@ owner = "core/release"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the release-freeze composition module, its fixture helpers, and the full-path fixture repository test (#2501); every expect follows immediately preceding fixture construction whose inputs the test controls, and the composed digests are recomputed from committed policy data and retained receipt bytes only"
 evidence = ["issue:2501"]
-occurrence_limit = 31
+occurrence_limit = 36
 created = "2026-09-04"
 review_after = "2026-12-03"
 
@@ -20681,3 +20681,57 @@ glob = "scripts/test-proof-direct-floors-protocol.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-9261"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-collect-ci-performance.sh"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Discriminating fixture harness for the CI performance collector's historical source provenance (#4173); a fake gh serves recorded provider responses so no live GitHub call is made."
+evidence = ["issue:4173"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-collect-ci-performance.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-collect-ci-performance.sh"
+
+[[allow]]
+id = "allow-9262"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4173-performance-source-provenance.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the performance source provenance source exceptions added by the #4173 lane."
+evidence = ["issue:4173", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4173-performance-source-provenance.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4173-performance-source-provenance.toml"
+
+[[allow]]
+id = "allow-9263"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4175-rehearsal-subject-binding.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the rehearsal subject-binding ratchet rise added by the #4175 lane."
+evidence = ["issue:4175", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-10"
+review_after = "2026-12-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4175-rehearsal-subject-binding.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4175-rehearsal-subject-binding.toml"
