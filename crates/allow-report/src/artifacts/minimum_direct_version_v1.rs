@@ -464,6 +464,13 @@ pub(super) fn target_matches_selection(actual: &str, requested: &str) -> bool {
         })
 }
 
+/// JSON view of the evaluation.
+pub fn render_minimum_proof_json(
+    evaluation: &MinimumProofEvaluationV1,
+) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(evaluation)
+}
+
 #[cfg(test)]
 mod execution_identity_tests {
     use super::{target_matches_selection, toolchain_matches_msrv};
@@ -510,11 +517,4 @@ mod execution_identity_tests {
         }
         Ok(())
     }
-}
-
-/// JSON view of the evaluation.
-pub fn render_minimum_proof_json(
-    evaluation: &MinimumProofEvaluationV1,
-) -> Result<String, serde_json::Error> {
-    serde_json::to_string_pretty(evaluation)
 }
