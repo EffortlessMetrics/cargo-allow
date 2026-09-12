@@ -56,9 +56,13 @@ terminal_size.workspace = true
 toml.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# The #3903 PR D drift guard re-derives the floor selections and the
+# manifest/lock identity digests in Rust, hashing the same byte stream
+# the shell proof lane hashes.
+sha2.workspace = true
 
 [dev-dependencies]
-jsonschema = { version = "0.52.0", default-features = false }
+jsonschema = { version = "0.53.0", default-features = false }
 effortless-rust-source-index = { path = "../effortless-rust-source-index" }
 intent-model = { path = "../intent-model" }
 intent-protocol = { path = "../intent-protocol" }

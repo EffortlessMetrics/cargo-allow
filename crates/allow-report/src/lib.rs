@@ -25,6 +25,10 @@ mod audit_remediation;
 #[cfg(test)]
 mod audit_remediation_tests;
 mod contracts;
+#[cfg(test)]
+mod dependency_graph_delta_compiler_tests;
+#[cfg(test)]
+mod dependency_graph_evidence_tests;
 mod diff;
 mod diff_finding_detail;
 #[cfg(test)]
@@ -189,6 +193,72 @@ pub use artifacts::{
 pub use artifacts::{
     LandedEffectStatusV1, LandedEffectV1, NextFrontierV1, PostMergeReconciliationRequestV1,
     PostMergeReconciliationResultV1, ReconciliationDispositionV1,
+};
+
+// Direct minimum version drift guard (#3903 PR D).
+pub use artifacts::{
+    DRIFT_RELEASE_SET_PRODUCT, MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID,
+    MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_VERSION, MinimumVersionDriftEvaluationV1,
+    MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
+    evaluate_minimum_version_drift, render_minimum_version_drift_human,
+    render_minimum_version_drift_json,
+};
+
+// Workflow construction and security inventory (#3907 PR A).
+pub use artifacts::{
+    WORKFLOW_CONSTRUCTION_FAMILIES_ALL, WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_ID,
+    WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_VERSION, WorkflowConstructionExclusionV1,
+    WorkflowConstructionFamilyCoverageV1, WorkflowConstructionFamilyV1,
+    WorkflowConstructionInventoryV1, WorkflowConstructionSurfaceClassV1,
+    WorkflowConstructionSurfaceKindV1, WorkflowConstructionSurfaceV1, WorkflowSecurityFixtureV1,
+    WorkflowSecurityToolSelectionV1, WorkflowSecurityToolStatusV1, workflow_construction_inventory,
+    workflow_security_fixtures,
+};
+
+// Workflow syntax lane (#3907 PR B).
+pub use artifacts::{
+    WORKFLOW_SYNTAX_LANE_SCHEMA_ID, WORKFLOW_SYNTAX_LANE_SCHEMA_VERSION, WorkflowSyntaxFindingV1,
+    WorkflowSyntaxLaneReportV1, WorkflowSyntaxLaneResultV1, WorkflowSyntaxRawFindingV1,
+    WorkflowSyntaxToolRunV1, WorkflowSyntaxUncoveredSurfaceV1, evaluate_workflow_syntax_run,
+    render_workflow_syntax_human, render_workflow_syntax_json,
+};
+
+// Workflow security lane (#3907 PR C).
+pub use artifacts::{
+    WORKFLOW_SECURITY_LANE_SCHEMA_ID, WORKFLOW_SECURITY_LANE_SCHEMA_VERSION,
+    WorkflowSecurityDispositionV1, WorkflowSecurityExceptionV1, WorkflowSecurityFindingV1,
+    WorkflowSecurityLaneReportV1, WorkflowSecurityLaneResultV1, WorkflowSecurityRawFindingV1,
+    WorkflowSecurityToolRunV1, evaluate_workflow_security_run, render_workflow_security_human,
+    render_workflow_security_json, workflow_security_rule_family,
+};
+
+// Workflow construction aggregate (#3907 PR D).
+pub use artifacts::{
+    WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_ID, WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_VERSION,
+    WorkflowConstructionAggregateLaneV1, WorkflowConstructionAggregateResultV1,
+    WorkflowConstructionAggregateV1, aggregate_workflow_construction,
+    render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
+};
+
+// Dependency graph delta contract (#3920 PR A).
+pub use artifacts::{
+    DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
+    DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
+    DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+};
+pub use artifacts::{
+    compile_dependency_graph_delta, validate_lock_document, validate_manifest_document,
+};
+
+// Dependency graph evidence adjacency (#3920 PR C).
+pub use artifacts::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_REF_LEN,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID,
+    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION, DependencyEvidenceAttachmentV1,
+    DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
+    DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat, DependencyGraphEvidenceReceiptV1,
+    DependencyGraphEvidenceResultV1, DependencyGraphEvidenceRowV1,
+    attach_dependency_graph_evidence, render_dependency_graph_evidence,
 };
 
 // Supported feature-configuration matrix and proof contracts (#3905 PR A).

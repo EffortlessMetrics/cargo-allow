@@ -1,0 +1,33 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4153,
+  "base_ref": "main",
+  "base_sha": "1e5023ad8e1327f8e30777e60f098f3a5cc75e9f",
+  "head_ref": "dependabot/github_actions/softprops/action-gh-release-3.0.3",
+  "head_sha": "af94415edb3bed15e050e9ad400d1ebef9a96d80",
+  "merge_base": "1e5023ad8e1327f8e30777e60f098f3a5cc75e9f",
+  "reviewed_diff_digest": "sha256:v1:dbbb1d6834630fe318da9aaad8b7393a5f3d0791798fa6699204fc7f5963fe1d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Codex /root/review_4153; independent source/policy review; authored review-record metadata only; shared repository context and maintainer account",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PR 4153 GraphQL reviewThreads: zero threads on 2026-09-08",
+    "Historical source review PRR_kwDOSnyN3s8AAAABMiC0Vw refreshed for full four-file effective diff",
+    "Release workflow bytes unchanged from independently reviewed 1186150d6d0faee8d9686cd9d9c6af748a1ef164",
+    "Exact-file policy entries allow-0921 and allow-0922 plus revision fingerprints reviewed; no directory-wide allowance",
+    "No-new receipt 4153-final.check.receipt.json at af94415edb3bed15e050e9ad400d1ebef9a96d80 passed with zero new findings",
+    "Existing bot reviews and Codecov telemetry inspected; prior-head CI is historical"
+  ],
+  "required_ci": {
+    "owner": "backlog coordinator: verify every selected check is terminal and acceptable at the resulting published base/head pair, inspect new feedback, and reconcile readiness before merge; source review does not claim hosted CI completion",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4153",
+  "reviewed_at_utc": "2026-09-08T00:14:00.043320Z"
+}

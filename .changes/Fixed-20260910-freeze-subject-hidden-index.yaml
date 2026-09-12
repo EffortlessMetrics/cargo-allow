@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  The release-freeze subject collector now rejects hidden worktree
+  inputs before pairing committed identity with working bytes:
+  assume-unchanged and skip-worktree index states fail admission
+  conservatively, each admitted input (workspace manifest, Cargo.lock,
+  topology) is byte-verified against its HEAD blob modulo line
+  endings, and the subject is re-checked for movement before the
+  receipt is returned. Git inspection failures remain instrument
+  failures and user index state is never modified.

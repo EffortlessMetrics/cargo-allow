@@ -7,8 +7,10 @@ name: Review readiness
 # conclusions. Pull-request events recompute on every readiness-
 # relevant change (including base-changing edits); pushes to main
 # recompute all open pull requests against the new merge base so base
-# movement cannot leave a stale green behind. Read-only over review
-# semantics: the only write is the review-readiness check run itself.
+# movement is checked during acquisition and before publication. These
+# observations are not an atomic lock against later movement or concurrent
+# publishers. Read-only over review semantics: the only write is the
+# review-readiness check run itself.
 
 on:
   pull_request:
@@ -32,6 +34,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Characterize review readiness adapter
+        run: bash scripts/test-project-review-readiness.sh
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Project review readiness
         env:

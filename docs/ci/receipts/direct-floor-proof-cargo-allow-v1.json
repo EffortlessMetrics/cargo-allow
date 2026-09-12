@@ -2,11 +2,14 @@
  "schema_id": "cargo-allow.minimum-direct-version.v1",
  "schema_version": 1,
  "product": "cargo-allow",
+ "package_roots": [
+  "cargo-allow"
+ ],
  "msrv": "1.95",
  "toolchain": "1.95.0",
- "target": "host (release-set default target)",
- "manifest_set_digest": "worktree-head",
- "lock_digest": "floor-candidate-lock",
+ "target": "host:x86_64-pc-windows-msvc",
+ "manifest_set_digest": "0cc7ac8b80d7ba163a305e0217aaabf7fd471a0b582a5c32bcce2fbd8a4674fe",
+ "lock_digest": "0d534b066fcc4db1fd01fae560255a82bb906ef214b8a7aa7f30e030f934f8ea",
  "rows": [
   {
    "package": "clap",
@@ -133,18 +136,32 @@
    "source_identity": "registry:crates.io",
    "result": "proven",
    "limitation": null
+  },
+  {
+   "package": "yaml-rust2",
+   "declared_requirement": "0.11",
+   "tested_floor": "0.11.0",
+   "resolved_version": "0.11.0",
+   "source_identity": "registry:crates.io",
+   "result": "proven",
+   "limitation": null
   }
  ],
  "commands": [
-  "cargo update -p <dep> --precise <floor> (per external direct dep)",
-  "cargo check --locked --workspace",
-  "cargo test -p cargo-allow --locked",
-  "cargo package -p allow-core --locked --no-verify --allow-dirty"
+  "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
+  "cargo check --locked --target x86_64-pc-windows-msvc -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot",
+  "cargo test --locked --target x86_64-pc-windows-msvc -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean --skip minimum_direct_version_products_retained_advisory_receipts_are_clean --skip minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure",
+  "cargo package -p allow-core --locked --target x86_64-pc-windows-msvc --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:505475274d0ff0d8ddc3db1a4ce248f9eba9a71d9bcf3b4886785176eacd9255",
+ "floor_lock_digest": "sha256:v1:bf9eb0150977767f7625ff34b1d5fe0d5410668d1c2c443a972d567ea8155c29",
  "limitations": [
-  "bounded proof: the release-set test subset, not every target or feature combination",
-  "internal =0.2.0 workspace pins are proven by the same workspace build"
+  "bounded proof: selected check/test classes cover the release-set closure; package covers only the package named by its command, not every target or feature combination",
+  "internal =0.2.0 workspace pins are proven by the same closure build",
+  "dev-dependencies are exercised by the test class but are not certified floors",
+  "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
+  "the drift meta-tests are excluded from the floored test class by name (they grade this proof's own retained receipts); CI runs them against every committed tree",
+  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
+  "package is a single-package --no-verify archive sample; see its exact command"
  ],
- "claim_boundary": "Exact selected proof of declared direct dependency floors for the cargo-allow release set at the claimed MSRV. Transitive minimal combinations are not certified."
+ "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package (package is a single-package archive sample, not closure packaging). Transitive minimal combinations are not certified."
 }

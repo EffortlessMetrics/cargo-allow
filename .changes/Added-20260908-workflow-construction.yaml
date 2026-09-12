@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Workflow construction inventory (#3907 PR A). Typed
+  WorkflowConstructionInventoryV1 in allow-report compiles one
+  deterministic denominator over every current workflow, local
+  composite action, checked example, and qualification fixture, with
+  nested local-action reference edges, considered exclusions, the
+  pinned actionlint syntax-analyzer selection, and the security
+  analyzer recorded as a candidate pending fixture qualification.
+  The embedded fixture corpus covers eleven workflow construction
+  finding families with positive and negative fragments for
+  interpolation, permissions, privileged triggers, credential
+  persistence, secret exposure, checkout/ref selection, nested
+  actions, shell construction, expression validity, action
+  references, and unsupported-expression honesty. Report only: no
+  workflow is mutated and no check is enforced.
