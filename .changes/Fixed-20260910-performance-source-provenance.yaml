@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  The CI performance collector derives each historical run's source
+  pair from immutable evidence of the executed run instead of the
+  mutable PR association: pull_request runs resolve the synthetic
+  merge commit's two parents (the executed base and head at run
+  time), push and other events use the head's first parent, and
+  contradictory or parentless shapes fail as unavailable rather than
+  silently substituting current metadata. A discriminating fixture
+  harness (scripts/test-collect-ci-performance.sh, no live GitHub
+  calls) proves a moved association still yields the executed pair,
+  repeated collection is stable, and malformed provider output writes
+  no receipt.
