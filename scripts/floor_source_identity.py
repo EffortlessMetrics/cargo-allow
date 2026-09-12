@@ -50,6 +50,9 @@ def derive(source):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("usage: floor_source_identity.py <source-commit>", file=sys.stderr)
+        raise SystemExit(1)
     try:
         print(json.dumps(derive(sys.argv[1]), indent=1))
     except (ValueError, OSError, subprocess.SubprocessError) as error:

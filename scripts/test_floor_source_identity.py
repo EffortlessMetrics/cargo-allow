@@ -95,6 +95,19 @@ class FloorSourceIdentityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             SUBJECT.derive(self.source)
 
+    def test_invalid_invocation_exits_without_traceback_or_source_change(self):
+        for arguments in ([], [self.source, "extra"]):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(
+                    [sys.executable, SUBJECT.__file__, *arguments],
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 1)
+                self.assertIn("usage:", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(self.git("rev-parse", "HEAD").strip(), self.source)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
