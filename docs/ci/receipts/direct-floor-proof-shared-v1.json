@@ -11,8 +11,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host:x86_64-pc-windows-msvc",
- "manifest_set_digest": "0cc7ac8b80d7ba163a305e0217aaabf7fd471a0b582a5c32bcce2fbd8a4674fe",
- "lock_digest": "0d534b066fcc4db1fd01fae560255a82bb906ef214b8a7aa7f30e030f934f8ea",
+ "manifest_set_digest": "adc5877bce43d8d972a162d62069cb0fd1ea983713f4f0e1a66d357d7ddc4d75",
+ "lock_digest": "63bec58292d7d47d0c2f94ebd34a71bf2f1a78444e1cf38ce92bfc58c989dc15",
  "rows": [
   {
    "package": "serde",
@@ -52,9 +52,9 @@
   },
   {
    "package": "tree-sitter",
-   "declared_requirement": "0.26.11",
-   "tested_floor": "0.26.11",
-   "resolved_version": "0.26.11",
+   "declared_requirement": "0.27.0",
+   "tested_floor": "0.27.0",
+   "resolved_version": "0.27.0",
    "source_identity": "registry:crates.io",
    "result": "proven",
    "limitation": null
@@ -73,7 +73,7 @@
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
   "cargo check --locked --target x86_64-pc-windows-msvc -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
  ],
- "floor_lock_digest": "sha256:v1:d08a21d28c1a627734698c14442fbec18116110cc771b860e1513574aa1ee22c",
+ "floor_lock_digest": "sha256:v1:668bf71c1eb6967868f69ef426468a05e067854ba048976d04c21f00f354c821",
  "limitations": [
   "bounded proof: the check classes over the shared closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",
