@@ -41,3 +41,18 @@ allow_ids = ["allow-11245"]
 change_kinds = ["reason_changed"]
 before_fingerprint = "sha256:v1:c64479510db27fb673f48018bc5b51ff7d23e7a244368f9ca820496c7d8605a6"
 after_fingerprint = "sha256:v1:21aa9ec848fced1a9af3b86783d01b3270e183c7a6ec4bfb3eccb61185836a33"
+
+# The 04b220f1 producer protocol extension adds two individually selected
+# fixture files. Reviewed scope: strict synthetic tools and their shell entry
+# point, owned by core/deps; no real compilation or floor proof is claimed.
+# Fingerprints below are the exact ac1c3fa5 -> 04b220f1 policy transitions.
+
+[[records]]
+allow_ids = ["allow-4166-protocol-python"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d2904952ea40ba843ef1bc1259668560e03206f6ca2500632014c32f3f68b657"
+
+[[records]]
+allow_ids = ["allow-4166-protocol-shell"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:84705c68af33c0d96a5591f38af43d5396d9f43464dfe3a650d2c15bd6ebadc4"
