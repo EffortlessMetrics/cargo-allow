@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Run release-rehearsal integration against its identified Cargo-built candidate
+  instead of rebuilding in an implicit host target directory, and report bounded
+  identity-phase failure categories without exposing child output.

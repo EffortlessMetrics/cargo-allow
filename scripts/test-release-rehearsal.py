@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import importlib.util
+import contextlib
+import io
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 REHEARSAL_PATH = ROOT / "scripts/release-rehearsal.py"
@@ -29,6 +33,146 @@ REQUIRED_PHASES = (
     "authorization_boundary",
     "workflow_graph_permissions",
 )
+
+
+class TestCandidateIdentity(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.candidate = Path(directory.name) / "candidate"
+        self.candidate.write_bytes(b"identified candidate bytes")
+        self.digest = REHEARSAL.compute_sha256(self.candidate)
+        self.projection = {
+            "schema": "cargo-allow.release-identity.v1",
+            "result": "validated",
+            "version": "0.2.0",
+            "tag": "v0.2.0",
+            "tag_source": "derived",
+            "channel": "stable",
+            "rc_ordinal": None,
+            "github_prerelease": False,
+        }
+
+    def invoke(self, *, result=None, error=None, candidate=None, digest=None):
+        receipt = {}
+        diagnostic = io.StringIO()
+        if result is None:
+            result = subprocess.CompletedProcess(
+                [], 0, json.dumps(self.projection), "synthetic-private-child-output"
+            )
+        with (
+            mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"),
+            mock.patch.object(REHEARSAL.subprocess, "run", return_value=result,
+                              side_effect=error) as run,
+            contextlib.redirect_stderr(diagnostic),
+        ):
+            status = REHEARSAL.run_phase_release_identity(
+                receipt, candidate_executable=candidate or self.candidate,
+                candidate_sha256=digest or self.digest,
+            )
+        self.assertNotIn("synthetic-private", diagnostic.getvalue())
+        return status, receipt, run, diagnostic.getvalue()
+
+    def test_candidate_runs_directly_with_observed_digest(self) -> None:
+        with mock.patch.dict(os.environ, {"CARGO_REGISTRY_TOKEN": "synthetic-private-token"}):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "Complete")
+        self.assertEqual(receipt["release_identity"]["version"], "0.2.0")
+        self.assertEqual(run.call_args.args[0],
+                         [str(self.candidate), "release-identity", "--version", "0.2.0"])
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", run.call_args.kwargs["env"])
+        self.assertIn(self.digest, diagnostic)
+        self.assertEqual(run.call_count, 1)
+
+    def test_missing_candidate_does_not_fall_back(self) -> None:
+        status, receipt, run, diagnostic = self.invoke(
+            candidate=self.candidate.with_name("missing")
+        )
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        run.assert_not_called()
+        self.assertIn("candidate_unavailable", diagnostic)
+
+    def test_mismatched_digest_does_not_execute(self) -> None:
+        status, receipt, run, diagnostic = self.invoke(digest="sha256:v1:" + "0" * 64)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        run.assert_not_called()
+        self.assertIn("candidate_digest_mismatch", diagnostic)
+
+    def test_invalid_selection_does_not_execute(self) -> None:
+        for candidate, digest in (
+            (Path("relative-candidate"), self.digest),
+            (self.candidate, "sha256:v1:" + "G" * 64),
+            (self.candidate, "synthetic-private-not-a-digest"),
+        ):
+            with self.subTest(candidate=candidate, digest=digest):
+                status, receipt, run, diagnostic = self.invoke(candidate=candidate, digest=digest)
+                self.assertEqual(status, "InstrumentFailure")
+                self.assertNotIn("release_identity", receipt)
+                run.assert_not_called()
+                self.assertIn("candidate_selection_invalid", diagnostic)
+
+    def test_unavailable_instrument_is_redacted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(error=OSError("synthetic-private"))
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+
+    def test_changed_candidate_is_not_accepted(self) -> None:
+        def change_candidate(*args, **kwargs):
+            self.candidate.write_bytes(b"changed bytes")
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+        status, receipt, _, diagnostic = self.invoke(error=change_candidate)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("candidate_changed", diagnostic)
+
+    def test_failed_child_is_not_accepted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(
+            result=subprocess.CompletedProcess([], 2, "synthetic-private", "synthetic-private")
+        )
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("child_failed", diagnostic)
+
+    def test_timeout_is_distinct_and_redacted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(
+            error=subprocess.TimeoutExpired(["synthetic-private"], 300,
+                                            output="synthetic-private")
+        )
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("child_timeout", diagnostic)
+
+    def test_malformed_identity_is_not_accepted(self) -> None:
+        for output in ("invalid", "[]", "{}", json.dumps({**self.projection, "version": "9.9.9"}),
+                       json.dumps({**self.projection, "github_prerelease": "false"})):
+            with self.subTest(output=output):
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, output, "")
+                )
+                self.assertNotEqual(status, "Complete")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_candidate_arguments_must_be_paired(self) -> None:
+        for candidate, digest in ((self.candidate, None), (None, self.digest)):
+            with self.subTest(candidate=candidate, digest=digest):
+                with mock.patch.object(REHEARSAL, "resolve_commit") as resolve:
+                    with self.assertRaises(ValueError):
+                        REHEARSAL.build_rehearsal_receipt(
+                            "HEAD", candidate_executable=candidate, candidate_sha256=digest
+                        )
+                    resolve.assert_not_called()
+
+    def test_standalone_still_uses_deliberate_cargo_build(self) -> None:
+        with (
+            mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"),
+            mock.patch.object(REHEARSAL.subprocess, "run", return_value=
+                              subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")) as run,
+        ):
+            self.assertEqual(REHEARSAL.run_phase_release_identity({}), "Complete")
+        self.assertEqual(run.call_args.args[0][:2], ["cargo", "run"])
 
 
 class TestReleaseRehearsal(unittest.TestCase):
