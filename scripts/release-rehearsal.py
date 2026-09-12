@@ -169,14 +169,31 @@ def run_phase_release_identity(
         or projection.get("schema") != "cargo-allow.release-identity.v1"
         or projection.get("result") != "validated"
         or projection.get("version") != version
-        or not isinstance(projection.get("tag"), str)
-        or not isinstance(projection.get("tag_source"), str)
+        or projection.get("tag") != "v" + version
+        or projection.get("tag_source") != "derived"
         or projection.get("channel") not in ("stable", "release_candidate")
         or not isinstance(projection.get("github_prerelease"), bool)
         or "rc_ordinal" not in projection
-        or (projection["rc_ordinal"] is not None
-            and (type(projection["rc_ordinal"]) is not int or projection["rc_ordinal"] <= 0))
     ):
+        return _identity_failure(PHASE_MISMATCH, "identity_projection_invalid")
+    # This invocation omits --tag, so it must receive the derived projection.
+    # Check the relationships carried by that projection without parsing the
+    # version grammar again; ReleaseVersionV1 remains the grammar authority.
+    ordinal = projection["rc_ordinal"]
+    if projection["channel"] == "stable":
+        consistent = (
+            ordinal is None
+            and not projection["github_prerelease"]
+            and "-" not in version
+        )
+    else:
+        consistent = (
+            type(ordinal) is int
+            and 0 < ordinal <= 4294967295
+            and projection["github_prerelease"]
+            and version.endswith(f"-rc.{ordinal}")
+        )
+    if not consistent:
         return _identity_failure(PHASE_MISMATCH, "identity_projection_invalid")
     receipt["release_identity"] = {
         "schema": projection["schema"],

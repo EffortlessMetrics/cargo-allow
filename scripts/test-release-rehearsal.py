@@ -45,6 +45,7 @@ class TestCandidateIdentity(unittest.TestCase):
         environment.start()
         self.addCleanup(environment.stop)
         self.digest = REHEARSAL.compute_sha256(self.candidate)
+        self.version = "0.2.0"
         self.projection = {
             "schema": "cargo-allow.release-identity.v1",
             "result": "validated",
@@ -64,7 +65,7 @@ class TestCandidateIdentity(unittest.TestCase):
                 [], 0, json.dumps(self.projection), "synthetic-private-child-output"
             )
         with (
-            mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"),
+            mock.patch.object(REHEARSAL, "_workspace_version", return_value=self.version),
             mock.patch.object(REHEARSAL.subprocess, "run", return_value=result,
                               side_effect=error) as run,
             contextlib.redirect_stderr(diagnostic),
@@ -156,6 +157,44 @@ class TestCandidateIdentity(unittest.TestCase):
                     result=subprocess.CompletedProcess([], 0, output, "")
                 )
                 self.assertNotEqual(status, "Complete")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_inconsistent_identity_is_not_accepted(self) -> None:
+        for changes in (
+            {"tag": ""}, {"tag": "v9.9.9"},
+            {"tag_source": "observed"}, {"tag_source": "unknown"},
+            {"rc_ordinal": 1}, {"github_prerelease": True},
+            {"channel": "release_candidate", "rc_ordinal": 1, "github_prerelease": True},
+        ):
+            with self.subTest(changes=changes):
+                projection = {**self.projection, **changes}
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, json.dumps(projection), "")
+                )
+                self.assertEqual(status, "Mismatch")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_rc_identity_matches_its_ordinal_and_prerelease_posture(self) -> None:
+        self.version = "0.2.0-rc.2"
+        self.projection.update(
+            version=self.version, tag="v" + self.version, channel="release_candidate",
+            rc_ordinal=2, github_prerelease=True,
+        )
+        status, receipt, _, _ = self.invoke()
+        self.assertEqual(status, "Complete")
+        self.assertEqual(receipt["release_identity"]["rc_ordinal"], 2)
+        for changes in (
+            {"rc_ordinal": None}, {"rc_ordinal": True}, {"rc_ordinal": 0},
+            {"rc_ordinal": 1}, {"rc_ordinal": 4294967296},
+            {"github_prerelease": False},
+            {"channel": "stable", "rc_ordinal": None, "github_prerelease": False},
+        ):
+            with self.subTest(changes=changes):
+                projection = {**self.projection, **changes}
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, json.dumps(projection), "")
+                )
+                self.assertEqual(status, "Mismatch")
                 self.assertNotIn("release_identity", receipt)
 
     def test_candidate_arguments_must_be_paired(self) -> None:
