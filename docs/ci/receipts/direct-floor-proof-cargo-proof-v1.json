@@ -85,7 +85,7 @@
   "advisory: report-only product rows never gate the cargo-allow release set",
   "dev-dependencies are exercised by the test class but are not certified floors",
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
-  "observed rustc 1.95.0; cargo 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host"
+  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled"
  ],
  "claim_boundary": "Advisory, report-only proof of the cargo-proof package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }

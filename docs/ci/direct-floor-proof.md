@@ -96,12 +96,11 @@ a complete cross-crate feature graph or promote any proof disposition.
 
 ### Current retained execution
 
-The compiler-binding repair has not yet regenerated these retained outputs.
-They remain historical evidence and do not prove override-resistant execution.
-
 The four retained receipts were generated from committed source
-`62c25f71bd9e757ba07db0d6988a6ce80af083e9` on 2026-09-12, using observed
-Rust/Cargo 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
+`6a926432d0d6eb81bdb412df6c8ccdff4188bc01` on 2026-09-12, using observed
+Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
+The collector binds the observed compiler and rustdoc paths to execution and
+disables inherited compiler wrappers before running each proof class.
 
 | Product | Proven direct floors | Executed classes | Selection evidence |
 | --- | ---: | --- | --- |
@@ -120,7 +119,7 @@ The floored cargo-allow unit suite passed 1,541 tests with exactly the five
 recorded bootstrap exclusions; the remaining selected integration and doc tests
 also passed. Outside-the-floor grading passed all 59 `minimum_` tests without
 bootstrap exclusions, including all five retained-output graders. The producer
-protocol wrapper passed all 13 controls on native Windows and WSL.
+protocol wrapper passed all 15 controls on native Windows and WSL.
 
 Earlier successful execution from `813c594d` on 2026-09-10 remains historical
 in commit `ac1c3fa5`; it is not the source of the current retained copies.
