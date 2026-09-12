@@ -34,8 +34,13 @@ import sys
 
 def invoke(program, arguments):
     case = json.loads(Path(os.environ["FLOOR_PROTOCOL_CASE_FILE"]).read_text())
+    executable = program
+    program = Path(program).name.removesuffix(".exe")
     with Path(case["calls"]).open("a", encoding="utf-8") as output:
-        output.write(json.dumps({"program": program, "arguments": arguments}) + "\n")
+        output.write(json.dumps({"program": program, "arguments": arguments,
+                                 "executable": executable,
+                                 "rustc": os.environ.get("RUSTC"),
+                                 "rustdoc": os.environ.get("RUSTDOC")}) + "\n")
     if program == "git":
         if arguments == ["rev-parse", "HEAD"]:
             return 0, "1" * 40 + "\n", ""
@@ -47,7 +52,7 @@ def invoke(program, arguments):
         if arguments[:3] == ["worktree", "remove", "--force"]:
             Path(arguments[3]).resolve().relative_to(Path(case["worktrees"]).resolve())
             return 0, "", ""  # the owning TemporaryDirectory performs cleanup
-    if program in ("rustc", "cargo") and arguments == ["-vV"]:
+    if program in ("rustc", "rustdoc", "cargo") and arguments == ["-vV"]:
         release = case.get(program + "_release", "1.95.2")
         host = case.get(program + "_host", "x86_64-pc-windows-msvc")
         return 0, "release: " + release + "\nhost: " + host + "\n", ""
@@ -61,6 +66,16 @@ def invoke(program, arguments):
         Path("Cargo.lock").write_text(lock, encoding="utf-8", newline="\n")
         return 0, "", ""
     if program == "cargo" and arguments and arguments[0] in ("check", "test", "package"):
+        if case.get("require_bound_tools"):
+            for tool in ("rustc", "rustdoc"):
+                configured = os.environ.get("CARGO_BUILD_" + tool.upper(), case["config_tools"][tool])
+                actual = os.environ.get(tool.upper(), configured)
+                if Path(actual) != Path(case["selected_tools"][tool]):
+                    return 43, "", "simulated Cargo selected an unobserved " + tool
+            for wrapper in ("RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER"):
+                configured = os.environ.get("CARGO_BUILD_" + wrapper, case["config_wrapper"])
+                if os.environ.get(wrapper, configured) != "":
+                    return 44, "", "simulated Cargo compiler wrapper remained active"
         if arguments[0] == "test":
             expected = [value for name in case["skips"] for value in ("--skip", name)]
             if "--" not in arguments or arguments[arguments.index("--") + 1:] != expected:
@@ -146,7 +161,7 @@ class FloorProtocolTests(unittest.TestCase):
         (imports / "subprocess.py").write_text(SUBPROCESS_FACADE, encoding="utf-8", newline="\n")
         fake_bin = run_root / "bin"
         fake_bin.mkdir()
-        for program in ("git", "cargo", "rustc"):
+        for program in ("git", "cargo", "rustc", "rustdoc"):
             executable = fake_bin / program
             executable.write_text(
                 "#!/bin/bash\nexec " + shlex.quote(sys.executable) + " "
@@ -163,7 +178,10 @@ class FloorProtocolTests(unittest.TestCase):
         worktrees = run_root / "worktrees"
         worktrees.mkdir()
         calls_path = run_root / "calls.jsonl"
-        case = {"fixture": str(fixture), "worktrees": str(worktrees), "calls": str(calls_path), "skips": SKIPS}
+        case = {"fixture": str(fixture), "worktrees": str(worktrees), "calls": str(calls_path), "skips": SKIPS,
+                "selected_tools": {tool: str(fake_bin / tool) for tool in ("rustc", "rustdoc")},
+                "config_tools": {tool: str(run_root / ("configured-" + tool)) for tool in ("rustc", "rustdoc")},
+                "config_wrapper": str(run_root / "configured-wrapper")}
         case.update(overrides or {})
         case_path = run_root / "case.json"
         case_path.write_text(json.dumps(case), encoding="utf-8")
@@ -179,11 +197,19 @@ class FloorProtocolTests(unittest.TestCase):
             "CARGO_NET_OFFLINE": "true", "CARGO_HOME": str(run_root / "empty-cargo-home"),
             "RUSTC": str(run_root / "forbidden-real-rustc"),
         })
+        if case.get("require_bound_tools"):
+            environment.pop("RUSTC", None)
+            mode = case.get("override_mode", "environment")
+            for variable in ("RUSTC", "RUSTDOC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER"):
+                if mode == "environment":
+                    environment[variable] = str(run_root / ("inherited-" + variable.lower()))
+                elif mode == "config_environment":
+                    environment["CARGO_BUILD_" + variable] = str(run_root / ("inherited-" + variable.lower()))
         # Git Bash can reorder the inherited Windows PATH during startup.
         # Establish and verify fixture command resolution inside the shell.
         result = subprocess.run(
             [BASH, "-c", 'export PATH="$1:$PATH"; shift; '
-             'for tool in git cargo rustc python3; do '
+             'for tool in git cargo rustc rustdoc python3; do '
              '[ "$(command -v "$tool")" = "${PATH%%:*}/$tool" ] || exit 71; '
              'done; exec bash "$1"', "floor-protocol", shell_path(fake_bin),
              shell_path(scripts / "proof-direct-floors.sh")], cwd=fixture,
@@ -192,6 +218,23 @@ class FloorProtocolTests(unittest.TestCase):
         calls = [json.loads(line) for line in calls_path.read_text().splitlines()] if calls_path.exists() else []
         receipt = json.loads(receipt_path.read_bytes()) if receipt_path.exists() else None
         return result, calls, receipt, receipt_path
+
+    def test_cargo_uses_observed_tools_despite_inherited_and_configured_overrides(self):
+        for mode in ("environment", "config_environment", "configuration"):
+            with self.subTest(mode=mode):
+                result, calls, receipt, _ = self.run_producer(
+                    overrides={"require_bound_tools": True, "override_mode": mode},
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                observed = {call["program"]: call["executable"] for call in calls
+                            if call["program"] in ("rustc", "rustdoc") and call["arguments"] == ["-vV"]}
+                self.assertEqual(set(observed), {"rustc", "rustdoc"})
+                for tool, executable in observed.items():
+                    self.assertTrue(Path(executable).is_absolute())
+                    for call in calls:
+                        if call["program"] == "cargo":
+                            self.assertEqual(call[tool], executable)
+                self.assertTrue(all(row["result"] == "proven" for row in receipt["rows"]))
 
     def test_same_and_changed_floors_pin_the_selected_floor(self):
         for floor in ("0.1", "0.2"):
@@ -225,9 +268,18 @@ class FloorProtocolTests(unittest.TestCase):
                 self.assertIsNone(receipt)
 
     def test_wrong_observed_toolchain_never_runs_a_proof_class(self):
-        result, calls, receipt, _ = self.run_producer(overrides={"rustc_release": "1.96.0"})
+        for tool in ("rustc", "rustdoc", "cargo"):
+            with self.subTest(tool=tool):
+                result, calls, receipt, _ = self.run_producer(overrides={tool + "_release": "1.96.0"})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("does not match MSRV", result.stderr)
+                self.assertIsNone(receipt)
+                self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0] != "-vV" for call in calls))
+
+    def test_rustdoc_patch_must_match_the_observed_compiler(self):
+        result, calls, receipt, _ = self.run_producer(overrides={"rustdoc_release": "1.95.1"})
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("does not match MSRV", result.stderr)
+        self.assertIn("rustc and rustdoc releases differ", result.stderr)
         self.assertIsNone(receipt)
         self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0] != "-vV" for call in calls))
 

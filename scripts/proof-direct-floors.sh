@@ -120,6 +120,16 @@ cd "$WORKTREE"
 # The MSRV toolchain compiles the proof: a newer toolchain would break
 # negative control 7 (a newer Rust must not satisfy the rows silently).
 export RUSTUP_TOOLCHAIN="$MSRV"
+# This collector owns tool selection. Explicit tool paths and empty wrappers
+# override both inherited variables and Cargo's build.* configuration.
+native_tool_path() {
+  python3 -c 'import os, shutil, sys; path = os.path.abspath(sys.argv[1]); path = path if os.path.isfile(path) else shutil.which(path); path or sys.exit("selected tool is not a file"); print(os.path.abspath(path))' "$(command -v "$1")"
+}
+RUSTC="$(native_tool_path rustc)"
+RUSTDOC="$(native_tool_path rustdoc)"
+export RUSTC RUSTDOC
+export RUSTC_WRAPPER=""
+export RUSTC_WORKSPACE_WRAPPER=""
 python3 scripts/floor_execution_identity.py "$MSRV" > execution-identity.json
 host_target="$(jq -r '.host' execution-identity.json)"
 cat execution-identity.json
@@ -523,7 +533,10 @@ else:
 
 limitations.append(
     f"observed rustc {execution['toolchain']}; cargo {execution['cargo']}; "
-    f"host {execution['host']}; every selected class explicitly targets that host"
+    f"rustdoc {execution['rustdoc']}; host {execution['host']}; "
+    "every selected class explicitly targets that host using the observed tool paths; "
+    "collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, "
+    "and compiler wrappers are disabled"
 )
 if os.environ["PACKAGE_CMD"]:
     limitations.append("package is a single-package --no-verify archive sample; see its exact command")

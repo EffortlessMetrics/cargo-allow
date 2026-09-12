@@ -1,6 +1,7 @@
 """Observe and validate the toolchain used by the direct-floor collector."""
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -47,11 +48,16 @@ def identity(msrv, rustc, cargo):
 
 
 def main():
-    outputs = [
-        subprocess.run([tool, "-vV"], check=True, capture_output=True, text=True).stdout
-        for tool in ("rustc", "cargo")
-    ]
-    print(json.dumps(identity(sys.argv[1], *outputs)))
+    def observe(tool):
+        return subprocess.run([tool, "-vV"], check=True, capture_output=True, text=True).stdout
+
+    cargo = observe("cargo")
+    compiler = identity(sys.argv[1], observe(os.environ["RUSTC"]), cargo)
+    documentation = identity(sys.argv[1], observe(os.environ["RUSTDOC"]), cargo)
+    if documentation["toolchain"] != compiler["toolchain"]:
+        raise ValueError("rustc and rustdoc releases differ")
+    compiler["rustdoc"] = documentation["toolchain"]
+    print(json.dumps(compiler))
 
 
 if __name__ == "__main__":

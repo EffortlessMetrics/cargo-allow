@@ -31,6 +31,15 @@ match. Historical receipts with an unobserved host placeholder remain decodable
 but cannot certify a current host selection. Numeric version components must
 match: `1.950.0` cannot satisfy MSRV `1.95`.
 
+After selecting the MSRV toolchain, the collector binds `RUSTC` and `RUSTDOC`
+to the tool files selected from `PATH` and observes those exact paths. Rustdoc
+must match the compiler release and host. These collector-owned values override
+inherited environment and Cargo configuration. Empty `RUSTC_WRAPPER` and
+`RUSTC_WORKSPACE_WRAPPER` values disable configured compiler wrappers for all
+proof classes. The collector does not honor custom compiler or wrapper choices;
+this is tool selection, not executable-to-source attestation or isolation from
+a process that can replace the selected tool files.
+
 The `check` and `test` classes cover the selected closure. The `package` class
 remains a single-package `--no-verify` archive sample, with the exact package
 named in its command. It does not establish full closure packaging, installed
@@ -86,6 +95,9 @@ start from each member's selected default/requested features; they do not claim
 a complete cross-crate feature graph or promote any proof disposition.
 
 ### Current retained execution
+
+The compiler-binding repair has not yet regenerated these retained outputs.
+They remain historical evidence and do not prove override-resistant execution.
 
 The four retained receipts were generated from committed source
 `62c25f71bd9e757ba07db0d6988a6ce80af083e9` on 2026-09-12, using observed
