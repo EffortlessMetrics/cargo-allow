@@ -7,11 +7,11 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-proof
 - Package roots: cargo-proof
 - Selected closure: cargo-proof, effortless-repo-protocol, effortless-rust-source-index, intent-protocol, proof-orchestrator, proof-protocol
-- Starting source commit: badbec1b40f3170bf7b1402fe57e8f119c4173dd
+- Starting source commit: 7a2cfbce2ec419086300a02a6f58fdddd45220f4
 - Receipt: direct-floor-proof-cargo-proof-v1.json
-- Receipt SHA-256: sha256:v1:65068a7409e7a13406b725b30b41586ecd2f16b085e7edb4c8651f8266e58523
+- Receipt SHA-256: sha256:v1:36e9843acc3cacef22b1957da30be81d4524a87617cd6daeceecea8a1f6a9430
 - Manifest-set digest: adc5877bce43d8d972a162d62069cb0fd1ea983713f4f0e1a66d357d7ddc4d75
-- Starting lock digest: 63bec58292d7d47d0c2f94ebd34a71bf2f1a78444e1cf38ce92bfc58c989dc15
+- Starting lock digest: 69ea6eb64d8e325e7ed83894392e001a1bc821421259f1d3b32337b9e5238047
 - Executed floor-lock digest: sha256:v1:1154e98382d519af75695ea6c3bbcaab9188f70a2678b2e3e4ea97751e03e659
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
