@@ -58,7 +58,7 @@ fn receipt(product: &str, rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersio
         package_roots: vec![format!("{product}-root")],
         msrv: "1.95".to_string(),
         toolchain: "1.95.0".to_string(),
-        target: "host (product closure default target)".to_string(),
+        target: "host:x86_64-pc-windows-msvc".to_string(),
         manifest_set_digest: "manifests-current".to_string(),
         lock_digest: "lock-current".to_string(),
         rows,

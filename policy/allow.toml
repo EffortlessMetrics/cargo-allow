@@ -19545,7 +19545,7 @@ family = "documentation"
 path = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"
 owner = "core/deps"
 classification = "direct_floor_proof"
-reason = "Retained hosted direct-floor proof receipt (#3903 PR B): the bounded check/test/package proof of the cargo-allow release set at the declared floors under the 1.95 toolchain, fourteen Proven rows. Measurement evidence only."
+reason = "Retained direct-floor proof receipt (#3903, #4166) for the cargo-allow release set. The receipt records its observed toolchain, selected target, executed class scope, and per-row results; the package command is a single-package archive sample. Measurement evidence only."
 evidence = ["issue:3903"]
 created = "2026-09-07"
 review_after = "2026-12-06"
@@ -20529,6 +20529,160 @@ target_fingerprint = "toml"
 glob = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
 
 [[allow]]
+id = "allow-0963"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/direct-floor-proof.md"
+owner = "core/deps"
+classification = "direct_floor_contract"
+reason = "Regeneration protocol for #4166: documents committed inputs, forwarded feature selection, observed execution identity, precise bootstrap exclusions, and bounded package sample claims."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/direct-floor-proof.md"
+target_fingerprint = "md"
+glob = "docs/ci/direct-floor-proof.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0964"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_execution_identity.py"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Observe rustc and Cargo verbose identities for #4166 and reject an unavailable or mismatched stable MSRV or host before the detached floor proof runs. Invokes only the explicitly selected local toolchain version commands."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_execution_identity.py"
+target_fingerprint = "py"
+glob = "scripts/floor_execution_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0965"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_execution_identity.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Accept/reject controls for #4166 observed execution identity and the exact retained-output bootstrap exclusions; synthetic fixtures do not claim real floor execution."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_execution_identity.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_execution_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0966"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_selection.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Manifest-only #4166 controls execute the producer selection block against current manifests and isolated fixtures to prove activated versus inactive optional floors and feature propagation."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_selection.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_selection.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0967"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4166-floor-regeneration.toml"
+owner = "core/deps"
+classification = "ledger_change_note"
+reason = "Exact revision note for the five reviewed documentation and Python file entries required by #4166; records source-file exceptions without broadening existing selectors or extending lifecycle metadata."
+evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-10"
+review_after = "2026-12-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4166-floor-regeneration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4166-floor-regeneration.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-protocol-python"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_protocol.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Strict synthetic process controls exercise the actual floor producer without workspace compilation; exact fixture shims reject unsupported commands and bind selection evidence to receipt bytes."
+evidence = ["issue:4228", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_protocol.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_protocol.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-protocol-shell"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-proof-direct-floors-protocol.sh"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "One bounded entry point runs the floor selection, observed-identity, and producer protocol controls; synthetic observations do not certify real floor compatibility."
+evidence = ["issue:4228", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-proof-direct-floors-protocol.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-proof-direct-floors-protocol.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9261"
 kind = "non_rust_file"
 family = "shell_script"
@@ -20581,3 +20735,91 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4175-rehearsal-subject-binding.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4175-rehearsal-subject-binding.toml"
+
+[[allow]]
+id = "allow-4166-selection-cargo-allow"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-allow optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-shared"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated shared optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-cargo-intent"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-intent optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-cargo-proof"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-proof optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1

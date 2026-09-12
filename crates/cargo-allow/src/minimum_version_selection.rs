@@ -159,20 +159,32 @@ pub(crate) fn derive_selection_for_roots(
     let graph = load_dependency_graph(root)?;
 
     let mut closure: Vec<String> = Vec::new();
-    let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut processed: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let mut requested: BTreeMap<String, BTreeSet<String>> = roots
+        .iter()
+        .map(|name| (name.clone(), BTreeSet::from(["default".to_string()])))
+        .collect();
     let mut floors: Vec<(String, String, String)> = Vec::new();
     let mut requirements: BTreeMap<String, String> = BTreeMap::new();
     let mut stack: Vec<String> = roots.iter().rev().cloned().collect();
     while let Some(name) = stack.pop() {
-        if !seen.insert(name.clone()) {
+        let wanted = requested
+            .get(&name)
+            .ok_or_else(|| format!("missing feature selection for {name}"))?
+            .clone();
+        if processed.get(&name) == Some(&wanted) {
             continue;
         }
+        processed.insert(name.clone(), wanted.clone());
         let member = graph
             .name_dir
             .get(&name)
             .ok_or_else(|| format!("product root {name} is not a workspace member"))?;
-        closure.push(name.clone());
+        if !closure.contains(&name) {
+            closure.push(name.clone());
+        }
         let manifest = parse_manifest(&root.join(member).join("Cargo.toml"))?;
+        let features = expanded_features(&manifest, &wanted);
         for table in ["dependencies", "build-dependencies"] {
             let Some(deps) = manifest.get(table).and_then(toml::Value::as_table) else {
                 continue;
@@ -203,7 +215,8 @@ pub(crate) fn derive_selection_for_roots(
                         .get("optional")
                         .and_then(toml::Value::as_bool)
                         .unwrap_or(false);
-                    if (member_optional || resolved_optional) && !default_enables(&manifest, dep) {
+                    if (member_optional || resolved_optional) && !enables(&features, &manifest, dep)
+                    {
                         // Optional dependencies stay out of the closure
                         // and the certified floor inventory unless a
                         // default feature enables them; an explicit
@@ -224,6 +237,30 @@ pub(crate) fn derive_selection_for_roots(
                         let target_name = graph.dir_name.get(&target).ok_or_else(|| {
                             format!("{name} path dependency {dep} leaves the workspace ({target})")
                         })?;
+                        // Every closure member is selected with -p by
+                        // the proof, so its defaults participate too.
+                        let wanted = requested
+                            .entry(target_name.clone())
+                            .or_insert_with(|| BTreeSet::from(["default".to_string()]));
+                        for source in [spec, resolved] {
+                            if let Some(declared) =
+                                source.get("features").and_then(toml::Value::as_array)
+                            {
+                                wanted.extend(
+                                    declared
+                                        .iter()
+                                        .filter_map(toml::Value::as_str)
+                                        .map(str::to_string),
+                                );
+                            }
+                        }
+                        for feature in &features {
+                            for prefix in [format!("{dep}/"), format!("{dep}?/")] {
+                                if let Some(forwarded) = feature.strip_prefix(&prefix) {
+                                    wanted.insert(forwarded.to_string());
+                                }
+                            }
+                        }
                         stack.push(target_name.clone());
                         continue;
                     }
@@ -331,28 +368,16 @@ fn cr_stripped(bytes: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-/// Whether a default feature of the member transitively enables the
-/// dependency (`dep:x` edges or legacy same-name feature edges). The
-/// certified set is the default-feature compile set: an optional
-/// dependency a default feature enables is compiled — and certifiable
-/// — by the proof classes.
-fn default_enables(manifest: &toml::Table, dep: &str) -> bool {
+/// Expand local feature edges from defaults and forwarded requests.
+/// Retain dependency activation and forwarding tokens for the caller's
+/// optional-dependency selection and downstream feature propagation.
+fn expanded_features(manifest: &toml::Table, requested: &BTreeSet<String>) -> BTreeSet<String> {
     let features = manifest.get("features").and_then(toml::Value::as_table);
     let Some(features) = features else {
-        return false;
+        return requested.clone();
     };
     let mut seen: BTreeSet<String> = BTreeSet::new();
-    let mut stack: Vec<String> = features
-        .get("default")
-        .and_then(toml::Value::as_array)
-        .map(|default| {
-            default
-                .iter()
-                .filter_map(|value| value.as_str())
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
+    let mut stack: Vec<String> = requested.iter().cloned().collect();
     while let Some(feature) = stack.pop() {
         if !seen.insert(feature.clone()) {
             continue;
@@ -366,16 +391,36 @@ fn default_enables(manifest: &toml::Table, dep: &str) -> bool {
             let Some(edge) = edge.as_str() else {
                 continue;
             };
-            let name = edge.strip_prefix("dep:").unwrap_or(edge);
-            if name == dep {
-                return true;
-            }
-            if features.contains_key(name) {
-                stack.push(name.to_string());
-            }
+            stack.push(edge.to_string());
         }
     }
-    false
+    seen
+}
+
+fn enables(features: &BTreeSet<String>, manifest: &toml::Table, dep: &str) -> bool {
+    let namespaced = format!("dep:{dep}");
+    let implicit = !manifest
+        .get("features")
+        .and_then(toml::Value::as_table)
+        .into_iter()
+        .flat_map(|table| table.values())
+        .filter_map(toml::Value::as_array)
+        .flatten()
+        .any(|value| value.as_str() == Some(namespaced.as_str()));
+    (implicit && features.contains(dep))
+        || features.contains(&namespaced)
+        || features
+            .iter()
+            .any(|feature| feature.starts_with(&format!("{dep}/")))
+}
+
+#[cfg(test)]
+fn default_enables(manifest: &toml::Table, dep: &str) -> bool {
+    enables(
+        &expanded_features(manifest, &BTreeSet::from(["default".to_string()])),
+        manifest,
+        dep,
+    )
 }
 
 /// The lock identity digest over the `Cargo.lock` bytes, CR-stripped
@@ -410,6 +455,58 @@ fn hex_sha256(digest: impl AsRef<[u8]>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn forwarded_features_include_active_floors_after_revisiting_members()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let id = FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let root =
+            std::env::temp_dir().join(format!("floor-forwarding-{}-{id}", std::process::id()));
+        let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+            for (relative, contents) in [
+                (
+                    "Cargo.toml",
+                    "[workspace]\nmembers = ['a', 'b', 'c']\n[workspace.dependencies]\nb = { path = 'b', features = ['inherited'] }\n",
+                ),
+                (
+                    "a/Cargo.toml",
+                    "[package]\nname = 'a'\n[dependencies]\nb = { workspace = true, features = ['member'] }\nc = { path = '../c' }\n",
+                ),
+                (
+                    "b/Cargo.toml",
+                    "[package]\nname = 'b'\n[features]\ninherited = ['dep:first']\nmember = ['second']\nlater = ['dep:third']\ndefault = ['dormant', 'dormant?/unused']\ndormant = []\nhidden = ['dep:dormant']\n[dependencies]\nfirst = { version = '0.1', optional = true }\nsecond = { version = '0.2', optional = true }\nthird = { version = '0.3', optional = true }\ndormant = { version = '0.4', optional = true }\n",
+                ),
+                (
+                    "c/Cargo.toml",
+                    "[package]\nname = 'c'\n[features]\ndefault = ['b/later']\n[dependencies]\nb = { path = '../b' }\n",
+                ),
+            ] {
+                let path = root.join(relative);
+                std::fs::create_dir_all(path.parent().ok_or("fixture has no parent")?)?;
+                std::fs::write(path, contents)?;
+            }
+            let selection = derive_selection_for_roots(&root, vec!["a".to_string()])?;
+            let names: Vec<&str> = selection.floors.iter().map(|row| row.0.as_str()).collect();
+            if names != ["first", "second", "third"] || selection.closure != ["a", "b", "c"] {
+                return Err(format!("unexpected forwarded selection: {selection:?}").into());
+            }
+            Ok(())
+        })();
+        let cleanup = std::fs::remove_dir_all(&root);
+        result?;
+        cleanup?;
+        Ok(())
+    }
+
+    #[test]
+    fn live_changie_activation_certifies_yaml_floor() -> Result<(), Box<dyn std::error::Error>> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let selection = derive_selection(&root, "cargo-allow")?;
+        if !selection.floors.iter().any(|row| row.0 == "yaml-rust2") {
+            return Err("cargo-allow enables allow-files/changie but yaml-rust2 is absent".into());
+        }
+        Ok(())
+    }
 
     #[test]
     fn registry_covers_the_four_proof_products() {

@@ -137,7 +137,7 @@ fn minimum_direct_version_contract_newer_toolchain_fails_loudly() {
         evaluation
             .reasons
             .iter()
-            .any(|reason| reason.contains("newer than the claimed MSRV"))
+            .any(|reason| reason.contains("does not match the claimed MSRV"))
     );
 }
 

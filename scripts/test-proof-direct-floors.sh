@@ -77,3 +77,5 @@ fi
 grep -q "unknown product 'not-a-product'" "${work}/out.log" ||
   fail "unregistered product error names the product"
 ok "unregistered product fails closed"
+
+bash scripts/test-proof-direct-floors-protocol.sh
