@@ -60,6 +60,9 @@ floors, targets, roots, or dispositions to satisfy freshness checks.
 
 ### Producer protocol controls
 
+The producer and protocol controls require Python 3.11 or newer available as
+`python3`; manifest parsing uses the standard-library `tomllib` module.
+
 `bash scripts/test-proof-direct-floors-protocol.sh` exercises selection,
 execution identity, and the actual producer using temporary fixtures and strict
 Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
