@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Obtain workflow security exception dates directly from the UTC system clock
+  so the security and construction evaluators also work without a Unix date
+  executable. Unsupported clock values remain instrument failures.

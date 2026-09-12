@@ -796,6 +796,8 @@ pub struct PruneSummaryFactsV1 {
     pub portable_identity: String,
     pub policy_path: String,
     pub candidate_count: usize,
+    pub allow_id: Option<String>,
+    pub include_untracked: bool,
     pub write_requested: bool,
     pub dry_run: bool,
     pub completeness: CompletenessV1,
@@ -809,6 +811,8 @@ pub fn core_command_summary_from_prune(
         portable_identity,
         policy_path,
         candidate_count,
+        allow_id,
+        include_untracked,
         write_requested,
         dry_run: _,
         completeness,
@@ -830,18 +834,25 @@ pub fn core_command_summary_from_prune(
             ),
         )
     } else if candidate_count > 0 {
+        let mut args = vec![
+            "prune".to_string(),
+            "--stale".to_string(),
+            "--config".to_string(),
+            policy_path.clone(),
+        ];
+        if let Some(id) = allow_id {
+            args.push(format!("--allow-id={id}"));
+        }
+        if include_untracked {
+            args.push("--include-untracked".to_string());
+        }
+        args.push("--write".to_string());
         Some(
             CoreCommandActionV1::command(
                 "prune.apply",
                 "Apply the reviewed stale-entry removal",
                 "cargo-allow",
-                vec![
-                    "prune".to_string(),
-                    "--stale".to_string(),
-                    "--config".to_string(),
-                    policy_path.clone(),
-                    "--write".to_string(),
-                ],
+                args,
             )
             .with_write_posture(
                 CoreCommandWritePostureV1::LiveMutation,

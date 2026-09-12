@@ -1,0 +1,27 @@
+schema_version = 1
+# Revision note for the #4175 rehearsal subject-binding lane.
+
+# The release-freeze rehearsal evidence role now binds the producer's
+# documented subject fields: commit_sha, subject_lockfile_digest, and
+# subject_topology_digest are required and compared against the exact
+# selected freeze subject (digest payloads modulo the typed prefix
+# spelling), so a same-version rehearsal receipt from another source
+# subject fails admission instead of reading as current. A rejected
+# rehearsal stays a Mismatch node in the evidence graph even though
+# node_for stamps the current subject on every node. The expect
+# ratchet for the composition module rises by the new acceptance
+# controls' invariant-guarded expects. No existing exception is
+# weakened beyond the recorded ratchet rise, no expiry is extended,
+# and no scope is broadened. policy/allow.toml keeps its CRLF
+# line-ending contract.
+
+[[records]]
+allow_ids = ["allow-0862"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:9a9cab302830fce76521ac8f912496b35cb0b636addc2d2efb17dee831592d9b"
+after_fingerprint = "sha256:v1:788d7d907653897709911df048d5fdc05a7454d91e2a5b5a3f1c1fa988676c26"
+
+[[records]]
+allow_ids = ["allow-9263"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c2e7865c5f56b9203a10cea3e6746658c71519267bb0caaaf8344e9979e3526b"
