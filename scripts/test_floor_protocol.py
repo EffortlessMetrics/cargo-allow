@@ -54,6 +54,8 @@ def invoke(program, arguments):
     if program == "cargo" and len(arguments) == 5 and arguments[0] == "update":
         if arguments[1] != "-p" or arguments[3] != "--precise":
             return 70, "", "unexpected simulated update arguments"
+        if arguments[2] == case.get("fail_pin"):
+            return 42, "", "simulated floor pin failure"
         lock = 'version = 4\n[[package]]\nname = ' + json.dumps(arguments[2])
         lock += '\nversion = ' + json.dumps(arguments[4]) + '\n'
         Path("Cargo.lock").write_text(lock, encoding="utf-8", newline="\n")
@@ -103,7 +105,10 @@ class FloorProtocolTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.sequence = 0
 
-    def run_producer(self, floor="0.2", *, overrides=None, product="cargo-allow", classes="check,test,package"):
+    def run_producer(
+        self, floor="0.2", *, overrides=None, product="cargo-allow",
+        classes="check,test,package", extra_floor=False,
+    ):
         self.sequence += 1
         run_root = self.root / str(self.sequence)
         fixture = run_root / "fixture"
@@ -125,6 +130,8 @@ class FloorProtocolTests(unittest.TestCase):
                               '[dependencies]\nenabled = { version = ' + json.dumps(floor) + ', optional = true }\n'
                               'inactive = { version = "0.8", optional = true }\n',
         }
+        if extra_floor:
+            manifests["fixture-helper"] += 'second = "0.3"\n'
         for name, body in manifests.items():
             member = fixture / "crates" / name
             member.mkdir(parents=True)
@@ -230,6 +237,20 @@ class FloorProtocolTests(unittest.TestCase):
         self.assertTrue(receipt["rows"])
         self.assertTrue(all(row["result"] == "instrument_failure" for row in receipt["rows"]))
         self.assertTrue(all("bounded proof class failed" in row["limitation"] for row in receipt["rows"]))
+
+    def test_failed_pin_cannot_become_proven_when_classes_succeed(self):
+        result, calls, receipt, _ = self.run_producer(
+            overrides={"fail_pin": "second"}, extra_floor=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(
+            [call["arguments"][0] for call in calls if call["program"] == "cargo"
+             and call["arguments"][0] in ("check", "test", "package")],
+            ["check", "test", "package"],
+        )
+        failed = next(row for row in receipt["rows"] if row["package"] == "second")
+        self.assertEqual(failed["result"], "resolver_failure")
+        self.assertIn("simulated floor pin failure", failed["limitation"])
 
     def test_selection_companion_binds_witnesses_and_exact_receipt_bytes(self):
         result, _, _, receipt_path = self.run_producer()

@@ -79,7 +79,7 @@
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
   "cargo check --locked --target x86_64-pc-windows-msvc -p cargo-intent -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index -p intent-compiler -p intent-model -p intent-protocol"
  ],
- "floor_lock_digest": "sha256:v1:61dbca2cb276a6869a3b100a1edfe48cadeb162b0fd85363dc9c20ca2d9c6441",
+ "floor_lock_digest": "sha256:v1:a97d55696724ea30efd8bf431bea6c5614494d5f1e96f10d274be9ed93465896",
  "limitations": [
   "bounded proof: the check classes over the cargo-intent closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",

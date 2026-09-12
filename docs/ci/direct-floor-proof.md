@@ -64,7 +64,7 @@ floors, targets, roots, or dispositions to satisfy freshness checks.
 execution identity, and the actual producer using temporary fixtures and strict
 Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
 invalid product/class rejection, observed MSRV rejection, the exact five test
-exclusions, failed-class dispositions, and selection-companion binding. These
+exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
 controls do not compile packages or establish real floor compatibility.
 
 Legacy receipt admission belongs to the Rust consumer, not this producer.
@@ -82,33 +82,37 @@ companion JSON bytes. The public v1 JSON schema is unchanged. The witnesses
 start from each member's selected default/requested features; they do not claim
 a complete cross-crate feature graph or promote any proof disposition.
 
-### Historical replacement receipts
+### Current retained execution
 
 The four retained receipts were generated from committed source
-`813c594df7f0aa81930bef3d46b34fd731d5f2d2` on 2026-09-10, using observed
+`62c25f71bd9e757ba07db0d6988a6ce80af083e9` on 2026-09-12, using observed
 Rust/Cargo 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
 
-| Product | Proven direct floors | Executed classes |
-| --- | ---: | --- |
-| cargo-allow | 15 | check, test, single allow-core archive sample |
-| shared | 6 | check only, advisory |
-| cargo-intent | 7 | check only, advisory |
-| cargo-proof | 7 | check only, advisory |
+| Product | Proven direct floors | Executed classes | Selection evidence |
+| --- | ---: | --- | --- |
+| cargo-allow | 15 | check, test, single allow-core archive sample | [companion](receipts/direct-floor-proof-cargo-allow-v1.selection.md) |
+| shared | 6 | check only, advisory | [companion](receipts/direct-floor-proof-shared-v1.selection.md) |
+| cargo-intent | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-intent-v1.selection.md) |
+| cargo-proof | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-proof-v1.selection.md) |
 
 All four commands completed successfully. The cargo-allow receipt includes
-the activated yaml-rust2 floor at 0.11.0. Tracked copies normalize the generated
-Windows CRLF serialization to LF; every JSON value was compared unchanged,
-and the original generated outputs were preserved separately.
+the activated yaml-rust2 floor at 0.11.0 and its companion records the
+`allow-files/changie -> allow-files/dep:yaml-rust2` witness. All eight tracked
+JSON/Markdown artifacts are byte-identical copies of generated LF outputs.
+No identity fields, rows, or dispositions were rewritten.
 
-On 2026-09-12, this implementation with the replacement receipts passed 59
-`minimum_` tests without any bootstrap exclusions, including all five retained
-graders. Its rebuilt `min-version-drift check --root . --format json` reported
-all four products current with no blocking reasons. The seven cheap selection
-and execution controls passed separately on native Windows Python and WSL.
+The floored cargo-allow unit suite passed 1,541 tests with exactly the five
+recorded bootstrap exclusions; the remaining selected integration and doc tests
+also passed. Outside-the-floor grading passed all 59 `minimum_` tests without
+bootstrap exclusions, including all five retained-output graders. The producer
+protocol wrapper passed all 13 controls on native Windows and WSL.
+
+Earlier successful execution from `813c594d` on 2026-09-10 remains historical
+in commit `ac1c3fa5`; it is not the source of the current retained copies.
 
 These are bounded historical executions, not proof for arbitrary later source
 trees or release qualification. The v1 receipt's manifest/lock freshness does
 not bind the complete source tree; [#4214](https://github.com/EffortlessMetrics/cargo-allow/issues/4214)
-owns that broader provenance contract. Current-plan protocol fixture and
-activation-evidence work remains tracked in [#4228](https://github.com/EffortlessMetrics/cargo-allow/issues/4228)
+owns that broader provenance contract. Protocol controls and activation
+evidence are tracked in [#4228](https://github.com/EffortlessMetrics/cargo-allow/issues/4228)
 and [#4230](https://github.com/EffortlessMetrics/cargo-allow/issues/4230).

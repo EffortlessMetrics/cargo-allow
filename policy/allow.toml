@@ -20735,3 +20735,91 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4175-rehearsal-subject-binding.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4175-rehearsal-subject-binding.toml"
+
+[[allow]]
+id = "allow-4166-selection-cargo-allow"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-allow optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-shared"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated shared optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-shared-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-cargo-intent"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-intent optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4166-selection-cargo-proof"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+owner = "core/deps"
+classification = "direct_floor_selection_evidence"
+reason = "Retain generated cargo-proof optional-dependency activation witnesses and exclusion reasons, bound to exact companion receipt bytes and source/input identities; this adds no proof class or source-attestation claim."
+evidence = ["issue:4230", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+target_fingerprint = "md"
+glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1

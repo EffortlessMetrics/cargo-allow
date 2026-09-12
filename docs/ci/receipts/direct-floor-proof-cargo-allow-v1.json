@@ -153,7 +153,7 @@
   "cargo test --locked --target x86_64-pc-windows-msvc -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean --skip minimum_direct_version_products_retained_advisory_receipts_are_clean --skip minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure",
   "cargo package -p allow-core --locked --target x86_64-pc-windows-msvc --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:7c7ea7765ef872884c4108ee5f8b5fa2af5e2081021a4eb1efa4edf182702e42",
+ "floor_lock_digest": "sha256:v1:bf9eb0150977767f7625ff34b1d5fe0d5410668d1c2c443a972d567ea8155c29",
  "limitations": [
   "bounded proof: selected check/test classes cover the release-set closure; package covers only the package named by its command, not every target or feature combination",
   "internal =0.2.0 workspace pins are proven by the same closure build",
