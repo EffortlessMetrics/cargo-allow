@@ -58,6 +58,32 @@ floors, targets, roots, or dispositions to satisfy freshness checks.
 
 ## Retained Windows execution
 
+### Producer protocol controls
+
+`bash scripts/test-proof-direct-floors-protocol.sh` exercises selection,
+execution identity, and the actual producer using temporary fixtures and strict
+Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
+invalid product/class rejection, observed MSRV rejection, the exact five test
+exclusions, failed-class dispositions, and selection-companion binding. These
+controls do not compile packages or establish real floor compatibility.
+
+Legacy receipt admission belongs to the Rust consumer, not this producer.
+`minimum_direct_version_contract_package_roots_must_match_the_request` rejects
+different recorded roots and accepts legacy empty roots under the request;
+`minimum_direct_version_drift_legacy_roots_binding_stays_optional` checks the
+same compatibility boundary for drift. Run these existing Rust tests separately
+from the compile-free protocol harness. New producer receipts always record the
+selected roots, which the protocol harness checks directly.
+
+New producer runs also emit a sibling `.selection.md` file containing optional
+dependency inclusion/exclusion reasons and local feature activation witnesses.
+It records the starting source commit, input digests, and SHA-256 of the exact
+companion JSON bytes. The public v1 JSON schema is unchanged. The witnesses
+start from each member's selected default/requested features; they do not claim
+a complete cross-crate feature graph or promote any proof disposition.
+
+### Historical replacement receipts
+
 The four retained receipts were generated from committed source
 `813c594df7f0aa81930bef3d46b34fd731d5f2d2` on 2026-09-10, using observed
 Rust/Cargo 1.95.0 and explicit target `x86_64-pc-windows-msvc`.

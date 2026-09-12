@@ -55,8 +55,14 @@ class FloorSelectionTests(unittest.TestCase):
             self.assertNotEqual(digest(), lf)
 
     def test_live_changie_activation_certifies_yaml_floor(self):
-        rows = select(REPO, ["cargo-allow"])["floors"]
+        selection = select(REPO, ["cargo-allow"])
+        rows = selection["floors"]
         self.assertIn("yaml-rust2", {row["package"] for row in rows})
+        yaml = next(row for row in selection["optional_dependencies"]
+                    if row["dependency"] == "yaml-rust2")
+        self.assertEqual(yaml["disposition"], "included")
+        self.assertIn(["allow-files/changie", "allow-files/dep:yaml-rust2"],
+                      yaml["activation_paths"])
 
     def test_forwarding_revisits_members_and_keeps_inactive_optional_out(self):
         with tempfile.TemporaryDirectory(prefix="floor-selection-") as folder:
@@ -106,6 +112,13 @@ b = { path = "../b" }
                 [row["package"] for row in result["floors"]],
                 ["first", "second", "third"],
             )
+            decisions = {row["dependency"]: row for row in result["optional_dependencies"]}
+            self.assertEqual(decisions["third"]["disposition"], "included")
+            self.assertIn(["b/later", "b/dep:third"], decisions["third"]["activation_paths"])
+            self.assertEqual(decisions["dormant"]["disposition"], "excluded")
+            self.assertEqual(decisions["dormant"]["activation_paths"], [])
+            self.assertIn("dep: namespace suppresses implicit activation",
+                          decisions["dormant"]["reason"])
 
 
 if __name__ == "__main__":

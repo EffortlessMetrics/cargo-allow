@@ -189,24 +189,27 @@ def declared_requirement(spec):
 def expanded_features(manifest, requested):
     features = manifest.get("features", {})
     seen = set()
-    stack = list(requested)
+    paths = {feature: [feature] for feature in requested}
+    stack = sorted(requested, reverse=True)
     while stack:
         feature = stack.pop()
         if feature in seen:
             continue
         seen.add(feature)
-        stack.extend(features.get(feature, []))
-    return seen
+        for child in reversed(features.get(feature, [])):
+            paths.setdefault(child, paths[feature] + [child])
+            stack.append(child)
+    return seen, paths
 
 
-def enables(features, manifest, dep):
+def enabling_features(features, manifest, dep):
     namespaced = "dep:" + dep
     implicit = not any(
         namespaced in edges for edges in manifest.get("features", {}).values()
     )
-    return (implicit and dep in features) or namespaced in features or any(
-        feature.startswith(dep + "/") for feature in features
-    )
+    return sorted(feature for feature in features if
+                  (implicit and feature == dep) or feature == namespaced
+                  or feature.startswith(dep + "/"))
 
 closure = []
 processed = {}
@@ -214,6 +217,7 @@ requested = {name: {"default"} for name in roots}
 stack = sorted(roots, reverse=True)
 requirements = {}
 floors = []
+optional_decisions = {}
 while stack:
     name = stack.pop()
     if name not in name_dir:
@@ -224,7 +228,7 @@ while stack:
     if name not in closure:
         closure.append(name)
     manifest = tomllib.load(open(f"{name_dir[name]}/Cargo.toml", "rb"))
-    features = expanded_features(manifest, requested[name])
+    features, feature_paths = expanded_features(manifest, requested[name])
     for table in ("dependencies", "build-dependencies"):
         for dep, spec in manifest.get(table, {}).items():
             member_spec = spec
@@ -237,12 +241,25 @@ while stack:
             if isinstance(spec, dict) and "git" in spec:
                 fail(f"{name} declares a git dependency {dep}; out of proof scope")
             resolved_optional = isinstance(spec, dict) and spec.get("optional")
-            if (member_optional or resolved_optional) and not enables(features, manifest, dep):
-                # Optional dependencies stay out of the closure and the
-                # certified floor inventory unless a default feature
-                # enables them; an explicit optional = false never
-                # excludes a dependency.
-                continue
+            if member_optional or resolved_optional:
+                witnesses = enabling_features(features, manifest, dep)
+                namespaced = any("dep:" + dep in edges
+                                 for edges in manifest.get("features", {}).values())
+                reason = "enabled by a selected feature path" if witnesses else (
+                    "no selected feature enables this optional dependency"
+                    + ("; dep: namespace suppresses implicit activation" if namespaced else "")
+                )
+                optional_decisions[(name, table, dep)] = {
+                    "owner": name, "table": table, "dependency": dep,
+                    "disposition": "included" if witnesses else "excluded",
+                    "reason": reason, "requested_features": sorted(requested[name]),
+                    "activation_paths": [
+                        [name + "/" + step for step in feature_paths[feature]]
+                        for feature in witnesses
+                    ],
+                }
+                if not witnesses:
+                    continue
             if isinstance(spec, dict) and "path" in spec:
                 # An inherited spec's path is workspace-root relative; a
                 # direct spec's path is relative to the member manifest.
@@ -282,7 +299,10 @@ while stack:
 
 floors.sort(key=lambda row: row["package"])
 closure.sort()
-print(json.dumps({"roots": roots, "closure": closure, "floors": floors}, indent=1))
+print(json.dumps({
+    "roots": roots, "closure": closure, "floors": floors,
+    "optional_dependencies": [optional_decisions[key] for key in sorted(optional_decisions)],
+}, indent=1))
 PY
 floor_count="$(jq '.floors | length' floors-selection.json)"
 closure_count="$(jq '.closure | length' floors-selection.json)"
@@ -524,7 +544,55 @@ receipt = {
     "limitations": limitations,
     "claim_boundary": claim_boundary,
 }
+sys.stdout.reconfigure(newline="\n")
 print(json.dumps(receipt, indent=1))
+PY
+
+# Keep selection explanations separate from the public v1 proof vocabulary.
+# The companion binds the exact emitted JSON bytes; it adds no proof class.
+python3 - "$OUT" floors-selection.json "$(git rev-parse HEAD)" <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import sys
+
+receipt_path = Path(sys.argv[1])
+receipt_bytes = receipt_path.read_bytes()
+receipt = json.loads(receipt_bytes)
+selection = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+
+def cell(value):
+    return (str(value).replace("\\", "\\\\").replace("|", "\\|")
+            .replace("`", "\\`").replace("\r", "\\r").replace("\n", "\\n"))
+
+lines = [
+    "# Direct-floor selection evidence", "",
+    "Selection explanations only; the companion JSON owns proof dispositions.",
+    "These paths start at each member's selected default/requested features;",
+    "they are local activation witnesses, not a complete cross-crate feature graph.", "",
+    f"- Product: {receipt['product']}",
+    f"- Package roots: {cell(', '.join(selection['roots']))}",
+    f"- Selected closure: {cell(', '.join(selection['closure']))}",
+    f"- Starting source commit: {cell(sys.argv[3])}",
+    f"- Receipt: {cell(receipt_path.name)}",
+    f"- Receipt SHA-256: sha256:v1:{hashlib.sha256(receipt_bytes).hexdigest()}",
+    f"- Manifest-set digest: {receipt['manifest_set_digest']}",
+    f"- Starting lock digest: {receipt['lock_digest']}",
+    f"- Executed floor-lock digest: {receipt['floor_lock_digest']}", "",
+    "| Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |",
+    "| --- | --- | --- | --- | --- | --- |",
+]
+for decision in selection["optional_dependencies"]:
+    witnesses = "; ".join(" -> ".join(path) for path in decision["activation_paths"])
+    lines.append("| " + " | ".join(cell(value) for value in (
+        decision["owner"], decision["table"], decision["dependency"], decision["disposition"],
+        decision["reason"], witnesses or "none",
+    )) + " |")
+if not selection["optional_dependencies"]:
+    lines += ["", "No optional dependency declarations were encountered in this selected closure."]
+receipt_path.with_suffix(".selection.md").write_text(
+    "\n".join(lines) + "\n", encoding="utf-8", newline="\n",
+)
 PY
 
 overall=0
