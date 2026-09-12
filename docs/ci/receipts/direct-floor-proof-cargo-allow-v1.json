@@ -9,7 +9,7 @@
  "toolchain": "1.95.0",
  "target": "host:x86_64-pc-windows-msvc",
  "manifest_set_digest": "adc5877bce43d8d972a162d62069cb0fd1ea983713f4f0e1a66d357d7ddc4d75",
- "lock_digest": "63bec58292d7d47d0c2f94ebd34a71bf2f1a78444e1cf38ce92bfc58c989dc15",
+ "lock_digest": "69ea6eb64d8e325e7ed83894392e001a1bc821421259f1d3b32337b9e5238047",
  "rows": [
   {
    "package": "clap",
