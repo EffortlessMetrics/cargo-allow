@@ -55,3 +55,34 @@ A failed collector is not clean evidence. Keep dependency PRs blocked until
 real successful execution produces replacements and the unsuppressed checks
 accept the resulting source/receipt set. Do not manually repair receipt digests,
 floors, targets, roots, or dispositions to satisfy freshness checks.
+
+## Retained Windows execution
+
+The four retained receipts were generated from committed source
+`813c594df7f0aa81930bef3d46b34fd731d5f2d2` on 2026-09-10, using observed
+Rust/Cargo 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
+
+| Product | Proven direct floors | Executed classes |
+| --- | ---: | --- |
+| cargo-allow | 15 | check, test, single allow-core archive sample |
+| shared | 6 | check only, advisory |
+| cargo-intent | 7 | check only, advisory |
+| cargo-proof | 7 | check only, advisory |
+
+All four commands completed successfully. The cargo-allow receipt includes
+the activated yaml-rust2 floor at 0.11.0. Tracked copies normalize the generated
+Windows CRLF serialization to LF; every JSON value was compared unchanged,
+and the original generated outputs were preserved separately.
+
+On 2026-09-12, this implementation with the replacement receipts passed 59
+`minimum_` tests without any bootstrap exclusions, including all five retained
+graders. Its rebuilt `min-version-drift check --root . --format json` reported
+all four products current with no blocking reasons. The seven cheap selection
+and execution controls passed separately on native Windows Python and WSL.
+
+These are bounded historical executions, not proof for arbitrary later source
+trees or release qualification. The v1 receipt's manifest/lock freshness does
+not bind the complete source tree; [#4214](https://github.com/EffortlessMetrics/cargo-allow/issues/4214)
+owns that broader provenance contract. Current-plan protocol fixture and
+activation-evidence work remains tracked in [#4228](https://github.com/EffortlessMetrics/cargo-allow/issues/4228)
+and [#4230](https://github.com/EffortlessMetrics/cargo-allow/issues/4230).

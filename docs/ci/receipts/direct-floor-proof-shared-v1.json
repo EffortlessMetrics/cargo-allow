@@ -10,7 +10,7 @@
  ],
  "msrv": "1.95",
  "toolchain": "1.95.0",
- "target": "host (product closure default target)",
+ "target": "host:x86_64-pc-windows-msvc",
  "manifest_set_digest": "0cc7ac8b80d7ba163a305e0217aaabf7fd471a0b582a5c32bcce2fbd8a4674fe",
  "lock_digest": "0d534b066fcc4db1fd01fae560255a82bb906ef214b8a7aa7f30e030f934f8ea",
  "rows": [
@@ -71,14 +71,15 @@
  ],
  "commands": [
   "cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)",
-  "cargo check --locked -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
+  "cargo check --locked --target x86_64-pc-windows-msvc -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
  ],
- "floor_lock_digest": "sha256:v1:b827d4dcee0ad6db822d8150f9a455116afa1515af4c0895e94e6fe66c05e82b",
+ "floor_lock_digest": "sha256:v1:e2a0d063f8befac3c4ee7acaa762665f8a9defe7e7dc8619302b55e821a33a4b",
  "limitations": [
   "bounded proof: the check classes over the shared closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",
   "dev-dependencies are exercised by the test class but are not certified floors",
-  "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it"
+  "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
+  "observed rustc 1.95.0; cargo 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }
