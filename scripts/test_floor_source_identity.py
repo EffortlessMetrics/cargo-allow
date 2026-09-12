@@ -121,4 +121,6 @@ if __name__ == "__main__":
         rehearsal_spec.loader.exec_module(REHEARSAL)
         if not callable(getattr(REHEARSAL, "require_clean_checkout", None)):
             raise SystemExit("selected rehearsal does not implement strict admission")
+    else:
+        print("strict rehearsal admission: not run (integration option not supplied)", file=sys.stderr)
     unittest.main(argv=[sys.argv[0], *remaining])

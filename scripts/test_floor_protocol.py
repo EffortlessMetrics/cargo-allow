@@ -248,10 +248,15 @@ class FloorProtocolTests(unittest.TestCase):
         return result, calls, receipt, receipt_path
 
     def test_failed_source_derivation_prevents_classes_and_receipt(self):
-        for failure in ("dirty_source", "fail_derivation"):
+        failures = {
+            "dirty_source": "floor derivation permits only an unstaged Cargo.lock change",
+            "fail_derivation": "simulated derived commit failure",
+        }
+        for failure, diagnostic in failures.items():
             with self.subTest(failure=failure):
                 result, calls, receipt, _ = self.run_producer(overrides={failure: True})
-                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(diagnostic, result.stderr)
                 self.assertIsNone(receipt)
                 self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0]
                                      in ("check", "test", "package") for call in calls))
