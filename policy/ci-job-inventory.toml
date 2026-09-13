@@ -206,3 +206,15 @@ name = "github-release"
 purpose = "ReleaseRehearsal"
 routing_owner = "core/release"
 blocking = false
+
+[[jobs]]
+name = "pregate"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "collect-performance-fixtures"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = false

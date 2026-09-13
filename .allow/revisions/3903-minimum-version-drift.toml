@@ -1,0 +1,64 @@
+schema_version = 1
+# Revision note for the #3903 PR D direct-floor drift guard.
+
+# This diff lands the drift guard over the retained direct-floor
+# proofs: a typed MinimumVersionDriftObservationV1 /
+# MinimumVersionDriftEvaluationV1 contract grades each product's
+# retained receipt against a live-tree observation (package roots,
+# claimed MSRV, manifest-set and lock digests, and the closure-derived
+# floor inventory from the shared Rust selection module), so
+# dependency, feature, target, MSRV, package-set, or manifest movement
+# reruns or stales the affected request instead of silently passing on
+# old evidence. Identity movement is `stale`, a missing or
+# wrong-product receipt is `unproven`, coverage gaps and non-clean
+# dispositions are `incomplete`, only a fully aligned all-Proven
+# receipt is `current`, and only release-set (cargo-allow) drift
+# blocks — advisory products report the same verdicts without blocking
+# (negative control 10). The hidden `min-version-drift
+# evaluate|check` CLI exposes the guard with that exit contract, and
+# the live grading test pins every retained receipt to the current
+# tree. The source-exception additions receipt only the
+# syntax-visible constructs the new surfaces introduce: allow-11254 is
+# the expect ratchet for the selection module's own tests (including
+# the synthetic fixture workspace that pins the optional-dependency
+# default-feature rule and the line-ending-independent digest),
+# allow-11255 the drift command tests' expect ratchet, allow-11256 the
+# drift law and live grading tests' expect ratchet, allow-11257 the
+# live grading test's macro_name-scoped panic ratchet, allow-11259
+# receipts the shell characterization guard for the proof lane's
+# scripts, and the
+# allow-11258 record receipts this revision-note file itself per the
+# per-note receipt law. No existing exception is weakened, no expiry
+# is extended, and no scope is broadened: the records below are
+# additions. policy/allow.toml keeps its CRLF line-ending contract;
+# the net transition is append-only.
+
+[[records]]
+allow_ids = ["allow-11254"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5e9e71403fc97bcc752f2becb1aa6ccf16e4625b2816f3759104f64c681e1b03"
+
+[[records]]
+allow_ids = ["allow-11255"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b0ab472549dc36ae3ef0ee33a302e04b59c916933a186e6d3006c6d44e5c32f2"
+
+[[records]]
+allow_ids = ["allow-11256"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:250b3a85f0a2b35b358bd38e88336df6a094a772d4d524f74f589afb5acda390"
+
+[[records]]
+allow_ids = ["allow-11257"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ad83e339655c608f88bc6b473296f016885eee84ab858da60a6e3c7b590b0ae1"
+
+[[records]]
+allow_ids = ["allow-11258"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5947257a49a9370314002042d7df2f928ee0568cfb27caf5ba87f74c1da7af7b"
+
+[[records]]
+allow_ids = ["allow-11259"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7dd943ade35c1f666035c16bc56c2b8b34d005c92ca5cecd0616ec6b86299f25"

@@ -13,12 +13,19 @@ use crate::{
 mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
 mod ci_pregate_command;
+mod dependency_graph_delta_command;
+mod dependency_graph_evidence_command;
 mod frozen_subject_lock_command;
+mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
 mod release_freeze_command;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;
+mod workflow_construction_command;
+mod workflow_date;
+mod workflow_security_command;
+mod workflow_syntax_command;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -148,6 +155,24 @@ pub(crate) enum CargoAllowCommand {
     /// Evaluate the Stage 1 pre-gate aggregate.
     #[command(hide = true)]
     CiPregate(ci_pregate_command::CiPregateArgs),
+    /// Grade the retained direct-floor receipts against the live tree.
+    #[command(hide = true)]
+    MinVersionDrift(minimum_version_selection_command::MinVersionDriftArgs),
+    /// Grade the pinned syntax lane over the construction denominator.
+    #[command(hide = true)]
+    WorkflowSyntax(workflow_syntax_command::WorkflowSyntaxArgs),
+    /// Grade the qualified security lane over the denominator.
+    #[command(hide = true)]
+    WorkflowSecurity(workflow_security_command::WorkflowSecurityArgs),
+    /// Aggregate the construction lanes into one semantic report.
+    #[command(hide = true)]
+    WorkflowConstruction(workflow_construction_command::WorkflowConstructionArgs),
+    /// Attach evidence authorities to one compiled dependency delta.
+    #[command(hide = true)]
+    DependencyGraphEvidence(dependency_graph_evidence_command::DependencyGraphEvidenceArgs),
+    /// Compile a base/head dependency graph delta receipt.
+    #[command(hide = true)]
+    DependencyGraphDelta(dependency_graph_delta_command::DependencyGraphDeltaArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -261,6 +286,24 @@ pub(crate) fn run() -> CargoAllowResult<()> {
             review_readiness_command::cmd_review_readiness(&args)
         }
         CargoAllowCommand::CiPregate(args) => ci_pregate_command::cmd_ci_pregate(&args),
+        CargoAllowCommand::MinVersionDrift(args) => {
+            minimum_version_selection_command::cmd_min_version_drift(&args)
+        }
+        CargoAllowCommand::WorkflowSyntax(args) => {
+            workflow_syntax_command::cmd_workflow_syntax(&args)
+        }
+        CargoAllowCommand::WorkflowSecurity(args) => {
+            workflow_security_command::cmd_workflow_security(&args)
+        }
+        CargoAllowCommand::WorkflowConstruction(args) => {
+            workflow_construction_command::cmd_workflow_construction(&args)
+        }
+        CargoAllowCommand::DependencyGraphEvidence(args) => {
+            dependency_graph_evidence_command::cmd_dependency_graph_evidence(&args)
+        }
+        CargoAllowCommand::DependencyGraphDelta(args) => {
+            dependency_graph_delta_command::cmd_dependency_graph_delta(&args)
+        }
     }
 }
 
@@ -465,5 +508,11 @@ impl CargoAllowCommand {
         "review-disposition",
         "review-readiness",
         "ci-pregate",
+        "min-version-drift",
+        "workflow-syntax",
+        "workflow-security",
+        "workflow-construction",
+        "dependency-graph-evidence",
+        "dependency-graph-delta",
     ];
 }

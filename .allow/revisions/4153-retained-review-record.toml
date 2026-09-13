@@ -1,0 +1,16 @@
+# PR #4153: receipt retained independent source-review evidence and this note.
+# These exact file exceptions do not authorize merge, CI bypass, or release.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-0921"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:19b0c55a6083283ca7f1ea188a59c321f335e612abd411e1240979f3a6dd5c18"
+reason = "Retain the exact PR #4153 structured source-review disposition under the current-head review protocol; the coordinator still verifies current-pair CI and merge readiness."
+
+[[records]]
+allow_ids = ["allow-0922"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2d8387f5a6c9e07ac68f76521b9a1fe823e4ba3579154ec1a281cb0817766414"
+reason = "Receipt this authored revision note for the two exact retained-review evidence files in PR #4153; no broader review-disposition or revision-directory exception is granted."

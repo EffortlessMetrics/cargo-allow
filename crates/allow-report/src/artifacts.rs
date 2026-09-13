@@ -9,6 +9,9 @@ mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
 mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
+mod dependency_graph_delta_compiler;
+mod dependency_graph_delta_v1;
+mod dependency_graph_evidence_v1;
 mod diff;
 mod doctor;
 mod evaluation_artifact_set_v1;
@@ -27,6 +30,7 @@ mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
 mod minimum_direct_version_v1;
+mod minimum_version_drift_v1;
 mod package_candidate_v2;
 mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
@@ -42,6 +46,10 @@ mod release_operation_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
+mod workflow_construction_aggregate_v1;
+mod workflow_construction_v1;
+mod workflow_security_lane_v1;
+mod workflow_syntax_lane_v1;
 mod worklist;
 mod workspace_lint_drift_guard_v1;
 mod workspace_lint_inventory_v1;
@@ -104,6 +112,27 @@ pub use ci_pregate_result_v1::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
     CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
+};
+pub use dependency_graph_delta_compiler::{
+    compile_dependency_graph_delta, validate_lock_document, validate_manifest_document,
+};
+#[cfg(test)]
+pub(crate) use dependency_graph_delta_compiler::{
+    parse_lock_packages, parse_manifest_requirements,
+};
+pub use dependency_graph_delta_v1::{
+    DEPENDENCY_GRAPH_DELTA_SCHEMA_ID, DEPENDENCY_GRAPH_DELTA_SCHEMA_VERSION, DependencyClassV1,
+    DependencyGraphDeltaFixtureV1, DependencyGraphDeltaIdentityV1, DependencyGraphDeltaKindV1,
+    DependencyGraphDeltaReceiptV1, DependencyGraphDeltaRowV1, dependency_graph_delta_fixtures,
+};
+pub use dependency_graph_evidence_v1::{
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_RECORDS, DEPENDENCY_GRAPH_EVIDENCE_MAX_REF_LEN,
+    DEPENDENCY_GRAPH_EVIDENCE_MAX_ROWS, DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_ID,
+    DEPENDENCY_GRAPH_EVIDENCE_SCHEMA_VERSION, DependencyEvidenceAttachmentV1,
+    DependencyEvidenceAuthorityV1, DependencyEvidenceBundleV1, DependencyEvidenceDispositionV1,
+    DependencyEvidenceRecordV1, DependencyGraphEvidenceFormat, DependencyGraphEvidenceReceiptV1,
+    DependencyGraphEvidenceResultV1, DependencyGraphEvidenceRowV1,
+    attach_dependency_graph_evidence, render_dependency_graph_evidence,
 };
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
@@ -198,6 +227,13 @@ pub use minimum_direct_version_v1::{
     ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
     render_minimum_proof_json,
 };
+pub use minimum_version_drift_v1::{
+    DRIFT_RELEASE_SET_PRODUCT, MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID,
+    MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_VERSION, MinimumVersionDriftEvaluationV1,
+    MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
+    evaluate_minimum_version_drift, render_minimum_version_drift_human,
+    render_minimum_version_drift_json,
+};
 pub use package_candidate_v2::{
     PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,
     PackageCandidateDependencyKindV2, PackageCandidateDependencyRowV2, PackageCandidateFamilyV2,
@@ -224,6 +260,34 @@ pub use review_readiness_check_v1::{
     ReviewReadinessObservationV1, ReviewReadinessProjectionInputV1, ReviewReadinessProjectionV1,
     evaluate_review_readiness_projection, parse_review_readiness_live_bytes,
     render_review_readiness_human, render_review_readiness_json,
+};
+pub use workflow_construction_aggregate_v1::{
+    WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_ID, WORKFLOW_CONSTRUCTION_AGGREGATE_SCHEMA_VERSION,
+    WorkflowConstructionAggregateLaneV1, WorkflowConstructionAggregateResultV1,
+    WorkflowConstructionAggregateV1, aggregate_workflow_construction,
+    render_workflow_construction_aggregate_human, render_workflow_construction_aggregate_json,
+};
+pub use workflow_construction_v1::{
+    WORKFLOW_CONSTRUCTION_FAMILIES_ALL, WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_ID,
+    WORKFLOW_CONSTRUCTION_INVENTORY_SCHEMA_VERSION, WorkflowConstructionExclusionV1,
+    WorkflowConstructionFamilyCoverageV1, WorkflowConstructionFamilyV1,
+    WorkflowConstructionInventoryV1, WorkflowConstructionSurfaceClassV1,
+    WorkflowConstructionSurfaceKindV1, WorkflowConstructionSurfaceV1, WorkflowSecurityFixtureV1,
+    WorkflowSecurityToolSelectionV1, WorkflowSecurityToolStatusV1, workflow_construction_inventory,
+    workflow_security_fixtures,
+};
+pub use workflow_security_lane_v1::{
+    WORKFLOW_SECURITY_LANE_SCHEMA_ID, WORKFLOW_SECURITY_LANE_SCHEMA_VERSION,
+    WorkflowSecurityDispositionV1, WorkflowSecurityExceptionV1, WorkflowSecurityFindingV1,
+    WorkflowSecurityLaneReportV1, WorkflowSecurityLaneResultV1, WorkflowSecurityRawFindingV1,
+    WorkflowSecurityToolRunV1, evaluate_workflow_security_run, render_workflow_security_human,
+    render_workflow_security_json, workflow_security_rule_family,
+};
+pub use workflow_syntax_lane_v1::{
+    WORKFLOW_SYNTAX_LANE_SCHEMA_ID, WORKFLOW_SYNTAX_LANE_SCHEMA_VERSION, WorkflowSyntaxFindingV1,
+    WorkflowSyntaxLaneReportV1, WorkflowSyntaxLaneResultV1, WorkflowSyntaxRawFindingV1,
+    WorkflowSyntaxToolRunV1, WorkflowSyntaxUncoveredSurfaceV1, evaluate_workflow_syntax_run,
+    render_workflow_syntax_human, render_workflow_syntax_json,
 };
 pub use workspace_lint_drift_guard_v1::{
     WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_ID, WORKSPACE_LINT_DRIFT_GUARD_SCHEMA_VERSION,
