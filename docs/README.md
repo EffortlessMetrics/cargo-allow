@@ -183,6 +183,8 @@ governance profile model around it.
   process exit mapping (`0` / `1` / `2`).
 - [CI](ci.md): GitHub Actions examples for PR posture diffs, mainline checks,
   and opt-in profile artifacts.
+- [Direct-floor proof regeneration](ci/direct-floor-proof.md): producer controls,
+  retained dependency-floor evidence, and execution claim boundaries.
 - [Crates](crates.md): workspace crate responsibilities and library namespace
   policy.
 - [Crate namespace](crate-namespace.md): first-party crate naming policy.

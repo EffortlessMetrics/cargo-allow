@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Workflow syntax lane (#3907 PR B). The pinned actionlint release
+  the pregate pins runs over the full construction denominator —
+  every current workflow and checked example — and its raw findings
+  are validated, family-mapped with native kind preserved, and
+  graded into the typed WorkflowSyntaxLaneReportV1 by the hidden
+  workflow-syntax evaluate CLI. Tool pin drift, denominator
+  mismatch, out-of-scope findings, unknown raw kinds, and empty or
+  partial analyses are instrument failures rather than passes; only
+  a clean pinned run over the whole covered set exits zero. Local
+  composite action internals stay with the security lane; the
+  scripts/check-workflow-syntax.sh runner gives local and hosted
+  parity.

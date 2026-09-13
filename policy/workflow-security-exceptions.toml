@@ -1,0 +1,30 @@
+# Exact reviewed exceptions for the #3907 PR C workflow security lane.
+#
+# Granularity is exactly (path, rule): an exception covers every
+# finding of that rule on that path and nothing else. A broad
+# suppression cannot be expressed in this format. Prefer fixing
+# workflow construction over adding an exception; each entry names the
+# owner, the reason the pattern is deliberate, evidence, and the
+# review date after which it must be re-reviewed.
+#
+# The schema_id binds this file to the lane contract; the CLI rejects
+# a mismatch.
+
+schema_id = "cargo-allow.workflow-security-exceptions.v1"
+schema_version = 1
+
+[[exceptions]]
+path = ".github/workflows/release.yml"
+rule = "template-injection"
+owner = "core/release"
+reason = "Deliberate tag-credential interpolation documented in-tree since the #3836 pregate tiering notes: the release workflow intentionally interpolates the tag event payload into its release command; the workflow runs only on trusted tag pushes by release maintainers."
+evidence = ["issue:3907", "workflow:.github/workflows/release.yml"]
+review_after = "2026-12-08"
+
+[[exceptions]]
+path = ".github/workflows/release-authorized.yml"
+rule = "template-injection"
+owner = "core/release"
+reason = "Deliberate interpolation of the maintainer-supplied release authorization inputs (#3760 authority): the workflow runs only on workflow_dispatch by release maintainers holding the release secrets."
+evidence = ["issue:3907", "issue:3760"]
+review_after = "2026-12-08"

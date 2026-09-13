@@ -425,6 +425,53 @@ def exercise_cargo_allow_checksum_equality() -> None:
             setattr(PUBLISHER, name, value)
 
 
+def exercise_package_artifact_directory() -> None:
+    original_root = PUBLISHER.ROOT
+    original_run = PUBLISHER.run
+    original_target = os.environ.get("CARGO_TARGET_DIR")
+    try:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory).resolve()
+            PUBLISHER.ROOT = fixture / "subject"
+            local_package = PUBLISHER.ROOT / "target/package/fixture-package-9.9.9.crate"
+            local_package.parent.mkdir(parents=True)
+            local_package.write_bytes(b"stale local archive")
+            external_target = fixture / "external-target"
+            os.environ["CARGO_TARGET_DIR"] = str(external_target)
+            commands: list[list[str]] = []
+
+            def package(command: list[str]) -> str:
+                commands.append(command)
+                target = external_target
+                if "--target-dir" in command:
+                    target = Path(command[command.index("--target-dir") + 1])
+                archive = target / "package/fixture-package-9.9.9.crate"
+                archive.parent.mkdir(parents=True, exist_ok=True)
+                archive.write_bytes(b"fresh candidate archive")
+                return ""
+
+            PUBLISHER.run = package
+            PUBLISHER.package_workspace({"fixture-package"}, {"fixture-package": {}, "other": {}})
+            archive, digest = PUBLISHER.package_crate("fixture-package", "9.9.9")
+            if archive != local_package or archive.read_bytes() != b"fresh candidate archive":
+                raise RuntimeError("publisher read stale bytes after packaging to another target")
+            if digest != PUBLISHER.sha256_file(local_package):
+                raise RuntimeError("publisher checksum does not bind the fresh archive")
+            if external_target.exists():
+                raise RuntimeError("ambient target redirected the publisher's package artifacts")
+            if len(commands) != 1 or commands[0][-2:] != ["--exclude", "other"]:
+                raise RuntimeError("package selection changed while binding the output directory")
+            local_package.unlink()
+            expect_failure(lambda: PUBLISHER.package_crate("fixture-package", "9.9.9"))
+    finally:
+        PUBLISHER.ROOT = original_root
+        PUBLISHER.run = original_run
+        if original_target is None:
+            os.environ.pop("CARGO_TARGET_DIR", None)
+        else:
+            os.environ["CARGO_TARGET_DIR"] = original_target
+
+
 def main() -> None:
     assert PUBLISHER.receipt_checksum(DIGEST, field="fresh local checksum") == CANONICAL
     assert PUBLISHER.receipt_checksum(CANONICAL, field="published registry checksum") == CANONICAL
@@ -459,6 +506,7 @@ def main() -> None:
         invalid["local_checksum"] = malformed
         expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
 
+    exercise_package_artifact_directory()
     exercise_main_receipt_shapes()
     exercise_shared_registry_preflight()
     exercise_preflight_schema_contract()

@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -32,6 +33,279 @@ REQUIRED_PHASES = (
     "authorization_boundary",
     "workflow_graph_permissions",
 )
+
+
+class TestCandidateIdentity(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.candidate = Path(directory.name) / "candidate"
+        self.candidate.write_bytes(b"identified candidate bytes")
+        environment = mock.patch.dict(os.environ, {}, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.digest = REHEARSAL.compute_sha256(self.candidate)
+        self.version = "0.2.0"
+        self.projection = {
+            "schema": "cargo-allow.release-identity.v1",
+            "result": "validated",
+            "version": "0.2.0",
+            "tag": "v0.2.0",
+            "tag_source": "derived",
+            "channel": "stable",
+            "rc_ordinal": None,
+            "github_prerelease": False,
+        }
+
+    def invoke(self, *, result=None, error=None, candidate=None, digest=None):
+        receipt = {}
+        diagnostic = io.StringIO()
+        if result is None:
+            result = subprocess.CompletedProcess(
+                [], 0, json.dumps(self.projection), "synthetic-private-child-output"
+            )
+        with (
+            mock.patch.object(REHEARSAL, "_workspace_version", return_value=self.version),
+            mock.patch.object(REHEARSAL.subprocess, "run", return_value=result,
+                              side_effect=error) as run,
+            contextlib.redirect_stderr(diagnostic),
+        ):
+            status = REHEARSAL.run_phase_release_identity(
+                receipt, candidate_executable=candidate or self.candidate,
+                candidate_sha256=digest or self.digest,
+            )
+        self.assertNotIn("synthetic-private", diagnostic.getvalue())
+        return status, receipt, run, diagnostic.getvalue()
+
+    def test_candidate_runs_from_verified_private_copy(self) -> None:
+        observed = []
+
+        def observe_copy(command, **kwargs):
+            observed.append(Path(command[0]).read_bytes())
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+
+        with mock.patch.dict(os.environ, {"CARGO_REGISTRY_TOKEN": "synthetic-private-token"}):
+            status, receipt, run, diagnostic = self.invoke(error=observe_copy)
+        self.assertEqual(status, "Complete")
+        self.assertEqual(receipt["release_identity"]["version"], "0.2.0")
+        launched = Path(run.call_args.args[0][0])
+        self.assertNotEqual(launched, self.candidate)
+        self.assertEqual(observed, [self.candidate.read_bytes()])
+        self.assertEqual(run.call_args.args[0][1:],
+                         ["release-identity", "--version", "0.2.0"])
+        self.assertFalse(launched.parent.exists())
+        self.assertTrue(self.candidate.exists())
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", run.call_args.kwargs["env"])
+        self.assertIn(self.digest, diagnostic)
+        self.assertEqual(run.call_count, 1)
+
+    def test_private_copy_preserves_executable_suffix_and_mode(self) -> None:
+        self.candidate = self.candidate.with_suffix(".exe")
+        self.candidate.write_bytes(b"identified candidate bytes")
+        observed = []
+
+        def observe_copy(command, **kwargs):
+            copy = Path(command[0])
+            observed.append((copy.suffix, copy.stat().st_mode))
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+
+        status, _, _, _ = self.invoke(error=observe_copy)
+        self.assertEqual(status, "Complete")
+        self.assertEqual(observed[0][0], ".exe")
+        if os.name != "nt":
+            self.assertEqual(observed[0][1] & 0o777, 0o500)
+
+    def test_private_copy_is_cleaned_after_child_failure_or_timeout(self) -> None:
+        for timeout in (False, True):
+            with self.subTest(timeout=timeout):
+                observed = []
+
+                def fail_child(command, **kwargs):
+                    observed.append(Path(command[0]))
+                    if timeout:
+                        raise subprocess.TimeoutExpired(command, 300)
+                    return subprocess.CompletedProcess([], 2, "", "")
+
+                status, receipt, _, _ = self.invoke(error=fail_child)
+                self.assertNotEqual(status, "Complete")
+                self.assertNotIn("release_identity", receipt)
+                self.assertFalse(observed[0].parent.exists())
+                self.assertTrue(self.candidate.exists())
+
+    def test_private_copy_failure_does_not_execute_or_expose_paths(self) -> None:
+        copies = []
+
+        def fail_copy(source, destination):
+            copies.append(destination)
+            raise OSError("synthetic-private-copy-path")
+
+        with mock.patch.object(REHEARSAL.shutil, "copyfile", side_effect=fail_copy):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+        run.assert_not_called()
+        self.assertFalse(copies[0].parent.exists())
+
+    def test_private_copy_digest_mismatch_does_not_execute(self) -> None:
+        copies = []
+
+        def invalid_copy(source, destination):
+            copies.append(destination)
+            destination.write_bytes(b"different copied bytes")
+
+        with mock.patch.object(REHEARSAL.shutil, "copyfile", side_effect=invalid_copy):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("candidate_digest_mismatch", diagnostic)
+        run.assert_not_called()
+        self.assertFalse(copies[0].parent.exists())
+
+    def test_private_copy_cleanup_failure_cannot_be_complete(self) -> None:
+        temporary_directory = tempfile.TemporaryDirectory
+
+        @contextlib.contextmanager
+        def cleanup_failure(**kwargs):
+            with temporary_directory(**kwargs) as directory:
+                yield directory
+            raise OSError("synthetic-private-cleanup-path")
+
+        with mock.patch.object(REHEARSAL.tempfile, "TemporaryDirectory",
+                               side_effect=cleanup_failure):
+            status, receipt, run, diagnostic = self.invoke()
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+        self.assertFalse(Path(run.call_args.args[0][0]).parent.exists())
+
+    def test_missing_candidate_does_not_fall_back(self) -> None:
+        status, receipt, run, diagnostic = self.invoke(
+            candidate=self.candidate.with_name("missing")
+        )
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        run.assert_not_called()
+        self.assertIn("candidate_unavailable", diagnostic)
+
+    def test_mismatched_digest_does_not_execute(self) -> None:
+        status, receipt, run, diagnostic = self.invoke(digest="sha256:v1:" + "0" * 64)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        run.assert_not_called()
+        self.assertIn("candidate_digest_mismatch", diagnostic)
+
+    def test_invalid_selection_does_not_execute(self) -> None:
+        for candidate, digest in (
+            (Path("relative-candidate"), self.digest),
+            (self.candidate, "sha256:v1:" + "G" * 64),
+            (self.candidate, "synthetic-private-not-a-digest"),
+        ):
+            with self.subTest(candidate=candidate, digest=digest):
+                status, receipt, run, diagnostic = self.invoke(candidate=candidate, digest=digest)
+                self.assertEqual(status, "InstrumentFailure")
+                self.assertNotIn("release_identity", receipt)
+                run.assert_not_called()
+                self.assertIn("candidate_selection_invalid", diagnostic)
+
+    def test_unavailable_instrument_is_redacted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(error=OSError("synthetic-private"))
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("instrument_unavailable", diagnostic)
+
+    def test_changed_candidate_is_not_accepted(self) -> None:
+        def change_candidate(*args, **kwargs):
+            self.candidate.write_bytes(b"changed bytes")
+            return subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")
+        status, receipt, _, diagnostic = self.invoke(error=change_candidate)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("candidate_changed", diagnostic)
+
+    def test_failed_child_is_not_accepted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(
+            result=subprocess.CompletedProcess([], 2, "synthetic-private", "synthetic-private")
+        )
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("child_failed", diagnostic)
+
+    def test_timeout_is_distinct_and_redacted(self) -> None:
+        status, receipt, _, diagnostic = self.invoke(
+            error=subprocess.TimeoutExpired(["synthetic-private"], 300,
+                                            output="synthetic-private")
+        )
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("release_identity", receipt)
+        self.assertIn("child_timeout", diagnostic)
+
+    def test_malformed_identity_is_not_accepted(self) -> None:
+        for output in ("invalid", "[]", "{}", json.dumps({**self.projection, "version": "9.9.9"}),
+                       json.dumps({**self.projection, "github_prerelease": "false"})):
+            with self.subTest(output=output):
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, output, "")
+                )
+                self.assertNotEqual(status, "Complete")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_inconsistent_identity_is_not_accepted(self) -> None:
+        for changes in (
+            {"tag": ""}, {"tag": "v9.9.9"},
+            {"tag_source": "observed"}, {"tag_source": "unknown"},
+            {"rc_ordinal": 1}, {"github_prerelease": True},
+            {"channel": "release_candidate", "rc_ordinal": 1, "github_prerelease": True},
+        ):
+            with self.subTest(changes=changes):
+                projection = {**self.projection, **changes}
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, json.dumps(projection), "")
+                )
+                self.assertEqual(status, "Mismatch")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_rc_identity_matches_its_ordinal_and_prerelease_posture(self) -> None:
+        self.version = "0.2.0-rc.2"
+        self.projection.update(
+            version=self.version, tag="v" + self.version, channel="release_candidate",
+            rc_ordinal=2, github_prerelease=True,
+        )
+        status, receipt, _, _ = self.invoke()
+        self.assertEqual(status, "Complete")
+        self.assertEqual(receipt["release_identity"]["rc_ordinal"], 2)
+        for changes in (
+            {"rc_ordinal": None}, {"rc_ordinal": True}, {"rc_ordinal": 0},
+            {"rc_ordinal": 1}, {"rc_ordinal": 4294967296},
+            {"github_prerelease": False},
+            {"channel": "stable", "rc_ordinal": None, "github_prerelease": False},
+        ):
+            with self.subTest(changes=changes):
+                projection = {**self.projection, **changes}
+                status, receipt, _, _ = self.invoke(
+                    result=subprocess.CompletedProcess([], 0, json.dumps(projection), "")
+                )
+                self.assertEqual(status, "Mismatch")
+                self.assertNotIn("release_identity", receipt)
+
+    def test_candidate_arguments_must_be_paired(self) -> None:
+        for candidate, digest in ((self.candidate, None), (None, self.digest)):
+            with self.subTest(candidate=candidate, digest=digest):
+                with mock.patch.object(REHEARSAL, "resolve_commit") as resolve:
+                    with self.assertRaises(ValueError):
+                        REHEARSAL.build_rehearsal_receipt(
+                            "HEAD", candidate_executable=candidate, candidate_sha256=digest
+                        )
+                    resolve.assert_not_called()
+
+    def test_standalone_still_uses_deliberate_cargo_build(self) -> None:
+        with (
+            mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"),
+            mock.patch.object(REHEARSAL.subprocess, "run", return_value=
+                              subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")) as run,
+        ):
+            self.assertEqual(REHEARSAL.run_phase_release_identity({}), "Complete")
+        self.assertEqual(run.call_args.args[0][:2], ["cargo", "run"])
 
 
 class TestReleaseRehearsal(unittest.TestCase):

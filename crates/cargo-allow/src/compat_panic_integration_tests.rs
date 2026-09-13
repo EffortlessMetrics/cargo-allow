@@ -88,7 +88,7 @@ owner = "parser"
 classification = "reviewed_panic_exception"
 reason = "Parser validates the optional value."
 created = "2026-05-09"
-review_after = "2026-09-09"
+review_after = "2027-03-09"
 
 [allow.selector]
 kind = "method-call"

@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Dependency graph evidence adjacency (#3920 PR C). Typed
+  DependencyGraphEvidenceReceiptV1 in allow-report attaches the linked
+  evidence authorities (#3903 minimum versions, #2038 feature policy,
+  #1897 cargo-deny, #2924 packaging, #3359 support selection) to each
+  compiled dependency delta row by exact package identity, with the
+  observed-movement / policy-finding / evidence-current /
+  evidence-missing / needs-decision disposition vocabulary. A
+  cargo-deny pass never erases a downgrade; advisory evidence stays a
+  decision; in-scope coverage gaps are evidence-missing, never clean;
+  identity movement stales the bundle; and model or bot commentary has
+  no field — free-text references fail closed. The hidden
+  dependency-graph-evidence evaluate CLI emits the enriched receipt;
+  blocking-consequence selection stays with the owning policy (PR D).
