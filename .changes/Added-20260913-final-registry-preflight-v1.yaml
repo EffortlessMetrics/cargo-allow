@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add a typed final-registry preflight contract with deterministic reconciliation
+  of final package checksums, shared prerequisites, provider failures, ownership,
+  publication authority, and freshness. Fixture and external provenance remain
+  distinct. This library contract neither contacts a registry nor authorizes a release.

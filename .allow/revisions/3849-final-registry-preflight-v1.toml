@@ -1,0 +1,20 @@
+# Issue #3849: three exact-path contract artifacts, with no broadening of policy.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-3849-contract"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d427120d4da64d37a4cf366ce4e8a79b6ad1de62f688ab5ebe44d61ebfee92ea"
+reason = "Retain the producer/consumer contract for pure final registry feasibility. This exact documentation path carries no live release evidence."
+
+[[records]]
+allow_ids = ["allow-3849-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1040b08787bcae088be1256e8bd1ceb765b8f1fc37e94aceee719b28ed3cf3b2"
+reason = "Receipt this note's exact tracked configuration path and the scoped transition rationale."
+
+[[records]]
+allow_ids = ["allow-3849-schema"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fdaec9e7a76623391f482e5aa9bf301d73f07671e986aa7e685703ddf1e07be6"
+reason = "Retain the versioned result schema, checked against production rendering by the topology integration fixture. Shape validation remains separate from release authorization."

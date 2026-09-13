@@ -22,6 +22,7 @@ pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod final_freeze_replay_v1;
 mod final_readiness_v1;
+mod final_registry_preflight_v1;
 mod final_support_selection_v1;
 mod frozen_candidate_custody_v1;
 mod frozen_subject_lock_v1;
@@ -200,6 +201,7 @@ pub use final_readiness_v1::{
     FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1, aggregate_final_readiness,
     render_final_readiness_json, render_final_readiness_markdown,
 };
+pub use final_registry_preflight_v1::*;
 pub use final_support_selection_v1::{
     FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
     FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,

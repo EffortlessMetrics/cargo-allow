@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.final-registry-preflight.v1.schema.json",
+  "title": "CargoAllowFinalRegistryPreflightV1",
+  "description": "Pure feasibility result. Includes malformed-input findings and fixture provenance. Structural validation does not authenticate evidence or authorize publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "observed_context",
+    "current_context",
+    "evaluated_at_unix_seconds",
+    "maximum_age_seconds",
+    "result",
+    "findings",
+    "upload_rows",
+    "shared_prerequisites"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.final-registry-preflight.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "observed_context": {
+      "$ref": "#/$defs/context"
+    },
+    "current_context": {
+      "$ref": "#/$defs/context"
+    },
+    "evaluated_at_unix_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "maximum_age_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "upload_rows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "shared_prerequisites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    }
+  },
+  "$defs": {
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_digest",
+        "denominator_digest",
+        "workflow_digest",
+        "principal",
+        "environment",
+        "owner_team_digest",
+        "release_controls_digest",
+        "provider_state_digest"
+      ],
+      "properties": {
+        "candidate_digest": {
+          "type": "string"
+        },
+        "denominator_digest": {
+          "type": "string"
+        },
+        "workflow_digest": {
+          "type": "string"
+        },
+        "principal": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "owner_team_digest": {
+          "type": "string"
+        },
+        "release_controls_digest": {
+          "type": "string"
+        },
+        "provider_state_digest": {
+          "type": "string"
+        }
+      }
+    },
+    "result": {
+      "enum": [
+        "unsupported_generation",
+        "malformed",
+        "instrument_failure",
+        "conflict",
+        "stale",
+        "provider_unavailable",
+        "incomplete",
+        "complete_with_residual_authority_risk",
+        "complete"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/result"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "provider",
+        "source",
+        "evidence_digest",
+        "observed_at_unix_seconds"
+      ],
+      "properties": {
+        "origin": {
+          "enum": [
+            "test_fixture",
+            "external_provider"
+          ]
+        },
+        "provider": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "evidence_digest": {
+          "type": "string"
+        },
+        "observed_at_unix_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        }
+      }
+    },
+    "response": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "checksum",
+            "yanked"
+          ],
+          "properties": {
+            "status": {
+              "const": "found"
+            },
+            "checksum": {
+              "type": "string"
+            },
+            "yanked": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "missing"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "name_unavailable"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "visibility_pending"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "timeout"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "rate_limited"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "provider_unavailable"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "const": "malformed_response"
+            }
+          }
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "package_version",
+        "version",
+        "owner",
+        "publish_authority"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string"
+        },
+        "package_version": {
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/response"
+        },
+        "version_provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/provenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "owner": {
+          "enum": [
+            "owned_by_expected_principal",
+            "unexpected_owner",
+            "permission_not_proven",
+            "provider_unavailable"
+          ]
+        },
+        "owner_provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/provenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publish_authority": {
+          "enum": [
+            "proven",
+            "supporting_evidence_only",
+            "not_proven",
+            "conflict",
+            "provider_unavailable",
+            "instrument_failure"
+          ]
+        },
+        "authority_provenance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/provenance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_id",
+        "package_name",
+        "package_version",
+        "release_order",
+        "role",
+        "expected_checksum",
+        "checksum_authority_digest"
+      ],
+      "properties": {
+        "logical_id": {
+          "type": "string"
+        },
+        "package_name": {
+          "type": "string"
+        },
+        "package_version": {
+          "type": "string"
+        },
+        "release_order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "role": {
+          "enum": [
+            "final_upload_candidate",
+            "shared_prerequisite"
+          ]
+        },
+        "expected_checksum": {
+          "type": "string"
+        },
+        "checksum_authority_digest": {
+          "type": "string"
+        },
+        "diagnostic_local_checksum": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected",
+        "version_state",
+        "findings",
+        "next_action"
+      ],
+      "properties": {
+        "expected": {
+          "$ref": "#/$defs/expected"
+        },
+        "observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/observation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version_state": {
+          "enum": [
+            "missing",
+            "already_published_exact",
+            "already_published_conflict",
+            "yanked",
+            "name_unavailable",
+            "unknown"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "next_action": {
+          "enum": [
+            "repair_input",
+            "resolve_conflict",
+            "refresh_observation",
+            "restore_provider",
+            "await_visibility",
+            "obtain_prerequisite",
+            "obtain_authority_evidence",
+            "await_separate_authorization",
+            "retain_exact_prerequisite"
+          ]
+        }
+      }
+    }
+  }
+}

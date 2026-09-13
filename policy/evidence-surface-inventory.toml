@@ -379,6 +379,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The checked topology has expected local rows and checksum shape; registry state is not observed."
 
 [[surfaces]]
+id = "final-registry-preflight-semantics-v1"
+owner_issue = 3849
+semantic_authority = "typed final registry feasibility reconciliation"
+path = "crates/cargo-allow/tests/final_registry_preflight_semantics.rs"
+subject = "CargoAllowFinalRegistryPreflightV1"
+producer = "production evaluator with deterministic provider fixtures"
+consumer = "#3774 registry adapter and final release evidence consumers"
+claimed_acceptance_row = "typed version ownership authority and freshness semantics"
+assertion_mechanism = "production evaluator over current topology with JSON Schema validation; adversarial unit fixtures live beside the evaluator"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3850"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove pure reconciliation semantics; no registry observation, permission proof, or release authorization is produced."
+
+[[surfaces]]
 id = "intent-candidate-smoke"
 owner_issue = 2599
 semantic_authority = "intent candidate smoke"
