@@ -9,6 +9,7 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
+use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -20,6 +21,11 @@ const HANG_DEADLINE: Duration = Duration::from_secs(10);
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
 /// Marker that turns this test executable into a hanging child.
 const HANG_CHILD_ENV: &str = "CARGO_DISPATCH_HANG_CHILD";
+// A concurrent spawn can inherit a copy's writable descriptor until exec.
+// Serialize spawn admission so that CLOEXEC has completed before the next
+// copied executable is launched (rust-lang/rust#114554). Never hold this while
+// waiting for a child: the independent deadline/reaping paths remain parallel.
+static SPAWN_ADMISSION: Mutex<()> = Mutex::new(());
 
 struct Fixture {
     root: PathBuf,
@@ -128,12 +134,17 @@ fn kill_tree(child: &mut Child) {
 /// exit cannot deadlock.
 fn bounded(command: &mut Command, deadline: Duration) -> Result<Output, Box<dyn Error>> {
     let started = Instant::now();
-    let mut child = command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|error| format!("spawn {}: {error}", command.get_program().display()))?;
+    let mut child = {
+        let _admission = SPAWN_ADMISSION
+            .lock()
+            .map_err(|_| "fixture spawn admission lock poisoned")?;
+        command
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| format!("spawn {}: {error}", command.get_program().display()))?
+    };
     loop {
         match child.try_wait() {
             Ok(Some(_status)) => break,
@@ -276,6 +287,48 @@ fn bounded_runner_terminates_and_reaps_a_hung_direct_child() -> TestResult {
     let root = fixture.root.clone();
     fixture.cleanup()?;
     assert!(!root.exists());
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn parallel_copied_executables_remain_spawnable() -> TestResult {
+    hang_here_if_selected();
+    let fixtures = (0..8)
+        .map(|_| Fixture::new())
+        .collect::<Result<Vec<_>, _>>()?;
+    std::thread::scope(|scope| -> Result<(), String> {
+        let mut workers = Vec::new();
+        for fixture in fixtures {
+            workers.push(
+                std::thread::Builder::new()
+                    .spawn_scoped(scope, move || -> Result<(), String> {
+                        for _ in 0..25 {
+                            // Tiny native executable: exercise copy/exec admission without
+                            // adding repeated product work to every feature-matrix row.
+                            fs::copy("/bin/true", &fixture.binary)
+                                .map_err(|error| error.to_string())?;
+                            let output = bounded(&mut fixture.direct(), DEADLINE)
+                                .map_err(|error| error.to_string())?;
+                            if !output.status.success()
+                                || !output.stdout.is_empty()
+                                || !output.stderr.is_empty()
+                            {
+                                return Err(format!("parallel copied true failed: {output:?}"));
+                            }
+                        }
+                        fixture.cleanup().map_err(|error| error.to_string())
+                    })
+                    .map_err(|error| error.to_string())?,
+            );
+        }
+        for worker in workers {
+            worker
+                .join()
+                .map_err(|_| "copy/exec worker panicked".to_string())??;
+        }
+        Ok(())
+    })?;
     Ok(())
 }
 
