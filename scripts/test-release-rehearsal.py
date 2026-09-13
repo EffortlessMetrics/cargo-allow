@@ -538,6 +538,35 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt(self.previous)
         self.require_no_phases()
 
+    def test_repository_selection_environment_is_rejected_before_git(self) -> None:
+        for name in (
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
+        ):
+            with self.subTest(variable=name), mock.patch.dict(os.environ, {name: "fixture"}):
+                with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                    with self.assertRaisesRegex(ValueError, "repository-selection environment"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    run.assert_not_called()
+                self.require_no_phases()
+
+    def test_different_discovered_root_is_rejected_before_phases(self) -> None:
+        result = subprocess.CompletedProcess([], 0, str(self.root.parent) + "\n")
+        with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
+            with mock.patch.object(REHEARSAL.subprocess, "run", return_value=result):
+                with self.assertRaisesRegex(ValueError, "root does not match source root"):
+                    REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_missing_or_relative_discovered_root_is_rejected(self) -> None:
+        for code, output in ((1, ""), (0, ""), (0, "relative-root\n")):
+            with self.subTest(code=code, output=output):
+                result = subprocess.CompletedProcess([], code, output)
+                with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
+                    with mock.patch.object(REHEARSAL.subprocess, "run", return_value=result):
+                        with self.assertRaisesRegex(ValueError, "checkout root"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.require_no_phases()
+
     def test_unstaged_selected_source_is_rejected_before_phases(self) -> None:
         for name in (
             "Cargo.lock", "policy/product-package-topology-v2.toml",

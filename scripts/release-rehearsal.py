@@ -34,6 +34,10 @@ def compute_sha256(path: Path) -> str:
 
 def resolve_commit(commit_ref: str) -> str:
     """Resolve one caller-supplied Git commit ref or fail without substitution."""
+    if any(name in os.environ for name in (
+        "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
+    )):
+        raise ValueError("rehearsal does not support Git repository-selection environment overrides")
     if (
         not commit_ref
         or commit_ref.startswith("-")
@@ -83,6 +87,15 @@ def require_clean_checkout(commit_sha: str) -> None:
     """
     if resolve_commit("HEAD") != commit_sha:
         raise ValueError("rehearsal commit does not match checkout HEAD")
+    root = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=ROOT, capture_output=True, text=True, timeout=15, check=False,
+    )
+    if root.returncode != 0 or not root.stdout.strip():
+        raise ValueError("could not inspect rehearsal checkout root")
+    discovered_root = Path(root.stdout.rstrip("\r\n"))
+    if not discovered_root.is_absolute() or discovered_root.resolve() != ROOT.resolve():
+        raise ValueError("rehearsal checkout root does not match source root")
     index = subprocess.run(
         [
             "git", "--no-optional-locks", "-c", "core.fsmonitor=false",
