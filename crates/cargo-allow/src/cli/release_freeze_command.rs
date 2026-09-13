@@ -271,7 +271,7 @@ pub(super) fn cmd_release_freeze(args: &ReleaseFreezeArgs) -> CargoAllowResult<(
 }
 
 fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
-    let subject = SubjectIdentity::collect(root, &args.version)?;
+    let subject = SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
     let selection = load_selection(root, &subject)?;
     let shared = load_shared_prerequisites(root)?;
     let evidence = collect_evidence(root, args, &subject)?;
@@ -442,24 +442,48 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     }
 }
 
+/// Acquisition boundary for the single subject-collection orchestration.
+pub(crate) trait SubjectInputs {
+    fn git(&mut self, args: &[&str]) -> CargoAllowResult<String>;
+    fn read_working_bytes(&mut self, path: &str) -> CargoAllowResult<Vec<u8>>;
+}
+
+struct FilesystemSubjectInputs<'a> {
+    root: &'a Path,
+}
+
+impl SubjectInputs for FilesystemSubjectInputs<'_> {
+    fn git(&mut self, args: &[&str]) -> CargoAllowResult<String> {
+        git(self.root, args)
+    }
+
+    fn read_working_bytes(&mut self, path: &str) -> CargoAllowResult<Vec<u8>> {
+        std::fs::read(self.root.join(path))
+            .map_err(|error| instrument(format!("read {path}: {error}")))
+    }
+}
+
 /// The exact source subject the freeze binds. Collected from the clean
 /// committed HEAD; a dirty worktree is an instrument failure because the
 /// packaged archives must come from the committed tree.
 #[derive(Debug)]
-struct SubjectIdentity {
-    version: String,
+pub(crate) struct SubjectIdentity {
+    pub(crate) version: String,
     tag: String,
     channel: String,
     commit: String,
     tree: String,
-    cargo_lock_digest: String,
-    topology_digest: String,
+    pub(crate) cargo_lock_digest: String,
+    pub(crate) topology_digest: String,
     frozen_at_utc: String,
 }
 
 impl SubjectIdentity {
-    fn collect(root: &Path, version: &str) -> CargoAllowResult<Self> {
-        let dirty = git(root, &["status", "--porcelain"])?;
+    pub(crate) fn collect(
+        inputs: &mut impl SubjectInputs,
+        version: &str,
+    ) -> CargoAllowResult<Self> {
+        let dirty = inputs.git(&["status", "--porcelain"])?;
         if !dirty.trim().is_empty() {
             return Err(instrument(
                 "the worktree is dirty; the freeze binds the committed subject only",
@@ -470,7 +494,7 @@ impl SubjectIdentity {
         // bytes diverge from the committed blob. Reject every hidden
         // index state conservatively instead of pairing the committed
         // identity with unverified working bytes.
-        let flags = git(root, &["ls-files", "-v", "-z"])?;
+        let flags = inputs.git(&["ls-files", "-v", "-z"])?;
         for record in flags.split('\0').filter(|record| !record.is_empty()) {
             let tag = record.chars().next().unwrap_or('?');
             if tag == 'S' || tag.is_ascii_lowercase() {
@@ -479,8 +503,8 @@ impl SubjectIdentity {
                 ));
             }
         }
-        let commit = git(root, &["rev-parse", "HEAD"])?;
-        let tree = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        let commit = inputs.git(&["rev-parse", "HEAD"])?;
+        let tree = inputs.git(&["rev-parse", "HEAD^{tree}"])?;
         // Defense in depth for the three admitted inputs: read each
         // working file exactly once, verify it against its HEAD blob,
         // and compute the receipt digests from those same verified
@@ -488,9 +512,8 @@ impl SubjectIdentity {
         // Line endings are checkout framing, not content.
         let mut verified = std::collections::BTreeMap::new();
         for path in [WORKSPACE_MANIFEST_PATH, CARGO_LOCK_PATH, TOPOLOGY_PATH] {
-            let committed = strip_line_endings(&git(root, &["show", &format!("HEAD:{path}")])?);
-            let raw = std::fs::read(root.join(path))
-                .map_err(|error| instrument(format!("read {path}: {error}")))?;
+            let committed = strip_line_endings(&inputs.git(&["show", &format!("HEAD:{path}")])?);
+            let raw = inputs.read_working_bytes(path)?;
             let working = strip_line_endings(
                 &String::from_utf8(raw.clone())
                     .map_err(|error| instrument(format!("{path}: {error}")))?,
@@ -519,10 +542,10 @@ impl SubjectIdentity {
         let cargo_lock_digest =
             sha256_v1_bytes(verified_subject_input(&verified, CARGO_LOCK_PATH)?);
         let topology_digest = sha256_v1_bytes(verified_subject_input(&verified, TOPOLOGY_PATH)?);
-        let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
+        let frozen_at_utc = inputs.git(&["log", "-1", "--format=%cI"])?;
         // The subject must not move while it is being collected.
-        let commit_now = git(root, &["rev-parse", "HEAD"])?;
-        let tree_now = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        let commit_now = inputs.git(&["rev-parse", "HEAD"])?;
+        let tree_now = inputs.git(&["rev-parse", "HEAD^{tree}"])?;
         if commit_now != commit || tree_now != tree {
             return Err(instrument("the subject moved during collection"));
         }
@@ -2705,7 +2728,10 @@ mod compose_fixture_tests {
             .trim()
             .to_string();
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")?;
+        let subject = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )?;
         if subject.commit != commit || subject.tree != tree {
             return Err("clean subject did not retain its committed identity".into());
         }
@@ -2730,9 +2756,12 @@ mod compose_fixture_tests {
             return Err("the hidden-lock fixture did not preserve clean Git status".into());
         }
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .err()
-            .ok_or("the collector accepted a hidden assume-unchanged edit")?;
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted a hidden assume-unchanged edit")?;
         if !err.to_string().contains("hidden state")
             && !err
                 .to_string()
@@ -2766,9 +2795,12 @@ mod compose_fixture_tests {
             return Err("the hidden-topology fixture did not preserve clean Git status".into());
         }
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .err()
-            .ok_or("the collector accepted a hidden skip-worktree edit")?;
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted a hidden skip-worktree edit")?;
         if !err.to_string().contains("hidden state")
             && !err
                 .to_string()
@@ -2809,7 +2841,10 @@ mod compose_fixture_tests {
             return Err(format!("CRLF fixture is not a clean checkout: {status}").into());
         }
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")?;
+        let subject = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )?;
         if subject.cargo_lock_digest != allow_core::sha256_v1_bytes(&working)
             || subject.cargo_lock_digest == allow_core::sha256_v1_bytes(committed.as_bytes())
         {
@@ -2840,9 +2875,12 @@ mod compose_fixture_tests {
         let root = committed_subject_fixture()?;
         std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n")?;
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .err()
-            .ok_or("the collector accepted an ordinary dirty worktree")?;
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted an ordinary dirty worktree")?;
         if !err.to_string().contains("dirty") {
             return Err(format!("incorrect ordinary-dirty rejection: {err}").into());
         }

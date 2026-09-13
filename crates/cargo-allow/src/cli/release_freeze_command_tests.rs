@@ -181,3 +181,239 @@ fn verified_subject_input_preserves_raw_digest_bytes() -> Result<(), Box<dyn std
     }
     Ok(())
 }
+
+/// Later reads deliberately supply different bytes so the oracle observes both
+/// redundant acquisition and accidental derivation from unadmitted inputs.
+struct CountingSubjectInputs {
+    working: std::collections::BTreeMap<&'static str, Vec<u8>>,
+    reads: Vec<String>,
+    dirty: bool,
+    hidden: bool,
+    read_error: Option<&'static str>,
+}
+
+impl CountingSubjectInputs {
+    fn committed() -> std::collections::BTreeMap<&'static str, &'static str> {
+        std::collections::BTreeMap::from([
+            (
+                subject::WORKSPACE_MANIFEST_PATH,
+                "[workspace.package]\nversion = \"0.2.0\"\n",
+            ),
+            (subject::CARGO_LOCK_PATH, "version = 4\n"),
+            (subject::TOPOLOGY_PATH, "schema_version = 2\n"),
+        ])
+    }
+
+    fn clean() -> Self {
+        Self {
+            working: Self::committed()
+                .into_iter()
+                .map(|(path, text)| (path, text.replace('\n', "\r\n").into_bytes()))
+                .collect(),
+            reads: Vec::new(),
+            dirty: false,
+            hidden: false,
+            read_error: None,
+        }
+    }
+
+    fn read_count(&self, path: &str) -> usize {
+        self.reads
+            .iter()
+            .filter(|read| read.as_str() == path)
+            .count()
+    }
+}
+
+fn collector_input_error(message: impl Into<String>) -> allow_core::CargoAllowError {
+    allow_core::CargoAllowError::with_kind(CargoAllowErrorKind::InstrumentFailure, message)
+}
+
+impl subject::SubjectInputs for CountingSubjectInputs {
+    fn git(&mut self, args: &[&str]) -> allow_core::CargoAllowResult<String> {
+        let text = match args {
+            ["status", "--porcelain"] => {
+                if self.dirty {
+                    " M Cargo.toml"
+                } else {
+                    ""
+                }
+            }
+            ["ls-files", "-v", "-z"] => {
+                if self.hidden {
+                    "S Cargo.toml\0"
+                } else {
+                    "H Cargo.toml\0"
+                }
+            }
+            ["rev-parse", "HEAD"] => "committed-subject",
+            ["rev-parse", "HEAD^{tree}"] => "committed-tree",
+            ["log", "-1", "--format=%cI"] => "2026-09-13T00:00:00Z",
+            ["show", blob] => {
+                let path = blob
+                    .strip_prefix("HEAD:")
+                    .ok_or_else(|| collector_input_error("unexpected blob query"))?;
+                return Self::committed()
+                    .get(path)
+                    .map(|text| (*text).to_owned())
+                    .ok_or_else(|| {
+                        collector_input_error(format!("unexpected committed path {path}"))
+                    });
+            }
+            _ => {
+                return Err(collector_input_error(format!(
+                    "unexpected git arguments {args:?}"
+                )));
+            }
+        };
+        Ok(text.to_owned())
+    }
+
+    fn read_working_bytes(&mut self, path: &str) -> allow_core::CargoAllowResult<Vec<u8>> {
+        self.reads.push(path.to_owned());
+        if self.read_error == Some(path) {
+            return Err(collector_input_error(format!(
+                "read {path}: controlled failure"
+            )));
+        }
+        if self.read_count(path) > 1 {
+            return Ok(b"[workspace.package]\nversion = \"9.9.9\"\n".to_vec());
+        }
+        self.working
+            .get(path)
+            .cloned()
+            .ok_or_else(|| collector_input_error(format!("unexpected working path {path}")))
+    }
+}
+
+#[test]
+fn collector_reads_each_input_once_and_derives_from_admitted_bytes()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut inputs = CountingSubjectInputs::clean();
+    let lock = inputs
+        .working
+        .get(subject::CARGO_LOCK_PATH)
+        .ok_or("missing lock fixture")?
+        .clone();
+    let topology = inputs
+        .working
+        .get(subject::TOPOLOGY_PATH)
+        .ok_or("missing topology fixture")?
+        .clone();
+    let identity = subject::SubjectIdentity::collect(&mut inputs, "0.2.0")?;
+    for path in CountingSubjectInputs::committed().keys() {
+        let count = inputs.read_count(path);
+        if count != 1 {
+            return Err(format!("collector read {path} {count} times; expected once").into());
+        }
+    }
+    if inputs.reads.len() != 3 {
+        return Err(format!("unexpected collector reads: {:?}", inputs.reads).into());
+    }
+    if identity.version != "0.2.0"
+        || identity.cargo_lock_digest != allow_core::sha256_v1_bytes(&lock)
+        || identity.topology_digest != allow_core::sha256_v1_bytes(&topology)
+    {
+        return Err(
+            format!("identity was not derived from admitted raw bytes: {identity:?}").into(),
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn collector_rejects_each_mismatched_input_without_reading_it_again()
+-> Result<(), Box<dyn std::error::Error>> {
+    for path in [
+        subject::WORKSPACE_MANIFEST_PATH,
+        subject::CARGO_LOCK_PATH,
+        subject::TOPOLOGY_PATH,
+    ] {
+        let mut inputs = CountingSubjectInputs::clean();
+        inputs
+            .working
+            .insert(path, b"uncommitted change\n".to_vec());
+        let error = subject::SubjectIdentity::collect(&mut inputs, "0.2.0")
+            .err()
+            .ok_or("collector accepted mismatched working bytes")?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure
+            || !error
+                .to_string()
+                .contains(&format!("working bytes for {path} differ"))
+            || inputs.read_count(path) != 1
+            || inputs.reads.last().map(String::as_str) != Some(path)
+            || inputs.reads.iter().any(|read| inputs.read_count(read) != 1)
+        {
+            return Err(format!(
+                "incorrect mismatch rejection: {error}; reads {:?}",
+                inputs.reads
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn collector_propagates_invalid_bytes_and_read_failures() -> Result<(), Box<dyn std::error::Error>>
+{
+    for path in [
+        subject::WORKSPACE_MANIFEST_PATH,
+        subject::CARGO_LOCK_PATH,
+        subject::TOPOLOGY_PATH,
+    ] {
+        for fail_read in [false, true] {
+            let mut inputs = CountingSubjectInputs::clean();
+            if fail_read {
+                inputs.read_error = Some(path);
+            } else {
+                inputs.working.insert(path, vec![0xff]);
+            }
+            let error = subject::SubjectIdentity::collect(&mut inputs, "0.2.0")
+                .err()
+                .ok_or("collector accepted invalid input")?;
+            if error.kind() != CargoAllowErrorKind::InstrumentFailure
+                || !error.to_string().contains(path)
+                || inputs.read_count(path) != 1
+                || inputs.reads.last().map(String::as_str) != Some(path)
+            {
+                return Err(
+                    format!("incorrect input failure: {error}; reads {:?}", inputs.reads).into(),
+                );
+            }
+            if fail_read && !error.to_string().contains("controlled failure") {
+                return Err(format!("read failure lost context: {error}").into());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn collector_rejects_dirty_or_hidden_subject_before_working_reads()
+-> Result<(), Box<dyn std::error::Error>> {
+    for hidden in [false, true] {
+        let mut inputs = CountingSubjectInputs::clean();
+        inputs.hidden = hidden;
+        inputs.dirty = !hidden;
+        let error = subject::SubjectIdentity::collect(&mut inputs, "0.2.0")
+            .err()
+            .ok_or("collector accepted a dirty or hidden subject")?;
+        let diagnostic = if hidden {
+            "hidden state"
+        } else {
+            "worktree is dirty"
+        };
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure
+            || !error.to_string().contains(diagnostic)
+            || !inputs.reads.is_empty()
+        {
+            return Err(format!(
+                "incorrect pre-admission rejection: {error}; reads {:?}",
+                inputs.reads
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
