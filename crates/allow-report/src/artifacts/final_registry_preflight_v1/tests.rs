@@ -6,6 +6,76 @@ use FinalRegistryPreflightResultV1 as State;
 use FinalRegistryVersionResponseV1 as Response;
 use FinalRegistryVersionStateV1 as Version;
 
+#[test]
+fn final_registry_preflight_invalid_expected_digest_cannot_establish_conflict() -> TestResult {
+    for shared in [false, true] {
+        for expected in [None, Some(""), Some("sha256:short"), Some("garbage")] {
+            for yanked in [false, true] {
+                let mut input = fixture()?;
+                let index = if shared {
+                    input
+                        .shared_authorities
+                        .first_mut()
+                        .ok_or("authority absent")?
+                        .expected_checksum = expected.unwrap_or_default().to_string();
+                    input
+                        .candidate
+                        .rows
+                        .iter()
+                        .position(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
+                        .ok_or("shared row absent")?
+                } else {
+                    input
+                        .candidate
+                        .rows
+                        .first_mut()
+                        .ok_or("candidate absent")?
+                        .crate_digest = expected.map(str::to_string);
+                    0
+                };
+                input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?
+                    .version = Response::Found {
+                    checksum: checksum(10),
+                    yanked,
+                };
+                rebind_candidate(&mut input)?;
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "invalid expected digest became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.version_state == Version::Unknown,
+                    "invalid expected digest established version comparison",
+                )?;
+                require(
+                    !row.findings
+                        .iter()
+                        .any(|finding| finding.reason == "immutable registry checksum conflict"),
+                    "invalid expected digest established immutable conflict",
+                )?;
+                require(
+                    row.findings
+                        .iter()
+                        .any(|finding| finding.reason == "selected registry version is yanked")
+                        == yanked,
+                    "independent yank finding lost or invented",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn rebind_candidate(input: &mut FinalRegistryPreflightInputV1) -> TestResult {
     let (candidate, denominator) =
         final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;

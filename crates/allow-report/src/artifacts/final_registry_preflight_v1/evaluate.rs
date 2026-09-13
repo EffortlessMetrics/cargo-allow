@@ -392,6 +392,10 @@ fn reconcile_observation(
                     "malformed observed checksum",
                 );
                 Version::Unknown
+            } else if !digest(&expected.expected_checksum) {
+                // The row already records the invalid expected checksum. Neither
+                // equality nor immutable conflict is established without it.
+                Version::Unknown
             } else {
                 let exact = checksum.eq_ignore_ascii_case(&expected.expected_checksum);
                 if !exact {

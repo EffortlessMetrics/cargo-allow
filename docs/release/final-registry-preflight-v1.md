@@ -62,6 +62,8 @@ or unavailable responses.
 
 `AlreadyPublishedExact` requires successful exact-version provenance and equality
 with the row's expected checksum. A matching string alone is insufficient.
+Malformed expected or observed checksums leave the comparison state unknown;
+they cannot establish an immutable checksum conflict.
 Checksum conflict and yanking remain separate findings. Owner failure cannot
 erase successful version evidence; successful version evidence cannot erase an
 owner or authority failure. Owner membership and historical publication cannot
