@@ -1,0 +1,3 @@
+kind: Fixed
+body: Preflight rehearsal receipt destinations before phases and preserve existing files when output writing or replacement fails.
+time: 2026-09-13T06:30:00Z

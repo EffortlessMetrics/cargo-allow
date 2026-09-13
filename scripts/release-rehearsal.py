@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -776,24 +777,66 @@ def _aggregate_phase_status(phases: dict[str, str]) -> str:
     return PHASE_INCOMPLETE
 
 
-def _write_receipt(path: Path, json_text: str) -> None:
-    """Write a receipt without following a symlink at the output leaf."""
-    if path.is_symlink() or path.is_dir():
-        raise OSError("output path cannot be a symlink or directory")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.is_symlink() or path.is_dir():
-        raise OSError("output path cannot be a symlink or directory")
+def _preflight_receipt_output(path: Path) -> Path:
+    """Admit an artifact destination without changing source or output bytes."""
+    path = path.absolute()
+    for component in (path, *path.parents):
+        if component.is_symlink():
+            raise OSError("receipt output cannot traverse a filesystem alias")
+        if component.exists():
+            metadata = component.lstat()
+            if getattr(metadata, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0):
+                raise OSError("receipt output cannot traverse a filesystem alias")
+            if component == path:
+                if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                    raise OSError("receipt output must be a singly linked regular file")
+            elif not stat.S_ISDIR(metadata.st_mode):
+                raise OSError("receipt output parent must be a directory")
+    path = path.resolve()
+    root = ROOT.resolve()
+    if path.is_relative_to(root):
+        if not path.is_relative_to(root / "target") or path == root / "target":
+            raise ValueError("repository receipt output must be inside target/")
+        tracked = subprocess.run(
+            ["git", "ls-files", "--cached", "-z"], cwd=root,
+            capture_output=True, timeout=15, check=False,
+        )
+        if tracked.returncode != 0:
+            raise ValueError("cannot inspect tracked receipt output destinations")
+        relative = os.path.normcase(os.fspath(path.relative_to(root)))
+        entries = (os.path.normcase(os.fsdecode(entry).replace("/", os.sep))
+                   for entry in tracked.stdout.split(b"\0") if entry)
+        if any(relative == entry or relative.startswith(entry + os.sep)
+               or entry.startswith(relative + os.sep) for entry in entries):
+            raise ValueError("receipt output cannot replace a tracked source path")
+        ignored = subprocess.run(
+            ["git", "check-ignore", "-q", "--", path.relative_to(root).as_posix()],
+            cwd=root, capture_output=True, timeout=15, check=False,
+        )
+        if ignored.returncode != 0:
+            raise ValueError("repository receipt output must be an ignored target artifact")
+    return path
 
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-    flags |= getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags, 0o600)
+
+def _write_receipt(path: Path, json_text: str) -> None:
+    """Publish complete bytes by replacement; failed writes retain the old file."""
+    path = _preflight_receipt_output(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path = _preflight_receipt_output(path)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=".rehearsal-", dir=path.parent)
+    temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as output:
             descriptor = -1
             output.write(json_text + "\n")
+            output.flush()
+            os.fsync(output.fileno())
+        _preflight_receipt_output(path)
+        os.replace(temporary, path)
     finally:
         if descriptor != -1:
             os.close(descriptor)
+        temporary.unlink(missing_ok=True)
 
 
 def build_rehearsal_receipt(
@@ -871,7 +914,7 @@ def main() -> int:
         description="Characterize the exact-subject release rehearsal fail-closed"
     )
     parser.add_argument("--commit", default="HEAD", help="Exact Git commit or ref")
-    parser.add_argument("--output", help="Path to write receipt JSON")
+    parser.add_argument("--output", help="Receipt file under target/ or outside the repository; default stdout")
     parser.add_argument("--candidate-executable", type=Path,
                         help="Absolute path to the caller's just-built cargo-allow")
     parser.add_argument("--candidate-sha256",
@@ -879,21 +922,21 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        output_path = (_preflight_receipt_output(Path(args.output))
+                       if args.output is not None else None)
         receipt = build_rehearsal_receipt(
             args.commit, candidate_executable=args.candidate_executable,
             candidate_sha256=args.candidate_sha256,
         )
+        json_text = json.dumps(receipt, indent=2, sort_keys=True)
+        if output_path is not None:
+            _write_receipt(output_path, json_text)
+            print(f"Receipt written to {output_path}")
+        else:
+            print(json_text)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"release rehearsal instrumentation failed: {error}", file=sys.stderr)
         return 2
-
-    json_text = json.dumps(receipt, indent=2, sort_keys=True)
-    if args.output:
-        output_path = Path(args.output)
-        _write_receipt(output_path, json_text)
-        print(f"Receipt written to {output_path}")
-    else:
-        print(json_text)
 
     return 0 if receipt["aggregate_status"] == PHASE_COMPLETE else 1
 

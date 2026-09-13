@@ -35,6 +35,125 @@ REQUIRED_PHASES = (
 )
 
 
+class TestReceiptOutput(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.sandbox = Path(directory.name).resolve()
+        self.root = self.sandbox / "repo"
+        self.root.mkdir()
+        patcher = mock.patch.object(REHEARSAL, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.tracked = mock.patch.object(
+            REHEARSAL.subprocess, "run",
+            return_value=subprocess.CompletedProcess([], 0, b"Cargo.toml\0target/tracked.json\0", b""),
+        )
+        self.tracked.start()
+        self.addCleanup(self.tracked.stop)
+
+    def invoke(self, path: Path | None) -> tuple[int, str, str, mock.Mock]:
+        argv = ["release-rehearsal"]
+        if path is not None:
+            argv.extend(["--output", str(path)])
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "argv", argv), mock.patch.object(
+            REHEARSAL, "build_rehearsal_receipt",
+            return_value={"aggregate_status": "Incomplete"},
+        ) as phases, contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            result = REHEARSAL.main()
+        return result, stdout.getvalue(), stderr.getvalue(), phases
+
+    def test_stdout_and_artifact_destinations_preserve_status_and_source(self) -> None:
+        source = self.root / "Cargo.toml"
+        source.write_text("source sentinel", encoding="utf-8")
+        result, stdout, stderr, phases = self.invoke(None)
+        self.assertEqual(result, 1)
+        self.assertEqual(json.loads(stdout), {"aggregate_status": "Incomplete"})
+        self.assertEqual(stderr, "")
+        phases.assert_called_once()
+        for output in (self.root / "target/receipts/new.json", self.sandbox / "external.json"):
+            with self.subTest(output=output):
+                result, stdout, stderr, phases = self.invoke(output)
+                self.assertEqual(result, 1)
+                self.assertIn("Receipt written", stdout)
+                self.assertEqual(stderr, "")
+                self.assertEqual(json.loads(output.read_text()), {"aggregate_status": "Incomplete"})
+                phases.assert_called_once()
+        self.assertEqual(source.read_text(), "source sentinel")
+
+    def test_source_tracked_and_invalid_destinations_reject_before_phases(self) -> None:
+        directory = self.sandbox / "directory"
+        directory.mkdir()
+        parent_file = self.sandbox / "file"
+        parent_file.write_text("sentinel")
+        for output in (self.root / "Cargo.toml", self.root / "new-source.json",
+                       self.root / "target/tracked.json", directory, parent_file / "receipt.json"):
+            with self.subTest(output=output):
+                result, stdout, stderr, phases = self.invoke(output)
+                self.assertEqual(result, 2)
+                self.assertEqual(stdout, "")
+                self.assertIn("instrumentation failed", stderr)
+                phases.assert_not_called()
+        self.assertEqual(parent_file.read_text(), "sentinel")
+
+    def test_aliases_reject_before_phases(self) -> None:
+        source = self.root / "Cargo.toml"
+        source.write_text("sentinel")
+        link = self.sandbox / "alias"
+        try:
+            link.symlink_to(self.root, target_is_directory=True)
+        except (OSError, NotImplementedError) as error:
+            self.skipTest(f"directory symlinks unsupported: {error}")
+        result, stdout, _, phases = self.invoke(link / "target/new.json")
+        self.assertEqual((result, stdout), (2, ""))
+        phases.assert_not_called()
+
+    def test_hardlinked_leaf_rejects_before_phases(self) -> None:
+        source = self.root / "Cargo.toml"
+        source.write_text("sentinel")
+        link = self.sandbox / "alias"
+        os.link(source, link)
+        result, stdout, _, phases = self.invoke(link)
+        self.assertEqual((result, stdout), (2, ""))
+        phases.assert_not_called()
+        self.assertEqual(source.read_text(), "sentinel")
+
+    def test_unignored_artifact_and_git_failure_reject_before_phases(self) -> None:
+        for failed_command in ("ls-files", "check-ignore"):
+            with self.subTest(command=failed_command):
+                def inspect(argv, **kwargs):
+                    return subprocess.CompletedProcess(
+                        argv, 1 if failed_command in argv else 0, b"", b"",
+                    )
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=inspect):
+                    result, stdout, _, phases = self.invoke(self.root / "target/new.json")
+                self.assertEqual((result, stdout), (2, ""))
+                phases.assert_not_called()
+
+    def test_existing_receipt_is_replaced_only_after_complete_write(self) -> None:
+        output = self.sandbox / "receipt.json"
+        output.write_text("old receipt")
+        result, _, _, _ = self.invoke(output)
+        self.assertEqual(result, 1)
+        self.assertEqual(json.loads(output.read_text()), {"aggregate_status": "Incomplete"})
+        self.assertEqual(list(self.sandbox.glob(".rehearsal-*")), [])
+
+    def test_failed_output_steps_preserve_existing_receipt(self) -> None:
+        output = self.sandbox / "receipt.json"
+        for operation in ("mkstemp", "fsync", "replace"):
+            with self.subTest(operation=operation):
+                output.write_text("old receipt")
+                owner = REHEARSAL.tempfile if operation == "mkstemp" else REHEARSAL.os
+                with mock.patch.object(owner, operation, side_effect=OSError("injected output failure")):
+                    result, stdout, stderr, phases = self.invoke(output)
+                self.assertEqual((result, stdout), (2, ""))
+                self.assertIn("instrumentation failed", stderr)
+                phases.assert_called_once()
+                self.assertEqual(output.read_text(), "old receipt")
+                self.assertEqual(list(self.sandbox.glob(".rehearsal-*")), [])
+
+
 class TestCandidateIdentity(unittest.TestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
