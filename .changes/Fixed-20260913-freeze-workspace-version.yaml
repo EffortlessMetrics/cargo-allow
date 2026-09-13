@@ -1,0 +1,3 @@
+kind: Fixed
+body: Parse the verified freeze manifest as TOML and select only workspace.package.version, accepting valid TOML formatting and rejecting missing, non-string, or malformed input.
+time: 2026-09-13T08:30:00Z
