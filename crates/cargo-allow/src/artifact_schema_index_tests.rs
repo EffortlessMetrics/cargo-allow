@@ -6,7 +6,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &["resolved-cargo-allow-config-v1"];
+const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
+    "resolved-cargo-allow-config-v1",
+    "cargo-allow.final-registry-preflight.v1",
+];
 const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] =
     &["tool-identity", "cargo-allow-provider-contract-v1"];
 

@@ -1,0 +1,1207 @@
+use super::*;
+use crate::{PackageCandidateFamilyV2, PackageCandidatePayloadV2, PackageCandidateRowV2};
+
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+use FinalRegistryPreflightResultV1 as State;
+use FinalRegistryVersionResponseV1 as Response;
+use FinalRegistryVersionStateV1 as Version;
+
+fn mismatched_observation_input(
+    shared: bool,
+    wrong_package: bool,
+) -> Result<(FinalRegistryPreflightInputV1, usize), Box<dyn std::error::Error>> {
+    let mut input = fixture()?;
+    let index = input
+        .candidate
+        .rows
+        .iter()
+        .position(|row| (row.product_family == PackageCandidateFamilyV2::Shared01) == shared)
+        .ok_or("selected row absent")?;
+    let observation = input
+        .observations
+        .get_mut(index)
+        .ok_or("observation absent")?;
+    if wrong_package {
+        observation.package_name = "other-package".to_string();
+    } else {
+        observation.package_version = "0.2.0-rc.1".to_string();
+    }
+    Ok((input, index))
+}
+
+#[test]
+fn final_registry_preflight_foreign_observation_cannot_describe_selected_identity() -> TestResult {
+    for shared in [false, true] {
+        for wrong_package in [false, true] {
+            for response in [
+                Response::Found {
+                    checksum: checksum(11),
+                    yanked: true,
+                },
+                Response::Missing {},
+                Response::NameUnavailable {},
+                Response::VisibilityPending {},
+            ] {
+                let (mut input, index) = mismatched_observation_input(shared, wrong_package)?;
+                let observation = input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?;
+                observation.version = response;
+                observation.owner = FinalRegistryOwnerStateV1::UnexpectedOwner;
+                observation.publish_authority = FinalRegistryPublishAuthorityV1::Conflict;
+                let raw = observation.clone();
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "foreign observation became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.observation.as_ref() == Some(&raw),
+                    "foreign observation was not retained",
+                )?;
+                require(
+                    row.version_state == Version::Unknown,
+                    "foreign observation established selected version state",
+                )?;
+                require(row.findings.len() == 1 && row.findings.first().is_some_and(|finding| {
+                    finding.result == State::Malformed && finding.reason == "observation requested identity differs from selected exact version"
+                }), "foreign observation produced selected-identity findings")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_foreign_observation_preserves_independent_failures() -> TestResult {
+    for shared in [false, true] {
+        for wrong_package in [false, true] {
+            for (response, failure) in [
+                (
+                    Response::Found {
+                        checksum: "garbage".to_string(),
+                        yanked: true,
+                    },
+                    "malformed observed checksum",
+                ),
+                (
+                    Response::MalformedResponse {},
+                    "malformed provider response",
+                ),
+                (Response::Timeout {}, "version provider unavailable"),
+                (Response::RateLimited {}, "version provider unavailable"),
+                (
+                    Response::ProviderUnavailable {},
+                    "version provider unavailable",
+                ),
+            ] {
+                let (mut input, index) = mismatched_observation_input(shared, wrong_package)?;
+                let observation = input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?;
+                observation.version = response;
+                observation.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+                observation.publish_authority = FinalRegistryPublishAuthorityV1::InstrumentFailure;
+                let version_provenance = observation
+                    .version_provenance
+                    .as_mut()
+                    .ok_or("provenance absent")?;
+                version_provenance.provider.clear();
+                version_provenance.observed_at_unix_seconds = 99;
+                observation.owner_provenance = None;
+                observation
+                    .authority_provenance
+                    .as_mut()
+                    .ok_or("provenance absent")?
+                    .observed_at_unix_seconds = 111;
+                let raw = observation.clone();
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "foreign observation became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.observation.as_ref() == Some(&raw) && row.version_state == Version::Unknown,
+                    "foreign observation or unknown state lost",
+                )?;
+                for reason in [
+                    failure,
+                    "malformed version provenance",
+                    "version observation is future-dated or expired",
+                    "missing owner provenance",
+                    "owner endpoint unavailable",
+                    "authority observation is future-dated or expired",
+                    "authority instrument failure",
+                ] {
+                    require(
+                        row.findings.iter().any(|finding| finding.reason == reason),
+                        format!("independent failure lost: {reason}"),
+                    )?;
+                }
+                require(
+                    !row.findings
+                        .iter()
+                        .any(|finding| finding.result == State::Conflict),
+                    "foreign observation invented selected conflict",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_invalid_expected_digest_cannot_establish_conflict() -> TestResult {
+    for shared in [false, true] {
+        for expected in [None, Some(""), Some("sha256:short"), Some("garbage")] {
+            for yanked in [false, true] {
+                let mut input = fixture()?;
+                let index = if shared {
+                    input
+                        .shared_authorities
+                        .first_mut()
+                        .ok_or("authority absent")?
+                        .expected_checksum = expected.unwrap_or_default().to_string();
+                    input
+                        .candidate
+                        .rows
+                        .iter()
+                        .position(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
+                        .ok_or("shared row absent")?
+                } else {
+                    input
+                        .candidate
+                        .rows
+                        .first_mut()
+                        .ok_or("candidate absent")?
+                        .crate_digest = expected.map(str::to_string);
+                    0
+                };
+                input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?
+                    .version = Response::Found {
+                    checksum: checksum(10),
+                    yanked,
+                };
+                rebind_candidate(&mut input)?;
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "invalid expected digest became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.version_state == Version::Unknown,
+                    "invalid expected digest established version comparison",
+                )?;
+                require(
+                    !row.findings
+                        .iter()
+                        .any(|finding| finding.reason == "immutable registry checksum conflict"),
+                    "invalid expected digest established immutable conflict",
+                )?;
+                require(
+                    row.findings
+                        .iter()
+                        .any(|finding| finding.reason == "selected registry version is yanked")
+                        == yanked,
+                    "independent yank finding lost or invented",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn rebind_candidate(input: &mut FinalRegistryPreflightInputV1) -> TestResult {
+    let (candidate, denominator) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate;
+    input.current_context.denominator_digest = denominator;
+    input.observed_context = input.current_context.clone();
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_digest_case_preserves_checksum_and_context_identity() -> TestResult {
+    for uppercase_expected in [false, true] {
+        let mut input = fixture()?;
+        input.current_context.workflow_digest = checksum(0xab);
+        input.current_context.owner_team_digest = checksum(0xcd);
+        input.current_context.release_controls_digest = checksum(0xef);
+        input.current_context.provider_state_digest = checksum(0xfa);
+        let upper = format!("sha256:{:064X}", 10);
+        let lower = checksum(10);
+        input
+            .candidate
+            .rows
+            .first_mut()
+            .ok_or("row absent")?
+            .crate_digest = Some(if uppercase_expected {
+            upper.clone()
+        } else {
+            lower.clone()
+        });
+        first(&mut input)?.version = Response::Found {
+            checksum: if uppercase_expected { lower } else { upper },
+            yanked: false,
+        };
+        rebind_candidate(&mut input)?;
+        for uppercase_current in [false, true] {
+            let mut case_input = input.clone();
+            let context = if uppercase_current {
+                &mut case_input.current_context
+            } else {
+                &mut case_input.observed_context
+            };
+            for value in [
+                &mut context.candidate_digest,
+                &mut context.denominator_digest,
+                &mut context.workflow_digest,
+                &mut context.owner_team_digest,
+                &mut context.release_controls_digest,
+                &mut context.provider_state_digest,
+            ] {
+                *value = format!(
+                    "sha256:{}",
+                    value
+                        .strip_prefix("sha256:")
+                        .ok_or("prefix absent")?
+                        .to_ascii_uppercase()
+                );
+            }
+            check_result(
+                &case_input,
+                State::CompleteWithResidualAuthorityRisk,
+                Version::AlreadyPublishedExact,
+            )?;
+        }
+    }
+    for principal in [true, false] {
+        let mut input = fixture()?;
+        let value = if principal {
+            &mut input.observed_context.principal
+        } else {
+            &mut input.observed_context.environment
+        };
+        *value = value.to_ascii_uppercase();
+        check_result(&input, State::Stale, Version::Missing)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_shared_diagnostic_digest_is_optional_but_validated() -> TestResult {
+    for local in [None, Some("garbage".to_string()), Some(checksum(10))] {
+        let mut input = fixture()?;
+        input
+            .candidate
+            .rows
+            .iter_mut()
+            .find(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
+            .ok_or("shared row absent")?
+            .crate_digest = local.clone();
+        rebind_candidate(&mut input)?;
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        let malformed = local.as_deref() == Some("garbage");
+        require(
+            receipt.result
+                == if malformed {
+                    State::Malformed
+                } else {
+                    State::CompleteWithResidualAuthorityRisk
+                },
+            "diagnostic validation result changed",
+        )?;
+        let row = receipt
+            .shared_prerequisites
+            .first()
+            .ok_or("shared result absent")?;
+        require(
+            row.expected.diagnostic_local_checksum == local,
+            "diagnostic bytes were not retained",
+        )?;
+        require(
+            row.version_state == Version::AlreadyPublishedExact,
+            "local diagnostic became registry authority",
+        )?;
+        require(
+            row.findings.iter().any(|finding| {
+                finding.result == State::Malformed
+                    && finding.reason == "shared diagnostic local checksum is malformed"
+            }) == malformed,
+            "diagnostic finding missing or spurious",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_malformed_provenance_preserves_freshness() -> TestResult {
+    for dimension in ["version", "owner", "authority"] {
+        for malformed_field in ["provider", "source", "digest"] {
+            for observed_at in [99, 111] {
+                let mut input = fixture()?;
+                let observation = first(&mut input)?;
+                let provenance = match dimension {
+                    "version" => observation.version_provenance.as_mut(),
+                    "owner" => observation.owner_provenance.as_mut(),
+                    _ => observation.authority_provenance.as_mut(),
+                }
+                .ok_or("fixture provenance absent")?;
+                match malformed_field {
+                    "provider" => provenance.provider.clear(),
+                    "source" => provenance.source.clear(),
+                    _ => provenance.evidence_digest = "invalid".to_string(),
+                }
+                provenance.observed_at_unix_seconds = observed_at;
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "malformed precedence changed",
+                )?;
+                let row = receipt.upload_rows.first().ok_or("row absent")?;
+                for (state, reason) in [
+                    (
+                        State::Malformed,
+                        format!("malformed {dimension} provenance"),
+                    ),
+                    (
+                        State::Stale,
+                        format!("{dimension} observation is future-dated or expired"),
+                    ),
+                ] {
+                    require(
+                        row.findings
+                            .iter()
+                            .any(|finding| finding.result == state && finding.reason == reason),
+                        format!(
+                            "missing {state:?} for {dimension}/{malformed_field}/{observed_at}"
+                        ),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_malformed_checksum_keeps_independent_yanked_fact() -> TestResult {
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: "malformed".to_string(),
+        yanked: true,
+    };
+    let receipt = evaluate_final_registry_preflight_v1(&input);
+    require(
+        receipt.result == State::Malformed,
+        "malformed checksum must stay non-clean",
+    )?;
+    let row = receipt.upload_rows.first().ok_or("row absent")?;
+    require(
+        row.findings.iter().any(|finding| {
+            finding.result == State::Conflict
+                && finding.reason == "selected registry version is yanked"
+        }),
+        "independent yanked finding was lost",
+    )
+}
+
+#[test]
+fn final_registry_preflight_expired_failure_preserves_each_failure_dimension() -> TestResult {
+    for (response, expected, underlying) in [
+        (
+            Response::Timeout {},
+            State::Stale,
+            State::ProviderUnavailable,
+        ),
+        (
+            Response::MalformedResponse {},
+            State::InstrumentFailure,
+            State::InstrumentFailure,
+        ),
+    ] {
+        let mut input = fixture()?;
+        input.evaluated_at_unix_seconds = 111;
+        first(&mut input)?.version = response;
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        require(receipt.result == expected, "failure precedence changed")?;
+        let row = receipt.upload_rows.first().ok_or("row absent")?;
+        require(
+            row.findings
+                .iter()
+                .any(|finding| finding.result == underlying)
+                && row
+                    .findings
+                    .iter()
+                    .any(|finding| finding.result == State::Stale),
+            "underlying failure or expiry lost",
+        )?;
+    }
+    Ok(())
+}
+
+fn require(condition: bool, message: impl Into<String>) -> TestResult {
+    if !condition {
+        return Err(std::io::Error::other(message.into()).into());
+    }
+    Ok(())
+}
+
+fn checksum(value: u32) -> String {
+    format!("sha256:{value:064x}")
+}
+
+fn fixture() -> Result<FinalRegistryPreflightInputV1, Box<dyn std::error::Error>> {
+    let identities = [
+        ("allow-core", 10),
+        ("allow-policy", 20),
+        ("allow-inventory", 30),
+        ("allow-files", 40),
+        ("allow-rust", 50),
+        ("allow-match", 60),
+        ("allow-report", 70),
+        ("allow-policy-legacy", 75),
+        ("repo-protocol", 80),
+        ("repo-snapshot", 85),
+        ("repo-edit", 90),
+        ("allow-diff", 95),
+        ("cargo-allow", 100),
+    ];
+    let rows: Vec<_> = identities
+        .into_iter()
+        .map(|(logical, release_order)| {
+            let shared = logical.starts_with("repo-");
+            let package = if shared {
+                format!("effortless-{logical}")
+            } else {
+                logical.to_string()
+            };
+            let version = if shared { "0.1.0" } else { "0.2.0" };
+            PackageCandidateRowV2 {
+                logical_id: logical.to_string(),
+                cargo_package_name: package.clone(),
+                cargo_package_version: version.to_string(),
+                rust_library_name: logical.replace('-', "_"),
+                workspace_source_path: format!("crates/{logical}"),
+                product_family: if shared {
+                    PackageCandidateFamilyV2::Shared01
+                } else {
+                    PackageCandidateFamilyV2::CargoAllow02
+                },
+                publication_state: "UnpublishedInternal".to_string(),
+                publish: true,
+                support_tier: "supported".to_string(),
+                release_order,
+                selected_features: Vec::new(),
+                expected_manifest_identity: format!("{package}:{version}"),
+                expected_dependency_rows: Vec::new(),
+                required_assets: Vec::new(),
+                crate_digest: Some(checksum(release_order)),
+                crate_size_bytes: Some(100),
+            }
+        })
+        .collect();
+    let shared_authorities: Vec<_> = rows
+        .iter()
+        .filter(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
+        .map(|row| FinalRegistrySharedAuthorityV1 {
+            package_name: row.cargo_package_name.clone(),
+            package_version: row.cargo_package_version.clone(),
+            expected_checksum: checksum(row.release_order + 1),
+            authority_digest: checksum(700),
+        })
+        .collect();
+    let candidate = PackageCandidatePayloadV2 {
+        schema_id: "cargo-allow.package-candidate.v2".to_string(),
+        schema_version: 2,
+        topology_id: "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001".to_string(),
+        topology_digest: Some(checksum(2)),
+        repository_commit: "fixture-commit".to_string(),
+        repository_tree: "fixture-tree".to_string(),
+        cargo_lock_digest: checksum(3),
+        candidate_product_id: "cargo-allow-0.2".to_string(),
+        root_logical_id: "cargo-allow".to_string(),
+        root_package_name: "cargo-allow".to_string(),
+        root_package_version: "0.2.0".to_string(),
+        target_class: "fixture".to_string(),
+        feature_set_id: "default".to_string(),
+        rows,
+        known_exclusions: Vec::new(),
+        limitations: vec!["fixture observations only".to_string()],
+        claim_boundary: "no registry contact".to_string(),
+    };
+    let (candidate_digest, denominator_digest) =
+        final_registry_bindings_v1(&candidate, &shared_authorities)?;
+    let context = FinalRegistryContextV1 {
+        candidate_digest,
+        denominator_digest,
+        workflow_digest: checksum(4),
+        principal: "fixture-principal".to_string(),
+        environment: "fixture-environment".to_string(),
+        owner_team_digest: checksum(5),
+        release_controls_digest: checksum(6),
+        provider_state_digest: checksum(7),
+    };
+    let provenance = FinalRegistryProvenanceV1 {
+        origin: FinalRegistryObservationOriginV1::TestFixture,
+        provider: "deterministic-fixture".to_string(),
+        source: "fixture://preflight".to_string(),
+        evidence_digest: checksum(8),
+        observed_at_unix_seconds: 100,
+    };
+    let observations = candidate
+        .rows
+        .iter()
+        .map(|row| FinalRegistryObservationV1 {
+            package_name: row.cargo_package_name.clone(),
+            package_version: row.cargo_package_version.clone(),
+            version: if row.product_family == PackageCandidateFamilyV2::Shared01 {
+                Response::Found {
+                    checksum: checksum(row.release_order + 1),
+                    yanked: false,
+                }
+            } else {
+                Response::Missing {}
+            },
+            version_provenance: Some(provenance.clone()),
+            owner: FinalRegistryOwnerStateV1::OwnedByExpectedPrincipal,
+            owner_provenance: Some(provenance.clone()),
+            publish_authority: FinalRegistryPublishAuthorityV1::NotProven,
+            authority_provenance: Some(provenance.clone()),
+        })
+        .collect();
+    Ok(FinalRegistryPreflightInputV1 {
+        schema_id: FINAL_REGISTRY_PREFLIGHT_SCHEMA_ID.to_string(),
+        schema_version: 1,
+        candidate,
+        shared_authorities,
+        observed_context: context.clone(),
+        current_context: context,
+        evaluated_at_unix_seconds: 110,
+        maximum_age_seconds: 10,
+        observations,
+    })
+}
+
+fn first(
+    input: &mut FinalRegistryPreflightInputV1,
+) -> Result<&mut FinalRegistryObservationV1, Box<dyn std::error::Error>> {
+    input
+        .observations
+        .first_mut()
+        .ok_or_else(|| std::io::Error::other("fixture lacks first observation").into())
+}
+
+fn check_result(
+    input: &FinalRegistryPreflightInputV1,
+    state: State,
+    version: Version,
+) -> TestResult {
+    let receipt = evaluate_final_registry_preflight_v1(input);
+    require(
+        receipt.result == state,
+        format!("expected {state:?}, got {:?}: {receipt:?}", receipt.result),
+    )?;
+    require(
+        receipt
+            .upload_rows
+            .first()
+            .is_some_and(|row| row.version_state == version),
+        format!("expected version {version:?}"),
+    )
+}
+
+#[test]
+fn final_registry_preflight_missing_final_exact_shared_is_feasibility_only() -> TestResult {
+    let input = fixture()?;
+    let receipt = evaluate_final_registry_preflight_v1(&input);
+    require(
+        receipt.result == State::CompleteWithResidualAuthorityRisk,
+        format!("{receipt:?}"),
+    )?;
+    require(
+        receipt.upload_rows.len() == 10 && receipt.shared_prerequisites.len() == 3,
+        "wrong row roles/counts",
+    )?;
+    require(
+        receipt
+            .upload_rows
+            .iter()
+            .all(|row| row.version_state == Version::Missing),
+        "final row not missing",
+    )?;
+    require(
+        receipt.shared_prerequisites.iter().all(|row| {
+            row.version_state == Version::AlreadyPublishedExact
+                && row.expected.diagnostic_local_checksum.as_ref()
+                    != Some(&row.expected.expected_checksum)
+        }),
+        "shared local repackaging became authority",
+    )?;
+    let mut proven = input;
+    for observation in &mut proven.observations {
+        observation.publish_authority = FinalRegistryPublishAuthorityV1::Proven;
+    }
+    check_result(&proven, State::Complete, Version::Missing)
+}
+
+#[test]
+fn final_registry_preflight_exact_conflicting_and_yanked_versions() -> TestResult {
+    for (observed, yanked, expected, version) in [
+        (
+            10,
+            false,
+            State::CompleteWithResidualAuthorityRisk,
+            Version::AlreadyPublishedExact,
+        ),
+        (
+            11,
+            false,
+            State::Conflict,
+            Version::AlreadyPublishedConflict,
+        ),
+        (10, true, State::Conflict, Version::Yanked),
+    ] {
+        let mut input = fixture()?;
+        first(&mut input)?.version = Response::Found {
+            checksum: checksum(observed),
+            yanked,
+        };
+        check_result(&input, expected, version)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_rc_visibility_does_not_satisfy_final_query() -> TestResult {
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: checksum(10),
+        yanked: false,
+    };
+    first(&mut input)?.package_version = "0.2.0-rc.1".to_string();
+    check_result(&input, State::Malformed, Version::Unknown)?;
+    first(&mut input)?.package_version = "0.2.0".to_string();
+    first(&mut input)?.version = Response::Missing {};
+    check_result(
+        &input,
+        State::CompleteWithResidualAuthorityRisk,
+        Version::Missing,
+    )
+}
+
+#[test]
+fn final_registry_preflight_missing_duplicate_reordered_rows_fail_closed() -> TestResult {
+    for index in [0, 8] {
+        let mut omitted = fixture()?;
+        omit(&mut omitted.observations, index)?;
+        require(
+            evaluate_final_registry_preflight_v1(&omitted).result == State::Malformed,
+            "omitted observation accepted",
+        )?;
+        let mut duplicated = fixture()?;
+        let copied = duplicated
+            .observations
+            .get(index)
+            .cloned()
+            .ok_or("fixture index absent")?;
+        *duplicated
+            .observations
+            .get_mut(index + 1)
+            .ok_or("duplicate target absent")? = copied;
+        require(
+            evaluate_final_registry_preflight_v1(&duplicated).result == State::Malformed,
+            "duplicate observation accepted",
+        )?;
+        let mut reordered = fixture()?;
+        reordered
+            .observations
+            .get_mut(index..index + 2)
+            .ok_or("reorder pair absent")?
+            .rotate_left(1);
+        require(
+            evaluate_final_registry_preflight_v1(&reordered).result == State::Malformed,
+            "reordered observation accepted",
+        )?;
+        let mut candidate = fixture()?;
+        omit(&mut candidate.candidate.rows, index)?;
+        require(
+            evaluate_final_registry_preflight_v1(&candidate).result == State::Malformed,
+            "omitted candidate accepted",
+        )?;
+    }
+    let mut input = fixture()?;
+    input
+        .shared_authorities
+        .get_mut(..2)
+        .ok_or("authority pair absent")?
+        .rotate_left(1);
+    require(
+        evaluate_final_registry_preflight_v1(&input).result == State::Malformed,
+        "reordered shared authorities accepted",
+    )
+}
+
+fn omit<T>(rows: &mut Vec<T>, index: usize) -> TestResult {
+    rows.get(index).ok_or("omission index absent")?;
+    *rows = std::mem::take(rows)
+        .into_iter()
+        .enumerate()
+        .filter_map(|(position, row)| (position != index).then_some(row))
+        .collect();
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_malformed_and_missing_checksum_or_authority() -> TestResult {
+    for checksum_value in ["", "sha256:short", "garbage"] {
+        let mut observed = fixture()?;
+        first(&mut observed)?.version = Response::Found {
+            checksum: checksum_value.to_string(),
+            yanked: false,
+        };
+        check_result(&observed, State::Malformed, Version::Unknown)?;
+        let mut expected = fixture()?;
+        expected
+            .candidate
+            .rows
+            .first_mut()
+            .ok_or("fixture candidate absent")?
+            .crate_digest = Some(checksum_value.to_string());
+        require(
+            evaluate_final_registry_preflight_v1(&expected).result == State::Malformed,
+            "malformed candidate checksum accepted",
+        )?;
+        let mut shared = fixture()?;
+        shared
+            .shared_authorities
+            .first_mut()
+            .ok_or("fixture authority absent")?
+            .authority_digest = checksum_value.to_string();
+        require(
+            evaluate_final_registry_preflight_v1(&shared).result == State::Malformed,
+            "malformed shared authority accepted",
+        )?;
+    }
+    let mut input = fixture()?;
+    input
+        .candidate
+        .rows
+        .first_mut()
+        .ok_or("fixture candidate absent")?
+        .crate_digest = None;
+    require(
+        evaluate_final_registry_preflight_v1(&input).result == State::Malformed,
+        "missing candidate checksum accepted",
+    )
+}
+
+#[test]
+fn final_registry_preflight_provider_failures_remain_distinct() -> TestResult {
+    for (response, result, version) in [
+        (
+            Response::NameUnavailable {},
+            State::Incomplete,
+            Version::NameUnavailable,
+        ),
+        (
+            Response::Timeout {},
+            State::ProviderUnavailable,
+            Version::Unknown,
+        ),
+        (
+            Response::RateLimited {},
+            State::ProviderUnavailable,
+            Version::Unknown,
+        ),
+        (
+            Response::ProviderUnavailable {},
+            State::ProviderUnavailable,
+            Version::Unknown,
+        ),
+        (
+            Response::VisibilityPending {},
+            State::Incomplete,
+            Version::Unknown,
+        ),
+        (
+            Response::MalformedResponse {},
+            State::InstrumentFailure,
+            Version::Unknown,
+        ),
+    ] {
+        let mut input = fixture()?;
+        first(&mut input)?.version = response.clone();
+        check_result(&input, result, version)?;
+        require(
+            evaluate_final_registry_preflight_v1(&input)
+                .upload_rows
+                .first()
+                .and_then(|row| row.observation.as_ref())
+                .is_some_and(|observation| observation.version == response),
+            "provider response was lost",
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_owner_failure_does_not_erase_exact_version() -> TestResult {
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: checksum(10),
+        yanked: false,
+    };
+    first(&mut input)?.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+    check_result(
+        &input,
+        State::ProviderUnavailable,
+        Version::AlreadyPublishedExact,
+    )
+}
+
+#[test]
+fn final_registry_preflight_membership_and_prior_publication_are_only_supporting() -> TestResult {
+    let mut input = fixture()?;
+    for observation in &mut input.observations {
+        observation.publish_authority = FinalRegistryPublishAuthorityV1::SupportingEvidenceOnly;
+    }
+    first(&mut input)?.version = Response::Found {
+        checksum: checksum(10),
+        yanked: false,
+    };
+    check_result(
+        &input,
+        State::CompleteWithResidualAuthorityRisk,
+        Version::AlreadyPublishedExact,
+    )
+}
+
+#[test]
+fn final_registry_preflight_copied_candidate_without_provider_provenance_is_unknown() -> TestResult
+{
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: checksum(10),
+        yanked: false,
+    };
+    first(&mut input)?.version_provenance = None;
+    check_result(&input, State::Malformed, Version::Unknown)?;
+    require(
+        serde_json::from_str::<FinalRegistryVersionResponseV1>(
+            r#"{"status":"missing","checksum":"copied"}"#,
+        )
+        .is_err(),
+        "contradictory response accepted",
+    )
+}
+
+#[test]
+fn final_registry_preflight_each_context_movement_invalidates_replay() -> TestResult {
+    let baseline = fixture()?;
+    for field in [
+        "candidate_digest",
+        "denominator_digest",
+        "workflow_digest",
+        "principal",
+        "environment",
+        "owner_team_digest",
+        "release_controls_digest",
+        "provider_state_digest",
+    ] {
+        let mut input = baseline.clone();
+        let mut context = serde_json::to_value(&input.current_context)?;
+        *context.get_mut(field).ok_or("context field absent")? =
+            serde_json::Value::String(if field.ends_with("digest") {
+                checksum(999)
+            } else {
+                "moved".to_string()
+            });
+        input.current_context = serde_json::from_value(context)?;
+        require(
+            evaluate_final_registry_preflight_v1(&input).result == State::Stale,
+            format!("replay accepted after {field} movement"),
+        )?;
+    }
+    let mut moved_bytes = baseline;
+    moved_bytes
+        .candidate
+        .rows
+        .first_mut()
+        .ok_or("candidate absent")?
+        .crate_digest = Some(checksum(999));
+    require(
+        evaluate_final_registry_preflight_v1(&moved_bytes).result == State::Stale,
+        "candidate byte movement accepted under unchanged context",
+    )
+}
+
+#[test]
+fn final_registry_preflight_time_window_boundary_future_expiry_and_refresh() -> TestResult {
+    let mut input = fixture()?;
+    check_result(
+        &input,
+        State::CompleteWithResidualAuthorityRisk,
+        Version::Missing,
+    )?;
+    input.evaluated_at_unix_seconds = 111;
+    check_result(&input, State::Stale, Version::Unknown)?;
+    input.evaluated_at_unix_seconds = 99;
+    check_result(&input, State::Stale, Version::Unknown)?;
+    input.maximum_age_seconds = 0;
+    check_result(&input, State::Malformed, Version::Unknown)?;
+    input.maximum_age_seconds = 10;
+    input.evaluated_at_unix_seconds = 120;
+    input.current_context.principal = "replacement-principal".to_string();
+    // New collection replaces all three endpoint observations and evidence identities.
+    for observation in &mut input.observations {
+        for provenance in [
+            &mut observation.version_provenance,
+            &mut observation.owner_provenance,
+            &mut observation.authority_provenance,
+        ] {
+            let provenance = provenance.as_mut().ok_or("fixture provenance absent")?;
+            provenance.observed_at_unix_seconds = 120;
+            provenance.evidence_digest = checksum(120);
+        }
+    }
+    require(
+        evaluate_final_registry_preflight_v1(&input).result == State::Stale,
+        "new endpoint times erased context movement",
+    )?;
+    input.observed_context = input.current_context.clone();
+    check_result(
+        &input,
+        State::CompleteWithResidualAuthorityRisk,
+        Version::Missing,
+    )?;
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_authority_claim_requires_independent_dimension_provenance() -> TestResult
+{
+    let mut input = fixture()?;
+    for observation in &mut input.observations {
+        observation.publish_authority = FinalRegistryPublishAuthorityV1::Proven;
+    }
+    first(&mut input)?.owner = FinalRegistryOwnerStateV1::PermissionNotProven;
+    check_result(
+        &input,
+        State::CompleteWithResidualAuthorityRisk,
+        Version::Missing,
+    )?;
+    first(&mut input)?.owner = FinalRegistryOwnerStateV1::OwnedByExpectedPrincipal;
+    first(&mut input)?.authority_provenance = None;
+    check_result(&input, State::Malformed, Version::Missing)?;
+    let mut substituted = fixture()?;
+    substituted.candidate.candidate_product_id = "cargo-intent".to_string();
+    require(
+        evaluate_final_registry_preflight_v1(&substituted).result == State::Malformed,
+        "foreign product subject accepted",
+    )
+}
+
+#[test]
+fn final_registry_preflight_foreign_topology_is_rejected_with_fresh_bindings() -> TestResult {
+    let mut input = fixture()?;
+    input.candidate.topology_id = "FOREIGN-TOPOLOGY".to_string();
+    let (candidate_digest, denominator_digest) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate_digest;
+    input.current_context.denominator_digest = denominator_digest;
+    input.observed_context = input.current_context.clone();
+    check_result(&input, State::Malformed, Version::Missing)
+}
+
+#[test]
+fn final_registry_preflight_reuses_exact_internal_dependency_version_validation() -> TestResult {
+    let mut input = fixture()?;
+    input
+        .candidate
+        .rows
+        .iter_mut()
+        .find(|row| row.logical_id == "allow-policy")
+        .ok_or("policy row absent")?
+        .expected_dependency_rows
+        .push(crate::PackageCandidateDependencyRowV2 {
+            package_name: "allow-core".to_string(),
+            package_version: "0.2.0-rc.1".to_string(),
+            dependency_kind: crate::PackageCandidateDependencyKindV2::Internal,
+        });
+    let (candidate_digest, denominator_digest) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate_digest;
+    input.current_context.denominator_digest = denominator_digest;
+    input.observed_context = input.current_context.clone();
+    check_result(&input, State::Malformed, Version::Missing)
+}
+
+#[test]
+fn final_registry_preflight_canonical_roundtrip_retains_all_negative_dimensions() -> TestResult {
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: checksum(999),
+        yanked: true,
+    };
+    first(&mut input)?.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+    first(&mut input)?.publish_authority = FinalRegistryPublishAuthorityV1::InstrumentFailure;
+    let receipt = evaluate_final_registry_preflight_v1(&input);
+    require(
+        receipt.result == State::InstrumentFailure,
+        "severity precedence changed",
+    )?;
+    let row = receipt.upload_rows.first().ok_or("row absent")?;
+    require(
+        row.findings
+            .iter()
+            .any(|finding| finding.result == State::Conflict)
+            && row
+                .findings
+                .iter()
+                .any(|finding| finding.result == State::ProviderUnavailable),
+        "secondary failures lost",
+    )?;
+    let json = render_final_registry_preflight_v1(&receipt)?;
+    let decoded: CargoAllowFinalRegistryPreflightV1 = serde_json::from_str(&json)?;
+    require(
+        decoded == receipt && render_final_registry_preflight_v1(&decoded)? == json,
+        "noncanonical roundtrip",
+    )?;
+    require(
+        json.contains("test_fixture") && !json.contains("external_provider"),
+        "fixture provenance laundered",
+    )?;
+    input.schema_version = 99;
+    require(
+        evaluate_final_registry_preflight_v1(&input).result == State::UnsupportedGeneration,
+        "unsupported generation accepted",
+    )
+}
+
+#[test]
+fn final_registry_preflight_shared_absence_is_not_upload_feasibility() -> TestResult {
+    let mut input = fixture()?;
+    input
+        .observations
+        .iter_mut()
+        .find(|row| row.package_name == "effortless-repo-protocol")
+        .ok_or("shared observation absent")?
+        .version = Response::Missing {};
+    require(
+        evaluate_final_registry_preflight_v1(&input).result == State::Incomplete,
+        "missing shared prerequisite became feasible",
+    )
+}
+
+#[test]
+fn final_registry_preflight_retains_surplus_observations_and_health() -> TestResult {
+    for empty_candidate in [false, true] {
+        let mut input = fixture()?;
+        let mut extra = input
+            .observations
+            .first()
+            .ok_or("observation absent")?
+            .clone();
+        extra.version = Response::Found {
+            checksum: "invalid".to_string(),
+            yanked: true,
+        };
+        extra.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+        extra.publish_authority = FinalRegistryPublishAuthorityV1::InstrumentFailure;
+        extra.version_provenance = None;
+        extra
+            .owner_provenance
+            .as_mut()
+            .ok_or("owner provenance absent")?
+            .observed_at_unix_seconds = 0;
+        extra.authority_provenance = None;
+        if empty_candidate {
+            input.candidate.rows.clear();
+            input.observations.clear();
+        }
+        let index = input.observations.len();
+        input.observations.push(extra.clone());
+        let mut second = extra.clone();
+        second.version = Response::Timeout {};
+        input.observations.push(second.clone());
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        let rendered: serde_json::Value =
+            serde_json::from_str(&render_final_registry_preflight_v1(&receipt)?)?;
+        require(
+            rendered.get("surplus_observations")
+                == Some(&serde_json::to_value(vec![extra, second])?),
+            "surplus raw observations lost or reordered",
+        )?;
+        require(
+            receipt.result == State::Malformed,
+            "surplus observations became clean",
+        )?;
+        for (state, reason) in [
+            (State::Malformed, "missing version provenance"),
+            (State::Malformed, "malformed observed checksum"),
+            (State::Stale, "owner observation is future-dated or expired"),
+            (State::Malformed, "missing authority provenance"),
+            (State::ProviderUnavailable, "owner endpoint unavailable"),
+            (State::InstrumentFailure, "authority instrument failure"),
+        ] {
+            require(
+                receipt.findings.iter().any(|finding| {
+                    finding.result == state
+                        && finding.reason == format!("surplus observation[{index}]: {reason}")
+                }),
+                "surplus health finding lost",
+            )?;
+        }
+        require(
+            receipt.findings.iter().any(|finding| {
+                finding.result == State::ProviderUnavailable
+                    && finding.reason
+                        == format!(
+                            "surplus observation[{}]: version provider unavailable",
+                            index + 1
+                        )
+            }),
+            "second surplus health lost",
+        )?;
+        require(
+            !receipt
+                .findings
+                .iter()
+                .any(|finding| finding.result == State::Conflict),
+            "surplus observation attributed to selected identity",
+        )?;
+        require(
+            receipt
+                .upload_rows
+                .iter()
+                .chain(&receipt.shared_prerequisites)
+                .all(|row| row.next_action == FinalRegistryNextActionV1::RepairInput),
+            "surplus failure did not constrain row actions",
+        )?;
+    }
+    Ok(())
+}
