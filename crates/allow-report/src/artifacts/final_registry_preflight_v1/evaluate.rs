@@ -313,22 +313,23 @@ fn provenance_valid(
         );
         return false;
     };
-    if provenance.provider.trim().is_empty()
-        || provenance.source.trim().is_empty()
-        || !digest(&provenance.evidence_digest)
-    {
+    let shape_valid = !provenance.provider.trim().is_empty()
+        && !provenance.source.trim().is_empty()
+        && digest(&provenance.evidence_digest);
+    if !shape_valid {
         finding(
             findings,
             ResultState::Malformed,
             format!("malformed {dimension} provenance"),
         );
-        return false;
     }
     match input
         .evaluated_at_unix_seconds
         .checked_sub(provenance.observed_at_unix_seconds)
     {
-        Some(age) if input.maximum_age_seconds > 0 && age <= input.maximum_age_seconds => true,
+        Some(age) if input.maximum_age_seconds > 0 && age <= input.maximum_age_seconds => {
+            shape_valid
+        }
         _ => {
             finding(
                 findings,

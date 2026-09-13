@@ -7,6 +7,56 @@ use FinalRegistryVersionResponseV1 as Response;
 use FinalRegistryVersionStateV1 as Version;
 
 #[test]
+fn final_registry_preflight_malformed_provenance_preserves_freshness() -> TestResult {
+    for dimension in ["version", "owner", "authority"] {
+        for malformed_field in ["provider", "source", "digest"] {
+            for observed_at in [99, 111] {
+                let mut input = fixture()?;
+                let observation = first(&mut input)?;
+                let provenance = match dimension {
+                    "version" => observation.version_provenance.as_mut(),
+                    "owner" => observation.owner_provenance.as_mut(),
+                    _ => observation.authority_provenance.as_mut(),
+                }
+                .ok_or("fixture provenance absent")?;
+                match malformed_field {
+                    "provider" => provenance.provider.clear(),
+                    "source" => provenance.source.clear(),
+                    _ => provenance.evidence_digest = "invalid".to_string(),
+                }
+                provenance.observed_at_unix_seconds = observed_at;
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "malformed precedence changed",
+                )?;
+                let row = receipt.upload_rows.first().ok_or("row absent")?;
+                for (state, reason) in [
+                    (
+                        State::Malformed,
+                        format!("malformed {dimension} provenance"),
+                    ),
+                    (
+                        State::Stale,
+                        format!("{dimension} observation is future-dated or expired"),
+                    ),
+                ] {
+                    require(
+                        row.findings
+                            .iter()
+                            .any(|finding| finding.result == state && finding.reason == reason),
+                        format!(
+                            "missing {state:?} for {dimension}/{malformed_field}/{observed_at}"
+                        ),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn final_registry_preflight_malformed_checksum_keeps_independent_yanked_fact() -> TestResult {
     let mut input = fixture()?;
     first(&mut input)?.version = Response::Found {
