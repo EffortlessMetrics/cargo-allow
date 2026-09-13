@@ -15,6 +15,10 @@ fn final_registry_preflight_current_topology_uses_production_evaluator_and_schem
         render_final_registry_preflight_v1,
     };
     let root = repository_root()?;
+    if !root.join(".git").exists() {
+        eprintln!("topology integration skipped: repository checkout unavailable");
+        return Ok(());
+    }
     let topology: toml::Value = toml::from_str(&fs::read_to_string(
         root.join("policy/product-package-topology-v2.toml"),
     )?)?;

@@ -6,6 +6,62 @@ use FinalRegistryPreflightResultV1 as State;
 use FinalRegistryVersionResponseV1 as Response;
 use FinalRegistryVersionStateV1 as Version;
 
+#[test]
+fn final_registry_preflight_malformed_checksum_keeps_independent_yanked_fact() -> TestResult {
+    let mut input = fixture()?;
+    first(&mut input)?.version = Response::Found {
+        checksum: "malformed".to_string(),
+        yanked: true,
+    };
+    let receipt = evaluate_final_registry_preflight_v1(&input);
+    require(
+        receipt.result == State::Malformed,
+        "malformed checksum must stay non-clean",
+    )?;
+    let row = receipt.upload_rows.first().ok_or("row absent")?;
+    require(
+        row.findings.iter().any(|finding| {
+            finding.result == State::Conflict
+                && finding.reason == "selected registry version is yanked"
+        }),
+        "independent yanked finding was lost",
+    )
+}
+
+#[test]
+fn final_registry_preflight_expired_failure_preserves_each_failure_dimension() -> TestResult {
+    for (response, expected, underlying) in [
+        (
+            Response::Timeout {},
+            State::Stale,
+            State::ProviderUnavailable,
+        ),
+        (
+            Response::MalformedResponse {},
+            State::InstrumentFailure,
+            State::InstrumentFailure,
+        ),
+    ] {
+        let mut input = fixture()?;
+        input.evaluated_at_unix_seconds = 111;
+        first(&mut input)?.version = response;
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        require(receipt.result == expected, "failure precedence changed")?;
+        let row = receipt.upload_rows.first().ok_or("row absent")?;
+        require(
+            row.findings
+                .iter()
+                .any(|finding| finding.result == underlying)
+                && row
+                    .findings
+                    .iter()
+                    .any(|finding| finding.result == State::Stale),
+            "underlying failure or expiry lost",
+        )?;
+    }
+    Ok(())
+}
+
 fn require(condition: bool, message: impl Into<String>) -> TestResult {
     if !condition {
         return Err(std::io::Error::other(message.into()).into());
@@ -566,6 +622,41 @@ fn final_registry_preflight_authority_claim_requires_independent_dimension_prove
         evaluate_final_registry_preflight_v1(&substituted).result == State::Malformed,
         "foreign product subject accepted",
     )
+}
+
+#[test]
+fn final_registry_preflight_foreign_topology_is_rejected_with_fresh_bindings() -> TestResult {
+    let mut input = fixture()?;
+    input.candidate.topology_id = "FOREIGN-TOPOLOGY".to_string();
+    let (candidate_digest, denominator_digest) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate_digest;
+    input.current_context.denominator_digest = denominator_digest;
+    input.observed_context = input.current_context.clone();
+    check_result(&input, State::Malformed, Version::Missing)
+}
+
+#[test]
+fn final_registry_preflight_reuses_exact_internal_dependency_version_validation() -> TestResult {
+    let mut input = fixture()?;
+    input
+        .candidate
+        .rows
+        .iter_mut()
+        .find(|row| row.logical_id == "allow-policy")
+        .ok_or("policy row absent")?
+        .expected_dependency_rows
+        .push(crate::PackageCandidateDependencyRowV2 {
+            package_name: "allow-core".to_string(),
+            package_version: "0.2.0-rc.1".to_string(),
+            dependency_kind: crate::PackageCandidateDependencyKindV2::Internal,
+        });
+    let (candidate_digest, denominator_digest) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate_digest;
+    input.current_context.denominator_digest = denominator_digest;
+    input.observed_context = input.current_context.clone();
+    check_result(&input, State::Malformed, Version::Missing)
 }
 
 #[test]

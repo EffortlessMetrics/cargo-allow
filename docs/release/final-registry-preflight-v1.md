@@ -16,7 +16,11 @@ current contexts, evaluation time, and a positive maximum observation age.
 and a future external adapter. The evaluator accepts its returned observations
 as data and never invokes an adapter itself.
 
-The existing candidate validator owns candidate structure and dependency order.
+The existing candidate validator owns supplied candidate structure, internal
+dependency version equality, and dependency order. Complete dependency-graph
+derivation and packaged-manifest verification remain producer-owned; this
+preflight does not prove that the supplied graph includes every required edge.
+This generation requires topology ID `CARGO-ALLOW-PKG-TOPOLOGY-V2-0001`.
 This generation additionally requires the exact current selection: allow-core
 (10), allow-policy (20), allow-inventory (30), allow-files (40), allow-rust (50),
 allow-match (60), allow-report (70), allow-policy-legacy (75), shared repo-protocol
@@ -90,7 +94,9 @@ This change does not wire those consumers, close #3744, qualify hosted evidence,
 or make a release permission oracle available.
 
 Production evaluator fixtures live beside the model. The cargo-allow integration
-test consumes current topology through the same evaluator. Run:
+test consumes current topology through the same evaluator in a repository
+checkout; it explicitly skips packaged contexts without the repository tree.
+Run:
 
 ```sh
 cargo test -p allow-report final_registry_preflight --locked -- --nocapture

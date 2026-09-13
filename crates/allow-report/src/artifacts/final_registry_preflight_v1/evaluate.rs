@@ -93,7 +93,8 @@ pub fn evaluate_final_registry_preflight_v1(
     for gap in validation.gaps {
         finding(&mut findings, state, format!("candidate: {gap}"));
     }
-    if input.candidate.candidate_product_id != "cargo-allow-0.2"
+    if input.candidate.topology_id != "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001"
+        || input.candidate.candidate_product_id != "cargo-allow-0.2"
         || input.candidate.root_logical_id != "cargo-allow"
         || input.candidate.root_package_name != "cargo-allow"
         || input.candidate.root_package_version != "0.2.0"
@@ -101,7 +102,7 @@ pub fn evaluate_final_registry_preflight_v1(
         finding(
             &mut findings,
             ResultState::Malformed,
-            "candidate product/root is not final cargo-allow 0.2.0",
+            "candidate topology/product/root is not the selected final cargo-allow 0.2.0 generation",
         );
     }
     if input.candidate.rows.len() != SELECTION.len()
@@ -364,6 +365,13 @@ fn reconcile_observation(
     );
     let mut version = match &observation.version {
         Response::Found { checksum, yanked } => {
+            if *yanked {
+                finding(
+                    findings,
+                    ResultState::Conflict,
+                    "selected registry version is yanked",
+                );
+            }
             if !digest(checksum) {
                 finding(
                     findings,
@@ -381,11 +389,6 @@ fn reconcile_observation(
                     );
                 }
                 if *yanked {
-                    finding(
-                        findings,
-                        ResultState::Conflict,
-                        "selected registry version is yanked",
-                    );
                     Version::Yanked
                 } else if exact {
                     Version::AlreadyPublishedExact

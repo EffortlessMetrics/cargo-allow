@@ -45,6 +45,7 @@ pub enum PackageCandidateDependencyKindV2 {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PackageCandidateDependencyRowV2 {
     pub package_name: String,
+    /// Exact selected row version for internal edges; requirement for external edges.
     pub package_version: String,
     pub dependency_kind: PackageCandidateDependencyKindV2,
 }
@@ -134,7 +135,7 @@ pub fn render_package_candidate_v2_bytes(
 /// Validate the candidate's structural law (#2924): current generation,
 /// present repository/lock identity, no sibling-product rows, one version
 /// per family without substitution, manifest identities that match their
-/// rows, internal dependencies that resolve inside the candidate, an order
+/// rows, internal dependencies that resolve by exact name/version inside the candidate, an order
 /// that agrees with the internal dependency graph, and named assets for the
 /// family rows that own release assets.
 pub fn validate_package_candidate_v2(
@@ -280,6 +281,25 @@ pub fn validate_package_candidate_v2(
                     dependency.package_name
                 ));
             }
+            // A mixed-version family has no coherent selected version. Preserve
+            // its existing family-identity classification before comparing edges.
+            if dependency.dependency_kind == PackageCandidateDependencyKindV2::Internal
+                && let Some(selected) = payload
+                    .rows
+                    .iter()
+                    .find(|selected| selected.cargo_package_name == dependency.package_name)
+                && family_versions
+                    .get(&selected.product_family)
+                    .is_some_and(|versions| versions.len() == 1)
+                && dependency.package_version != selected.cargo_package_version
+            {
+                gaps.push(format!(
+                    "{label} internal dependency {} version {} differs from selected version {}",
+                    dependency.package_name,
+                    dependency.package_version,
+                    selected.cargo_package_version,
+                ));
+            }
         }
         if row.product_family == PackageCandidateFamilyV2::CargoAllow02
             && row.cargo_package_name == payload.root_package_name
@@ -393,7 +413,7 @@ mod tests {
     ) -> PackageCandidateDependencyRowV2 {
         PackageCandidateDependencyRowV2 {
             package_name: package_name.to_string(),
-            package_version: "0.1.0".to_string(),
+            package_version: "0.2.0-rc.1".to_string(),
             dependency_kind: kind,
         }
     }
@@ -489,6 +509,61 @@ mod tests {
         let validation = validate_package_candidate_v2(&payload());
         if validation.result != PackageCandidateResultV2::Complete {
             return Err(format!("wellformed candidate was rejected: {validation:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn candidate_internal_dependency_versions_match_selected_rows() -> Result<(), String> {
+        let mut valid = payload();
+        valid
+            .rows
+            .iter_mut()
+            .find(|row| row.cargo_package_name == "effortless-repo-protocol")
+            .ok_or("shared row absent")?
+            .release_order = 90;
+        valid.rows.sort_by_key(|row| row.release_order);
+        let root = valid
+            .rows
+            .iter_mut()
+            .find(|row| row.cargo_package_name == "cargo-allow")
+            .ok_or("root row absent")?;
+        root.expected_dependency_rows
+            .push(PackageCandidateDependencyRowV2 {
+                package_name: "effortless-repo-protocol".to_string(),
+                package_version: "0.1.0".to_string(),
+                dependency_kind: PackageCandidateDependencyKindV2::Internal,
+            });
+        root.expected_dependency_rows
+            .push(PackageCandidateDependencyRowV2 {
+                package_name: "serde".to_string(),
+                package_version: "^1".to_string(),
+                dependency_kind: PackageCandidateDependencyKindV2::External,
+            });
+        let accepted = validate_package_candidate_v2(&valid);
+        if accepted.result != PackageCandidateResultV2::Complete {
+            return Err(format!(
+                "matching internal versions/external requirement rejected: {accepted:?}"
+            ));
+        }
+        for package in ["allow-policy", "effortless-repo-protocol"] {
+            let mut invalid = valid.clone();
+            invalid
+                .rows
+                .iter_mut()
+                .find(|row| row.cargo_package_name == "cargo-allow")
+                .ok_or("root row absent")?
+                .expected_dependency_rows
+                .iter_mut()
+                .find(|dependency| dependency.package_name == package)
+                .ok_or("dependency absent")?
+                .package_version = "9.9.9".to_string();
+            let rejected = validate_package_candidate_v2(&invalid);
+            if rejected.result != PackageCandidateResultV2::DependencyConflict {
+                return Err(format!(
+                    "mismatched internal version accepted: {rejected:?}"
+                ));
+            }
         }
         Ok(())
     }
