@@ -626,6 +626,115 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "core.trustctime"):
             REHEARSAL.build_rehearsal_receipt("HEAD")
 
+    def require_transformation_rejected_before_status(self) -> None:
+        run = subprocess.run
+
+        def inspect_without_status(command, **kwargs):
+            if "status" in command:
+                return subprocess.CompletedProcess(command, 0, b"", b"")
+            return run(command, **kwargs)
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=inspect_without_status) as calls:
+            with self.assertRaisesRegex(ValueError, "content transformation"):
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertFalse(any("status" in call.args[0] for call in calls.call_args_list))
+        self.require_no_phases()
+
+    def test_content_transform_attributes_are_rejected_before_status(self) -> None:
+        for attribute in (
+            "filter", "filter=fixture", "filter=unspecified", "filter=unset", "-filter",
+            "ident", "working-tree-encoding=UTF-8",
+        ):
+            with self.subTest(attribute=attribute):
+                (self.root / ".git/info/attributes").write_text(
+                    f"Cargo.lock {attribute}\n", encoding="utf-8",
+                )
+                self.require_transformation_rejected_before_status()
+
+    def test_external_content_attributes_are_rejected_before_status(self) -> None:
+        attributes = self.root / "target/fixture-attributes"
+        attributes.parent.mkdir()
+        attributes.write_text("Cargo.lock filter=fixture\n", encoding="utf-8")
+        self.git("config", "core.attributesFile", str(attributes))
+        self.require_transformation_rejected_before_status()
+
+    def test_non_transform_attributes_preserve_characterization(self) -> None:
+        (self.root / ".git/info/attributes").write_text(
+            "Cargo.lock rehearsal-marker=present\n", encoding="utf-8",
+        )
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_content_attribute_inspection_is_complete_and_redacted(self) -> None:
+        run = subprocess.run
+        for mutation in ("failed", "empty", "terminator", "extra", "path", "attribute"):
+            with self.subTest(mutation=mutation):
+                def corrupt_attributes(command, **kwargs):
+                    result = run(command, **kwargs)
+                    if "check-attr" not in command:
+                        return result
+                    output = result.stdout
+                    if mutation == "empty":
+                        output = b""
+                    elif mutation == "terminator":
+                        output = output.removesuffix(b"\0")
+                    elif mutation == "extra":
+                        output += b"extra\0"
+                    elif mutation == "path":
+                        output = output.replace(b".github/workflows/release.yml", b"other", 1)
+                    elif mutation == "attribute":
+                        output = output.replace(b"\0filter\0", b"\0other\0", 1)
+                    return subprocess.CompletedProcess(
+                        command, 128 if mutation == "failed" else 0, output, b"secret-canary",
+                    )
+
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=corrupt_attributes):
+                    with self.assertRaisesRegex(ValueError, "content transformation") as caught:
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.assertNotIn("secret-canary", str(caught.exception))
+                self.require_no_phases()
+
+    def test_defined_attribute_inspection_is_validated(self) -> None:
+        (self.root / ".git/info/attributes").write_text(
+            "Cargo.lock rehearsal-marker=present\n", encoding="utf-8",
+        )
+        run = subprocess.run
+        for mutation in ("failed", "terminator", "extra", "path", "duplicate"):
+            with self.subTest(mutation=mutation):
+                def corrupt_defined_attributes(command, **kwargs):
+                    result = run(command, **kwargs)
+                    if "check-attr" not in command or "--all" not in command:
+                        return result
+                    output = result.stdout
+                    if mutation == "terminator":
+                        output = output.removesuffix(b"\0")
+                    elif mutation == "extra":
+                        output += b"extra\0"
+                    elif mutation == "path":
+                        output = output.replace(b"Cargo.lock", b"other", 1)
+                    elif mutation == "duplicate":
+                        output += output
+                    return subprocess.CompletedProcess(
+                        command, 128 if mutation == "failed" else 0, output, b"secret-canary",
+                    )
+
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=corrupt_defined_attributes):
+                    with self.assertRaisesRegex(ValueError, "content transformation") as caught:
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.assertNotIn("secret-canary", str(caught.exception))
+                self.require_no_phases()
+
+    def test_content_attributes_added_by_phase_prevent_receipt_return(self) -> None:
+        def change_attributes(receipt, *, candidate_executable=None, candidate_sha256=None):
+            (self.root / ".git/info/attributes").write_text("Cargo.lock filter\n", encoding="utf-8")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_attributes
+        with self.assertRaisesRegex(ValueError, "content transformation"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
     def test_different_discovered_root_is_rejected_before_phases(self) -> None:
         result = subprocess.CompletedProcess([], 0, os.fsencode(self.root.parent) + b"\n")
         with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):

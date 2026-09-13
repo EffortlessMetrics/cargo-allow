@@ -5,5 +5,5 @@ body: >-
   inputs outside the known build and cache directories. Reject unsupported
   index flags that can hide tracked changes, mismatched Git working-tree roots,
   and explicit repository/configuration-selection environment overrides. Inspect
-  original Git objects without local replacements, reject disabled ctime comparison, and
-  preserve non-ASCII worktree paths.
+  original Git objects without local replacements, reject disabled ctime comparison
+  and assigned content-transformation attributes, and preserve non-ASCII worktree paths.

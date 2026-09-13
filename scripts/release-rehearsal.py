@@ -81,6 +81,57 @@ def _is_ignored_rehearsal_artifact(entry: bytes) -> bool:
     return False
 
 
+def require_supported_content_attributes(paths: list[bytes]) -> None:
+    """Reject content conversion attributes before status can apply them."""
+    attributes = (b"filter", b"ident", b"working-tree-encoding")
+
+    def query(arguments: list[str]) -> bytes:
+        result = subprocess.run(
+            [
+                "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
+                "check-attr", "--stdin", "-z", *arguments,
+            ],
+            cwd=ROOT, input=b"".join(path + b"\0" for path in paths),
+            capture_output=True, timeout=15, check=False,
+        )
+        if result.returncode != 0:
+            raise ValueError("could not inspect rehearsal checkout content transformations")
+        return result.stdout
+
+    fields = iter(query(["filter", "ident", "working-tree-encoding"]).split(b"\0"))
+    for path in paths:
+        for attribute in attributes:
+            observed_path = next(fields, None)
+            observed_attribute = next(fields, None)
+            value = next(fields, None)
+            if observed_path != path or observed_attribute != attribute or value is None:
+                raise ValueError("invalid rehearsal checkout content transformation inspection")
+            if value not in {b"unspecified", b"unset"}:
+                raise ValueError("rehearsal does not support Git content transformation attributes")
+    if next(fields, None) != b"" or next(fields, None) is not None:
+        raise ValueError("invalid rehearsal checkout content transformation inspection")
+    # Named values can equal check-attr's state words. --all omits genuinely
+    # unspecified attributes, so reject every defined conversion attribute,
+    # including explicit unsets whose display is also ambiguous.
+    fields = iter(query(["--all"]).split(b"\0"))
+    tracked = set(paths)
+    seen = set()
+    while True:
+        path = next(fields, None)
+        if path == b"":
+            if next(fields, None) is not None:
+                raise ValueError("invalid rehearsal checkout content transformation inspection")
+            break
+        attribute = next(fields, None)
+        value = next(fields, None)
+        key = (path, attribute)
+        if path not in tracked or not attribute or value is None or key in seen:
+            raise ValueError("invalid rehearsal checkout content transformation inspection")
+        seen.add(key)
+        if attribute in attributes:
+            raise ValueError("rehearsal does not support Git content transformation attributes")
+
+
 def require_clean_checkout(commit_sha: str) -> None:
     """Admit only the named checkout with no observed source changes.
 
@@ -127,6 +178,9 @@ def require_clean_checkout(commit_sha: str) -> None:
     # lowercase tags mark assume-unchanged. Inspect without clearing flags.
     if any(not entry.startswith(b"H ") for entry in index.stdout.split(b"\0") if entry):
         raise ValueError("rehearsal checkout has unsupported index flags or entries")
+    require_supported_content_attributes([
+        entry.removeprefix(b"H ") for entry in index.stdout.split(b"\0") if entry
+    ])
     result = subprocess.run(
         [
             "git", "--no-replace-objects", "--no-optional-locks",
