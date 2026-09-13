@@ -24,7 +24,7 @@ The repository compatibility contract is pinned to Changie `1.25.2`.
    The retained history corpus and isolated round-trip harness are documented in
    [the changelog guide](../docs/how-to/manage-changelog.md#history-corpus-and-proven-round-trip).
    Checking corpus currency is distinct from running that harness; neither
-   establishes release qualification or authorizes mutation of the live repository.
+   establishes release qualification nor authorizes mutation of the live repository.
 
 ## Install the pinned version
 
