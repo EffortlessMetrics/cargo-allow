@@ -48,9 +48,9 @@ use serde_json::Value as Json;
 use crate::cli::candidate_preparation_command::git_root;
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
-const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
-const CARGO_LOCK_PATH: &str = "Cargo.lock";
-const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
+pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
+pub(crate) const CARGO_LOCK_PATH: &str = "Cargo.lock";
+pub(crate) const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
 const SUPPORT_MATRIX_PATH: &str = "docs/support-matrix.toml";
 const INCIDENT_EVIDENCE_PATH: &str = "docs/release/evidence/rc1-publication-incident.v1.json";
 
@@ -1798,7 +1798,7 @@ fn strip_line_endings(text: &str) -> String {
 
 /// Derive identity only from the bytes admitted by the collector. These
 /// helpers deliberately have no filesystem capability or repository root.
-fn verified_subject_input<'a>(
+pub(crate) fn verified_subject_input<'a>(
     verified: &'a BTreeMap<&str, Vec<u8>>,
     relative: &str,
 ) -> CargoAllowResult<&'a [u8]> {
@@ -1808,7 +1808,9 @@ fn verified_subject_input<'a>(
         .ok_or_else(|| instrument(format!("verified input is missing: {relative}")))
 }
 
-fn verified_workspace_version(verified: &BTreeMap<&str, Vec<u8>>) -> CargoAllowResult<String> {
+pub(crate) fn verified_workspace_version(
+    verified: &BTreeMap<&str, Vec<u8>>,
+) -> CargoAllowResult<String> {
     let manifest = std::str::from_utf8(verified_subject_input(verified, WORKSPACE_MANIFEST_PATH)?)
         .map_err(|error| instrument(format!("{WORKSPACE_MANIFEST_PATH}: {error}")))?;
     manifest
@@ -1861,96 +1863,6 @@ mod tests {
         FinalEvidenceOriginV1, FinalSelectionDispositionV1, FinalSelectionRowV1,
         FinalSupportSelectionV1,
     };
-
-    #[test]
-    fn verified_manifest_version_uses_retained_snapshot_bytes()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let mut later_manifest = b"# workspace\r\nversion = \"0.2.0\"\r\n".to_vec();
-        let verified = std::collections::BTreeMap::from([(
-            super::WORKSPACE_MANIFEST_PATH,
-            later_manifest.clone(),
-        )]);
-        // Model the admission boundary without a filesystem race: later input
-        // changes cannot become a source for the root-free derivation helper.
-        later_manifest.clear();
-        later_manifest.extend_from_slice(b"version = \"9.9.9\"\n");
-        let declared = super::verified_workspace_version(&verified)?;
-        if declared != "0.2.0" {
-            return Err(format!("selected {declared:?} instead of the admitted version").into());
-        }
-        let later =
-            std::collections::BTreeMap::from([(super::WORKSPACE_MANIFEST_PATH, later_manifest)]);
-        if super::verified_workspace_version(&later)? != "9.9.9" {
-            return Err("the control did not distinguish the later manifest bytes".into());
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn verified_manifest_version_rejects_malformed_snapshot()
-    -> Result<(), Box<dyn std::error::Error>> {
-        for (manifest, diagnostic) in [
-            (vec![0xff], "Cargo.toml:"),
-            (Vec::new(), "the workspace manifest has no version"),
-        ] {
-            let verified =
-                std::collections::BTreeMap::from([(super::WORKSPACE_MANIFEST_PATH, manifest)]);
-            let error = super::verified_workspace_version(&verified)
-                .err()
-                .ok_or("malformed admitted manifest unexpectedly produced a version")?;
-            if error.kind() != super::CargoAllowErrorKind::InstrumentFailure
-                || !error.to_string().contains(diagnostic)
-            {
-                return Err(format!("incorrect manifest failure: {error}").into());
-            }
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn verified_subject_input_rejects_missing_snapshot_entries()
-    -> Result<(), Box<dyn std::error::Error>> {
-        let verified = std::collections::BTreeMap::new();
-        for path in [
-            super::WORKSPACE_MANIFEST_PATH,
-            super::CARGO_LOCK_PATH,
-            super::TOPOLOGY_PATH,
-        ] {
-            let error = super::verified_subject_input(&verified, path)
-                .err()
-                .ok_or("missing admitted input unexpectedly produced bytes")?;
-            if error.kind() != super::CargoAllowErrorKind::InstrumentFailure
-                || !error.to_string().contains(path)
-            {
-                return Err(format!("incorrect missing-input failure: {error}").into());
-            }
-        }
-        if super::verified_workspace_version(&verified).is_ok() {
-            return Err("missing manifest unexpectedly produced a version".into());
-        }
-        Ok(())
-    }
-
-    #[test]
-    fn verified_subject_input_preserves_raw_digest_bytes() -> Result<(), Box<dyn std::error::Error>>
-    {
-        let lock = b"lock\r\n";
-        let topology = b"topology\n";
-        let verified = std::collections::BTreeMap::from([
-            (super::CARGO_LOCK_PATH, lock.to_vec()),
-            (super::TOPOLOGY_PATH, topology.to_vec()),
-        ]);
-        for (path, expected) in [
-            (super::CARGO_LOCK_PATH, lock.as_slice()),
-            (super::TOPOLOGY_PATH, topology.as_slice()),
-        ] {
-            let retained = super::verified_subject_input(&verified, path)?;
-            if retained != expected {
-                return Err(format!("admitted digest bytes changed for {path}").into());
-            }
-        }
-        Ok(())
-    }
 
     fn subject() -> SubjectIdentity {
         SubjectIdentity {

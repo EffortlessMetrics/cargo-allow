@@ -296,6 +296,9 @@ mod proof_provider_api_parity_tests;
 #[cfg(test)]
 mod readme_tests;
 #[cfg(test)]
+#[path = "cli/release_freeze_command_tests.rs"]
+mod release_freeze_command_tests;
+#[cfg(test)]
 mod release_identity_denominator_tests;
 #[cfg(test)]
 mod release_prep_tests;
