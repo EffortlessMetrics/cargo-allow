@@ -1195,7 +1195,9 @@ fn build_evidence_graph(
         if required {
             required_ids.push(id.to_string());
         }
-        nodes.push(node_for(id, class, origin, &input.sha256, result, subject));
+        let mut node = node_for(id, class, origin, &input.sha256, result, subject);
+        node.required = required;
+        nodes.push(node);
     }
 
     // The support-selection node binds the committed support source itself.
@@ -2334,6 +2336,126 @@ expected_registry_checksum = "sha256:cccc"
         // carrying result=Incident escalates the whole graph evaluation and
         // could never replay into equivalence.
         assert_eq!(incident_node.result, FinalEvidenceNodeResultV1::Complete);
+    }
+
+    #[test]
+    fn evidence_graph_preserves_required_roles_in_both_consumers()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use allow_report::{
+            FinalEvidenceFindingKindV1, aggregate_final_readiness, evaluate_final_evidence_graph,
+        };
+
+        let subject = subject();
+        let selection = selection();
+        for (role, required) in [
+            (FreezeEvidenceRole::CandidatePreparation, true),
+            (FreezeEvidenceRole::PackageSet, true),
+            (FreezeEvidenceRole::PackageDocs, true),
+            (FreezeEvidenceRole::Rehearsal, true),
+            (FreezeEvidenceRole::InstallJourney, true),
+            (FreezeEvidenceRole::Interop, false),
+            (FreezeEvidenceRole::RegistryObservation, true),
+            (FreezeEvidenceRole::ReleaseManifest, false),
+            (FreezeEvidenceRole::UpgradeRollback, true),
+            (FreezeEvidenceRole::Controls, true),
+        ] {
+            // One already-admitted input isolates role classification. This
+            // intentionally sparse graph is not complete freeze evidence.
+            let evidence = [graph_role_input(role)];
+            let mut graph = super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+            // Isolate the consumers' required-node classification from the
+            // builder's support-selection edges for journey/control inputs.
+            graph.edges.clear();
+            let id = role.graph_shape().2;
+            let node = graph
+                .nodes
+                .iter()
+                .find(|node| node.evidence_id == id)
+                .ok_or("the supplied evidence node is missing")?;
+            let evaluation = evaluate_final_evidence_graph(&graph);
+            let readiness = aggregate_final_readiness(
+                &graph,
+                &readiness_decision_inputs(&subject, &selection, &evidence),
+            );
+            let orphan_required = evaluation.findings.iter().any(|finding| {
+                finding.kind == FinalEvidenceFindingKindV1::OrphanRequiredNode
+                    && finding.evidence_id.as_deref() == Some(id)
+            });
+            if node.required != required
+                || graph.required_node_ids.iter().any(|value| value == id) != required
+                || readiness.required_evidence.iter().any(|row| row.evidence_id == id) != required
+                // These inputs have no edges: only required nodes are orphans.
+                || orphan_required != required
+            {
+                return Err(format!(
+                    "{role:?} required={required} disagrees across producer and consumers"
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+
+    fn graph_role_input(role: FreezeEvidenceRole) -> super::EvidenceInput {
+        super::EvidenceInput {
+            role,
+            path: std::path::PathBuf::from("synthetic-admitted-receipt.json"),
+            sha256: allow_core::sha256_v1_bytes(b"synthetic admitted receipt"),
+            value: serde_json::json!({}),
+            binding_notes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn evidence_graph_still_validates_supplied_optional_nodes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use allow_report::{
+            FinalEvidenceFindingKindV1, FinalReadinessRowKindV1, aggregate_final_readiness,
+            evaluate_final_evidence_graph,
+        };
+
+        let subject = subject();
+        let selection = selection();
+        for role in [
+            FreezeEvidenceRole::Interop,
+            FreezeEvidenceRole::ReleaseManifest,
+        ] {
+            let evidence = [graph_role_input(role)];
+            for malformed_schema in [true, false] {
+                let mut graph =
+                    super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+                let id = role.graph_shape().2;
+                let node = graph
+                    .nodes
+                    .iter_mut()
+                    .find(|node| node.evidence_id == id)
+                    .ok_or("the supplied optional evidence node is missing")?;
+                let expected = if malformed_schema {
+                    node.schema_version = 99;
+                    FinalEvidenceFindingKindV1::InvalidSchema
+                } else {
+                    node.semantic_digest = "malformed".to_string();
+                    FinalEvidenceFindingKindV1::InvalidDigest
+                };
+                let evaluation = evaluate_final_evidence_graph(&graph);
+                let readiness = aggregate_final_readiness(
+                    &graph,
+                    &readiness_decision_inputs(&subject, &selection, &evidence),
+                );
+                if !evaluation.findings.iter().any(|finding| {
+                    finding.kind == expected && finding.evidence_id.as_deref() == Some(id)
+                }) || !readiness.rows.iter().any(|row| {
+                    row.kind == FinalReadinessRowKindV1::MissingEvidence
+                        && row.evidence_id.as_deref() == Some(id)
+                }) {
+                    return Err(format!(
+                        "invalid optional {role:?} lost its {expected:?} validation finding"
+                    )
+                    .into());
+                }
+            }
+        }
+        Ok(())
     }
 
     #[test]
