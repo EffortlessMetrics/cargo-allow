@@ -97,7 +97,7 @@ The same command runs real-Git derived-source controls for lock-only changes,
 unchanged locks, attached checkouts, and rejected source/index changes. The
 producer simulation separately rejects derivation failure before any class runs.
 The default suite also runs the actual rehearsal's strict checkout admission
-against the derived-source fixture and all 24 `TestRehearsalSubjectBinding`
+against the derived-source fixture and all 28 `TestRehearsalSubjectBinding`
 controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
@@ -114,7 +114,9 @@ commit resolution; their values are not printed or modified. Ordinary linked
 worktrees remain supported, including non-ASCII paths decoded with the filesystem
 encoding rather than the process locale. Every admission Git query disables
 replacement objects so commit resolution and source inspection use the original
-objects. These controls do
+objects. Both admission passes reject disabled or unreadable `core.trustctime`
+configuration, preserving Git's default ctime comparison without modifying the
+configuration or claiming full content hashing. These controls do
 not execute real rehearsal phases or establish a complete release rehearsal.
 See [#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
 

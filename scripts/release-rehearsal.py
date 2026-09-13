@@ -96,6 +96,15 @@ def require_clean_checkout(commit_sha: str) -> None:
     discovered_root = Path(os.fsdecode(root.stdout.rstrip(b"\r\n")))
     if not discovered_root.is_absolute() or discovered_root.resolve() != ROOT.resolve():
         raise ValueError("rehearsal checkout root does not match source root")
+    ctime = subprocess.run(
+        [
+            "git", "--no-replace-objects", "config", "--type=bool", "--default=true",
+            "--get", "core.trustctime",
+        ],
+        cwd=ROOT, capture_output=True, timeout=15, check=False,
+    )
+    if ctime.returncode != 0 or ctime.stdout.strip() != b"true":
+        raise ValueError("rehearsal requires readable core.trustctime=true configuration")
     index = subprocess.run(
         [
             "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",

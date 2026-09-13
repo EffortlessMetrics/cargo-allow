@@ -570,6 +570,43 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         for call in run.call_args_list:
             self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
 
+    def test_disabled_ctime_is_rejected_before_phases(self) -> None:
+        self.git("config", "core.trustctime", "false")
+        with self.assertRaisesRegex(ValueError, "core.trustctime"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+        self.assertEqual(self.git("config", "--get", "core.trustctime").strip(), "false")
+
+    def test_explicit_ctime_trust_preserves_characterization(self) -> None:
+        self.git("config", "core.trustctime", "true")
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_ctime_inspection_failure_is_rejected_without_raw_output(self) -> None:
+        run = subprocess.run
+
+        def fail_config(command, **kwargs):
+            if "config" in command:
+                return subprocess.CompletedProcess(command, 128, b"secret-canary", b"secret-canary")
+            return run(command, **kwargs)
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=fail_config):
+            with self.assertRaisesRegex(ValueError, "core.trustctime") as caught:
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertNotIn("secret-canary", str(caught.exception))
+        self.require_no_phases()
+
+    def test_disabled_ctime_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_config(receipt, *, candidate_executable=None, candidate_sha256=None):
+            self.git("config", "core.trustctime", "false")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_config
+        with self.assertRaisesRegex(ValueError, "core.trustctime"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
     def test_different_discovered_root_is_rejected_before_phases(self) -> None:
         result = subprocess.CompletedProcess([], 0, os.fsencode(self.root.parent) + b"\n")
         with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
