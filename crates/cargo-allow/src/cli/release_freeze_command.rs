@@ -1813,12 +1813,20 @@ pub(crate) fn verified_workspace_version(
 ) -> CargoAllowResult<String> {
     let manifest = std::str::from_utf8(verified_subject_input(verified, WORKSPACE_MANIFEST_PATH)?)
         .map_err(|error| instrument(format!("{WORKSPACE_MANIFEST_PATH}: {error}")))?;
-    manifest
-        .lines()
-        .filter_map(|line| line.trim().strip_prefix("version = "))
-        .next()
-        .map(|value| value.trim().trim_matches('"').to_string())
-        .ok_or_else(|| instrument("the workspace manifest has no version"))
+    let parsed: toml::Value = toml::from_str(manifest).map_err(|error| {
+        instrument(format!(
+            "{WORKSPACE_MANIFEST_PATH} is not valid TOML: {error}"
+        ))
+    })?;
+    parsed
+        .get("workspace")
+        .and_then(|workspace| workspace.get("package"))
+        .and_then(|package| package.get("version"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            instrument("the workspace manifest must declare workspace.package.version as a string")
+        })
 }
 
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
@@ -2665,7 +2673,7 @@ mod compose_fixture_tests {
         write(
             &root,
             "Cargo.toml",
-            b"# fixture workspace\nversion = \"0.2.0\"\n",
+            b"[workspace.package]\nversion = \"0.2.0\"\n",
         );
         write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
         write(
@@ -2806,7 +2814,7 @@ mod compose_fixture_tests {
         write(
             &root,
             "Cargo.toml",
-            b"# fixture workspace\nversion = \"0.2.0\"\n",
+            b"[workspace.package]\nversion = \"0.2.0\"\n",
         );
         write(
             &root,
