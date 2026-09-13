@@ -4,4 +4,5 @@ body: >-
   source changes before or after phase execution, including ignored release
   inputs outside the known build and cache directories. Reject unsupported
   index flags that can hide tracked changes, mismatched Git working-tree roots,
-  and explicit repository-selection environment overrides.
+  and explicit repository-selection environment overrides. Inspect original Git
+  objects without local replacements and preserve non-ASCII worktree paths.

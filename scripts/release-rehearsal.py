@@ -45,7 +45,7 @@ def resolve_commit(commit_ref: str) -> str:
     ):
         raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
     result = subprocess.run(
-        ["git", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
+        ["git", "--no-replace-objects", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -88,7 +88,7 @@ def require_clean_checkout(commit_sha: str) -> None:
     if resolve_commit("HEAD") != commit_sha:
         raise ValueError("rehearsal commit does not match checkout HEAD")
     root = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
+        ["git", "--no-replace-objects", "rev-parse", "--show-toplevel"],
         cwd=ROOT, capture_output=True, timeout=15, check=False,
     )
     if root.returncode != 0 or not root.stdout.strip():
@@ -98,7 +98,7 @@ def require_clean_checkout(commit_sha: str) -> None:
         raise ValueError("rehearsal checkout root does not match source root")
     index = subprocess.run(
         [
-            "git", "--no-optional-locks", "-c", "core.fsmonitor=false",
+            "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
             "ls-files", "--cached", "-v", "-z",
         ],
         cwd=ROOT,
@@ -114,7 +114,7 @@ def require_clean_checkout(commit_sha: str) -> None:
         raise ValueError("rehearsal checkout has unsupported index flags or entries")
     result = subprocess.run(
         [
-            "git", "--no-optional-locks",
+            "git", "--no-replace-objects", "--no-optional-locks",
             "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
             "status", "--porcelain=v1", "-z", "--untracked-files=all",
             "--ignored=matching",

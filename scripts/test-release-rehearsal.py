@@ -562,6 +562,14 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                     run.assert_not_called()
                 self.require_no_phases()
 
+    def test_all_admission_git_calls_disable_replacement_objects(self) -> None:
+        with mock.patch.object(REHEARSAL.subprocess, "run", wraps=subprocess.run) as run:
+            receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        self.assertTrue(run.call_args_list)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+
     def test_different_discovered_root_is_rejected_before_phases(self) -> None:
         result = subprocess.CompletedProcess([], 0, os.fsencode(self.root.parent) + b"\n")
         with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
