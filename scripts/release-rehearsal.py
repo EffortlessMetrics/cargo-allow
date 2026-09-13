@@ -186,6 +186,8 @@ def require_clean_checkout(commit_sha: str) -> None:
         [
             "git", "--no-replace-objects", "--no-optional-locks",
             "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+            "-c", "core.checkStat=default", "-c", "core.ignoreStat=false",
+            "-c", "core.trustctime=true",
             "status", "--porcelain=v1", "-z", "--untracked-files=all",
             "--ignored=matching",
             "--ignore-submodules=none",

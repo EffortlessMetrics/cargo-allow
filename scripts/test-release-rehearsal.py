@@ -562,13 +562,16 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                     run.assert_not_called()
                 self.require_no_phases()
 
-    def test_all_admission_git_calls_disable_replacement_objects(self) -> None:
+    def test_admission_git_calls_use_supported_inspection_settings(self) -> None:
         with mock.patch.object(REHEARSAL.subprocess, "run", wraps=subprocess.run) as run:
             receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
         self.assertEqual(receipt["commit_sha"], self.head)
         self.assertTrue(run.call_args_list)
         for call in run.call_args_list:
             self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+            if "status" in call.args[0]:
+                for setting in ("core.checkStat=default", "core.ignoreStat=false", "core.trustctime=true"):
+                    self.assertIn(setting, call.args[0])
 
     def test_git_configuration_environment_is_rejected_before_git(self) -> None:
         for name in (

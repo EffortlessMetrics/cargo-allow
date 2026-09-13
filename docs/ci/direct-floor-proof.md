@@ -118,7 +118,9 @@ encoding rather than the process locale. Every admission Git query disables
 replacement objects so commit resolution and source inspection use the original
 objects. Both admission passes reject disabled or unreadable `core.trustctime`
 configuration, preserving Git's default ctime comparison without modifying the
-configuration or claiming full content hashing. Before each status inspection,
+configuration or claiming full content hashing. Status also pins
+`core.checkStat=default`, `core.ignoreStat=false`, and `core.trustctime=true`
+for its command-local metadata inspection. Before each status inspection,
 Git's effective `filter`, `ident`, and `working-tree-encoding` attributes are
 queried for every tracked path. Defined transformation attributes are unsupported,
 including explicit unsets: Git's display words can also be literal driver names.
