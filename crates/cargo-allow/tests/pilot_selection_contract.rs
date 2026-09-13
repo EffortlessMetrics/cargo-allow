@@ -16,6 +16,7 @@ fn pilot_selection_contract_is_recorded() -> Result<(), Box<dyn Error>> {
     for marker in [
         "**Document ID**: `PILOT-SELECTION-",
         "CargoAllowPilotSelectionV1",
+        "**Decision Authority**: [#3150](https://github.com/EffortlessMetrics/cargo-allow/issues/3150)",
         "#3771",
         "#2466",
         "#2467",
@@ -26,6 +27,7 @@ fn pilot_selection_contract_is_recorded() -> Result<(), Box<dyn Error>> {
         "## 4. Brownfield Pilot Candidate Evaluation (#2467)",
         "## 5. Pilot Handoff Packets",
         "## 6. Maintainer Decision Request",
+        "## 7. Validation and Rejection Controls",
     ] {
         require_contains(&doc, marker, "pilot selection doc")?;
     }
