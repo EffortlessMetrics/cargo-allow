@@ -34,10 +34,16 @@ def compute_sha256(path: Path) -> str:
 
 def resolve_commit(commit_ref: str) -> str:
     """Resolve one caller-supplied Git commit ref or fail without substitution."""
-    if any(name in os.environ for name in (
-        "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
-    )):
-        raise ValueError("rehearsal does not support Git repository-selection environment overrides")
+    if any(
+        name in {
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
+            "GIT_CONFIG",
+        } or name.startswith("GIT_CONFIG_")
+        for name in os.environ
+    ):
+        raise ValueError(
+            "rehearsal does not support Git repository-selection environment overrides or GIT_CONFIG overrides"
+        )
     if (
         not commit_ref
         or commit_ref.startswith("-")

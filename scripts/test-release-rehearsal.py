@@ -570,6 +570,20 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         for call in run.call_args_list:
             self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
 
+    def test_git_configuration_environment_is_rejected_before_git(self) -> None:
+        for name in (
+            "GIT_CONFIG", "GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0",
+            "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
+            "GIT_CONFIG_NOSYSTEM",
+        ):
+            for value in ("", "fixture"):
+                with self.subTest(variable=name, value=value), mock.patch.dict(os.environ, {name: value}):
+                    with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                        with self.assertRaisesRegex(ValueError, "GIT_CONFIG"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                        run.assert_not_called()
+                    self.require_no_phases()
+
     def test_disabled_or_malformed_ctime_is_rejected_before_phases(self) -> None:
         for value, diagnostic in (
             ("false", "core.trustctime"),

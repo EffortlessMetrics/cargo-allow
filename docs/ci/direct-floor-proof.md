@@ -97,7 +97,7 @@ The same command runs real-Git derived-source controls for lock-only changes,
 unchanged locks, attached checkouts, and rejected source/index changes. The
 producer simulation separately rejects derivation failure before any class runs.
 The default suite also runs the actual rehearsal's strict checkout admission
-against the derived-source fixture and all 28 `TestRehearsalSubjectBinding`
+against the derived-source fixture and all 29 `TestRehearsalSubjectBinding`
 controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
@@ -110,8 +110,10 @@ or untracked source, including changes observed after mocked phases. Admission
 requires Git's canonical working-tree root to match the rehearsal source root.
 Explicit `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, and
 `GIT_NAMESPACE` environment overrides are unsupported and rejected before Git
-commit resolution; their values are not printed or modified. Ordinary linked
-worktrees remain supported, including non-ASCII paths decoded with the filesystem
+commit resolution; `GIT_CONFIG` and the `GIT_CONFIG_*` configuration-selection
+family are likewise rejected, including empty values. Their values are not
+printed or modified. Ordinary linked worktrees remain supported, including
+non-ASCII paths decoded with the filesystem
 encoding rather than the process locale. Every admission Git query disables
 replacement objects so commit resolution and source inspection use the original
 objects. Both admission passes reject disabled or unreadable `core.trustctime`
