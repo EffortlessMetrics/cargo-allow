@@ -89,11 +89,11 @@ def require_clean_checkout(commit_sha: str) -> None:
         raise ValueError("rehearsal commit does not match checkout HEAD")
     root = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
-        cwd=ROOT, capture_output=True, text=True, timeout=15, check=False,
+        cwd=ROOT, capture_output=True, timeout=15, check=False,
     )
     if root.returncode != 0 or not root.stdout.strip():
         raise ValueError("could not inspect rehearsal checkout root")
-    discovered_root = Path(root.stdout.rstrip("\r\n"))
+    discovered_root = Path(os.fsdecode(root.stdout.rstrip(b"\r\n")))
     if not discovered_root.is_absolute() or discovered_root.resolve() != ROOT.resolve():
         raise ValueError("rehearsal checkout root does not match source root")
     index = subprocess.run(

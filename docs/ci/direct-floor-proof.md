@@ -97,7 +97,7 @@ The same command runs real-Git derived-source controls for lock-only changes,
 unchanged locks, attached checkouts, and rejected source/index changes. The
 producer simulation separately rejects derivation failure before any class runs.
 The default suite also runs the actual rehearsal's strict checkout admission
-against the derived-source fixture and all 22 `TestRehearsalSubjectBinding`
+against the derived-source fixture and all 23 `TestRehearsalSubjectBinding`
 controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
@@ -111,7 +111,8 @@ requires Git's canonical working-tree root to match the rehearsal source root.
 Explicit `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, and
 `GIT_NAMESPACE` environment overrides are unsupported and rejected before Git
 commit resolution; their values are not printed or modified. Ordinary linked
-worktrees remain supported. These controls do
+worktrees remain supported, including non-ASCII paths decoded with the filesystem
+encoding rather than the process locale. These controls do
 not execute real rehearsal phases or establish a complete release rehearsal.
 See [#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
 

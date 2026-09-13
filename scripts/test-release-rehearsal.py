@@ -538,6 +538,19 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt(self.previous)
         self.require_no_phases()
 
+    def test_clean_non_ascii_linked_worktree_is_admitted(self) -> None:
+        directory = tempfile.TemporaryDirectory(prefix="rehearsal-\u00e9-")
+        self.addCleanup(directory.cleanup)
+        worktree = Path(directory.name) / "checkout"
+        self.git("worktree", "add", "--quiet", "--detach", str(worktree), self.head)
+        self.addCleanup(self.git, "worktree", "remove", str(worktree))
+        with mock.patch.object(REHEARSAL, "ROOT", worktree):
+            receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        self.assertEqual(receipt["aggregate_status"], "Incomplete")
+        for phase in self.phases:
+            phase.assert_called_once()
+
     def test_repository_selection_environment_is_rejected_before_git(self) -> None:
         for name in (
             "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
@@ -550,7 +563,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                 self.require_no_phases()
 
     def test_different_discovered_root_is_rejected_before_phases(self) -> None:
-        result = subprocess.CompletedProcess([], 0, str(self.root.parent) + "\n")
+        result = subprocess.CompletedProcess([], 0, os.fsencode(self.root.parent) + b"\n")
         with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
             with mock.patch.object(REHEARSAL.subprocess, "run", return_value=result):
                 with self.assertRaisesRegex(ValueError, "root does not match source root"):
@@ -558,7 +571,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.require_no_phases()
 
     def test_missing_or_relative_discovered_root_is_rejected(self) -> None:
-        for code, output in ((1, ""), (0, ""), (0, "relative-root\n")):
+        for code, output in ((1, b""), (0, b""), (0, b"relative-root\n")):
             with self.subTest(code=code, output=output):
                 result = subprocess.CompletedProcess([], code, output)
                 with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
