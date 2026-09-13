@@ -34,6 +34,17 @@ def compute_sha256(path: Path) -> str:
 
 def resolve_commit(commit_ref: str) -> str:
     """Resolve one caller-supplied Git commit ref or fail without substitution."""
+    if any(
+        name in {
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
+            "GIT_CONFIG", "GIT_ATTR_SOURCE",
+        } or name.startswith("GIT_CONFIG_")
+        for name in os.environ
+    ):
+        raise ValueError(
+            "rehearsal does not support Git repository-selection environment overrides "
+            "or GIT_CONFIG/GIT_ATTR_SOURCE overrides"
+        )
     if (
         not commit_ref
         or commit_ref.startswith("-")
@@ -41,7 +52,7 @@ def resolve_commit(commit_ref: str) -> str:
     ):
         raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
     result = subprocess.run(
-        ["git", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
+        ["git", "--no-replace-objects", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -56,6 +67,149 @@ def resolve_commit(commit_ref: str) -> str:
     ):
         raise ValueError("resolved commit identity is not canonical hexadecimal Git output")
     return commit_sha
+
+
+def _is_ignored_rehearsal_artifact(entry: bytes) -> bool:
+    """Permit only known ignored output directories, never source lookalikes."""
+    if not entry.startswith(b"!! "):
+        return False
+    path = entry.removeprefix(b"!! ")
+    if path in {b"target/", b"__pycache__/", b"scripts/__pycache__/"}:
+        return True
+    match path.split(b"/"):
+        case [b"crates", crate, b"target", b""]:
+            return bool(crate)
+    return False
+
+
+def require_supported_content_attributes(paths: list[bytes]) -> None:
+    """Reject content conversion attributes before status can apply them."""
+    attributes = (b"filter", b"ident", b"working-tree-encoding")
+
+    def query(arguments: list[str]) -> bytes:
+        result = subprocess.run(
+            [
+                "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
+                "check-attr", "--stdin", "-z", *arguments,
+            ],
+            cwd=ROOT, input=b"".join(path + b"\0" for path in paths),
+            capture_output=True, timeout=15, check=False,
+        )
+        if result.returncode != 0:
+            raise ValueError("could not inspect rehearsal checkout content transformations")
+        return result.stdout
+
+    fields = iter(query(["filter", "ident", "working-tree-encoding"]).split(b"\0"))
+    for path in paths:
+        for attribute in attributes:
+            observed_path = next(fields, None)
+            observed_attribute = next(fields, None)
+            value = next(fields, None)
+            if observed_path != path or observed_attribute != attribute or value is None:
+                raise ValueError("invalid rehearsal checkout content transformation inspection")
+            if value not in {b"unspecified", b"unset"}:
+                raise ValueError("rehearsal does not support Git content transformation attributes")
+    if next(fields, None) != b"" or next(fields, None) is not None:
+        raise ValueError("invalid rehearsal checkout content transformation inspection")
+    # Named values can equal check-attr's state words. --all omits genuinely
+    # unspecified attributes, so reject every defined conversion attribute,
+    # including explicit unsets whose display is also ambiguous.
+    fields = iter(query(["--all"]).split(b"\0"))
+    tracked = set(paths)
+    seen = set()
+    while True:
+        path = next(fields, None)
+        if path == b"":
+            if next(fields, None) is not None:
+                raise ValueError("invalid rehearsal checkout content transformation inspection")
+            break
+        attribute = next(fields, None)
+        value = next(fields, None)
+        key = (path, attribute)
+        if path not in tracked or not attribute or value is None or key in seen:
+            raise ValueError("invalid rehearsal checkout content transformation inspection")
+        seen.add(key)
+        if attribute in attributes:
+            raise ValueError("rehearsal does not support Git content transformation attributes")
+
+
+def require_clean_checkout(commit_sha: str) -> None:
+    """Admit only the named checkout with no observed source changes.
+
+    Phases read the working tree, including untracked source such as Changie
+    inputs even when local ignore rules hide them. Only known ignored target
+    and Python cache directories may remain. Their outputs are not validated
+    here. Index flags that hide tracked changes (including sparse checkout)
+    are unsupported. This observes checkout state; it is not an immutable
+    sandbox.
+    """
+    if resolve_commit("HEAD") != commit_sha:
+        raise ValueError("rehearsal commit does not match checkout HEAD")
+    root = subprocess.run(
+        ["git", "--no-replace-objects", "rev-parse", "--show-toplevel"],
+        cwd=ROOT, capture_output=True, timeout=15, check=False,
+    )
+    if root.returncode != 0 or not root.stdout.strip():
+        raise ValueError("could not inspect rehearsal checkout root")
+    discovered_root = Path(os.fsdecode(root.stdout.rstrip(b"\r\n")))
+    if not discovered_root.is_absolute() or discovered_root.resolve() != ROOT.resolve():
+        raise ValueError("rehearsal checkout root does not match source root")
+    ctime = subprocess.run(
+        [
+            "git", "--no-replace-objects", "config", "--type=bool", "--default=true",
+            "--get", "core.trustctime",
+        ],
+        cwd=ROOT, capture_output=True, timeout=15, check=False,
+    )
+    if ctime.returncode != 0 or ctime.stdout.strip() != b"true":
+        raise ValueError("rehearsal requires readable core.trustctime=true configuration")
+    index = subprocess.run(
+        [
+            "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
+            "ls-files", "--cached", "-v", "-z",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    if index.returncode != 0:
+        raise ValueError("could not inspect rehearsal checkout index flags")
+    # Only ordinary tracked entries are supported: S marks skip-worktree;
+    # lowercase tags mark assume-unchanged. Inspect without clearing flags.
+    if any(not entry.startswith(b"H ") for entry in index.stdout.split(b"\0") if entry):
+        raise ValueError("rehearsal checkout has unsupported index flags or entries")
+    require_supported_content_attributes([
+        entry.removeprefix(b"H ") for entry in index.stdout.split(b"\0") if entry
+    ])
+    result = subprocess.run(
+        [
+            "git", "--no-replace-objects", "--no-optional-locks",
+            "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+            "-c", "core.checkStat=default", "-c", "core.ignoreStat=false",
+            "-c", "core.trustctime=true",
+            "status", "--porcelain=v1", "-z", "--untracked-files=all",
+            "--ignored=matching",
+            "--ignore-submodules=none",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError("could not inspect rehearsal checkout status")
+    # NUL framing preserves unusual filenames. With --ignored=matching, an
+    # explicitly ignored directory is reported once without listing its cache.
+    if any(
+        not _is_ignored_rehearsal_artifact(entry)
+        for entry in result.stdout.split(b"\0") if entry
+    ):
+        raise ValueError(
+            "rehearsal requires a clean checkout with only known ignored artifacts"
+        )
+    if resolve_commit("HEAD") != commit_sha:
+        raise ValueError("checkout HEAD moved during rehearsal admission")
 
 
 def _file_characterization(path: Path) -> str:
@@ -650,6 +804,7 @@ def build_rehearsal_receipt(
     if (candidate_executable is None) != (candidate_sha256 is None):
         raise ValueError("candidate executable and SHA-256 must be supplied together")
     commit_sha = resolve_commit(commit_ref)
+    require_clean_checkout(commit_sha)
     lockfile_digest = compute_sha256(ROOT / "Cargo.lock")
     topology_digest = compute_sha256(
         ROOT / "policy/product-package-topology-v2.toml"
@@ -706,6 +861,7 @@ def build_rehearsal_receipt(
     for phase_name, runner in phases.items():
         receipt["phases"][phase_name] = runner(receipt)
 
+    require_clean_checkout(commit_sha)
     receipt["aggregate_status"] = _aggregate_phase_status(receipt["phases"])
     return receipt
 

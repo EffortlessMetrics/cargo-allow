@@ -3,8 +3,8 @@
 
 from __future__ import annotations
 
-import importlib.util
 import contextlib
+import importlib.util
 import io
 import json
 import os
@@ -458,6 +458,530 @@ class TestReleaseRehearsal(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn('"aggregate_status"', result.stdout)
         self.assertNotIn('"aggregate_status": "Complete"', result.stdout)
+
+
+class TestRehearsalSubjectBinding(unittest.TestCase):
+    """Exercise checkout admission with real Git and no real phase execution."""
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory(prefix="rehearsal-subject-")
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.git("init", "--quiet")
+        files = {
+            ".gitignore": "target/\n__pycache__/\n",
+            "Cargo.lock": "version = 4\n",
+            "policy/product-package-topology-v2.toml": "schema_version = '2.0'\n",
+            ".github/workflows/release.yml": "name: fixture\n",
+        }
+        for name, content in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        self.git("add", ".")
+        self.git("commit", "--quiet", "-m", "first subject")
+        self.previous = self.git("rev-parse", "HEAD").strip()
+        (self.root / "Cargo.lock").write_text("version = 4\n# current\n", encoding="utf-8")
+        self.git("add", "Cargo.lock")
+        self.git("commit", "--quiet", "-m", "current subject")
+        self.head = self.git("rev-parse", "HEAD").strip()
+        root_patch = mock.patch.object(REHEARSAL, "ROOT", self.root)
+        root_patch.start()
+        self.addCleanup(root_patch.stop)
+        self.phases = []
+        for name in (
+            "run_phase_release_identity",
+            "run_phase_candidate_package_set",
+            "run_phase_shared_prerequisites",
+            "run_phase_publisher_state_machine",
+            "run_phase_docs_and_support",
+            "run_phase_manifest_and_assets",
+            "run_phase_authorization_boundary",
+            "run_phase_workflow_graph_permissions",
+        ):
+            patch = mock.patch.object(REHEARSAL, name, return_value="Incomplete")
+            self.phases.append(patch.start())
+            self.addCleanup(patch.stop)
+
+    def git(self, *args: str) -> str:
+        return subprocess.run(
+            [
+                "git", "-c", "core.autocrlf=false", "-c", "commit.gpgsign=false",
+                "-c", f"core.hooksPath={self.root / 'no-hooks'}",
+                "-c", "user.name=Rehearsal fixture",
+                "-c", "user.email=rehearsal@example.invalid", *args,
+            ],
+            cwd=self.root, capture_output=True, text=True, timeout=15, check=True,
+        ).stdout
+
+    def require_no_phases(self) -> None:
+        for phase in self.phases:
+            phase.assert_not_called()
+
+    def test_clean_head_and_ignored_artifacts_preserve_characterization(self) -> None:
+        for name in (
+            "target/cargo-allow/prior.json", "crates/fixture/target/debug/output",
+            "__pycache__/fixture.pyc", "scripts/__pycache__/fixture.pyc",
+        ):
+            artifact = self.root / name
+            artifact.parent.mkdir(parents=True, exist_ok=True)
+            artifact.write_text("{}", encoding="utf-8")
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        self.assertEqual(receipt["aggregate_status"], "Incomplete")
+        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_existing_foreign_commit_is_rejected_before_phases(self) -> None:
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt(self.previous)
+        self.require_no_phases()
+
+    def test_clean_non_ascii_linked_worktree_is_admitted(self) -> None:
+        directory = tempfile.TemporaryDirectory(prefix="rehearsal-\u00e9-")
+        self.addCleanup(directory.cleanup)
+        worktree = Path(directory.name) / "checkout"
+        self.git("worktree", "add", "--quiet", "--detach", str(worktree), self.head)
+        self.addCleanup(self.git, "worktree", "remove", str(worktree))
+        with mock.patch.object(REHEARSAL, "ROOT", worktree):
+            receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        self.assertEqual(receipt["aggregate_status"], "Incomplete")
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_repository_selection_environment_is_rejected_before_git(self) -> None:
+        for name in (
+            "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
+        ):
+            with self.subTest(variable=name), mock.patch.dict(os.environ, {name: "fixture"}):
+                with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                    with self.assertRaisesRegex(ValueError, "repository-selection environment"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    run.assert_not_called()
+                self.require_no_phases()
+
+    def test_admission_git_calls_use_supported_inspection_settings(self) -> None:
+        with mock.patch.object(REHEARSAL.subprocess, "run", wraps=subprocess.run) as run:
+            receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        self.assertTrue(run.call_args_list)
+        for call in run.call_args_list:
+            self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+            if "status" in call.args[0]:
+                for setting in ("core.checkStat=default", "core.ignoreStat=false", "core.trustctime=true"):
+                    self.assertIn(setting, call.args[0])
+
+    def test_git_configuration_environment_is_rejected_before_git(self) -> None:
+        for name in (
+            "GIT_CONFIG", "GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0",
+            "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
+            "GIT_CONFIG_NOSYSTEM",
+        ):
+            for value in ("", "fixture"):
+                with self.subTest(variable=name, value=value), mock.patch.dict(os.environ, {name: value}):
+                    with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                        with self.assertRaisesRegex(ValueError, "GIT_CONFIG"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                        run.assert_not_called()
+                    self.require_no_phases()
+
+    def test_attribute_source_environment_is_rejected_before_git(self) -> None:
+        for value in ("", "HEAD"):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {"GIT_ATTR_SOURCE": value}):
+                with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                    with self.assertRaisesRegex(ValueError, "GIT_ATTR_SOURCE"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    run.assert_not_called()
+                self.require_no_phases()
+
+    def test_disabled_or_malformed_ctime_is_rejected_before_phases(self) -> None:
+        for value, diagnostic in (
+            ("false", "core.trustctime"),
+            ("invalid-boolean", "not an exact repository commit"),
+        ):
+            with self.subTest(value=value):
+                self.git("config", "core.trustctime", value)
+                with self.assertRaisesRegex(ValueError, diagnostic):
+                    REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.require_no_phases()
+                self.assertEqual(self.git("config", "--get", "core.trustctime").strip(), value)
+
+    def test_explicit_ctime_trust_preserves_characterization(self) -> None:
+        self.git("config", "core.trustctime", "true")
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_ctime_inspection_failure_is_rejected_without_raw_output(self) -> None:
+        run = subprocess.run
+
+        def fail_config(command, **kwargs):
+            if "config" in command:
+                return subprocess.CompletedProcess(command, 128, b"secret-canary", b"secret-canary")
+            return run(command, **kwargs)
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=fail_config):
+            with self.assertRaisesRegex(ValueError, "core.trustctime") as caught:
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertNotIn("secret-canary", str(caught.exception))
+        self.require_no_phases()
+
+    def test_disabled_ctime_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_config(receipt, *, candidate_executable=None, candidate_sha256=None):
+            self.git("config", "core.trustctime", "false")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_config
+        with self.assertRaisesRegex(ValueError, "core.trustctime"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def require_transformation_rejected_before_status(self) -> None:
+        run = subprocess.run
+
+        def inspect_without_status(command, **kwargs):
+            if "status" in command:
+                return subprocess.CompletedProcess(command, 0, b"", b"")
+            return run(command, **kwargs)
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=inspect_without_status) as calls:
+            with self.assertRaisesRegex(ValueError, "content transformation"):
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertFalse(any("status" in call.args[0] for call in calls.call_args_list))
+        self.require_no_phases()
+
+    def test_content_transform_attributes_are_rejected_before_status(self) -> None:
+        for attribute in (
+            "filter", "filter=fixture", "filter=unspecified", "filter=unset", "-filter",
+            "ident", "working-tree-encoding=UTF-8",
+        ):
+            with self.subTest(attribute=attribute):
+                (self.root / ".git/info/attributes").write_text(
+                    f"Cargo.lock {attribute}\n", encoding="utf-8",
+                )
+                self.require_transformation_rejected_before_status()
+
+    def test_external_content_attributes_are_rejected_before_status(self) -> None:
+        attributes = self.root / "target/fixture-attributes"
+        attributes.parent.mkdir()
+        attributes.write_text("Cargo.lock filter=fixture\n", encoding="utf-8")
+        self.git("config", "core.attributesFile", str(attributes))
+        self.require_transformation_rejected_before_status()
+
+    def test_non_transform_attributes_preserve_characterization(self) -> None:
+        (self.root / ".git/info/attributes").write_text(
+            "Cargo.lock rehearsal-marker=present\n", encoding="utf-8",
+        )
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(receipt["commit_sha"], self.head)
+        for phase in self.phases:
+            phase.assert_called_once()
+
+    def test_content_attribute_inspection_is_complete_and_redacted(self) -> None:
+        run = subprocess.run
+        for mutation in ("failed", "empty", "terminator", "extra", "path", "attribute"):
+            with self.subTest(mutation=mutation):
+                def corrupt_attributes(command, **kwargs):
+                    result = run(command, **kwargs)
+                    if "check-attr" not in command:
+                        return result
+                    output = result.stdout
+                    if mutation == "empty":
+                        output = b""
+                    elif mutation == "terminator":
+                        output = output.removesuffix(b"\0")
+                    elif mutation == "extra":
+                        output += b"extra\0"
+                    elif mutation == "path":
+                        output = output.replace(b".github/workflows/release.yml", b"other", 1)
+                    elif mutation == "attribute":
+                        output = output.replace(b"\0filter\0", b"\0other\0", 1)
+                    return subprocess.CompletedProcess(
+                        command, 128 if mutation == "failed" else 0, output, b"secret-canary",
+                    )
+
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=corrupt_attributes):
+                    with self.assertRaisesRegex(ValueError, "content transformation") as caught:
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.assertNotIn("secret-canary", str(caught.exception))
+                self.require_no_phases()
+
+    def test_defined_attribute_inspection_is_validated(self) -> None:
+        (self.root / ".git/info/attributes").write_text(
+            "Cargo.lock rehearsal-marker=present\n", encoding="utf-8",
+        )
+        run = subprocess.run
+        for mutation in ("failed", "terminator", "extra", "path", "duplicate"):
+            with self.subTest(mutation=mutation):
+                def corrupt_defined_attributes(command, **kwargs):
+                    result = run(command, **kwargs)
+                    if "check-attr" not in command or "--all" not in command:
+                        return result
+                    output = result.stdout
+                    if mutation == "terminator":
+                        output = output.removesuffix(b"\0")
+                    elif mutation == "extra":
+                        output += b"extra\0"
+                    elif mutation == "path":
+                        output = output.replace(b"Cargo.lock", b"other", 1)
+                    elif mutation == "duplicate":
+                        output += output
+                    return subprocess.CompletedProcess(
+                        command, 128 if mutation == "failed" else 0, output, b"secret-canary",
+                    )
+
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=corrupt_defined_attributes):
+                    with self.assertRaisesRegex(ValueError, "content transformation") as caught:
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.assertNotIn("secret-canary", str(caught.exception))
+                self.require_no_phases()
+
+    def test_content_attributes_added_by_phase_prevent_receipt_return(self) -> None:
+        def change_attributes(receipt, *, candidate_executable=None, candidate_sha256=None):
+            (self.root / ".git/info/attributes").write_text("Cargo.lock filter\n", encoding="utf-8")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_attributes
+        with self.assertRaisesRegex(ValueError, "content transformation"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_different_discovered_root_is_rejected_before_phases(self) -> None:
+        result = subprocess.CompletedProcess([], 0, os.fsencode(self.root.parent) + b"\n")
+        with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
+            with mock.patch.object(REHEARSAL.subprocess, "run", return_value=result):
+                with self.assertRaisesRegex(ValueError, "root does not match source root"):
+                    REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_missing_or_relative_discovered_root_is_rejected(self) -> None:
+        for code, output in ((1, b""), (0, b""), (0, b"relative-root\n")):
+            with self.subTest(code=code, output=output):
+                result = subprocess.CompletedProcess([], code, output)
+                with mock.patch.object(REHEARSAL, "resolve_commit", return_value=self.head):
+                    with mock.patch.object(REHEARSAL.subprocess, "run", return_value=result):
+                        with self.assertRaisesRegex(ValueError, "checkout root"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.require_no_phases()
+
+    def test_unstaged_selected_source_is_rejected_before_phases(self) -> None:
+        for name in (
+            "Cargo.lock", "policy/product-package-topology-v2.toml",
+            ".github/workflows/release.yml",
+        ):
+            with self.subTest(path=name):
+                path = self.root / name
+                original = path.read_bytes()
+                path.write_bytes(original + b"# uncommitted\n")
+                try:
+                    with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    self.require_no_phases()
+                finally:
+                    path.write_bytes(original)
+
+    def test_staged_source_is_rejected_before_phases(self) -> None:
+        (self.root / "Cargo.lock").write_text("staged change\n", encoding="utf-8")
+        self.git("add", "Cargo.lock")
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_index_flags_are_rejected_without_mutating_the_index(self) -> None:
+        source = self.root / "Cargo.lock"
+        original = source.read_bytes()
+        for flag in ("assume-unchanged", "skip-worktree"):
+            for changed in (False, True):
+                with self.subTest(flag=flag, changed=changed):
+                    self.git("update-index", f"--{flag}", "Cargo.lock")
+                    if changed:
+                        source.write_bytes(original + b"# hidden change\n")
+                    # Prove this is the status blind spot, not ordinary dirt.
+                    self.assertEqual(self.git("status", "--porcelain"), "")
+                    index = (self.root / ".git/index").read_bytes()
+                    try:
+                        with self.assertRaisesRegex(ValueError, "index flags"):
+                            REHEARSAL.build_rehearsal_receipt("HEAD")
+                        self.require_no_phases()
+                        self.assertEqual((self.root / ".git/index").read_bytes(), index)
+                    finally:
+                        source.write_bytes(original)
+                        self.git("update-index", f"--no-{flag}", "Cargo.lock")
+
+    def add_untracked_source(self) -> None:
+        path = self.root / ".changes/untracked.md"
+        path.parent.mkdir(exist_ok=True)
+        path.write_text("untracked release input\n", encoding="utf-8")
+
+    def test_untracked_phase_input_is_rejected_before_phases(self) -> None:
+        self.git("config", "status.showUntrackedFiles", "no")
+        self.add_untracked_source()
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_ignored_phase_input_is_rejected_before_phases(self) -> None:
+        self.add_untracked_source()
+        (self.root / ".git/info/exclude").write_text(".changes/*.md\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_external_ignore_cannot_hide_phase_input(self) -> None:
+        self.add_untracked_source()
+        exclude = self.root / "target/fixture-excludes"
+        exclude.parent.mkdir()
+        exclude.write_text(".changes/*.md\n", encoding="utf-8")
+        self.git("config", "core.excludesFile", str(exclude))
+        with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_ignored_artifact_name_requires_the_exact_directory(self) -> None:
+        exclude = self.root / ".git/info/exclude"
+        for name in ("target", "target-lookalike.txt", "source with spaces.py"):
+            with self.subTest(path=name):
+                path = self.root / name
+                path.write_text("source, not an artifact directory\n", encoding="utf-8")
+                exclude.write_text(f"/{name}\n", encoding="utf-8")
+                try:
+                    with self.assertRaises(ValueError):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    self.require_no_phases()
+                finally:
+                    path.unlink()
+
+    def test_staged_rename_is_rejected_before_phases(self) -> None:
+        self.git("mv", "Cargo.lock", "renamed lock")
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_status_inspection_failure_is_rejected_without_raw_output(self) -> None:
+        run = subprocess.run
+
+        def fail_status(command, **kwargs):
+            if "status" in command:
+                return subprocess.CompletedProcess(command, 128, b"", b"secret-canary")
+            return run(command, **kwargs)
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=fail_status):
+            with self.assertRaisesRegex(ValueError, "could not inspect") as caught:
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertNotIn("secret-canary", str(caught.exception))
+        self.require_no_phases()
+
+    def test_index_inspection_failures_reach_cli_without_a_receipt(self) -> None:
+        run = subprocess.run
+        output = self.root / "target/rejected.json"
+        for failure in (
+            subprocess.CompletedProcess([], 128, b"secret-canary", b"secret-canary"),
+            OSError("fixture Git unavailable"),
+            subprocess.TimeoutExpired("git ls-files", 15),
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                def fail_index(command, **kwargs):
+                    if "ls-files" in command:
+                        if isinstance(failure, Exception):
+                            raise failure
+                        return failure
+                    return run(command, **kwargs)
+
+                stderr = io.StringIO()
+                stdout = io.StringIO()
+                with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=fail_index), \
+                     mock.patch.object(sys, "argv", [
+                         str(REHEARSAL_PATH), "--commit", "HEAD", "--output", str(output),
+                     ]), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(stdout):
+                    self.assertEqual(REHEARSAL.main(), 2)
+                self.assertFalse(output.exists())
+                self.assertEqual(stdout.getvalue(), "")
+                self.assertIn("instrumentation failed", stderr.getvalue())
+                self.assertNotIn("secret-canary", stderr.getvalue())
+                self.require_no_phases()
+
+    def test_head_movement_during_admission_stops_before_phases(self) -> None:
+        run = subprocess.run
+
+        def move_head_after_status(command, **kwargs):
+            result = run(command, **kwargs)
+            if "status" in command:
+                self.git("commit", "--quiet", "--allow-empty", "-m", "moved during check")
+            return result
+
+        with mock.patch.object(REHEARSAL.subprocess, "run", side_effect=move_head_after_status):
+            with self.assertRaisesRegex(ValueError, "HEAD moved"):
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.require_no_phases()
+
+    def test_dirty_source_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
+            (self.root / "Cargo.lock").write_text("changed by phase\n", encoding="utf-8")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_source
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_hidden_source_after_phases_cannot_return_a_receipt(self) -> None:
+        source = self.root / "Cargo.lock"
+        original = source.read_bytes()
+        for flag in ("assume-unchanged", "skip-worktree"):
+            with self.subTest(flag=flag):
+                def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
+                    self.git("update-index", f"--{flag}", "Cargo.lock")
+                    source.write_bytes(original + b"# hidden phase change\n")
+                    return "Incomplete"
+
+                self.phases[0].side_effect = change_source
+                try:
+                    with self.assertRaisesRegex(ValueError, "index flags"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                finally:
+                    source.write_bytes(original)
+                    self.git("update-index", f"--no-{flag}", "Cargo.lock")
+
+    def test_untracked_source_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
+            self.add_untracked_source()
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_source
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_staged_source_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
+            (self.root / "Cargo.lock").write_text("staged by phase\n", encoding="utf-8")
+            self.git("add", "Cargo.lock")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_source
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_clean_commit_movement_after_phases_cannot_return_a_receipt(self) -> None:
+        def change_head(receipt, *, candidate_executable=None, candidate_sha256=None):
+            self.git("commit", "--quiet", "--allow-empty", "-m", "moved subject")
+            return "Incomplete"
+
+        self.phases[0].side_effect = change_head
+        with self.assertRaises(ValueError):
+            REHEARSAL.build_rehearsal_receipt("HEAD")
+
+    def test_rejected_subject_cli_writes_no_receipt(self) -> None:
+        output = self.root / "target/rejected.json"
+        stderr = io.StringIO()
+        stdout = io.StringIO()
+        with mock.patch.object(sys, "argv", [
+            str(REHEARSAL_PATH), "--commit", self.previous, "--output", str(output),
+        ]), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(stdout):
+            self.assertEqual(REHEARSAL.main(), 2)
+        self.assertFalse(output.exists())
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("instrumentation failed", stderr.getvalue())
+        self.require_no_phases()
 
 
 if __name__ == "__main__":

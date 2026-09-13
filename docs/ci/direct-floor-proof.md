@@ -96,19 +96,41 @@ controls do not compile packages or establish real floor compatibility.
 The same command runs real-Git derived-source controls for lock-only changes,
 unchanged locks, attached checkouts, and rejected source/index changes. The
 producer simulation separately rejects derivation failure before any class runs.
-Strict-admission integration is owned by
-[#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
-Until it lands, the default suite proves derivation only and reports strict
-admission as not run. The following command is valid only in a combined
-checkout containing #4177's `require_clean_checkout` implementation:
+The default suite also runs the actual rehearsal's strict checkout admission
+against the derived-source fixture and all 36 `TestRehearsalSubjectBinding`
+controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
 
 This reproduces the original four root scratch files plus modified lock,
 requires their rejection, and then requires admission of the derived subject.
 Selecting an older rehearsal script without strict admission fails explicitly.
-#4177 must enable this option in `scripts/test-proof-direct-floors-protocol.sh`
-when integrating the prerequisite, so its default CI checks the actual consumer.
+The subject-binding controls reject foreign commits and staged, hidden, ignored,
+or untracked source, including changes observed after mocked phases. Admission
+requires Git's canonical working-tree root to match the rehearsal source root.
+Explicit `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, and
+`GIT_NAMESPACE` environment overrides are unsupported and rejected before Git
+commit resolution; `GIT_CONFIG` and the `GIT_CONFIG_*` configuration-selection
+family and `GIT_ATTR_SOURCE` are likewise rejected, including empty values.
+Their values are not printed or modified. Ordinary linked worktrees remain supported, including
+non-ASCII paths decoded with the filesystem
+encoding rather than the process locale. Every admission Git query disables
+replacement objects so commit resolution and source inspection use the original
+objects. Both admission passes reject disabled or unreadable `core.trustctime`
+configuration, preserving Git's default ctime comparison without modifying the
+configuration or claiming full content hashing. Status also pins
+`core.checkStat=default`, `core.ignoreStat=false`, and `core.trustctime=true`
+for its command-local metadata inspection. Before each status inspection,
+Git's effective `filter`, `ident`, and `working-tree-encoding` attributes are
+queried for every tracked path. Defined transformation attributes are unsupported,
+including explicit unsets: Git's display words can also be literal driver names.
+An additional `--all` query distinguishes defined attributes from absent ones.
+The first NUL-framed query must return every expected path/attribute record;
+the defined-attribute query rejects malformed, foreign-path, and duplicate rows.
+Inert local/external attribute fixtures prove rejection before status without
+configuring or executing a filter driver. These controls do
+not execute real rehearsal phases or establish a complete release rehearsal.
+See [#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
 
 Legacy receipt admission belongs to the Rust consumer, not this producer.
 `minimum_direct_version_contract_package_roots_must_match_the_request` rejects
