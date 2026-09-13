@@ -63,11 +63,11 @@ version note without modifying the repository:
 changie batch <next-version> --dry-run
 ```
 
-Mutating `changie batch` and `changie merge` are not the current release
-authority. The existing changelog history has not yet been backfilled into a
-complete version-file archive or proven to round-trip exactly. See
-[Manage the Changelog](docs/how-to/manage-changelog.md) for the supported
-workflow and its claim boundary.
+Mutating `changie batch` and `changie merge` require release authorization.
+See [Manage the Changelog](docs/how-to/manage-changelog.md#history-corpus-and-proven-round-trip)
+for the retained history corpus and isolated round-trip harness. Checking corpus
+currency is distinct from running that harness; neither establishes release
+qualification nor authorizes mutation of the live repository.
 
 If you have [`just`](https://github.com/casey/just) installed, `just ci` runs
 the same checks as the CI workflow (`just --list` shows the individual
