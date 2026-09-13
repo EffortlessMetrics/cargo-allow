@@ -584,6 +584,15 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                         run.assert_not_called()
                     self.require_no_phases()
 
+    def test_attribute_source_environment_is_rejected_before_git(self) -> None:
+        for value in ("", "HEAD"):
+            with self.subTest(value=value), mock.patch.dict(os.environ, {"GIT_ATTR_SOURCE": value}):
+                with mock.patch.object(REHEARSAL.subprocess, "run") as run:
+                    with self.assertRaisesRegex(ValueError, "GIT_ATTR_SOURCE"):
+                        REHEARSAL.build_rehearsal_receipt("HEAD")
+                    run.assert_not_called()
+                self.require_no_phases()
+
     def test_disabled_or_malformed_ctime_is_rejected_before_phases(self) -> None:
         for value, diagnostic in (
             ("false", "core.trustctime"),

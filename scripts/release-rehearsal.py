@@ -37,12 +37,13 @@ def resolve_commit(commit_ref: str) -> str:
     if any(
         name in {
             "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE", "GIT_NAMESPACE",
-            "GIT_CONFIG",
+            "GIT_CONFIG", "GIT_ATTR_SOURCE",
         } or name.startswith("GIT_CONFIG_")
         for name in os.environ
     ):
         raise ValueError(
-            "rehearsal does not support Git repository-selection environment overrides or GIT_CONFIG overrides"
+            "rehearsal does not support Git repository-selection environment overrides "
+            "or GIT_CONFIG/GIT_ATTR_SOURCE overrides"
         )
     if (
         not commit_ref
