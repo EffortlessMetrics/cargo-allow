@@ -570,12 +570,17 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         for call in run.call_args_list:
             self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
 
-    def test_disabled_ctime_is_rejected_before_phases(self) -> None:
-        self.git("config", "core.trustctime", "false")
-        with self.assertRaisesRegex(ValueError, "core.trustctime"):
-            REHEARSAL.build_rehearsal_receipt("HEAD")
-        self.require_no_phases()
-        self.assertEqual(self.git("config", "--get", "core.trustctime").strip(), "false")
+    def test_disabled_or_malformed_ctime_is_rejected_before_phases(self) -> None:
+        for value, diagnostic in (
+            ("false", "core.trustctime"),
+            ("invalid-boolean", "not an exact repository commit"),
+        ):
+            with self.subTest(value=value):
+                self.git("config", "core.trustctime", value)
+                with self.assertRaisesRegex(ValueError, diagnostic):
+                    REHEARSAL.build_rehearsal_receipt("HEAD")
+                self.require_no_phases()
+                self.assertEqual(self.git("config", "--get", "core.trustctime").strip(), value)
 
     def test_explicit_ctime_trust_preserves_characterization(self) -> None:
         self.git("config", "core.trustctime", "true")
@@ -635,7 +640,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                 original = path.read_bytes()
                 path.write_bytes(original + b"# uncommitted\n")
                 try:
-                    with self.assertRaises(ValueError):
+                    with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
                         REHEARSAL.build_rehearsal_receipt("HEAD")
                     self.require_no_phases()
                 finally:
@@ -684,7 +689,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
     def test_ignored_phase_input_is_rejected_before_phases(self) -> None:
         self.add_untracked_source()
         (self.root / ".git/info/exclude").write_text(".changes/*.md\n", encoding="utf-8")
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
             REHEARSAL.build_rehearsal_receipt("HEAD")
         self.require_no_phases()
 
@@ -694,7 +699,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         exclude.parent.mkdir()
         exclude.write_text(".changes/*.md\n", encoding="utf-8")
         self.git("config", "core.excludesFile", str(exclude))
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "requires a clean checkout"):
             REHEARSAL.build_rehearsal_receipt("HEAD")
         self.require_no_phases()
 
