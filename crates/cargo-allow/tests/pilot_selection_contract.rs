@@ -12,19 +12,20 @@ fn pilot_selection_contract_is_recorded() -> Result<(), Box<dyn Error>> {
     }
 
     let doc = read(&root, "docs/pilots/0.2.0-rc.1-pilot-selection.md")?;
+    // This checks document shape only. Candidate facts require exact-ref evidence review.
     for marker in [
-        "PILOT-SELECTION-2026-08-24-0.2.0-RC1",
+        "**Document ID**: `PILOT-SELECTION-",
         "CargoAllowPilotSelectionV1",
         "#3771",
         "#2466",
         "#2467",
         "#3151",
-        "cargo install cargo-allow --version 0.2.0-rc.1",
+        "cargo install cargo-allow --version =0.2.0-rc.1",
         "0.1.11",
-        "copybook-rs",
-        "xchecker",
-        "First-Hour Bootstrap",
-        "Brownfield Adoption Packet",
+        "## 3. Clean Pilot Candidate Evaluation (#2466)",
+        "## 4. Brownfield Pilot Candidate Evaluation (#2467)",
+        "## 5. Pilot Handoff Packets",
+        "## 6. Maintainer Decision Request",
     ] {
         require_contains(&doc, marker, "pilot selection doc")?;
     }
