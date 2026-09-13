@@ -48,9 +48,9 @@ use serde_json::Value as Json;
 use crate::cli::candidate_preparation_command::git_root;
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
-const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
-const CARGO_LOCK_PATH: &str = "Cargo.lock";
-const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
+pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
+pub(crate) const CARGO_LOCK_PATH: &str = "Cargo.lock";
+pub(crate) const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
 const SUPPORT_MATRIX_PATH: &str = "docs/support-matrix.toml";
 const INCIDENT_EVIDENCE_PATH: &str = "docs/release/evidence/rc1-publication-incident.v1.json";
 
@@ -502,13 +502,7 @@ impl SubjectIdentity {
             }
             verified.insert(path, raw);
         }
-        let manifest = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
-        let declared = manifest
-            .lines()
-            .filter_map(|line| line.trim().strip_prefix("version = "))
-            .next()
-            .map(|value| value.trim().trim_matches('"').to_string())
-            .ok_or_else(|| instrument("the workspace manifest has no version"))?;
+        let declared = verified_workspace_version(&verified)?;
         if declared != version {
             return Err(instrument(format!(
                 "workspace version {declared:?} is not the requested freeze version {version:?}"
@@ -522,16 +516,9 @@ impl SubjectIdentity {
             ));
         }
         let projection = CandidateReleaseIdentityProjectionShim::from_version(&parsed);
-        let cargo_lock_digest = sha256_v1_bytes(
-            verified
-                .get(CARGO_LOCK_PATH)
-                .expect("verified input is present"),
-        );
-        let topology_digest = sha256_v1_bytes(
-            verified
-                .get(TOPOLOGY_PATH)
-                .expect("verified input is present"),
-        );
+        let cargo_lock_digest =
+            sha256_v1_bytes(verified_subject_input(&verified, CARGO_LOCK_PATH)?);
+        let topology_digest = sha256_v1_bytes(verified_subject_input(&verified, TOPOLOGY_PATH)?);
         let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
         // The subject must not move while it is being collected.
         let commit_now = git(root, &["rev-parse", "HEAD"])?;
@@ -1807,6 +1794,31 @@ fn hex_payload(digest: &str) -> Option<&str> {
 /// returns are content and stay distinct.
 fn strip_line_endings(text: &str) -> String {
     text.replace("\r\n", "\n")
+}
+
+/// Derive identity only from the bytes admitted by the collector. These
+/// helpers deliberately have no filesystem capability or repository root.
+pub(crate) fn verified_subject_input<'a>(
+    verified: &'a BTreeMap<&str, Vec<u8>>,
+    relative: &str,
+) -> CargoAllowResult<&'a [u8]> {
+    verified
+        .get(relative)
+        .map(Vec::as_slice)
+        .ok_or_else(|| instrument(format!("verified input is missing: {relative}")))
+}
+
+pub(crate) fn verified_workspace_version(
+    verified: &BTreeMap<&str, Vec<u8>>,
+) -> CargoAllowResult<String> {
+    let manifest = std::str::from_utf8(verified_subject_input(verified, WORKSPACE_MANIFEST_PATH)?)
+        .map_err(|error| instrument(format!("{WORKSPACE_MANIFEST_PATH}: {error}")))?;
+    manifest
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("version = "))
+        .next()
+        .map(|value| value.trim().trim_matches('"').to_string())
+        .ok_or_else(|| instrument("the workspace manifest has no version"))
 }
 
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
