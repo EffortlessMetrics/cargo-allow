@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/provider-contract.v1.schema.json",
+  "title": "cargo-allow provider descriptor v1",
+  "description": "Discovery-only self-description emitted by cargo-allow capabilities --provider-contract --format json. This is not an analysis request or receipt. snapshot_bound describes the provider contract, not an executed or verified source snapshot; discovery does not select policy or run analysis.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "provider_id",
+    "product_name",
+    "access_posture",
+    "snapshot_bound",
+    "discovery_order",
+    "forbidden_path_prefixes",
+    "environment_variable",
+    "config_relative_path",
+    "required_capabilities"
+  ],
+  "properties": {
+    "schema_id": { "const": "proof.cargo-allow-provider-contract.v1" },
+    "schema_version": { "type": "integer", "const": 1 },
+    "provider_id": { "const": "proof.cargo-allow.v1" },
+    "product_name": { "const": "cargo-allow" },
+    "access_posture": { "const": "read_only" },
+    "snapshot_bound": { "const": true },
+    "discovery_order": {
+      "type": "array",
+      "const": ["explicit_environment", "compatibility_config", "path_lookup"]
+    },
+    "forbidden_path_prefixes": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": { "enum": ["target/", "crates/"] }
+    },
+    "environment_variable": { "const": "CARGO_ALLOW_BIN" },
+    "config_relative_path": { "const": ".allow/compatibility/proof-delegation.toml" },
+    "required_capabilities": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["cargo-allow.check.no-new", "cargo-allow.capabilities.json"]
+      }
+    }
+  }
+}

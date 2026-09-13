@@ -4,7 +4,15 @@ Human projection of the snapshot-bound read-only cargo-allow proof provider (#25
 
 ## Claim boundary
 
-Packet 2567 lands the snapshot-bound read-only provider contract. Packet 2554 lands public process discovery, dry-run argv compilation via `proof-adapter-command`, and `ProofProviderV1` wiring. Process execution remains proof-engine owned.
+The cargo-allow binary exposes the provider contract descriptor through the
+explicit `cargo-allow capabilities --provider-contract --format json` mode;
+the default sensor capability catalog remains unchanged. Descriptor discovery
+does not read a repository, select policy, execute analysis, or emit an analysis
+receipt.
+The provider adapter mirrors and validates that contract before selecting a
+provider. Packet 2554 lands public process discovery, dry-run argv compilation
+via `proof-adapter-command`, and `ProofProviderV1` wiring. Process execution
+remains proof-engine owned.
 
 `proof-adapter-cargo-allow` must not depend on `intent-model`, `intent-engine`, or `cargo-allow` private crates (ADR-0002 forbidden edges). `cargo-allow` must not take a production dependency on proof libraries.
 
@@ -13,7 +21,7 @@ Parity fixtures live under `tests/fixtures/proof-adapter-cargo-allow/`.
 ## Module surfaces
 
 - `proof-adapter-cargo-allow::boundary` — claim boundary and upstream topology markers
-- `proof-adapter-cargo-allow::provider_contract` — snapshot-bound read-only provider contract (#2567)
+- `cargo-allow capabilities --provider-contract --format json` — snapshot-bound read-only provider contract descriptor (#2567). The installed request/receipt endpoint is a subsequent slice; this descriptor does not advertise an executable protocol yet.
 - `proof-adapter-cargo-allow::provider_discovery` — public process discovery without workspace leaks
 - `proof-adapter-cargo-allow::process_protocol` — dry-run argv compilation via reviewed registry
 - `proof-adapter-cargo-allow::cargo_allow_provider` — `ProofProviderV1` implementation (#2554)
