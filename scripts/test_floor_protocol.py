@@ -55,7 +55,8 @@ def invoke(program, arguments):
             if case.get("dirty_source"):
                 return 0, " M source.rs\0", ""
             derived = Path("target/floor-proof/fixture-derived").exists()
-            return 0, "" if derived else " M Cargo.lock\0", ""
+            unchanged = Path("Cargo.lock").read_bytes() == (Path(case["fixture"]) / "Cargo.lock").read_bytes()
+            return 0, "" if derived or unchanged else " M Cargo.lock\0", ""
         if arguments == ["add", "--", "Cargo.lock"]:
             return 0, "", ""
         if arguments == ["-c", "core.hooksPath=", "-c", "commit.gpgSign=false",
@@ -246,6 +247,21 @@ class FloorProtocolTests(unittest.TestCase):
         calls = [json.loads(line) for line in calls_path.read_text().splitlines()] if calls_path.exists() else []
         receipt = json.loads(receipt_path.read_bytes()) if receipt_path.exists() else None
         return result, calls, receipt, receipt_path
+
+    def test_receipt_distinguishes_reused_source_from_local_derived_commit(self):
+        for floor, reused in (("0.1", True), ("0.2", False)):
+            with self.subTest(floor=floor):
+                result, calls, receipt, _ = self.run_producer(floor=floor)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                subject = next(text for text in receipt["limitations"]
+                               if text.startswith("local floor subject:"))
+                self.assertIn("source " + "1" * 40, subject)
+                self.assertIn("executed commit " + ("1" if reused else "2") * 40, subject)
+                self.assertEqual("reuses the unchanged source commit" in subject, reused)
+                self.assertEqual("not an upstream commit" in subject, not reused)
+                commits = [call for call in calls if call["program"] == "git"
+                           and "commit" in call["arguments"]]
+                self.assertEqual(len(commits), 0 if reused else 1)
 
     def test_failed_source_derivation_prevents_classes_and_receipt(self):
         failures = {

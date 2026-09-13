@@ -546,10 +546,15 @@ limitations.append(
 )
 if os.environ["PACKAGE_CMD"]:
     limitations.append("package is a single-package --no-verify archive sample; see its exact command")
+subject_posture = (
+    "reuses the unchanged source commit"
+    if subject["derived_commit"] == subject["source_commit"]
+    else "only Cargo.lock differs from source; this local derived candidate is not an upstream commit"
+)
 limitations.append(
     f"local floor subject: source {subject['source_commit']}; "
-    f"derived commit {subject['derived_commit']}; tree {subject['derived_tree']}; "
-    "only Cargo.lock may differ from source; this local candidate is not an upstream commit"
+    f"executed commit {subject['derived_commit']}; tree {subject['derived_tree']}; "
+    f"{subject_posture}"
 )
 
 receipt = {
@@ -599,8 +604,8 @@ lines = [
     f"- Package roots: {cell(', '.join(selection['roots']))}",
     f"- Selected closure: {cell(', '.join(selection['closure']))}",
     f"- Starting source commit: {cell(sys.argv[3])}",
-    f"- Executed derived commit: {cell(subject['derived_commit'])}",
-    f"- Executed derived tree: {cell(subject['derived_tree'])}",
+    f"- Executed floor commit: {cell(subject['derived_commit'])}",
+    f"- Executed floor tree: {cell(subject['derived_tree'])}",
     f"- Receipt: {cell(receipt_path.name)}",
     f"- Receipt SHA-256: sha256:v1:{hashlib.sha256(receipt_bytes).hexdigest()}",
     f"- Manifest-set digest: {receipt['manifest_set_digest']}",
