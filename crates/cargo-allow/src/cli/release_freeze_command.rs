@@ -2657,147 +2657,197 @@ mod compose_fixture_tests {
         )
     }
 
-    /// Minimal committed subject fixture: manifest, lock, topology,
-    /// gitignore committed on a clean HEAD.
-    fn committed_subject_fixture() -> PathBuf {
+    /// Minimal committed subject with explicit checkout framing for its text inputs.
+    fn committed_subject_fixture() -> Result<PathBuf, Box<dyn std::error::Error>> {
         static NONCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let root =
             std::env::temp_dir().join(format!("freeze-subject-{}-{nonce}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root");
+        // A collision is a setup error, never permission to remove an existing directory.
+        std::fs::create_dir(&root)?;
+        std::fs::create_dir(root.join("policy"))?;
 
-        git(&root, &["init"]);
-        git(&root, &["config", "user.email", "freeze@example.invalid"]);
-        git(&root, &["config", "user.name", "freeze fixture"]);
-        write(
-            &root,
-            "Cargo.toml",
+        super::git(&root, &["init"])?;
+        for (key, value) in [
+            ("user.email", "freeze@example.invalid"),
+            ("user.name", "freeze fixture"),
+            ("core.autocrlf", "false"),
+            ("core.eol", "lf"),
+            ("core.safecrlf", "false"),
+        ] {
+            super::git(&root, &["config", key, value])?;
+        }
+        std::fs::write(
+            root.join(".gitattributes"),
+            b"* text eol=lf\nCargo.lock text eol=crlf\n",
+        )?;
+        std::fs::write(
+            root.join("Cargo.toml"),
             b"[workspace.package]\nversion = \"0.2.0\"\n",
-        );
-        write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
-        write(
-            &root,
-            "policy/product-package-topology-v2.toml",
+        )?;
+        std::fs::write(root.join("Cargo.lock"), b"fixture-lock-bytes\n")?;
+        std::fs::write(
+            root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"shared\"\n",
-        );
-        git(&root, &["add", "-A"]);
-        git(&root, &["commit", "-m", "fixture subject"]);
-        root
+        )?;
+        super::git(&root, &["add", "-A"])?;
+        super::git(&root, &["commit", "-m", "fixture subject"])?;
+        Ok(root)
     }
 
     #[test]
-    fn collect_accepts_a_genuinely_clean_subject() {
-        let root = committed_subject_fixture();
-        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
-        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+    fn collect_accepts_a_genuinely_clean_subject() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        let commit = super::git(&root, &["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        let tree = super::git(&root, &["rev-parse", "HEAD^{tree}"])?
+            .trim()
+            .to_string();
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("clean subject: {err}")));
-        assert_eq!(subject.commit, commit);
-        assert_eq!(subject.tree, tree);
-        assert_eq!(
-            subject.cargo_lock_digest,
-            format!("sha256:v1:{}", hex(b"fixture-lock-bytes\n"))
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")?;
+        if subject.commit != commit || subject.tree != tree {
+            return Err("clean subject did not retain its committed identity".into());
+        }
+        if subject.cargo_lock_digest != allow_core::sha256_v1_bytes(b"fixture-lock-bytes\n") {
+            return Err("clean subject did not digest the working lock bytes".into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_rejects_an_assume_unchanged_hidden_lock() {
+    fn collect_rejects_an_assume_unchanged_hidden_lock() -> Result<(), Box<dyn std::error::Error>> {
         // Ordinary status is empty for this edit; the collector must
         // still reject it before pairing identity with bytes.
-        let root = committed_subject_fixture();
-        git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"]);
-        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n").expect("hidden edit");
-        assert!(
-            git(&root, &["status", "--porcelain"]).trim().is_empty(),
-            "the fixture reproduces the status blind spot"
-        );
+        let root = committed_subject_fixture()?;
+        super::git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"])?;
+        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n")?;
+        if !super::git(&root, &["status", "--porcelain"])?
+            .trim()
+            .is_empty()
+        {
+            return Err("the hidden-lock fixture did not preserve clean Git status".into());
+        }
 
         let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("a hidden assume-unchanged edit is rejected");
-        assert!(
-            err.to_string().contains("hidden state")
-                || err
-                    .to_string()
-                    .contains("differ from the committed subject"),
-            "the rejection names the hidden input problem: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+            .err()
+            .ok_or("the collector accepted a hidden assume-unchanged edit")?;
+        if !err.to_string().contains("hidden state")
+            && !err
+                .to_string()
+                .contains("differ from the committed subject")
+        {
+            return Err(format!("incorrect hidden-lock rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_rejects_a_skip_worktree_hidden_topology() {
-        let root = committed_subject_fixture();
-        git(
+    fn collect_rejects_a_skip_worktree_hidden_topology() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        super::git(
             &root,
             &[
                 "update-index",
                 "--skip-worktree",
                 "policy/product-package-topology-v2.toml",
             ],
-        );
+        )?;
         std::fs::write(
             root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"tampered\"\n",
-        )
-        .expect("hidden edit");
-        assert!(
-            git(&root, &["status", "--porcelain"]).trim().is_empty(),
-            "the fixture reproduces the status blind spot"
-        );
+        )?;
+        if !super::git(&root, &["status", "--porcelain"])?
+            .trim()
+            .is_empty()
+        {
+            return Err("the hidden-topology fixture did not preserve clean Git status".into());
+        }
 
         let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("a hidden skip-worktree edit is rejected");
-        assert!(
-            err.to_string().contains("hidden state")
-                || err
-                    .to_string()
-                    .contains("differ from the committed subject"),
-            "the rejection names the hidden input problem: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+            .err()
+            .ok_or("the collector accepted a hidden skip-worktree edit")?;
+        if !err.to_string().contains("hidden state")
+            && !err
+                .to_string()
+                .contains("differ from the committed subject")
+        {
+            return Err(format!("incorrect hidden-topology rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_accepts_crlf_checkout_framing_of_committed_content() {
-        // A Windows autocrlf checkout shows CRLF working bytes over an
+    fn collect_accepts_crlf_checkout_framing_of_committed_content()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // A CRLF checkout shows CRLF working bytes over an
         // LF blob: the content is identical and must be accepted, with
         // the receipt digests computed from the exact working bytes.
-        let root = committed_subject_fixture();
-        std::fs::write(
-            root.join("Cargo.lock"),
-            b"fixture-lock-bytes
-",
-        )
-        .expect("crlf edit");
+        let root = committed_subject_fixture()?;
+        std::fs::write(root.join("Cargo.lock"), b"fixture-lock-bytes\r\n")?;
+        // Refresh the index stat information after changing checkout framing.
+        // Text normalization must leave the staged blob identical to HEAD.
+        super::git(&root, &["add", "--", "Cargo.lock"])?;
+        super::git(&root, &["diff", "--cached", "--exit-code"])?;
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("crlf subject: {err}")));
-        assert_eq!(
-            subject.cargo_lock_digest,
-            format!(
-                "sha256:v1:{}",
-                hex(b"fixture-lock-bytes
-")
+        let working = std::fs::read(root.join("Cargo.lock"))?;
+        let committed = super::git(&root, &["show", "HEAD:Cargo.lock"])?;
+        if !working.ends_with(b"\r\n")
+            || committed.as_bytes() != b"fixture-lock-bytes\n"
+            || working.as_slice() == committed.as_bytes()
+        {
+            return Err(format!(
+                "CRLF fixture must have distinct CRLF working and LF committed bytes: working={working:?}, committed={committed:?}"
             )
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+            .into());
+        }
+        let status = super::git(&root, &["status", "--porcelain"])?;
+        if !status.trim().is_empty() {
+            return Err(format!("CRLF fixture is not a clean checkout: {status}").into());
+        }
+
+        let subject = super::SubjectIdentity::collect(&root, "0.2.0")?;
+        if subject.cargo_lock_digest != allow_core::sha256_v1_bytes(&working)
+            || subject.cargo_lock_digest == allow_core::sha256_v1_bytes(committed.as_bytes())
+        {
+            return Err("CRLF subject digest must bind working bytes, not the LF blob".into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_still_rejects_ordinary_dirty_subjects() {
-        let root = committed_subject_fixture();
-        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n").expect("ordinary edit");
+    fn line_ending_comparison_preserves_lone_carriage_returns()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for (input, expected) in [
+            ("first\r\nsecond\rthird\n", "first\nsecond\rthird\n"),
+            ("\r", "\r"),
+            ("\n", "\n"),
+            ("", ""),
+        ] {
+            if super::strip_line_endings(input) != expected {
+                return Err(format!("incorrect line-ending comparison for {input:?}").into());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn collect_still_rejects_ordinary_dirty_subjects() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n")?;
 
         let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("an ordinary dirty worktree stays rejected");
-        assert!(
-            err.to_string().contains("dirty"),
-            "the ordinary dirty rejection is unchanged: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+            .err()
+            .ok_or("the collector accepted an ordinary dirty worktree")?;
+        if !err.to_string().contains("dirty") {
+            return Err(format!("incorrect ordinary-dirty rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
