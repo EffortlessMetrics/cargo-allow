@@ -34,7 +34,12 @@ Final expected checksums come from the candidate's `crate_digest`. Shared
 expected checksums come from separately retained namespace authority (#3744),
 not locally repackaged shared bytes. The latter remain diagnostic. Expected and
 observed checksums and evidence identities use `sha256:` plus 64 hexadecimal
-digits. The shared authority digest identifies retained authority evidence.
+digits. Hexadecimal letter case does not change checksum or context-digest
+equality; the renderer retains the supplied spelling. Principal and environment
+identities remain case-sensitive. A shared local checksum is optional, but when
+present it must have valid digest shape; malformed diagnostic bytes are retained
+with a malformed finding. The shared authority digest identifies retained
+authority evidence.
 
 Call `final_registry_bindings_v1` to derive candidate and denominator bindings
 from compact Serde JSON of the actual candidate and `(candidate.rows,

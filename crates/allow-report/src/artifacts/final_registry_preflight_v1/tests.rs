@@ -6,6 +6,129 @@ use FinalRegistryPreflightResultV1 as State;
 use FinalRegistryVersionResponseV1 as Response;
 use FinalRegistryVersionStateV1 as Version;
 
+fn rebind_candidate(input: &mut FinalRegistryPreflightInputV1) -> TestResult {
+    let (candidate, denominator) =
+        final_registry_bindings_v1(&input.candidate, &input.shared_authorities)?;
+    input.current_context.candidate_digest = candidate;
+    input.current_context.denominator_digest = denominator;
+    input.observed_context = input.current_context.clone();
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_digest_case_preserves_checksum_and_context_identity() -> TestResult {
+    for uppercase_expected in [false, true] {
+        let mut input = fixture()?;
+        input.current_context.workflow_digest = checksum(0xab);
+        input.current_context.owner_team_digest = checksum(0xcd);
+        input.current_context.release_controls_digest = checksum(0xef);
+        input.current_context.provider_state_digest = checksum(0xfa);
+        let upper = format!("sha256:{:064X}", 10);
+        let lower = checksum(10);
+        input
+            .candidate
+            .rows
+            .first_mut()
+            .ok_or("row absent")?
+            .crate_digest = Some(if uppercase_expected {
+            upper.clone()
+        } else {
+            lower.clone()
+        });
+        first(&mut input)?.version = Response::Found {
+            checksum: if uppercase_expected { lower } else { upper },
+            yanked: false,
+        };
+        rebind_candidate(&mut input)?;
+        for uppercase_current in [false, true] {
+            let mut case_input = input.clone();
+            let context = if uppercase_current {
+                &mut case_input.current_context
+            } else {
+                &mut case_input.observed_context
+            };
+            for value in [
+                &mut context.candidate_digest,
+                &mut context.denominator_digest,
+                &mut context.workflow_digest,
+                &mut context.owner_team_digest,
+                &mut context.release_controls_digest,
+                &mut context.provider_state_digest,
+            ] {
+                *value = format!(
+                    "sha256:{}",
+                    value
+                        .strip_prefix("sha256:")
+                        .ok_or("prefix absent")?
+                        .to_ascii_uppercase()
+                );
+            }
+            check_result(
+                &case_input,
+                State::CompleteWithResidualAuthorityRisk,
+                Version::AlreadyPublishedExact,
+            )?;
+        }
+    }
+    for principal in [true, false] {
+        let mut input = fixture()?;
+        let value = if principal {
+            &mut input.observed_context.principal
+        } else {
+            &mut input.observed_context.environment
+        };
+        *value = value.to_ascii_uppercase();
+        check_result(&input, State::Stale, Version::Missing)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_shared_diagnostic_digest_is_optional_but_validated() -> TestResult {
+    for local in [None, Some("garbage".to_string()), Some(checksum(10))] {
+        let mut input = fixture()?;
+        input
+            .candidate
+            .rows
+            .iter_mut()
+            .find(|row| row.product_family == PackageCandidateFamilyV2::Shared01)
+            .ok_or("shared row absent")?
+            .crate_digest = local.clone();
+        rebind_candidate(&mut input)?;
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        let malformed = local.as_deref() == Some("garbage");
+        require(
+            receipt.result
+                == if malformed {
+                    State::Malformed
+                } else {
+                    State::CompleteWithResidualAuthorityRisk
+                },
+            "diagnostic validation result changed",
+        )?;
+        let row = receipt
+            .shared_prerequisites
+            .first()
+            .ok_or("shared result absent")?;
+        require(
+            row.expected.diagnostic_local_checksum == local,
+            "diagnostic bytes were not retained",
+        )?;
+        require(
+            row.version_state == Version::AlreadyPublishedExact,
+            "local diagnostic became registry authority",
+        )?;
+        require(
+            row.findings.iter().any(|finding| {
+                finding.result == State::Malformed
+                    && finding.reason == "shared diagnostic local checksum is malformed"
+            }) == malformed,
+            "diagnostic finding missing or spurious",
+        )?;
+    }
+    Ok(())
+}
+
 #[test]
 fn final_registry_preflight_malformed_provenance_preserves_freshness() -> TestResult {
     for dimension in ["version", "owner", "authority"] {

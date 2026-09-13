@@ -129,7 +129,12 @@ pub fn evaluate_final_registry_preflight_v1(
                 format!("invalid context {name}"),
             );
         }
-        if observed != current {
+        let unchanged = if name.ends_with("digest") {
+            observed.eq_ignore_ascii_case(current)
+        } else {
+            observed == current
+        };
+        if !unchanged {
             finding(
                 &mut findings,
                 ResultState::Stale,
@@ -139,14 +144,14 @@ pub fn evaluate_final_registry_preflight_v1(
     }
     match final_registry_bindings_v1(&input.candidate, &input.shared_authorities) {
         Ok((candidate, denominator)) => {
-            if candidate != input.current_context.candidate_digest {
+            if !candidate.eq_ignore_ascii_case(&input.current_context.candidate_digest) {
                 finding(
                     &mut findings,
                     ResultState::Stale,
                     "candidate content does not match current binding",
                 );
             }
-            if denominator != input.current_context.denominator_digest {
+            if !denominator.eq_ignore_ascii_case(&input.current_context.denominator_digest) {
                 finding(
                     &mut findings,
                     ResultState::Stale,
@@ -191,6 +196,13 @@ pub fn evaluate_final_registry_preflight_v1(
             );
         }
         let local = candidate.crate_digest.clone();
+        if shared && local.as_deref().is_some_and(|value| !digest(value)) {
+            finding(
+                &mut row_findings,
+                ResultState::Malformed,
+                "shared diagnostic local checksum is malformed",
+            );
+        }
         let (expected_checksum, checksum_authority_digest) = if shared {
             let authority = input.shared_authorities.get(shared_index);
             shared_index += 1;
@@ -381,7 +393,7 @@ fn reconcile_observation(
                 );
                 Version::Unknown
             } else {
-                let exact = checksum == &expected.expected_checksum;
+                let exact = checksum.eq_ignore_ascii_case(&expected.expected_checksum);
                 if !exact {
                     finding(
                         findings,
