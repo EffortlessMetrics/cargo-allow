@@ -6,6 +6,164 @@ use FinalRegistryPreflightResultV1 as State;
 use FinalRegistryVersionResponseV1 as Response;
 use FinalRegistryVersionStateV1 as Version;
 
+fn mismatched_observation_input(
+    shared: bool,
+    wrong_package: bool,
+) -> Result<(FinalRegistryPreflightInputV1, usize), Box<dyn std::error::Error>> {
+    let mut input = fixture()?;
+    let index = input
+        .candidate
+        .rows
+        .iter()
+        .position(|row| (row.product_family == PackageCandidateFamilyV2::Shared01) == shared)
+        .ok_or("selected row absent")?;
+    let observation = input
+        .observations
+        .get_mut(index)
+        .ok_or("observation absent")?;
+    if wrong_package {
+        observation.package_name = "other-package".to_string();
+    } else {
+        observation.package_version = "0.2.0-rc.1".to_string();
+    }
+    Ok((input, index))
+}
+
+#[test]
+fn final_registry_preflight_foreign_observation_cannot_describe_selected_identity() -> TestResult {
+    for shared in [false, true] {
+        for wrong_package in [false, true] {
+            for response in [
+                Response::Found {
+                    checksum: checksum(11),
+                    yanked: true,
+                },
+                Response::Missing {},
+                Response::NameUnavailable {},
+                Response::VisibilityPending {},
+            ] {
+                let (mut input, index) = mismatched_observation_input(shared, wrong_package)?;
+                let observation = input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?;
+                observation.version = response;
+                observation.owner = FinalRegistryOwnerStateV1::UnexpectedOwner;
+                observation.publish_authority = FinalRegistryPublishAuthorityV1::Conflict;
+                let raw = observation.clone();
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "foreign observation became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.observation.as_ref() == Some(&raw),
+                    "foreign observation was not retained",
+                )?;
+                require(
+                    row.version_state == Version::Unknown,
+                    "foreign observation established selected version state",
+                )?;
+                require(row.findings.len() == 1 && row.findings.first().is_some_and(|finding| {
+                    finding.result == State::Malformed && finding.reason == "observation requested identity differs from selected exact version"
+                }), "foreign observation produced selected-identity findings")?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn final_registry_preflight_foreign_observation_preserves_independent_failures() -> TestResult {
+    for shared in [false, true] {
+        for wrong_package in [false, true] {
+            for (response, failure) in [
+                (
+                    Response::Found {
+                        checksum: "garbage".to_string(),
+                        yanked: true,
+                    },
+                    "malformed observed checksum",
+                ),
+                (
+                    Response::MalformedResponse {},
+                    "malformed provider response",
+                ),
+                (Response::Timeout {}, "version provider unavailable"),
+                (Response::RateLimited {}, "version provider unavailable"),
+                (
+                    Response::ProviderUnavailable {},
+                    "version provider unavailable",
+                ),
+            ] {
+                let (mut input, index) = mismatched_observation_input(shared, wrong_package)?;
+                let observation = input
+                    .observations
+                    .get_mut(index)
+                    .ok_or("observation absent")?;
+                observation.version = response;
+                observation.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+                observation.publish_authority = FinalRegistryPublishAuthorityV1::InstrumentFailure;
+                let version_provenance = observation
+                    .version_provenance
+                    .as_mut()
+                    .ok_or("provenance absent")?;
+                version_provenance.provider.clear();
+                version_provenance.observed_at_unix_seconds = 99;
+                observation.owner_provenance = None;
+                observation
+                    .authority_provenance
+                    .as_mut()
+                    .ok_or("provenance absent")?
+                    .observed_at_unix_seconds = 111;
+                let raw = observation.clone();
+                let receipt = evaluate_final_registry_preflight_v1(&input);
+                require(
+                    receipt.result == State::Malformed,
+                    "foreign observation became clean",
+                )?;
+                let row = if shared {
+                    receipt.shared_prerequisites.first()
+                } else {
+                    receipt.upload_rows.first()
+                }
+                .ok_or("result row absent")?;
+                require(
+                    row.observation.as_ref() == Some(&raw) && row.version_state == Version::Unknown,
+                    "foreign observation or unknown state lost",
+                )?;
+                for reason in [
+                    failure,
+                    "malformed version provenance",
+                    "version observation is future-dated or expired",
+                    "missing owner provenance",
+                    "owner endpoint unavailable",
+                    "authority observation is future-dated or expired",
+                    "authority instrument failure",
+                ] {
+                    require(
+                        row.findings.iter().any(|finding| finding.reason == reason),
+                        format!("independent failure lost: {reason}"),
+                    )?;
+                }
+                require(
+                    !row.findings
+                        .iter()
+                        .any(|finding| finding.result == State::Conflict),
+                    "foreign observation invented selected conflict",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn final_registry_preflight_invalid_expected_digest_cannot_establish_conflict() -> TestResult {
     for shared in [false, true] {

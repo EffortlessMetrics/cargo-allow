@@ -378,7 +378,7 @@ fn reconcile_observation(
     );
     let mut version = match &observation.version {
         Response::Found { checksum, yanked } => {
-            if *yanked {
+            if identity && *yanked {
                 finding(
                     findings,
                     ResultState::Conflict,
@@ -392,9 +392,9 @@ fn reconcile_observation(
                     "malformed observed checksum",
                 );
                 Version::Unknown
-            } else if !digest(&expected.expected_checksum) {
-                // The row already records the invalid expected checksum. Neither
-                // equality nor immutable conflict is established without it.
+            } else if !identity || !digest(&expected.expected_checksum) {
+                // Identity and expected-checksum validation already record their
+                // failures. Neither equality nor conflict is established here.
                 Version::Unknown
             } else {
                 let exact = checksum.eq_ignore_ascii_case(&expected.expected_checksum);
@@ -415,7 +415,7 @@ fn reconcile_observation(
             }
         }
         Response::Missing {} => {
-            if expected.role == FinalRegistryRowRoleV1::SharedPrerequisite {
+            if identity && expected.role == FinalRegistryRowRoleV1::SharedPrerequisite {
                 finding(
                     findings,
                     ResultState::Incomplete,
@@ -425,19 +425,23 @@ fn reconcile_observation(
             Version::Missing
         }
         Response::NameUnavailable {} => {
-            finding(
-                findings,
-                ResultState::Incomplete,
-                "name unavailable does not establish exact-version absence",
-            );
+            if identity {
+                finding(
+                    findings,
+                    ResultState::Incomplete,
+                    "name unavailable does not establish exact-version absence",
+                );
+            }
             Version::NameUnavailable
         }
         Response::VisibilityPending {} => {
-            finding(
-                findings,
-                ResultState::Incomplete,
-                "exact-version visibility pending",
-            );
+            if identity {
+                finding(
+                    findings,
+                    ResultState::Incomplete,
+                    "exact-version visibility pending",
+                );
+            }
             Version::Unknown
         }
         Response::MalformedResponse {} => {
@@ -468,18 +472,24 @@ fn reconcile_observation(
     );
     match observation.owner {
         FinalRegistryOwnerStateV1::UnexpectedOwner => {
-            finding(findings, ResultState::Conflict, "unexpected package owner")
+            if identity {
+                finding(findings, ResultState::Conflict, "unexpected package owner");
+            }
         }
         FinalRegistryOwnerStateV1::ProviderUnavailable => finding(
             findings,
             ResultState::ProviderUnavailable,
             "owner endpoint unavailable",
         ),
-        FinalRegistryOwnerStateV1::PermissionNotProven => finding(
-            findings,
-            ResultState::CompleteWithResidualAuthorityRisk,
-            "owner permission remains unproven",
-        ),
+        FinalRegistryOwnerStateV1::PermissionNotProven => {
+            if identity {
+                finding(
+                    findings,
+                    ResultState::CompleteWithResidualAuthorityRisk,
+                    "owner permission remains unproven",
+                );
+            }
+        }
         FinalRegistryOwnerStateV1::OwnedByExpectedPrincipal => {}
     }
     // Even exact prior publication or membership does not prove current permission.
@@ -492,16 +502,24 @@ fn reconcile_observation(
     match observation.publish_authority {
         FinalRegistryPublishAuthorityV1::Proven => {}
         FinalRegistryPublishAuthorityV1::SupportingEvidenceOnly
-        | FinalRegistryPublishAuthorityV1::NotProven => finding(
-            findings,
-            ResultState::CompleteWithResidualAuthorityRisk,
-            "publication authority remains unproven",
-        ),
-        FinalRegistryPublishAuthorityV1::Conflict => finding(
-            findings,
-            ResultState::Conflict,
-            "publication authority conflict",
-        ),
+        | FinalRegistryPublishAuthorityV1::NotProven => {
+            if identity {
+                finding(
+                    findings,
+                    ResultState::CompleteWithResidualAuthorityRisk,
+                    "publication authority remains unproven",
+                );
+            }
+        }
+        FinalRegistryPublishAuthorityV1::Conflict => {
+            if identity {
+                finding(
+                    findings,
+                    ResultState::Conflict,
+                    "publication authority conflict",
+                );
+            }
+        }
         FinalRegistryPublishAuthorityV1::ProviderUnavailable => finding(
             findings,
             ResultState::ProviderUnavailable,

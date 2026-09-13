@@ -54,6 +54,9 @@ and publication authority have separate outcomes and separate provider/source,
 evidence digest, origin, and observation time. Producers retain the referenced
 bytes. Fixture origins remain `test_fixture`, including when semantic evaluation
 is Complete. An RC response is never a substitute for a final-version query.
+A mismatched observation is retained as input evidence, with comparison state
+unknown. Its selected-version, owner, and authority conclusions are not attributed
+to the requested row; independent malformed, provider, and freshness failures remain.
 `name_unavailable` does not establish exact-version absence. Unknown fields in
 typed provider responses are rejected, including checksums attached to missing
 or unavailable responses.
