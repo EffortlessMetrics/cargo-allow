@@ -20823,3 +20823,69 @@ glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4217-floor-source"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_source_identity.py"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Establish a detached local floor subject with only the derived lock changed, preserving original source identity and rejecting unexpected source or index changes before proof classes."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_source_identity.py"
+target_fingerprint = "py"
+glob = "scripts/floor_source_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4217-floor-source-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_source_identity.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Real Git fixtures prove lock-only derivation and fail-closed rejection of staged, hidden, ignored, untracked, or attached source subjects without compiling packages."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_source_identity.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_source_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4217-floor-source-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4217-floor-subject.toml"
+owner = "core/deps"
+classification = "policy_revision"
+reason = "Record exact reviewed additions for the individually scoped floor-subject helper, real-Git fixtures, and this revision note; no existing exception scope is broadened."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4217-floor-subject.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4217-floor-subject.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

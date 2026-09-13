@@ -43,7 +43,36 @@ def invoke(program, arguments):
                                  "rustdoc": os.environ.get("RUSTDOC")}) + "\n")
     if program == "git":
         if arguments == ["rev-parse", "HEAD"]:
-            return 0, "1" * 40 + "\n", ""
+            derived = Path("target/floor-proof/fixture-derived").exists()
+            return 0, ("2" if derived else "1") * 40 + "\n", ""
+        if arguments == ["branch", "--show-current"]:
+            return 0, "", ""
+        if arguments == ["ls-files", "-v", "-z"]:
+            return 0, "H Cargo.lock\0", ""
+        if arguments == ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]:
+            return 0, "target/floor-proof/execution-identity.json\0", ""
+        if arguments == ["status", "--porcelain=v1", "--untracked-files=all", "-z"]:
+            if case.get("dirty_source"):
+                return 0, " M source.rs\0", ""
+            derived = Path("target/floor-proof/fixture-derived").exists()
+            unchanged = Path("Cargo.lock").read_bytes() == (Path(case["fixture"]) / "Cargo.lock").read_bytes()
+            return 0, "" if derived or unchanged else " M Cargo.lock\0", ""
+        if arguments == ["add", "--", "Cargo.lock"]:
+            return 0, "", ""
+        if arguments == ["-c", "core.hooksPath=", "-c", "commit.gpgSign=false",
+                         "-c", "user.name=cargo-allow floor proof",
+                         "-c", "user.email=floor-proof@example.invalid", "commit",
+                         "-m", "chore(proof): derive local direct-floor lock"]:
+            if case.get("fail_derivation"):
+                return 45, "", "simulated derived commit failure"
+            Path("target/floor-proof/fixture-derived").write_text("derived")
+            return 0, "", ""
+        if arguments == ["rev-list", "--parents", "-n", "1", "HEAD"]:
+            return 0, "2" * 40 + " " + "1" * 40 + "\n", ""
+        if arguments == ["diff", "--name-only", "-z", "1" * 40, "2" * 40]:
+            return 0, "Cargo.lock\0", ""
+        if arguments == ["rev-parse", "HEAD^{tree}"]:
+            return 0, "3" * 40 + "\n", ""
         if arguments[:3] == ["worktree", "add", "--detach"]:
             destination = Path(arguments[3]).resolve()
             destination.relative_to(Path(case["worktrees"]).resolve())
@@ -129,7 +158,7 @@ class FloorProtocolTests(unittest.TestCase):
         fixture = run_root / "fixture"
         scripts = fixture / "scripts"
         scripts.mkdir(parents=True)
-        for name in ("proof-direct-floors.sh", "floor_execution_identity.py"):
+        for name in ("proof-direct-floors.sh", "floor_execution_identity.py", "floor_source_identity.py"):
             shutil.copyfile(REPO / "scripts" / name, scripts / name)
         (fixture / "Cargo.toml").write_text(
             '[workspace]\nmembers = ["crates/cargo-allow", "crates/fixture-helper"]\n'
@@ -218,6 +247,35 @@ class FloorProtocolTests(unittest.TestCase):
         calls = [json.loads(line) for line in calls_path.read_text().splitlines()] if calls_path.exists() else []
         receipt = json.loads(receipt_path.read_bytes()) if receipt_path.exists() else None
         return result, calls, receipt, receipt_path
+
+    def test_receipt_distinguishes_reused_source_from_local_derived_commit(self):
+        for floor, reused in (("0.1", True), ("0.2", False)):
+            with self.subTest(floor=floor):
+                result, calls, receipt, _ = self.run_producer(floor=floor)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                subject = next(text for text in receipt["limitations"]
+                               if text.startswith("local floor subject:"))
+                self.assertIn("source " + "1" * 40, subject)
+                self.assertIn("executed commit " + ("1" if reused else "2") * 40, subject)
+                self.assertEqual("reuses the unchanged source commit" in subject, reused)
+                self.assertEqual("not an upstream commit" in subject, not reused)
+                commits = [call for call in calls if call["program"] == "git"
+                           and "commit" in call["arguments"]]
+                self.assertEqual(len(commits), 0 if reused else 1)
+
+    def test_failed_source_derivation_prevents_classes_and_receipt(self):
+        failures = {
+            "dirty_source": "floor derivation permits only an unstaged Cargo.lock change",
+            "fail_derivation": "simulated derived commit failure",
+        }
+        for failure, diagnostic in failures.items():
+            with self.subTest(failure=failure):
+                result, calls, receipt, _ = self.run_producer(overrides={failure: True})
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(diagnostic, result.stderr)
+                self.assertIsNone(receipt)
+                self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0]
+                                     in ("check", "test", "package") for call in calls))
 
     def test_cargo_uses_observed_tools_despite_inherited_and_configured_overrides(self):
         for mode in ("environment", "config_environment", "configuration"):

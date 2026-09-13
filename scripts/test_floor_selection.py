@@ -13,7 +13,7 @@ REPO = Path(__file__).resolve().parent.parent
 
 def select(root, roots):
     source = (REPO / "scripts/proof-direct-floors.sh").read_text(encoding="utf-8")
-    marker = 'python3 - Cargo.toml "${ROOTS[@]}" > floors-selection.json <<\'PY\'\n'
+    marker = 'python3 - Cargo.toml "${ROOTS[@]}" > target/floor-proof/floors-selection.json <<\'PY\'\n'
     program = source.split(marker, 1)[1].split("\nPY\n", 1)[0]
     result = subprocess.run(
         [sys.executable, "-", "Cargo.toml", *roots], input=program,

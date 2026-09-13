@@ -114,8 +114,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-git worktree add --detach "$WORKTREE" HEAD >/dev/null
+SOURCE_COMMIT="$(git rev-parse HEAD)"
+git worktree add --detach "$WORKTREE" "$SOURCE_COMMIT" >/dev/null
 cd "$WORKTREE"
+mkdir -p target/floor-proof
 
 # The MSRV toolchain compiles the proof: a newer toolchain would break
 # negative control 7 (a newer Rust must not satisfy the rows silently).
@@ -130,9 +132,9 @@ RUSTDOC="$(native_tool_path rustdoc)"
 export RUSTC RUSTDOC
 export RUSTC_WRAPPER=""
 export RUSTC_WORKSPACE_WRAPPER=""
-python3 scripts/floor_execution_identity.py "$MSRV" > execution-identity.json
-host_target="$(jq -r '.host' execution-identity.json)"
-cat execution-identity.json
+python3 scripts/floor_execution_identity.py "$MSRV" > target/floor-proof/execution-identity.json
+host_target="$(jq -r '.host' target/floor-proof/execution-identity.json)"
+cat target/floor-proof/execution-identity.json
 
 # Identity digests are bound to the detached worktree's own inputs — the
 # exact manifests and the HEAD Cargo.lock the floor candidate starts
@@ -167,7 +169,7 @@ lock_digest="$(tr -d '\r' < Cargo.lock | sha256sum | cut -d' ' -f1)"
 #    build dependencies; dev-dependencies are exercised by the test
 #    class but are not certified floors) those members declare from the
 #    root manifest's [workspace.dependencies] table or inline.
-python3 - Cargo.toml "${ROOTS[@]}" > floors-selection.json <<'PY'
+python3 - Cargo.toml "${ROOTS[@]}" > target/floor-proof/floors-selection.json <<'PY'
 import json
 import posixpath
 import sys
@@ -314,8 +316,8 @@ print(json.dumps({
     "optional_dependencies": [optional_decisions[key] for key in sorted(optional_decisions)],
 }, indent=1))
 PY
-floor_count="$(jq '.floors | length' floors-selection.json)"
-closure_count="$(jq '.closure | length' floors-selection.json)"
+floor_count="$(jq '.floors | length' target/floor-proof/floors-selection.json)"
+closure_count="$(jq '.closure | length' target/floor-proof/floors-selection.json)"
 if [ "$floor_count" -eq 0 ]; then
   echo "proof-direct-floors: empty floor inventory for $PRODUCT; nothing to certify" >&2
   exit 1
@@ -324,8 +326,8 @@ if [ "$closure_count" -eq 0 ]; then
   echo "proof-direct-floors: empty package closure for $PRODUCT; nothing to prove" >&2
   exit 1
 fi
-jq '.floors' floors-selection.json > floors.json
-mapfile -t CLOSURE < <(jq -r '.closure[]' floors-selection.json)
+jq '.floors' target/floor-proof/floors-selection.json > target/floor-proof/floors.json
+mapfile -t CLOSURE < <(jq -r '.closure[]' target/floor-proof/floors-selection.json)
 
 # 2. Build the direct-floor candidate lock: regenerate from scratch, then
 #    pin each external direct dependency to its declared minimum. Pin
@@ -336,7 +338,7 @@ python3 - <<'PY'
 import json
 import subprocess
 
-floors = json.load(open("floors.json", encoding="utf-8"))
+floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
 failures = {}
 for row in floors:
     proc = subprocess.run(
@@ -346,9 +348,9 @@ for row in floors:
     )
     if proc.returncode != 0:
         failures[row["package"]] = proc.stderr.strip()[:300]
-json.dump(failures, open("pin-failures.json", "w"), indent=1)
+json.dump(failures, open("target/floor-proof/pin-failures.json", "w"), indent=1)
 PY
-pin_failures="$(cat pin-failures.json)"
+pin_failures="$(cat target/floor-proof/pin-failures.json)"
 # Verify every pin that succeeded actually landed at the floor. Packages
 # whose pin failed are excluded here — they surface as resolver_failure
 # rows in the receipt instead of aborting before any receipt exists.
@@ -357,8 +359,8 @@ import json
 import tomllib
 
 lock = tomllib.load(open("Cargo.lock", "rb"))
-floors = json.load(open("floors.json", encoding="utf-8"))
-pin_failed = set(json.load(open("pin-failures.json", encoding="utf-8")).keys())
+floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
+pin_failed = set(json.load(open("target/floor-proof/pin-failures.json", encoding="utf-8")).keys())
 resolved = {}
 for package in lock.get("package", []):
     resolved.setdefault(package["name"], package["version"])
@@ -381,6 +383,9 @@ if [ -n "$floor_move_failures" ]; then
   echo "$floor_move_failures" >&2
   exit 6
 fi
+
+# Establish the actual committed floor subject before strict source admission.
+python3 scripts/floor_source_identity.py "$SOURCE_COMMIT" > target/floor-proof/source-identity.json
 
 # 3. Bounded proof classes, run against the product's own package
 #    closure — never the whole workspace — so the receipt's commands
@@ -437,8 +442,8 @@ fi
 #    posture: non-cargo-allow products are report-only and advisory.
 PRODUCT="$PRODUCT" \
 CHECK_CMD="$check_cmd" TEST_CMD="$test_cmd" PACKAGE_CMD="$package_cmd" \
-ROOTS_JSON="$(jq -c '.roots' floors-selection.json)" \
-python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/floors.json" "$WORKTREE/pin-failures.json" \
+ROOTS_JSON="$(jq -c '.roots' target/floor-proof/floors-selection.json)" \
+python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/target/floor-proof/floors.json" "$WORKTREE/target/floor-proof/pin-failures.json" \
   "$check_status" "$test_status" "$package_status" "$MSRV" \
   "$manifest_set_digest" "$lock_digest" > "$OUT" <<'PY'
 import hashlib
@@ -453,7 +458,8 @@ msrv = sys.argv[7]
 manifest_set_digest, lock_digest = sys.argv[8], sys.argv[9]
 product = os.environ["PRODUCT"]
 package_roots = json.loads(os.environ["ROOTS_JSON"])
-execution = json.load(open("execution-identity.json", encoding="utf-8"))
+execution = json.load(open("target/floor-proof/execution-identity.json", encoding="utf-8"))
+subject = json.load(open("target/floor-proof/source-identity.json", encoding="utf-8"))
 
 lock = tomllib.load(open(lock_path, "rb"))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -540,6 +546,16 @@ limitations.append(
 )
 if os.environ["PACKAGE_CMD"]:
     limitations.append("package is a single-package --no-verify archive sample; see its exact command")
+subject_posture = (
+    "reuses the unchanged source commit"
+    if subject["derived_commit"] == subject["source_commit"]
+    else "only Cargo.lock differs from source; this local derived candidate is not an upstream commit"
+)
+limitations.append(
+    f"local floor subject: source {subject['source_commit']}; "
+    f"executed commit {subject['derived_commit']}; tree {subject['derived_tree']}; "
+    f"{subject_posture}"
+)
 
 receipt = {
     "schema_id": "cargo-allow.minimum-direct-version.v1",
@@ -563,7 +579,7 @@ PY
 
 # Keep selection explanations separate from the public v1 proof vocabulary.
 # The companion binds the exact emitted JSON bytes; it adds no proof class.
-python3 - "$OUT" floors-selection.json "$(git rev-parse HEAD)" <<'PY'
+python3 - "$OUT" target/floor-proof/floors-selection.json "$SOURCE_COMMIT" <<'PY'
 import hashlib
 import json
 from pathlib import Path
@@ -573,6 +589,7 @@ receipt_path = Path(sys.argv[1])
 receipt_bytes = receipt_path.read_bytes()
 receipt = json.loads(receipt_bytes)
 selection = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+subject = json.loads(Path("target/floor-proof/source-identity.json").read_text(encoding="utf-8"))
 
 def cell(value):
     return (str(value).replace("\\", "\\\\").replace("|", "\\|")
@@ -587,6 +604,8 @@ lines = [
     f"- Package roots: {cell(', '.join(selection['roots']))}",
     f"- Selected closure: {cell(', '.join(selection['closure']))}",
     f"- Starting source commit: {cell(sys.argv[3])}",
+    f"- Executed floor commit: {cell(subject['derived_commit'])}",
+    f"- Executed floor tree: {cell(subject['derived_tree'])}",
     f"- Receipt: {cell(receipt_path.name)}",
     f"- Receipt SHA-256: sha256:v1:{hashlib.sha256(receipt_bytes).hexdigest()}",
     f"- Manifest-set digest: {receipt['manifest_set_digest']}",
@@ -612,8 +631,8 @@ overall=0
 if [[ "$check_status" -ne 0 || "$test_status" -ne 0 || "$package_status" -ne 0 ]]; then
   overall=1
 fi
-if [[ -s "$WORKTREE/pin-failures.json" ]] &&
-  [[ "$(cat "$WORKTREE/pin-failures.json")" != "{}" ]]; then
+if [[ -s "$WORKTREE/target/floor-proof/pin-failures.json" ]] &&
+  [[ "$(cat "$WORKTREE/target/floor-proof/pin-failures.json")" != "{}" ]]; then
   overall=1
 fi
 echo "proof-direct-floors: proof classes completed for $PRODUCT (overall=$overall)"
