@@ -96,19 +96,19 @@ controls do not compile packages or establish real floor compatibility.
 The same command runs real-Git derived-source controls for lock-only changes,
 unchanged locks, attached checkouts, and rejected source/index changes. The
 producer simulation separately rejects derivation failure before any class runs.
-Strict-admission integration is owned by
-[#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
-Until it lands, the default suite proves derivation only and reports strict
-admission as not run. The following command is valid only in a combined
-checkout containing #4177's `require_clean_checkout` implementation:
+The default suite also runs the actual rehearsal's strict checkout admission
+against the derived-source fixture and all 19 `TestRehearsalSubjectBinding`
+controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
 
 This reproduces the original four root scratch files plus modified lock,
 requires their rejection, and then requires admission of the derived subject.
 Selecting an older rehearsal script without strict admission fails explicitly.
-#4177 must enable this option in `scripts/test-proof-direct-floors-protocol.sh`
-when integrating the prerequisite, so its default CI checks the actual consumer.
+The subject-binding controls reject foreign commits and staged, hidden, ignored,
+or untracked source, including changes observed after mocked phases. They do
+not execute real rehearsal phases or establish a complete release rehearsal.
+See [#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
 
 Legacy receipt admission belongs to the Rust consumer, not this producer.
 `minimum_direct_version_contract_package_roots_must_match_the_request` rejects

@@ -689,7 +689,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.require_no_phases()
 
     def test_dirty_source_after_phases_cannot_return_a_receipt(self) -> None:
-        def change_source(receipt):
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
             (self.root / "Cargo.lock").write_text("changed by phase\n", encoding="utf-8")
             return "Incomplete"
 
@@ -702,7 +702,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         original = source.read_bytes()
         for flag in ("assume-unchanged", "skip-worktree"):
             with self.subTest(flag=flag):
-                def change_source(receipt):
+                def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
                     self.git("update-index", f"--{flag}", "Cargo.lock")
                     source.write_bytes(original + b"# hidden phase change\n")
                     return "Incomplete"
@@ -716,7 +716,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                     self.git("update-index", f"--no-{flag}", "Cargo.lock")
 
     def test_untracked_source_after_phases_cannot_return_a_receipt(self) -> None:
-        def change_source(receipt):
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
             self.add_untracked_source()
             return "Incomplete"
 
@@ -725,7 +725,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt("HEAD")
 
     def test_staged_source_after_phases_cannot_return_a_receipt(self) -> None:
-        def change_source(receipt):
+        def change_source(receipt, *, candidate_executable=None, candidate_sha256=None):
             (self.root / "Cargo.lock").write_text("staged by phase\n", encoding="utf-8")
             self.git("add", "Cargo.lock")
             return "Incomplete"
@@ -735,7 +735,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt("HEAD")
 
     def test_clean_commit_movement_after_phases_cannot_return_a_receipt(self) -> None:
-        def change_head(receipt):
+        def change_head(receipt, *, candidate_executable=None, candidate_sha256=None):
             self.git("commit", "--quiet", "--allow-empty", "-m", "moved subject")
             return "Incomplete"
 
