@@ -126,16 +126,38 @@ fn final_registry_preflight_current_topology_uses_production_evaluator_and_schem
         root.join("docs/schemas/cargo-allow.final-registry-preflight.v1.schema.json"),
     )?)?;
     let validator = jsonschema::validator_for(&schema)?;
-    for expected in [
+    let original_observations = input.observations.clone();
+    for (case, expected) in [
         FinalRegistryPreflightResultV1::CompleteWithResidualAuthorityRisk,
         FinalRegistryPreflightResultV1::Malformed,
-    ] {
+        FinalRegistryPreflightResultV1::Malformed,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        if case == 2 {
+            input.observations = original_observations.clone();
+            let mut surplus = input
+                .observations
+                .first()
+                .ok_or_else(|| io::Error::other("fixture observation absent"))?
+                .clone();
+            surplus.version = FinalRegistryVersionResponseV1::MalformedResponse {};
+            input.observations.push(surplus);
+        }
         let receipt = evaluate_final_registry_preflight_v1(&input);
         if receipt.result != expected {
             return Err(io::Error::other(format!("expected {expected:?}: {receipt:?}")).into());
         }
         let rendered: serde_json::Value =
             serde_json::from_str(&render_final_registry_preflight_v1(&receipt)?)?;
+        let surplus = rendered
+            .get("surplus_observations")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| io::Error::other("surplus array absent"))?;
+        if surplus.len() != usize::from(case == 2) {
+            return Err(io::Error::other("unexpected surplus count").into());
+        }
         if !validator.is_valid(&rendered) {
             return Err(io::Error::other(format!(
                 "rendered result violates schema: {:?}",

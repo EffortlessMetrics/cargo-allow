@@ -219,6 +219,8 @@ pub struct CargoAllowFinalRegistryPreflightV1 {
     pub findings: Vec<FinalRegistryPreflightFindingV1>,
     pub upload_rows: Vec<FinalRegistryPreflightRowV1>,
     pub shared_prerequisites: Vec<FinalRegistryPreflightRowV1>,
+    /// Unpaired observations in input order; never selected package authority.
+    pub surplus_observations: Vec<FinalRegistryObservationV1>,
 }
 
 /// Declaration order is canonical; sequence order is retained, never repaired

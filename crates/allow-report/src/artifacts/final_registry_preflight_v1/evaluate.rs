@@ -172,6 +172,24 @@ pub fn evaluate_final_registry_preflight_v1(
             "freshness window must be positive",
         );
     }
+    let surplus_observations: Vec<_> = input
+        .observations
+        .iter()
+        .skip(input.candidate.rows.len())
+        .cloned()
+        .collect();
+    for (offset, observation) in surplus_observations.iter().enumerate() {
+        let mut health_findings = Vec::new();
+        validate_observation_health(observation, input, &mut health_findings);
+        let index = input.candidate.rows.len() + offset;
+        for health in health_findings {
+            finding(
+                &mut findings,
+                health.result,
+                format!("surplus observation[{index}]: {}", health.reason),
+            );
+        }
+    }
     let mut upload_rows = Vec::new();
     let mut shared_prerequisites = Vec::new();
     let mut shared_index = 0;
@@ -308,6 +326,7 @@ pub fn evaluate_final_registry_preflight_v1(
         findings,
         upload_rows,
         shared_prerequisites,
+        surplus_observations,
     }
 }
 
@@ -353,6 +372,73 @@ fn provenance_valid(
     }
 }
 
+fn validate_observation_health(
+    observation: &FinalRegistryObservationV1,
+    input: &FinalRegistryPreflightInputV1,
+    findings: &mut Vec<FinalRegistryPreflightFindingV1>,
+) -> bool {
+    use FinalRegistryVersionResponseV1 as Response;
+    let version_proven = provenance_valid(
+        observation.version_provenance.as_ref(),
+        "version",
+        input,
+        findings,
+    );
+    provenance_valid(
+        observation.owner_provenance.as_ref(),
+        "owner",
+        input,
+        findings,
+    );
+    provenance_valid(
+        observation.authority_provenance.as_ref(),
+        "authority",
+        input,
+        findings,
+    );
+    match &observation.version {
+        Response::Found { checksum, .. } if !digest(checksum) => finding(
+            findings,
+            ResultState::Malformed,
+            "malformed observed checksum",
+        ),
+        Response::MalformedResponse {} => finding(
+            findings,
+            ResultState::InstrumentFailure,
+            "malformed provider response",
+        ),
+        Response::Timeout {} | Response::RateLimited {} | Response::ProviderUnavailable {} => {
+            finding(
+                findings,
+                ResultState::ProviderUnavailable,
+                "version provider unavailable",
+            )
+        }
+        _ => {}
+    }
+    if observation.owner == FinalRegistryOwnerStateV1::ProviderUnavailable {
+        finding(
+            findings,
+            ResultState::ProviderUnavailable,
+            "owner endpoint unavailable",
+        );
+    }
+    match observation.publish_authority {
+        FinalRegistryPublishAuthorityV1::ProviderUnavailable => finding(
+            findings,
+            ResultState::ProviderUnavailable,
+            "authority provider unavailable",
+        ),
+        FinalRegistryPublishAuthorityV1::InstrumentFailure => finding(
+            findings,
+            ResultState::InstrumentFailure,
+            "authority instrument failure",
+        ),
+        _ => {}
+    }
+    version_proven
+}
+
 fn reconcile_observation(
     expected: &FinalRegistryExpectedRowV1,
     observation: &FinalRegistryObservationV1,
@@ -370,12 +456,7 @@ fn reconcile_observation(
             "observation requested identity differs from selected exact version",
         );
     }
-    let version_proven = provenance_valid(
-        observation.version_provenance.as_ref(),
-        "version",
-        input,
-        findings,
-    );
+    let version_proven = validate_observation_health(observation, input, findings);
     let mut version = match &observation.version {
         Response::Found { checksum, yanked } => {
             if identity && *yanked {
@@ -385,14 +466,7 @@ fn reconcile_observation(
                     "selected registry version is yanked",
                 );
             }
-            if !digest(checksum) {
-                finding(
-                    findings,
-                    ResultState::Malformed,
-                    "malformed observed checksum",
-                );
-                Version::Unknown
-            } else if !identity || !digest(&expected.expected_checksum) {
+            if !digest(checksum) || !identity || !digest(&expected.expected_checksum) {
                 // Identity and expected-checksum validation already record their
                 // failures. Neither equality nor conflict is established here.
                 Version::Unknown
@@ -444,43 +518,21 @@ fn reconcile_observation(
             }
             Version::Unknown
         }
-        Response::MalformedResponse {} => {
-            finding(
-                findings,
-                ResultState::InstrumentFailure,
-                "malformed provider response",
-            );
-            Version::Unknown
-        }
-        Response::Timeout {} | Response::RateLimited {} | Response::ProviderUnavailable {} => {
-            finding(
-                findings,
-                ResultState::ProviderUnavailable,
-                "version provider unavailable",
-            );
-            Version::Unknown
-        }
+        Response::MalformedResponse {}
+        | Response::Timeout {}
+        | Response::RateLimited {}
+        | Response::ProviderUnavailable {} => Version::Unknown,
     };
     if !identity || !version_proven {
         version = Version::Unknown;
     }
-    provenance_valid(
-        observation.owner_provenance.as_ref(),
-        "owner",
-        input,
-        findings,
-    );
     match observation.owner {
         FinalRegistryOwnerStateV1::UnexpectedOwner => {
             if identity {
                 finding(findings, ResultState::Conflict, "unexpected package owner");
             }
         }
-        FinalRegistryOwnerStateV1::ProviderUnavailable => finding(
-            findings,
-            ResultState::ProviderUnavailable,
-            "owner endpoint unavailable",
-        ),
+        FinalRegistryOwnerStateV1::ProviderUnavailable => {}
         FinalRegistryOwnerStateV1::PermissionNotProven => {
             if identity {
                 finding(
@@ -493,12 +545,6 @@ fn reconcile_observation(
         FinalRegistryOwnerStateV1::OwnedByExpectedPrincipal => {}
     }
     // Even exact prior publication or membership does not prove current permission.
-    provenance_valid(
-        observation.authority_provenance.as_ref(),
-        "authority",
-        input,
-        findings,
-    );
     match observation.publish_authority {
         FinalRegistryPublishAuthorityV1::Proven => {}
         FinalRegistryPublishAuthorityV1::SupportingEvidenceOnly
@@ -520,16 +566,8 @@ fn reconcile_observation(
                 );
             }
         }
-        FinalRegistryPublishAuthorityV1::ProviderUnavailable => finding(
-            findings,
-            ResultState::ProviderUnavailable,
-            "authority provider unavailable",
-        ),
-        FinalRegistryPublishAuthorityV1::InstrumentFailure => finding(
-            findings,
-            ResultState::InstrumentFailure,
-            "authority instrument failure",
-        ),
+        FinalRegistryPublishAuthorityV1::ProviderUnavailable
+        | FinalRegistryPublishAuthorityV1::InstrumentFailure => {}
     }
     version
 }

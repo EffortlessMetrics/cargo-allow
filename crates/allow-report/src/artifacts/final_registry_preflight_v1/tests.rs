@@ -1116,3 +1116,92 @@ fn final_registry_preflight_shared_absence_is_not_upload_feasibility() -> TestRe
         "missing shared prerequisite became feasible",
     )
 }
+
+#[test]
+fn final_registry_preflight_retains_surplus_observations_and_health() -> TestResult {
+    for empty_candidate in [false, true] {
+        let mut input = fixture()?;
+        let mut extra = input
+            .observations
+            .first()
+            .ok_or("observation absent")?
+            .clone();
+        extra.version = Response::Found {
+            checksum: "invalid".to_string(),
+            yanked: true,
+        };
+        extra.owner = FinalRegistryOwnerStateV1::ProviderUnavailable;
+        extra.publish_authority = FinalRegistryPublishAuthorityV1::InstrumentFailure;
+        extra.version_provenance = None;
+        extra
+            .owner_provenance
+            .as_mut()
+            .ok_or("owner provenance absent")?
+            .observed_at_unix_seconds = 0;
+        extra.authority_provenance = None;
+        if empty_candidate {
+            input.candidate.rows.clear();
+            input.observations.clear();
+        }
+        let index = input.observations.len();
+        input.observations.push(extra.clone());
+        let mut second = extra.clone();
+        second.version = Response::Timeout {};
+        input.observations.push(second.clone());
+        let receipt = evaluate_final_registry_preflight_v1(&input);
+        let rendered: serde_json::Value =
+            serde_json::from_str(&render_final_registry_preflight_v1(&receipt)?)?;
+        require(
+            rendered.get("surplus_observations")
+                == Some(&serde_json::to_value(vec![extra, second])?),
+            "surplus raw observations lost or reordered",
+        )?;
+        require(
+            receipt.result == State::Malformed,
+            "surplus observations became clean",
+        )?;
+        for (state, reason) in [
+            (State::Malformed, "missing version provenance"),
+            (State::Malformed, "malformed observed checksum"),
+            (State::Stale, "owner observation is future-dated or expired"),
+            (State::Malformed, "missing authority provenance"),
+            (State::ProviderUnavailable, "owner endpoint unavailable"),
+            (State::InstrumentFailure, "authority instrument failure"),
+        ] {
+            require(
+                receipt.findings.iter().any(|finding| {
+                    finding.result == state
+                        && finding.reason == format!("surplus observation[{index}]: {reason}")
+                }),
+                "surplus health finding lost",
+            )?;
+        }
+        require(
+            receipt.findings.iter().any(|finding| {
+                finding.result == State::ProviderUnavailable
+                    && finding.reason
+                        == format!(
+                            "surplus observation[{}]: version provider unavailable",
+                            index + 1
+                        )
+            }),
+            "second surplus health lost",
+        )?;
+        require(
+            !receipt
+                .findings
+                .iter()
+                .any(|finding| finding.result == State::Conflict),
+            "surplus observation attributed to selected identity",
+        )?;
+        require(
+            receipt
+                .upload_rows
+                .iter()
+                .chain(&receipt.shared_prerequisites)
+                .all(|row| row.next_action == FinalRegistryNextActionV1::RepairInput),
+            "surplus failure did not constrain row actions",
+        )?;
+    }
+    Ok(())
+}

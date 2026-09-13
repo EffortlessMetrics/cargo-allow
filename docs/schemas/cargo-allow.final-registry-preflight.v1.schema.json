@@ -15,7 +15,8 @@
     "result",
     "findings",
     "upload_rows",
-    "shared_prerequisites"
+    "shared_prerequisites",
+    "surplus_observations"
   ],
   "properties": {
     "schema_id": {
@@ -53,6 +54,12 @@
       "type": "array",
       "items": {
         "$ref": "#/$defs/row"
+      }
+    },
+    "surplus_observations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation"
       }
     },
     "shared_prerequisites": {

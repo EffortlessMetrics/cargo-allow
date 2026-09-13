@@ -80,6 +80,12 @@ replace observations and retain their evidence to refresh after movement or
 expiry; relabeling old evidence with a new context or timestamp is not refresh.
 This pure library cannot authenticate a caller's collection claims.
 
+Observations beyond the candidate row count remain in `surplus_observations`
+in input order. Their independent provenance, freshness, checksum-shape, and
+provider failures appear in global findings with the original zero-based
+`surplus observation[index]:` prefix. They never establish selected package
+version, ownership, or publication authority. Valid inputs render an empty array.
+
 Every finding remains visible. Aggregate precedence is unsupported generation,
 malformed input, instrument failure, conflict, stale, provider unavailable,
 incomplete, residual authority risk, complete. A missing final version can be
