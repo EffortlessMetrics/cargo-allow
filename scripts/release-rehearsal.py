@@ -781,17 +781,19 @@ def _preflight_receipt_output(path: Path) -> Path:
     """Admit an artifact destination without changing source or output bytes."""
     path = path.absolute()
     for component in (path, *path.parents):
-        if component.is_symlink():
-            raise OSError("receipt output cannot traverse a filesystem alias")
-        if component.exists():
+        try:
             metadata = component.lstat()
-            if getattr(metadata, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0):
-                raise OSError("receipt output cannot traverse a filesystem alias")
-            if component == path:
-                if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
-                    raise OSError("receipt output must be a singly linked regular file")
-            elif not stat.S_ISDIR(metadata.st_mode):
-                raise OSError("receipt output parent must be a directory")
+        except FileNotFoundError:
+            continue
+        if (stat.S_ISLNK(metadata.st_mode)
+                or getattr(metadata, "st_file_attributes", 0)
+                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+            raise OSError("receipt output cannot traverse a filesystem alias")
+        if component == path:
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise OSError("receipt output must be a singly linked regular file")
+        elif not stat.S_ISDIR(metadata.st_mode):
+            raise OSError("receipt output parent must be a directory")
     path = path.resolve()
     root = ROOT.resolve()
     if path.is_relative_to(root):

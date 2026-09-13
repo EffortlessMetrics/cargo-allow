@@ -9,6 +9,7 @@ import io
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tempfile
@@ -45,6 +46,7 @@ class TestReceiptOutput(unittest.TestCase):
         patcher = mock.patch.object(REHEARSAL, "ROOT", self.root)
         patcher.start()
         self.addCleanup(patcher.stop)
+        self.real_run = subprocess.run
         self.tracked = mock.patch.object(
             REHEARSAL.subprocess, "run",
             return_value=subprocess.CompletedProcess([], 0, b"Cargo.toml\0target/tracked.json\0", b""),
@@ -118,6 +120,34 @@ class TestReceiptOutput(unittest.TestCase):
         self.assertEqual((result, stdout), (2, ""))
         phases.assert_not_called()
         self.assertEqual(source.read_text(), "sentinel")
+
+    @unittest.skipUnless(os.name == "nt", "Windows junction metadata control")
+    def test_dangling_junction_rejects_before_phases(self) -> None:
+        target = self.sandbox / "junction-target"
+        link = self.sandbox / "junction"
+        target.mkdir()
+        result = self.real_run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "-"],
+            input=("New-Item -ItemType Junction -Path $env:REHEARSAL_TEST_LINK "
+                   "-Target $env:REHEARSAL_TEST_TARGET -ErrorAction Stop | Out-Null\n"),
+            env={**os.environ, "REHEARSAL_TEST_LINK": str(link),
+                 "REHEARSAL_TEST_TARGET": str(target)},
+            capture_output=True, text=True, timeout=15, check=False,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Remove the reparse entry itself before TemporaryDirectory cleanup.
+        self.addCleanup(link.rmdir)
+        target.rmdir()
+        self.assertFalse(link.exists())
+        self.assertTrue(link.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        for output in (link, link / "receipt.json"):
+            with self.subTest(output=output):
+                result, stdout, stderr, phases = self.invoke(output)
+                self.assertEqual((result, stdout), (2, ""))
+                self.assertIn("filesystem alias", stderr)
+                phases.assert_not_called()
+        self.assertFalse(target.exists())
 
     def test_unignored_artifact_and_git_failure_reject_before_phases(self) -> None:
         for failed_command in ("ls-files", "check-ignore"):
