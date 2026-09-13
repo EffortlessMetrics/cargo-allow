@@ -1,6 +1,6 @@
 kind: Fixed
 body: >-
-  Serialize process creation in the cargo-proof dispatch test harness to
+  Coordinate executable copying and process creation in the cargo-proof test harness to
   prevent parallel copied executables from failing with Linux ETXTBSY.
   A concurrent copy/execute regression preserves real spawning, while
   existing Cargo dispatch, timeout, reaping, and cleanup checks remain active.

@@ -22,10 +22,18 @@ const POLL_INTERVAL: Duration = Duration::from_millis(50);
 /// Marker that turns this test executable into a hanging child.
 const HANG_CHILD_ENV: &str = "CARGO_DISPATCH_HANG_CHILD";
 // A concurrent spawn can inherit a copy's writable descriptor until exec.
-// Serialize spawn admission so that CLOEXEC has completed before the next
-// copied executable is launched (rust-lang/rust#114554). Never hold this while
+// Serialize copies and spawn admission so no child inherits that descriptor
+// (rust-lang/rust#114554). Never hold this while
 // waiting for a child: the independent deadline/reaping paths remain parallel.
-static SPAWN_ADMISSION: Mutex<()> = Mutex::new(());
+static COPY_SPAWN_ADMISSION: Mutex<()> = Mutex::new(());
+
+fn copy_fixture_executable(source: impl AsRef<Path>, destination: &Path) -> TestResult {
+    let _admission = COPY_SPAWN_ADMISSION
+        .lock()
+        .map_err(|_| "fixture copy/spawn admission lock poisoned")?;
+    fs::copy(source, destination)?;
+    Ok(())
+}
 
 struct Fixture {
     root: PathBuf,
@@ -52,7 +60,7 @@ impl Fixture {
         };
         fs::create_dir_all(fixture.cargo_home.join("bin"))?;
         fs::create_dir(fixture.root.join("proof"))?;
-        fs::copy(env!("CARGO_BIN_EXE_cargo-proof"), &fixture.binary)?;
+        copy_fixture_executable(env!("CARGO_BIN_EXE_cargo-proof"), &fixture.binary)?;
         Ok(fixture)
     }
 
@@ -135,9 +143,9 @@ fn kill_tree(child: &mut Child) {
 fn bounded(command: &mut Command, deadline: Duration) -> Result<Output, Box<dyn Error>> {
     let started = Instant::now();
     let mut child = {
-        let _admission = SPAWN_ADMISSION
+        let _admission = COPY_SPAWN_ADMISSION
             .lock()
-            .map_err(|_| "fixture spawn admission lock poisoned")?;
+            .map_err(|_| "fixture copy/spawn admission lock poisoned")?;
         command
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -304,18 +312,17 @@ fn parallel_copied_executables_remain_spawnable() -> TestResult {
                 std::thread::Builder::new()
                     .spawn_scoped(scope, move || -> Result<(), String> {
                         for _ in 0..25 {
-                            // Tiny native executable: exercise copy/exec admission without
-                            // adding repeated product work to every feature-matrix row.
-                            fs::copy("/bin/true", &fixture.binary)
+                            // Use the just-built product; no distribution-specific
+                            // external executable is required by this Linux control.
+                            copy_fixture_executable(
+                                env!("CARGO_BIN_EXE_cargo-proof"),
+                                &fixture.binary,
+                            )
+                            .map_err(|error| error.to_string())?;
+                            let output = bounded(fixture.direct().arg("--version"), DEADLINE)
                                 .map_err(|error| error.to_string())?;
-                            let output = bounded(&mut fixture.direct(), DEADLINE)
+                            successful(output, "parallel copied product")
                                 .map_err(|error| error.to_string())?;
-                            if !output.status.success()
-                                || !output.stdout.is_empty()
-                                || !output.stderr.is_empty()
-                            {
-                                return Err(format!("parallel copied true failed: {output:?}"));
-                            }
                         }
                         fixture.cleanup().map_err(|error| error.to_string())
                     })
@@ -343,7 +350,7 @@ fn bounded_runner_terminates_a_hung_cargo_dispatch_tree() -> TestResult {
         .cargo_home
         .join("bin")
         .join(format!("cargo-proof-hang{}", std::env::consts::EXE_SUFFIX));
-    fs::copy(std::env::current_exe()?, &hanging_sibling)?;
+    copy_fixture_executable(std::env::current_exe()?, &hanging_sibling)?;
 
     let mut dispatch_command = fixture.cargo();
     // The positional filter selects a test whose body hangs, under
