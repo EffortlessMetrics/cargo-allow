@@ -29,7 +29,8 @@ class FakeResolver:
         identity = ";".join(
             f"{name}={version}" for name, version in sorted(self.state.items())
         ) or "missing"
-        return settlement.LockSnapshot(dict(self.state), identity)
+        resolved = {name: (version,) for name, version in self.state.items()}
+        return settlement.LockSnapshot(resolved, identity)
 
 
 class SettlementTests(unittest.TestCase):
@@ -113,6 +114,37 @@ class SettlementTests(unittest.TestCase):
         )
         self.assertEqual(4, len(resolver.calls))
 
+    def test_duplicate_package_versions_are_not_treated_as_exact(self):
+        calls = []
+
+        def attempt(row):
+            calls.append(row["package"])
+            return 0, ""
+
+        def snapshot():
+            return settlement.LockSnapshot(
+                {"alpha": ("1.0.0", "2.0.0")},
+                "alpha=1.0.0;alpha=2.0.0",
+            )
+
+        failures = settlement.settle_floors(
+            [{"package": "alpha", "floor": "1.0.0"}],
+            attempt,
+            snapshot,
+        )
+
+        self.assertEqual(
+            {
+                "alpha": (
+                    "pin did not resolve uniquely at declared floor: "
+                    "multiple locked versions: 1.0.0, 2.0.0; "
+                    "floor requires 1.0.0"
+                )
+            },
+            failures,
+        )
+        self.assertEqual(["alpha", "alpha"], calls)
+
     def test_empty_failure_stderr_produces_a_bounded_diagnostic(self):
         def attempt(state, row):
             state[row["package"]] = "2.0.0"
@@ -163,8 +195,8 @@ class SettlementTests(unittest.TestCase):
         self.assertEqual(
             {
                 "alpha": (
-                    "pin did not remain at declared floor: "
-                    "locked at 2.0.0, floor requires 1.0.0"
+                    "pin did not resolve uniquely at declared floor: "
+                    "locked at 2.0.0; floor requires 1.0.0"
                 )
             },
             failures,
