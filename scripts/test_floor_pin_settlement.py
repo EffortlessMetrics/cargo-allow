@@ -113,6 +113,31 @@ class SettlementTests(unittest.TestCase):
         )
         self.assertEqual(4, len(resolver.calls))
 
+    def test_empty_failure_stderr_produces_a_bounded_diagnostic(self):
+        def attempt(state, row):
+            state[row["package"]] = "2.0.0"
+            return 17, " \n"
+
+        floors = [{"package": "alpha", "floor": "1.0.0"}]
+        resolver = FakeResolver(attempt)
+
+        failures = settlement.settle_floors(
+            floors,
+            resolver.attempt,
+            resolver.snapshot,
+        )
+
+        self.assertEqual(
+            {
+                "alpha": (
+                    "cargo update failed with exit code 17 while pinning "
+                    "alpha to 1.0.0; stderr was empty"
+                )
+            },
+            failures,
+        )
+        self.assertEqual(["alpha", "alpha"], resolver.calls)
+
     def test_later_pin_that_moves_an_earlier_floor_is_not_certified(self):
         def attempt(state, row):
             if row["package"] == "alpha":
