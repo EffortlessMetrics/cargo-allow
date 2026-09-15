@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   apply:
-    if: "github.event.head_commit.message == 'chore(ci): retry complete floor identity repair (#4277)'"
+    if: "github.event.head_commit.message == 'chore(ci): robustly retry complete floor identity repair (#4277)'"
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -35,12 +35,12 @@ jobs:
           lines = carrier.read_text(encoding="utf-8").splitlines(keepends=True)
           start = next(i for i, line in enumerate(lines) if "python3 - <<'PYFIX4277'" in line)
           end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == "PYFIX4277")
-          prefix = lines[start][: len(lines[start]) - len(lines[start].lstrip())]
-          body = []
-          for line in lines[start + 1 : end]:
-              if not line.startswith(prefix):
-                  raise SystemExit("reviewed patch indentation changed unexpectedly")
-              body.append(line[len(prefix) :])
+          raw = lines[start + 1 : end]
+          indents = [len(line) - len(line.lstrip()) for line in raw if line.strip()]
+          if not indents:
+              raise SystemExit("reviewed patch body is empty")
+          common = min(indents)
+          body = [line[common:] if line.strip() else "\n" for line in raw]
           Path("/tmp/issue-4277-consumers.py").write_text(
               "".join(body), encoding="utf-8", newline="\n"
           )
