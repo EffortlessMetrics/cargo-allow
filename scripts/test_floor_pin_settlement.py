@@ -195,6 +195,18 @@ class SettlementTests(unittest.TestCase):
             snapshot.resolved["alpha"],
         )
 
+    def test_source_identity_uses_only_canonical_crates_io_urls(self):
+        for source in settlement.CRATES_IO_SOURCES:
+            with self.subTest(source=source):
+                package = settlement.LockedPackage("1.0.0", source)
+                self.assertEqual(
+                    "registry:crates.io", settlement.source_identity(package)
+                )
+
+        custom = "registry+https://mirror.example/index.crates.io"
+        package = settlement.LockedPackage("1.0.0", custom)
+        self.assertEqual(custom, settlement.source_identity(package))
+
     def test_update_spec_is_qualified_and_ambiguous_sources_fail_closed(self):
         row = {"package": "alpha", "floor": "1.0.0"}
         empty = settlement.LockSnapshot({}, "missing")
