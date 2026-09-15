@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - automation/pr-4272-floor-regeneration
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
