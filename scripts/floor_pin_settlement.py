@@ -216,7 +216,9 @@ def settle_floors(
     for row in ordered:
         selected, issue = selected_registry_identity(current, row)
         if issue:
-            failures[row["package"]] = issue[:MAX_DIAGNOSTIC_BYTES]
+            failures[row["package"]] = diagnostics.get(
+                row["package"], issue
+            )[:MAX_DIAGNOSTIC_BYTES]
             continue
         assert selected is not None
         if base_version(selected.version) == row["floor"]:

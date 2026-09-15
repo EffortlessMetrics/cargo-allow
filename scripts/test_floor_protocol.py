@@ -88,10 +88,13 @@ def invoke(program, arguments):
     if program == "cargo" and len(arguments) == 5 and arguments[0] == "update":
         if arguments[1] != "-p" or arguments[3] != "--precise":
             return 70, "", "unexpected simulated update arguments"
-        if arguments[2] == case.get("fail_pin"):
+        package_spec = arguments[2]
+        package = package_spec.split("@", 1)[0]
+        if package == case.get("fail_pin"):
             return 42, "", "simulated floor pin failure"
-        lock = 'version = 4\n[[package]]\nname = ' + json.dumps(arguments[2])
-        lock += '\nversion = ' + json.dumps(arguments[4]) + '\n'
+        lock = 'version = 4\n[[package]]\nname = ' + json.dumps(package)
+        lock += '\nversion = ' + json.dumps(arguments[4])
+        lock += '\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n'
         Path("Cargo.lock").write_text(lock, encoding="utf-8", newline="\n")
         return 0, "", ""
     if program == "cargo" and arguments and arguments[0] in ("check", "test", "package"):
@@ -186,7 +189,8 @@ class FloorProtocolTests(unittest.TestCase):
             member.mkdir(parents=True)
             (member / "Cargo.toml").write_text(body, encoding="utf-8", newline="\n")
         (fixture / "Cargo.lock").write_text(
-            'version = 4\n[[package]]\nname = "enabled"\nversion = "0.1.0"\n',
+            'version = 4\n[[package]]\nname = "enabled"\nversion = "0.1.0"\n'
+            'source = "registry+https://github.com/rust-lang/crates.io-index"\n',
             encoding="utf-8", newline="\n",
         )
         imports = run_root / "imports"
