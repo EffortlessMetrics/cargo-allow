@@ -186,7 +186,8 @@ class FloorProtocolTests(unittest.TestCase):
             member.mkdir(parents=True)
             (member / "Cargo.toml").write_text(body, encoding="utf-8", newline="\n")
         (fixture / "Cargo.lock").write_text(
-            'version = 4\n[[package]]\nname = "enabled"\nversion = "0.1.0"\n',
+            'version = 4\n[[package]]\nname = "enabled"\nversion = "0.1.0"\n'
+            'source = "registry+https://github.com/rust-lang/crates.io-index"\n',
             encoding="utf-8", newline="\n",
         )
         imports = run_root / "imports"
