@@ -17,20 +17,26 @@ MAX_DIAGNOSTIC_BYTES = 300
 
 @dataclass(frozen=True)
 class LockSnapshot:
-    resolved: Mapping[str, str]
+    resolved: Mapping[str, tuple[str, ...]]
     identity: str
 
 
 Attempt = Callable[[Mapping[str, str]], tuple[int, str]]
 Snapshot = Callable[[], LockSnapshot]
+ObservedState = tuple[tuple[str, tuple[str, ...]], ...]
 
 
 def _base_version(version: str | None) -> str:
     return (version or "").split("+", 1)[0]
 
 
+def _observed_versions(snapshot: LockSnapshot, package: str) -> tuple[str, ...]:
+    return tuple(_base_version(version) for version in snapshot.resolved.get(package, ()))
+
+
 def _is_exact(snapshot: LockSnapshot, row: Mapping[str, str]) -> bool:
-    return _base_version(snapshot.resolved.get(row["package"])) == row["floor"]
+    versions = _observed_versions(snapshot, row["package"])
+    return len(versions) == 1 and versions[0] == row["floor"]
 
 
 def _attempt_failure_diagnostic(
@@ -58,6 +64,8 @@ def settle_floors(
     package for deterministic execution, but every unresolved row is retried
     after sibling pins have had a chance to settle. Repeated lock states and a
     bounded pass count make an incompatible or oscillating set terminate.
+    A package name must resolve to exactly one lock row at its declared floor;
+    duplicate name rows stay non-clean rather than being collapsed arbitrarily.
     """
 
     ordered = sorted((dict(row) for row in floors), key=lambda row: row["package"])
@@ -69,7 +77,7 @@ def settle_floors(
         raise ValueError("max_passes must be positive")
 
     diagnostics: dict[str, str] = {}
-    seen_states: set[tuple[tuple[tuple[str, str], ...], str]] = set()
+    seen_states: set[tuple[ObservedState, str]] = set()
 
     for _ in range(pass_limit):
         for row in ordered:
@@ -89,16 +97,11 @@ def settle_floors(
         if not unresolved:
             return {}
 
-        state = (
-            tuple(
-                (
-                    row["package"],
-                    _base_version(current.resolved.get(row["package"])),
-                )
-                for row in ordered
-            ),
-            current.identity,
+        observed: ObservedState = tuple(
+            (row["package"], _observed_versions(current, row["package"]))
+            for row in ordered
         )
+        state = (observed, current.identity)
         if state in seen_states:
             break
         seen_states.add(state)
@@ -109,11 +112,17 @@ def settle_floors(
         if _is_exact(current, row):
             continue
         name = row["package"]
-        observed = _base_version(current.resolved.get(name)) or "missing"
+        versions = _observed_versions(current, name)
+        if not versions:
+            observed = "missing"
+        elif len(versions) == 1:
+            observed = f"locked at {versions[0]}"
+        else:
+            observed = "multiple locked versions: " + ", ".join(versions)
         failures[name] = diagnostics.get(
             name,
-            "pin did not remain at declared floor: "
-            f"locked at {observed}, floor requires {row['floor']}",
+            f"pin did not resolve uniquely at declared floor: {observed}; "
+            f"floor requires {row['floor']}",
         )[:MAX_DIAGNOSTIC_BYTES]
     return failures
 
@@ -124,9 +133,12 @@ def read_lock_snapshot(lock_path: Path) -> LockSnapshot:
 
     raw = lock_path.read_bytes().replace(b"\r", b"")
     lock = tomllib.loads(raw.decode("utf-8"))
-    resolved: dict[str, str] = {}
+    observed: dict[str, list[str]] = {}
     for package in lock.get("package", []):
-        resolved.setdefault(package["name"], package["version"])
+        observed.setdefault(package["name"], []).append(package["version"])
+    resolved = {
+        name: tuple(sorted(versions)) for name, versions in observed.items()
+    }
     return LockSnapshot(resolved, hashlib.sha256(raw).hexdigest())
 
 
