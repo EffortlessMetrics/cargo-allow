@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 MODULE_PATH = Path(__file__).with_name("floor_pin_settlement.py")
@@ -144,6 +145,21 @@ class SettlementTests(unittest.TestCase):
             failures,
         )
         self.assertEqual(["alpha", "alpha"], calls)
+
+    def test_lock_snapshot_retains_duplicate_package_rows(self):
+        with tempfile.TemporaryDirectory(prefix="floor-lock-snapshot-") as directory:
+            lock_path = Path(directory) / "Cargo.lock"
+            lock_path.write_text(
+                'version = 4\n'
+                '[[package]]\nname = "alpha"\nversion = "2.0.0"\n'
+                '[[package]]\nname = "alpha"\nversion = "1.0.0"\n',
+                encoding="utf-8",
+                newline="\n",
+            )
+            snapshot = settlement.read_lock_snapshot(lock_path)
+
+        self.assertEqual(("1.0.0", "2.0.0"), snapshot.resolved["alpha"])
+        self.assertNotEqual("missing", snapshot.identity)
 
     def test_empty_failure_stderr_produces_a_bounded_diagnostic(self):
         def attempt(state, row):
