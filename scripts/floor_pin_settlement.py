@@ -13,30 +13,135 @@ import tomllib
 from typing import Callable, Iterable, Mapping
 
 MAX_DIAGNOSTIC_BYTES = 300
+CRATES_IO_SOURCES = (
+    "registry+https://github.com/rust-lang/crates.io-index",
+    "sparse+https://index.crates.io/",
+)
+
+
+@dataclass(frozen=True)
+class LockedPackage:
+    """One exact Cargo package identity retained by Cargo.lock."""
+
+    version: str
+    source: str | None
 
 
 @dataclass(frozen=True)
 class LockSnapshot:
-    resolved: Mapping[str, tuple[str, ...]]
+    """All same-name lock identities plus the complete lock digest."""
+
+    resolved: Mapping[str, tuple[LockedPackage, ...]]
     identity: str
 
 
 Attempt = Callable[[Mapping[str, str]], tuple[int, str]]
 Snapshot = Callable[[], LockSnapshot]
-ObservedState = tuple[tuple[str, tuple[str, ...]], ...]
+ObservedState = tuple[tuple[str, tuple[LockedPackage, ...]], ...]
 
 
-def _base_version(version: str | None) -> str:
+def base_version(version: str | None) -> str:
+    """Return the SemVer precedence version without build metadata."""
+
     return (version or "").split("+", 1)[0]
 
 
-def _observed_versions(snapshot: LockSnapshot, package: str) -> tuple[str, ...]:
-    return tuple(_base_version(version) for version in snapshot.resolved.get(package, ()))
+def locked_occurrences(
+    snapshot: LockSnapshot, package: str
+) -> tuple[LockedPackage, ...]:
+    """Return every exact lock identity for a package name."""
+
+    return snapshot.resolved.get(package, ())
+
+
+def is_registry_source(source: str | None) -> bool:
+    """Return whether a lock source is registry-backed."""
+
+    return bool(source) and source.startswith(("registry+", "sparse+"))
+
+
+def source_identity(package: LockedPackage | None) -> str:
+    """Project a locked source into the public receipt vocabulary."""
+
+    if package is None:
+        return "unresolved"
+    if package.source in CRATES_IO_SOURCES or (
+        package.source
+        and (
+            "crates.io-index" in package.source
+            or "index.crates.io" in package.source
+        )
+    ):
+        return "registry:crates.io"
+    return package.source or "path:workspace-or-local"
+
+
+def _format_identity(package: LockedPackage) -> str:
+    source = package.source or "path:workspace-or-local"
+    return f"{package.version} @ {source}"
+
+
+def selected_registry_identity(
+    snapshot: LockSnapshot, row: Mapping[str, str]
+) -> tuple[LockedPackage | None, str | None]:
+    """Select one registry identity or return a fail-closed reason."""
+
+    name = row["package"]
+    occurrences = locked_occurrences(snapshot, name)
+    if not occurrences:
+        return None, f"{name} is missing from Cargo.lock"
+    if len(occurrences) != 1:
+        rendered = ", ".join(_format_identity(item) for item in occurrences)
+        return None, f"{name} has multiple locked identities: {rendered}"
+    selected = occurrences[0]
+    if not is_registry_source(selected.source):
+        return (
+            selected,
+            f"{name} selected a non-registry lock identity: "
+            f"{_format_identity(selected)}",
+        )
+    return selected, None
+
+
+def floor_identity(
+    snapshot: LockSnapshot, row: Mapping[str, str]
+) -> tuple[LockedPackage | None, str | None]:
+    """Return the unique registry identity only when it is at the floor."""
+
+    selected, issue = selected_registry_identity(snapshot, row)
+    if issue:
+        return selected, issue
+    assert selected is not None
+    observed = base_version(selected.version)
+    if observed != row["floor"]:
+        return (
+            selected,
+            "pin did not remain at declared floor: "
+            f"locked at {observed}, floor requires {row['floor']}",
+        )
+    return selected, None
+
+
+def cargo_update_spec(
+    snapshot: LockSnapshot, row: Mapping[str, str]
+) -> tuple[str | None, str | None]:
+    """Choose a non-ambiguous Cargo package spec for one update attempt."""
+
+    occurrences = locked_occurrences(snapshot, row["package"])
+    if not occurrences:
+        # The first update bootstraps a freshly removed lock. Cargo still
+        # fails closed if the generated graph makes this name ambiguous.
+        return row["package"], None
+    selected, issue = selected_registry_identity(snapshot, row)
+    if issue:
+        return None, issue
+    assert selected is not None
+    return f"{row['package']}@{selected.version}", None
 
 
 def _is_exact(snapshot: LockSnapshot, row: Mapping[str, str]) -> bool:
-    versions = _observed_versions(snapshot, row["package"])
-    return len(versions) == 1 and versions[0] == row["floor"]
+    _, issue = floor_identity(snapshot, row)
+    return issue is None
 
 
 def _attempt_failure_diagnostic(
@@ -64,8 +169,8 @@ def settle_floors(
     package for deterministic execution, but every unresolved row is retried
     after sibling pins have had a chance to settle. Repeated lock states and a
     bounded pass count make an incompatible or oscillating set terminate.
-    A package name must resolve to exactly one lock row at its declared floor;
-    duplicate name rows stay non-clean rather than being collapsed arbitrarily.
+    A selected name must end at exactly one registry-backed name/version/source
+    identity at its floor; ambiguous or substituted identities remain non-clean.
     """
 
     ordered = sorted((dict(row) for row in floors), key=lambda row: row["package"])
@@ -98,7 +203,7 @@ def settle_floors(
             return {}
 
         observed: ObservedState = tuple(
-            (row["package"], _observed_versions(current, row["package"]))
+            (row["package"], locked_occurrences(current, row["package"]))
             for row in ordered
         )
         state = (observed, current.identity)
@@ -109,40 +214,52 @@ def settle_floors(
     current = snapshot()
     failures: dict[str, str] = {}
     for row in ordered:
-        if _is_exact(current, row):
+        selected, issue = selected_registry_identity(current, row)
+        if issue:
+            failures[row["package"]] = issue[:MAX_DIAGNOSTIC_BYTES]
             continue
-        name = row["package"]
-        versions = _observed_versions(current, name)
-        if not versions:
-            observed = "missing"
-        elif len(versions) == 1:
-            observed = f"locked at {versions[0]}"
-        else:
-            observed = "multiple locked versions: " + ", ".join(versions)
-        failures[name] = diagnostics.get(
-            name,
-            f"pin did not resolve uniquely at declared floor: {observed}; "
-            f"floor requires {row['floor']}",
+        assert selected is not None
+        if base_version(selected.version) == row["floor"]:
+            continue
+        floor_issue = (
+            "pin did not remain at declared floor: "
+            f"locked at {base_version(selected.version)}, floor requires {row['floor']}"
+        )
+        failures[row["package"]] = diagnostics.get(
+            row["package"], floor_issue
         )[:MAX_DIAGNOSTIC_BYTES]
     return failures
 
 
 def read_lock_snapshot(lock_path: Path) -> LockSnapshot:
+    """Read every name/version/source occurrence from a Cargo lockfile."""
+
     if not lock_path.exists():
         return LockSnapshot({}, "missing")
 
     raw = lock_path.read_bytes().replace(b"\r", b"")
     lock = tomllib.loads(raw.decode("utf-8"))
-    observed: dict[str, list[str]] = {}
+    observed: dict[str, list[LockedPackage]] = {}
     for package in lock.get("package", []):
-        observed.setdefault(package["name"], []).append(package["version"])
+        source = package.get("source")
+        observed.setdefault(package["name"], []).append(
+            LockedPackage(
+                version=package["version"],
+                source=source if isinstance(source, str) else None,
+            )
+        )
     resolved = {
-        name: tuple(sorted(versions)) for name, versions in observed.items()
+        name: tuple(
+            sorted(packages, key=lambda item: (item.version, item.source or ""))
+        )
+        for name, packages in observed.items()
     }
     return LockSnapshot(resolved, hashlib.sha256(raw).hexdigest())
 
 
 def main(argv: list[str]) -> int:
+    """Run bounded settlement and write final per-package failures."""
+
     if len(argv) != 4:
         print(
             "usage: floor_pin_settlement.py "
@@ -157,8 +274,21 @@ def main(argv: list[str]) -> int:
     floors = json.loads(floors_path.read_text(encoding="utf-8"))
 
     def attempt(row: Mapping[str, str]) -> tuple[int, str]:
+        package_spec, issue = cargo_update_spec(
+            read_lock_snapshot(lock_path), row
+        )
+        if issue:
+            return 2, issue
+        assert package_spec is not None
         proc = subprocess.run(
-            ["cargo", "update", "-p", row["package"], "--precise", row["floor"]],
+            [
+                "cargo",
+                "update",
+                "-p",
+                package_spec,
+                "--precise",
+                row["floor"],
+            ],
             capture_output=True,
             text=True,
             check=False,
