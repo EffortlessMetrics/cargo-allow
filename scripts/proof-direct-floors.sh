@@ -329,57 +329,42 @@ fi
 jq '.floors' target/floor-proof/floors-selection.json > target/floor-proof/floors.json
 mapfile -t CLOSURE < <(jq -r '.closure[]' target/floor-proof/floors-selection.json)
 
-# 2. Build the direct-floor candidate lock: regenerate from scratch, then
-#    pin each external direct dependency to its declared minimum. Pin
-#    failures (version does not exist or is yanked) are recorded as
-#    resolver failures for those rows and fail the overall proof.
+# 2. Build one simultaneous direct-floor candidate lock. The settlement
+#    retries an early resolver failure after sibling floors have changed,
+#    then stops at an exact fixed point or a repeated incompatible state.
+#    Final unresolved rows remain bounded resolver failures in the receipt.
 rm -f Cargo.lock
-python3 - <<'PY'
-import json
-import subprocess
-
-floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
-failures = {}
-for row in floors:
-    proc = subprocess.run(
-        ["cargo", "update", "-p", row["package"], "--precise", row["floor"]],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        failures[row["package"]] = proc.stderr.strip()[:300]
-json.dump(failures, open("target/floor-proof/pin-failures.json", "w"), indent=1)
-PY
+python3 scripts/floor_pin_settlement.py \
+  target/floor-proof/floors.json \
+  target/floor-proof/pin-failures.json \
+  Cargo.lock
 pin_failures="$(cat target/floor-proof/pin-failures.json)"
-# Verify every pin that succeeded actually landed at the floor. Packages
-# whose pin failed are excluded here — they surface as resolver_failure
-# rows in the receipt instead of aborting before any receipt exists.
+# Re-read the final lock through the same name/version/source selector used
+# by settlement. A row absent from pin-failures must still be one unique
+# registry identity at the declared floor before proof classes may run.
 floor_move_failures="$(python3 - <<'PY'
 import json
-import tomllib
+from pathlib import Path
+import sys
 
-lock = tomllib.load(open("Cargo.lock", "rb"))
+sys.path.insert(0, str(Path("scripts").resolve()))
+import floor_pin_settlement as settlement
+
+snapshot = settlement.read_lock_snapshot(Path("Cargo.lock"))
 floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
 pin_failed = set(json.load(open("target/floor-proof/pin-failures.json", encoding="utf-8")).keys())
-resolved = {}
-for package in lock.get("package", []):
-    resolved.setdefault(package["name"], package["version"])
 moved = []
 for row in floors:
     if row["package"] in pin_failed:
         continue
-    # Cargo can record a registry version with build metadata (e.g.
-    # 1.1.4+spec-1.1.0); SemVer precedence ignores it, so compare the
-    # version without the suffix.
-    locked_base = (resolved.get(row["package"]) or "").split("+")[0]
-    locked = locked_base
-    if locked != row["floor"]:
-        moved.append(row["package"] + ": locked at " + str(locked) + ", floor requires " + str(row["floor"]))
+    _, issue = settlement.floor_identity(snapshot, row)
+    if issue:
+        moved.append(row["package"] + ": " + issue)
 print("; ".join(moved))
 PY
 )"
 if [ -n "$floor_move_failures" ]; then
-  echo "proof-direct-floors: pinned floors silently moved:" >&2
+  echo "proof-direct-floors: final floor identities are not exact:" >&2
   echo "$floor_move_failures" >&2
   exit 6
 fi
@@ -449,8 +434,11 @@ python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/target/floor-proof/floors.json" "$WO
 import hashlib
 import json
 import os
+from pathlib import Path
 import sys
-import tomllib
+
+sys.path.insert(0, str(Path("scripts").resolve()))
+import floor_pin_settlement as settlement
 
 lock_path, floors_path, pins_path = sys.argv[1], sys.argv[2], sys.argv[3]
 check_status, test_status, package_status = (int(v) for v in sys.argv[4:7])
@@ -461,20 +449,21 @@ package_roots = json.loads(os.environ["ROOTS_JSON"])
 execution = json.load(open("target/floor-proof/execution-identity.json", encoding="utf-8"))
 subject = json.load(open("target/floor-proof/source-identity.json", encoding="utf-8"))
 
-lock = tomllib.load(open(lock_path, "rb"))
+snapshot = settlement.read_lock_snapshot(Path(lock_path))
 floors = json.load(open(floors_path, encoding="utf-8"))
 pin_failures = json.load(open(pins_path, encoding="utf-8"))
-resolved = {}
-for package in lock.get("package", []):
-    resolved.setdefault(package["name"], package["version"])
 
 class_failed = bool(check_status or test_status or package_status)
 rows = []
 for row in floors:
     name = row["package"]
+    selected, identity_issue = settlement.floor_identity(snapshot, row)
     if name in pin_failures:
         result = "resolver_failure"
         limitation = f"pin to the declared floor failed: {pin_failures[name]}"
+    elif identity_issue:
+        result = "resolver_failure"
+        limitation = f"final lock identity is not the declared floor: {identity_issue}"
     elif class_failed:
         result = "instrument_failure"
         limitation = "a bounded proof class failed at the floors; see the proof output"
@@ -485,8 +474,8 @@ for row in floors:
         "package": name,
         "declared_requirement": row["requirement"],
         "tested_floor": row["floor"],
-        "resolved_version": resolved.get(name, row["floor"]),
-        "source_identity": "registry:crates.io",
+        "resolved_version": selected.version if selected else "unresolved",
+        "source_identity": settlement.source_identity(selected),
         "result": result,
         "limitation": limitation,
     })
@@ -494,7 +483,7 @@ for row in floors:
 lock_bytes = open(lock_path, "rb").read().replace(b"\r", b"")
 floor_lock_digest = "sha256:v1:" + hashlib.sha256(lock_bytes).hexdigest()
 
-commands = ["cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)"]
+commands = ["cargo update -p <dep>@<locked-version> --precise <floor> (bare name only while bootstrapping an absent lock row)"]
 commands += [os.environ[name] for name in ("CHECK_CMD", "TEST_CMD", "PACKAGE_CMD") if os.environ[name]]
 class_text = ", ".join(name for name in ("check", "test", "package") if os.environ.get(name.upper() + "_CMD"))
 

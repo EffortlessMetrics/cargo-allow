@@ -1,0 +1,21 @@
+schema_version = 1
+# Issue #4277 owns three exact non-Rust additions: the fixed-point
+# direct-floor producer, its deterministic regression suite, and this
+# revision record. core/deps reviewed each path, reason, evidence set,
+# classification, and lifecycle date. No matcher, occurrence limit,
+# existing exception, dependency floor, or release authority is broadened.
+
+[[records]]
+allow_ids = ["allow-4277-floor-settlement"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aace4ad33552ac0d713ccca0e5eca02338cb5379100f37d574027748b06ddd1e"
+
+[[records]]
+allow_ids = ["allow-4277-floor-settlement-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9e8525c1fbc58b9d35b38c576882d27fa985645fee17677304fb2c99a6fe201d"
+
+[[records]]
+allow_ids = ["allow-4277-floor-settlement-test"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d105b661f31377210fa1281cd280c584573498721034f714fd3f0aa543f06c8"
