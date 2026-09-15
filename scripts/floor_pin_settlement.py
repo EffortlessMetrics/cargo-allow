@@ -33,6 +33,18 @@ def _is_exact(snapshot: LockSnapshot, row: Mapping[str, str]) -> bool:
     return _base_version(snapshot.resolved.get(row["package"])) == row["floor"]
 
 
+def _attempt_failure_diagnostic(
+    row: Mapping[str, str], returncode: int, stderr: str
+) -> str:
+    detail = stderr.strip()
+    if detail:
+        return detail[:MAX_DIAGNOSTIC_BYTES]
+    return (
+        f"cargo update failed with exit code {returncode} while pinning "
+        f"{row['package']} to {row['floor']}; stderr was empty"
+    )[:MAX_DIAGNOSTIC_BYTES]
+
+
 def settle_floors(
     floors: Iterable[Mapping[str, str]],
     attempt: Attempt,
@@ -68,7 +80,9 @@ def settle_floors(
             if returncode == 0:
                 diagnostics.pop(name, None)
             else:
-                diagnostics[name] = stderr.strip()[:MAX_DIAGNOSTIC_BYTES]
+                diagnostics[name] = _attempt_failure_diagnostic(
+                    row, returncode, stderr
+                )
 
         current = snapshot()
         unresolved = [row for row in ordered if not _is_exact(current, row)]
