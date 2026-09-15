@@ -1,0 +1,214 @@
+name: Apply issue 4277 floor identity consumers
+
+on:
+  push:
+    branches:
+      - fix/4277-floor-pin-settlement
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-4277-consumer-identity-repair
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: "github.event.head_commit.message == 'chore(ci): apply floor identity consumers (#4277)'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Unify final verification and receipt identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new)
+
+          shell = Path("scripts/proof-direct-floors.sh")
+          text = shell.read_text(encoding="utf-8")
+
+          verify_start = "# Verify every pin that succeeded actually landed at the floor."
+          verify_end = "# Establish the actual committed floor subject before strict source admission."
+          if text.count(verify_start) != 1 or text.count(verify_end) != 1:
+              raise SystemExit("final verification markers are not unique")
+          start = text.index(verify_start)
+          end = text.index(verify_end, start)
+          verify = '''# Re-read the final lock through the same name/version/source selector used
+          # by settlement. A row absent from pin-failures must still be one unique
+          # registry identity at the declared floor before proof classes may run.
+          floor_move_failures="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts").resolve()))
+          import floor_pin_settlement as settlement
+
+          snapshot = settlement.read_lock_snapshot(Path("Cargo.lock"))
+          floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
+          pin_failed = set(json.load(open("target/floor-proof/pin-failures.json", encoding="utf-8")).keys())
+          moved = []
+          for row in floors:
+              if row["package"] in pin_failed:
+                  continue
+              _, issue = settlement.floor_identity(snapshot, row)
+              if issue:
+                  moved.append(row["package"] + ": " + issue)
+          print("; ".join(moved))
+          PY
+          )"
+          if [ -n "$floor_move_failures" ]; then
+            echo "proof-direct-floors: final floor identities are not exact:" >&2
+            echo "$floor_move_failures" >&2
+            exit 6
+          fi
+
+          '''
+          text = text[:start] + verify + text[end:]
+
+          text = replace_exact(
+              text,
+              "import hashlib\nimport json\nimport os\nimport sys\nimport tomllib\n",
+              "import hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport sys\n\nsys.path.insert(0, str(Path(\"scripts\").resolve()))\nimport floor_pin_settlement as settlement\n",
+              "receipt imports",
+          )
+          text = replace_exact(
+              text,
+              '''lock = tomllib.load(open(lock_path, "rb"))
+          floors = json.load(open(floors_path, encoding="utf-8"))
+          pin_failures = json.load(open(pins_path, encoding="utf-8"))
+          resolved = {}
+          for package in lock.get("package", []):
+              resolved.setdefault(package["name"], package["version"])
+          ''',
+              '''snapshot = settlement.read_lock_snapshot(Path(lock_path))
+          floors = json.load(open(floors_path, encoding="utf-8"))
+          pin_failures = json.load(open(pins_path, encoding="utf-8"))
+          ''',
+              "receipt lock selection",
+          )
+          text = replace_exact(
+              text,
+              '''for row in floors:
+              name = row["package"]
+              if name in pin_failures:
+                  result = "resolver_failure"
+                  limitation = f"pin to the declared floor failed: {pin_failures[name]}"
+              elif class_failed:
+                  result = "instrument_failure"
+                  limitation = "a bounded proof class failed at the floors; see the proof output"
+              else:
+                  result = "proven"
+                  limitation = None
+              rows.append({
+                  "package": name,
+                  "declared_requirement": row["requirement"],
+                  "tested_floor": row["floor"],
+                  "resolved_version": resolved.get(name, row["floor"]),
+                  "source_identity": "registry:crates.io",
+                  "result": result,
+                  "limitation": limitation,
+              })
+          ''',
+              '''for row in floors:
+              name = row["package"]
+              selected, identity_issue = settlement.floor_identity(snapshot, row)
+              if name in pin_failures:
+                  result = "resolver_failure"
+                  limitation = f"pin to the declared floor failed: {pin_failures[name]}"
+              elif identity_issue:
+                  result = "resolver_failure"
+                  limitation = f"final lock identity is not the declared floor: {identity_issue}"
+              elif class_failed:
+                  result = "instrument_failure"
+                  limitation = "a bounded proof class failed at the floors; see the proof output"
+              else:
+                  result = "proven"
+                  limitation = None
+              rows.append({
+                  "package": name,
+                  "declared_requirement": row["requirement"],
+                  "tested_floor": row["floor"],
+                  "resolved_version": selected.version if selected else "unresolved",
+                  "source_identity": settlement.source_identity(selected),
+                  "result": result,
+                  "limitation": limitation,
+              })
+          ''',
+              "receipt rows",
+          )
+          text = replace_exact(
+              text,
+              'commands = ["cargo update -p <dep> --precise <floor> (per external direct dep of the product closure)"]',
+              'commands = ["cargo update -p <dep>@<locked-version> --precise <floor> (bare name only while bootstrapping an absent lock row)"]',
+              "receipt command",
+          )
+          shell.write_text(text, encoding="utf-8", newline="\n")
+
+          protocol = Path("scripts/test_floor_protocol.py")
+          text = protocol.read_text(encoding="utf-8")
+          update_start = '    if program == "cargo" and len(arguments) == 5 and arguments[0] == "update":\n'
+          update_end = '    if program == "cargo" and arguments and arguments[0] in ("check", "test", "package"):\n'
+          if text.count(update_start) != 1 or text.count(update_end) != 1:
+              raise SystemExit("protocol update markers are not unique")
+          start = text.index(update_start)
+          end = text.index(update_end, start)
+          update = '''    if program == "cargo" and len(arguments) == 5 and arguments[0] == "update":
+              if arguments[1] != "-p" or arguments[3] != "--precise":
+                  return 70, "", "unexpected simulated update arguments"
+              package_spec = arguments[2]
+              package = package_spec.split("@", 1)[0]
+              if package == case.get("fail_pin"):
+                  return 42, "", "simulated floor pin failure"
+              lock = 'version = 4\\n[[package]]\\nname = ' + json.dumps(package)
+              lock += '\\nversion = ' + json.dumps(arguments[4])
+              lock += '\\nsource = "registry+https://github.com/rust-lang/crates.io-index"\\n'
+              Path("Cargo.lock").write_text(lock, encoding="utf-8", newline="\\n")
+              return 0, "", ""
+          '''
+          text = text[:start] + update + text[end:]
+          protocol.write_text(text, encoding="utf-8", newline="\n")
+          PY
+          git diff --check
+
+      - name: Run focused settlement and protocol tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test_floor_pin_settlement.py
+          bash scripts/test-proof-direct-floors-protocol.sh
+
+      - name: Run source and change-note guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          cargo run -p cargo-allow --locked -- diff \
+            --base 2dc1b07e182935cc7c2654035e2fef8b1199ad1a \
+            --require-change-note --format json \
+            --output target/issue-4277-consumer-identity-diff.json
+
+      - name: Commit the consumer repair and remove this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/issue-4277-consumer-identity-repair.yml
+          git add scripts/proof-direct-floors.sh scripts/test_floor_protocol.py
+          git diff --cached --check
+          git commit -m 'fix(ci): unify direct-floor package identity consumers (#4277)'
+          git push origin HEAD:fix/4277-floor-pin-settlement
