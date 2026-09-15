@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   repair:
-    if: "github.event.head_commit.message == 'chore(ci): retry issue 4277 policy byte preservation'"
+    if: "github.event.head_commit.message == 'chore(ci): retry issue 4277 byte-preserving repair v3'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -73,13 +73,23 @@ jobs:
               found['allow-4277-floor-settlement-revision'],
           ]
           appended = ('\n' + '\n\n'.join(ordered) + '\n').encode('utf-8')
+          for number, line in enumerate(appended.splitlines(), 1):
+              if line.rstrip(b' \t') != line:
+                  raise SystemExit(
+                      f'reviewed appended policy block has trailing whitespace at line {number}'
+                  )
           path.write_bytes(base + appended)
 
           repaired = path.read_bytes()
           if repaired[:len(base)] != base:
               raise SystemExit('existing ledger bytes changed before appended entries')
+          if repaired[len(base):] != appended:
+              raise SystemExit('appended ledger suffix differs from reviewed entries')
           PY
-          git diff --check
+          # The historical ledger contains reviewed legacy whitespace. Check every
+          # other final-diff path normally; the raw prefix and add-only assertions
+          # below are the stricter oracle for policy/allow.toml.
+          git diff --check "${REVIEWED_BASE}" -- . ':(exclude)policy/allow.toml'
           numstat="$(git diff --numstat "${REVIEWED_BASE}" -- policy/allow.toml)"
           printf '%s\n' "$numstat"
           additions="$(printf '%s' "$numstat" | awk '{print $1}')"
@@ -107,10 +117,12 @@ jobs:
             --output target/cargo-allow/4277-byte-repair/diff.json
           python3 scripts/test_floor_pin_settlement.py
           bash scripts/test-proof-direct-floors-protocol.sh
-          git diff --check
+          git diff --check "${REVIEWED_BASE}" -- . ':(exclude)policy/allow.toml'
           test ! -e .github/workflows/issue-4277-policy-byte-repair.yml
       - name: Commit byte-preserving policy repair
         shell: bash
+        env:
+          REVIEWED_BASE: 2dc1b07e182935cc7c2654035e2fef8b1199ad1a
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -118,6 +130,13 @@ jobs:
           git add -A \
             .github/workflows/issue-4277-policy-byte-repair.yml \
             policy/allow.toml
-          git diff --cached --check
+          git diff --cached --check "${REVIEWED_BASE}" -- . ':(exclude)policy/allow.toml'
+          numstat="$(git diff --cached --numstat "${REVIEWED_BASE}" -- policy/allow.toml)"
+          printf '%s\n' "$numstat"
+          additions="$(printf '%s' "$numstat" | awk '{print $1}')"
+          deletions="$(printf '%s' "$numstat" | awk '{print $2}')"
+          test "$deletions" = 0
+          test "$additions" -gt 0
+          test "$additions" -lt 120
           git commit -m 'fix(policy): preserve existing ledger bytes (#4277)'
           git push origin HEAD:fix/4277-floor-pin-settlement
