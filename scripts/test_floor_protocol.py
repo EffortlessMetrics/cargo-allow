@@ -158,7 +158,12 @@ class FloorProtocolTests(unittest.TestCase):
         fixture = run_root / "fixture"
         scripts = fixture / "scripts"
         scripts.mkdir(parents=True)
-        for name in ("proof-direct-floors.sh", "floor_execution_identity.py", "floor_source_identity.py"):
+        for name in (
+            "proof-direct-floors.sh",
+            "floor_pin_settlement.py",
+            "floor_execution_identity.py",
+            "floor_source_identity.py",
+        ):
             shutil.copyfile(REPO / "scripts" / name, scripts / name)
         (fixture / "Cargo.toml").write_text(
             '[workspace]\nmembers = ["crates/cargo-allow", "crates/fixture-helper"]\n'

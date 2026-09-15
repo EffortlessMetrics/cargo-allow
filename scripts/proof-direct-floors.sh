@@ -329,27 +329,15 @@ fi
 jq '.floors' target/floor-proof/floors-selection.json > target/floor-proof/floors.json
 mapfile -t CLOSURE < <(jq -r '.closure[]' target/floor-proof/floors-selection.json)
 
-# 2. Build the direct-floor candidate lock: regenerate from scratch, then
-#    pin each external direct dependency to its declared minimum. Pin
-#    failures (version does not exist or is yanked) are recorded as
-#    resolver failures for those rows and fail the overall proof.
+# 2. Build one simultaneous direct-floor candidate lock. The settlement
+#    retries an early resolver failure after sibling floors have changed,
+#    then stops at an exact fixed point or a repeated incompatible state.
+#    Final unresolved rows remain bounded resolver failures in the receipt.
 rm -f Cargo.lock
-python3 - <<'PY'
-import json
-import subprocess
-
-floors = json.load(open("target/floor-proof/floors.json", encoding="utf-8"))
-failures = {}
-for row in floors:
-    proc = subprocess.run(
-        ["cargo", "update", "-p", row["package"], "--precise", row["floor"]],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        failures[row["package"]] = proc.stderr.strip()[:300]
-json.dump(failures, open("target/floor-proof/pin-failures.json", "w"), indent=1)
-PY
+python3 scripts/floor_pin_settlement.py \
+  target/floor-proof/floors.json \
+  target/floor-proof/pin-failures.json \
+  Cargo.lock
 pin_failures="$(cat target/floor-proof/pin-failures.json)"
 # Verify every pin that succeeded actually landed at the floor. Packages
 # whose pin failed are excluded here — they surface as resolver_failure
