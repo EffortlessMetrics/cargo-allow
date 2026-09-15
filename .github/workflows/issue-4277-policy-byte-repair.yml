@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   repair:
-    if: "github.event.head_commit.message == 'chore(ci): repair issue 4277 policy byte preservation'"
+    if: "github.event.head_commit.message == 'chore(ci): retry issue 4277 policy byte preservation'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -26,14 +26,18 @@ jobs:
           toolchain: 1.95.0
       - name: Restore base bytes and append only reviewed entries
         shell: bash
+        env:
+          REVIEWED_BASE: 2dc1b07e182935cc7c2654035e2fef8b1199ad1a
         run: |
           set -euo pipefail
           rm .github/workflows/issue-4277-policy-byte-repair.yml
           python3 - <<'PY'
           from pathlib import Path
+          import os
           import re
           import subprocess
 
+          base_sha = os.environ['REVIEWED_BASE']
           path = Path('policy/allow.toml')
           current = path.read_text(encoding='utf-8')
           starts = [match.start() for match in re.finditer(r'(?m)^\[\[allow\]\]\n', current)]
@@ -56,7 +60,7 @@ jobs:
               raise SystemExit(f'missing reviewed entries: {sorted(missing)}')
 
           base = subprocess.check_output(
-              ['git', 'show', 'origin/main:policy/allow.toml']
+              ['git', 'show', f'{base_sha}:policy/allow.toml']
           )
           for allow_id in wanted:
               if allow_id.encode() in base:
@@ -76,7 +80,7 @@ jobs:
               raise SystemExit('existing ledger bytes changed before appended entries')
           PY
           git diff --check
-          numstat="$(git diff --numstat origin/main -- policy/allow.toml)"
+          numstat="$(git diff --numstat "${REVIEWED_BASE}" -- policy/allow.toml)"
           printf '%s\n' "$numstat"
           additions="$(printf '%s' "$numstat" | awk '{print $1}')"
           deletions="$(printf '%s' "$numstat" | awk '{print $2}')"
@@ -85,6 +89,8 @@ jobs:
           test "$additions" -lt 120
       - name: Revalidate exact policy and producer
         shell: bash
+        env:
+          REVIEWED_BASE: 2dc1b07e182935cc7c2654035e2fef8b1199ad1a
         run: |
           set -euo pipefail
           mkdir -p target/cargo-allow/4277-byte-repair
@@ -94,7 +100,7 @@ jobs:
             --receipt target/cargo-allow/4277-byte-repair/check.receipt.json \
             --output target/cargo-allow/4277-byte-repair/check.md
           cargo run -p cargo-allow --locked -- diff \
-            --base origin/main \
+            --base "${REVIEWED_BASE}" \
             --require-change-note \
             --format json \
             --receipt target/cargo-allow/4277-byte-repair/diff.receipt.json \
