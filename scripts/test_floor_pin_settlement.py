@@ -15,6 +15,8 @@ settlement = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = settlement
 spec.loader.exec_module(settlement)
 
+REGISTRY = "registry+https://github.com/rust-lang/crates.io-index"
+
 
 class FakeResolver:
     def __init__(self, attempt):
@@ -30,7 +32,10 @@ class FakeResolver:
         identity = ";".join(
             f"{name}={version}" for name, version in sorted(self.state.items())
         ) or "missing"
-        resolved = {name: (version,) for name, version in self.state.items()}
+        resolved = {
+            name: (settlement.LockedPackage(version, REGISTRY),)
+            for name, version in self.state.items()
+        }
         return settlement.LockSnapshot(resolved, identity)
 
 
@@ -115,7 +120,7 @@ class SettlementTests(unittest.TestCase):
         )
         self.assertEqual(4, len(resolver.calls))
 
-    def test_duplicate_package_versions_are_not_treated_as_exact(self):
+    def test_duplicate_package_identities_are_not_treated_as_exact(self):
         calls = []
 
         def attempt(row):
@@ -124,8 +129,13 @@ class SettlementTests(unittest.TestCase):
 
         def snapshot():
             return settlement.LockSnapshot(
-                {"alpha": ("1.0.0", "2.0.0")},
-                "alpha=1.0.0;alpha=2.0.0",
+                {
+                    "alpha": (
+                        settlement.LockedPackage("1.0.0", REGISTRY),
+                        settlement.LockedPackage("2.0.0", REGISTRY),
+                    )
+                },
+                "two-alpha-identities",
             )
 
         failures = settlement.settle_floors(
@@ -134,32 +144,99 @@ class SettlementTests(unittest.TestCase):
             snapshot,
         )
 
-        self.assertEqual(
-            {
-                "alpha": (
-                    "pin did not resolve uniquely at declared floor: "
-                    "multiple locked versions: 1.0.0, 2.0.0; "
-                    "floor requires 1.0.0"
-                )
-            },
-            failures,
-        )
+        self.assertIn("multiple locked identities", failures["alpha"])
+        self.assertIn("1.0.0", failures["alpha"])
+        self.assertIn("2.0.0", failures["alpha"])
         self.assertEqual(["alpha", "alpha"], calls)
 
-    def test_lock_snapshot_retains_duplicate_package_rows(self):
+    def test_lock_snapshot_retains_version_and_source_for_duplicate_rows(self):
         with tempfile.TemporaryDirectory(prefix="floor-lock-snapshot-") as directory:
             lock_path = Path(directory) / "Cargo.lock"
             lock_path.write_text(
                 'version = 4\n'
                 '[[package]]\nname = "alpha"\nversion = "2.0.0"\n'
-                '[[package]]\nname = "alpha"\nversion = "1.0.0"\n',
+                'source = "git+https://example.invalid/alpha"\n'
+                '[[package]]\nname = "alpha"\nversion = "1.0.0"\n'
+                f'source = "{REGISTRY}"\n',
                 encoding="utf-8",
                 newline="\n",
             )
             snapshot = settlement.read_lock_snapshot(lock_path)
 
-        self.assertEqual(("1.0.0", "2.0.0"), snapshot.resolved["alpha"])
+        self.assertEqual(
+            (
+                settlement.LockedPackage("1.0.0", REGISTRY),
+                settlement.LockedPackage(
+                    "2.0.0", "git+https://example.invalid/alpha"
+                ),
+            ),
+            snapshot.resolved["alpha"],
+        )
         self.assertNotEqual("missing", snapshot.identity)
+
+    def test_same_version_mixed_sources_sort_without_type_coercion(self):
+        with tempfile.TemporaryDirectory(prefix="floor-lock-source-sort-") as directory:
+            lock_path = Path(directory) / "Cargo.lock"
+            lock_path.write_text(
+                'version = 4\n'
+                '[[package]]\nname = "alpha"\nversion = "1.0.0"\n'
+                '[[package]]\nname = "alpha"\nversion = "1.0.0"\n'
+                f'source = "{REGISTRY}"\n',
+                encoding="utf-8",
+                newline="\n",
+            )
+            snapshot = settlement.read_lock_snapshot(lock_path)
+
+        self.assertEqual(
+            (
+                settlement.LockedPackage("1.0.0", None),
+                settlement.LockedPackage("1.0.0", REGISTRY),
+            ),
+            snapshot.resolved["alpha"],
+        )
+
+    def test_update_spec_is_qualified_and_ambiguous_sources_fail_closed(self):
+        row = {"package": "alpha", "floor": "1.0.0"}
+        empty = settlement.LockSnapshot({}, "missing")
+        self.assertEqual(("alpha", None), settlement.cargo_update_spec(empty, row))
+
+        unique = settlement.LockSnapshot(
+            {"alpha": (settlement.LockedPackage("2.0.0", REGISTRY),)},
+            "unique",
+        )
+        self.assertEqual(
+            ("alpha@2.0.0", None),
+            settlement.cargo_update_spec(unique, row),
+        )
+
+        non_registry = settlement.LockSnapshot(
+            {
+                "alpha": (
+                    settlement.LockedPackage(
+                        "2.0.0", "git+https://example.invalid/alpha"
+                    ),
+                )
+            },
+            "git",
+        )
+        package_spec, issue = settlement.cargo_update_spec(non_registry, row)
+        self.assertIsNone(package_spec)
+        self.assertIn("non-registry", issue)
+
+        duplicate = settlement.LockSnapshot(
+            {
+                "alpha": (
+                    settlement.LockedPackage("1.0.0", REGISTRY),
+                    settlement.LockedPackage(
+                        "1.0.0", "git+https://example.invalid/alpha"
+                    ),
+                )
+            },
+            "duplicate",
+        )
+        package_spec, issue = settlement.cargo_update_spec(duplicate, row)
+        self.assertIsNone(package_spec)
+        self.assertIn("multiple locked identities", issue)
 
     def test_empty_failure_stderr_produces_a_bounded_diagnostic(self):
         def attempt(state, row):
@@ -211,8 +288,8 @@ class SettlementTests(unittest.TestCase):
         self.assertEqual(
             {
                 "alpha": (
-                    "pin did not resolve uniquely at declared floor: "
-                    "locked at 2.0.0; floor requires 1.0.0"
+                    "pin did not remain at declared floor: "
+                    "locked at 2.0.0, floor requires 1.0.0"
                 )
             },
             failures,
