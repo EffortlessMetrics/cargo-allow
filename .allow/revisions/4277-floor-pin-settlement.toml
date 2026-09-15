@@ -4,6 +4,9 @@ schema_version = 1
 # revision record. core/deps reviewed each path, reason, evidence set,
 # classification, and lifecycle date. No matcher, occurrence limit,
 # existing exception, dependency floor, or release authority is broadened.
+# The producer and suite retain every same-name Cargo.lock occurrence as a
+# name/version/source identity. A selected name is clean only when one
+# registry-backed occurrence remains at its floor; ambiguity stays non-clean.
 
 [[records]]
 allow_ids = ["allow-4277-floor-settlement"]
