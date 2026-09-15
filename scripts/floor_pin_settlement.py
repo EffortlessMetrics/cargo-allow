@@ -65,13 +65,7 @@ def source_identity(package: LockedPackage | None) -> str:
 
     if package is None:
         return "unresolved"
-    if package.source in CRATES_IO_SOURCES or (
-        package.source
-        and (
-            "crates.io-index" in package.source
-            or "index.crates.io" in package.source
-        )
-    ):
+    if package.source in CRATES_IO_SOURCES:
         return "registry:crates.io"
     return package.source or "path:workspace-or-local"
 
