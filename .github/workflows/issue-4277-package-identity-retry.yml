@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   retry:
-    if: "github.event.head_commit.message == 'chore(ci): bootstrap package identity retry (#4277)'"
+    if: "github.event.head_commit.message == 'chore(ci): retry fixture identity bootstrap (#4277)'"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,19 +33,15 @@ jobs:
 
           path = Path("scripts/test_floor_protocol.py")
           source = path.read_text(encoding="utf-8")
-          old = '''        (fixture / "Cargo.lock").write_text(
-              'version = 4\\n[[package]]\\nname = "enabled"\\nversion = "0.1.0"\\n',
-              encoding="utf-8", newline="\\n",
+          old = '            \'version = 4\\n[[package]]\\nname = "enabled"\\nversion = "0.1.0"\\n\',\n'
+          new = (
+              '            \'version = 4\\n[[package]]\\nname = "enabled"\\nversion = "0.1.0"\\n\'\n'
+              '            \'source = "registry+https://github.com/rust-lang/crates.io-index"\\n\',\n'
           )
-          '''
-          new = '''        (fixture / "Cargo.lock").write_text(
-              'version = 4\\n[[package]]\\nname = "enabled"\\nversion = "0.1.0"\\n'
-              'source = "registry+https://github.com/rust-lang/crates.io-index"\\n',
-              encoding="utf-8", newline="\\n",
-          )
-          '''
           if source.count(old) != 1:
-              raise SystemExit("expected exactly one protocol fixture lock block")
+              raise SystemExit(
+                  f"expected exactly one protocol fixture lock line, found {source.count(old)}"
+              )
           path.write_text(source.replace(old, new), encoding="utf-8", newline="\n")
           PY
           git diff --check
