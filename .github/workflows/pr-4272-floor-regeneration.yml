@@ -1,36 +1,32 @@
-name: One-shot PR 4272 floor regeneration
+name: One-shot direct-floor fixpoint repair
 
 on:
   push:
     branches:
       - automation/pr-4272-floor-regeneration
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 concurrency:
-  group: pr-4272-floor-regeneration
+  group: direct-floor-fixpoint-repair
   cancel-in-progress: false
 
 jobs:
-  regenerate:
+  repair:
     runs-on: windows-latest
     timeout-minutes: 120
     defaults:
       run:
         shell: bash
     env:
-      TARGET_BRANCH: dependabot/cargo/patch-updates-b2061204c1
-      TARGET_HEAD: ec93b14463a59b32015a81cca75ce41f864a8cef
+      TARGET_BRANCH: fix/direct-floor-pin-fixpoint
+      TARGET_HEAD: 2dc1b07e182935cc7c2654035e2fef8b1199ad1a
     steps:
-      - name: Check out the exact PR head
+      - name: Check out the exact repair basis
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: dependabot/cargo/patch-updates-b2061204c1
+          ref: fix/direct-floor-pin-fixpoint
           fetch-depth: 0
           persist-credentials: true
 
@@ -42,129 +38,330 @@ jobs:
           command -v git
           command -v jq
           command -v python3
-          git --version
-          jq --version
-          python3 --version
 
       - uses: dtolnay/rust-toolchain@1.95.0
 
-      - name: Record exact tool identities
+      - name: Repair the floor-set constructor
         run: |
           set -euo pipefail
-          mkdir -p target/pr-4272-floor-regeneration
-          rustc -vV | tee target/pr-4272-floor-regeneration/rustc.txt
-          cargo -vV | tee target/pr-4272-floor-regeneration/cargo.txt
-          rustdoc -vV | tee target/pr-4272-floor-regeneration/rustdoc.txt
+          cat > scripts/floor_pin_set.py <<'PY'
+          #!/usr/bin/env python3
+          """Converge a Cargo lock to all selected direct dependency floors."""
 
-      - name: Regenerate cargo-allow direct-floor evidence
+          from __future__ import annotations
+
+          import json
+          import subprocess
+          import sys
+          import tomllib
+          from collections.abc import Callable, Sequence
+          from pathlib import Path
+          from typing import Any
+
+          FloorRow = dict[str, str]
+          Pin = Callable[[str, str], str | None]
+          Resolve = Callable[[], dict[str, str]]
+
+
+          def normalized_version(version: str) -> str:
+              """Compare SemVer precedence while ignoring registry build metadata."""
+              return version.split("+", 1)[0]
+
+
+          def unresolved_rows(
+              floors: Sequence[FloorRow], versions: dict[str, str]
+          ) -> list[FloorRow]:
+              return [
+                  row
+                  for row in floors
+                  if normalized_version(versions.get(row["package"], ""))
+                  != normalized_version(row["floor"])
+              ]
+
+
+          def converge_floor_set(
+              floors: Sequence[FloorRow],
+              pin: Pin,
+              resolve: Resolve,
+              *,
+              max_passes: int | None = None,
+          ) -> tuple[dict[str, str], int]:
+              """Retry the complete set until every floor coexists or progress stops.
+
+              A fresh Cargo lock may initially select a later direct dependency whose
+              own newer metadata rejects an earlier dependency floor. Pinning the later
+              dependency to its declared floor can make the earlier floor resolvable,
+              so one alphabetical pass is not sufficient.
+              """
+              if not floors:
+                  raise ValueError("floor set must not be empty")
+
+              passes = max_passes or max(2, len(floors) + 1)
+              seen_states: set[tuple[tuple[str, str], ...]] = set()
+              last_errors: dict[str, str] = {}
+              pending = list(floors)
+
+              for pass_number in range(1, passes + 1):
+                  pass_errors: dict[str, str] = {}
+                  for row in floors:
+                      package = row["package"]
+                      error = pin(package, row["floor"])
+                      if error:
+                          pass_errors[package] = error
+
+                  versions = resolve()
+                  pending = unresolved_rows(floors, versions)
+                  if not pending:
+                      return {}, pass_number
+
+                  state = tuple(
+                      (row["package"], normalized_version(versions.get(row["package"], "")))
+                      for row in floors
+                  )
+                  last_errors = pass_errors
+                  if state in seen_states:
+                      break
+                  seen_states.add(state)
+
+              failures: dict[str, str] = {}
+              final_versions = resolve()
+              for row in unresolved_rows(floors, final_versions):
+                  package = row["package"]
+                  failures[package] = last_errors.get(
+                      package,
+                      "declared floor did not remain selected after converging the "
+                      "complete direct-floor set",
+                  )
+              return failures, pass_number
+
+
+          def lock_versions(path: Path) -> dict[str, str]:
+              lock = tomllib.loads(path.read_text(encoding="utf-8"))
+              versions: dict[str, str] = {}
+              for package in lock.get("package", []):
+                  versions.setdefault(package["name"], package["version"])
+              return versions
+
+
+          def cargo_pin(package: str, floor: str) -> str | None:
+              proc = subprocess.run(
+                  ["cargo", "update", "-p", package, "--precise", floor],
+                  capture_output=True,
+                  text=True,
+                  check=False,
+              )
+              if proc.returncode == 0:
+                  return None
+              detail = (proc.stderr or proc.stdout).strip()
+              return detail[:300] or f"cargo update exited {proc.returncode}"
+
+
+          def main(argv: Sequence[str]) -> int:
+              if len(argv) != 3:
+                  raise SystemExit(
+                      "usage: floor_pin_set.py <floors.json> <pin-failures.json>"
+                  )
+
+              floors_path = Path(argv[1])
+              failures_path = Path(argv[2])
+              raw: Any = json.loads(floors_path.read_text(encoding="utf-8"))
+              if not isinstance(raw, list) or not raw:
+                  raise SystemExit("floor inventory must be a non-empty JSON array")
+              floors: list[FloorRow] = []
+              for index, row in enumerate(raw):
+                  if not isinstance(row, dict):
+                      raise SystemExit(f"floor row {index} is not an object")
+                  package = row.get("package")
+                  floor = row.get("floor")
+                  if not isinstance(package, str) or not package:
+                      raise SystemExit(f"floor row {index} has no package")
+                  if not isinstance(floor, str) or not floor:
+                      raise SystemExit(f"floor row {index} has no floor")
+                  floors.append({"package": package, "floor": floor})
+
+              seed = subprocess.run(
+                  ["cargo", "generate-lockfile"],
+                  capture_output=True,
+                  text=True,
+                  check=False,
+              )
+              if seed.returncode != 0:
+                  detail = (seed.stderr or seed.stdout).strip()
+                  raise SystemExit(f"cargo generate-lockfile failed: {detail}")
+
+              failures, passes = converge_floor_set(
+                  floors,
+                  cargo_pin,
+                  lambda: lock_versions(Path("Cargo.lock")),
+              )
+              failures_path.write_text(
+                  json.dumps(failures, indent=1) + "\n",
+                  encoding="utf-8",
+                  newline="\n",
+              )
+              status = "converged" if not failures else "unresolved"
+              print(
+                  f"floor-pin-set: {status} after {passes} pass(es); "
+                  f"failures={len(failures)}"
+              )
+              return 0
+
+
+          if __name__ == "__main__":
+              raise SystemExit(main(sys.argv))
+          PY
+
+          cat > scripts/test_floor_pin_set.py <<'PY'
+          #!/usr/bin/env python3
+          from __future__ import annotations
+
+          import unittest
+
+          from floor_pin_set import converge_floor_set, unresolved_rows
+
+
+          class FloorPinSetTests(unittest.TestCase):
+              def test_later_floor_can_unblock_an_earlier_pin(self) -> None:
+                  floors = [
+                      {"package": "clap", "floor": "4.6.1"},
+                      {"package": "clap_complete", "floor": "4.6.8"},
+                  ]
+                  state = {"clap": "4.6.6", "clap_complete": "4.6.11"}
+                  attempts: list[str] = []
+
+                  def pin(package: str, floor: str) -> str | None:
+                      attempts.append(package)
+                      if package == "clap" and state["clap_complete"] == "4.6.11":
+                          return "clap_complete 4.6.11 requires clap ^4.6.6"
+                      state[package] = floor
+                      return None
+
+                  failures, passes = converge_floor_set(floors, pin, lambda: dict(state))
+                  self.assertEqual(failures, {})
+                  self.assertEqual(passes, 2)
+                  self.assertEqual(attempts.count("clap"), 2)
+                  self.assertEqual(unresolved_rows(floors, state), [])
+
+              def test_irreconcilable_floor_remains_explicit(self) -> None:
+                  floors = [{"package": "missing", "floor": "1.0.0"}]
+                  state = {"missing": "2.0.0"}
+
+                  failures, _ = converge_floor_set(
+                      floors,
+                      lambda _package, _floor: "requested version is unavailable",
+                      lambda: dict(state),
+                  )
+                  self.assertEqual(
+                      failures, {"missing": "requested version is unavailable"}
+                  )
+
+              def test_build_metadata_does_not_move_a_floor(self) -> None:
+                  floors = [{"package": "toml", "floor": "1.1.4"}]
+                  state = {"toml": "1.1.4+spec-1.1.0"}
+                  failures, passes = converge_floor_set(
+                      floors,
+                      lambda _package, _floor: None,
+                      lambda: dict(state),
+                  )
+                  self.assertEqual(failures, {})
+                  self.assertEqual(passes, 1)
+
+
+          if __name__ == "__main__":
+              unittest.main()
+          PY
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          proof = Path("scripts/proof-direct-floors.sh")
+          text = proof.read_text(encoding="utf-8")
+          pattern = re.compile(
+              r"# 2\. Build the direct-floor candidate lock:.*?"
+              r'^pin_failures="\$\(cat target/floor-proof/pin-failures\.json\)"\n',
+              re.MULTILINE | re.DOTALL,
+          )
+          replacement = '''# 2. Build the direct-floor candidate lock: regenerate from scratch, then
+          # converge the complete external direct-floor set. A later direct dependency
+          # may initially float to metadata that rejects an earlier floor; retrying the
+          # set after that later dependency is pinned distinguishes ordering from a real
+          # incompatible combination. Unresolved rows remain explicit resolver failures.
+          rm -f Cargo.lock
+          python3 scripts/floor_pin_set.py \\
+            target/floor-proof/floors.json \\
+            target/floor-proof/pin-failures.json
+          pin_failures="$(cat target/floor-proof/pin-failures.json)"
+          '''
+          text, count = pattern.subn(replacement, text)
+          if count != 1:
+              raise SystemExit(f"expected one floor-construction block, replaced {count}")
+          proof.write_text(text, encoding="utf-8", newline="\n")
+
+          protocol = Path("scripts/test-proof-direct-floors-protocol.sh")
+          text = protocol.read_text(encoding="utf-8")
+          needle = "python3 scripts/test_floor_selection.py\n"
+          replacement = "python3 scripts/test_floor_pin_set.py\n" + needle
+          if text.count(needle) != 1:
+              raise SystemExit("unexpected floor protocol wrapper shape")
+          protocol.write_text(
+              text.replace(needle, replacement),
+              encoding="utf-8",
+              newline="\n",
+          )
+          PY
+
+      - name: Run focused regression and characterization
+        run: |
+          set -euo pipefail
+          mkdir -p target/direct-floor-fixpoint
+          python3 scripts/test_floor_pin_set.py 2>&1 | tee target/direct-floor-fixpoint/unit.log
+          bash scripts/test-proof-direct-floors.sh 2>&1 | tee target/direct-floor-fixpoint/protocol.log
+
+      - name: Prove the live cargo-allow floor set converges
         env:
           CI_PROOF_PRODUCT: cargo-allow
           CI_PROOF_MSRV: "1.95"
-          CI_PROOF_CLASSES: check,test,package
-          CI_PROOF_OUT: docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
+          CI_PROOF_CLASSES: check
+          CI_PROOF_OUT: target/direct-floor-fixpoint/direct-floor-proof-cargo-allow-v1.json
         run: |
           set -euo pipefail
-          bash scripts/proof-direct-floors.sh 2>&1 | tee target/pr-4272-floor-regeneration/cargo-allow-floor.log
-
-      - name: Regenerate advisory direct-floor evidence
-        env:
-          CI_PROOF_MSRV: "1.95"
-        run: |
-          set -euo pipefail
-          bash scripts/proof-advisory-products.sh 2>&1 | tee target/pr-4272-floor-regeneration/advisory-floors.log
-
-      - name: Refresh the exact package-candidate baseline
-        run: |
-          set -euo pipefail
-          python3 scripts/exact-candidate-package-candidate.py \
-            --mode derive \
-            --output docs/dogfood/receipts/package-candidate-v2.example.json
-
-      - name: Retain the current execution summary
-        run: |
-          set -euo pipefail
+          bash scripts/proof-direct-floors.sh 2>&1 | tee target/direct-floor-fixpoint/live-proof.log
           python3 - <<'PY'
           import json
-          import re
-          import subprocess
-          from datetime import date
           from pathlib import Path
 
-          source = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-          receipt = json.loads(Path("docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json").read_text(encoding="utf-8"))
-          target = receipt["target"].removeprefix("host:")
-          toolchain = receipt["toolchain"]
-          path = Path("docs/ci/direct-floor-proof.md")
-          text = path.read_text(encoding="utf-8")
-          text, count = re.subn(
-              r"The four retained receipts were generated from committed source\n`[0-9a-f]{40}` on \d{4}-\d{2}-\d{2}, using observed\nRust/Cargo/rustdoc [^ ]+ and explicit target `[^`]+`\.",
-              f"The four retained receipts were generated from committed source\n`{source}` on {date.today().isoformat()}, using observed\nRust/Cargo/rustdoc {toolchain} and explicit target `{target}`.",
-              text,
+          receipt = json.loads(
+              Path("target/direct-floor-fixpoint/direct-floor-proof-cargo-allow-v1.json")
+              .read_text(encoding="utf-8")
           )
-          if count != 1:
-              raise SystemExit(f"expected one retained-execution identity paragraph, replaced {count}")
-          text, count = re.subn(
-              r"The floored cargo-allow unit suite passed [\d,]+ tests with exactly the five\nrecorded bootstrap exclusions; the remaining selected integration and doc tests\nalso passed\. Outside-the-floor grading passed all \d+ `minimum_` tests without\nbootstrap exclusions, including all five retained-output graders\. The producer\nprotocol wrapper passed all \d+ controls on native Windows\.",
-              "The floored cargo-allow check, test, and package classes completed successfully\nwith exactly the five recorded bootstrap exclusions; all selected advisory check\nclasses also passed. Outside-the-floor retained-output grading and the producer\nprotocol controls then passed without exclusions on native Windows.",
-              text,
-          )
-          if count != 1:
-              raise SystemExit(f"expected one retained-execution proof paragraph, replaced {count}")
-          path.write_text(text, encoding="utf-8", newline="\n")
+          failures = [row for row in receipt["rows"] if row["result"] != "proven"]
+          if failures:
+              raise SystemExit(f"non-proven direct floors: {failures}")
+          rows = {row["package"]: row for row in receipt["rows"]}
+          assert rows["clap"]["resolved_version"] == "4.6.1"
+          assert rows["clap_complete"]["resolved_version"] == "4.6.8"
           PY
-
-      - name: Run unsuppressed retained-evidence checks
-        run: |
-          set -euo pipefail
-          bash scripts/test-proof-direct-floors.sh 2>&1 | tee target/pr-4272-floor-regeneration/script-characterization.log
-          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4272-floor-regeneration/protocol.log
-          cargo test -p cargo-allow --locked --bin cargo-allow minimum_direct_version 2>&1 | tee target/pr-4272-floor-regeneration/minimum-direct-version.log
-          cargo test -p cargo-allow --locked --bin cargo-allow check_exits_zero_when_every_release_set_receipt_is_current 2>&1 | tee target/pr-4272-floor-regeneration/release-set-current.log
-          cargo run -p cargo-allow --locked -- min-version-drift check --format json 2>&1 | tee target/pr-4272-floor-regeneration/drift.json
-          python3 scripts/exact-candidate-package-candidate.py --mode baseline \
-            --baseline docs/dogfood/receipts/package-candidate-v2.example.json
-          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
-            --receipt target/pr-4272-floor-regeneration/no-new.receipt.json \
-            --output target/pr-4272-floor-regeneration/no-new.md
           git diff --check
 
-      - name: Verify the bounded write set
-        run: |
-          set -euo pipefail
-          git diff --name-only | sort > target/pr-4272-floor-regeneration/changed-files.txt
-          cat > target/pr-4272-floor-regeneration/expected-files.txt <<'EOF'
-          docs/ci/direct-floor-proof.md
-          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
-          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md
-          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json
-          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md
-          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json
-          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md
-          docs/ci/receipts/direct-floor-proof-shared-v1.json
-          docs/ci/receipts/direct-floor-proof-shared-v1.selection.md
-          docs/dogfood/receipts/package-candidate-v2.example.json
-          EOF
-          sort -o target/pr-4272-floor-regeneration/expected-files.txt target/pr-4272-floor-regeneration/expected-files.txt
-          diff -u target/pr-4272-floor-regeneration/expected-files.txt target/pr-4272-floor-regeneration/changed-files.txt
-
-      - name: Commit the generated evidence to PR 4272
+      - name: Commit the focused repair
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
           git config user.name "cargo-allow automation"
           git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
           git add \
-            docs/ci/direct-floor-proof.md \
-            docs/ci/receipts/direct-floor-proof-*-v1.json \
-            docs/ci/receipts/direct-floor-proof-*-v1.selection.md \
-            docs/dogfood/receipts/package-candidate-v2.example.json
-          git commit -m "test(deps): regenerate toml 1.1.6 floor evidence"
+            scripts/floor_pin_set.py \
+            scripts/test_floor_pin_set.py \
+            scripts/proof-direct-floors.sh \
+            scripts/test-proof-direct-floors-protocol.sh
+          git commit -m "fix(ci): converge direct dependency floor pins"
           git push origin "HEAD:${TARGET_BRANCH}"
 
-      - name: Upload regeneration evidence
+      - name: Upload repair evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pr-4272-floor-regeneration
-          path: target/pr-4272-floor-regeneration/
+          name: direct-floor-fixpoint-repair
+          path: target/direct-floor-fixpoint/
           if-no-files-found: warn
