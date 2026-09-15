@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   apply:
-    if: "github.event.head_commit.message == 'chore(ci): robustly retry complete floor identity repair (#4277)'"
+    if: "github.event.head_commit.message == 'chore(ci): retry complete floor identity repair v2 (#4277)'"
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -90,6 +90,7 @@ jobs:
           set -euo pipefail
           git rm .github/workflows/issue-4277-consumer-identity-repair.yml
           git rm .github/workflows/issue-4277-consumer-identity-retry.yml
+          git rm .github/workflows/issue-4277-floor-identity-final.yml
 
       - name: Run source and change-note guards
         shell: bash
