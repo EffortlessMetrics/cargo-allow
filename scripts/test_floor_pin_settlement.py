@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -311,6 +314,42 @@ class SettlementTests(unittest.TestCase):
             resolver.calls,
         )
 
+
+    def test_producer_identity_import_disables_python_bytecode(self):
+        producer = MODULE_PATH.with_name("proof-direct-floors.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'floor_move_failures="$(python3 -B - <<\'PY\'',
+            producer,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="floor-bytecode-") as directory:
+            root = Path(directory)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            shutil.copyfile(MODULE_PATH, scripts / MODULE_PATH.name)
+            environment = os.environ.copy()
+            environment.pop("PYTHONDONTWRITEBYTECODE", None)
+            environment.pop("PYTHONPYCACHEPREFIX", None)
+            import_code = (
+                "from pathlib import Path\n"
+                "import sys\n"
+                'sys.path.insert(0, str(Path("scripts").resolve()))\n'
+                "import floor_pin_settlement\n"
+            )
+
+            subprocess.run(
+                [sys.executable, "-B", "-c", import_code],
+                cwd=root,
+                env=environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertFalse((scripts / "__pycache__").exists())
+            self.assertEqual([], list(root.rglob("*.pyc")))
 
 if __name__ == "__main__":
     unittest.main()
