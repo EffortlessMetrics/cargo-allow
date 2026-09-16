@@ -116,6 +116,8 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
 
     def test_unknown_package_and_missing_root_fail_closed(self):
         for payload, diagnostic in (
+            ({"roots": ["product-a"], "closure": []}, "selection has no non-empty closure"),
+            ({"roots": [], "closure": ["product-a"]}, "selection has no non-empty roots"),
             ({"roots": ["product-a"], "closure": ["unknown"]}, "outside the workspace"),
             ({"roots": ["product-a"], "closure": ["shared"]}, "roots are absent"),
         ):

@@ -4,7 +4,7 @@
 # Non-clean typed rows remain report-only and never gate cargo-allow;
 # producer failures that emit no current receipt still fail this collector.
 
-set -uo pipefail
+set -euo pipefail
 
 export CI_PROOF_MSRV="${CI_PROOF_MSRV:-1.95}"
 export CI_PROOF_ADVISORY=true

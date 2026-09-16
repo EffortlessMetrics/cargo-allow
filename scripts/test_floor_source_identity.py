@@ -62,7 +62,8 @@ class FloorSourceIdentityTests(unittest.TestCase):
             '[workspace]\nmembers = ["crates/a"]\n'
             'default-members = ["crates/a"]\n'
         )
-        digest = "sha256:v1:" + hashlib.sha256(Path("Cargo.toml").read_bytes()).hexdigest()
+        raw = Path("Cargo.toml").read_bytes().replace(b"\r", b"")
+        digest = "sha256:v1:" + hashlib.sha256(raw).hexdigest()
         self.projection_path.write_text(
             json.dumps(
                 {
