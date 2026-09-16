@@ -117,6 +117,10 @@ Phase 6  separate human authorization → #2502 publication and closeout
 
 ## Phase 0 — record the maintainer decisions
 
+Every recommendation in this phase is non-binding until a maintainer records
+the selected disposition on its owning issue. Agents may prepare evidence and
+decision packets; they may not infer consent.
+
 ### 0A. Route the retained freeze
 
 Record on #3768/#2501 one closed decision:
