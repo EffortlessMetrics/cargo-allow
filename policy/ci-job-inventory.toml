@@ -218,3 +218,9 @@ name = "collect-performance-fixtures"
 purpose = "StaticPreGate"
 routing_owner = "core/ci"
 blocking = false
+
+[[jobs]]
+name = "regenerate-pr-4274"
+purpose = "ArtifactDiagnostics"
+routing_owner = "core/release"
+blocking = true
