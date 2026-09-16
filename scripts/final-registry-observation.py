@@ -20,6 +20,7 @@ import hashlib
 import json
 import socket
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Callable, NoReturn
@@ -413,9 +414,79 @@ def validate_extra_observations(value: Any) -> list[dict[str, Any]]:
     return value
 
 
+def _resolved(path: Path) -> Path:
+    return path.expanduser().resolve(strict=False)
+
+
+def prepare_output_paths(output_paths: list[Path], input_paths: list[Path]) -> None:
+    """Reject aliases and remove every prior output before observation begins."""
+    resolved_outputs = [_resolved(path) for path in output_paths]
+    if len(set(resolved_outputs)) != len(resolved_outputs):
+        fail("output paths must be distinct")
+
+    resolved_inputs = {_resolved(path) for path in input_paths}
+    aliases = [
+        path
+        for path, resolved in zip(output_paths, resolved_outputs)
+        if resolved in resolved_inputs
+    ]
+    if aliases:
+        fail(
+            "output path aliases an input: "
+            + ", ".join(str(path) for path in aliases)
+        )
+
+    failures: list[str] = []
+    for path in output_paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            failures.append(f"{path}: {error}")
+    if failures:
+        fail("could not clear prior outputs: " + "; ".join(failures))
+
+
+def clear_outputs(output_paths: list[Path]) -> None:
+    """Best-effort cleanup after a staged output publication failure."""
+    failures: list[str] = []
+    for path in output_paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            failures.append(f"{path}: {error}")
+    if failures:
+        print(
+            "final-registry-observation: cleanup failure: " + "; ".join(failures),
+            file=sys.stderr,
+        )
+
+
 def write_json(path: Path, payload: Any) -> None:
+    """Atomically replace one UTF-8 JSON output from a same-directory stage."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    rendered = json.dumps(payload, indent=2) + "\n"
+    stage: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            stage = Path(handle.name)
+            handle.write(rendered)
+            handle.flush()
+        stage.replace(path)
+    except OSError:
+        if stage is not None:
+            try:
+                stage.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
 
 
 def merge_candidate_input(
@@ -486,6 +557,16 @@ def main(argv: list[str] | None = None) -> int:
     if (args.candidate_input is None) != (args.input_out is None):
         fail("--candidate-input and --input-out must be supplied together")
 
+    output_paths = [args.observations_out, args.evidence_out]
+    if args.input_out is not None:
+        output_paths.append(args.input_out)
+    input_paths = [args.topology]
+    if args.candidate_input is not None:
+        input_paths.append(args.candidate_input)
+    if args.extra_observation_file is not None:
+        input_paths.append(args.extra_observation_file)
+    prepare_output_paths(output_paths, input_paths)
+
     rows = load_denominator(args.topology)
     observed_at = now_seconds()
     observations: list[dict[str, Any]] = []
@@ -519,17 +600,26 @@ def main(argv: list[str] | None = None) -> int:
         "provider_state_digest": provider_state_digest,
         **provider_payload,
     }
-    write_json(args.evidence_out, evidence_artifact)
-    write_json(args.observations_out, observations)
 
-    if args.candidate_input is not None and args.input_out is not None:
+    merged: dict[str, Any] | None = None
+    if args.candidate_input is not None:
         merged = merge_candidate_input(
             args.candidate_input,
             observations,
             observed_at,
             provider_state_digest,
         )
-        write_json(args.input_out, merged)
+
+    try:
+        write_json(args.evidence_out, evidence_artifact)
+        write_json(args.observations_out, observations)
+        if args.input_out is not None and merged is not None:
+            # The evaluator input is intentionally published last. It cannot
+            # exist unless all supporting artifacts were written successfully.
+            write_json(args.input_out, merged)
+    except BaseException:
+        clear_outputs(output_paths)
+        raise
 
     print(summarize(observations, rows, provider_state_digest))
     return 0
