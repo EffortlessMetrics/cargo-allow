@@ -5,7 +5,7 @@
   "topology_digest": "sha256:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
   "repository_commit": "7a2cfbce2ec419086300a02a6f58fdddd45220f4",
   "repository_tree": "0752620622c053651cf8315f6ad9ab4815230cb7",
-  "cargo_lock_digest": "sha256:69ea6eb64d8e325e7ed83894392e001a1bc821421259f1d3b32337b9e5238047",
+  "cargo_lock_digest": "sha256:8ba38da0eaf12d28aa1db31de7b8f2ea355001f797d3a5321fa60546e2d6fd73",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
   "root_package_name": "cargo-allow",
