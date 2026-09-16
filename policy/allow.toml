@@ -91,6 +91,94 @@ glob = ".allow/revisions/3849-final-registry-preflight-v1.toml"
 line = 1
 column = 1
 
+[[allow]]
+id = "allow-11292"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/final-registry-observation.py"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Credential-free crates.io observer for the exact final denominator; read-only public queries with typed failure preservation, independent provenance, and surplus retention. Never reads tokens, packages, uploads, or authorizes."
+evidence = ["issue:3850", "test:final_registry_preflight_provider", "test:scripts/test-final-registry-observation.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/final-registry-observation.py"
+target_fingerprint = "py"
+glob = "scripts/final-registry-observation.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11293"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-final-registry-observation.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Deterministic contract harness for the final registry observer with stubbed transport; proves classification, provenance, credential-law, surplus, and merge behavior without network or credential use."
+evidence = ["issue:3850", "test:scripts/test-final-registry-observation.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-final-registry-observation.py"
+target_fingerprint = "py"
+glob = "scripts/test-final-registry-observation.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11294"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/final-registry-observation-v1.md"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Producer and consumer obligations for the credential-free final registry observation adapter."
+evidence = ["issue:3850", "test:final_registry_preflight_provider"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/final-registry-observation-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/final-registry-observation-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11295"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3850-final-registry-observation-v1.toml"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Owned revision note for the exact-path non-Rust observation adapter files in issue 3850."
+evidence = ["issue:3850", "test:final_registry_preflight_provider"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3850-final-registry-observation-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3850-final-registry-observation-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
 
 [[allow]]
 id = "allow-0038"
@@ -21071,6 +21159,74 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4277-floor-pin-settlement.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4277-floor-pin-settlement.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11296"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation"
+reason = "Deterministic projection of the detached proof checkout to the selected product closure plus causally reachable workspace path dependencies, preventing unrelated workspace members from contaminating direct-floor resolution."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11297"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation_test"
+reason = "Deterministic negative controls for product-workspace projection: unrelated members are excluded, selected ordering is byte-stable, and unknown or incomplete selections fail closed."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-4283-direct-floor-product-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4283."
+evidence = ["issue:4283", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4283-direct-floor-product-isolation.toml"
 
 [allow.last_seen]
 line = 1
