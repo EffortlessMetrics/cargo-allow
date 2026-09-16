@@ -102,8 +102,8 @@ controls. The focused derived-source/admission check can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
 
-This reproduces the original four root scratch files plus modified lock,
-requires their rejection, and then requires admission of the derived subject.
+This reproduces the original scratch files plus the projected root manifest and
+floor lock, requires their rejection, and then admits only the bounded derived subject.
 Selecting an older rehearsal script without strict admission fails explicitly.
 The subject-binding controls reject foreign commits and staged, hidden, ignored,
 or untracked source, including changes observed after mocked phases. Admission
