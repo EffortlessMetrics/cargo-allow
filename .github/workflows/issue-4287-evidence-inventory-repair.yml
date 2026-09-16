@@ -1,0 +1,78 @@
+name: Repair PR 4287 evidence inventory
+
+on:
+  push:
+    branches:
+      - automation/4287-evidence-inventory-repair
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_BRANCH: release/final-registry-observation
+      TARGET_HEAD: 68b3fafe0405c1861e05a188cbcb548d1be67369
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/final-registry-observation
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify exact PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+
+      - name: Remove producer script from test-projection inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("policy/evidence-surface-inventory.toml")
+          raw = path.read_bytes()
+          start = b'[[surfaces]]\nid = "final-registry-observation-v1"\n'
+          next_row = b'[[surfaces]]\nid = "intent-candidate-smoke"\n'
+          if raw.count(start) != 1:
+              raise SystemExit(f"expected exactly one observation row, found {raw.count(start)}")
+          begin = raw.index(start)
+          end = raw.index(next_row, begin)
+          prefix = raw[:begin]
+          suffix = raw[end:]
+          # Retain exactly one blank separator between neighboring rows.
+          if prefix.endswith(b"\n\n"):
+              rewritten = prefix + suffix
+          else:
+              rewritten = prefix + b"\n" + suffix
+          path.write_bytes(rewritten)
+          if start in rewritten:
+              raise SystemExit("observation row was not removed")
+          PY
+          git diff --check
+
+      - name: Verify evidence inventory contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test-verify-evidence-surface-inventory.py
+          python3 scripts/verify-evidence-surface-inventory.py
+
+      - name: Commit bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test "$(git diff --name-only)" = "policy/evidence-surface-inventory.toml"
+          git config user.name 'cargo-allow automation'
+          git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
+          git add policy/evidence-surface-inventory.toml
+          git diff --cached --check
+          git commit --no-verify -m 'fix(release): keep evidence inventory test-scoped (#3850)'
+          git push origin HEAD:"$TARGET_BRANCH"
