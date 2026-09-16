@@ -90,4 +90,4 @@ jobs:
       github.head_ref == 'automation/pr-4274-floor-regeneration-v1'
     permissions:
       contents: write
-    uses: EffortlessMetrics/cargo-allow/.github/workflows/pr-4274-floor-regeneration-v1.yml@fc2e771692ff71043d2a0bac80c347c210917c89
+    uses: EffortlessMetrics/cargo-allow/.github/workflows/pr-4274-floor-regeneration-v1.yml@98a2a0a712be7800ab9faeae5a3296b2f5ab925e
