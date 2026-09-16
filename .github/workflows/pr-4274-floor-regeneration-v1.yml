@@ -1,0 +1,193 @@
+name: One-shot PR 4274 retained-evidence regeneration v1
+
+on:
+  push:
+    branches:
+      - automation/pr-4274-floor-regeneration-v1
+  workflow_call:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4274-floor-regeneration-v1
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET_BRANCH: dependabot/cargo/jsonschema-0.56.0
+      TARGET_HEAD: 0e38c8f0ec2ef7e9721298134b1d8701e5549087
+      OUTPUT_BRANCH: automation/pr-4274-generated-evidence-v1
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out the exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dependabot/cargo/jsonschema-0.56.0
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify the admitted subject and output boundary
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+          git fetch --no-tags origin \
+            "$TARGET_BRANCH:refs/remotes/origin/$TARGET_BRANCH"
+          test "$(git rev-parse refs/remotes/origin/$TARGET_BRANCH)" = "$TARGET_HEAD"
+          if git ls-remote --exit-code --heads origin "refs/heads/$OUTPUT_BRANCH" >/dev/null 2>&1; then
+            echo "output branch already exists: $OUTPUT_BRANCH" >&2
+            exit 1
+          fi
+          command -v git
+          command -v jq
+          command -v python3
+          git --version
+          jq --version
+          python3 --version
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Record exact tool identities
+        run: |
+          set -euo pipefail
+          mkdir -p target/pr-4274-floor-regeneration-v1
+          rustc -vV | tee target/pr-4274-floor-regeneration-v1/rustc.txt
+          cargo -vV | tee target/pr-4274-floor-regeneration-v1/cargo.txt
+          rustdoc -vV | tee target/pr-4274-floor-regeneration-v1/rustdoc.txt
+
+      - name: Regenerate cargo-allow direct-floor evidence
+        env:
+          CI_PROOF_PRODUCT: cargo-allow
+          CI_PROOF_MSRV: "1.95"
+          CI_PROOF_CLASSES: check,test,package
+          CI_PROOF_OUT: docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
+        run: |
+          set -euo pipefail
+          bash scripts/proof-direct-floors.sh 2>&1 | tee target/pr-4274-floor-regeneration-v1/cargo-allow-floor.log
+
+      - name: Regenerate advisory direct-floor evidence
+        env:
+          CI_PROOF_MSRV: "1.95"
+        run: |
+          set -euo pipefail
+          bash scripts/proof-advisory-products.sh 2>&1 | tee target/pr-4274-floor-regeneration-v1/advisory-floors.log
+
+      - name: Refresh the exact package-candidate baseline
+        run: |
+          set -euo pipefail
+          python3 scripts/exact-candidate-package-candidate.py \
+            --mode derive \
+            --output docs/dogfood/receipts/package-candidate-v2.example.json
+
+      - name: Retain the current execution summary
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import re
+          import subprocess
+          from datetime import date
+          from pathlib import Path
+
+          source = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          receipt = json.loads(Path("docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json").read_text(encoding="utf-8"))
+          target = receipt["target"].removeprefix("host:")
+          toolchain = receipt["toolchain"]
+          path = Path("docs/ci/direct-floor-proof.md")
+          text = path.read_text(encoding="utf-8")
+          text, count = re.subn(
+              r"The four retained receipts were generated from committed source\n`[0-9a-f]{40}` on \d{4}-\d{2}-\d{2}, using observed\nRust/Cargo/rustdoc [^ ]+ and explicit target `[^`]+`\.",
+              f"The four retained receipts were generated from committed source\n`{source}` on {date.today().isoformat()}, using observed\nRust/Cargo/rustdoc {toolchain} and explicit target `{target}`.",
+              text,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one retained-execution identity paragraph, replaced {count}")
+          text, count = re.subn(
+              r"The floored cargo-allow unit suite passed [\d,]+ tests with exactly the five\nrecorded bootstrap exclusions; the remaining selected integration and doc tests\nalso passed\. Outside-the-floor grading passed all \d+ `minimum_` tests without\nbootstrap exclusions, including all five retained-output graders\. The producer\nprotocol wrapper passed all \d+ controls on native Windows\.",
+              "The floored cargo-allow check, test, and package classes completed successfully\nwith exactly the five recorded bootstrap exclusions; all selected advisory check\nclasses also passed. Outside-the-floor retained-output grading and the producer\nprotocol controls then passed without exclusions on native Windows.",
+              text,
+          )
+          if count != 1:
+              raise SystemExit(f"expected one retained-execution proof paragraph, replaced {count}")
+          path.write_text(text, encoding="utf-8", newline="\n")
+          PY
+
+      - name: Run unsuppressed retained-evidence checks
+        run: |
+          set -euo pipefail
+          bash scripts/test-proof-direct-floors.sh 2>&1 | tee target/pr-4274-floor-regeneration-v1/script-characterization.log
+          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4274-floor-regeneration-v1/protocol.log
+          cargo test -p cargo-allow --locked --bin cargo-allow minimum_direct_version 2>&1 | tee target/pr-4274-floor-regeneration-v1/minimum-direct-version.log
+          cargo test -p cargo-allow --locked --bin cargo-allow check_exits_zero_when_every_release_set_receipt_is_current 2>&1 | tee target/pr-4274-floor-regeneration-v1/release-set-current.log
+          cargo run -p cargo-allow --locked -- min-version-drift check --format json 2>&1 | tee target/pr-4274-floor-regeneration-v1/drift.json
+          python3 scripts/exact-candidate-package-candidate.py --mode baseline \
+            --baseline docs/dogfood/receipts/package-candidate-v2.example.json
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
+            --receipt target/pr-4274-floor-regeneration-v1/no-new.receipt.json \
+            --output target/pr-4274-floor-regeneration-v1/no-new.md
+          git diff --check
+
+      - name: Verify the bounded write set
+        run: |
+          set -euo pipefail
+          git diff --name-only | sort > target/pr-4274-floor-regeneration-v1/changed-files.txt
+          cat > target/pr-4274-floor-regeneration-v1/expected-files.txt <<'EOF'
+          docs/ci/direct-floor-proof.md
+          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
+          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md
+          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json
+          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md
+          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json
+          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md
+          docs/ci/receipts/direct-floor-proof-shared-v1.json
+          docs/ci/receipts/direct-floor-proof-shared-v1.selection.md
+          docs/dogfood/receipts/package-candidate-v2.example.json
+          EOF
+          sort -o target/pr-4274-floor-regeneration-v1/expected-files.txt target/pr-4274-floor-regeneration-v1/expected-files.txt
+          diff -u target/pr-4274-floor-regeneration-v1/expected-files.txt target/pr-4274-floor-regeneration-v1/changed-files.txt
+
+      - name: Commit generated evidence to a review branch
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          git fetch --no-tags origin \
+            "$TARGET_BRANCH:refs/remotes/origin/$TARGET_BRANCH"
+          test "$(git rev-parse refs/remotes/origin/$TARGET_BRANCH)" = "$TARGET_HEAD"
+          if git ls-remote --exit-code --heads origin "refs/heads/$OUTPUT_BRANCH" >/dev/null 2>&1; then
+            echo "output branch appeared during generation: $OUTPUT_BRANCH" >&2
+            exit 1
+          fi
+          git config user.name "cargo-allow automation"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git add \
+            docs/ci/direct-floor-proof.md \
+            docs/ci/receipts/direct-floor-proof-*-v1.json \
+            docs/ci/receipts/direct-floor-proof-*-v1.selection.md \
+            docs/dogfood/receipts/package-candidate-v2.example.json
+          git diff --cached --check
+          git commit -m "test(deps): regenerate jsonschema 0.56 floor evidence"
+          test "$(git rev-parse HEAD^)" = "$TARGET_HEAD"
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
+          test "$(git rev-parse HEAD^{tree})" != "$(git rev-parse "$TARGET_HEAD^{tree}")"
+          git diff --name-only "$TARGET_HEAD" HEAD | sort > target/pr-4274-floor-regeneration-v1/committed-files.txt
+          diff -u target/pr-4274-floor-regeneration-v1/expected-files.txt target/pr-4274-floor-regeneration-v1/committed-files.txt
+          test -z "$(git status --porcelain)"
+          git rev-parse HEAD | tee target/pr-4274-floor-regeneration-v1/generated-head.txt
+          git show --format=fuller --stat HEAD > target/pr-4274-floor-regeneration-v1/generated-commit.txt
+          git diff --binary "$TARGET_HEAD" HEAD > target/pr-4274-floor-regeneration-v1/generated.patch
+          git push origin "HEAD:refs/heads/${OUTPUT_BRANCH}"
+
+      - name: Upload regeneration evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pr-4274-floor-regeneration-v1
+          path: target/pr-4274-floor-regeneration-v1/
+          if-no-files-found: warn
