@@ -21,9 +21,7 @@ fn flag_value(args: &[String], flag: &str) -> Result<PathBuf, Box<dyn std::error
             [name, value] if name == flag => Some(PathBuf::from(value)),
             _ => None,
         })
-        .ok_or_else(|| {
-            std::io::Error::other(format!("missing required flag {flag}")).into()
-        })
+        .ok_or_else(|| std::io::Error::other(format!("missing required flag {flag}")).into())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

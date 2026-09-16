@@ -3,15 +3,12 @@ use std::error::Error;
 use std::io;
 
 use allow_report::{
-    FINAL_REGISTRY_PREFLIGHT_SCHEMA_ID, FinalRegistryContextV1,
-    FinalRegistryExpectedRowV1, FinalRegistryObservationOriginV1,
-    FinalRegistryObservationV1, FinalRegistryOwnerStateV1,
-    FinalRegistryPreflightInputV1, FinalRegistryPreflightResultV1,
-    FinalRegistryProvenanceV1, FinalRegistryProviderV1,
-    FinalRegistryPublishAuthorityV1, FinalRegistryRowRoleV1,
-    FinalRegistrySharedAuthorityV1, FinalRegistryVersionResponseV1,
-    FinalRegistryVersionStateV1, PackageCandidatePayloadV2,
-    evaluate_final_registry_preflight_v1, final_registry_bindings_v1,
+    FINAL_REGISTRY_PREFLIGHT_SCHEMA_ID, FinalRegistryContextV1, FinalRegistryExpectedRowV1,
+    FinalRegistryObservationOriginV1, FinalRegistryObservationV1, FinalRegistryOwnerStateV1,
+    FinalRegistryPreflightInputV1, FinalRegistryPreflightResultV1, FinalRegistryProvenanceV1,
+    FinalRegistryProviderV1, FinalRegistryPublishAuthorityV1, FinalRegistryRowRoleV1,
+    FinalRegistrySharedAuthorityV1, FinalRegistryVersionResponseV1, FinalRegistryVersionStateV1,
+    PackageCandidatePayloadV2, evaluate_final_registry_preflight_v1, final_registry_bindings_v1,
 };
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -29,9 +26,27 @@ const DENOMINATOR: [(&str, &str, &str, u32, bool); 13] = [
     ("allow-rust", "allow-rust", "0.2.0", 50, false),
     ("allow-match", "allow-match", "0.2.0", 60, false),
     ("allow-report", "allow-report", "0.2.0", 70, false),
-    ("allow-policy-legacy", "allow-policy-legacy", "0.2.0", 75, false),
-    ("repo-protocol", "effortless-repo-protocol", "0.1.0", 80, true),
-    ("repo-snapshot", "effortless-repo-snapshot", "0.1.0", 85, true),
+    (
+        "allow-policy-legacy",
+        "allow-policy-legacy",
+        "0.2.0",
+        75,
+        false,
+    ),
+    (
+        "repo-protocol",
+        "effortless-repo-protocol",
+        "0.1.0",
+        80,
+        true,
+    ),
+    (
+        "repo-snapshot",
+        "effortless-repo-snapshot",
+        "0.1.0",
+        85,
+        true,
+    ),
     ("repo-edit", "effortless-repo-edit", "0.1.0", 90, true),
     ("allow-diff", "allow-diff", "0.2.0", 95, false),
     ("cargo-allow", "cargo-allow", "0.2.0", 100, false),
@@ -93,7 +108,8 @@ impl StubProvider {
     }
 
     fn script_for(&self, package_name: &str, package_version: &str) -> &Script {
-        self.scripts.get(&(package_name.to_string(), package_version.to_string()))
+        self.scripts
+            .get(&(package_name.to_string(), package_version.to_string()))
             .unwrap_or(if package_name.starts_with("effortless-") {
                 &self.default_shared
             } else {
@@ -204,10 +220,7 @@ fn harness(
     // input retains; conflict cases override the script instead.
     for observation in &mut observations {
         if observation.package_name.starts_with("effortless-")
-            && matches!(
-                observation.version,
-                Response::Found { yanked: false, .. }
-            )
+            && matches!(observation.version, Response::Found { yanked: false, .. })
         {
             let authority = shared_authorities
                 .iter()
@@ -250,8 +263,7 @@ fn key(name: &str, version: &str) -> (String, String) {
 }
 
 #[test]
-fn final_registry_preflight_provider_missing_final_exact_shared_is_residual_risk(
-) -> TestResult {
+fn final_registry_preflight_provider_missing_final_exact_shared_is_residual_risk() -> TestResult {
     let (input, _) = harness(HashMap::new())?;
     let receipt = evaluate_final_registry_preflight_v1(&input);
     require(
@@ -440,8 +452,7 @@ fn final_registry_preflight_provider_foreign_identity_is_malformed() -> TestResu
 }
 
 #[test]
-fn final_registry_preflight_provider_copied_checksum_without_evidence_is_malformed(
-) -> TestResult {
+fn final_registry_preflight_provider_copied_checksum_without_evidence_is_malformed() -> TestResult {
     // Negative control 7: the candidate checksum is copied into the observed
     // field without provider evidence. Equality alone must not establish
     // exact publication.
@@ -476,8 +487,7 @@ fn final_registry_preflight_provider_copied_checksum_without_evidence_is_malform
 }
 
 #[test]
-fn final_registry_preflight_provider_owner_failure_preserves_version_evidence(
-) -> TestResult {
+fn final_registry_preflight_provider_owner_failure_preserves_version_evidence() -> TestResult {
     let mut scripts = HashMap::new();
     scripts.insert(
         key("allow-match", "0.2.0"),
@@ -534,8 +544,7 @@ fn final_registry_preflight_provider_membership_never_proves_authority() -> Test
 }
 
 #[test]
-fn final_registry_preflight_provider_surplus_is_preserved_without_authority(
-) -> TestResult {
+fn final_registry_preflight_provider_surplus_is_preserved_without_authority() -> TestResult {
     let (mut input, _) = harness(HashMap::new())?;
     let mut surplus = input
         .observations
@@ -550,17 +559,17 @@ fn final_registry_preflight_provider_surplus_is_preserved_without_authority(
         "surplus observation was normalized away",
     )?;
     require(
-        receipt.findings.iter().any(|finding| finding
-            .reason
-            .starts_with("surplus observation[13]:")),
+        receipt
+            .findings
+            .iter()
+            .any(|finding| finding.reason.starts_with("surplus observation[13]:")),
         format!("surplus health lacks independent provenance: {receipt:?}"),
     )?;
     Ok(())
 }
 
 #[test]
-fn final_registry_preflight_provider_omitted_duplicated_reordered_are_malformed(
-) -> TestResult {
+fn final_registry_preflight_provider_omitted_duplicated_reordered_are_malformed() -> TestResult {
     let (input, _) = harness(HashMap::new())?;
     let mut omitted = input.clone();
     omitted.observations.pop();
