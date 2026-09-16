@@ -36,6 +36,8 @@ jobs:
           git fetch origin main
           test "$(git rev-parse origin/main)" = "$MAIN_HEAD"
           test -z "$(git status --porcelain)"
+          git config user.name "cargo-allow automation"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
 
       - name: Retain PR-owned policy rows
         shell: bash
@@ -151,8 +153,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
-          git config user.name "cargo-allow automation"
-          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
           git commit --no-verify -m "merge: synchronize #4288 with current main"
           merge_head="$(git rev-parse HEAD)"
           read -r commit first second <<<"$(git rev-list --parents -n 1 HEAD)"
