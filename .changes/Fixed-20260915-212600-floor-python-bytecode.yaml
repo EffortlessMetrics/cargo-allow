@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Prevent direct-floor fixed-point verification from creating Python bytecode
+  outside the owned target directory before strict source admission.
+time: 2026-09-15T21:26:00-04:00
