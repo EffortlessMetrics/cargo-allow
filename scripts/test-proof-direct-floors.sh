@@ -112,10 +112,10 @@ STUB
 git -C "$fixture" init -q
 
 for product in shared cargo-intent cargo-proof; do
-  printf 'stale %s receipt\n' "$product" >
-    "${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.json"
-  printf 'stale %s selection\n' "$product" >
-    "${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.selection.md"
+  printf 'stale %s receipt\n' "$product" \
+    >"${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.json"
+  printf 'stale %s selection\n' "$product" \
+    >"${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.selection.md"
 done
 
 if (
