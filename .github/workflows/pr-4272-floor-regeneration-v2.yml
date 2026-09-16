@@ -22,7 +22,7 @@ jobs:
         shell: bash
     env:
       TARGET_BRANCH: dependabot/cargo/patch-updates-b2061204c1
-      TARGET_HEAD: PENDING_DEPENDABOT_REBASE
+      TARGET_HEAD: a028885f1502067b87aa206a285e2485df857305
     steps:
       - name: Check out the exact PR head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
