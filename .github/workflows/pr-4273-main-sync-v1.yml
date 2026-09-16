@@ -1,0 +1,93 @@
+name: Stage exact main sync for PR 4273
+
+on:
+  push:
+    branches:
+      - automation/pr-4273-main-sync-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4273-main-sync-v1
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    if: "${{ github.event.head_commit.message == 'chore(ci): stage PR 4273 main sync' }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TARGET_BRANCH: dependabot/cargo/yaml-rust2-0.13.0
+      TARGET_HEAD: f5f47d4b773aee9988c8721d7e53ee309eda6f88
+      MAIN_HEAD: 3a12a486aa4001d3d1a902749197f5f6a7ea9c80
+      OUTPUT_BRANCH: automation/pr-4273-main-sync-output-v1
+    steps:
+      - name: Check out the exact PR branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dependabot/cargo/yaml-rust2-0.13.0
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify and merge the exact current main
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse refs/remotes/origin/main)" = "$MAIN_HEAD"
+
+          git config user.name 'cargo-allow automation'
+          git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
+          git merge --no-ff --no-edit "$MAIN_HEAD"
+
+          read -r merge_commit first_parent second_parent extra <<EOF
+          $(git rev-list --parents -n 1 HEAD)
+          EOF
+          test -z "${extra:-}"
+          test "$first_parent" = "$TARGET_HEAD"
+          test "$second_parent" = "$MAIN_HEAD"
+
+          git diff --check "$TARGET_HEAD" HEAD
+          git diff --name-only "$TARGET_HEAD" HEAD | sort > /tmp/actual-files.txt
+          cat > /tmp/expected-files.txt <<'EOF'
+          .allow/revisions/4277-floor-pin-settlement.toml
+          .changes/Fixed-20260915-212600-floor-python-bytecode.yaml
+          Cargo.lock
+          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
+          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json
+          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json
+          docs/ci/receipts/direct-floor-proof-shared-v1.json
+          docs/dogfood/receipts/package-candidate-v2.example.json
+          policy/allow.toml
+          scripts/floor_pin_settlement.py
+          scripts/proof-direct-floors.sh
+          scripts/test-proof-direct-floors-protocol.sh
+          scripts/test_floor_pin_settlement.py
+          scripts/test_floor_protocol.py
+          EOF
+          sort -o /tmp/expected-files.txt /tmp/expected-files.txt
+          diff -u /tmp/expected-files.txt /tmp/actual-files.txt
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Re-run focused producer and yaml admission controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test_floor_pin_settlement.py
+          bash scripts/test-proof-direct-floors-protocol.sh
+          cargo test -p cargo-allow --locked allow_files_changie_admission_tests
+          cargo check -p allow-files --features changie --locked
+          git diff --check "$TARGET_HEAD" HEAD
+
+      - name: Publish the verified merge commit to an isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^1)" = "$TARGET_HEAD"
+          test "$(git rev-parse HEAD^2)" = "$MAIN_HEAD"
+          git rev-parse HEAD
+          git push origin "HEAD:refs/heads/${OUTPUT_BRANCH}"
