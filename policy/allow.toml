@@ -26,6 +26,161 @@ verified_evidence_required = true
 safety_comment_required = false
 
 [[allow]]
+id = "allow-3849-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.final-registry-preflight.v1.schema.json"
+owner = "core/release"
+classification = "final_registry_preflight_contract"
+reason = "Versioned final registry feasibility result schema; shape validation does not authorize publication."
+evidence = ["issue:3849", "test:final_registry_preflight"]
+created = "2026-09-13"
+review_after = "2027-03-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.final-registry-preflight.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.final-registry-preflight.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3849-contract"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/final-registry-preflight-v1.md"
+owner = "core/release"
+classification = "final_registry_preflight_contract"
+reason = "Producer and consumer obligations for the pure final registry preflight contract."
+evidence = ["issue:3849", "test:final_registry_preflight"]
+created = "2026-09-13"
+review_after = "2027-03-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/final-registry-preflight-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/final-registry-preflight-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3849-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3849-final-registry-preflight-v1.toml"
+owner = "core/release"
+classification = "final_registry_preflight_contract"
+reason = "Owned revision note for the three exact-path non-Rust contract files in issue 3849."
+evidence = ["issue:3849", "test:final_registry_preflight"]
+created = "2026-09-13"
+review_after = "2027-03-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3849-final-registry-preflight-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3849-final-registry-preflight-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11292"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/final-registry-observation.py"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Credential-free crates.io observer for the exact final denominator; read-only public queries with typed failure preservation, independent provenance, and surplus retention. Never reads tokens, packages, uploads, or authorizes."
+evidence = ["issue:3850", "test:final_registry_preflight_provider", "test:scripts/test-final-registry-observation.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/final-registry-observation.py"
+target_fingerprint = "py"
+glob = "scripts/final-registry-observation.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11293"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-final-registry-observation.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Deterministic contract harness for the final registry observer with stubbed transport; proves classification, provenance, credential-law, surplus, and merge behavior without network or credential use."
+evidence = ["issue:3850", "test:scripts/test-final-registry-observation.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-final-registry-observation.py"
+target_fingerprint = "py"
+glob = "scripts/test-final-registry-observation.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11294"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/final-registry-observation-v1.md"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Producer and consumer obligations for the credential-free final registry observation adapter."
+evidence = ["issue:3850", "test:final_registry_preflight_provider"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/final-registry-observation-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/final-registry-observation-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11295"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3850-final-registry-observation-v1.toml"
+owner = "core/release"
+classification = "final_registry_observation"
+reason = "Owned revision note for the exact-path non-Rust observation adapter files in issue 3850."
+evidence = ["issue:3850", "test:final_registry_preflight_provider"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3850-final-registry-observation-v1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3850-final-registry-observation-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
 id = "allow-0038"
 kind = "panic"
 family = "expect"
@@ -20819,6 +20974,191 @@ ast_kind = "tracked_file"
 symbol = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
 target_fingerprint = "md"
 glob = "docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4217-floor-source"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_source_identity.py"
+owner = "core/deps"
+classification = "direct_floor_collector"
+reason = "Establish a detached local floor subject with only the derived lock changed, preserving original source identity and rejecting unexpected source or index changes before proof classes."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_source_identity.py"
+target_fingerprint = "py"
+glob = "scripts/floor_source_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4217-floor-source-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_source_identity.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Real Git fixtures prove lock-only derivation and fail-closed rejection of staged, hidden, ignored, untracked, or attached source subjects without compiling packages."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_source_identity.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_source_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4217-floor-source-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4217-floor-subject.toml"
+owner = "core/deps"
+classification = "policy_revision"
+reason = "Record exact reviewed additions for the individually scoped floor-subject helper, real-Git fixtures, and this revision note; no existing exception scope is broadened."
+evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
+created = "2026-09-12"
+review_after = "2026-12-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4217-floor-subject.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4217-floor-subject.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4131-provider-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+owner = "proof/provider"
+classification = "provider_contract_schema"
+reason = "Published closed JSON Schema for the discovery-only cargo-allow provider descriptor introduced by PR #4131; it does not define or authorize request execution or analysis receipts."
+evidence = [
+    "issue:2567",
+    "issue:4144",
+    "doc:docs/schemas/README.md",
+    "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
+]
+created = "2026-09-06"
+review_after = "2027-03-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4131-provider-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4131-provider-contract-schema.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
+evidence = [
+    "pr:4131",
+    "issue:2567",
+    "doc:docs/how-to/manage-an-exception.md",
+]
+created = "2026-09-06"
+review_after = "2027-03-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4131-provider-contract-schema.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4131-provider-contract-schema.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_pin_settlement.py"
+owner = "core/deps"
+classification = "direct_floor_producer"
+reason = "Deterministic fixed-point settlement constructs and verifies one simultaneous direct-floor Cargo.lock while preserving incompatible rows as bounded failures."
+evidence = ["issue:4277", "doc:docs/ci/direct-floor-proof.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_pin_settlement.py"
+target_fingerprint = "py"
+glob = "scripts/floor_pin_settlement.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement-test"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_pin_settlement.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Deterministic fixtures exercise retry after sibling settlement, input-order invariance, incompatible-set termination, and movement of an earlier floor."
+evidence = ["issue:4277", "doc:docs/ci/direct-floor-proof.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_pin_settlement.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_pin_settlement.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4277-floor-pin-settlement.toml"
+owner = "core/deps"
+classification = "ledger_change_note"
+reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4277."
+evidence = ["issue:4277", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4277-floor-pin-settlement.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4277-floor-pin-settlement.toml"
 
 [allow.last_seen]
 line = 1

@@ -56,6 +56,7 @@ mod plan_bindings;
 mod policy_config;
 pub mod precommit_tool;
 mod propose;
+mod provider_contract;
 mod prune;
 mod reference;
 mod refresh;
@@ -294,6 +295,9 @@ mod proof_protocol_parity_tests;
 mod proof_provider_api_parity_tests;
 #[cfg(test)]
 mod readme_tests;
+#[cfg(test)]
+#[path = "cli/release_freeze_command_tests.rs"]
+mod release_freeze_command_tests;
 #[cfg(test)]
 mod release_identity_denominator_tests;
 #[cfg(test)]

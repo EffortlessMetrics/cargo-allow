@@ -48,9 +48,9 @@ use serde_json::Value as Json;
 use crate::cli::candidate_preparation_command::git_root;
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
-const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
-const CARGO_LOCK_PATH: &str = "Cargo.lock";
-const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
+pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
+pub(crate) const CARGO_LOCK_PATH: &str = "Cargo.lock";
+pub(crate) const TOPOLOGY_PATH: &str = "policy/product-package-topology-v2.toml";
 const SUPPORT_MATRIX_PATH: &str = "docs/support-matrix.toml";
 const INCIDENT_EVIDENCE_PATH: &str = "docs/release/evidence/rc1-publication-incident.v1.json";
 
@@ -271,7 +271,7 @@ pub(super) fn cmd_release_freeze(args: &ReleaseFreezeArgs) -> CargoAllowResult<(
 }
 
 fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
-    let subject = SubjectIdentity::collect(root, &args.version)?;
+    let subject = SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
     let selection = load_selection(root, &subject)?;
     let shared = load_shared_prerequisites(root)?;
     let evidence = collect_evidence(root, args, &subject)?;
@@ -442,24 +442,48 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     }
 }
 
+/// Acquisition boundary for the single subject-collection orchestration.
+pub(crate) trait SubjectInputs {
+    fn git(&mut self, args: &[&str]) -> CargoAllowResult<String>;
+    fn read_working_bytes(&mut self, path: &str) -> CargoAllowResult<Vec<u8>>;
+}
+
+struct FilesystemSubjectInputs<'a> {
+    root: &'a Path,
+}
+
+impl SubjectInputs for FilesystemSubjectInputs<'_> {
+    fn git(&mut self, args: &[&str]) -> CargoAllowResult<String> {
+        git(self.root, args)
+    }
+
+    fn read_working_bytes(&mut self, path: &str) -> CargoAllowResult<Vec<u8>> {
+        std::fs::read(self.root.join(path))
+            .map_err(|error| instrument(format!("read {path}: {error}")))
+    }
+}
+
 /// The exact source subject the freeze binds. Collected from the clean
 /// committed HEAD; a dirty worktree is an instrument failure because the
 /// packaged archives must come from the committed tree.
 #[derive(Debug)]
-struct SubjectIdentity {
-    version: String,
+pub(crate) struct SubjectIdentity {
+    pub(crate) version: String,
     tag: String,
     channel: String,
     commit: String,
     tree: String,
-    cargo_lock_digest: String,
-    topology_digest: String,
+    pub(crate) cargo_lock_digest: String,
+    pub(crate) topology_digest: String,
     frozen_at_utc: String,
 }
 
 impl SubjectIdentity {
-    fn collect(root: &Path, version: &str) -> CargoAllowResult<Self> {
-        let dirty = git(root, &["status", "--porcelain"])?;
+    pub(crate) fn collect(
+        inputs: &mut impl SubjectInputs,
+        version: &str,
+    ) -> CargoAllowResult<Self> {
+        let dirty = inputs.git(&["status", "--porcelain"])?;
         if !dirty.trim().is_empty() {
             return Err(instrument(
                 "the worktree is dirty; the freeze binds the committed subject only",
@@ -470,7 +494,7 @@ impl SubjectIdentity {
         // bytes diverge from the committed blob. Reject every hidden
         // index state conservatively instead of pairing the committed
         // identity with unverified working bytes.
-        let flags = git(root, &["ls-files", "-v", "-z"])?;
+        let flags = inputs.git(&["ls-files", "-v", "-z"])?;
         for record in flags.split('\0').filter(|record| !record.is_empty()) {
             let tag = record.chars().next().unwrap_or('?');
             if tag == 'S' || tag.is_ascii_lowercase() {
@@ -479,8 +503,8 @@ impl SubjectIdentity {
                 ));
             }
         }
-        let commit = git(root, &["rev-parse", "HEAD"])?;
-        let tree = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        let commit = inputs.git(&["rev-parse", "HEAD"])?;
+        let tree = inputs.git(&["rev-parse", "HEAD^{tree}"])?;
         // Defense in depth for the three admitted inputs: read each
         // working file exactly once, verify it against its HEAD blob,
         // and compute the receipt digests from those same verified
@@ -488,9 +512,8 @@ impl SubjectIdentity {
         // Line endings are checkout framing, not content.
         let mut verified = std::collections::BTreeMap::new();
         for path in [WORKSPACE_MANIFEST_PATH, CARGO_LOCK_PATH, TOPOLOGY_PATH] {
-            let committed = strip_line_endings(&git(root, &["show", &format!("HEAD:{path}")])?);
-            let raw = std::fs::read(root.join(path))
-                .map_err(|error| instrument(format!("read {path}: {error}")))?;
+            let committed = strip_line_endings(&inputs.git(&["show", &format!("HEAD:{path}")])?);
+            let raw = inputs.read_working_bytes(path)?;
             let working = strip_line_endings(
                 &String::from_utf8(raw.clone())
                     .map_err(|error| instrument(format!("{path}: {error}")))?,
@@ -502,13 +525,7 @@ impl SubjectIdentity {
             }
             verified.insert(path, raw);
         }
-        let manifest = read_repo_file(root, WORKSPACE_MANIFEST_PATH)?;
-        let declared = manifest
-            .lines()
-            .filter_map(|line| line.trim().strip_prefix("version = "))
-            .next()
-            .map(|value| value.trim().trim_matches('"').to_string())
-            .ok_or_else(|| instrument("the workspace manifest has no version"))?;
+        let declared = verified_workspace_version(&verified)?;
         if declared != version {
             return Err(instrument(format!(
                 "workspace version {declared:?} is not the requested freeze version {version:?}"
@@ -522,20 +539,13 @@ impl SubjectIdentity {
             ));
         }
         let projection = CandidateReleaseIdentityProjectionShim::from_version(&parsed);
-        let cargo_lock_digest = sha256_v1_bytes(
-            verified
-                .get(CARGO_LOCK_PATH)
-                .expect("verified input is present"),
-        );
-        let topology_digest = sha256_v1_bytes(
-            verified
-                .get(TOPOLOGY_PATH)
-                .expect("verified input is present"),
-        );
-        let frozen_at_utc = git(root, &["log", "-1", "--format=%cI"])?;
+        let cargo_lock_digest =
+            sha256_v1_bytes(verified_subject_input(&verified, CARGO_LOCK_PATH)?);
+        let topology_digest = sha256_v1_bytes(verified_subject_input(&verified, TOPOLOGY_PATH)?);
+        let frozen_at_utc = inputs.git(&["log", "-1", "--format=%cI"])?;
         // The subject must not move while it is being collected.
-        let commit_now = git(root, &["rev-parse", "HEAD"])?;
-        let tree_now = git(root, &["rev-parse", "HEAD^{tree}"])?;
+        let commit_now = inputs.git(&["rev-parse", "HEAD"])?;
+        let tree_now = inputs.git(&["rev-parse", "HEAD^{tree}"])?;
         if commit_now != commit || tree_now != tree {
             return Err(instrument("the subject moved during collection"));
         }
@@ -1195,7 +1205,9 @@ fn build_evidence_graph(
         if required {
             required_ids.push(id.to_string());
         }
-        nodes.push(node_for(id, class, origin, &input.sha256, result, subject));
+        let mut node = node_for(id, class, origin, &input.sha256, result, subject);
+        node.required = required;
+        nodes.push(node);
     }
 
     // The support-selection node binds the committed support source itself.
@@ -1807,6 +1819,39 @@ fn strip_line_endings(text: &str) -> String {
     text.replace("\r\n", "\n")
 }
 
+/// Derive identity only from the bytes admitted by the collector. These
+/// helpers deliberately have no filesystem capability or repository root.
+pub(crate) fn verified_subject_input<'a>(
+    verified: &'a BTreeMap<&str, Vec<u8>>,
+    relative: &str,
+) -> CargoAllowResult<&'a [u8]> {
+    verified
+        .get(relative)
+        .map(Vec::as_slice)
+        .ok_or_else(|| instrument(format!("verified input is missing: {relative}")))
+}
+
+pub(crate) fn verified_workspace_version(
+    verified: &BTreeMap<&str, Vec<u8>>,
+) -> CargoAllowResult<String> {
+    let manifest = std::str::from_utf8(verified_subject_input(verified, WORKSPACE_MANIFEST_PATH)?)
+        .map_err(|error| instrument(format!("{WORKSPACE_MANIFEST_PATH}: {error}")))?;
+    let parsed: toml::Value = toml::from_str(manifest).map_err(|error| {
+        instrument(format!(
+            "{WORKSPACE_MANIFEST_PATH} is not valid TOML: {error}"
+        ))
+    })?;
+    parsed
+        .get("workspace")
+        .and_then(|workspace| workspace.get("package"))
+        .and_then(|package| package.get("version"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| {
+            instrument("the workspace manifest must declare workspace.package.version as a string")
+        })
+}
+
 fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
     let bytes = std::fs::read(root.join(relative))
         .map_err(|error| instrument(format!("read {relative}: {error}")))?;
@@ -2337,6 +2382,126 @@ expected_registry_checksum = "sha256:cccc"
     }
 
     #[test]
+    fn evidence_graph_preserves_required_roles_in_both_consumers()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use allow_report::{
+            FinalEvidenceFindingKindV1, aggregate_final_readiness, evaluate_final_evidence_graph,
+        };
+
+        let subject = subject();
+        let selection = selection();
+        for (role, required) in [
+            (FreezeEvidenceRole::CandidatePreparation, true),
+            (FreezeEvidenceRole::PackageSet, true),
+            (FreezeEvidenceRole::PackageDocs, true),
+            (FreezeEvidenceRole::Rehearsal, true),
+            (FreezeEvidenceRole::InstallJourney, true),
+            (FreezeEvidenceRole::Interop, false),
+            (FreezeEvidenceRole::RegistryObservation, true),
+            (FreezeEvidenceRole::ReleaseManifest, false),
+            (FreezeEvidenceRole::UpgradeRollback, true),
+            (FreezeEvidenceRole::Controls, true),
+        ] {
+            // One already-admitted input isolates role classification. This
+            // intentionally sparse graph is not complete freeze evidence.
+            let evidence = [graph_role_input(role)];
+            let mut graph = super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+            // Isolate the consumers' required-node classification from the
+            // builder's support-selection edges for journey/control inputs.
+            graph.edges.clear();
+            let id = role.graph_shape().2;
+            let node = graph
+                .nodes
+                .iter()
+                .find(|node| node.evidence_id == id)
+                .ok_or("the supplied evidence node is missing")?;
+            let evaluation = evaluate_final_evidence_graph(&graph);
+            let readiness = aggregate_final_readiness(
+                &graph,
+                &readiness_decision_inputs(&subject, &selection, &evidence),
+            );
+            let orphan_required = evaluation.findings.iter().any(|finding| {
+                finding.kind == FinalEvidenceFindingKindV1::OrphanRequiredNode
+                    && finding.evidence_id.as_deref() == Some(id)
+            });
+            if node.required != required
+                || graph.required_node_ids.iter().any(|value| value == id) != required
+                || readiness.required_evidence.iter().any(|row| row.evidence_id == id) != required
+                // These inputs have no edges: only required nodes are orphans.
+                || orphan_required != required
+            {
+                return Err(format!(
+                    "{role:?} required={required} disagrees across producer and consumers"
+                )
+                .into());
+            }
+        }
+        Ok(())
+    }
+
+    fn graph_role_input(role: FreezeEvidenceRole) -> super::EvidenceInput {
+        super::EvidenceInput {
+            role,
+            path: std::path::PathBuf::from("synthetic-admitted-receipt.json"),
+            sha256: allow_core::sha256_v1_bytes(b"synthetic admitted receipt"),
+            value: serde_json::json!({}),
+            binding_notes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn evidence_graph_still_validates_supplied_optional_nodes()
+    -> Result<(), Box<dyn std::error::Error>> {
+        use allow_report::{
+            FinalEvidenceFindingKindV1, FinalReadinessRowKindV1, aggregate_final_readiness,
+            evaluate_final_evidence_graph,
+        };
+
+        let subject = subject();
+        let selection = selection();
+        for role in [
+            FreezeEvidenceRole::Interop,
+            FreezeEvidenceRole::ReleaseManifest,
+        ] {
+            let evidence = [graph_role_input(role)];
+            for malformed_schema in [true, false] {
+                let mut graph =
+                    super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+                let id = role.graph_shape().2;
+                let node = graph
+                    .nodes
+                    .iter_mut()
+                    .find(|node| node.evidence_id == id)
+                    .ok_or("the supplied optional evidence node is missing")?;
+                let expected = if malformed_schema {
+                    node.schema_version = 99;
+                    FinalEvidenceFindingKindV1::InvalidSchema
+                } else {
+                    node.semantic_digest = "malformed".to_string();
+                    FinalEvidenceFindingKindV1::InvalidDigest
+                };
+                let evaluation = evaluate_final_evidence_graph(&graph);
+                let readiness = aggregate_final_readiness(
+                    &graph,
+                    &readiness_decision_inputs(&subject, &selection, &evidence),
+                );
+                if !evaluation.findings.iter().any(|finding| {
+                    finding.kind == expected && finding.evidence_id.as_deref() == Some(id)
+                }) || !readiness.rows.iter().any(|row| {
+                    row.kind == FinalReadinessRowKindV1::MissingEvidence
+                        && row.evidence_id.as_deref() == Some(id)
+                }) {
+                    return Err(format!(
+                        "invalid optional {role:?} lost its {expected:?} validation finding"
+                    )
+                    .into());
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn rejected_rehearsal_evidence_cannot_become_complete_by_subject_assignment() {
         // A foreign-subject rehearsal receipt binds with fail: notes;
         // the graph node it produces must stay a Mismatch on the
@@ -2515,147 +2680,212 @@ mod compose_fixture_tests {
         )
     }
 
-    /// Minimal committed subject fixture: manifest, lock, topology,
-    /// gitignore committed on a clean HEAD.
-    fn committed_subject_fixture() -> PathBuf {
+    /// Minimal committed subject with explicit checkout framing for its text inputs.
+    fn committed_subject_fixture() -> Result<PathBuf, Box<dyn std::error::Error>> {
         static NONCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let root =
             std::env::temp_dir().join(format!("freeze-subject-{}-{nonce}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root");
+        // A collision is a setup error, never permission to remove an existing directory.
+        std::fs::create_dir(&root)?;
+        std::fs::create_dir(root.join("policy"))?;
 
-        git(&root, &["init"]);
-        git(&root, &["config", "user.email", "freeze@example.invalid"]);
-        git(&root, &["config", "user.name", "freeze fixture"]);
-        write(
-            &root,
-            "Cargo.toml",
-            b"# fixture workspace\nversion = \"0.2.0\"\n",
-        );
-        write(&root, "Cargo.lock", b"fixture-lock-bytes\n");
-        write(
-            &root,
-            "policy/product-package-topology-v2.toml",
+        super::git(&root, &["init"])?;
+        for (key, value) in [
+            ("user.email", "freeze@example.invalid"),
+            ("user.name", "freeze fixture"),
+            ("core.autocrlf", "false"),
+            ("core.eol", "lf"),
+            ("core.safecrlf", "false"),
+        ] {
+            super::git(&root, &["config", key, value])?;
+        }
+        std::fs::write(
+            root.join(".gitattributes"),
+            b"* text eol=lf\nCargo.lock text eol=crlf\n",
+        )?;
+        std::fs::write(
+            root.join("Cargo.toml"),
+            b"[workspace.package]\nversion = \"0.2.0\"\n",
+        )?;
+        std::fs::write(root.join("Cargo.lock"), b"fixture-lock-bytes\n")?;
+        std::fs::write(
+            root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"shared\"\n",
-        );
-        git(&root, &["add", "-A"]);
-        git(&root, &["commit", "-m", "fixture subject"]);
-        root
+        )?;
+        super::git(&root, &["add", "-A"])?;
+        super::git(&root, &["commit", "-m", "fixture subject"])?;
+        Ok(root)
     }
 
     #[test]
-    fn collect_accepts_a_genuinely_clean_subject() {
-        let root = committed_subject_fixture();
-        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
-        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+    fn collect_accepts_a_genuinely_clean_subject() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        let commit = super::git(&root, &["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        let tree = super::git(&root, &["rev-parse", "HEAD^{tree}"])?
+            .trim()
+            .to_string();
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("clean subject: {err}")));
-        assert_eq!(subject.commit, commit);
-        assert_eq!(subject.tree, tree);
-        assert_eq!(
-            subject.cargo_lock_digest,
-            format!("sha256:v1:{}", hex(b"fixture-lock-bytes\n"))
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+        let subject = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )?;
+        if subject.commit != commit || subject.tree != tree {
+            return Err("clean subject did not retain its committed identity".into());
+        }
+        if subject.cargo_lock_digest != allow_core::sha256_v1_bytes(b"fixture-lock-bytes\n") {
+            return Err("clean subject did not digest the working lock bytes".into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_rejects_an_assume_unchanged_hidden_lock() {
+    fn collect_rejects_an_assume_unchanged_hidden_lock() -> Result<(), Box<dyn std::error::Error>> {
         // Ordinary status is empty for this edit; the collector must
         // still reject it before pairing identity with bytes.
-        let root = committed_subject_fixture();
-        git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"]);
-        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n").expect("hidden edit");
-        assert!(
-            git(&root, &["status", "--porcelain"]).trim().is_empty(),
-            "the fixture reproduces the status blind spot"
-        );
+        let root = committed_subject_fixture()?;
+        super::git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"])?;
+        std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n")?;
+        if !super::git(&root, &["status", "--porcelain"])?
+            .trim()
+            .is_empty()
+        {
+            return Err("the hidden-lock fixture did not preserve clean Git status".into());
+        }
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("a hidden assume-unchanged edit is rejected");
-        assert!(
-            err.to_string().contains("hidden state")
-                || err
-                    .to_string()
-                    .contains("differ from the committed subject"),
-            "the rejection names the hidden input problem: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted a hidden assume-unchanged edit")?;
+        if !err.to_string().contains("hidden state")
+            && !err
+                .to_string()
+                .contains("differ from the committed subject")
+        {
+            return Err(format!("incorrect hidden-lock rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_rejects_a_skip_worktree_hidden_topology() {
-        let root = committed_subject_fixture();
-        git(
+    fn collect_rejects_a_skip_worktree_hidden_topology() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        super::git(
             &root,
             &[
                 "update-index",
                 "--skip-worktree",
                 "policy/product-package-topology-v2.toml",
             ],
-        );
+        )?;
         std::fs::write(
             root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"tampered\"\n",
-        )
-        .expect("hidden edit");
-        assert!(
-            git(&root, &["status", "--porcelain"]).trim().is_empty(),
-            "the fixture reproduces the status blind spot"
-        );
+        )?;
+        if !super::git(&root, &["status", "--porcelain"])?
+            .trim()
+            .is_empty()
+        {
+            return Err("the hidden-topology fixture did not preserve clean Git status".into());
+        }
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("a hidden skip-worktree edit is rejected");
-        assert!(
-            err.to_string().contains("hidden state")
-                || err
-                    .to_string()
-                    .contains("differ from the committed subject"),
-            "the rejection names the hidden input problem: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted a hidden skip-worktree edit")?;
+        if !err.to_string().contains("hidden state")
+            && !err
+                .to_string()
+                .contains("differ from the committed subject")
+        {
+            return Err(format!("incorrect hidden-topology rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_accepts_crlf_checkout_framing_of_committed_content() {
-        // A Windows autocrlf checkout shows CRLF working bytes over an
+    fn collect_accepts_crlf_checkout_framing_of_committed_content()
+    -> Result<(), Box<dyn std::error::Error>> {
+        // A CRLF checkout shows CRLF working bytes over an
         // LF blob: the content is identical and must be accepted, with
         // the receipt digests computed from the exact working bytes.
-        let root = committed_subject_fixture();
-        std::fs::write(
-            root.join("Cargo.lock"),
-            b"fixture-lock-bytes
-",
-        )
-        .expect("crlf edit");
+        let root = committed_subject_fixture()?;
+        std::fs::write(root.join("Cargo.lock"), b"fixture-lock-bytes\r\n")?;
+        // Refresh the index stat information after changing checkout framing.
+        // Text normalization must leave the staged blob identical to HEAD.
+        super::git(&root, &["add", "--", "Cargo.lock"])?;
+        super::git(&root, &["diff", "--cached", "--exit-code"])?;
 
-        let subject = super::SubjectIdentity::collect(&root, "0.2.0")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("crlf subject: {err}")));
-        assert_eq!(
-            subject.cargo_lock_digest,
-            format!(
-                "sha256:v1:{}",
-                hex(b"fixture-lock-bytes
-")
+        let working = std::fs::read(root.join("Cargo.lock"))?;
+        let committed = super::git(&root, &["show", "HEAD:Cargo.lock"])?;
+        if !working.ends_with(b"\r\n")
+            || committed.as_bytes() != b"fixture-lock-bytes\n"
+            || working.as_slice() == committed.as_bytes()
+        {
+            return Err(format!(
+                "CRLF fixture must have distinct CRLF working and LF committed bytes: working={working:?}, committed={committed:?}"
             )
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+            .into());
+        }
+        let status = super::git(&root, &["status", "--porcelain"])?;
+        if !status.trim().is_empty() {
+            return Err(format!("CRLF fixture is not a clean checkout: {status}").into());
+        }
+
+        let subject = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )?;
+        if subject.cargo_lock_digest != allow_core::sha256_v1_bytes(&working)
+            || subject.cargo_lock_digest == allow_core::sha256_v1_bytes(committed.as_bytes())
+        {
+            return Err("CRLF subject digest must bind working bytes, not the LF blob".into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
-    fn collect_still_rejects_ordinary_dirty_subjects() {
-        let root = committed_subject_fixture();
-        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n").expect("ordinary edit");
+    fn line_ending_comparison_preserves_lone_carriage_returns()
+    -> Result<(), Box<dyn std::error::Error>> {
+        for (input, expected) in [
+            ("first\r\nsecond\rthird\n", "first\nsecond\rthird\n"),
+            ("\r", "\r"),
+            ("\n", "\n"),
+            ("", ""),
+        ] {
+            if super::strip_line_endings(input) != expected {
+                return Err(format!("incorrect line-ending comparison for {input:?}").into());
+            }
+        }
+        Ok(())
+    }
 
-        let err = super::SubjectIdentity::collect(&root, "0.2.0")
-            .expect_err("an ordinary dirty worktree stays rejected");
-        assert!(
-            err.to_string().contains("dirty"),
-            "the ordinary dirty rejection is unchanged: {err}"
-        );
-        std::fs::remove_dir_all(&root).expect("fixture removal");
+    #[test]
+    fn collect_still_rejects_ordinary_dirty_subjects() -> Result<(), Box<dyn std::error::Error>> {
+        let root = committed_subject_fixture()?;
+        std::fs::write(root.join("Cargo.lock"), b"ordinary-dirty-bytes\n")?;
+
+        let err = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )
+        .err()
+        .ok_or("the collector accepted an ordinary dirty worktree")?;
+        if !err.to_string().contains("dirty") {
+            return Err(format!("incorrect ordinary-dirty rejection: {err}").into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 
     #[test]
@@ -2672,7 +2902,7 @@ mod compose_fixture_tests {
         write(
             &root,
             "Cargo.toml",
-            b"# fixture workspace\nversion = \"0.2.0\"\n",
+            b"[workspace.package]\nversion = \"0.2.0\"\n",
         );
         write(
             &root,

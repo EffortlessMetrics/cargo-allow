@@ -151,6 +151,7 @@ fn rehearsal_candidate_selection_controls() -> Result<(), Box<dyn Error>> {
     let output = Command::new("python")
         .arg(root.join("scripts/test-release-rehearsal.py"))
         .arg("TestCandidateIdentity")
+        .arg("TestReceiptOutput")
         .arg("-q")
         .current_dir(&root)
         .output()?;

@@ -44,7 +44,9 @@ fn topology_v2_retains_expected_checksums_for_shared_prerequisites() -> Result<(
                     .get("expected_registry_checksum")
                     .and_then(serde_json::Value::as_str);
                 if let Some(cs) = expected_checksum {
-                    assert!(cs.starts_with("sha256:") && cs.len() == 71);
+                    if !cs.starts_with("sha256:") || cs.len() != 71 {
+                        return Err(io::Error::other("malformed shared checksum").into());
+                    }
                 } else {
                     return Err(io::Error::other(
                         "shared prerequisite row missing expected_registry_checksum",
@@ -56,14 +58,9 @@ fn topology_v2_retains_expected_checksums_for_shared_prerequisites() -> Result<(
         }
     }
 
-    assert_eq!(
-        cargo_allow_count, 10,
-        "must have exactly 10 cargo-allow candidate rows"
-    );
-    assert_eq!(
-        shared_count, 3,
-        "must have exactly 3 shared prerequisite rows"
-    );
+    if cargo_allow_count != 10 || shared_count != 3 {
+        return Err(io::Error::other("expected 10 final and 3 shared rows").into());
+    }
 
     Ok(())
 }

@@ -18,7 +18,7 @@ mod dependency_graph_evidence_command;
 mod frozen_subject_lock_command;
 mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
-mod release_freeze_command;
+pub(crate) mod release_freeze_command;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;

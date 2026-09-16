@@ -12,6 +12,29 @@ candidate until both release rails below are separately authorized and proven.
 The [0.1.11 qualification snapshot](0.1.11-readiness.md) remains historical
 evidence for the published patch release.
 
+## Rehearsal receipt output
+
+`python scripts/release-rehearsal.py --commit HEAD` emits its characterization
+receipt to stdout. `--output target/cargo-allow/rehearsal.json` selects an
+artifact file instead. Within this repository, only the root `target/` tree
+is supported and the destination must be ignored; tracked files and their
+ancestors or descendants are rejected.
+An explicitly selected external file remains supported. Relative paths are
+relative to the caller's working directory.
+
+Output preflight runs before rehearsal phases. Symlinks and directory junctions
+anywhere in the destination chain, multiply linked files, and nonregular
+destinations are rejected. File output uses a temporary sibling and atomic
+replacement, preserving an existing receipt when writing or replacement fails.
+Output errors report instrumentation failure (exit 2), with no success message;
+a successfully written Incomplete characterization still exits 1. Stdout and
+the receipt schema retain their existing meanings.
+
+The destination is rechecked before replacement. This protects source files in
+a cooperative checkout; it is not a filesystem sandbox against concurrent
+hostile directory replacement. The receipt remains characterization evidence,
+not complete zero-mutation proof or release authorization.
+
 ## 0.2.0 release rails
 
 The namespace publication and the cargo-allow tag release are distinct,

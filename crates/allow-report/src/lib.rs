@@ -21,6 +21,17 @@ mod allow_entry_json;
 #[cfg(test)]
 mod allow_entry_json_tests;
 mod artifacts;
+pub use artifacts::{
+    CargoAllowFinalRegistryPreflightV1, FINAL_REGISTRY_PREFLIGHT_SCHEMA_ID,
+    FINAL_REGISTRY_PREFLIGHT_SCHEMA_VERSION, FinalRegistryContextV1, FinalRegistryExpectedRowV1,
+    FinalRegistryNextActionV1, FinalRegistryObservationOriginV1, FinalRegistryObservationV1,
+    FinalRegistryOwnerStateV1, FinalRegistryPreflightFindingV1, FinalRegistryPreflightInputV1,
+    FinalRegistryPreflightResultV1, FinalRegistryPreflightRowV1, FinalRegistryProvenanceV1,
+    FinalRegistryProviderV1, FinalRegistryPublishAuthorityV1, FinalRegistryRowRoleV1,
+    FinalRegistrySharedAuthorityV1, FinalRegistryVersionResponseV1, FinalRegistryVersionStateV1,
+    evaluate_final_registry_preflight_v1, final_registry_bindings_v1,
+    render_final_registry_preflight_v1,
+};
 mod audit_remediation;
 #[cfg(test)]
 mod audit_remediation_tests;

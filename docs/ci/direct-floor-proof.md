@@ -11,6 +11,21 @@ dependencies to their declared floors, and executes the requested proof classes.
 Uncommitted edits are not proof inputs. Manifest and original-lock digests bind
 the source inputs; the floor-lock digest binds the executed dependency candidate.
 
+Before executing classes, the collector places its JSON scratch under the
+ignored root `target/floor-proof` directory and commits only the derived
+`Cargo.lock` in its detached temporary checkout. An unchanged lock reuses the
+source commit. Derivation rejects other tracked, staged, untracked, ignored
+source, and hidden-index changes. It verifies the single original parent,
+lock-only tree delta, and clean checkout. This gives strict rehearsal admission
+the actual committed floor subject without weakening its clean-source checks.
+The local derived commit uses a command-scoped `cargo-allow floor proof`
+identity, disables commit hooks and signing, and is never pushed. No repository
+or global Git identity setting is changed. The collector removes its
+temporary worktree on exit; its companion preserves original source, derived
+commit/tree, and executed lock digest. These identities describe a local proof
+candidate, not an upstream commit or release qualification. See
+[#4217](https://github.com/EffortlessMetrics/cargo-allow/issues/4217).
+
 Selection follows inherited and member dependency features, local feature
 edges, and strong/weak feature forwarding to a fixed point. Every package in the
 closure is selected with `-p`, so each package's defaults also participate.
@@ -78,6 +93,44 @@ Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
 invalid product/class rejection, observed MSRV rejection, the exact five test
 exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
 controls do not compile packages or establish real floor compatibility.
+The same command runs real-Git derived-source controls for lock-only changes,
+unchanged locks, attached checkouts, and rejected source/index changes. The
+producer simulation separately rejects derivation failure before any class runs.
+The default suite also runs the actual rehearsal's strict checkout admission
+against the derived-source fixture and all 36 `TestRehearsalSubjectBinding`
+controls. The focused derived-source/admission check can be run separately:
+
+`python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
+
+This reproduces the original four root scratch files plus modified lock,
+requires their rejection, and then requires admission of the derived subject.
+Selecting an older rehearsal script without strict admission fails explicitly.
+The subject-binding controls reject foreign commits and staged, hidden, ignored,
+or untracked source, including changes observed after mocked phases. Admission
+requires Git's canonical working-tree root to match the rehearsal source root.
+Explicit `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, and
+`GIT_NAMESPACE` environment overrides are unsupported and rejected before Git
+commit resolution; `GIT_CONFIG` and the `GIT_CONFIG_*` configuration-selection
+family and `GIT_ATTR_SOURCE` are likewise rejected, including empty values.
+Their values are not printed or modified. Ordinary linked worktrees remain supported, including
+non-ASCII paths decoded with the filesystem
+encoding rather than the process locale. Every admission Git query disables
+replacement objects so commit resolution and source inspection use the original
+objects. Both admission passes reject disabled or unreadable `core.trustctime`
+configuration, preserving Git's default ctime comparison without modifying the
+configuration or claiming full content hashing. Status also pins
+`core.checkStat=default`, `core.ignoreStat=false`, and `core.trustctime=true`
+for its command-local metadata inspection. Before each status inspection,
+Git's effective `filter`, `ident`, and `working-tree-encoding` attributes are
+queried for every tracked path. Defined transformation attributes are unsupported,
+including explicit unsets: Git's display words can also be literal driver names.
+An additional `--all` query distinguishes defined attributes from absent ones.
+The first NUL-framed query must return every expected path/attribute record;
+the defined-attribute query rejects malformed, foreign-path, and duplicate rows.
+Inert local/external attribute fixtures prove rejection before status without
+configuring or executing a filter driver. These controls do
+not execute real rehearsal phases or establish a complete release rehearsal.
+See [#4177](https://github.com/EffortlessMetrics/cargo-allow/pull/4177).
 
 Legacy receipt admission belongs to the Rust consumer, not this producer.
 `minimum_direct_version_contract_package_roots_must_match_the_request` rejects

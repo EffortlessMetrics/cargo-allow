@@ -20,9 +20,11 @@ The repository compatibility contract is pinned to Changie `1.25.2`.
    The dry run loads all selected fragments and prints the rendered note without
    writing, moving, or deleting repository files.
 
-3. **Do not use mutating batch or merge as the current release authority.** The
-   existing `CHANGELOG.md` history has not yet been backfilled into a complete
-   Changie version-file archive or proven to round-trip exactly.
+3. **Keep mutating `changie batch` and `changie merge` release-authorized.**
+   The retained history corpus and isolated round-trip harness are documented in
+   [the changelog guide](../docs/how-to/manage-changelog.md#history-corpus-and-proven-round-trip).
+   Checking corpus currency is distinct from running that harness; neither
+   establishes release qualification nor authorizes mutation of the live repository.
 
 ## Install the pinned version
 

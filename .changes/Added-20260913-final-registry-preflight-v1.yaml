@@ -1,0 +1,10 @@
+kind: Added
+body: >-
+  Add a typed final-registry preflight contract with deterministic reconciliation
+  of final package checksums, shared prerequisites, provider failures, ownership,
+  publication authority, and freshness. Fixture and external provenance remain
+  distinct. Surplus observations and their independent health failures remain
+  visible without establishing selected package authority. Candidate validation
+  rejects supplied internal dependency versions that disagree with the selected
+  package. This library contract neither contacts a registry nor authorizes a
+  release.

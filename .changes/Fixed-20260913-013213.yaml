@@ -1,0 +1,3 @@
+kind: Fixed
+body: Keep optional interop and release-manifest evidence out of the release-freeze required denominator while preserving validation of supplied evidence.
+time: 2026-09-13T01:32:13.9738047-04:00

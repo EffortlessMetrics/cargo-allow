@@ -65,6 +65,9 @@ pub(crate) struct CapabilitiesArgs {
     /// Write capability output to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+    /// Render the installed provider contract descriptor instead of the sensor catalog.
+    #[arg(long)]
+    pub(crate) provider_contract: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -467,6 +470,33 @@ const CAPABILITIES: &[SensorCapability] = &[
 ];
 
 pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> {
+    if args.provider_contract {
+        if args.root.root.is_some()
+            || args.config.is_some()
+            || args.class.is_some()
+            || args.kind.is_some()
+            || args.family.is_some()
+        {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--provider-contract cannot be combined with sensor catalog filters or repository policy selection",
+            ));
+        }
+        let contract = crate::provider_contract::provider_contract();
+        let rendered = match args.format {
+            CapabilityFormat::Human => format!(
+                "cargo-allow provider contract ({})\n\nprovider_id={} access_posture={} snapshot_bound={}\nrequired_capabilities={}\nconfig_relative_path={}\n",
+                contract.schema_id,
+                contract.provider_id,
+                contract.access_posture,
+                contract.snapshot_bound,
+                contract.required_capabilities.join(","),
+                contract.config_relative_path,
+            ),
+            CapabilityFormat::Json => render_json(&contract)?,
+        };
+        return emit_text(args.output.as_deref(), &format!("{rendered}\n"));
+    }
     validate_catalog()?;
     let configured_file_families = configured_file_family_capabilities(args)?;
     let capabilities = CAPABILITIES
@@ -814,6 +844,7 @@ mod tests {
             kind: None,
             family: None,
             output: Some(human_path.clone()),
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
@@ -835,6 +866,7 @@ mod tests {
             kind: None,
             family: None,
             output: Some(excluded_path.clone()),
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         let excluded = fs::read_to_string(&excluded_path).map_err(|error| error.to_string())?;
@@ -859,6 +891,7 @@ mod tests {
             kind: Some("panic".to_string()),
             family: Some("unwrap".to_string()),
             output: Some(finding_path.clone()),
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         let finding = fs::read_to_string(&finding_path).map_err(|error| error.to_string())?;
@@ -877,6 +910,98 @@ mod tests {
                 != Some("rust.panic.unwrap")
         {
             return Err("kind/family filter returned an unexpected row".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn provider_contract_mode_renders_and_rejects_catalog_filters() -> Result<(), String> {
+        let json_path = output_path("provider-contract-json");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Json,
+            class: None,
+            kind: None,
+            family: None,
+            output: Some(json_path.clone()),
+            provider_contract: true,
+        })
+        .map_err(|error| error.to_string())?;
+        let json = fs::read_to_string(&json_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&json_path).map_err(|error| error.to_string())?;
+        let descriptor: serde_json::Value =
+            serde_json::from_str(&json).map_err(|error| error.to_string())?;
+        if descriptor
+            .get("schema_id")
+            .and_then(serde_json::Value::as_str)
+            != Some("proof.cargo-allow-provider-contract.v1")
+            || descriptor
+                .get("schema_version")
+                .and_then(serde_json::Value::as_u64)
+                != Some(1)
+            || descriptor
+                .get("provider_id")
+                .and_then(serde_json::Value::as_str)
+                != Some("proof.cargo-allow.v1")
+            || descriptor
+                .get("access_posture")
+                .and_then(serde_json::Value::as_str)
+                != Some("read_only")
+            || descriptor
+                .get("snapshot_bound")
+                .and_then(serde_json::Value::as_bool)
+                != Some(true)
+        {
+            return Err("provider contract JSON identity changed".to_string());
+        }
+        let required = descriptor
+            .get("required_capabilities")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| "provider contract required_capabilities was not an array".to_string())?
+            .iter()
+            .map(|value| {
+                value
+                    .as_str()
+                    .ok_or_else(|| "provider contract capability was not a string".to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if required != ["cargo-allow.check.no-new", "cargo-allow.capabilities.json"] {
+            return Err("provider contract required capabilities changed".to_string());
+        }
+        let human_path = output_path("provider-contract-human");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Human,
+            class: None,
+            kind: None,
+            family: None,
+            output: Some(human_path.clone()),
+            provider_contract: true,
+        })
+        .map_err(|error| error.to_string())?;
+        let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&human_path).map_err(|error| error.to_string())?;
+        if !human.contains("cargo-allow provider contract") {
+            return Err("provider contract human output omitted its heading".to_string());
+        }
+
+        let error = match cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedSyntax),
+            kind: None,
+            family: None,
+            output: None,
+            provider_contract: true,
+        }) {
+            Ok(()) => return Err("provider contract accepted a catalog filter".to_string()),
+            Err(error) => error,
+        };
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err("provider contract filter error was not usage-classified".to_string());
         }
         Ok(())
     }
@@ -942,6 +1067,7 @@ reason = "Exercise explicit policy selection."
             kind: Some("non_rust_file".to_string()),
             family: None,
             output: Some(output.clone()),
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         let value: serde_json::Value =
@@ -981,6 +1107,7 @@ reason = "Exercise explicit policy selection."
             kind: Some("non_rust_file".to_string()),
             family: None,
             output: Some(human_path.clone()),
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
@@ -1001,6 +1128,7 @@ reason = "Exercise explicit policy selection."
             kind: None,
             family: None,
             output: None,
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         if !filtered.is_empty() {
@@ -1017,6 +1145,7 @@ reason = "Exercise explicit policy selection."
             kind: Some("non_rust_file".to_string()),
             family: Some("release_metadata".to_string()),
             output: None,
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         if family_filtered.len() != 1
@@ -1045,6 +1174,7 @@ reason = "Exercise explicit policy selection."
             kind: None,
             family: None,
             output: None,
+            provider_contract: false,
         })
         .expect_err("invalid configured policy should fail closed");
         if error.kind() != CargoAllowErrorKind::InvalidPolicy {
@@ -1071,6 +1201,7 @@ reason = "Exercise explicit policy selection."
             kind: Some("panic".to_string()),
             family: None,
             output: None,
+            provider_contract: false,
         })
         .expect_err("invalid configured policy should not be bypassed by filters");
         if error.kind() != CargoAllowErrorKind::InvalidPolicy {
@@ -1094,6 +1225,7 @@ reason = "Exercise explicit policy selection."
             kind: Some("non_rust_file".to_string()),
             family: None,
             output: None,
+            provider_contract: false,
         })
         .map_err(|error| error.to_string())?;
         if !rows.is_empty() {

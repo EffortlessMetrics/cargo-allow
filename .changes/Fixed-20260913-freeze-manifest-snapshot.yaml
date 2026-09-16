@@ -1,0 +1,3 @@
+kind: Fixed
+body: Derive the freeze version from the already verified manifest snapshot and report missing admitted inputs without panicking.
+time: 2026-09-13T07:40:00Z

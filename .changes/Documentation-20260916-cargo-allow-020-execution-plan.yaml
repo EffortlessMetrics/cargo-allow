@@ -1,0 +1,7 @@
+kind: Documentation
+body: >-
+  Replace the stale cargo-allow 0.2.0 campaign map with the current execution
+  plan: preserve the retained historical freeze, route the superseding-refreeze
+  decision, settle active dependency and configuration PRs, implement registry
+  observation and exact release authorization, qualify one selected final
+  subject, and stop before separately authorized publication.
