@@ -21,7 +21,7 @@ jobs:
         shell: bash
     env:
       TARGET_BRANCH: fix/4283-product-floor-isolation
-      TARGET_HEAD: b0cf6ef0460c79a26bd25ff2bea095349650bcab
+      TARGET_HEAD: c1f9372a2b996cc417a8498d93048a37d48b6cc8
       PATCH_CARRIER: automation/4283-integrate-producer-v1
     steps:
       - name: Check out the exact repair head
@@ -69,6 +69,71 @@ jobs:
           patch.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
           PY
           python3 target/issue-4283/integrate.py
+          git diff --check
+
+      - name: Append exact-path ledger receipts without rewriting policy bytes
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("policy/allow.toml")
+          original = path.read_bytes()
+          for token in (b'allow-11296', b'allow-11297', b'scripts/floor_product_workspace.py', b'scripts/test_floor_product_workspace.py'):
+              if token in original:
+                  raise SystemExit(f"refusing duplicate receipt token: {token.decode()}")
+
+          block = b'''
+
+[[allow]]
+id = "allow-11296"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation"
+reason = "Deterministic projection of the detached proof checkout to the selected product closure plus causally reachable workspace path dependencies, preventing unrelated workspace members from contaminating direct-floor resolution."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11297"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation_test"
+reason = "Deterministic negative controls for product-workspace projection: unrelated members are excluded, selected ordering is byte-stable, and unknown or incomplete selections fail closed."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+'''
+          path.write_bytes(original + block)
+          rewritten = path.read_bytes()
+          if not rewritten.startswith(original):
+              raise SystemExit("policy prefix changed while appending receipts")
+          PY
           git diff --check
 
       - uses: dtolnay/rust-toolchain@1.95.0
@@ -125,7 +190,8 @@ jobs:
             scripts/proof-direct-floors.sh \
             scripts/test_floor_protocol.py \
             crates/cargo-allow/src/minimum_direct_version_drift_tests.rs \
-            docs/ci/direct-floor-proof.md
+            docs/ci/direct-floor-proof.md \
+            policy/allow.toml
           git diff --cached --check
           test -n "$(git diff --cached --name-only)"
           git commit --no-verify -m 'fix(ci): isolate direct-floor product workspaces (#4283)'
