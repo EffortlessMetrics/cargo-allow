@@ -1,7 +1,9 @@
 """Real Git controls for the floor collector's derived source subject."""
 
 import argparse
+import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import os
 import subprocess
@@ -11,7 +13,7 @@ import unittest
 
 
 SPEC = importlib.util.spec_from_file_location(
-    "floor_source_identity", Path(__file__).with_name("floor_source_identity.py"),
+    "floor_source_identity", Path(__file__).with_name("floor_source_identity.py")
 )
 SUBJECT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SUBJECT)
@@ -32,6 +34,10 @@ class FloorSourceIdentityTests(unittest.TestCase):
         self.git("config", "commit.gpgSign", "false")
         self.git("config", "core.hooksPath", "")
         Path(".gitignore").write_text("target/\nignored.rs\n")
+        Path("Cargo.toml").write_text(
+            '[workspace]\nmembers = ["crates/a", "crates/b"]\n'
+            'default-members = ["crates/a", "crates/b"]\n'
+        )
         Path("Cargo.lock").write_text("original lock\n")
         Path("source.rs").write_text("original source\n")
         self.git("add", ".")
@@ -40,39 +46,72 @@ class FloorSourceIdentityTests(unittest.TestCase):
         self.source = self.git("rev-parse", "HEAD").strip()
         Path("target/floor-proof").mkdir(parents=True)
         Path("target/floor-proof/scratch.json").write_text("{}")
+        self.projection_path = Path("target/floor-proof/product-workspace-identity.json")
 
     def git(self, *arguments):
         return subprocess.run(
-            ["git", *arguments], check=True, capture_output=True, text=True,
+            ["git", *arguments], check=True, capture_output=True, text=True
         ).stdout
 
-    def test_derived_lock_is_clean_and_preserves_source_parent(self):
+    def write_projection(self):
+        Path("Cargo.toml").write_text(
+            '[workspace]\nmembers = ["crates/a"]\n'
+            'default-members = ["crates/a"]\n'
+        )
+        digest = "sha256:v1:" + hashlib.sha256(Path("Cargo.toml").read_bytes()).hexdigest()
+        self.projection_path.write_text(
+            json.dumps(
+                {
+                    "schema_id": SUBJECT.PROJECTION_SCHEMA,
+                    "projected_manifest_digest": digest,
+                    "certified_member_paths": ["crates/a"],
+                    "execution_member_paths": ["crates/a"],
+                }
+            )
+        )
+
+    def test_derived_projection_and_lock_are_clean_and_preserve_source_parent(self):
+        self.write_projection()
         Path("Cargo.lock").write_text("floor lock\n")
         if REHEARSAL is not None:
             REHEARSAL.ROOT = self.root
-            scratch = ("execution-identity.json", "floors-selection.json", "floors.json", "pin-failures.json")
+            scratch = (
+                "execution-identity.json",
+                "floors-selection.json",
+                "floors.json",
+                "pin-failures.json",
+            )
             for name in scratch:
                 Path(name).write_text("{}")
             with self.assertRaises(ValueError):
                 REHEARSAL.require_clean_checkout(self.source)
             for name in scratch:
                 Path(name).rename(Path("target/floor-proof") / name)
-        result = SUBJECT.derive(self.source)
+        result = SUBJECT.derive(self.source, self.projection_path)
         if REHEARSAL is not None:
             REHEARSAL.require_clean_checkout(result["derived_commit"])
         self.assertEqual(result["source_commit"], self.source)
         self.assertNotEqual(result["derived_commit"], self.source)
         self.assertEqual(self.git("rev-parse", "HEAD^").strip(), self.source)
-        self.assertEqual(self.git("diff", "--name-only", self.source), "Cargo.lock\n")
+        self.assertEqual(
+            set(self.git("diff", "--name-only", self.source).splitlines()),
+            {"Cargo.toml", "Cargo.lock"},
+        )
+        self.assertEqual(result["derived_paths"], ["Cargo.lock", "Cargo.toml"])
+        self.assertEqual(result["execution_member_paths"], ["crates/a"])
         self.assertEqual(self.git("status", "--porcelain"), "")
         self.assertEqual(Path("source.rs").read_text(), "original source\n")
 
-    def test_unchanged_lock_reuses_source_without_empty_commit(self):
-        self.assertEqual(SUBJECT.derive(self.source)["derived_commit"], self.source)
+    def test_projection_alone_is_a_visible_derived_subject(self):
+        self.write_projection()
+        result = SUBJECT.derive(self.source, self.projection_path)
+        self.assertNotEqual(result["derived_commit"], self.source)
+        self.assertEqual(result["derived_paths"], ["Cargo.toml"])
 
     def test_rejects_source_changes_before_commit(self):
         for kind in ("tracked", "staged", "untracked", "ignored", "hidden", "skip"):
             with self.subTest(kind=kind):
+                self.write_projection()
                 if kind in ("tracked", "staged", "hidden", "skip"):
                     Path("source.rs").write_text("changed\n")
                 if kind == "staged":
@@ -80,27 +119,51 @@ class FloorSourceIdentityTests(unittest.TestCase):
                 if kind in ("untracked", "ignored"):
                     Path("new.rs" if kind == "untracked" else "ignored.rs").write_text("new\n")
                 if kind in ("hidden", "skip"):
-                    self.git("update-index", "--assume-unchanged" if kind == "hidden" else "--skip-worktree", "source.rs")
+                    self.git(
+                        "update-index",
+                        "--assume-unchanged" if kind == "hidden" else "--skip-worktree",
+                        "source.rs",
+                    )
                 with self.assertRaises(ValueError):
-                    SUBJECT.derive(self.source)
+                    SUBJECT.derive(self.source, self.projection_path)
                 self.assertEqual(self.git("rev-parse", "HEAD").strip(), self.source)
                 self.git("update-index", "--no-assume-unchanged", "source.rs")
                 self.git("update-index", "--no-skip-worktree", "source.rs")
                 self.git("restore", "--staged", "--worktree", "source.rs")
+                self.git("restore", "--worktree", "Cargo.toml")
                 for name in ("new.rs", "ignored.rs"):
                     Path(name).unlink(missing_ok=True)
 
+    def test_rejects_missing_tampered_or_foreign_projection(self):
+        for mode in ("missing", "digest", "schema"):
+            with self.subTest(mode=mode):
+                self.write_projection()
+                if mode == "missing":
+                    self.projection_path.unlink()
+                else:
+                    data = json.loads(self.projection_path.read_text())
+                    data[
+                        "projected_manifest_digest" if mode == "digest" else "schema_id"
+                    ] = "foreign"
+                    self.projection_path.write_text(json.dumps(data))
+                with self.assertRaises(ValueError):
+                    SUBJECT.derive(self.source, self.projection_path)
+                self.git("restore", "--worktree", "Cargo.toml")
+
     def test_rejects_attached_checkout(self):
+        self.write_projection()
         self.git("switch", "-c", "fixture-attached")
         with self.assertRaises(ValueError):
-            SUBJECT.derive(self.source)
+            SUBJECT.derive(self.source, self.projection_path)
 
     def test_invalid_invocation_exits_without_traceback_or_source_change(self):
-        for arguments in ([], [self.source, "extra"]):
+        for arguments in ([], [self.source], [self.source, "projection", "extra"]):
             with self.subTest(arguments=arguments):
                 result = subprocess.run(
                     [sys.executable, SUBJECT.__file__, *arguments],
-                    capture_output=True, text=True, check=False,
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
                 self.assertEqual(result.returncode, 1)
                 self.assertIn("usage:", result.stderr)
@@ -115,12 +178,15 @@ if __name__ == "__main__":
     options, remaining = parser.parse_known_args()
     if options.rehearsal_script:
         rehearsal_spec = importlib.util.spec_from_file_location(
-            "floor_rehearsal", options.rehearsal_script.resolve(),
+            "floor_rehearsal", options.rehearsal_script.resolve()
         )
         REHEARSAL = importlib.util.module_from_spec(rehearsal_spec)
         rehearsal_spec.loader.exec_module(REHEARSAL)
         if not callable(getattr(REHEARSAL, "require_clean_checkout", None)):
             raise SystemExit("selected rehearsal does not implement strict admission")
     else:
-        print("strict rehearsal admission: not run (integration option not supplied)", file=sys.stderr)
+        print(
+            "strict rehearsal admission: not run (integration option not supplied)",
+            file=sys.stderr,
+        )
     unittest.main(argv=[sys.argv[0], *remaining])
