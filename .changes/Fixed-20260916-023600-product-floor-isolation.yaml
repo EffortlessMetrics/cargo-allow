@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Isolate direct-floor proof candidates to each selected product workspace so
+  unrelated sibling packages cannot raise or invalidate another product's
+  declared dependency floors.
+time: 2026-09-16T02:36:00-04:00
