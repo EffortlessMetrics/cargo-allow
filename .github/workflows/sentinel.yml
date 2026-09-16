@@ -1,10 +1,11 @@
 name: Workflow construction sentinel
 
 # #3970: this sentinel survives when the primary workflow (ci.yml) is
-# malformed because GitHub parses each workflow file independently. It
-# validates the complete workflow tree from the trusted base branch using
-# stdlib Python YAML parsing. No PR-head code executes; no secrets are
-# available; permissions are read-only.
+# malformed because GitHub parses each workflow file independently. Its base
+# job validates the complete workflow tree using stdlib Python YAML parsing;
+# no secrets are available and its token remains read-only. The temporary,
+# same-repository #4273 call below checks out only an exact admitted dependency
+# head and receives contents:write solely to create its bounded evidence branch.
 
 on:
   pull_request:
@@ -80,3 +81,12 @@ jobs:
           CHECK
       - name: Sentinel passed
         run: echo "workflow construction sentinel passed"
+
+  pr-4273-floor-regeneration-v1:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'automation/pr-4273-floor-regeneration-v1'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/pr-4273-floor-regeneration-v1.yml
