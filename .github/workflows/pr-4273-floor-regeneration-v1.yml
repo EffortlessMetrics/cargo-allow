@@ -22,7 +22,9 @@ jobs:
         shell: bash
     env:
       TARGET_BRANCH: dependabot/cargo/yaml-rust2-0.13.0
-      TARGET_HEAD: ab0b8cc8b9c2dcb83c2c0c1aab229803ce638d94
+      TARGET_HEAD: 87eb0b9347c3531b8b8f5627af60f60656daa45b
+      MAIN_HEAD: 8407b903180a2cafb94708f98efcffef6c7ca1e1
+      OUTPUT_BRANCH: automation/pr-4273-regeneration-output-v2
     steps:
       - name: Check out the exact PR head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          git merge-base --is-ancestor "$MAIN_HEAD" HEAD
           test -z "$(git status --porcelain)"
           command -v git
           command -v jq
@@ -69,6 +72,20 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/proof-advisory-products.sh 2>&1 | tee target/pr-4273-floor-regeneration/advisory-floors.log
+
+      - name: Verify generated source binding
+        run: |
+          set -euo pipefail
+          for selection in \
+            docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md \
+            docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md \
+            docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md \
+            docs/ci/receipts/direct-floor-proof-shared-v1.selection.md
+          do
+            grep -F -- "- Starting source commit: $TARGET_HEAD" "$selection"
+          done
+          grep -F -- 'allow-files/changie -> allow-files/dep:yaml-rust2' \
+            docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md
 
       - name: Refresh the exact package-candidate baseline
         run: |
@@ -151,7 +168,7 @@ jobs:
           sort -o target/pr-4273-floor-regeneration/expected-files.txt target/pr-4273-floor-regeneration/expected-files.txt
           diff -u target/pr-4273-floor-regeneration/expected-files.txt target/pr-4273-floor-regeneration/changed-files.txt
 
-      - name: Commit the generated evidence to PR 4273
+      - name: Commit generated evidence to isolated branch
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
@@ -164,7 +181,7 @@ jobs:
             docs/dogfood/receipts/package-candidate-v2.example.json
           git diff --cached --check
           git commit -m "test(deps): regenerate yaml-rust2 0.13 floor evidence"
-          git push origin "HEAD:${TARGET_BRANCH}"
+          git push origin "HEAD:refs/heads/${OUTPUT_BRANCH}"
 
       - name: Upload regeneration evidence
         if: always()
