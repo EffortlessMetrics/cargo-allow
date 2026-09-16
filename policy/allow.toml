@@ -21009,3 +21009,69 @@ glob = ".allow/revisions/4131-provider-contract-schema.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_pin_settlement.py"
+owner = "core/deps"
+classification = "direct_floor_producer"
+reason = "Deterministic fixed-point settlement constructs and verifies one simultaneous direct-floor Cargo.lock while preserving incompatible rows as bounded failures."
+evidence = ["issue:4277", "doc:docs/ci/direct-floor-proof.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_pin_settlement.py"
+target_fingerprint = "py"
+glob = "scripts/floor_pin_settlement.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement-test"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_pin_settlement.py"
+owner = "core/deps"
+classification = "direct_floor_fixture"
+reason = "Deterministic fixtures exercise retry after sibling settlement, input-order invariance, incompatible-set termination, and movement of an earlier floor."
+evidence = ["issue:4277", "doc:docs/ci/direct-floor-proof.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_pin_settlement.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_pin_settlement.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4277-floor-settlement-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4277-floor-pin-settlement.toml"
+owner = "core/deps"
+classification = "ledger_change_note"
+reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4277."
+evidence = ["issue:4277", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_pin_settlement.py"]
+created = "2026-09-15"
+review_after = "2026-12-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4277-floor-pin-settlement.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4277-floor-pin-settlement.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
