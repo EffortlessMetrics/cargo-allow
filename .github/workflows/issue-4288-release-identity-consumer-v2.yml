@@ -1,0 +1,88 @@
+name: Repair issue 4288 release identity denominator v2
+
+on:
+  push:
+    branches:
+      - automation/4288-release-identity-consumer-v2
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TARGET_HEAD: 1ecb143fa9aa7ebe8fa5b85b02bf984f8984d6c4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/4283-product-floor-isolation
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify exact target head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+
+      - name: Add bounded denominator row
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("policy/release-identity-consumers.toml")
+          text = path.read_text(encoding="utf-8")
+          if 'id = "floor-product-workspace-reader"' in text:
+              raise SystemExit("consumer row already exists")
+          anchor = '[[consumers]]\nid = "changie-config"'
+          if text.count(anchor) != 1:
+              raise SystemExit(f"expected one anchor, found {text.count(anchor)}")
+          row = "\n".join([
+              '[[consumers]]',
+              'id = "floor-product-workspace-reader"',
+              'path = "scripts/floor_product_workspace.py"',
+              'role = "product-scoped workspace membership projection for the bounded direct-floor proof (#4283)"',
+              'disposition = "non-semantic-formatting"',
+              'owner = "#4283"',
+              'marker_classes = ["workspace-reader"]',
+              'exact_counts = [{ class = "workspace-reader", count = 2 }]',
+              'sites = [',
+              '  "root manifest does not define [workspace]",',
+              '  "[workspace.dependencies] must be a table",',
+              ']',
+              'claim_boundary = "Reads workspace membership, package names, and path-dependency metadata solely to project the selected proof workspace; it does not read package versions, parse release identity, infer channel, or determine prerelease posture."',
+          ])
+          path.write_text(text.replace(anchor, row + "\n\n" + anchor), encoding="utf-8", newline="\n")
+          PY
+          git diff --check
+          test "$(git diff --name-only)" = "policy/release-identity-consumers.toml"
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Prove denominator and floor contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p cargo-allow --locked --bin cargo-allow release_identity_denominator_tests
+          bash scripts/test-proof-direct-floors.sh
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          cargo fmt --all -- --check
+          git diff --check
+          test "$(git diff --name-only)" = "policy/release-identity-consumers.toml"
+
+      - name: Commit bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test "$(git diff --name-only)" = "policy/release-identity-consumers.toml"
+          git config user.name 'cargo-allow automation'
+          git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
+          git add policy/release-identity-consumers.toml
+          git diff --cached --check
+          git commit --no-verify -m 'fix(ci): declare product workspace release-identity boundary (#4283)'
+          git push origin HEAD:fix/4283-product-floor-isolation
