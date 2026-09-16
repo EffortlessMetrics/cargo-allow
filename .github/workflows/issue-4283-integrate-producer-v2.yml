@@ -1,0 +1,132 @@
+name: Integrate issue 4283 product floor isolation v2
+
+on:
+  push:
+    branches:
+      - automation/4283-integrate-producer-v2
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-4283-integrate-producer-v2
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET_BRANCH: fix/4283-product-floor-isolation
+      TARGET_HEAD: b0cf6ef0460c79a26bd25ff2bea095349650bcab
+      PATCH_CARRIER: automation/4283-integrate-producer-v1
+    steps:
+      - name: Check out the exact repair head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/4283-product-floor-isolation
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify admitted repair subject
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+
+      - name: Replay the reviewed integration patch
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            "$PATCH_CARRIER:refs/remotes/origin/$PATCH_CARRIER"
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          carrier = subprocess.check_output(
+              [
+                  "git",
+                  "show",
+                  "origin/automation/4283-integrate-producer-v1:.github/workflows/issue-4283-integrate-producer-v1.yml",
+              ],
+              text=True,
+          )
+          start_marker = "          python3 - <<'PY'\n"
+          end_marker = "\n          PY\n"
+          start = carrier.index(start_marker) + len(start_marker)
+          end = carrier.index(end_marker, start)
+          body = carrier[start:end]
+          lines = []
+          for line in body.splitlines():
+              if line.startswith("          "):
+                  line = line[10:]
+              lines.append(line)
+          patch = Path("target/issue-4283/integrate.py")
+          patch.parent.mkdir(parents=True, exist_ok=True)
+          patch.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+          PY
+          python3 target/issue-4283/integrate.py
+          git diff --check
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Run focused projection and protocol controls
+        run: |
+          set -euo pipefail
+          python3 scripts/test_floor_product_workspace.py
+          python3 scripts/test_floor_source_identity.py \
+            --rehearsal-script scripts/release-rehearsal.py
+          bash scripts/test-proof-direct-floors.sh
+          cargo test -p cargo-allow --locked \
+            minimum_direct_version_drift_non_clean_advisory_is_visible_but_not_blocking
+
+      - name: Prove exact cargo-intent isolation on the live workspace
+        run: |
+          set -euo pipefail
+          mkdir -p target/issue-4283
+          CI_PROOF_PRODUCT=cargo-intent \
+          CI_PROOF_MSRV=1.95 \
+          CI_PROOF_ADVISORY=true \
+          CI_PROOF_CLASSES=check \
+          CI_PROOF_OUT="$PWD/target/issue-4283/cargo-intent.json" \
+            bash scripts/proof-direct-floors.sh
+          jq -e 'all(.rows[]; .result == "proven")' \
+            target/issue-4283/cargo-intent.json
+          jq -e '.limitations | any(startswith("product workspace projection:"))' \
+            target/issue-4283/cargo-intent.json
+
+      - name: Run semantic source guard
+        run: |
+          set -uo pipefail
+          mkdir -p target/issue-4283
+          set +e
+          cargo run -p cargo-allow --locked -- check \
+            --mode no-new \
+            --format markdown \
+            --output target/issue-4283/no-new.md
+          status=$?
+          set -e
+          test "$status" -eq 0 -o "$status" -eq 1
+          grep -Fxq 'Result: passed (enforcing)' target/issue-4283/no-new.md
+          ! grep -Eq '^new[[:space:]]+[1-9][0-9]*$' target/issue-4283/no-new.md
+          printf 'self-hosted no-new semantic result is passed; process status=%s\n' "$status"
+
+      - name: Commit the reviewed repair
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          git diff --check
+          git config user.name 'cargo-allow automation'
+          git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
+          git add \
+            scripts/proof-direct-floors.sh \
+            scripts/test_floor_protocol.py \
+            crates/cargo-allow/src/minimum_direct_version_drift_tests.rs \
+            docs/ci/direct-floor-proof.md
+          git diff --cached --check
+          test -n "$(git diff --cached --name-only)"
+          git commit --no-verify -m 'fix(ci): isolate direct-floor product workspaces (#4283)'
+          git push origin HEAD:fix/4283-product-floor-isolation
