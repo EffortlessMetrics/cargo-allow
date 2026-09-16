@@ -1,0 +1,49 @@
+name: Format issue 4288 exact head
+
+on:
+  push:
+    branches:
+      - automation/4288-rustfmt
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TARGET_BRANCH: fix/4283-product-floor-isolation
+      TARGET_HEAD: 810c12c0619a96275ef834edc7bffc2d103489e4
+      EXPECTED_FILE: crates/cargo-allow/src/minimum_direct_version_drift_tests.rs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/4283-product-floor-isolation
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt
+      - name: Format exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+          cargo fmt --all
+          git diff --check
+          changed="$(git diff --name-only)"
+          test "$changed" = "$EXPECTED_FILE"
+      - name: Commit bounded formatter repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test "$(git diff --name-only)" = "$EXPECTED_FILE"
+          git config user.name 'cargo-allow automation'
+          git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
+          git add "$EXPECTED_FILE"
+          git diff --cached --check
+          git commit --no-verify -m 'style: format direct-floor drift regression (#4283)'
+          git push origin HEAD:"$TARGET_BRANCH"
