@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   repair:
-    if: github.event.head_commit.message == 'chore(ci): stage exact 4288 lifecycle repair'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -23,7 +22,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "538220d3421fc044ebc0c857a46e8531bc6849c0"
+          test "$(git rev-parse HEAD^)" = "f1d772695931ebdba0af80f9bb63287c085bc1ef"
+          test "$(git rev-parse HEAD^^)" = "538220d3421fc044ebc0c857a46e8531bc6849c0"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-4288-lifecycle.yml"
           test "$(git hash-object policy/allow.toml)" = "45cc93c07d12ad9b62c223a7dae23fc86998e72e"
           test ! -e .allow/revisions/4283-direct-floor-product-isolation.toml
