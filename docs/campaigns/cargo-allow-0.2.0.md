@@ -394,7 +394,7 @@ Then #2502 performs one operation:
 5. verify the three shared prerequisites against retained expectations;
 6. read `CARGO_REGISTRY_TOKEN` only after every prior gate passes;
 7. publish the ten final rows in dependency order;
-8. require observed registry checksum equality before advancing dependants;
+8. require observed registry checksum equality before advancing dependents;
 9. run exact public-registry install and supported journeys;
 10. produce the public Complete manifest, attestations, checksums, and selected
     assets from the exact tag;
