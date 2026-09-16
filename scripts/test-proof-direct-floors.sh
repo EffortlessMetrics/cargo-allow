@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 # Characterization checks for scripts/proof-direct-floors.sh and
 # scripts/proof-advisory-products.sh.
-#
-# Proves the proof lane's shell contracts stay in place: both scripts
-# parse, the product registry keeps its entries and its fail-closed
-# arm, the advisory collector pins product identity and the check-only
-# class per product, and the floored test class still excludes the
-# drift meta-tests by name (recorded verbatim in the receipt commands).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -50,6 +44,12 @@ contains "$registry" 'return 1' "unregistered products fail closed"
 
 proof_text="$(cat "$PROOF")"
 contains "$proof_text" \
+  'floor_product_workspace.py' \
+  "proof constructs the selected product workspace"
+contains "$proof_text" \
+  'product-workspace-identity.json' \
+  "proof retains the workspace projection identity"
+contains "$proof_text" \
   '--skip minimum_direct_version_drift' \
   "floored test class skips the drift meta-tests"
 contains "$proof_text" \
@@ -66,6 +66,10 @@ contains "$collector_text" 'for product in shared cargo-intent cargo-proof; do' 
   "collector iterates exactly the advisory products"
 contains "$collector_text" 'export CI_PROOF_PRODUCT="$product"' \
   "collector pins the product identity per product"
+contains "$collector_text" '[[ ! -s "$CI_PROOF_OUT" ]]' \
+  "collector fails only when an advisory receipt is absent"
+contains "$collector_text" 'statuses+=("$product:$status")' \
+  "collector retains each advisory product result"
 
 # An unregistered product must fail closed before any worktree exists.
 work="$(mktemp -d)"
