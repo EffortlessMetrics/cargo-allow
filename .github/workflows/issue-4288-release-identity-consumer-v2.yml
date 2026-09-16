@@ -28,7 +28,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
           test -z "$(git status --porcelain)"
 
-      - name: Add bounded denominator row
+      - name: Add bounded denominator rows
         shell: bash
         run: |
           set -euo pipefail
@@ -36,12 +36,14 @@ jobs:
           from pathlib import Path
           path = Path("policy/release-identity-consumers.toml")
           text = path.read_text(encoding="utf-8")
-          if 'id = "floor-product-workspace-reader"' in text:
-              raise SystemExit("consumer row already exists")
+          for row_id in ("floor-product-workspace-reader", "floor-product-workspace-fixtures"):
+              if f'id = "{row_id}"' in text:
+                  raise SystemExit(f"consumer row already exists: {row_id}")
           anchor = '[[consumers]]\nid = "changie-config"'
           if text.count(anchor) != 1:
               raise SystemExit(f"expected one anchor, found {text.count(anchor)}")
-          row = "\n".join([
+          rows = []
+          rows.append("\n".join([
               '[[consumers]]',
               'id = "floor-product-workspace-reader"',
               'path = "scripts/floor_product_workspace.py"',
@@ -55,8 +57,23 @@ jobs:
               '  "[workspace.dependencies] must be a table",',
               ']',
               'claim_boundary = "Reads workspace membership, package names, and path-dependency metadata solely to project the selected proof workspace; it does not read package versions, parse release identity, infer channel, or determine prerelease posture."',
-          ])
-          path.write_text(text.replace(anchor, row + "\n\n" + anchor), encoding="utf-8", newline="\n")
+          ]))
+          rows.append("\n".join([
+              '[[consumers]]',
+              'id = "floor-product-workspace-fixtures"',
+              'path = "scripts/test_floor_product_workspace.py"',
+              'role = "synthetic product-workspace projection controls for the bounded direct-floor proof (#4283)"',
+              'disposition = "historical-fixture-only"',
+              'owner = "#4283"',
+              'marker_classes = ["workspace-reader"]',
+              'exact_counts = [{ class = "workspace-reader", count = 3 }]',
+              'sites = [',
+              '  "class ProductWorkspaceProjectionTests(unittest.TestCase):",',
+              '  "def test_unrelated_member_cannot_enter_the_execution_workspace(self):",',
+              ']',
+              'claim_boundary = "The workspace markers occur only in temporary synthetic manifests used to test membership projection and isolation. The fixture driver does not classify a product release version, tag, channel, or prerelease posture."',
+          ]))
+          path.write_text(text.replace(anchor, "\n\n".join(rows) + "\n\n" + anchor), encoding="utf-8", newline="\n")
           PY
           git diff --check
           test "$(git diff --name-only)" = "policy/release-identity-consumers.toml"
