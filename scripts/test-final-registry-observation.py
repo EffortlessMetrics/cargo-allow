@@ -224,6 +224,52 @@ def test_name_probe_failures_never_become_clean_absence() -> None:
         )
 
 
+def test_name_probe_accepts_large_valid_crate_body() -> None:
+    # Crate-name payloads bundle full version history and legitimately exceed
+    # the exact-version retention cap. The probe keeps its own bound so an
+    # existing name resolves to missing instead of malformed evidence.
+    padding = "x" * 65536
+    large_valid = json.dumps({"crate": {"id": "allow-diff"}, "history": padding}).encode(
+        "utf-8"
+    )
+    check(
+        len(large_valid) > ADAPTER.MAX_RETAINED_BODY_BYTES,
+        "fixture must exceed the exact-version cap",
+    )
+
+    def handler(request: Any, **_: Any) -> Any:
+        if request.full_url.endswith("/allow-diff/0.2.0"):
+            raise HTTPError(request.full_url, 404, "not found", None, None)
+        return FakeResponse(large_valid)
+
+    with stub_transport(handler):
+        response, evidence = ADAPTER.observe_version("allow-diff", "0.2.0")
+    check(
+        response == {"status": "missing"},
+        f"existing name with large metadata must yield missing: {response}",
+    )
+    check(
+        evidence["crate_name_request"]["outcome"] == "found",
+        "large name-existence evidence was not retained",
+    )
+
+    oversized = json.dumps(
+        {"crate": {"id": "allow-diff"}, "history": "x" * (ADAPTER.MAX_CRATE_PROBE_BYTES + 1)}
+    ).encode("utf-8")
+
+    def oversized_handler(request: Any, **_: Any) -> Any:
+        if request.full_url.endswith("/allow-diff/0.2.0"):
+            raise HTTPError(request.full_url, 404, "not found", None, None)
+        return FakeResponse(oversized)
+
+    with stub_transport(oversized_handler):
+        response, _evidence = ADAPTER.observe_version("allow-diff", "0.2.0")
+    check(
+        response == {"status": "malformed_response"},
+        f"probe beyond its bound must stay malformed: {response}",
+    )
+
+
 def test_version_body_validation_and_bounding() -> None:
     cases = [
         version_payload("0.2.0-rc.1"),
@@ -471,6 +517,7 @@ def main() -> int:
     test_exact_found_does_not_probe_name()
     test_version_missing_and_name_unavailable_are_distinct()
     test_name_probe_failures_never_become_clean_absence()
+    test_name_probe_accepts_large_valid_crate_body()
     test_version_body_validation_and_bounding()
     test_retries_are_bounded_and_typed()
     test_observation_fixes_owner_and_authority_as_unproven()

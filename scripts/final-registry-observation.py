@@ -45,6 +45,12 @@ USER_AGENT = "cargo-allow-final-registry-observation/0.2"
 TIMEOUT_SECONDS = 15
 MAX_ATTEMPTS = 3
 MAX_RETAINED_BODY_BYTES = 8192
+# The crate-name probe bundles full version history, which legitimately
+# exceeds the exact-version cap for established names. The probe keeps its own
+# bound so existing names resolve to missing instead of degrading into
+# malformed provider evidence. Exact-version payloads stay at 8 KiB: they are
+# fixed-shape and an oversized one is genuinely anomalous.
+MAX_CRATE_PROBE_BYTES = 262144
 CHECKSUM_PREFIX = "sha256:"
 EVIDENCE_SCHEMA_ID = "cargo-allow.final-registry-observation-evidence.v1"
 
@@ -224,6 +230,8 @@ def _is_timeout(error: BaseException) -> bool:
 def fetch_endpoint(
     url: str,
     project: Callable[[Any], dict[str, Any]],
+    *,
+    max_bytes: int = MAX_RETAINED_BODY_BYTES,
 ) -> dict[str, Any]:
     """Perform one bounded public GET and retain only a canonical projection."""
     request = Request(url, headers={"User-Agent": USER_AGENT})
@@ -232,7 +240,7 @@ def fetch_endpoint(
         attempts += 1
         try:
             with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-                body = response.read(MAX_RETAINED_BODY_BYTES + 1)
+                body = response.read(max_bytes + 1)
         except HTTPError as error:
             if error.code == 404:
                 return {
@@ -287,7 +295,7 @@ def fetch_endpoint(
             time.sleep(attempts * 2)
             continue
 
-        if len(body) > MAX_RETAINED_BODY_BYTES:
+        if len(body) > max_bytes:
             return {
                 "url": url,
                 "outcome": "malformed_response",
@@ -333,7 +341,9 @@ def observe_version(name: str, version: str) -> tuple[dict[str, Any], dict[str, 
         }
     elif exact["outcome"] == "not_found":
         name_probe = fetch_endpoint(
-            crate_url(name), lambda payload: parse_crate_payload(payload, name)
+            crate_url(name),
+            lambda payload: parse_crate_payload(payload, name),
+            max_bytes=MAX_CRATE_PROBE_BYTES,
         )
         if name_probe["outcome"] == "found":
             response = {"status": "missing"}
