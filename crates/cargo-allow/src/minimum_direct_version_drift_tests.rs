@@ -456,16 +456,18 @@ fn minimum_direct_version_drift_non_clean_advisory_is_visible_but_not_blocking()
         "cargo-intent",
         vec![row("serde", MinimumFloorResultV1::UnsupportedCombination)],
     );
-    let evaluation = evaluate_minimum_version_drift(
-        &observation("cargo-intent"),
-        Some(&failing),
-    );
+    let evaluation = evaluate_minimum_version_drift(&observation("cargo-intent"), Some(&failing));
     assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
-    assert!(!evaluation.blocking, "report-only product rows never block cargo-allow");
-    assert!(evaluation
-        .reasons
-        .iter()
-        .any(|reason| reason.contains("non-clean dispositions: serde")));
+    assert!(
+        !evaluation.blocking,
+        "report-only product rows never block cargo-allow"
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("non-clean dispositions: serde"))
+    );
 }
 
 #[test]
