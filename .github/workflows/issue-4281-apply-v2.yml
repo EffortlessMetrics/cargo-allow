@@ -1,0 +1,147 @@
+name: Apply issue 4281 repair v2
+
+on:
+  push:
+    branches:
+      - fix/4281-floor-python-bytecode
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issue-4281-repair-v2
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/4281-floor-python-bytecode
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply bounded changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          producer_path = Path("scripts/proof-direct-floors.sh")
+          producer = producer_path.read_text(encoding="utf-8")
+          old = 'floor_move_failures="$(python3 - <<\'PY\'\n'
+          new = 'floor_move_failures="$(python3 -B - <<\'PY\'\n'
+          if producer.count(old) != 1:
+              raise SystemExit("expected one settlement identity import")
+          producer_path.write_text(
+              producer.replace(old, new), encoding="utf-8", newline="\n"
+          )
+
+          test_path = Path("scripts/test_floor_pin_settlement.py")
+          test_source = test_path.read_text(encoding="utf-8")
+          old_imports = (
+              "import importlib.util\n"
+              "from pathlib import Path\n"
+              "import sys\n"
+              "import tempfile\n"
+              "import unittest\n"
+          )
+          new_imports = (
+              "import importlib.util\n"
+              "import os\n"
+              "from pathlib import Path\n"
+              "import shutil\n"
+              "import subprocess\n"
+              "import sys\n"
+              "import tempfile\n"
+              "import unittest\n"
+          )
+          if test_source.count(old_imports) != 1:
+              raise SystemExit("expected one settlement test import block")
+          test_source = test_source.replace(old_imports, new_imports)
+
+          entry_point = '\n\nif __name__ == "__main__":\n'
+          if test_source.count(entry_point) != 1:
+              raise SystemExit("expected one settlement test entry point")
+          regression = r'''
+
+    def test_producer_identity_import_disables_python_bytecode(self):
+        producer = MODULE_PATH.with_name("proof-direct-floors.sh").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'floor_move_failures="$(python3 -B - <<\'PY\'',
+            producer,
+        )
+
+        with tempfile.TemporaryDirectory(prefix="floor-bytecode-") as directory:
+            root = Path(directory)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            shutil.copyfile(MODULE_PATH, scripts / MODULE_PATH.name)
+            environment = os.environ.copy()
+            environment.pop("PYTHONDONTWRITEBYTECODE", None)
+            environment.pop("PYTHONPYCACHEPREFIX", None)
+            import_code = (
+                "from pathlib import Path\n"
+                "import sys\n"
+                'sys.path.insert(0, str(Path("scripts").resolve()))\n'
+                "import floor_pin_settlement\n"
+            )
+
+            subprocess.run(
+                [sys.executable, "-B", "-c", import_code],
+                cwd=root,
+                env=environment,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertFalse((scripts / "__pycache__").exists())
+            self.assertEqual([], list(root.rglob("*.pyc")))
+'''
+          test_path.write_text(
+              test_source.replace(entry_point, regression + entry_point),
+              encoding="utf-8",
+              newline="\n",
+          )
+
+          Path(".changes/Fixed-20260915-212600-floor-python-bytecode.yaml").write_text(
+              "kind: Fixed\n"
+              "body: >-\n"
+              "  Prevent direct-floor fixed-point verification from creating Python bytecode\n"
+              "  outside the owned target directory before strict source admission.\n"
+              "time: 2026-09-15T21:26:00-04:00\n",
+              encoding="utf-8",
+              newline="\n",
+          )
+          PY
+          git diff --check
+
+      - name: Run focused controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test_floor_pin_settlement.py
+          bash scripts/test-proof-direct-floors-protocol.sh
+          git diff --check
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm \
+            .github/workflows/issue-4281-apply.yml \
+            .github/workflows/issue-4281-apply-v2.yml
+          git add \
+            scripts/proof-direct-floors.sh \
+            scripts/test_floor_pin_settlement.py \
+            .changes/Fixed-20260915-212600-floor-python-bytecode.yaml
+          git diff --cached --check
+          git commit -m 'fix(proof): suppress floor import bytecode (#4281)'
+          git push origin HEAD:fix/4281-floor-python-bytecode
