@@ -19,9 +19,9 @@ jobs:
     timeout-minutes: 45
     env:
       TARGET_BRANCH: dependabot/cargo/yaml-rust2-0.13.0
-      TARGET_HEAD: f5f47d4b773aee9988c8721d7e53ee309eda6f88
-      MAIN_HEAD: 3a12a486aa4001d3d1a902749197f5f6a7ea9c80
-      OUTPUT_BRANCH: automation/pr-4273-main-sync-output-v1
+      TARGET_HEAD: 0265fcc3b5548b3104c48559709455852c4db754
+      MAIN_HEAD: 8407b903180a2cafb94708f98efcffef6c7ca1e1
+      OUTPUT_BRANCH: automation/pr-4273-main-sync-output-v2
     steps:
       - name: Check out the exact PR branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -49,39 +49,43 @@ jobs:
           test -z "${extra:-}"
           test "$first_parent" = "$TARGET_HEAD"
           test "$second_parent" = "$MAIN_HEAD"
+          git diff --check "$MAIN_HEAD" HEAD
 
-          git diff --check "$TARGET_HEAD" HEAD
-          git diff --name-only "$TARGET_HEAD" HEAD | sort > /tmp/actual-files.txt
+      - name: Verify bounded semantic union
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$MAIN_HEAD" HEAD | sort > /tmp/actual-files.txt
           cat > /tmp/expected-files.txt <<'EOF'
-          .allow/revisions/4277-floor-pin-settlement.toml
-          .changes/Fixed-20260915-212600-floor-python-bytecode.yaml
           Cargo.lock
-          docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
-          docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json
-          docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json
-          docs/ci/receipts/direct-floor-proof-shared-v1.json
-          docs/dogfood/receipts/package-candidate-v2.example.json
-          policy/allow.toml
-          scripts/floor_pin_settlement.py
-          scripts/proof-direct-floors.sh
-          scripts/test-proof-direct-floors-protocol.sh
-          scripts/test_floor_pin_settlement.py
-          scripts/test_floor_protocol.py
+          crates/allow-files/Cargo.toml
+          crates/cargo-allow/src/allow_files_changie_admission_tests.rs
           EOF
           sort -o /tmp/expected-files.txt /tmp/expected-files.txt
           diff -u /tmp/expected-files.txt /tmp/actual-files.txt
 
+          grep -F 'yaml-rust2 = { version = "0.13", optional = true }' crates/allow-files/Cargo.toml
+          grep -F 'manifest.contains("yaml-rust2 = { version = \\"0.13\\", optional = true }")' \
+            crates/cargo-allow/src/allow_files_changie_admission_tests.rs
+
+          test -f scripts/floor_product_workspace.py
+          test -f .allow/revisions/4283-direct-floor-product-isolation.toml
+          test -f scripts/final-registry-observation.py
+          test -f .allow/revisions/3850-final-registry-observation-v1.toml
+
       - uses: dtolnay/rust-toolchain@1.95.0
 
-      - name: Re-run focused producer and yaml admission controls
+      - name: Re-run focused merged-subject controls
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/test_floor_pin_settlement.py
+          python3 scripts/test_floor_product_workspace.py
           bash scripts/test-proof-direct-floors-protocol.sh
           cargo test -p cargo-allow --locked allow_files_changie_admission_tests
           cargo check -p allow-files --features changie --locked
-          git diff --check "$TARGET_HEAD" HEAD
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check "$MAIN_HEAD" HEAD
+          test -z "$(git status --porcelain --untracked-files=no)"
 
       - name: Publish the verified merge commit to an isolated branch
         shell: bash
