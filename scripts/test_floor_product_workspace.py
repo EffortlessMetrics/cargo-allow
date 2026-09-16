@@ -22,17 +22,25 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="floor-product-workspace-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
-        for name in ("product-a", "product-b", "shared", "dev-helper"):
+        for name in (
+            "product-a",
+            "product-b",
+            "shared",
+            "dev-helper",
+            "target-helper",
+        ):
             (self.root / "crates" / name).mkdir(parents=True)
         (self.root / "Cargo.toml").write_text(
             '[workspace]\nresolver = "3"\nmembers = [\n'
             '  "crates/product-a",\n  "crates/product-b",\n'
-            '  "crates/shared",\n  "crates/dev-helper",\n]\n'
+            '  "crates/shared",\n  "crates/dev-helper",\n'
+            '  "crates/target-helper",\n]\n'
             'default-members = [\n  "crates/product-a",\n  "crates/product-b",\n]\n\n'
             '[workspace.package]\nedition = "2024"\n\n'
             '[workspace.dependencies]\n'
             'shared = { path = "crates/shared" }\n'
             'dev-helper = { path = "crates/dev-helper" }\n'
+            'target-helper = { path = "crates/target-helper" }\n'
             'ambient-only = "9"\n',
             encoding="utf-8",
             newline="\n",
@@ -42,6 +50,8 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
                 '[package]\nname = "product-a"\nversion = "0.1.0"\n'
                 'edition.workspace = true\n[dependencies]\nshared.workspace = true\n'
                 '[dev-dependencies]\ndev-helper.workspace = true\n'
+                "[target.'cfg(windows)'.build-dependencies]\n"
+                'target-helper.workspace = true\n'
             ),
             "product-b": (
                 '[package]\nname = "product-b"\nversion = "0.1.0"\n'
@@ -49,6 +59,10 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
             ),
             "shared": '[package]\nname = "shared"\nversion = "0.1.0"\nedition.workspace = true\n',
             "dev-helper": '[package]\nname = "dev-helper"\nversion = "0.1.0"\nedition.workspace = true\n',
+            "target-helper": (
+                '[package]\nname = "target-helper"\nversion = "0.1.0"\n'
+                'edition.workspace = true\n'
+            ),
         }
         for name, content in manifests.items():
             (self.root / "crates" / name / "Cargo.toml").write_text(
@@ -70,15 +84,26 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
         manifest = tomllib.loads((self.root / "Cargo.toml").read_text(encoding="utf-8"))
         self.assertEqual(
             manifest["workspace"]["members"],
-            ["crates/product-a", "crates/shared", "crates/dev-helper"],
+            [
+                "crates/product-a",
+                "crates/shared",
+                "crates/dev-helper",
+                "crates/target-helper",
+            ],
         )
         self.assertEqual(
             manifest["workspace"]["default-members"],
             ["crates/product-a", "crates/shared"],
         )
+        self.assertIn("target-helper", result["execution_packages"])
         self.assertNotIn("product-b", result["execution_packages"])
         self.assertIn("crates/product-b", result["omitted_member_paths"])
         self.assertEqual(result, retained)
+
+    def test_target_specific_path_dependency_cannot_hide_outside_projection(self):
+        result, _ = self.project(["product-a", "shared"])
+        self.assertIn("crates/target-helper", result["execution_member_paths"])
+        self.assertNotIn("crates/target-helper", result["omitted_member_paths"])
 
     def test_selection_order_does_not_change_projected_bytes_or_identity(self):
         original = (self.root / "Cargo.toml").read_bytes()
