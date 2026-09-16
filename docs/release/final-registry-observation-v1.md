@@ -76,6 +76,29 @@ together, the observer replaces the thirteen observations, refreshes the
 evaluation timestamp, and binds both observed/current contexts to that exact
 provider-state digest.
 
+## Output freshness and atomicity
+
+Output paths are part of the observation contract rather than incidental file
+names. Before topology validation or network access, the observer:
+
+- rejects duplicate output paths;
+- rejects any output path that resolves to the topology, candidate input, or
+  extra-observation input;
+- removes every prior requested output so an early failure cannot leave an old
+  receipt-generation input available for later evaluation.
+
+The complete provider payload and, when selected, candidate merge are computed
+before any output is published. Each JSON document is written to a
+same-directory temporary file and atomically replaces its destination. The
+merged evaluator input is published last, only after the evidence and raw
+observation artifacts succeed. If any staged write fails, all requested outputs
+are removed. A failed refresh therefore cannot leave mixed-generation evidence
+or silently reuse a prior evaluator input.
+
+Callers must still treat the process exit status as authoritative. The cleanup
+contract prevents stale-path reuse; it does not turn an interrupted observation
+into a valid current result.
+
 ## Owner and publication authority
 
 The public endpoints used here do not establish owner permission or exact
@@ -115,17 +138,20 @@ publication boundary.
 
 ```sh
 cargo test -p cargo-allow --test final_registry_preflight_provider --locked
+cargo test -p cargo-allow --test final_registry_observation_adapter --locked
 python scripts/test-final-registry-observation.py
 cargo run -p cargo-allow -- check --mode no-new
 cargo run -p cargo-allow -- diff --base origin/main --require-change-note
 git diff --check
 ```
 
-The Rust tests prove reconciliation semantics through the production model.
-The Python harness proves the live adapter contract with a stubbed transport,
-including crate-name/version distinction, bounded failures, retained evidence,
-fixed unproven authority, provider-state binding, and the no-subprocess
-credential boundary.
+The Rust tests prove reconciliation semantics through the production model and
+drive the Python output-safety contract end to end. The Python harness proves
+the live adapter contract with a stubbed transport, including crate-name/version
+distinction, bounded failures, retained evidence, fixed unproven authority,
+provider-state binding, and the no-subprocess credential boundary. Output-safety
+negative controls pre-seed stale artifacts, force early, candidate-merge, and
+staged-write failures, and prove that no stale evaluator input survives.
 
 This evidence reduces publication risk. It does not prove credential
 permission, grant release authority, upload packages, or satisfy the final
