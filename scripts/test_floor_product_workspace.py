@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import tomllib
 import unittest
@@ -29,7 +30,9 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
             "dev-helper",
             "target-helper",
         ):
-            (self.root / "crates" / name).mkdir(parents=True)
+            member = self.root / "crates" / name
+            (member / "src").mkdir(parents=True)
+            (member / "src" / "lib.rs").write_text("", encoding="utf-8", newline="\n")
         (self.root / "Cargo.toml").write_text(
             '[workspace]\nresolver = "3"\nmembers = [\n'
             '  "crates/product-a",\n  "crates/product-b",\n'
@@ -79,6 +82,16 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
         result = MODULE.project_workspace(self.root / "Cargo.toml", selection, identity)
         return result, json.loads(identity.read_text(encoding="utf-8"))
 
+    def cargo_generate_lockfile(self):
+        return subprocess.run(
+            ["cargo", "generate-lockfile", "--offline"],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+
     def test_unrelated_member_cannot_enter_the_execution_workspace(self):
         result, retained = self.project(["shared", "product-a"])
         manifest = tomllib.loads((self.root / "Cargo.toml").read_text(encoding="utf-8"))
@@ -99,6 +112,46 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
         self.assertNotIn("product-b", result["execution_packages"])
         self.assertIn("crates/product-b", result["omitted_member_paths"])
         self.assertEqual(result, retained)
+
+    def test_selected_clap_floor_ignores_unrelated_clap_complete_constraint(self):
+        root_manifest = (self.root / "Cargo.toml").read_text(encoding="utf-8")
+        root_manifest = root_manifest.replace(
+            'shared = { path = "crates/shared" }\n',
+            'clap = { path = "crates/shared", version = "=4.6.1" }\n',
+        ).replace('ambient-only = "9"\n', "")
+        (self.root / "Cargo.toml").write_text(
+            root_manifest, encoding="utf-8", newline="\n"
+        )
+        (self.root / "crates" / "shared" / "Cargo.toml").write_text(
+            '[package]\nname = "clap"\nversion = "4.6.1"\nedition.workspace = true\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        (self.root / "crates" / "product-a" / "Cargo.toml").write_text(
+            '[package]\nname = "product-a"\nversion = "0.1.0"\n'
+            'edition.workspace = true\n[dependencies]\nclap.workspace = true\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        (self.root / "crates" / "product-b" / "Cargo.toml").write_text(
+            '[package]\nname = "clap_complete"\nversion = "4.6.11"\n'
+            'edition.workspace = true\n[dependencies]\n'
+            'clap = { path = "../shared", version = "^4.6.6" }\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+
+        ambient = self.cargo_generate_lockfile()
+        self.assertNotEqual(ambient.returncode, 0)
+        self.assertIn("clap_complete", ambient.stderr)
+        self.assertIn("4.6.6", ambient.stderr)
+        (self.root / "Cargo.lock").unlink(missing_ok=True)
+
+        result, _ = self.project(["product-a", "clap"])
+        self.assertNotIn("clap_complete", result["execution_packages"])
+        self.assertIn("crates/product-b", result["omitted_member_paths"])
+        projected = self.cargo_generate_lockfile()
+        self.assertEqual(projected.returncode, 0, projected.stderr)
 
     def test_target_specific_path_dependency_cannot_hide_outside_projection(self):
         result, _ = self.project(["product-a", "shared"])
