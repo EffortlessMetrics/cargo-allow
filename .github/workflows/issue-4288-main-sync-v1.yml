@@ -116,11 +116,11 @@ jobs:
           git diff --name-only "$TARGET_HEAD" | sort > /tmp/from-pr.txt
           cat > /tmp/expected-from-pr.txt <<'EOF'
           .allow/revisions/3850-final-registry-observation-v1.toml
-          .changes/7fd924d5-0e5c-4f43-a259-47a91fc4287d.yaml
-          crates/allow-report/examples/final-registry-observation-v1-invalid-fixtures.rs
-          crates/cargo-allow/tests/final_registry_observation_cli_golden.rs
-          crates/cargo-allow/tests/final_registry_observation_contract.rs
-          docs/release/cargo-allow-0.2.0-final-registry-observation.md
+          .changes/Added-20260916-final-registry-observation.yaml
+          crates/allow-report/examples/evaluate_final_registry_preflight.rs
+          crates/cargo-allow/tests/final_registry_observation_adapter.rs
+          crates/cargo-allow/tests/final_registry_preflight_provider.rs
+          docs/release/final-registry-observation-v1.md
           policy/allow.toml
           scripts/final-registry-observation.py
           scripts/test-final-registry-observation.py
