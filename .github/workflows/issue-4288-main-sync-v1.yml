@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     env:
       TARGET_BRANCH: fix/4283-product-floor-isolation
-      TARGET_HEAD: 538220d3421fc044ebc0c857a46e8531bc6849c0
+      TARGET_HEAD: 869e912253d61ce8c3845d31f64f1ebe67625aa5
       MAIN_HEAD: 7a8d13b907dd1300b50ecba9338e6df57a422733
       RUSTUP_TOOLCHAIN: 1.95.0
     steps:
@@ -48,7 +48,11 @@ jobs:
 
           text = Path("policy/allow.toml").read_text(encoding="utf-8")
           chunks = text.split("[[allow]]")
-          for wanted in ("allow-11296", "allow-11297"):
+          for wanted in (
+              "allow-11296",
+              "allow-11297",
+              "allow-4283-direct-floor-product-revision",
+          ):
               matches = [chunk for chunk in chunks if f'id = "{wanted}"' in chunk]
               if len(matches) != 1:
                   raise SystemExit(f"expected exactly one {wanted} block, found {len(matches)}")
@@ -82,15 +86,23 @@ jobs:
           if [[ "$conflicts" == "policy/allow.toml" ]]; then
             git show "$MAIN_HEAD:policy/allow.toml" > policy/allow.toml
             printf '\n' >> policy/allow.toml
-            cat /tmp/allow-11296.toml /tmp/allow-11297.toml >> policy/allow.toml
+            cat \
+              /tmp/allow-11296.toml \
+              /tmp/allow-11297.toml \
+              /tmp/allow-4283-direct-floor-product-revision.toml \
+              >> policy/allow.toml
             git add policy/allow.toml
           fi
 
           python3 - <<'PY'
           from pathlib import Path
           text = Path("policy/allow.toml").read_text(encoding="utf-8")
-          for wanted in range(11292, 11298):
-              marker = f'id = "allow-{wanted}"'
+          wanted = [
+              *(f"allow-{number}" for number in range(11292, 11298)),
+              "allow-4283-direct-floor-product-revision",
+          ]
+          for allow_id in wanted:
+              marker = f'id = "{allow_id}"'
               if text.count(marker) != 1:
                   raise SystemExit(f"expected exactly one {marker}, found {text.count(marker)}")
           PY
@@ -103,6 +115,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
           python3 scripts/test_floor_product_workspace.py
           bash scripts/test-proof-direct-floors-protocol.sh
           cargo test -p cargo-allow --locked --bin cargo-allow release_identity_denominator_tests
@@ -130,16 +143,17 @@ jobs:
 
           git diff --name-only "$MAIN_HEAD" | sort > /tmp/from-main.txt
           cat > /tmp/expected-from-main.txt <<'EOF'
-          .changes/e7a1f6f8-d82a-4f7a-8123-4fcf889990e6.yaml
+          .allow/revisions/4283-direct-floor-product-isolation.toml
+          .changes/Fixed-20260916-023600-product-floor-isolation.yaml
           crates/cargo-allow/src/minimum_direct_version_drift_tests.rs
-          docs/ci/architecture/direct-floor-proof.md
+          docs/ci/direct-floor-proof.md
           policy/allow.toml
           policy/release-identity-consumers.toml
           scripts/floor_product_workspace.py
           scripts/floor_source_identity.py
           scripts/proof-advisory-products.sh
           scripts/proof-direct-floors.sh
-          scripts/release-rehearsal.py
+          scripts/test-proof-direct-floors-protocol.sh
           scripts/test-proof-direct-floors.sh
           scripts/test_floor_product_workspace.py
           scripts/test_floor_protocol.py
