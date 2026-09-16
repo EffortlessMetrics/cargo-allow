@@ -28,7 +28,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
           test -z "$(git status --porcelain)"
 
-      - name: Add bounded fixture denominator row
+      - name: Add bounded fixture denominator rows
         shell: bash
         run: |
           set -euo pipefail
@@ -38,13 +38,18 @@ jobs:
           text = path.read_text(encoding="utf-8")
           if 'id = "direct-floor-product-workspace-projector"' not in text:
               raise SystemExit("current head is missing the production projector declaration")
-          row_id = "floor-product-workspace-fixtures"
-          if f'id = "{row_id}"' in text:
-              raise SystemExit(f"consumer row already exists: {row_id}")
+          row_ids = (
+              "floor-product-workspace-fixtures",
+              "floor-source-identity-projection-fixtures",
+          )
+          for row_id in row_ids:
+              if f'id = "{row_id}"' in text:
+                  raise SystemExit(f"consumer row already exists: {row_id}")
           anchor = '[[consumers]]\nid = "changie-config"'
           if text.count(anchor) != 1:
               raise SystemExit(f"expected one anchor, found {text.count(anchor)}")
-          row = "\n".join([
+          rows = []
+          rows.append("\n".join([
               '[[consumers]]',
               'id = "floor-product-workspace-fixtures"',
               'path = "scripts/test_floor_product_workspace.py"',
@@ -58,8 +63,23 @@ jobs:
               '  "def test_unrelated_member_cannot_enter_the_execution_workspace(self):",',
               ']',
               'claim_boundary = "The workspace markers occur only in temporary synthetic manifests used to test membership projection and isolation. The fixture driver does not classify a product release version, tag, channel, or prerelease posture."',
-          ])
-          path.write_text(text.replace(anchor, row + "\n\n" + anchor), encoding="utf-8", newline="\n")
+          ]))
+          rows.append("\n".join([
+              '[[consumers]]',
+              'id = "floor-source-identity-projection-fixtures"',
+              'path = "scripts/test_floor_source_identity.py"',
+              'role = "real-Git source-identity controls for the derived product-workspace proof subject (#4283)"',
+              'disposition = "historical-fixture-only"',
+              'owner = "#4283"',
+              'marker_classes = ["workspace-reader"]',
+              'exact_counts = [{ class = "workspace-reader", count = 2 }]',
+              'sites = [',
+              '  "class FloorSourceIdentityTests(unittest.TestCase):",',
+              '  "def write_projection(self):",',
+              ']',
+              'claim_boundary = "The workspace markers occur only in temporary Git fixture manifests that exercise projection binding and dirty-source admission. The fixture driver does not infer package release versions, tags, channels, or prerelease posture."',
+          ]))
+          path.write_text(text.replace(anchor, "\n\n".join(rows) + "\n\n" + anchor), encoding="utf-8", newline="\n")
           PY
           git diff --check
           test "$(git diff --name-only)" = "policy/release-identity-consumers.toml"
@@ -87,5 +107,5 @@ jobs:
           git config user.email '15812269+EffortlessSteven@users.noreply.github.com'
           git add policy/release-identity-consumers.toml
           git diff --cached --check
-          git commit --no-verify -m 'fix(ci): classify product workspace projection fixtures (#4283)'
+          git commit --no-verify -m 'fix(ci): classify product workspace proof fixtures (#4283)'
           git push origin HEAD:fix/4283-product-floor-isolation
