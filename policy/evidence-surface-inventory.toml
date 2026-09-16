@@ -396,6 +396,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove pure reconciliation semantics; no registry observation, permission proof, or release authorization is produced."
 
 [[surfaces]]
+id = "final-registry-observation-v1"
+owner_issue = 3850
+semantic_authority = "credential-free final registry observation"
+path = "scripts/final-registry-observation.py"
+subject = "CargoAllowFinalRegistryPreflightV1"
+producer = "credential-free crates.io observer with bounded retries"
+consumer = "#2501 freeze, #3789 authorization, and #2502 execution evidence"
+claimed_acceptance_row = "exact version, checksum, yank, and owner-state observation with bounded freshness"
+assertion_mechanism = "stubbed-transport contract tests plus deterministic provider fixtures through the production evaluator"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2501"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Live reads reduce publication risk with explicit residual authority risk; no permission proof, upload, or release authorization is produced."
+
+[[surfaces]]
 id = "intent-candidate-smoke"
 owner_issue = 2599
 semantic_authority = "intent candidate smoke"

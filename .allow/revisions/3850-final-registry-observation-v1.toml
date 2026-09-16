@@ -1,0 +1,27 @@
+# Issue #3850: exact-path contract artifacts for the credential-free observer,
+# with no broadening of policy.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11292"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d5326c56765fc1acc7b71168e22778c47f6419262d4f77861f74833102ea7b3a"
+reason = "Retain the credential-free crates.io observation adapter. This exact script path performs read-only public queries only; it carries no release evidence and grants no authority."
+
+[[records]]
+allow_ids = ["allow-11293"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:421e2ee9126c75e1c09a3e4d6a7dc9cec41e000cdbda48d1efaaa7329c61ca09"
+reason = "Retain the deterministic adapter contract harness. This exact script path proves classification, provenance, credential-law, surplus, and merge behavior with a stubbed transport."
+
+[[records]]
+allow_ids = ["allow-11294"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d6323d4bb0e86293f2b4a2b43b537650204a3db4e38d358f240ab6dfe7b7bd50"
+reason = "Retain the producer/consumer contract for credential-free final registry observation. This exact documentation path carries no live release evidence."
+
+[[records]]
+allow_ids = ["allow-11295"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:257e225700c36bb9513083b0f722b471dc30857c298b3f63757997243b51649c"
+reason = "Receipt this note's exact tracked configuration path and the scoped transition rationale."
