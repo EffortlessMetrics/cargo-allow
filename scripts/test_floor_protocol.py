@@ -47,22 +47,29 @@ def invoke(program, arguments):
             return 0, ("2" if derived else "1") * 40 + "\n", ""
         if arguments == ["branch", "--show-current"]:
             return 0, "", ""
+        if arguments == ["show", "1" * 40 + ":Cargo.toml"]:
+            return 0, (Path(case["fixture"]) / "Cargo.toml").read_text(encoding="utf-8"), ""
         if arguments == ["ls-files", "-v", "-z"]:
-            return 0, "H Cargo.lock\0", ""
+            return 0, "H Cargo.lock\0H Cargo.toml\0", ""
         if arguments == ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]:
             return 0, "target/floor-proof/execution-identity.json\0", ""
         if arguments == ["status", "--porcelain=v1", "--untracked-files=all", "-z"]:
             if case.get("dirty_source"):
                 return 0, " M source.rs\0", ""
-            derived = Path("target/floor-proof/fixture-derived").exists()
-            unchanged = Path("Cargo.lock").read_bytes() == (Path(case["fixture"]) / "Cargo.lock").read_bytes()
-            return 0, "" if derived or unchanged else " M Cargo.lock\0", ""
-        if arguments == ["add", "--", "Cargo.lock"]:
+            if Path("target/floor-proof/fixture-derived").exists():
+                return 0, "", ""
+            fixture = Path(case["fixture"])
+            changed = []
+            for relative in ("Cargo.lock", "Cargo.toml"):
+                if Path(relative).read_bytes() != (fixture / relative).read_bytes():
+                    changed.append(" M " + relative)
+            return 0, "\0".join(changed) + ("\0" if changed else ""), ""
+        if arguments[:2] == ["add", "--"] and set(arguments[2:]).issubset({"Cargo.lock", "Cargo.toml"}):
             return 0, "", ""
         if arguments == ["-c", "core.hooksPath=", "-c", "commit.gpgSign=false",
                          "-c", "user.name=cargo-allow floor proof",
                          "-c", "user.email=floor-proof@example.invalid", "commit",
-                         "-m", "chore(proof): derive local direct-floor lock"]:
+                         "-m", "chore(proof): derive product-scoped direct-floor subject"]:
             if case.get("fail_derivation"):
                 return 45, "", "simulated derived commit failure"
             Path("target/floor-proof/fixture-derived").write_text("derived")
@@ -70,7 +77,10 @@ def invoke(program, arguments):
         if arguments == ["rev-list", "--parents", "-n", "1", "HEAD"]:
             return 0, "2" * 40 + " " + "1" * 40 + "\n", ""
         if arguments == ["diff", "--name-only", "-z", "1" * 40, "2" * 40]:
-            return 0, "Cargo.lock\0", ""
+            fixture = Path(case["fixture"])
+            changed = [relative for relative in ("Cargo.lock", "Cargo.toml")
+                       if Path(relative).read_bytes() != (fixture / relative).read_bytes()]
+            return 0, "\0".join(changed) + ("\0" if changed else ""), ""
         if arguments == ["rev-parse", "HEAD^{tree}"]:
             return 0, "3" * 40 + "\n", ""
         if arguments[:3] == ["worktree", "add", "--detach"]:
@@ -164,6 +174,7 @@ class FloorProtocolTests(unittest.TestCase):
         for name in (
             "proof-direct-floors.sh",
             "floor_pin_settlement.py",
+            "floor_product_workspace.py",
             "floor_execution_identity.py",
             "floor_source_identity.py",
         ):
@@ -257,24 +268,26 @@ class FloorProtocolTests(unittest.TestCase):
         receipt = json.loads(receipt_path.read_bytes()) if receipt_path.exists() else None
         return result, calls, receipt, receipt_path
 
-    def test_receipt_distinguishes_reused_source_from_local_derived_commit(self):
-        for floor, reused in (("0.1", True), ("0.2", False)):
+    def test_receipt_binds_the_product_projected_derived_commit(self):
+        for floor in ("0.1", "0.2"):
             with self.subTest(floor=floor):
                 result, calls, receipt, _ = self.run_producer(floor=floor)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 subject = next(text for text in receipt["limitations"]
                                if text.startswith("local floor subject:"))
+                projection = next(text for text in receipt["limitations"]
+                                  if text.startswith("product workspace projection:"))
                 self.assertIn("source " + "1" * 40, subject)
-                self.assertIn("executed commit " + ("1" if reused else "2") * 40, subject)
-                self.assertEqual("reuses the unchanged source commit" in subject, reused)
-                self.assertEqual("not an upstream commit" in subject, not reused)
+                self.assertIn("executed commit " + "2" * 40, subject)
+                self.assertIn("not an upstream commit", subject)
+                self.assertIn("cargo-allow.direct-floor-product-workspace.v1", projection)
                 commits = [call for call in calls if call["program"] == "git"
                            and "commit" in call["arguments"]]
-                self.assertEqual(len(commits), 0 if reused else 1)
+                self.assertEqual(len(commits), 1)
 
     def test_failed_source_derivation_prevents_classes_and_receipt(self):
         failures = {
-            "dirty_source": "floor derivation permits only an unstaged Cargo.lock change",
+            "dirty_source": "floor derivation permits only unstaged Cargo.toml and Cargo.lock changes",
             "fail_derivation": "simulated derived commit failure",
         }
         for failure, diagnostic in failures.items():
@@ -381,6 +394,8 @@ class FloorProtocolTests(unittest.TestCase):
         self.assertIn("fixture-helper/activated -> fixture-helper/dep:enabled", companion)
         self.assertIn("inactive | excluded | no selected feature enables", companion)
         self.assertIn("Starting source commit: " + "1" * 40, companion)
+        self.assertIn("Workspace projection: cargo-allow.direct-floor-product-workspace.v1", companion)
+        self.assertIn("Execution member paths:", companion)
 
 
 if __name__ == "__main__":
