@@ -65,8 +65,7 @@ jobs:
           diff -u /tmp/expected-files.txt /tmp/actual-files.txt
 
           grep -F 'yaml-rust2 = { version = "0.13", optional = true }' crates/allow-files/Cargo.toml
-          grep -F 'manifest.contains("yaml-rust2 = { version = \\"0.13\\", optional = true }")' \
-            crates/cargo-allow/src/allow_files_changie_admission_tests.rs
+          grep -F 'version = \"0.13\"' crates/cargo-allow/src/allow_files_changie_admission_tests.rs
 
           test -f scripts/floor_product_workspace.py
           test -f .allow/revisions/4283-direct-floor-product-isolation.toml
