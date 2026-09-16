@@ -105,6 +105,29 @@ class ProductWorkspaceProjectionTests(unittest.TestCase):
         self.assertIn("crates/target-helper", result["execution_member_paths"])
         self.assertNotIn("crates/target-helper", result["omitted_member_paths"])
 
+    def test_workspace_escaping_path_dependency_fails_closed(self):
+        (self.root / "crates" / "product-a" / "Cargo.toml").write_text(
+            '[package]\nname = "product-a"\nversion = "0.1.0"\n'
+            'edition.workspace = true\n[dependencies]\n'
+            'outside = { path = "../outside" }\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        with self.assertRaisesRegex(ValueError, "leaves the workspace"):
+            self.project(["product-a"])
+
+    def test_malformed_target_dependency_table_fails_closed(self):
+        (self.root / "crates" / "product-a" / "Cargo.toml").write_text(
+            '[package]\nname = "product-a"\nversion = "0.1.0"\n'
+            'edition.workspace = true\n'
+            "[target.'cfg(windows)']\n"
+            'dependencies = "not-a-table"\n',
+            encoding="utf-8",
+            newline="\n",
+        )
+        with self.assertRaisesRegex(ValueError, "must be a table"):
+            self.project(["product-a"])
+
     def test_selection_order_does_not_change_projected_bytes_or_identity(self):
         original = (self.root / "Cargo.toml").read_bytes()
         first, _ = self.project(["product-a", "shared"])
