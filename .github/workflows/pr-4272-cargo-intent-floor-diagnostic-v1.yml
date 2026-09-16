@@ -1,0 +1,74 @@
+name: One-shot PR 4272 cargo-intent floor diagnostic
+
+on:
+  push:
+    branches:
+      - automation/pr-4272-cargo-intent-floor-diagnostic-v1
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-4272-cargo-intent-floor-diagnostic-v1
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET_HEAD: 7ce5dbfb60fbc4dd8a5a4f9975da2307da721cc7
+      EVIDENCE_DIR: target/pr-4272-cargo-intent-floor-diagnostic-v1
+    steps:
+      - name: Check out the exact PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: dependabot/cargo/patch-updates-b2061204c1
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify the admitted subject
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain)"
+          command -v git
+          command -v jq
+          command -v python3
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Produce and retain the cargo-intent receipt
+        run: |
+          set -uo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          rustc -vV > "$EVIDENCE_DIR/rustc.txt"
+          cargo -vV > "$EVIDENCE_DIR/cargo.txt"
+          rustdoc -vV > "$EVIDENCE_DIR/rustdoc.txt"
+          set +e
+          CI_PROOF_PRODUCT=cargo-intent \
+          CI_PROOF_MSRV=1.95 \
+          CI_PROOF_ADVISORY=true \
+          CI_PROOF_CLASSES=check \
+          CI_PROOF_OUT="$PWD/$EVIDENCE_DIR/receipt.json" \
+            bash scripts/proof-direct-floors.sh \
+            2>&1 | tee "$EVIDENCE_DIR/producer.log"
+          status=${PIPESTATUS[0]}
+          set -e
+          printf '%s\n' "$status" > "$EVIDENCE_DIR/producer-status.txt"
+          test -s "$EVIDENCE_DIR/receipt.json"
+          jq -e '.product == "cargo-intent"' "$EVIDENCE_DIR/receipt.json"
+          jq -r '.rows[] | select(.result != "proven") | [.package, .tested_floor, .resolved_version, .result, (.limitation // "")] | @tsv' \
+            "$EVIDENCE_DIR/receipt.json" | tee "$EVIDENCE_DIR/non-proven-rows.tsv"
+          cp "$EVIDENCE_DIR/receipt.selection.md" "$EVIDENCE_DIR/selection.md"
+
+      - name: Upload the diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pr-4272-cargo-intent-floor-diagnostic-v1
+          path: target/pr-4272-cargo-intent-floor-diagnostic-v1/
+          if-no-files-found: error
