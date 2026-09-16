@@ -47,6 +47,8 @@ def invoke(program, arguments):
             return 0, ("2" if derived else "1") * 40 + "\n", ""
         if arguments == ["branch", "--show-current"]:
             return 0, "", ""
+        if arguments == ["show", "1" * 40 + ":Cargo.toml"]:
+            return 0, (Path(case["fixture"]) / "Cargo.toml").read_text(encoding="utf-8"), ""
         if arguments == ["ls-files", "-v", "-z"]:
             return 0, "H Cargo.lock\0H Cargo.toml\0", ""
         if arguments == ["ls-files", "--others", "--ignored", "--exclude-standard", "-z"]:
