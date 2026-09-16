@@ -342,7 +342,7 @@ pin_failures="$(cat target/floor-proof/pin-failures.json)"
 # Re-read the final lock through the same name/version/source selector used
 # by settlement. A row absent from pin-failures must still be one unique
 # registry identity at the declared floor before proof classes may run.
-floor_move_failures="$(python3 - <<'PY'
+floor_move_failures="$(python3 -B - <<'PY'
 import json
 from pathlib import Path
 import sys
