@@ -13,6 +13,7 @@ from typing import Any
 
 
 SCHEMA_ID = "cargo-allow.direct-floor-product-workspace.v1"
+DEPENDENCY_TABLES = ("dependencies", "build-dependencies", "dev-dependencies")
 
 
 def _sha256(raw: bytes) -> str:
@@ -52,6 +53,37 @@ def _path_target(owner_path: str, spec: object, *, inherited: bool) -> str | Non
     return posixpath.normpath(raw if inherited else posixpath.join(owner_path, raw))
 
 
+def _dependency_tables(manifest: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """Return every dependency table that can affect one workspace lock.
+
+    Cargo resolves target-specific dependency rows into the workspace lock even
+    when the current host does not select that target. Keeping these tables in
+    the same traversal prevents an omitted path package from being silently
+    reintroduced by Cargo after the projection has claimed it was excluded.
+    """
+
+    tables: list[tuple[str, dict[str, Any]]] = []
+    for table_name in DEPENDENCY_TABLES:
+        dependencies = manifest.get(table_name, {})
+        if not isinstance(dependencies, dict):
+            raise ValueError(f"[{table_name}] must be a table")
+        tables.append((table_name, dependencies))
+
+    targets = manifest.get("target", {})
+    if not isinstance(targets, dict):
+        raise ValueError("[target] must be a table")
+    for selector in sorted(targets):
+        target = targets[selector]
+        if not isinstance(target, dict):
+            raise ValueError(f"[target.{selector}] must be a table")
+        for table_name in DEPENDENCY_TABLES:
+            dependencies = target.get(table_name, {})
+            if not isinstance(dependencies, dict):
+                raise ValueError(f"[target.{selector}.{table_name}] must be a table")
+            tables.append((f"target.{selector}.{table_name}", dependencies))
+    return tables
+
+
 def _execution_members(
     root: Path,
     selected_paths: list[str],
@@ -60,9 +92,9 @@ def _execution_members(
 ) -> list[str]:
     """Include workspace path dependencies causally reachable from the selection.
 
-    Development dependencies enter the execution workspace because the release-set
-    proof runs tests. Their external requirements are not added to certified floor
-    rows.
+    Development and target-specific dependencies enter the execution workspace
+    because Cargo resolves the workspace lock for test execution across those
+    tables. Their external requirements are not added to certified floor rows.
     """
 
     selected = set(selected_paths)
@@ -70,16 +102,16 @@ def _execution_members(
     while pending:
         owner_path = pending.pop()
         manifest = tomllib.loads((root / owner_path / "Cargo.toml").read_text(encoding="utf-8"))
-        for table in ("dependencies", "build-dependencies", "dev-dependencies"):
-            for dependency, authored_spec in manifest.get(table, {}).items():
+        for table_name, dependencies in _dependency_tables(manifest):
+            for dependency, authored_spec in dependencies.items():
                 spec, inherited = _resolved_spec(dependency, authored_spec, workspace_dependencies)
                 target = _path_target(owner_path, spec, inherited=inherited)
                 if target is None:
                     continue
                 if target not in path_to_name:
                     raise ValueError(
-                        f"{path_to_name[owner_path]} path dependency {dependency} "
-                        f"leaves the workspace ({target})"
+                        f"{path_to_name[owner_path]} {table_name} path dependency "
+                        f"{dependency} leaves the workspace ({target})"
                     )
                 if target not in selected:
                     selected.add(target)
