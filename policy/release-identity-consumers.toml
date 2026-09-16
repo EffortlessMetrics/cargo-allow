@@ -77,6 +77,20 @@ sites = ["data = tomllib.load(open(sys.argv[1], \"rb\"))"]
 claim_boundary = "Reads workspace and member manifest metadata to enumerate a product closure's declared direct floors; decides no release channel, tag, or prerelease semantics."
 
 [[consumers]]
+id = "direct-floor-product-workspace-projector"
+path = "scripts/floor_product_workspace.py"
+role = "selected product workspace projection for bounded direct-floor proof (#4283)"
+disposition = "non-semantic-formatting"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = [
+  "root manifest does not define [workspace]",
+  "[workspace.dependencies] must be a table",
+]
+claim_boundary = "Reads and rewrites only workspace membership for one selected product proof; it does not parse package release versions, infer release channels, or decide prerelease posture."
+
+[[consumers]]
 id = "changie-config"
 path = ".changie.yaml"
 role = "Changie changelog heading format"
