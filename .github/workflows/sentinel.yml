@@ -4,8 +4,8 @@ name: Workflow construction sentinel
 # malformed because GitHub parses each workflow file independently. Its base
 # job validates the complete workflow tree using stdlib Python YAML parsing;
 # no secrets are available and its token remains read-only. The temporary,
-# same-repository #4273 call below checks out only an exact admitted dependency
-# head and receives contents:write solely to create its bounded evidence branch.
+# same-repository #4273 call below invokes one exact admitted workflow commit
+# and receives contents:write solely to create its bounded evidence branch.
 
 on:
   pull_request:
@@ -71,7 +71,7 @@ jobs:
                   if "name" not in data:
                       failures.append(f"{path}: missing `name`")
                   if "runs" not in data:
-                      failures.append(f"{path}: missing `runs`")
+                      failures.append(f"{path}: missing `runs` key")
 
           for failure in failures:
               print(f"FAIL: {failure}", file=sys.stderr)
@@ -82,11 +82,12 @@ jobs:
       - name: Sentinel passed
         run: echo "workflow construction sentinel passed"
 
-  pr-4273-floor-regeneration-v1:
+  regenerate-pr-4273:
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 4286 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'automation/pr-4273-floor-regeneration-v1'
     permissions:
       contents: write
-    uses: ./.github/workflows/pr-4273-floor-regeneration-v1.yml
+    uses: EffortlessMetrics/cargo-allow/.github/workflows/pr-4273-floor-regeneration-v1.yml@e2a68d68a9c5a0633fbec82f45cd644e952f5979
