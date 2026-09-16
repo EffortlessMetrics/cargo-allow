@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - automation/pr-4273-floor-regeneration-v1
+  workflow_call:
 
 permissions:
   contents: write
