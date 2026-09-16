@@ -53,6 +53,10 @@ class FloorSourceIdentityTests(unittest.TestCase):
             ["git", *arguments], check=True, capture_output=True, text=True
         ).stdout
 
+    def source_manifest_digest(self):
+        raw = self.git("show", f"{self.source}:Cargo.toml").encode("utf-8").replace(b"\r", b"")
+        return "sha256:v1:" + hashlib.sha256(raw).hexdigest()
+
     def write_projection(self):
         Path("Cargo.toml").write_text(
             '[workspace]\nmembers = ["crates/a"]\n'
@@ -63,6 +67,7 @@ class FloorSourceIdentityTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema_id": SUBJECT.PROJECTION_SCHEMA,
+                    "source_manifest_digest": self.source_manifest_digest(),
                     "projected_manifest_digest": digest,
                     "certified_member_paths": ["crates/a"],
                     "execution_member_paths": ["crates/a"],
@@ -98,6 +103,7 @@ class FloorSourceIdentityTests(unittest.TestCase):
             {"Cargo.toml", "Cargo.lock"},
         )
         self.assertEqual(result["derived_paths"], ["Cargo.lock", "Cargo.toml"])
+        self.assertEqual(result["source_manifest_digest"], self.source_manifest_digest())
         self.assertEqual(result["execution_member_paths"], ["crates/a"])
         self.assertEqual(self.git("status", "--porcelain"), "")
         self.assertEqual(Path("source.rs").read_text(), "original source\n")
@@ -135,16 +141,31 @@ class FloorSourceIdentityTests(unittest.TestCase):
                     Path(name).unlink(missing_ok=True)
 
     def test_rejects_missing_tampered_or_foreign_projection(self):
-        for mode in ("missing", "digest", "schema"):
+        modes = (
+            "missing",
+            "projected-digest",
+            "source-digest",
+            "schema",
+            "certified-members",
+            "execution-members",
+        )
+        for mode in modes:
             with self.subTest(mode=mode):
                 self.write_projection()
                 if mode == "missing":
                     self.projection_path.unlink()
                 else:
                     data = json.loads(self.projection_path.read_text())
-                    data[
-                        "projected_manifest_digest" if mode == "digest" else "schema_id"
-                    ] = "foreign"
+                    if mode == "projected-digest":
+                        data["projected_manifest_digest"] = "foreign"
+                    elif mode == "source-digest":
+                        data["source_manifest_digest"] = "foreign"
+                    elif mode == "schema":
+                        data["schema_id"] = "foreign"
+                    elif mode == "certified-members":
+                        data["certified_member_paths"] = ["crates/b"]
+                    elif mode == "execution-members":
+                        data["execution_member_paths"] = ["crates/b"]
                     self.projection_path.write_text(json.dumps(data))
                 with self.assertRaises(ValueError):
                     SUBJECT.derive(self.source, self.projection_path)

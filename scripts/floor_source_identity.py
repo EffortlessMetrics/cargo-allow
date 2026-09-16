@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tomllib
 
 
 ALLOWED_DERIVED_PATHS = {"Cargo.toml", "Cargo.lock"}
@@ -22,26 +23,66 @@ def git(*arguments: str) -> str:
     return result.stdout
 
 
+def _digest_bytes(raw: bytes) -> str:
+    return "sha256:v1:" + hashlib.sha256(raw.replace(b"\r", b"")).hexdigest()
+
+
 def _digest(path: Path) -> str:
-    raw = path.read_bytes().replace(b"\r", b"")
-    return "sha256:v1:" + hashlib.sha256(raw).hexdigest()
+    return _digest_bytes(path.read_bytes())
 
 
-def _projection(path: Path) -> dict[str, object]:
+def _source_manifest_digest(source: str) -> str:
+    return _digest_bytes(git("show", f"{source}:Cargo.toml").encode("utf-8"))
+
+
+def _workspace_member_paths(path: Path) -> tuple[list[str], list[str]]:
+    try:
+        document = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ValueError(f"projected Cargo.toml is unreadable: {error}") from error
+    workspace = document.get("workspace")
+    if not isinstance(workspace, dict):
+        raise ValueError("projected Cargo.toml has no workspace table")
+
+    fields: dict[str, list[str]] = {}
+    for field in ("members", "default-members"):
+        values = workspace.get(field)
+        if not isinstance(values, list) or not values or not all(
+            isinstance(value, str) and value for value in values
+        ):
+            raise ValueError(f"projected Cargo.toml has invalid workspace {field}")
+        fields[field] = values
+    return fields["members"], fields["default-members"]
+
+
+def _projection(path: Path, source: str) -> dict[str, object]:
     try:
         projection = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"floor workspace projection is unreadable: {error}") from error
     if projection.get("schema_id") != PROJECTION_SCHEMA:
         raise ValueError("floor workspace projection has an unsupported schema")
+    if projection.get("source_manifest_digest") != _source_manifest_digest(source):
+        raise ValueError("floor workspace projection does not bind the source Cargo.toml")
     if projection.get("projected_manifest_digest") != _digest(Path("Cargo.toml")):
         raise ValueError("floor workspace projection does not bind the current Cargo.toml")
+
+    claims: dict[str, list[str]] = {}
     for field in ("certified_member_paths", "execution_member_paths"):
         values = projection.get(field)
         if not isinstance(values, list) or not values or not all(
             isinstance(value, str) and value for value in values
         ):
             raise ValueError(f"floor workspace projection has invalid {field}")
+        claims[field] = values
+
+    execution_members, certified_members = _workspace_member_paths(Path("Cargo.toml"))
+    if claims["execution_member_paths"] != execution_members:
+        raise ValueError("floor workspace projection execution members do not match Cargo.toml")
+    if claims["certified_member_paths"] != certified_members:
+        raise ValueError("floor workspace projection certified members do not match Cargo.toml")
+    if not set(certified_members).issubset(execution_members):
+        raise ValueError("floor workspace projection certifies members outside its execution workspace")
     return projection
 
 
@@ -76,7 +117,7 @@ def derive(source: str, projection_path: Path) -> dict[str, object]:
     if any(path and not path.startswith("target/") for path in ignored.split("\0")):
         raise ValueError("floor derivation rejects ignored files outside root target")
 
-    projection = _projection(projection_path)
+    projection = _projection(projection_path, source)
     changes = _admitted_changes(
         git("status", "--porcelain=v1", "--untracked-files=all", "-z")
     )
@@ -114,6 +155,7 @@ def derive(source: str, projection_path: Path) -> dict[str, object]:
         "derived_tree": git("rev-parse", "HEAD^{tree}").strip(),
         "derived_paths": changes,
         "projection_schema_id": projection["schema_id"],
+        "source_manifest_digest": projection["source_manifest_digest"],
         "projected_manifest_digest": projection["projected_manifest_digest"],
         "certified_member_paths": projection["certified_member_paths"],
         "execution_member_paths": projection["execution_member_paths"],
