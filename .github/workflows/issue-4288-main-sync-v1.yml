@@ -1,0 +1,162 @@
+name: Exact PR 4288 main synchronization
+
+on:
+  push:
+    branches:
+      - automation/4288-main-sync-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4288-main-sync-v1
+  cancel-in-progress: false
+
+jobs:
+  synchronize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TARGET_BRANCH: fix/4283-product-floor-isolation
+      TARGET_HEAD: 538220d3421fc044ebc0c857a46e8531bc6849c0
+      MAIN_HEAD: 7a8d13b907dd1300b50ecba9338e6df57a422733
+      RUSTUP_TOOLCHAIN: 1.95.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/4283-product-floor-isolation
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Verify exact subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$MAIN_HEAD"
+          test -z "$(git status --porcelain)"
+
+      - name: Retain PR-owned policy rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          text = Path("policy/allow.toml").read_text(encoding="utf-8")
+          chunks = text.split("[[allow]]")
+          for wanted in ("allow-11296", "allow-11297"):
+              matches = [chunk for chunk in chunks if f'id = "{wanted}"' in chunk]
+              if len(matches) != 1:
+                  raise SystemExit(f"expected exactly one {wanted} block, found {len(matches)}")
+              Path(f"/tmp/{wanted}.toml").write_text(
+                  "[[allow]]" + matches[0].rstrip() + "\n",
+                  encoding="utf-8",
+                  newline="\n",
+              )
+          PY
+
+      - name: Merge current main and resolve the policy ledger semantically
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          git merge --no-ff --no-commit "$MAIN_HEAD"
+          merge_status=$?
+          set -e
+          if [[ "$merge_status" -ne 0 && "$merge_status" -ne 1 ]]; then
+            echo "unexpected git merge status: $merge_status" >&2
+            exit "$merge_status"
+          fi
+
+          conflicts="$(git diff --name-only --diff-filter=U)"
+          if [[ -n "$conflicts" && "$conflicts" != "policy/allow.toml" ]]; then
+            echo "unexpected merge conflicts:" >&2
+            printf '%s\n' "$conflicts" >&2
+            exit 1
+          fi
+
+          if [[ "$conflicts" == "policy/allow.toml" ]]; then
+            git show "$MAIN_HEAD:policy/allow.toml" > policy/allow.toml
+            printf '\n' >> policy/allow.toml
+            cat /tmp/allow-11296.toml /tmp/allow-11297.toml >> policy/allow.toml
+            git add policy/allow.toml
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("policy/allow.toml").read_text(encoding="utf-8")
+          for wanted in range(11292, 11298):
+              marker = f'id = "allow-{wanted}"'
+              if text.count(marker) != 1:
+                  raise SystemExit(f"expected exactly one {marker}, found {text.count(marker)}")
+          PY
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --check
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Prove merged product-floor contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test_floor_product_workspace.py
+          bash scripts/test-proof-direct-floors-protocol.sh
+          cargo test -p cargo-allow --locked --bin cargo-allow release_identity_denominator_tests
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Verify bounded semantic union
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "$TARGET_HEAD" | sort > /tmp/from-pr.txt
+          cat > /tmp/expected-from-pr.txt <<'EOF'
+          .allow/revisions/3850-final-registry-observation-v1.toml
+          .changes/7fd924d5-0e5c-4f43-a259-47a91fc4287d.yaml
+          crates/allow-report/examples/final-registry-observation-v1-invalid-fixtures.rs
+          crates/cargo-allow/tests/final_registry_observation_cli_golden.rs
+          crates/cargo-allow/tests/final_registry_observation_contract.rs
+          docs/release/cargo-allow-0.2.0-final-registry-observation.md
+          policy/allow.toml
+          scripts/final-registry-observation.py
+          scripts/test-final-registry-observation.py
+          EOF
+          sort -o /tmp/expected-from-pr.txt /tmp/expected-from-pr.txt
+          diff -u /tmp/expected-from-pr.txt /tmp/from-pr.txt
+
+          git diff --name-only "$MAIN_HEAD" | sort > /tmp/from-main.txt
+          cat > /tmp/expected-from-main.txt <<'EOF'
+          .changes/e7a1f6f8-d82a-4f7a-8123-4fcf889990e6.yaml
+          crates/cargo-allow/src/minimum_direct_version_drift_tests.rs
+          docs/ci/architecture/direct-floor-proof.md
+          policy/allow.toml
+          policy/release-identity-consumers.toml
+          scripts/floor_product_workspace.py
+          scripts/floor_source_identity.py
+          scripts/proof-advisory-products.sh
+          scripts/proof-direct-floors.sh
+          scripts/release-rehearsal.py
+          scripts/test-proof-direct-floors.sh
+          scripts/test_floor_product_workspace.py
+          scripts/test_floor_protocol.py
+          scripts/test_floor_source_identity.py
+          EOF
+          sort -o /tmp/expected-from-main.txt /tmp/expected-from-main.txt
+          diff -u /tmp/expected-from-main.txt /tmp/from-main.txt
+
+      - name: Commit and push the exact merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          git config user.name "cargo-allow automation"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git commit --no-verify -m "merge: synchronize #4288 with current main"
+          merge_head="$(git rev-parse HEAD)"
+          read -r commit first second <<<"$(git rev-list --parents -n 1 HEAD)"
+          test "$commit" = "$merge_head"
+          test "$first" = "$TARGET_HEAD"
+          test "$second" = "$MAIN_HEAD"
+          git push origin "HEAD:${TARGET_BRANCH}"
