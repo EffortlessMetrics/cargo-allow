@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 60
     env:
       TARGET_BRANCH: fix/4283-product-floor-isolation
-      TARGET_HEAD: 869e912253d61ce8c3845d31f64f1ebe67625aa5
+      TARGET_HEAD: 95a9ef44b91faf1a8dcbb8aeba7dd47e64ed6ec1
       MAIN_HEAD: 7a8d13b907dd1300b50ecba9338e6df57a422733
       RUSTUP_TOOLCHAIN: 1.95.0
     steps:
