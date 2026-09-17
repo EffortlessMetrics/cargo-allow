@@ -29,6 +29,10 @@ pub const RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION: u32 = 1;
 pub const RELEASE_AUTHORIZATION_REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 /// The single clean final operation this generation may authorize.
 pub const RELEASE_AUTHORIZATION_FINAL_OPERATION: &str = "publish_cargo_allow_final_0_2_0";
+/// Compatibility name retained for downstream compilation. This final-only
+/// compiler always rejects it; #3791/#2509 own recovery authority.
+pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str =
+    "publish_cargo_allow_recovery_0_2_0";
 pub const RELEASE_AUTHORIZATION_FINAL_VERSION: &str = "0.2.0";
 pub const RELEASE_AUTHORIZATION_FINAL_TAG: &str = "v0.2.0";
 pub const RELEASE_AUTHORIZATION_STABLE_CHANNEL: &str = "stable";
@@ -37,6 +41,10 @@ pub const RELEASE_AUTHORIZATION_AUTH_CLASS: &str = "crates_io_api_token";
 /// Exact bounded statement accepted by this generation.
 pub const RELEASE_AUTHORIZATION_EXACT_STATEMENT: &str =
     "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.";
+/// Compatibility limit retained for existing consumers. Exact equality, not
+/// merely this bound, is required by the compiler.
+pub const RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN: usize =
+    RELEASE_AUTHORIZATION_EXACT_STATEMENT.len();
 
 /// Exact final denominator in release order: (logical_id, package, version, shared).
 pub const RELEASE_AUTHORIZATION_SELECTION: [(&str, &str, &str, bool); 13] = [
@@ -213,7 +221,8 @@ pub struct ReleaseAuthorizationUseObservationV1 {
 
 /// Trusted expected side of compilation, assembled from retained production
 /// objects and current provider/control readbacks rather than copied from the
-/// authorization decision.
+/// authorization decision. This type remains internal to the artifact parser;
+/// external consumers pass its canonical JSON bytes to the compiler.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReleaseAuthorizationExpectedContextV1 {
