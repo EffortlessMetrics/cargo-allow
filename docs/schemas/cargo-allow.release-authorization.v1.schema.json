@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-authorization.v1.schema.json",
   "title": "CargoAllowReleaseAuthorizationV1",
-  "description": "Compiled one-operation release authorization result. Structural validation does not authenticate evidence, prove permission, or authorize publication.",
+  "description": "Compiled eligibility result for one immutable final-release authorization decision reconciled against a separately supplied trusted context. Structural validation does not authenticate either producer, prove permission, create a tag, or authorize publication.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,9 @@
     "findings",
     "caveats",
     "authorization_digest",
-    "evaluated_at_unix_seconds"
+    "expected_context_digest",
+    "evaluated_at_unix_seconds",
+    "claim_boundary"
   ],
   "properties": {
     "schema_id": {
@@ -38,16 +40,28 @@
       "description": "Non-blocking residual risks retained alongside a Complete result."
     },
     "authorization_digest": {
-      "type": "string",
-      "description": "Canonical digest of the authorization statement, excluding filing inventory."
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the immutable authorization decision. Provider observations, evaluation time, and mutable operation state are excluded."
+    },
+    "expected_context_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the independently supplied trusted freeze, evidence, provider/control, and authorization-use context."
     },
     "evaluated_at_unix_seconds": {
       "type": "integer",
       "minimum": 0,
       "maximum": 18446744073709551615
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
     "result": {
       "enum": [
         "unsupported",
@@ -73,7 +87,8 @@
           "$ref": "#/$defs/result"
         },
         "reason": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         }
       }
     }

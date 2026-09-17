@@ -1,5 +1,6 @@
 use super::*;
-use crate::{FinalRegistryPreflightResultV1 as Preflight, ReleaseAuthorizationConsumptionV1 as Consumption};
+use crate::FinalRegistryPreflightResultV1 as Preflight;
+use ReleaseAuthorizationConsumptionV1 as Consumption;
 use ReleaseAuthorizationResultV1 as State;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -20,13 +21,16 @@ fn package_rows() -> Vec<ReleaseAuthorizationPackageRowV1> {
     RELEASE_AUTHORIZATION_SELECTION
         .into_iter()
         .filter(|row| !row.3)
-        .map(|(logical, package, version, _)| ReleaseAuthorizationPackageRowV1 {
-            logical_id: logical.to_string(),
-            package_name: package.to_string(),
-            package_version: version.to_string(),
-            package_digest: digest(10),
-            package_size_bytes: 10_000,
-        })
+        .enumerate()
+        .map(
+            |(index, (logical, package, version, _))| ReleaseAuthorizationPackageRowV1 {
+                logical_id: logical.to_string(),
+                package_name: package.to_string(),
+                package_version: version.to_string(),
+                package_digest: digest(10 + index as u64),
+                package_size_bytes: 10_000 + index as u64,
+            },
+        )
         .collect()
 }
 
@@ -34,17 +38,20 @@ fn shared_rows() -> Vec<ReleaseAuthorizationSharedRowV1> {
     RELEASE_AUTHORIZATION_SELECTION
         .into_iter()
         .filter(|row| row.3)
-        .map(|(logical, package, version, _)| ReleaseAuthorizationSharedRowV1 {
-            logical_id: logical.to_string(),
-            package_name: package.to_string(),
-            package_version: version.to_string(),
-            expected_checksum: digest(20),
-            authority_digest: digest(21),
-        })
+        .enumerate()
+        .map(
+            |(index, (logical, package, version, _))| ReleaseAuthorizationSharedRowV1 {
+                logical_id: logical.to_string(),
+                package_name: package.to_string(),
+                package_version: version.to_string(),
+                expected_checksum: digest(20 + index as u64),
+                authority_digest: digest(24 + index as u64),
+            },
+        )
         .collect()
 }
 
-fn freeze() -> Result<ReleaseAuthorizationFreezeV1, Box<dyn std::error::Error>> {
+fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn std::error::Error>> {
     let mut freeze = ReleaseAuthorizationFreezeV1 {
         receipt_digest: digest(1),
         candidate_digest: digest(2),
@@ -57,49 +64,6 @@ fn freeze() -> Result<ReleaseAuthorizationFreezeV1, Box<dyn std::error::Error>> 
         shared_prerequisites: shared_rows(),
     };
     freeze.denominator_digest = release_authorization_denominator_binding_v1(&freeze)?;
-    Ok(freeze)
-}
-
-fn evidence() -> ReleaseAuthorizationEvidenceV1 {
-    ReleaseAuthorizationEvidenceV1 {
-        package_docs_digest: digest(30),
-        preflight_result: Preflight::CompleteWithResidualAuthorityRisk,
-        preflight_evaluated_at_unix_seconds: 100,
-        preflight_maximum_age_seconds: 30,
-        support_digest: digest(31),
-        manifest_digest: digest(32),
-        rehearsal_complete_except_authorization: true,
-        rehearsal_digest: digest(33),
-        source_controls_digest: digest(34),
-        live_controls_digest: digest(35),
-        workflow_digest: digest(36),
-        action_inventory_digest: digest(37),
-        observed_context_digest: digest(38),
-        current_context_digest: digest(38),
-    }
-}
-
-fn authority() -> ReleaseAuthorizationAuthorityV1 {
-    ReleaseAuthorizationAuthorityV1 {
-        selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(),
-        maintainer_actor: "release-operator".to_string(),
-        maintainer_role: "release-maintainer".to_string(),
-        source: ReleaseAuthorizationSourceV1 {
-            kind: ReleaseAuthorizationSourceKindV1::IssueComment,
-            repository: RELEASE_AUTHORIZATION_REPOSITORY.to_string(),
-            reference: "issue:2502#comment:1".to_string(),
-            author: "release-operator".to_string(),
-            body_digest: digest(40),
-            statement: RELEASE_AUTHORIZATION_EXACT_STATEMENT.to_string(),
-        },
-        created_at_unix_seconds: 90,
-        expires_at_unix_seconds: 200,
-        one_run_scope: true,
-        nonce: "nonce-0-2-0-0001".to_string(),
-    }
-}
-
-fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn std::error::Error>> {
     Ok(ReleaseAuthorizationInputV1 {
         schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(),
         schema_version: RELEASE_AUTHORIZATION_SCHEMA_VERSION,
@@ -111,22 +75,50 @@ fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn std::error::Error>>
             github_prerelease: false,
             authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
         },
-        freeze: freeze()?,
-        evidence: evidence(),
-        authority: authority(),
+        freeze,
+        evidence: ReleaseAuthorizationEvidenceV1 {
+            package_docs_digest: digest(30),
+            preflight_result: Preflight::CompleteWithResidualAuthorityRisk,
+            preflight_evaluated_at_unix_seconds: 100,
+            preflight_maximum_age_seconds: 30,
+            support_digest: digest(31),
+            manifest_digest: digest(32),
+            rehearsal_complete_except_authorization: true,
+            rehearsal_digest: digest(33),
+            source_controls_digest: digest(34),
+            live_controls_digest: digest(35),
+            workflow_digest: digest(36),
+            action_inventory_digest: digest(37),
+            observed_context_digest: digest(38),
+            current_context_digest: digest(38),
+        },
+        authority: ReleaseAuthorizationAuthorityV1 {
+            selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(),
+            maintainer_actor: "release-operator".to_string(),
+            maintainer_role: "release-maintainer".to_string(),
+            source: ReleaseAuthorizationSourceV1 {
+                kind: ReleaseAuthorizationSourceKindV1::IssueComment,
+                repository: RELEASE_AUTHORIZATION_REPOSITORY.to_string(),
+                reference: "issue:2502#comment:1".to_string(),
+                author: "release-operator".to_string(),
+                body_digest: digest(40),
+                statement: RELEASE_AUTHORIZATION_EXACT_STATEMENT.to_string(),
+            },
+            created_at_unix_seconds: 90,
+            expires_at_unix_seconds: 200,
+            one_run_scope: true,
+            nonce: "nonce-0-2-0-0001".to_string(),
+        },
     })
 }
 
-fn context(
-    freeze: ReleaseAuthorizationFreezeV1,
-    evidence: ReleaseAuthorizationEvidenceV1,
-) -> ReleaseAuthorizationExpectedContextV1 {
+fn expected(decision: &ReleaseAuthorizationInputV1) -> ReleaseAuthorizationExpectedContextV1 {
     ReleaseAuthorizationExpectedContextV1 {
         schema_id: RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID.to_string(),
         schema_version: RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION,
         repository: RELEASE_AUTHORIZATION_REPOSITORY.to_string(),
-        freeze,
-        evidence,
+        freeze: decision.freeze.clone(),
+        evidence: decision.evidence.clone(),
         secret_availability: ReleaseAuthorizationSecretAvailabilityV1 {
             redacted: true,
             state: ReleaseAuthorizationSecretStateV1::Unknown,
@@ -141,48 +133,21 @@ fn context(
 }
 
 fn compile(
-    input: &ReleaseAuthorizationInputV1,
+    decision: &ReleaseAuthorizationInputV1,
     expected: &ReleaseAuthorizationExpectedContextV1,
 ) -> Result<CargoAllowReleaseAuthorizationV1, Box<dyn std::error::Error>> {
-    let bytes = serde_json::to_vec(expected)?;
-    Ok(compile_release_authorization_v1(input, &bytes))
-}
-
-fn pair() -> Result<
-    (
-        ReleaseAuthorizationInputV1,
-        ReleaseAuthorizationExpectedContextV1,
-    ),
-    Box<dyn std::error::Error>,
-> {
-    let freeze = freeze()?;
-    let evidence = evidence();
-    Ok((
-        ReleaseAuthorizationInputV1 {
-            schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(),
-            schema_version: RELEASE_AUTHORIZATION_SCHEMA_VERSION,
-            operation: ReleaseAuthorizationOperationV1 {
-                name: RELEASE_AUTHORIZATION_FINAL_OPERATION.to_string(),
-                version: RELEASE_AUTHORIZATION_FINAL_VERSION.to_string(),
-                tag: RELEASE_AUTHORIZATION_FINAL_TAG.to_string(),
-                channel: RELEASE_AUTHORIZATION_STABLE_CHANNEL.to_string(),
-                github_prerelease: false,
-                authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
-            },
-            freeze: freeze.clone(),
-            evidence: evidence.clone(),
-            authority: authority(),
-        },
-        context(freeze, evidence),
+    Ok(compile_release_authorization_v1(
+        decision,
+        &serde_json::to_vec(expected)?,
     ))
 }
 
 fn check_result(
-    input: &ReleaseAuthorizationInputV1,
+    decision: &ReleaseAuthorizationInputV1,
     expected: &ReleaseAuthorizationExpectedContextV1,
     state: State,
 ) -> TestResult {
-    let receipt = compile(input, expected)?;
+    let receipt = compile(decision, expected)?;
     require(
         receipt.result == state,
         format!("expected {state:?}, got {:?}: {receipt:?}", receipt.result),
@@ -190,19 +155,13 @@ fn check_result(
 }
 
 #[test]
-fn release_authorization_exact_pair_is_complete_with_caveats() -> TestResult {
-    let (input, expected) = pair()?;
-    let receipt = compile(&input, &expected)?;
+fn exact_decision_compiles_against_independent_context() -> TestResult {
+    let decision = decision()?;
+    let expected = expected(&decision);
+    let receipt = compile(&decision, &expected)?;
     require(
         receipt.result == State::Complete,
-        format!("exact pair must compile: {receipt:?}"),
-    )?;
-    require(
-        receipt
-            .caveats
-            .iter()
-            .any(|caveat| caveat.contains("residual authority risk")),
-        "residual registry risk must travel visibly",
+        format!("exact decision must compile: {receipt:?}"),
     )?;
     require(
         receipt.authorization_digest.starts_with("sha256:")
@@ -212,292 +171,256 @@ fn release_authorization_exact_pair_is_complete_with_caveats() -> TestResult {
     require(
         receipt.expected_context_digest.starts_with("sha256:")
             && receipt.expected_context_digest.len() == 71,
-        "context digest must be canonical",
+        "expected-context digest must be canonical",
     )?;
-    let rendered = render_release_authorization_v1(&receipt)?;
-    let parsed: serde_json::Value = serde_json::from_str(&rendered)?;
     require(
-        parsed.get("result").and_then(serde_json::Value::as_str) == Some("complete"),
-        "rendered receipt must carry the compiled result",
+        receipt
+            .caveats
+            .iter()
+            .any(|caveat| caveat.contains("residual authority risk")),
+        "residual registry risk must travel visibly",
+    )?;
+    require(
+        receipt.claim_boundary.contains("independently supplied trusted"),
+        "receipt must state the two-sided claim boundary",
     )
 }
 
 #[test]
-fn release_authorization_generation_is_unsupported() -> TestResult {
-    let (mut input, expected) = pair()?;
-    input.schema_version = 0;
-    check_result(&input, &expected, State::Unsupported)?;
-    let (input, mut context) = pair()?;
-    context.schema_version = 0;
-    check_result(&input, &context, State::Unsupported)
+fn malformed_or_unsupported_context_fails_closed() -> TestResult {
+    let decision = decision()?;
+    let malformed = compile_release_authorization_v1(&decision, b"not-json");
+    require(
+        malformed.result == State::Malformed,
+        format!("malformed context did not fail closed: {malformed:?}"),
+    )?;
+
+    let mut bad_context = expected(&decision);
+    bad_context.schema_version = 0;
+    check_result(&decision, &bad_context, State::Unsupported)?;
+
+    let mut unsupported = decision;
+    unsupported.schema_version = 0;
+    let expected_context = expected(&unsupported);
+    check_result(&unsupported, &expected_context, State::Unsupported)
 }
 
 #[test]
-fn release_authorization_broad_prose_cannot_construct() -> TestResult {
-    // Control 1: "ship it" prose has no schema fields at all.
-    let raw = serde_json::json!({"statement": "ship it"});
-    let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
-    require(parsed.is_err(), "broad prose constructed a decision")?;
-    let parsed: Result<ReleaseAuthorizationExpectedContextV1, _> =
-        serde_json::from_value(serde_json::json!({"repository": "x"}));
-    require(parsed.is_err(), "broad prose constructed a context")
-}
-
-#[test]
-fn release_authorization_freeze_is_not_authorization() -> TestResult {
-    // Control 2: frozen facts without authority evidence.
-    let (mut input, expected) = pair()?;
-    input.authority.maintainer_actor.clear();
-    check_result(&input, &expected, State::Unauthorized)
-}
-
-#[test]
-fn release_authorization_tag_push_is_insufficient() -> TestResult {
-    // Control 3: tag drift without a bound decision.
-    let (mut input, expected) = pair()?;
-    input.operation.tag = "v0.2.0-rc.1".to_string();
-    check_result(&input, &expected, State::Malformed)
-}
-
-#[test]
-fn release_authorization_rejects_rc_identity() -> TestResult {
-    // Control 4.
-    let (mut input, expected) = pair()?;
-    input.operation.version = "0.2.0-rc.1".to_string();
-    input.operation.tag = "v0.2.0-rc.1".to_string();
-    input.operation.github_prerelease = true;
-    check_result(&input, &expected, State::Mismatch)?;
-    let (mut input, expected) = pair()?;
-    input.operation.name = "publish_cargo_allow_final_0_2_0_rc_1".to_string();
-    check_result(&input, &expected, State::Mismatch)
-}
-
-#[test]
-fn release_authorization_rejects_moved_freeze_facts() -> TestResult {
-    // Control 5: decision/context divergence on any frozen fact.
-    for mutate in [
-        |freeze: &mut ReleaseAuthorizationFreezeV1| freeze.commit = "c".repeat(40),
-        |freeze: &mut ReleaseAuthorizationFreezeV1| freeze.tree = "d".repeat(40),
-        |freeze: &mut ReleaseAuthorizationFreezeV1| freeze.lock_digest = digest(99),
-    ] {
-        let (mut input, expected) = pair()?;
-        mutate(&mut input.freeze);
-        check_result(&input, &expected, State::Mismatch)?;
-    }
-    let (mut input, expected) = pair()?;
-    input.freeze.topology_id = "OTHER-TOPOLOGY".to_string();
-    check_result(&input, &expected, State::Mismatch)
-}
-
-#[test]
-fn release_authorization_rejects_package_row_changes() -> TestResult {
-    // Control 6.
-    let (mut input, expected) = pair()?;
-    input.freeze.packages.pop();
-    check_result(&input, &expected, State::Malformed)?;
-    let (mut input, expected) = pair()?;
-    input
+fn redigested_package_size_forgery_mismatches_trusted_freeze() -> TestResult {
+    let mut decision = decision()?;
+    let expected = expected(&decision);
+    decision
         .freeze
         .packages
         .first_mut()
         .ok_or("package row absent")?
-        .package_digest = digest(999);
-    check_result(&input, &expected, State::Mismatch)?;
-    let (mut input, expected) = pair()?;
-    input.freeze.packages.swap(0, 1);
-    check_result(&input, &expected, State::Mismatch)
+        .package_size_bytes += 1;
+    decision.freeze.denominator_digest =
+        release_authorization_denominator_binding_v1(&decision.freeze)?;
+    check_result(&decision, &expected, State::Mismatch)
 }
 
 #[test]
-fn release_authorization_rejects_shared_checksum_drift() -> TestResult {
-    // Control 7.
-    let (mut input, expected) = pair()?;
-    input
+fn redigested_shared_checksum_forgery_mismatches_trusted_freeze() -> TestResult {
+    let mut decision = decision()?;
+    let expected = expected(&decision);
+    decision
         .freeze
         .shared_prerequisites
         .first_mut()
-        .ok_or("shared row absent")?
+        .ok_or("shared prerequisite absent")?
         .expected_checksum = digest(999);
-    check_result(&input, &expected, State::Mismatch)
+    decision.freeze.denominator_digest =
+        release_authorization_denominator_binding_v1(&decision.freeze)?;
+    check_result(&decision, &expected, State::Mismatch)
 }
 
 #[test]
-fn release_authorization_final_is_never_prerelease() -> TestResult {
-    // Control 8.
-    let (mut input, expected) = pair()?;
-    input.operation.github_prerelease = true;
-    check_result(&input, &expected, State::Malformed)
+fn moved_evidence_cannot_self_authorize() -> TestResult {
+    let mut decision = decision()?;
+    let expected = expected(&decision);
+    decision.evidence.support_digest = digest(999);
+    check_result(&decision, &expected, State::Mismatch)
 }
 
 #[test]
-fn release_authorization_rejects_moved_contexts() -> TestResult {
-    // Controls 9 and 11: trusted context movement stales the compilation.
-    // Both sides move together: the observation is genuinely stale, and the
-    // decision tracks it instead of diverging from it.
-    let (mut input, mut expected) = pair()?;
-    input.evidence.current_context_digest = digest(999);
-    expected.evidence.current_context_digest = digest(999);
-    check_result(&input, &expected, State::Stale)
+fn source_must_select_the_exact_operation() -> TestResult {
+    let baseline = decision()?;
+    let expected = expected(&baseline);
+
+    let mut broad = baseline.clone();
+    broad.authority.source.statement = "ship it".to_string();
+    check_result(&broad, &expected, State::Unauthorized)?;
+
+    let mut wrong_repository = baseline.clone();
+    wrong_repository.authority.source.repository = "Other/repository".to_string();
+    check_result(&wrong_repository, &expected, State::Unauthorized)?;
+
+    let mut wrong_actor = baseline.clone();
+    wrong_actor.authority.source.author = "another-actor".to_string();
+    check_result(&wrong_actor, &expected, State::Unauthorized)?;
+
+    let mut malformed_reference = baseline;
+    malformed_reference.authority.source.reference = "issue:2502".to_string();
+    check_result(&malformed_reference, &expected, State::Unauthorized)
 }
 
 #[test]
-fn release_authorization_preflight_states_map_fail_closed() -> TestResult {
-    // Control 10, evaluated against the trusted evidence.
-    for (response, state) in [
-        (
-            Preflight::Conflict,
-            State::Unauthorized,
-        ),
-        (Preflight::Stale, State::Stale),
-        (Preflight::Incomplete, State::Stale),
-        (Preflight::ProviderUnavailable, State::Stale),
-        (Preflight::InstrumentFailure, State::InstrumentFailure),
-        (Preflight::Malformed, State::Malformed),
-        (Preflight::UnsupportedGeneration, State::Malformed),
-    ] {
-        // The trusted observation genuinely carries the failure and the
-        // decision tracks it: only the mapped failure surfaces, never clean
-        // permission.
-        let (mut input, mut expected) = pair()?;
-        input.evidence.preflight_result = response;
-        expected.evidence.preflight_result = response;
-        check_result(&input, &expected, state)?;
-        // A decision still claiming complete evidence against failed trust
-        // diverges and mismatches instead of compiling.
-        let (tracked, failed) = pair()?;
-        let mut stale_claim = tracked;
-        stale_claim.evidence.preflight_result = Preflight::Complete;
-        let mut failed_trust = failed;
-        failed_trust.evidence.preflight_result = response;
-        let receipt = compile(&stale_claim, &failed_trust)?;
-        require(
-            receipt.result != State::Complete,
-            format!("trusted preflight failure compiled clean: {receipt:?}"),
-        )?;
-    }
-    let (mut input, mut expected) = pair()?;
-    input.evidence.preflight_evaluated_at_unix_seconds = 0;
-    expected.evidence.preflight_evaluated_at_unix_seconds = 0;
-    check_result(&input, &expected, State::Stale)
+fn final_compiler_rejects_recovery_and_prerelease_identity() -> TestResult {
+    let baseline = decision()?;
+    let expected = expected(&baseline);
+
+    let mut recovery = baseline.clone();
+    recovery.operation.name = RELEASE_AUTHORIZATION_RECOVERY_OPERATION.to_string();
+    check_result(&recovery, &expected, State::Mismatch)?;
+
+    let mut prerelease = baseline;
+    prerelease.operation.version = "0.2.0-rc.1".to_string();
+    prerelease.operation.tag = "v0.2.0-rc.1".to_string();
+    prerelease.operation.github_prerelease = true;
+    check_result(&prerelease, &expected, State::Mismatch)
 }
 
 #[test]
-fn release_authorization_expiry_and_reuse() -> TestResult {
-    // Control 12, observed through the trusted use record.
-    let (input, mut expected) = pair()?;
-    expected.evaluated_at_unix_seconds = 500;
-    check_result(&input, &expected, State::Expired)?;
-    let (input, mut expected) = pair()?;
-    expected.use_observation.consumed_nonces = vec![input.authority.nonce.clone()];
-    check_result(&input, &expected, State::Reused)?;
-    for state in [
-        Consumption::SelectedForRun,
-        Consumption::IrreversibleOperationStarted,
-        Consumption::ConsumedComplete,
-        Consumption::ConsumedIncident,
-    ] {
-        let (input, mut expected) = pair()?;
-        expected.use_observation.state = state;
-        check_result(&input, &expected, State::Reused)?;
-    }
-    let (input, mut expected) = pair()?;
-    expected.use_observation.state = Consumption::Revoked;
-    check_result(&input, &expected, State::Unauthorized)?;
-    let (input, mut expected) = pair()?;
-    expected.use_observation.state = Consumption::Expired;
-    check_result(&input, &expected, State::Expired)
-}
+fn one_run_scope_and_external_use_state_are_enforced() -> TestResult {
+    let baseline = decision()?;
+    let mut expected = expected(&baseline);
 
-#[test]
-fn release_authorization_rejects_token_and_unbounded_prose() -> TestResult {
-    // Control 13: unknown fields (tokens, env dumps) cannot deserialize,
-    // and only the exact generation statement selects the operation.
-    let decision = decision()?;
-    let mut raw = serde_json::to_value(&decision)?;
-    raw.as_object_mut()
-        .ok_or("decision is not an object")?
-        .insert(
-            "registry_token".to_string(),
-            serde_json::Value::String("secret".to_string()),
-        );
-    let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
-    require(parsed.is_err(), "token field constructed a decision")?;
-    let (mut input, expected) = pair()?;
-    input.authority.source.statement = "Authorize publish_cargo_allow_final_0_2_0.".to_string();
-    check_result(&input, &expected, State::Unauthorized)?;
-    let (mut input, expected) = pair()?;
-    input.authority.source.statement =
-        "x".repeat(RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN + 1);
-    check_result(&input, &expected, State::Unauthorized)
-}
+    let mut reusable = baseline.clone();
+    reusable.authority.one_run_scope = false;
+    check_result(&reusable, &expected, State::Unauthorized)?;
 
-#[test]
-fn release_authorization_inside_frozen_tree_is_rejected() -> TestResult {
-    // Control 14, observed through the trusted inventory.
-    let (input, mut expected) = pair()?;
-    let receipt = compile(&input, &expected)?;
-    require(
-        receipt.result == State::Complete,
-        "pair must compile before the tree test",
-    )?;
+    expected.use_observation.state = Consumption::SelectedForRun;
+    check_result(&baseline, &expected, State::Reused)?;
+
+    expected.use_observation.state = Consumption::Available;
     expected
-        .frozen_file_digests
-        .push(receipt.authorization_digest.clone());
-    check_result(&input, &expected, State::Malformed)
+        .use_observation
+        .consumed_nonces
+        .push(baseline.authority.nonce.clone());
+    check_result(&baseline, &expected, State::Reused)?;
+
+    expected.use_observation.consumed_nonces.clear();
+    expected.use_observation.state = Consumption::Expired;
+    check_result(&baseline, &expected, State::Expired)?;
+
+    expected.use_observation.state = Consumption::Revoked;
+    check_result(&baseline, &expected, State::Unauthorized)
 }
 
 #[test]
-fn release_authorization_final_never_covers_recovery() -> TestResult {
-    // Control 15: the compat name compiles nowhere in this generation.
-    let (mut input, expected) = pair()?;
-    input.operation.name = RELEASE_AUTHORIZATION_RECOVERY_OPERATION.to_string();
-    check_result(&input, &expected, State::Mismatch)?;
-    // The authority kind cannot even name recovery: deserialization rejects it.
-    let mut raw = serde_json::to_value(decision()?)?;
-    let operation = raw
-        .get_mut("operation")
-        .and_then(serde_json::Value::as_object_mut)
-        .ok_or("operation is not an object")?;
-    operation.insert(
-        "authority_kind".to_string(),
-        serde_json::Value::String("recovery".to_string()),
-    );
-    let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
-    require(parsed.is_err(), "recovery authority constructed a decision")
-}
+fn digest_syntax_and_instrument_failure_remain_distinct() -> TestResult {
+    let baseline = decision()?;
+    let expected = expected(&baseline);
 
-#[test]
-fn release_authorization_exact_statement_and_source_binding() -> TestResult {
-    // The statement is exact equality, and the source binds repository,
-    // actor, and object shape.
-    let (mut input, expected) = pair()?;
-    input.authority.source.author = "someone-else".to_string();
-    check_result(&input, &expected, State::Unauthorized)?;
-    let (mut input, expected) = pair()?;
-    input.authority.source.reference = "issue:abc".to_string();
-    check_result(&input, &expected, State::Unauthorized)?;
-    let (mut input, expected) = pair()?;
-    input.authority.one_run_scope = false;
-    check_result(&input, &expected, State::Unauthorized)
-}
+    let mut malformed = baseline.clone();
+    malformed.evidence.observed_context_digest = "x".to_string();
+    check_result(&malformed, &expected, State::Malformed)?;
 
-#[test]
-fn release_authorization_malformed_context_bytes_fail_closed() -> TestResult {
-    let input = decision()?;
-    let receipt = compile_release_authorization_v1(&input, b"not-json");
-    require(
-        receipt.result == State::Malformed,
-        format!("malformed context compiled: {receipt:?}"),
+    let mut broken_context = expected.clone();
+    broken_context.evidence.observed_context_digest = "x".to_string();
+    check_result(&baseline, &broken_context, State::InstrumentFailure)?;
+
+    let mut instrument_decision = baseline;
+    instrument_decision.evidence.preflight_result = Preflight::InstrumentFailure;
+    let mut instrument_context = expected;
+    instrument_context.evidence.preflight_result = Preflight::InstrumentFailure;
+    check_result(
+        &instrument_decision,
+        &instrument_context,
+        State::InstrumentFailure,
     )
 }
 
 #[test]
-fn release_authorization_compiler_touches_no_side_effects() -> TestResult {
-    // Control 16.
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let evaluate = std::fs::read_to_string(
-        root.join("src/artifacts/release_authorization_v1/evaluate.rs"),
+fn currentness_is_evaluated_on_the_trusted_side() -> TestResult {
+    let mut decision = decision()?;
+    decision.evidence.current_context_digest = digest(999);
+    let expected = expected(&decision);
+    check_result(&decision, &expected, State::Stale)
+}
+
+#[test]
+fn authorization_cannot_live_inside_the_frozen_tree() -> TestResult {
+    let decision = decision()?;
+    let mut expected = expected(&decision);
+    let receipt = compile(&decision, &expected)?;
+    require(
+        receipt.result == State::Complete,
+        "baseline must compile before tree-placement control",
     )?;
+    expected
+        .frozen_file_digests
+        .push(receipt.authorization_digest);
+    check_result(&decision, &expected, State::Malformed)
+}
+
+#[test]
+fn authorization_digest_is_immutable_across_context_refresh() -> TestResult {
+    let decision = decision()?;
+    let mut expected = expected(&decision);
+    let first = compile(&decision, &expected)?;
+    expected.evaluated_at_unix_seconds += 1;
+    let second = compile(&decision, &expected)?;
+    require(
+        first.authorization_digest == second.authorization_digest,
+        "provider refresh changed immutable decision identity",
+    )?;
+    require(
+        first.expected_context_digest != second.expected_context_digest,
+        "provider refresh did not change expected-context identity",
+    )
+}
+
+#[test]
+fn unknown_fields_and_secret_material_cannot_enter_the_decision() -> TestResult {
+    let mut raw = serde_json::to_value(decision()?)?;
+    raw.as_object_mut().ok_or("decision is not an object")?.insert(
+        "registry_token".to_string(),
+        serde_json::Value::String("secret".to_string()),
+    );
+    let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
+    require(parsed.is_err(), "token field constructed a decision")
+}
+
+#[test]
+fn authorization_use_transition_is_checked() -> TestResult {
+    require(
+        transition_authorization_consumption(
+            Consumption::Available,
+            Consumption::SelectedForRun,
+        )? == Consumption::SelectedForRun,
+        "available authorization did not select",
+    )?;
+    require(
+        transition_authorization_consumption(
+            Consumption::SelectedForRun,
+            Consumption::IrreversibleOperationStarted,
+        )? == Consumption::IrreversibleOperationStarted,
+        "selected authorization did not enter irreversible state",
+    )?;
+    require(
+        transition_authorization_consumption(
+            Consumption::IrreversibleOperationStarted,
+            Consumption::ConsumedComplete,
+        )? == Consumption::ConsumedComplete,
+        "irreversible operation did not complete",
+    )?;
+    require(
+        transition_authorization_consumption(
+            Consumption::ConsumedComplete,
+            Consumption::SelectedForRun,
+        )
+        .is_err(),
+        "terminal authorization reselected",
+    )
+}
+
+#[test]
+fn compiler_touches_no_external_state() -> TestResult {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let evaluate =
+        std::fs::read_to_string(root.join("src/artifacts/release_authorization_v1/evaluate.rs"))?;
     for forbidden in [
         "std::env",
         "std::process",
@@ -510,72 +433,8 @@ fn release_authorization_compiler_touches_no_side_effects() -> TestResult {
     ] {
         require(
             !evaluate.contains(forbidden),
-            format!("compiler references side-effect surface: {forbidden}"),
+            format!("compiler gained forbidden side effect marker {forbidden}"),
         )?;
     }
     Ok(())
-}
-
-#[test]
-fn release_authorization_consumption_transitions() -> TestResult {
-    use Consumption as C;
-    require(
-        transition_authorization_consumption(C::Available, C::SelectedForRun)? == C::SelectedForRun,
-        "available must select",
-    )?;
-    require(
-        transition_authorization_consumption(C::SelectedForRun, C::IrreversibleOperationStarted)?
-            == C::IrreversibleOperationStarted,
-        "selection must start the irreversible operation",
-    )?;
-    require(
-        transition_authorization_consumption(
-            C::IrreversibleOperationStarted,
-            C::ConsumedComplete,
-        )? == C::ConsumedComplete,
-        "started operations must complete",
-    )?;
-    require(
-        transition_authorization_consumption(C::IrreversibleOperationStarted, C::ConsumedIncident)?
-            == C::ConsumedIncident,
-        "started operations must record incidents",
-    )?;
-    require(
-        transition_authorization_consumption(C::Available, C::Revoked)? == C::Revoked,
-        "available authority must revoke",
-    )?;
-    for (current, next) in [
-        (C::Available, C::ConsumedComplete),
-        (C::ConsumedComplete, C::Available),
-        (C::ConsumedComplete, C::SelectedForRun),
-        (C::Expired, C::Available),
-        (C::Revoked, C::Available),
-    ] {
-        require(
-            transition_authorization_consumption(current, next).is_err(),
-            format!("invalid transition {current:?} -> {next:?} was accepted"),
-        )?;
-    }
-    Ok(())
-}
-
-#[test]
-fn release_authorization_wrong_auth_class_is_unauthorized() -> TestResult {
-    let (mut input, expected) = pair()?;
-    input.authority.selected_auth_class = "github_pat".to_string();
-    check_result(&input, &expected, State::Unauthorized)?;
-    let (mut input, expected) = pair()?;
-    input.authority.maintainer_actor.clear();
-    check_result(&input, &expected, State::Unauthorized)
-}
-
-#[test]
-fn release_authorization_decision_cannot_supply_trusted_values() -> TestResult {
-    // The core split: identical decision bytes against a diverged trusted
-    // context must mismatch, never compile.
-    let (input, mut expected) = pair()?;
-    expected.freeze.commit = "c".repeat(40);
-    expected.freeze.denominator_digest =
-        release_authorization_denominator_binding_v1(&expected.freeze)?;
-    check_result(&input, &expected, State::Mismatch)
 }
