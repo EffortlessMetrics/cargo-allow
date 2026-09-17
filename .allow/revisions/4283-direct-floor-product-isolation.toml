@@ -1,0 +1,23 @@
+schema_version = 1
+# Issue #4283 owns three exact non-Rust additions: the product-workspace
+# projector, its deterministic regression suite, and this revision record.
+# core/release reviewed each path, reason, evidence set, classification, and
+# lifecycle date. No matcher, occurrence limit, existing exception,
+# dependency floor, release authority, or sibling-product support claim is
+# broadened. The projector isolates the selected package closure while
+# preserving causally reachable workspace path dependencies.
+
+[[records]]
+allow_ids = ["allow-11296"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c32752c5c4b16185461cb44c5fb381273cc41844b6bc813032fbf9877aed6907"
+
+[[records]]
+allow_ids = ["allow-11297"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:79b21efb2bff3408e6bd6324020d9f06d71b04b1050c056155dfa153efb147b6"
+
+[[records]]
+allow_ids = ["allow-4283-direct-floor-product-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ffb3ec3477272938b8ea281d19886183d10dcfcdd2e013b2efb4c5364424e500"

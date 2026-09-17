@@ -21229,3 +21229,71 @@ glob = ".allow/revisions/4277-floor-pin-settlement.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+
+[[allow]]
+id = "allow-11296"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation"
+reason = "Deterministic projection of the detached proof checkout to the selected product closure plus causally reachable workspace path dependencies, preventing unrelated workspace members from contaminating direct-floor resolution."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11297"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_product_workspace.py"
+owner = "core/release"
+classification = "direct_floor_product_isolation_test"
+reason = "Deterministic negative controls for product-workspace projection: unrelated members are excluded, selected ordering is byte-stable, and unknown or incomplete selections fail closed."
+evidence = ["issue:4283", "test:scripts/test_floor_product_workspace.py"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_product_workspace.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_product_workspace.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-4283-direct-floor-product-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+owner = "core/release"
+classification = "ledger_change_note"
+reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4283."
+evidence = ["issue:4283", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
+created = "2026-09-16"
+review_after = "2027-03-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
