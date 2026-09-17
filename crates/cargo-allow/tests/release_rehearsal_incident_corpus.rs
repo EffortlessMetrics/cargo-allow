@@ -220,11 +220,17 @@ fn incident_3967_non_exact_internal_requirements_are_blocked_by_the_production_v
         &format!("{INCIDENT_3967}: the exact RC requirement must remain admissible"),
     )?;
 
+    // Requirement authority is the exact string projected from the typed
+    // target. Whitespace, invalid tokens, prefixes, ranges, and near-matches
+    // must not be normalized into the selected requirement.
     for invalid in [
         "0.2.0-rc.1",
         "^0.2.0-rc.1",
         "~0.2.0-rc.1",
         ">=0.2.0-rc.1",
+        "= 0.2.0-rc.1",
+        "=garbage",
+        "=0.2.0-rc.1-extra",
         "=0.2.0-rc.10",
         "=0.2.0-rc.1+build.7",
         "prefix-=0.2.0-rc.1-suffix",
@@ -288,6 +294,48 @@ fn incident_3968_package_identity_consumers_preserve_prerelease_and_build_metada
             ),
         )?;
     }
+
+    let proof_output = run_python_test_with_args(
+        &root,
+        "scripts/test-final-packaged-surface.py",
+        &["--emit-corpus-proof"],
+    )?;
+    let proof_transcript = format!(
+        "{}{}",
+        String::from_utf8_lossy(&proof_output.stdout),
+        String::from_utf8_lossy(&proof_output.stderr)
+    );
+    require(
+        proof_output.status.success(),
+        &format!("{INCIDENT_3968}: structured package identity proof failed:\n{proof_transcript}"),
+    )?;
+    let proof: serde_json::Value = serde_json::from_slice(&proof_output.stdout)?;
+    for (field, expected) in [
+        (
+            "schema",
+            "cargo-allow.release-rehearsal-prerelease-identity-proof.v1",
+        ),
+        ("result", "Complete"),
+        ("candidate_workspace_version", "1.2.3-alpha.1+build.7"),
+        ("package_name", "effortless-repo-protocol"),
+        ("package_version", "1.2.3-alpha.1+build.7"),
+        ("manifest_version", "1.2.3-alpha.1+build.7"),
+        (
+            "crate_file",
+            "effortless-repo-protocol-1.2.3-alpha.1+build.7.crate",
+        ),
+        (
+            "observed_archive_name",
+            "effortless-repo-protocol-1.2.3-alpha.1+build.7.crate",
+        ),
+    ] {
+        require(
+            proof.get(field).and_then(serde_json::Value::as_str) == Some(expected),
+            &format!(
+                "{INCIDENT_3968}: structured proof field {field:?} did not preserve {expected:?}: {proof}"
+            ),
+        )?;
+    }
     Ok(())
 }
 
@@ -321,10 +369,19 @@ fn repository_root() -> Result<PathBuf, io::Error> {
 }
 
 fn run_python_test(root: &Path, script: &str) -> Result<Output, Box<dyn Error>> {
+    run_python_test_with_args(root, script, &[])
+}
+
+fn run_python_test_with_args(
+    root: &Path,
+    script: &str,
+    args: &[&str],
+) -> Result<Output, Box<dyn Error>> {
     let path = root.join(script);
     for executable in ["python3", "python"] {
         match Command::new(executable)
             .arg(&path)
+            .args(args)
             .current_dir(root)
             .output()
         {
