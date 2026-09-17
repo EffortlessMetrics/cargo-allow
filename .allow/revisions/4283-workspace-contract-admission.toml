@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4283-workspace-preflight"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0e1b8d25ae5c5a77d91a009e4188aebe0a3157195d547e85bce7fdbc28904334"
+reason = "Bounded original-workspace preflight for #4283. Requires five actual topology-test passes before floor projection; does not certify dependency-floor compatibility."
+
+[[records]]
+allow_ids = ["allow-4283-workspace-preflight-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:01ab55ed080f3bc1b713b05acee9d65ef46369e3f019b9a2e24d8d3916b682a4"
+reason = "Negative controls for #4283 preflight output, real-Git source admission, CRLF checkout identity, and process timeouts; synthetic Cargo observations are not Rust compatibility proof."
+
+[[records]]
+allow_ids = ["allow-4283-workspace-admission-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d94e8ae46fe62b2b7b49cfeb18d21a46417fedd54d3c27dd15739855f404797"
+reason = "Exact append-only admission record for the two #4283 Python files and this note; records generated entry fingerprints without changing existing exceptions or authorizing release."

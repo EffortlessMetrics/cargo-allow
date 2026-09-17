@@ -21231,3 +21231,69 @@ glob = ".allow/revisions/4283-direct-floor-product-isolation.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4283-workspace-preflight"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_workspace_contract.py"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Bounded original-workspace preflight for #4283. Requires five actual topology-test passes before floor projection; does not certify dependency-floor compatibility."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_workspace_contract.py"
+target_fingerprint = "py"
+glob = "scripts/floor_workspace_contract.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4283-workspace-preflight-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_workspace_contract.py"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Negative controls for #4283 preflight output, real-Git source admission, CRLF checkout identity, and process timeouts; synthetic Cargo observations are not Rust compatibility proof."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_workspace_contract.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_workspace_contract.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4283-workspace-admission-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4283-workspace-contract-admission.toml"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Exact append-only admission record for the two #4283 Python files and this note; records generated entry fingerprints without changing existing exceptions or authorizing release."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4283-workspace-contract-admission.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4283-workspace-contract-admission.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
