@@ -188,10 +188,8 @@ fn dispatch_sources_and_expiry_transitions_are_bound() -> TestResult {
         "available authority must expire",
     )?;
     require(
-        transition_authorization_consumption(
-            Consumption::SelectedForRun,
-            Consumption::Expired,
-        )? == Consumption::Expired,
+        transition_authorization_consumption(Consumption::SelectedForRun, Consumption::Expired)?
+            == Consumption::Expired,
         "selected authority must expire",
     )?;
     require(
@@ -200,8 +198,7 @@ fn dispatch_sources_and_expiry_transitions_are_bound() -> TestResult {
         "expired authority must revoke",
     )?;
     require(
-        transition_authorization_consumption(Consumption::Expired, Consumption::Available)
-            .is_err(),
+        transition_authorization_consumption(Consumption::Expired, Consumption::Available).is_err(),
         "expired authority must not reselect",
     )
 }
