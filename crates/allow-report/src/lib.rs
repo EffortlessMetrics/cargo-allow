@@ -316,6 +316,25 @@ pub use artifacts::{
     PostMergeQualificationInitV1, ProducerIdentityV1, RetainedCustodyItemV1, ReviewedContextV1,
     TrustClassV1, UntrustedInputPostureV1,
 };
+
+// Root re-exports for the one-operation release authorization contract (#3789).
+pub use artifacts::{
+    CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
+    RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
+    RELEASE_AUTHORIZATION_FINAL_VERSION, RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN,
+    RELEASE_AUTHORIZATION_RECOVERY_OPERATION, RELEASE_AUTHORIZATION_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_AUTHORIZATION_STABLE_CHANNEL, ReleaseAuthorizationAuthorityKindV1,
+    ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
+    ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationFindingV1,
+    ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
+    ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
+    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+    compile_release_authorization_v1, release_authorization_denominator_binding_v1,
+    render_release_authorization_v1, transition_authorization_consumption,
+};
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
     ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,

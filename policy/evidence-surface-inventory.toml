@@ -396,6 +396,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove pure reconciliation semantics; no registry observation, permission proof, or release authorization is produced."
 
 [[surfaces]]
+id = "release-authorization-v1"
+owner_issue = 3789
+semantic_authority = "typed one-operation release authorization compilation"
+path = "crates/cargo-allow/tests/release_authorization_contract.rs"
+subject = "CargoAllowReleaseAuthorizationV1"
+producer = "production compiler with hostile authorization fixtures"
+consumer = "#3790 tag/token gating and #2502 execution evidence"
+claimed_acceptance_row = "exact freeze, evidence, authority, freshness, and one-use lifecycle semantics"
+assertion_mechanism = "production compiler over hostile documents with JSON Schema read-back; adversarial unit fixtures live beside the compiler"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3790"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove compilation semantics; no live authorization, permission proof, or release execution is produced."
+
+[[surfaces]]
 id = "intent-candidate-smoke"
 owner_issue = 2599
 semantic_authority = "intent candidate smoke"

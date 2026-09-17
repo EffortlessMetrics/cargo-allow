@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-authorization.v1.schema.json",
+  "title": "CargoAllowReleaseAuthorizationV1",
+  "description": "Compiled one-operation release authorization result. Structural validation does not authenticate evidence, prove permission, or authorize publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "result",
+    "findings",
+    "caveats",
+    "authorization_digest",
+    "evaluated_at_unix_seconds"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-authorization.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Non-blocking residual risks retained alongside a Complete result."
+    },
+    "authorization_digest": {
+      "type": "string",
+      "description": "Canonical digest of the authorization statement, excluding filing inventory."
+    },
+    "evaluated_at_unix_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    }
+  },
+  "$defs": {
+    "result": {
+      "enum": [
+        "unsupported",
+        "malformed",
+        "instrument_failure",
+        "unauthorized",
+        "mismatch",
+        "expired",
+        "reused",
+        "stale",
+        "complete"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/result"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

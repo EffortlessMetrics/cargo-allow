@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add a production one-operation release authorization contract with a
+  deterministic compiler over the exact frozen denominator, evidence bundle,
+  and authority block. Broad prose, tags, RC identity, moved facts, stale
+  evidence, expired or reused nonces, unredacted secrets, and authorizations
+  filed inside the frozen tree fail closed. The compiler performs no network
+  access, reads no credentials, creates no tags, and executes nothing.
