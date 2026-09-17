@@ -1,4 +1,4 @@
-name: PR 4295 fixture inventory and native floor proof
+name: PR 4295 complete admission and native floor proof
 on:
   push:
     branches: [automation/4295-governed-admission-v1]
@@ -6,7 +6,7 @@ permissions:
   contents: read
 concurrency:
   group: pr-4295-bounded-admission-v1
-  cancel-in-progress: false
+  cancel-in-progress: true
 env:
   SUBJECT_HEAD: a1fcf64de07b0588a81534a1ea43544c373fc8e5
   MAIN_HEAD: 8407b903180a2cafb94708f98efcffef6c7ca1e1
@@ -28,18 +28,19 @@ jobs:
           ref: a1fcf64de07b0588a81534a1ea43544c373fc8e5
           fetch-depth: 0
           persist-credentials: false
-      - name: Admit unchanged source and observe MSRV
+      - name: Admit source and build the real MSRV producer
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SUBJECT_HEAD"
           git merge-base --is-ancestor "$MAIN_HEAD" HEAD
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-          mkdir -p target/pr-4295-inventory
+          mkdir -p target/pr-4295-completion
           rustup toolchain install 1.95.0 --profile minimal --no-self-update
-          rustc -vV | tee target/pr-4295-inventory/rustc.txt
-          cargo -vV | tee target/pr-4295-inventory/cargo.txt
-      - name: Prove original guard detects this missing fixture row
+          rustc -vV | tee target/pr-4295-completion/rustc.txt
+          cargo -vV | tee target/pr-4295-completion/cargo.txt
+          cargo build -p cargo-allow --locked 2>&1 | tee target/pr-4295-completion/build.log
+      - name: Prove the original guard detects the missing fixture row
         shell: bash
         run: |
           set -euo pipefail
@@ -49,28 +50,82 @@ jobs:
           command=['cargo','test','-p','cargo-allow','--bin','cargo-allow','--locked','release_identity_denominator_tests::scanned_surfaces_have_no_undeclared_release_semantics','--','--exact']
           result=subprocess.run(command,capture_output=True,text=True,timeout=1800)
           text=result.stdout+result.stderr
-          Path('target/pr-4295-inventory/before-guard.log').write_text(text,encoding='utf-8')
+          Path('target/pr-4295-completion/before-guard.log').write_text(text,encoding='utf-8')
           print(text[-6000:])
-          assert result.returncode != 0, 'original missing-row control unexpectedly passed'
+          assert result.returncode != 0
           assert 'scripts/test_floor_workspace_contract.py contains release-semantic parsing but has no row' in text
-          assert '0 passed; 1 failed;' in text, 'the actual guard did not execute and fail'
+          assert '0 passed; 1 failed;' in text
           PY
-      - name: Append one exact fixture-only inventory row
+      - name: Repair exactly the inventory and three newly authored evidence references
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib,json,os,subprocess,tomllib
+          import copy,hashlib,json,os,re,subprocess,tomllib
           from pathlib import Path
+          def run(args):
+              result=subprocess.run(args,check=False,capture_output=True,timeout=300)
+              if result.returncode:
+                  raise RuntimeError(result.stdout.decode(errors='replace')+result.stderr.decode(errors='replace'))
+              return result.stdout
           def git(*args):
-              return subprocess.run(['git',*args],check=True,capture_output=True,timeout=60).stdout
-          source=os.environ['SUBJECT_HEAD']
+              return run(['git',*args])
+          source=os.environ['SUBJECT_HEAD']; base=os.environ['MAIN_HEAD']
           assert git('rev-parse','HEAD').decode().strip()==source
           assert not git('status','--porcelain=v1','--untracked-files=all')
-          path=Path('policy/release-identity-consumers.toml')
-          original=path.read_bytes()
-          assert original==git('show',source+':'+path.as_posix())
-          before=tomllib.loads(original.decode())
+          out=Path('target/pr-4295-completion')
+          policy=Path('policy/allow.toml')
+          note=Path('.allow/revisions/4283-workspace-contract-admission.toml')
+          inventory=Path('policy/release-identity-consumers.toml')
+          original_policy=policy.read_bytes()
+          original_inventory=inventory.read_bytes()
+          before=tomllib.loads(original_policy.decode())
+          baseline_raw=git('show',base+':'+policy.as_posix())
+          baseline=tomllib.loads(baseline_raw.decode())
+          ids=['allow-4283-workspace-preflight','allow-4283-workspace-preflight-tests','allow-4283-workspace-admission-note']
+          old_added=[row for row in before['allow'] if row['id'] in ids]
+          assert [row['id'] for row in old_added]==ids
+          assert [row for row in before['allow'] if row['id'] not in ids]==baseline['allow']
+          assert original_policy.startswith(baseline_raw)
+          assert {k:v for k,v in before.items() if k!='allow'}=={k:v for k,v in baseline.items() if k!='allow'}
+          assert all(row['evidence']==['issue:4283','file:docs/ci/direct-floor-proof.md'] for row in old_added)
+          expected=copy.deepcopy(before)
+          for row in expected['allow']:
+              if row['id'] in ids:
+                  row['evidence']=['issue:4283','doc:docs/ci/direct-floor-proof.md']
+          policy.write_bytes(baseline_raw)
+          records=[]
+          for old in old_added:
+              summary=out/(old['id']+'.json')
+              args=['target/debug/cargo-allow','add','--kind','non-rust','--path',old['path'],'--line','1','--id',old['id'],'--owner',old['owner'],'--classification',old['classification'],'--reason',old['reason'],'--review-after',old['review_after'],'--evidence','issue:4283','--evidence','doc:docs/ci/direct-floor-proof.md','--update','--summary-format','json','--summary-output',str(summary)]
+              run(args)
+              result=json.loads(summary.read_bytes())
+              receipt=result['mutation_receipt']
+              assert receipt['schema_id']=='cargo-allow.mutation-receipt.v1'
+              assert receipt['operation']=='add' and receipt['result']=='written'
+              assert receipt['changed_allow_ids']==[old['id']] and receipt['before_fingerprints']==[None]
+              assert len(receipt['after_fingerprints'])==1
+              fingerprint=receipt['after_fingerprints'][0]
+              assert re.fullmatch(r'sha256:v1:[0-9a-f]{64}',fingerprint)
+              records.append({'id':old['id'],'fingerprint':fingerprint,'reason':old['reason']})
+          rendered=policy.read_bytes()
+          assert tomllib.loads(rendered.decode())==expected, 'a field other than the selected evidence changed'
+          blocks=re.split(rb'(?m)(?=^\[\[allow\]\]\r?$)',rendered)
+          selected=[]
+          for block in blocks[1:]:
+              rows=tomllib.loads(block.decode())['allow']
+              assert len(rows)==1
+              if rows[0]['id'] in ids:
+                  selected.append((rows[0]['id'],block.rstrip(b'\r\n')))
+          assert [i for i,_ in selected]==ids
+          preserved=baseline_raw+b'\n'+b'\n\n'.join(block for _,block in selected)+b'\n'
+          assert preserved.startswith(baseline_raw)
+          assert tomllib.loads(preserved.decode())==expected
+          policy.write_bytes(preserved)
+          lines=['schema_version = 1','']
+          for record in records:
+              lines += ['[[records]]','allow_ids = ['+json.dumps(record['id'])+']','change_kinds = ["added_allow"]','after_fingerprint = '+json.dumps(record['fingerprint']),'reason = '+json.dumps(record['reason']),'']
+          note.write_text('\n'.join(lines),encoding='utf-8',newline='\n')
           fixture_path='scripts/test_floor_workspace_contract.py'
           fixture=Path(fixture_path).read_text(encoding='utf-8')
           assert git('hash-object',fixture_path).decode().strip()=='0793dd9e261f105c20bba7288c19563bde6b4138'
@@ -90,37 +145,35 @@ jobs:
           claim_boundary = "The two workspace markers construct temporary Git fixture manifests for original-source admission and hidden-manifest rejection. These controls do not parse release versions, infer tags or channels, or decide prerelease posture."
           '''
           row=tomllib.loads(row_text)['consumers'][0]
-          assert all(old['path']!=row['path'] and old['id']!=row['id'] for old in before['consumers'])
+          old_inventory=tomllib.loads(original_inventory.decode())
+          assert all(old['path']!=row['path'] and old['id']!=row['id'] for old in old_inventory['consumers'])
           assert all(anchor in fixture for anchor in row['sites'])
-          updated=original+(b'\n' if original.endswith(b'\n') else b'\n\n')+row_text.encode()
-          after=tomllib.loads(updated.decode())
-          assert after=={**before,'consumers':before['consumers']+[row]}
-          assert updated.startswith(original)
-          path.write_bytes(updated)
-          git('add','--',path.as_posix())
-          assert git('diff','--cached','--name-only').decode().splitlines()==[path.as_posix()]
+          appended=original_inventory+(b'\n' if original_inventory.endswith(b'\n') else b'\n\n')+row_text.encode()
+          assert tomllib.loads(appended.decode())=={**old_inventory,'consumers':old_inventory['consumers']+[row]}
+          inventory.write_bytes(appended)
+          paths={policy.as_posix(),note.as_posix(),inventory.as_posix()}
+          git('add','--',*sorted(paths))
+          assert set(git('diff','--cached','--name-only').decode().splitlines())==paths
           git('diff','--cached','--check')
-          git('-c','user.name=EffortlessSteven','-c','user.email=15812269+EffortlessSteven@users.noreply.github.com','-c','commit.gpgSign=false','commit','-m','fix(ci): inventory original-workspace source fixtures (#4283)')
+          git('-c','user.name=EffortlessSteven','-c','user.email=15812269+EffortlessSteven@users.noreply.github.com','-c','commit.gpgSign=false','commit','-m','fix(ci): complete floor fixture inventory and checked evidence references (#4283)')
           head=git('rev-parse','HEAD').decode().strip()
           assert git('rev-list','--parents','-n','1','HEAD').decode().split()==[head,source]
           assert not git('status','--porcelain=v1','--untracked-files=all')
-          out=Path('target/pr-4295-inventory')
           (out/'repair.patch').write_bytes(git('diff','--binary',source,'HEAD'))
-          result={'source':source,'head':head,'tree':git('rev-parse','HEAD^{tree}').decode().strip(),'path':path.as_posix(),'original_bytes_preserved':len(original),'original_sha256':hashlib.sha256(original).hexdigest(),'added_row':row,'claim_boundary':'One fixture-only inventory declaration. Not floor compatibility, merge approval, or release authorization.'}
+          result={'source':source,'head':head,'tree':git('rev-parse','HEAD^{tree}').decode().strip(),'changed_paths':sorted(paths),'baseline_policy_bytes_preserved':len(baseline_raw),'baseline_policy_sha256':hashlib.sha256(baseline_raw).hexdigest(),'baseline_entries_preserved':len(baseline['allow']),'policy_changes':'Only the three PR-added entries change file: evidence to doc:; fingerprints regenerated by the real add command.','records':records,'inventory_row':row,'claim_boundary':'Bounded inventory and evidence-reference correction, not floor proof, independent review, or release authority.'}
           (out/'candidate.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
           print(json.dumps(result,indent=2))
           PY
-      - name: Unchanged guard and complete binary suite on repaired subject
+      - name: Prove unchanged guard full binary suite and unsuppressed policy
         shell: bash
         run: |
           set -euo pipefail
-          cargo test -p cargo-allow --bin cargo-allow --locked release_identity_denominator_tests 2>&1 | tee target/pr-4295-inventory/after-guard.log
-          grep -F '6 passed; 0 failed; 0 ignored;' target/pr-4295-inventory/after-guard.log
-          cargo test -p cargo-allow --bin cargo-allow --locked 2>&1 | tee target/pr-4295-inventory/binary-suite.log
-          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4295-inventory/protocol.log
-          cargo build -p cargo-allow --locked 2>&1 | tee target/pr-4295-inventory/build.log
-          target/debug/cargo-allow check --mode no-new --format markdown --receipt target/pr-4295-inventory/check.receipt.json --output target/pr-4295-inventory/check.md
-          target/debug/cargo-allow diff --base "$MAIN_HEAD" --head HEAD --require-change-note --format json --receipt target/pr-4295-inventory/diff.receipt.json --output target/pr-4295-inventory/diff.json
+          cargo test -p cargo-allow --bin cargo-allow --locked release_identity_denominator_tests 2>&1 | tee target/pr-4295-completion/after-guard.log
+          grep -F '6 passed; 0 failed; 0 ignored;' target/pr-4295-completion/after-guard.log
+          cargo test -p cargo-allow --bin cargo-allow --locked 2>&1 | tee target/pr-4295-completion/binary-suite.log
+          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4295-completion/protocol.log
+          target/debug/cargo-allow check --mode no-new --format markdown --receipt target/pr-4295-completion/check.receipt.json --output target/pr-4295-completion/check.md
+          target/debug/cargo-allow diff --base "$MAIN_HEAD" --head HEAD --require-change-note --format json --receipt target/pr-4295-completion/diff.receipt.json --output target/pr-4295-completion/diff.json
           git diff --check "$SUBJECT_HEAD" HEAD
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Retain verified candidate without changing PR or main
@@ -130,28 +183,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api repos/EffortlessMetrics/cargo-allow/pulls/4295 > target/pr-4295-inventory/live-pr.json
+          gh api repos/EffortlessMetrics/cargo-allow/pulls/4295 > target/pr-4295-completion/live-pr.json
           python3 - <<'PY'
           import json,os
           from pathlib import Path
-          pr=json.loads(Path('target/pr-4295-inventory/live-pr.json').read_bytes())
+          pr=json.loads(Path('target/pr-4295-completion/live-pr.json').read_bytes())
           assert pr['state']=='open' and pr['draft'] is True
           assert pr['head']['sha']==os.environ['SUBJECT_HEAD']
           assert pr['head']['ref']=='fix/4283-floor-workspace-contracts'
           assert pr['head']['repo']['full_name']=='EffortlessMetrics/cargo-allow'
           assert pr['base']['sha']==os.environ['MAIN_HEAD'] and pr['base']['ref']=='main'
           PY
-          output_branch="automation/4295-inventory-output-${GITHUB_RUN_ID}"
+          output_branch="automation/4295-completion-output-${GITHUB_RUN_ID}"
           test -z "$(git -c credential.helper= -c 'credential.helper=!gh auth git-credential' ls-remote origin "refs/heads/$output_branch")"
           git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "HEAD:refs/heads/$output_branch"
           echo "candidate=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$output_branch" > target/pr-4295-inventory/output-branch.txt
-      - name: Retain inventory diagnostics
+          printf '%s\n' "$output_branch" > target/pr-4295-completion/output-branch.txt
+      - name: Retain repair diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: pr-4295-fixture-inventory-repair
-          path: target/pr-4295-inventory/
+          name: pr-4295-complete-admission-repair
+          path: target/pr-4295-completion/
           if-no-files-found: error
   native-floor:
     needs: repair
