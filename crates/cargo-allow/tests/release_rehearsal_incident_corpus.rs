@@ -205,8 +205,8 @@ fn rc1_incident_corpus_9_to_16() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn incident_3967_non_exact_internal_requirements_are_blocked_by_the_production_validator(
-) -> Result<(), Box<dyn Error>> {
+fn incident_3967_non_exact_internal_requirements_are_blocked_by_the_production_validator()
+-> Result<(), Box<dyn Error>> {
     let selected = vec![selected_product_row("allow-core", "0.2.0-rc.1")];
     let target = ReleaseVersionV1::parse("0.2.0-rc.1")?;
 
@@ -264,8 +264,8 @@ fn incident_3967_non_exact_internal_requirements_are_blocked_by_the_production_v
 }
 
 #[test]
-fn incident_3968_package_identity_consumers_preserve_prerelease_and_build_metadata(
-) -> Result<(), Box<dyn Error>> {
+fn incident_3968_package_identity_consumers_preserve_prerelease_and_build_metadata()
+-> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     for script in [
         "scripts/test-exact-candidate-package-identity.py",
@@ -279,9 +279,7 @@ fn incident_3968_package_identity_consumers_preserve_prerelease_and_build_metada
         );
         require(
             output.status.success(),
-            &format!(
-                "{INCIDENT_3968}: production identity test {script} failed:\n{transcript}"
-            ),
+            &format!("{INCIDENT_3968}: production identity test {script} failed:\n{transcript}"),
         )?;
         require(
             transcript.contains("OK"),
@@ -337,7 +335,10 @@ fn run_python_test(root: &Path, script: &str) -> Result<Output, Box<dyn Error>> 
     }
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        format!("no Python interpreter is available to run {}", path.display()),
+        format!(
+            "no Python interpreter is available to run {}",
+            path.display()
+        ),
     )
     .into())
 }
