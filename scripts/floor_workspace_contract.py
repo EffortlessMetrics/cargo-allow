@@ -56,7 +56,8 @@ def admit_output(output: str, status: int) -> None:
 
 def source_identity(expected: str) -> dict[str, str]:
     def git(*arguments: str) -> str:
-        result = subprocess.run(["git", *arguments], capture_output=True, text=True, check=False)
+        result = subprocess.run(["git", *arguments], capture_output=True, text=True,
+                                check=False, timeout=30)
         if result.returncode:
             raise ValueError("source-workspace preflight could not observe Git identity")
         return result.stdout
@@ -69,6 +70,16 @@ def source_identity(expected: str) -> dict[str, str]:
         raise ValueError("source-workspace preflight source tree is malformed")
     if git("status", "--porcelain=v1", "--untracked-files=all", "-z"):
         raise ValueError("source-workspace preflight requires clean source")
+    # Match derived-floor admission before the new preflight executes Cargo.
+    # Porcelain alone does not disclose hidden index entries or ignored inputs.
+    if git("branch", "--show-current").strip():
+        raise ValueError("source-workspace preflight requires a detached checkout")
+    flags = git("ls-files", "-v", "-z").split("\0")
+    if any(entry and (entry[0].islower() or entry[0] == "S") for entry in flags):
+        raise ValueError("source-workspace preflight rejects hidden index entries")
+    ignored = git("ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+    if any(path and not path.startswith("target/") for path in ignored.split("\0")):
+        raise ValueError("source-workspace preflight rejects ignored files outside root target")
     return {
         "source_commit": head,
         "source_tree": tree,
@@ -92,7 +103,7 @@ def run_preflight(source_commit: str, host_target: str, output: Path) -> dict:
     # therefore blocks admission instead of silently expanding the exclusion.
     environment = dict(os.environ, RUST_TEST_NOCAPTURE="0")
     result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
-                            errors="replace", env=environment, check=False)
+                            errors="replace", env=environment, check=False, timeout=3600)
     stdout = result.stdout.replace("\r\n", "\n")
     stderr = result.stderr.replace("\r\n", "\n")
     output.with_suffix(".stdout.log").write_text(stdout, encoding="utf-8", newline="\n")
