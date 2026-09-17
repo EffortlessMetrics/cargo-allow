@@ -47,8 +47,12 @@ The constructor refuses unless **all** of these hold:
   carries ten final and three shared rows with well-formed digests, uses the
   current decision generation, and is one-run scoped with a non-empty nonce
   under the token-backed authentication class;
+- custody expiry does not outlive the maintainer decision expiry, so the
+  record can never stay selectable after the decision expires;
 - storage is available, retention outlives the mint act, the validity window
-  is ordered, and the locator is an absolute URI that is not an in-tree path;
+  is ordered, and the locator is an absolute URI that is not an in-tree path
+  (absolute `file://` locators resolve against a caller-supplied repository
+  root; a `file://` locator without a root fails closed);
 - no operator-supplied text carries secret markers.
 
 In particular: no Complete freeze/replay, no mint. A recovery operation, a
@@ -57,12 +61,15 @@ secret marker fails the mint before any record exists.
 
 ## Selection law
 
-Selection requires, in order: a non-terminal live state, a verified
-independent readback, an available storage provider, the exact bound nonce
-(fresh, never consumed), and a current evidence digest equal to the bound
-evidence digest. A changed freeze, custody object, workflow, live control,
-registry preflight, support decision, or freshness input changes that digest
-upstream, so selection fails before token access rather than after it.
+Selection requires, in order: a non-terminal live state (terminal states
+refuse without mutation; expiry observed from `Available` or `SelectedForRun`
+moves the record to `Expired`), a live validity window on both ends, a
+verified independent readback, an available storage provider, the exact bound
+nonce (fresh, never consumed), and a current evidence digest equal to the
+bound evidence digest. A changed freeze, custody object, workflow, live
+control, registry preflight, support decision, or freshness input changes
+that digest upstream, so selection fails before token access rather than
+after it.
 
 The `#3790` gate consumes only `selection_payload_v1`: authorization and
 denominator identity plus validity window. The payload type has no secret

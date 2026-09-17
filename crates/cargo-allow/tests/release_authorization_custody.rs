@@ -6,7 +6,9 @@
 //! behavior the #3790 workflow gate and the #2502 execution lane will rely on.
 
 use std::error::Error;
+use std::fs;
 use std::io;
+use std::path::{Path, PathBuf};
 
 use ReleaseAuthorizationConsumptionV1 as Consumption;
 use allow_report::{
@@ -121,8 +123,8 @@ fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
                 body_digest: digest(60),
                 statement: EXACT_STATEMENT.to_string(),
             },
-            created_at_unix_seconds: 90,
-            expires_at_unix_seconds: 200,
+            created_at_unix_seconds: VALID_FROM - 100,
+            expires_at_unix_seconds: EXPIRES_AT,
             one_run_scope: true,
             nonce: NONCE.to_string(),
         },
@@ -144,6 +146,7 @@ fn mint_init(document: ReleaseAuthorizationInputV1) -> AuthorizationCustodyMintI
         replay_complete: true,
         storage_locator: "s3://release-authority-2026/cargo-allow/0.2.0/auth-0-2-0-001.json"
             .to_string(),
+        repository_root: String::new(),
         storage_access_policy: "release-authority-read".to_string(),
         storage_retention_expiry_unix_seconds: MINTED_AT + 31_536_000,
         storage_provider_available: true,
@@ -152,6 +155,17 @@ fn mint_init(document: ReleaseAuthorizationInputV1) -> AuthorizationCustodyMintI
         minted_by: "maintainer:release-operator".to_string(),
         minted_at_unix_seconds: MINTED_AT,
     }
+}
+
+fn repository_root() -> Result<PathBuf, Box<dyn Error>> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crates_dir = manifest_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow manifest has no crates parent"))?;
+    let root = crates_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow crates directory has no repository parent"))?;
+    Ok(root.to_path_buf())
 }
 
 fn minted() -> Result<CargoAllowReleaseAuthorizationCustodyV1, Box<dyn Error>> {
@@ -308,9 +322,37 @@ fn release_authorization_minting_refusals() -> Result<(), Box<dyn Error>> {
     require(
         mint_authorization_custody_v1(init).is_err(),
         "minting with secret material in the locator must fail",
+    )?;
+    // Control: custody expiry must not outlive the decision expiry.
+    let mut document = decision()?;
+    document.authority.expires_at_unix_seconds = EXPIRES_AT - 1;
+    require(
+        mint_authorization_custody_v1(mint_init(document)).is_err(),
+        "minting custody that outlives the decision must fail",
+    )?;
+    // Control: absolute file locators resolve against the repository root.
+    let mut init = mint_init(decision()?);
+    init.storage_locator = "file:///vault/release/auth-0-2-0-001.json".to_string();
+    init.repository_root = "/repo/checkout".to_string();
+    require(
+        mint_authorization_custody_v1(init).is_ok(),
+        "an out-of-tree file locator must mint",
+    )?;
+    let mut init = mint_init(decision()?);
+    init.storage_locator = "file:///repo/checkout/crates/allow-report/src/lib.rs".to_string();
+    init.repository_root = "/repo/checkout".to_string();
+    require(
+        mint_authorization_custody_v1(init).is_err(),
+        "an in-tree file locator must fail",
+    )?;
+    let mut init = mint_init(decision()?);
+    init.storage_locator = "file:///vault/release/auth-0-2-0-001.json".to_string();
+    init.repository_root = String::new();
+    require(
+        mint_authorization_custody_v1(init).is_err(),
+        "a file locator without a repository root must fail closed",
     )
 }
-
 #[test]
 fn release_authorization_custody() -> Result<(), Box<dyn Error>> {
     let mut record = minted()?;
@@ -322,8 +364,11 @@ fn release_authorization_custody() -> Result<(), Box<dyn Error>> {
     require(
         note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match
             && record.readback_verified
-            && record.readback_digest.is_some(),
-        "a matching readback must be recorded on the custody record",
+            && record
+                .readback_digest
+                .as_deref()
+                .is_some_and(|value| value.len() == 71 && value.starts_with("sha256:")),
+        "a matching readback must record the raw-bytes digest on the custody record",
     )?;
     // Control: readback drift is a mismatch, non-JSON bytes are malformed.
     let forged = rendered.replace("auth-0-2-0-001", "auth-0-2-0-002");
@@ -485,6 +530,12 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
         select_authorization_for_run_v1(&mut record, "", SELECT_AT, &evidence, true).is_err(),
         "selection with an empty nonce must fail",
     )?;
+    // Control: the validity window binds both ends.
+    require(
+        select_authorization_for_run_v1(&mut record, NONCE, VALID_FROM - 1, &evidence, true)
+            .is_err(),
+        "selection before valid-from must fail",
+    )?;
     // Control: changed workflow/control evidence invalidates selection.
     require(
         select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &digest(99), true).is_err(),
@@ -526,5 +577,47 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
     require(
         settle_authorization_consumption_v1(&mut record, true, SELECT_AT).is_err(),
         "settling before selection must fail",
+    )
+}
+
+#[test]
+fn rendered_custody_validates_against_json_schema() -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"),
+    )?)?;
+    let rendered: serde_json::Value =
+        serde_json::from_str(&render_release_authorization_custody_v1(&minted()?)?)?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| io::Error::other(format!("custody schema compiles: {error}")))?;
+    validator.validate(&rendered).map_err(|error| {
+        io::Error::other(format!("rendered custody record violates schema: {error}"))
+    })?;
+    for field in [
+        "schema_id",
+        "schema_version",
+        "authorization_id",
+        "authorization_digest",
+        "operation",
+        "freeze",
+        "evidence_digest",
+        "mint",
+        "storage",
+        "state",
+        "transitions",
+        "redacted",
+        "claim_boundary",
+    ] {
+        require(
+            rendered.get(field).is_some(),
+            format!("rendered custody dropped required field {field}"),
+        )?;
+    }
+    require(
+        rendered.get("redacted") == Some(&serde_json::Value::Bool(true)),
+        "rendered custody must stay redacted",
     )
 }

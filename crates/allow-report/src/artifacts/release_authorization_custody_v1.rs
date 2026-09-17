@@ -97,7 +97,27 @@ fn secret_marker(value: &str) -> Option<&'static str> {
         .find(|marker| value.contains(marker))
 }
 
-fn in_tree_locator(locator: &str) -> bool {
+fn normalize_locator_path(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    let normalized = normalized.trim_start_matches('/').trim_end_matches('/');
+    normalized.to_string()
+}
+
+/// Fail-closed in-tree classification. Relative locators are matched against
+/// the in-tree prefix list. Absolute `file://` locators are resolved against
+/// the caller-supplied repository root; a `file://` locator without a root
+/// is unverifiable and fails closed. Non-file URIs are accepted by shape here
+/// because their independence is observed by storage readback, not by string
+/// matching.
+fn in_tree_locator(locator: &str, repository_root: &str) -> bool {
+    if let Some(path) = locator.strip_prefix("file://") {
+        if repository_root.trim().is_empty() {
+            return true;
+        }
+        let root = normalize_locator_path(repository_root);
+        let path = normalize_locator_path(path);
+        return !root.is_empty() && (path == root || path.starts_with(format!("{root}/").as_str()));
+    }
     !locator.contains("://")
         || IN_TREE_PREFIXES
             .into_iter()
@@ -222,6 +242,9 @@ pub struct AuthorizationCustodyMintInitV1 {
     pub freeze_complete: bool,
     pub replay_complete: bool,
     pub storage_locator: String,
+    /// Independent repository root used to classify absolute `file://`
+    /// locators. Ignored for non-file schemes. Empty fails file locators closed.
+    pub repository_root: String,
     pub storage_access_policy: String,
     pub storage_retention_expiry_unix_seconds: u64,
     pub storage_provider_available: bool,
@@ -313,7 +336,7 @@ pub fn mint_authorization_custody_v1(
     if init.decision.authority.selected_auth_class != RELEASE_AUTHORIZATION_AUTH_CLASS {
         return Err("minting requires the token-backed authentication class");
     }
-    if in_tree_locator(&init.storage_locator) {
+    if in_tree_locator(&init.storage_locator, &init.repository_root) {
         return Err("authorization storage must live outside the frozen source tree");
     }
     if !init.storage_provider_available {
@@ -324,6 +347,9 @@ pub fn mint_authorization_custody_v1(
     }
     if init.expires_at_unix_seconds <= init.valid_from_unix_seconds {
         return Err("authorization expiry must follow its valid-from bound");
+    }
+    if init.expires_at_unix_seconds > init.decision.authority.expires_at_unix_seconds {
+        return Err("custody expiry must not outlive the maintainer decision expiry");
     }
     if init.authorization_id.trim().is_empty() || init.minted_by.trim().is_empty() {
         return Err("minting requires an authorization identity and maintainer reference");
@@ -425,7 +451,8 @@ pub fn note_custody_readback_v1(
 ) -> CustodyReadbackV1 {
     match verify_custody_readback_v1(record, readback_json) {
         CustodyReadbackV1::Match => {
-            let digest = content_digest(readback_json).unwrap_or_default();
+            let digest =
+                allow_core::sha256_v1_bytes(readback_json).replacen("sha256:v1:", "sha256:", 1);
             record.readback_verified = true;
             record.readback_digest = Some(digest);
             CustodyReadbackV1::Match
@@ -463,18 +490,31 @@ pub fn select_authorization_for_run_v1(
     storage_provider_available: bool,
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
-    if record.state == Consumption::Expired
-        || record.state == Consumption::Revoked
-        || now_unix_seconds > record.expires_at_unix_seconds
-    {
-        if record.state != Consumption::Expired {
-            let _ =
-                advance_custody_state(record, Consumption::Expired, now_unix_seconds, "expired");
+    match record.state {
+        Consumption::Available => {
+            if now_unix_seconds > record.expires_at_unix_seconds {
+                advance_custody_state(record, Consumption::Expired, now_unix_seconds, "expired")?;
+                return Err("expired or revoked authorization cannot be selected");
+            }
         }
-        return Err("expired or revoked authorization cannot be selected");
+        Consumption::SelectedForRun => {
+            if now_unix_seconds > record.expires_at_unix_seconds {
+                advance_custody_state(record, Consumption::Expired, now_unix_seconds, "expired")?;
+                return Err("expired or revoked authorization cannot be selected");
+            }
+            return Err("authorization was already selected or consumed");
+        }
+        Consumption::Expired | Consumption::Revoked => {
+            return Err("expired or revoked authorization cannot be selected");
+        }
+        Consumption::IrreversibleOperationStarted
+        | Consumption::ConsumedComplete
+        | Consumption::ConsumedIncident => {
+            return Err("authorization was already selected or consumed");
+        }
     }
-    if record.state != Consumption::Available {
-        return Err("authorization was already selected or consumed");
+    if now_unix_seconds < record.valid_from_unix_seconds {
+        return Err("authorization is not yet valid");
     }
     if !record.readback_verified {
         return Err("selection requires a verified independent readback");

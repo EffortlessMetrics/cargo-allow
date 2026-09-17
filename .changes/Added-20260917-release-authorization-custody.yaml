@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Model the operator-side one-use authorization custody, readback, and
+  consumption protocol with synthetic fixtures, schema, and operator
+  documentation (#3927).
