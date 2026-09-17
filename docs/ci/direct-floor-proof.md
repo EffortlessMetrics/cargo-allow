@@ -64,7 +64,25 @@ named in its command. It does not establish full closure packaging, installed
 behavior, publication, or release qualification. Advisory products remain
 check-only by default and never gate the cargo-allow release set.
 
-During regeneration, the test class excludes five retained-output graders that
+For the cargo-allow `test` class, five repository-topology tests run first on
+that original committed workspace and its original `Cargo.lock`, before any
+projection or floor resolution. `scripts/floor_workspace_contract.py` runs only
+the cargo-allow binary test target with a separate explicit target directory,
+using the collector's already-observed MSRV and host. It requires exactly the
+five named passes and one non-ignored five-test summary; failed, empty, ignored,
+wrong, duplicate, and extra matching tests cannot authorize an exclusion.
+Source identity and clean status must remain unchanged across this preflight.
+
+Only after that success are those full-workspace tests omitted from the smaller
+projected floor test phase. Their assertions and normal CI execution are
+unchanged. The preflight is recorded separately in the selection companion with
+its original commit/tree, input digests, command, test names, and output digests.
+The floor receipt names the limitation, but its `commands` remain commands run
+against the floor candidate: original-lock topology success is **not** floor
+compatibility proof. A `check`-only selection adds no topology-test preflight.
+See [#4283](https://github.com/EffortlessMetrics/cargo-allow/issues/4283).
+
+Separately, during regeneration the test class excludes five retained-output graders that
 would otherwise grade the old receipts while their replacements are being
 produced. Their exact names are recorded in `commands`. Synthetic drift and
 proof-law tests and ordinary product tests remain enabled. After collecting
@@ -93,8 +111,11 @@ The producer and protocol controls require Python 3.11 or newer available as
 `bash scripts/test-proof-direct-floors-protocol.sh` exercises selection,
 execution identity, and the actual producer using temporary fixtures and strict
 Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
-invalid product/class rejection, observed MSRV rejection, the exact five test
-exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
+invalid product/class rejection, observed MSRV rejection, the five retained-output
+exclusions plus the five successfully preflighted topology exclusions, failed-pin
+and failed-class dispositions, and selection-companion binding. It also verifies
+preflight-before-projection ordering, unchanged source inputs, and rejection of
+failed or incomplete original-workspace observations before any floor class. These
 controls do not compile packages or establish real floor compatibility.
 The same command runs real-Git derived-source controls for projected-manifest-
 plus-lock changes, projection-only derivations, attached checkouts, and rejected
