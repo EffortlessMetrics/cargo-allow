@@ -74,7 +74,10 @@ fn test_release_workflow_authorize_gate_precedes_token_access() -> Result<(), Bo
         "--transition-to selected-for-run",
         "authorization-run-id",
     ] {
-        require(authorize.contains(required), &format!("authorize gate must enforce {required}"))?;
+        require(
+            authorize.contains(required),
+            &format!("authorize gate must enforce {required}"),
+        )?;
     }
     // Tag peel binding: the tag must resolve to the preflight commit/tree.
     require(
@@ -84,7 +87,10 @@ fn test_release_workflow_authorize_gate_precedes_token_access() -> Result<(), Bo
 
     let publish = job_block(&content, "publish")
         .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
-    require(publish.contains("authorize"), "the publish job must depend on the authorize gate")?;
+    require(
+        publish.contains("authorize"),
+        "the publish job must depend on the authorize gate",
+    )?;
     // Token lookup requires a Complete gate (or the incident-owned recovery
     // path); rehearsal and failed gates stay zero-token.
     require(

@@ -11,9 +11,8 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_report::{
     ReleaseAuthorizationConsumptionV1, ReleaseAuthorizationExpectedContextV1,
-    ReleaseAuthorizationInputV1, ReleaseAuthorizationResultV1,
-    compile_release_authorization_v1, render_release_authorization_v1,
-    transition_authorization_consumption,
+    ReleaseAuthorizationInputV1, ReleaseAuthorizationResultV1, compile_release_authorization_v1,
+    render_release_authorization_v1, transition_authorization_consumption,
 };
 use clap::Parser;
 use std::path::PathBuf;
@@ -85,15 +84,17 @@ fn parse_consumption(value: &str) -> Result<ReleaseAuthorizationConsumptionV1, S
 
 pub(super) fn cmd_release_authorization(args: &ReleaseAuthorizationArgs) -> CargoAllowResult<()> {
     if args.transition_to.is_some() && args.transition_out.is_none() {
-        return Err(invalid_authorization("--transition-out is required with --transition-to"));
+        return Err(invalid_authorization(
+            "--transition-out is required with --transition-to",
+        ));
     }
     let raw = read_json(&args.document, "authorization decision")?;
     let document: ReleaseAuthorizationInputV1 = serde_json::from_slice(&raw).map_err(|error| {
         invalid_authorization(format!("authorization decision parses: {error}"))
     })?;
     let context_raw = read_json(&args.expected_context, "trusted expected context")?;
-    let context: ReleaseAuthorizationExpectedContextV1 =
-        serde_json::from_slice(&context_raw).map_err(|error| {
+    let context: ReleaseAuthorizationExpectedContextV1 = serde_json::from_slice(&context_raw)
+        .map_err(|error| {
             invalid_authorization(format!("trusted expected context parses: {error}"))
         })?;
     // Independent facts are compared against the trusted context, never
@@ -133,8 +134,11 @@ pub(super) fn cmd_release_authorization(args: &ReleaseAuthorizationArgs) -> Carg
     }
     let compiled = compile_release_authorization_v1(&document, &context_raw);
     if compiled.result != ReleaseAuthorizationResultV1::Complete {
-        let reasons: Vec<&str> =
-            compiled.findings.iter().map(|finding| finding.reason.as_str()).collect();
+        let reasons: Vec<&str> = compiled
+            .findings
+            .iter()
+            .map(|finding| finding.reason.as_str())
+            .collect();
         return Err(invalid_authorization(format!(
             "authorization compiled as {:?}: {}",
             compiled.result,
@@ -143,16 +147,13 @@ pub(super) fn cmd_release_authorization(args: &ReleaseAuthorizationArgs) -> Carg
     }
     write_text(
         &args.out_receipt,
-        &render_release_authorization_v1(&compiled).map_err(|error| {
-            invalid_authorization(format!("compiled receipt renders: {error}"))
-        })?,
+        &render_release_authorization_v1(&compiled)
+            .map_err(|error| invalid_authorization(format!("compiled receipt renders: {error}")))?,
     )?;
     let operation_name = document.operation.name.clone();
     if let (Some(next), Some(out_path)) = (args.transition_to, args.transition_out.as_ref()) {
-        let advanced =
-            transition_authorization_consumption(context.use_observation.state, next).map_err(
-                |error| invalid_authorization(format!("use-state transition: {error}")),
-            )?;
+        let advanced = transition_authorization_consumption(context.use_observation.state, next)
+            .map_err(|error| invalid_authorization(format!("use-state transition: {error}")))?;
         let mut transitioned = context;
         transitioned.use_observation.state = advanced;
         let rendered = serde_json::to_string_pretty(&transitioned).map_err(|error| {
@@ -187,20 +188,20 @@ fn write_text(path: &PathBuf, text: &str) -> CargoAllowResult<()> {
 mod tests {
     use super::*;
     use allow_report::{
+        RELEASE_AUTHORIZATION_AUTH_CLASS, RELEASE_AUTHORIZATION_EXACT_STATEMENT,
+        RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID,
+        RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION,
+        RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
+        RELEASE_AUTHORIZATION_FINAL_VERSION, RELEASE_AUTHORIZATION_REPOSITORY,
+        RELEASE_AUTHORIZATION_SCHEMA_ID, RELEASE_AUTHORIZATION_SCHEMA_VERSION,
+        RELEASE_AUTHORIZATION_SELECTION, RELEASE_AUTHORIZATION_STABLE_CHANNEL,
         ReleaseAuthorizationAuthorityKindV1, ReleaseAuthorizationAuthorityV1,
         ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationExpectedContextV1,
-        ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
-        ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
-        ReleaseAuthorizationSecretAvailabilityV1, ReleaseAuthorizationSecretStateV1,
-        ReleaseAuthorizationSharedRowV1, ReleaseAuthorizationSourceKindV1,
-        ReleaseAuthorizationSourceV1, ReleaseAuthorizationUseObservationV1,
-        RELEASE_AUTHORIZATION_AUTH_CLASS, RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID,
-        RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION,
-        RELEASE_AUTHORIZATION_EXACT_STATEMENT, RELEASE_AUTHORIZATION_FINAL_OPERATION,
-        RELEASE_AUTHORIZATION_FINAL_TAG, RELEASE_AUTHORIZATION_FINAL_VERSION,
-        RELEASE_AUTHORIZATION_REPOSITORY, RELEASE_AUTHORIZATION_SCHEMA_ID,
-        RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
-        RELEASE_AUTHORIZATION_STABLE_CHANNEL, release_authorization_denominator_binding_v1,
+        ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1, ReleaseAuthorizationOperationV1,
+        ReleaseAuthorizationPackageRowV1, ReleaseAuthorizationSecretAvailabilityV1,
+        ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+        ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+        ReleaseAuthorizationUseObservationV1, release_authorization_denominator_binding_v1,
     };
     use clap::CommandFactory;
 
@@ -252,9 +253,8 @@ mod tests {
             packages,
             shared_prerequisites: shared,
         };
-        freeze.denominator_digest =
-            release_authorization_denominator_binding_v1(&freeze)
-                .map_err(|error| error.to_string())?;
+        freeze.denominator_digest = release_authorization_denominator_binding_v1(&freeze)
+            .map_err(|error| error.to_string())?;
         Ok(freeze)
     }
 
@@ -335,8 +335,10 @@ mod tests {
     }
 
     fn scratch_dir(name: &str) -> Result<PathBuf, String> {
-        let dir = std::env::temp_dir()
-            .join(format!("cargo-allow-release-authorization-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "cargo-allow-release-authorization-{name}-{}",
+            std::process::id()
+        ));
         std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
         Ok(dir)
     }
@@ -389,7 +391,8 @@ mod tests {
         let dir = scratch_dir("valid")?;
         let args = write_args(&dir)?;
         cmd_release_authorization(&args).map_err(|error| error.to_string())?;
-        let rendered = std::fs::read_to_string(&args.out_receipt).map_err(|error| error.to_string())?;
+        let rendered =
+            std::fs::read_to_string(&args.out_receipt).map_err(|error| error.to_string())?;
         let receipt: serde_json::Value =
             serde_json::from_str(&rendered).map_err(|error| error.to_string())?;
         if receipt.get("result").and_then(serde_json::Value::as_str) != Some("complete") {
@@ -426,14 +429,15 @@ mod tests {
             &std::fs::read_to_string(&transitioned).map_err(|error| error.to_string())?,
         )
         .map_err(|error| error.to_string())?;
-        if rewritten.pointer("/use_observation/state").and_then(serde_json::Value::as_str)
+        if rewritten
+            .pointer("/use_observation/state")
+            .and_then(serde_json::Value::as_str)
             != Some("selected_for_run")
         {
             return Err(format!("transition was not applied: {rewritten}"));
         }
         Ok(())
     }
-
 
     #[test]
     fn command_is_installed_but_hidden_from_product_help() -> Result<(), String> {

@@ -48,15 +48,22 @@ fn test_token_access_points_are_inventoried_and_gated() -> Result<(), Box<dyn Er
         .find(|(name, _)| name == "release.yml")
         .map(|(_, content)| content.clone())
         .ok_or_else(|| io::Error::other("release.yml is absent"))?;
-    let references: Vec<&str> =
-        release.lines().filter(|line| line.contains("secrets.CARGO_REGISTRY_TOKEN")).collect();
+    let references: Vec<&str> = release
+        .lines()
+        .filter(|line| line.contains("secrets.CARGO_REGISTRY_TOKEN"))
+        .collect();
     require(
         references.len() == 2,
-        &format!("exactly two token references must exist, found {}", references.len()),
+        &format!(
+            "exactly two token references must exist, found {}",
+            references.len()
+        ),
     )?;
     // The publish upload env carries the secret only behind the gate.
     require(
-        references.iter().any(|line| line.contains("needs.authorize.outputs")),
+        references
+            .iter()
+            .any(|line| line.contains("needs.authorize.outputs")),
         "token references must be conditioned on the authorize gate",
     )?;
     // No step echoes the secret and no cleartext token exists.
@@ -126,8 +133,7 @@ fn test_skipped_or_failed_gate_cannot_reach_token() -> Result<(), Box<dyn Error>
 /// #3790: ordinary rehearsal dispatches stay zero-token, and the recovery
 /// path never presents clean authorization.
 #[test]
-fn test_rehearsal_stays_zero_token_and_recovery_stays_separate(
-) -> Result<(), Box<dyn Error>> {
+fn test_rehearsal_stays_zero_token_and_recovery_stays_separate() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     if !root.join(".git").exists() {
         return Ok(());
@@ -150,7 +156,10 @@ fn test_rehearsal_stays_zero_token_and_recovery_stays_separate(
         .lines()
         .filter(|line| line.trim() == "valid=true")
         .count();
-    require(grants == 1, "exactly one clean-authorization grant may exist")?;
+    require(
+        grants == 1,
+        "exactly one clean-authorization grant may exist",
+    )?;
     let recovery_branch = release
         .split_once("[ \"${RECOVERY}\" = \"true\" ]")
         .and_then(|(_, tail)| tail.split_once("elif"))

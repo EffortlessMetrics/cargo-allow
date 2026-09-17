@@ -374,9 +374,7 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
         publish_step.contains("if [ \"${DRY_RUN}\" = \"true\" ]")
             && publish_step.contains("exit 0")
             && publish_step.contains("--publish")
-            && publish_step.contains(
-                "needs.authorize.outputs.valid == 'true'"
-            ),
+            && publish_step.contains("needs.authorize.outputs.valid == 'true'"),
         "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish"
     );
 }
