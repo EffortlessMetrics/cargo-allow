@@ -70,6 +70,7 @@ fn test_release_workflow_authorize_gate_precedes_token_access() -> Result<(), Bo
     // transitions one-use state; tag pushes and dispatches alone prove nothing.
     for required in [
         "release-authorization validate",
+        "--expected-context",
         "--transition-to selected-for-run",
         "authorization-run-id",
     ] {

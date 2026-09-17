@@ -323,9 +323,9 @@ git push origin v0.2.0
 ```
 
 The `authorize` job verifies the tag peels to the preflight commit/tree,
-downloads the `release-authorization` artifact (authorization document plus
-freeze receipt) from the named run, compiles it with
-`cargo-allow release-authorization validate`, transitions it to
+downloads the `release-authorization` artifact (immutable decision plus
+trusted expected context plus freeze receipt) from the named run, compiles it with
+`cargo-allow release-authorization validate`, transitions the use observation to
 `selected-for-run`, and propagates the digest to the publish receipt and the
 release manifest. Rehearsal dispatches and incident-owned recovery follow
 their own paths and never present clean authorization.

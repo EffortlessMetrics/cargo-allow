@@ -207,10 +207,12 @@ jobs:
             advertised="$(printf '%s' "${tag_message}" | sed -n 's/^authorization-digest: \(sha256:[0-9a-fA-F]\{64\}\)$/\1/p' | head -n 1)"
             mkdir -p target/cargo-allow/authorization
             gh run download "${run_id}" --name release-authorization --dir target/cargo-allow/authorization --repo "${GITHUB_REPOSITORY}"
-            [ -f target/cargo-allow/authorization/authorization.json ] || { echo "::error::authorization run ${run_id} holds no authorization document"; exit 1; }
+            [ -f target/cargo-allow/authorization/authorization.json ] || { echo "::error::authorization run ${run_id} holds no authorization decision"; exit 1; }
+            [ -f target/cargo-allow/authorization/expected-context.json ] || { echo "::error::authorization run ${run_id} holds no trusted expected context"; exit 1; }
             [ -f target/cargo-allow/authorization/freeze.receipt.json ] || { echo "::error::authorization run ${run_id} holds no freeze receipt"; exit 1; }
             compiled="$(cargo run -p cargo-allow --locked --quiet -- release-authorization validate \
               --document target/cargo-allow/authorization/authorization.json \
+              --expected-context target/cargo-allow/authorization/expected-context.json \
               --expected-commit "${COMMIT}" \
               --expected-tree "${TREE}" \
               --expected-version "${VERSION}" \
