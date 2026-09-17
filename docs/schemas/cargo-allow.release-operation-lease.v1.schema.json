@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-operation-lease.v1.schema.json",
+  "title": "CargoAllowReleaseOperationLeaseV1",
+  "description": "Durable one-operation lease serializing clean and recovery release runs for one exact cargo-allow subject. Structural validation does not authorize the operation, prove provider success, or execute publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "lease_id",
+    "class",
+    "key",
+    "key_digest",
+    "holder",
+    "acquired_at_unix_seconds",
+    "renewed_at_unix_seconds",
+    "renewals",
+    "max_renewals",
+    "expires_at_unix_seconds",
+    "journal_head_digest",
+    "checkpoint_head_digest",
+    "first_irreversible_started",
+    "state",
+    "transitions",
+    "redacted",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-operation-lease.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "lease_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Lease identity. Never a credential."
+    },
+    "class": {
+      "type": "string",
+      "enum": ["clean", "recovery"]
+    },
+    "key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "version", "tag", "commit", "tree", "denominator_digest"],
+      "properties": {
+        "operation": { "type": "string", "minLength": 1 },
+        "version": { "const": "0.2.0" },
+        "tag": { "const": "v0.2.0" },
+        "commit": { "type": "string", "minLength": 40 },
+        "tree": { "type": "string", "minLength": 40 },
+        "denominator_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "key_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the exact operation identity. Branch and ref text never enter the key."
+    },
+    "holder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lease_id", "generation", "workflow", "run", "attempt", "job"],
+      "properties": {
+        "lease_id": { "type": "string", "minLength": 1 },
+        "generation": { "type": "integer", "minimum": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1 }
+      }
+    },
+    "acquired_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "renewed_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "renewals": { "type": "integer", "minimum": 0 },
+    "max_renewals": { "type": "integer", "minimum": 0 },
+    "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "journal_head_digest": { "$ref": "#/$defs/digest" },
+    "checkpoint_head_digest": { "$ref": "#/$defs/digest" },
+    "first_irreversible_started": { "type": "boolean" },
+    "state": { "$ref": "#/$defs/lease_state" },
+    "transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "redacted": {
+      "const": true,
+      "description": "Lease records carry no credential material."
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "lease_state": {
+      "type": "string",
+      "enum": [
+        "available",
+        "held_pre_irreversible",
+        "held_irreversible",
+        "released_complete",
+        "released_incident",
+        "expired_pre_irreversible",
+        "recovery_required",
+        "conflict",
+        "provider_unavailable",
+        "instrument_failure"
+      ]
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "at_unix_seconds", "reason"],
+      "properties": {
+        "from": { "$ref": "#/$defs/lease_state" },
+        "to": { "$ref": "#/$defs/lease_state" },
+        "at_unix_seconds": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

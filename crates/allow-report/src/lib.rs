@@ -338,6 +338,17 @@ pub use artifacts::{
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
     transition_authorization_consumption,
 };
+// Root re-exports for the durable operation lease (#3925).
+pub use artifacts::{
+    CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
+    OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
+    OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
+    OperationLeaseClassV1, OperationLeaseHolderV1, OperationLeaseKeyV1, OperationLeaseStateV1,
+    OperationLeaseTransitionV1, acquire_operation_lease_v1, cancel_operation_lease_v1,
+    note_lease_irreversible_start_v1, observe_lease_provider_unavailable_v1,
+    observe_runner_loss_v1, operation_lease_key_digest_v1, release_operation_lease_v1,
+    render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,
+};
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
