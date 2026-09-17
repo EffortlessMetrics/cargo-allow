@@ -396,6 +396,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove pure reconciliation semantics; no registry observation, permission proof, or release authorization is produced."
 
 [[surfaces]]
+id = "release-experience-v1"
+owner_issue = 3151
+semantic_authority = "typed installed-experience evaluation"
+path = "crates/cargo-allow/tests/release_experience_contract.rs"
+subject = "CargoAllowReleaseExperienceV1"
+producer = "production evaluator with hostile claim fixtures"
+consumer = "#2496/#2497 reconciliation and #2501 refreeze"
+claimed_acceptance_row = "explicit NotProven with narrowed claims absent a clean pilot"
+assertion_mechanism = "production evaluator over pilot/docs/friction evidence with JSON Schema read-back; adversarial unit fixtures live beside the evaluator"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2501"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove evaluation semantics; no pilot ran, no usability is proven, and NotProven never satisfies reconciliation."
+
+[[surfaces]]
 id = "intent-candidate-smoke"
 owner_issue = 2599
 semantic_authority = "intent candidate smoke"
