@@ -10,6 +10,7 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "resolved-cargo-allow-config-v1",
     "cargo-allow.final-registry-preflight.v1",
     "cargo-allow.release-authorization.v1",
+    "cargo-allow.release-operation-lease.v1",
     "cargo-allow.release-experience.v1",
 ];
 const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] =
