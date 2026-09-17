@@ -25,8 +25,7 @@ pub const RELEASE_AUTHORIZATION_SCHEMA_VERSION: u32 = 1;
 /// The single clean final operation this generation may authorize.
 pub const RELEASE_AUTHORIZATION_FINAL_OPERATION: &str = "publish_cargo_allow_final_0_2_0";
 /// The single recovery operation this generation may authorize.
-pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str =
-    "publish_cargo_allow_recovery_0_2_0";
+pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str = "publish_cargo_allow_recovery_0_2_0";
 pub const RELEASE_AUTHORIZATION_FINAL_VERSION: &str = "0.2.0";
 pub const RELEASE_AUTHORIZATION_FINAL_TAG: &str = "v0.2.0";
 pub const RELEASE_AUTHORIZATION_STABLE_CHANNEL: &str = "stable";

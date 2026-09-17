@@ -22,8 +22,7 @@ fn digest(value: &str) -> bool {
 }
 
 fn git_sha(value: &str) -> bool {
-    (value.len() == 40 || value.len() == 64)
-        && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+    (value.len() == 40 || value.len() == 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn content_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
@@ -72,18 +71,9 @@ pub fn transition_authorization_consumption(
     use ReleaseAuthorizationConsumptionV1 as Consumption;
     match (current, next) {
         (Consumption::Available, Consumption::SelectedForRun)
-        | (
-            Consumption::SelectedForRun,
-            Consumption::IrreversibleOperationStarted,
-        )
-        | (
-            Consumption::IrreversibleOperationStarted,
-            Consumption::ConsumedComplete,
-        )
-        | (
-            Consumption::IrreversibleOperationStarted,
-            Consumption::ConsumedIncident,
-        )
+        | (Consumption::SelectedForRun, Consumption::IrreversibleOperationStarted)
+        | (Consumption::IrreversibleOperationStarted, Consumption::ConsumedComplete)
+        | (Consumption::IrreversibleOperationStarted, Consumption::ConsumedIncident)
         | (_, Consumption::Revoked) => Ok(next),
         (Consumption::Available, Consumption::Expired)
         | (Consumption::SelectedForRun, Consumption::Expired) => Ok(next),
@@ -213,7 +203,8 @@ pub fn compile_release_authorization_v1(
     let mut shared_index = 0;
     for (index, (logical, package, version, shared)) in
         RELEASE_AUTHORIZATION_SELECTION.into_iter().enumerate()
-    {        if shared {
+    {
+        if shared {
             let row = freeze.shared_prerequisites.get(shared_index);
             shared_index += 1;
             let Some(row) = row else {
@@ -296,7 +287,10 @@ pub fn compile_release_authorization_v1(
             "source_controls_digest",
             evidence.source_controls_digest.as_str(),
         ),
-        ("live_controls_digest", evidence.live_controls_digest.as_str()),
+        (
+            "live_controls_digest",
+            evidence.live_controls_digest.as_str(),
+        ),
         ("workflow_digest", evidence.workflow_digest.as_str()),
         (
             "action_inventory_digest",
@@ -395,17 +389,13 @@ pub fn compile_release_authorization_v1(
             "secret values must never travel in authorization documents",
         );
     }
-    if authority.secret_availability.state
-        == ReleaseAuthorizationSecretStateV1::Unknown
-    {
+    if authority.secret_availability.state == ReleaseAuthorizationSecretStateV1::Unknown {
         caveats.push(
             "repository-secret availability is unproven; the token boundary rechecks it"
                 .to_string(),
         );
     }
-    if authority.maintainer_actor.trim().is_empty()
-        || authority.maintainer_role.trim().is_empty()
-    {
+    if authority.maintainer_actor.trim().is_empty() || authority.maintainer_role.trim().is_empty() {
         finding(
             &mut findings,
             ResultState::Unauthorized,
@@ -504,9 +494,10 @@ pub fn compile_release_authorization_v1(
         }
     };
     if !authorization_digest.is_empty()
-        && input.frozen_file_digests.iter().any(|entry| {
-            entry.eq_ignore_ascii_case(&authorization_digest)
-        })
+        && input
+            .frozen_file_digests
+            .iter()
+            .any(|entry| entry.eq_ignore_ascii_case(&authorization_digest))
     {
         finding(
             &mut findings,

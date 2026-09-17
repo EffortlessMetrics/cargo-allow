@@ -3,24 +3,23 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use allow_report::{
-    CargoAllowReleaseAuthorizationV1, ReleaseAuthorizationAuthorityKindV1,
-    ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
-    ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationFreezeV1,
-    ReleaseAuthorizationInputV1, ReleaseAuthorizationOperationV1,
-    ReleaseAuthorizationPackageRowV1, ReleaseAuthorizationResultV1,
-    ReleaseAuthorizationSecretAvailabilityV1, ReleaseAuthorizationSecretStateV1,
-    ReleaseAuthorizationSharedRowV1, ReleaseAuthorizationSourceKindV1,
-    ReleaseAuthorizationSourceV1, compile_release_authorization_v1,
-    render_release_authorization_v1, transition_authorization_consumption,
-    RELEASE_AUTHORIZATION_AUTH_CLASS, RELEASE_AUTHORIZATION_FINAL_OPERATION,
-    RELEASE_AUTHORIZATION_FINAL_TAG, RELEASE_AUTHORIZATION_FINAL_VERSION,
-    RELEASE_AUTHORIZATION_SCHEMA_ID, RELEASE_AUTHORIZATION_SCHEMA_VERSION,
-    RELEASE_AUTHORIZATION_SELECTION, RELEASE_AUTHORIZATION_STABLE_CHANNEL,
-    release_authorization_denominator_binding_v1,
-};
 use ReleaseAuthorizationConsumptionV1 as Consumption;
 use ReleaseAuthorizationResultV1 as State;
+use allow_report::{
+    CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
+    RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
+    RELEASE_AUTHORIZATION_FINAL_VERSION, RELEASE_AUTHORIZATION_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_AUTHORIZATION_STABLE_CHANNEL, ReleaseAuthorizationAuthorityKindV1,
+    ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
+    ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
+    ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
+    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+    compile_release_authorization_v1, release_authorization_denominator_binding_v1,
+    render_release_authorization_v1, transition_authorization_consumption,
+};
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
@@ -141,8 +140,7 @@ fn receipt(input: &ReleaseAuthorizationInputV1) -> CargoAllowReleaseAuthorizatio
 }
 
 #[test]
-fn release_authorization_contract_exact_document_compiles(
-) -> Result<(), Box<dyn Error>> {
+fn release_authorization_contract_exact_document_compiles() -> Result<(), Box<dyn Error>> {
     let document = input()?;
     let compiled = receipt(&document);
     require(
@@ -156,13 +154,10 @@ fn release_authorization_contract_exact_document_compiles(
 }
 
 #[test]
-fn release_authorization_contract_state_machine_parity(
-) -> Result<(), Box<dyn Error>> {
+fn release_authorization_contract_state_machine_parity() -> Result<(), Box<dyn Error>> {
     require(
-        transition_authorization_consumption(
-            Consumption::Available,
-            Consumption::SelectedForRun,
-        )? == Consumption::SelectedForRun,
+        transition_authorization_consumption(Consumption::Available, Consumption::SelectedForRun)?
+            == Consumption::SelectedForRun,
         "available must select",
     )?;
     require(
@@ -195,8 +190,7 @@ fn release_authorization_contract_state_machine_parity(
 }
 
 #[test]
-fn release_authorization_contract_hostile_documents_fail(
-) -> Result<(), Box<dyn Error>> {
+fn release_authorization_contract_hostile_documents_fail() -> Result<(), Box<dyn Error>> {
     let document = input()?;
     // Broad prose cannot construct a typed document.
     let prose: Result<ReleaseAuthorizationInputV1, _> =
@@ -248,8 +242,7 @@ fn release_authorization_contract_hostile_documents_fail(
 }
 
 #[test]
-fn release_authorization_contract_rendered_receipt_matches_schema(
-) -> Result<(), Box<dyn Error>> {
+fn release_authorization_contract_rendered_receipt_matches_schema() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     if !root.join(".git").exists() {
         return Ok(());

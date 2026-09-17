@@ -1,5 +1,7 @@
 use super::*;
-use crate::{FinalRegistryPreflightResultV1 as Preflight, ReleaseAuthorizationConsumptionV1 as Consumption};
+use crate::{
+    FinalRegistryPreflightResultV1 as Preflight, ReleaseAuthorizationConsumptionV1 as Consumption,
+};
 use ReleaseAuthorizationResultV1 as State;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -20,13 +22,15 @@ fn package_rows() -> Vec<ReleaseAuthorizationPackageRowV1> {
     RELEASE_AUTHORIZATION_SELECTION
         .into_iter()
         .filter(|row| !row.3)
-        .map(|(logical, package, version, _)| ReleaseAuthorizationPackageRowV1 {
-            logical_id: logical.to_string(),
-            package_name: package.to_string(),
-            package_version: version.to_string(),
-            package_digest: digest(10),
-            package_size_bytes: 10_000,
-        })
+        .map(
+            |(logical, package, version, _)| ReleaseAuthorizationPackageRowV1 {
+                logical_id: logical.to_string(),
+                package_name: package.to_string(),
+                package_version: version.to_string(),
+                package_digest: digest(10),
+                package_size_bytes: 10_000,
+            },
+        )
         .collect()
 }
 
@@ -34,13 +38,15 @@ fn shared_rows() -> Vec<ReleaseAuthorizationSharedRowV1> {
     RELEASE_AUTHORIZATION_SELECTION
         .into_iter()
         .filter(|row| row.3)
-        .map(|(logical, package, version, _)| ReleaseAuthorizationSharedRowV1 {
-            logical_id: logical.to_string(),
-            package_name: package.to_string(),
-            package_version: version.to_string(),
-            expected_checksum: digest(20),
-            authority_digest: digest(21),
-        })
+        .map(
+            |(logical, package, version, _)| ReleaseAuthorizationSharedRowV1 {
+                logical_id: logical.to_string(),
+                package_name: package.to_string(),
+                package_version: version.to_string(),
+                expected_checksum: digest(20),
+                authority_digest: digest(21),
+            },
+        )
         .collect()
 }
 
@@ -109,8 +115,7 @@ fn fixture() -> Result<ReleaseAuthorizationInputV1, Box<dyn std::error::Error>> 
         frozen_file_digests: vec![digest(50), digest(51)],
         evaluated_at_unix_seconds: 110,
     };
-    input.freeze.denominator_digest =
-        release_authorization_denominator_binding_v1(&input.freeze)?;
+    input.freeze.denominator_digest = release_authorization_denominator_binding_v1(&input.freeze)?;
     Ok(input)
 }
 
@@ -342,12 +347,10 @@ fn release_authorization_expiry_and_reuse() -> TestResult {
 fn release_authorization_rejects_token_and_unbounded_prose() -> TestResult {
     // Control 13: unknown fields (tokens, env dumps) cannot deserialize.
     let mut raw = serde_json::to_value(fixture()?)?;
-    raw.as_object_mut()
-        .ok_or("input is not an object")?
-        .insert(
-            "registry_token".to_string(),
-            serde_json::Value::String("secret".to_string()),
-        );
+    raw.as_object_mut().ok_or("input is not an object")?.insert(
+        "registry_token".to_string(),
+        serde_json::Value::String("secret".to_string()),
+    );
     let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
     require(parsed.is_err(), "token field constructed a document")?;
     // Unbounded prose fails compilation.
@@ -389,9 +392,8 @@ fn release_authorization_compiler_touches_no_side_effects() -> TestResult {
     // Control 16: the compiler module performs no env, process, network, or
     // filesystem access. Tag creation, upload, and mutation are impossible.
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let evaluate = std::fs::read_to_string(
-        root.join("src/artifacts/release_authorization_v1/evaluate.rs"),
-    )?;
+    let evaluate =
+        std::fs::read_to_string(root.join("src/artifacts/release_authorization_v1/evaluate.rs"))?;
     for forbidden in [
         "std::env",
         "std::process",
@@ -423,10 +425,8 @@ fn release_authorization_consumption_transitions() -> TestResult {
         "selection must start the irreversible operation",
     )?;
     require(
-        transition_authorization_consumption(
-            C::IrreversibleOperationStarted,
-            C::ConsumedComplete,
-        )? == C::ConsumedComplete,
+        transition_authorization_consumption(C::IrreversibleOperationStarted, C::ConsumedComplete)?
+            == C::ConsumedComplete,
         "started operations must complete",
     )?;
     require(
