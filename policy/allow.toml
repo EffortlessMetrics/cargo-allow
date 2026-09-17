@@ -179,7 +179,6 @@ glob = ".allow/revisions/3850-final-registry-observation-v1.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-0038"
 kind = "panic"
@@ -21053,12 +21052,7 @@ path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
 owner = "proof/provider"
 classification = "provider_contract_schema"
 reason = "Published closed JSON Schema for the discovery-only cargo-allow provider descriptor introduced by PR #4131; it does not define or authorize request execution or analysis receipts."
-evidence = [
-    "issue:2567",
-    "issue:4144",
-    "doc:docs/schemas/README.md",
-    "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
-]
+evidence = ["issue:2567", "issue:4144", "doc:docs/schemas/README.md", "test:provider_descriptor_stdout_conforms_without_repository_or_policy"]
 created = "2026-09-06"
 review_after = "2027-03-06"
 
@@ -21080,11 +21074,7 @@ path = ".allow/revisions/4131-provider-contract-schema.toml"
 owner = "core/policy"
 classification = "ledger_change_note"
 reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
-evidence = [
-    "pr:4131",
-    "issue:2567",
-    "doc:docs/how-to/manage-an-exception.md",
-]
+evidence = ["pr:4131", "issue:2567", "doc:docs/how-to/manage-an-exception.md"]
 created = "2026-09-06"
 review_after = "2027-03-06"
 
@@ -21164,7 +21154,6 @@ glob = ".allow/revisions/4277-floor-pin-settlement.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11296"
 kind = "non_rust_file"
@@ -21209,7 +21198,6 @@ glob = "scripts/test_floor_product_workspace.py"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-4283-direct-floor-product-revision"
 kind = "non_rust_file"
@@ -21227,6 +21215,72 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4283-direct-floor-product-isolation.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4283-direct-floor-product-isolation.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4283-workspace-preflight"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/floor_workspace_contract.py"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Bounded original-workspace preflight for #4283. Requires five actual topology-test passes before floor projection; does not certify dependency-floor compatibility."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/floor_workspace_contract.py"
+target_fingerprint = "py"
+glob = "scripts/floor_workspace_contract.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4283-workspace-preflight-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test_floor_workspace_contract.py"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Negative controls for #4283 preflight output, real-Git source admission, CRLF checkout identity, and process timeouts; synthetic Cargo observations are not Rust compatibility proof."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test_floor_workspace_contract.py"
+target_fingerprint = "py"
+glob = "scripts/test_floor_workspace_contract.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4283-workspace-admission-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4283-workspace-contract-admission.toml"
+owner = "EffortlessSteven"
+classification = "reviewed_exception"
+reason = "Exact append-only admission record for the two #4283 Python files and this note; records generated entry fingerprints without changing existing exceptions or authorizing release."
+evidence = ["issue:4283", "file:docs/ci/direct-floor-proof.md"]
+created = "2026-09-17"
+review_after = "2026-12-16"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4283-workspace-contract-admission.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4283-workspace-contract-admission.toml"
 
 [allow.last_seen]
 line = 1
