@@ -222,7 +222,7 @@ pub fn evaluate_release_experience_v1(
         .iter()
         .map(|finding| finding.result)
         .min()
-        .unwrap_or_else(|| input.claimed_result);
+        .unwrap_or(input.claimed_result);
     let mut retained_evidence = vec![
         "installed package candidate truth is retained".to_string(),
         "isolated install truth is retained".to_string(),
