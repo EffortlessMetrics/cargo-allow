@@ -15,7 +15,7 @@ use allow_report::{
     render_release_authorization_v1, transition_authorization_consumption,
 };
 use clap::Parser;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn invalid_authorization(message: impl Into<String>) -> CargoAllowError {
     CargoAllowError::with_kind(CargoAllowErrorKind::InvalidConfig, message.into())
@@ -168,16 +168,14 @@ pub(super) fn cmd_release_authorization(args: &ReleaseAuthorizationArgs) -> Carg
     Ok(())
 }
 
-fn write_text(path: &PathBuf, text: &str) -> CargoAllowResult<()> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent).map_err(|error| {
-                invalid_authorization(format!(
-                    "receipt parent {} creates: {error}",
-                    parent.display()
-                ))
-            })?;
-        }
+fn write_text(path: &Path, text: &str) -> CargoAllowResult<()> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            invalid_authorization(format!("receipt parent {} creates: {error}", parent.display()))
+        })?;
     }
     std::fs::write(path, format!("{text}\n")).map_err(|error| {
         invalid_authorization(format!("receipt {} writes: {error}", path.display()))
@@ -343,7 +341,7 @@ mod tests {
         Ok(dir)
     }
 
-    fn write_args(dir: &PathBuf) -> Result<ReleaseAuthorizationArgs, String> {
+    fn write_args(dir: &Path) -> Result<ReleaseAuthorizationArgs, String> {
         let mut decision = synthetic_decision()?;
         let document_path = dir.join("authorization.json");
         // The freeze receipt fixture is three bytes; bind its digest into the
