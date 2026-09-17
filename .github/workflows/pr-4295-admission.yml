@@ -10,6 +10,7 @@ concurrency:
 env:
   SUBJECT_HEAD: acc1fec31fec1648baa263bff762bb502618fe48
   MAIN_HEAD: 8407b903180a2cafb94708f98efcffef6c7ca1e1
+  GENERATED_HEAD: 183962681d81a488089f3e5f58a3dc6115f95027
   PYTHONDONTWRITEBYTECODE: '1'
   RUSTUP_TOOLCHAIN: 1.95.0
 jobs:
@@ -19,175 +20,101 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
+    outputs:
+      candidate: ${{ steps.retain.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: acc1fec31fec1648baa263bff762bb502618fe48
           fetch-depth: 0
           persist-credentials: false
-      - name: Admit exact subject
+      - name: Preserve original ledger bytes and exact generated admissions
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SUBJECT_HEAD"
-          git merge-base --is-ancestor "$MAIN_HEAD" HEAD
-          test -z "$(git status --porcelain)"
-          mkdir -p target/pr-4295-admission
-      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
-        with:
-          toolchain: 1.95.0
-      - name: Original-head protocol controls and binary build
+          python3 - <<'PY'
+          import hashlib, json, os, re, subprocess, tomllib
+          from pathlib import Path
+          def git(*args):
+              return subprocess.run(['git',*args],check=True,capture_output=True,timeout=60).stdout
+          source=os.environ['SUBJECT_HEAD']
+          generated=os.environ['GENERATED_HEAD']
+          assert git('rev-parse','HEAD').decode().strip()==source
+          assert git('rev-list','--parents','-n','1',generated).decode().split()==[generated,source]
+          git('merge-base','--is-ancestor',os.environ['MAIN_HEAD'],'HEAD')
+          assert not git('status','--porcelain=v1','--untracked-files=all')
+          out=Path('target/pr-4295-admission');out.mkdir(parents=True,exist_ok=True)
+          policy=Path('policy/allow.toml')
+          note=Path('.allow/revisions/4283-workspace-contract-admission.toml')
+          assert not note.exists()
+          original=git('show',source+':'+policy.as_posix())
+          assert policy.read_bytes()==original
+          rendered=git('show',generated+':'+policy.as_posix())
+          before=tomllib.loads(original.decode())
+          after=tomllib.loads(rendered.decode())
+          ids=['allow-4283-workspace-preflight','allow-4283-workspace-preflight-tests','allow-4283-workspace-admission-note']
+          assert not set(ids).intersection(row['id'] for row in before['allow'])
+          assert [r for r in after['allow'] if r['id'] not in ids]==before['allow']
+          assert len(after['allow'])==len(before['allow'])+3
+          assert {k:v for k,v in before.items() if k!='allow'}=={k:v for k,v in after.items() if k!='allow'}
+          blocks=re.split(rb'(?m)(?=^\[\[allow\]\]\r?$)',rendered)
+          selected=[]
+          for block in blocks[1:]:
+              rows=tomllib.loads(block.decode())['allow']
+              assert len(rows)==1
+              if rows[0]['id'] in ids:
+                  selected.append((rows[0]['id'],block.rstrip(b'\r\n')))
+          assert [i for i,_ in selected]==ids
+          suffix=b'\n\n'.join(b for _,b in selected)+b'\n'
+          preserved=original+(b'\n' if original.endswith(b'\n') else b'\n\n')+suffix
+          assert preserved[:len(original)]==original
+          assert tomllib.loads(preserved.decode())==after
+          note_raw=git('show',generated+':'+note.as_posix())
+          records=tomllib.loads(note_raw.decode())['records']
+          assert [r['allow_ids'] for r in records]==[[i] for i in ids]
+          assert all(r['change_kinds']==['added_allow'] and re.fullmatch(r'sha256:v1:[0-9a-f]{64}',r['after_fingerprint']) for r in records)
+          policy.write_bytes(preserved)
+          note.write_bytes(note_raw)
+          git('add','--',policy.as_posix(),note.as_posix())
+          assert set(git('diff','--cached','--name-only').decode().splitlines())=={policy.as_posix(),note.as_posix()}
+          git('diff','--cached','--check')
+          git('-c','user.name=EffortlessSteven','-c','user.email=15812269+EffortlessSteven@users.noreply.github.com','-c','commit.gpgSign=false','commit','-m','chore(policy): append exact floor preflight admissions without ledger churn (#4283)')
+          head=git('rev-parse','HEAD').decode().strip()
+          assert git('rev-list','--parents','-n','1','HEAD').decode().split()==[head,source]
+          assert not git('status','--porcelain=v1','--untracked-files=all')
+          (out/'admission.patch').write_bytes(git('diff','--binary',source,'HEAD'))
+          result={'source':source,'head':head,'tree':git('rev-parse','HEAD^{tree}').decode().strip(),'generated_admission_source':generated,'original_policy_sha256':hashlib.sha256(original).hexdigest(),'original_policy_bytes_preserved':len(original),'original_entries_preserved':len(before['allow']),'added_entries':3,'records':records,'claim_boundary':'Byte-preserving admission only; not floor proof, merge approval, or release authority.'}
+          (out/'candidate.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
+      - name: Install and observe exact MSRV
         shell: bash
         run: |
           set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --no-self-update
           rustc -vV | tee target/pr-4295-admission/rustc.txt
           cargo -vV | tee target/pr-4295-admission/cargo.txt
-          python3 --version
-          git --version
+      - name: Qualify bounded candidate without suppressions
+        shell: bash
+        run: |
+          set -euo pipefail
           bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4295-admission/protocol.log
           cargo build -p cargo-allow --locked 2>&1 | tee target/pr-4295-admission/build.log
-          target/debug/cargo-allow worklist --status new --format json --output target/pr-4295-admission/new-before.json
-      - name: Generate only exact-file admissions
-        id: candidate
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY_ADMISSION'
-          """One-shot, exact-path admission producer for PR #4295; never edits source code."""
-          import json
-          import os
-          from pathlib import Path
-          import re
-          import subprocess
-          import tomllib
-
-          OUT = Path('target/pr-4295-admission')
-          POLICY = Path('policy/allow.toml')
-          NOTE = Path('.allow/revisions/4283-workspace-contract-admission.toml')
-          SUBJECT = os.environ['SUBJECT_HEAD']
-          ENTRIES = (
-              ('allow-4283-workspace-preflight', 'scripts/floor_workspace_contract.py',
-               'Bounded original-workspace preflight for #4283. Requires five actual topology-test passes before floor projection; does not certify dependency-floor compatibility.'),
-              ('allow-4283-workspace-preflight-tests', 'scripts/test_floor_workspace_contract.py',
-               'Negative controls for #4283 preflight output, real-Git source admission, CRLF checkout identity, and process timeouts; synthetic Cargo observations are not Rust compatibility proof.'),
-              ('allow-4283-workspace-admission-note', NOTE.as_posix(),
-               'Exact append-only admission record for the two #4283 Python files and this note; records generated entry fingerprints without changing existing exceptions or authorizing release.'),
-          )
-
-          def run(args):
-              print('+', ' '.join(args), flush=True)
-              result=subprocess.run(args, check=False, text=True, capture_output=True, timeout=300)
-              if result.returncode:
-                  print(result.stdout, flush=True)
-                  print(result.stderr, flush=True)
-                  raise RuntimeError('command failed with exit '+str(result.returncode))
-              return result.stdout
-
-          OUT.mkdir(parents=True, exist_ok=True)
-          if run(['git','rev-parse','HEAD']).strip() != SUBJECT:
-              raise RuntimeError('unexpected admission subject')
-          if run(['git','status','--porcelain=v1','--untracked-files=all']):
-              raise RuntimeError('admission subject must be clean')
-          if NOTE.exists():
-              raise RuntimeError('admission note already exists')
-          before_raw = POLICY.read_bytes()
-          before = tomllib.loads(before_raw.decode('utf-8'))
-          old_rows = before['allow']
-          old_ids = {row['id'] for row in old_rows}
-          if len(old_ids) != len(old_rows) or any(row[0] in old_ids for row in ENTRIES):
-              raise RuntimeError('duplicate or pre-existing admission ID')
-          (OUT / 'policy.before.toml').write_bytes(before_raw)
-          NOTE.write_text('schema_version = 1\n', encoding='utf-8', newline='\n')
-          run(['git', 'add', '--', NOTE.as_posix()])
-          records=[]
-          for entry_id, relative, reason in ENTRIES:
-              summary=OUT/(entry_id+'.json')
-              args=['target/debug/cargo-allow','add','--kind','non-rust','--path',relative,'--line','1',
-                    '--id',entry_id,'--owner','EffortlessSteven','--classification','reviewed_exception',
-                    '--reason',reason,'--review-after','2026-12-16',
-                    '--evidence','issue:4283','--evidence','file:docs/ci/direct-floor-proof.md',
-                    '--update','--summary-format','json','--summary-output',str(summary)]
-              run(args)
-              result=json.loads(summary.read_bytes())
-              receipt=result['mutation_receipt']
-              if (receipt['schema_id'] != 'cargo-allow.mutation-receipt.v1'
-                  or receipt['operation'] != 'add' or receipt['result'] != 'written'
-                  or receipt['changed_allow_ids'] != [entry_id]
-                  or receipt['before_fingerprints'] != [None]
-                  or len(receipt['after_fingerprints']) != 1):
-                  raise RuntimeError('unexpected mutation receipt')
-              fingerprint=receipt['after_fingerprints'][0]
-              if not isinstance(fingerprint,str) or not re.fullmatch(r'sha256:v1:[0-9a-f]{64}',fingerprint):
-                  raise RuntimeError('unbound admission fingerprint')
-              entry=result['allow_entry']
-              if entry['id'] != entry_id or entry['path'] != relative or entry['glob'] is not None:
-                  raise RuntimeError('admission is not the exact selected file')
-              records.append({'id':entry_id,'fingerprint':fingerprint,'reason':reason})
-          lines=['schema_version = 1','']
-          for record in records:
-              lines += ['[[records]]', 'allow_ids = ['+json.dumps(record['id'])+']',
-                        'change_kinds = ["added_allow"]',
-                        'after_fingerprint = '+json.dumps(record['fingerprint']),
-                        'reason = '+json.dumps(record['reason']), '']
-          NOTE.write_text('\n'.join(lines),encoding='utf-8',newline='\n')
-          after=tomllib.loads(POLICY.read_text(encoding='utf-8'))
-          new_ids={row[0] for row in ENTRIES}
-          if {k:v for k,v in before.items() if k!='allow'} != {k:v for k,v in after.items() if k!='allow'}:
-              raise RuntimeError('policy configuration changed')
-          if [row for row in after['allow'] if row['id'] not in new_ids] != old_rows:
-              raise RuntimeError('an existing exception changed or moved')
-          new_rows=[row for row in after['allow'] if row['id'] in new_ids]
-          if len(new_rows)!=3 or len(after['allow'])!=len(old_rows)+3:
-              raise RuntimeError('unexpected admission denominator')
-          for entry_id,relative,reason in ENTRIES:
-              row=next(row for row in new_rows if row['id']==entry_id)
-              if (row['path']!=relative or row.get('glob') is not None
-                  or row['kind']!='non_rust_file' or row['owner']!='EffortlessSteven'
-                  or row['classification']!='reviewed_exception' or row['reason']!=reason
-                  or row['review_after']!='2026-12-16'
-                  or row['selector'].get('glob')!=relative or row['selector'].get('symbol')!=relative):
-                  raise RuntimeError('generated entry exceeded the selected judgment')
-          changed=set(run(['git','diff','--name-only','HEAD']).splitlines())
-          if changed!={POLICY.as_posix(),NOTE.as_posix()}:
-              raise RuntimeError('admission changed an unselected path: '+repr(changed))
-          run(['git','diff','--check'])
-          run(['git','add','--',POLICY.as_posix(),NOTE.as_posix()])
-          run(['git','-c','user.name=EffortlessSteven','-c','user.email=15812269+EffortlessSteven@users.noreply.github.com',
-               '-c','commit.gpgSign=false','commit','-m','chore(policy): admit exact floor preflight files with generated receipts (#4283)'])
-          head=run(['git','rev-parse','HEAD']).strip()
-          if run(['git','rev-list','--parents','-n','1','HEAD']).split()!=[head,SUBJECT]:
-              raise RuntimeError('unexpected generated commit parent')
-          if run(['git','status','--porcelain=v1','--untracked-files=all']):
-              raise RuntimeError('generated checkout is not clean')
-          (OUT/'admission.patch').write_text(run(['git','diff','--binary',SUBJECT,'HEAD']),encoding='utf-8')
-          (OUT/'candidate.json').write_text(json.dumps({'source':SUBJECT,'head':head,
-              'tree':run(['git','rev-parse','HEAD^{tree}']).strip(),'records':records,
-              'original_entries_preserved':len(old_rows),'added_entries':3,
-              'claim_boundary':'Generated exact-file admission only; not merge approval or release authority.'},indent=2)+'\n')
-          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as output:
-              output.write('candidate='+head+'\n')
-          print('Generated candidate',head)
-          PY_ADMISSION
-      - name: Verify generated candidate without suppressions
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --check "$SUBJECT_HEAD" HEAD
           target/debug/cargo-allow check --mode no-new --format markdown --receipt target/pr-4295-admission/check.receipt.json --output target/pr-4295-admission/check.md
-          target/debug/cargo-allow diff --base "$SUBJECT_HEAD" --head HEAD --require-change-note --format json --receipt target/pr-4295-admission/diff.receipt.json --output target/pr-4295-admission/diff.json
+          target/debug/cargo-allow diff --base "$MAIN_HEAD" --head HEAD --require-change-note --format json --receipt target/pr-4295-admission/diff.receipt.json --output target/pr-4295-admission/diff.json
           cargo test -p cargo-allow minimum_direct_version --locked 2>&1 | tee target/pr-4295-admission/minimum-direct-version.log
+          git diff --check "$SUBJECT_HEAD" HEAD
           test -z "$(git status --porcelain)"
-      - name: Retain candidate on isolated output branch
+      - name: Retain qualified candidate on isolated output branch
+        id: retain
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          CANDIDATE_HEAD: ${{ steps.candidate.outputs.candidate }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$CANDIDATE_HEAD"
           gh api repos/EffortlessMetrics/cargo-allow/pulls/4295 > target/pr-4295-admission/live-pr.json
-          python3 - <<'PY_LIVE'
-          import json, os
+          python3 - <<'PY'
+          import json,os
           from pathlib import Path
           pr=json.loads(Path('target/pr-4295-admission/live-pr.json').read_bytes())
           assert pr['state']=='open' and pr['draft'] is True
@@ -195,41 +122,60 @@ jobs:
           assert pr['head']['ref']=='fix/4283-floor-workspace-contracts'
           assert pr['head']['repo']['full_name']=='EffortlessMetrics/cargo-allow'
           assert pr['base']['sha']==os.environ['MAIN_HEAD'] and pr['base']['ref']=='main'
-          PY_LIVE
+          PY
           output_branch="automation/4295-admission-output-${GITHUB_RUN_ID}"
           test -z "$(git -c credential.helper= -c 'credential.helper=!gh auth git-credential' ls-remote origin "refs/heads/$output_branch")"
           git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "HEAD:refs/heads/$output_branch"
           printf '%s\n' "$output_branch" > target/pr-4295-admission/output-branch.txt
-          echo "Generated candidate retained at $output_branch; PR branch and main unchanged."
+          echo "candidate=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Upload admission diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: pr-4295-generated-admission
+          name: pr-4295-byte-preserving-admission
           path: target/pr-4295-admission/
           if-no-files-found: error
-  windows-protocol:
+  native-floor:
+    needs: admit
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 120
+    env:
+      CANDIDATE_HEAD: ${{ needs.admit.outputs.candidate }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: acc1fec31fec1648baa263bff762bb502618fe48
+          ref: ${{ needs.admit.outputs.candidate }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Native Windows protocol and real-Git controls
+      - name: Verify exact clean native subject and MSRV
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$SUBJECT_HEAD"
-          mkdir -p target/pr-4295-admission
-          python3 --version
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_HEAD"
+          test -z "$(git status --porcelain)"
+          rustup toolchain install 1.95.0 --profile minimal --no-self-update
+          mkdir -p target/pr-4295-native
+          rustc -vV | tee target/pr-4295-native/rustc.txt
+          cargo -vV | tee target/pr-4295-native/cargo.txt
           git --version
-          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4295-admission/windows-protocol.log
-      - name: Upload Windows protocol diagnostics
+          python3 --version
+          git rev-parse HEAD HEAD^{tree} | tee target/pr-4295-native/subject.txt
+      - name: Native protocol and real Git controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4295-native/protocol.log
+      - name: Actual native Windows cargo-allow floor check test and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          CI_PROOF_MSRV=1.95 CI_PROOF_PRODUCT=cargo-allow CI_PROOF_CLASSES=check,test,package CI_PROOF_OUT=target/pr-4295-native/cargo-allow-proof.json bash scripts/proof-direct-floors.sh 2>&1 | tee target/pr-4295-native/floor.log
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_HEAD"
+          test -z "$(git status --porcelain)"
+      - name: Upload exact native qualification diagnostics
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: pr-4295-windows-protocol
-          path: target/pr-4295-admission/
+          name: pr-4295-exact-native-floor
+          path: target/pr-4295-native/
           if-no-files-found: error
