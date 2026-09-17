@@ -413,6 +413,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove compilation semantics; no live authorization, permission proof, or release execution is produced."
 
 [[surfaces]]
+id = "repository-release-controls"
+owner_issue = 3790
+semantic_authority = "release workflow token-gate controls"
+path = "crates/cargo-allow/tests/repository_release_controls.rs"
+subject = ".github/workflows/release.yml"
+producer = "structural workflow contract test"
+consumer = "#3790 tag/token gating and #2502 execution evidence"
+claimed_acceptance_row = "token access inventoried, gated, and unreachable from skipped gates or rehearsal"
+assertion_mechanism = "source-text assertions over release workflow gate order and token references"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Static workflow text is proven; no live workflow execution or token access is produced."
+
+[[surfaces]]
 id = "release-experience-v1"
 owner_issue = 3151
 semantic_authority = "typed installed-experience evaluation"
