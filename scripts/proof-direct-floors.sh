@@ -329,6 +329,15 @@ fi
 jq '.floors' target/floor-proof/floors-selection.json > target/floor-proof/floors.json
 mapfile -t CLOSURE < <(jq -r '.closure[]' target/floor-proof/floors-selection.json)
 
+# Project the detached checkout to the selected product's causal path-dependency
+# workspace before Cargo resolves a lock. The projected Cargo.toml is committed
+# beside the floor lock, so the executed subject remains an exact Git tree.
+python3 scripts/floor_product_workspace.py \
+  Cargo.toml \
+  target/floor-proof/floors-selection.json \
+  target/floor-proof/product-workspace-identity.json
+cat target/floor-proof/product-workspace-identity.json
+
 # 2. Build one simultaneous direct-floor candidate lock. The settlement
 #    retries an early resolver failure after sibling floors have changed,
 #    then stops at an exact fixed point or a repeated incompatible state.
@@ -370,7 +379,9 @@ if [ -n "$floor_move_failures" ]; then
 fi
 
 # Establish the actual committed floor subject before strict source admission.
-python3 scripts/floor_source_identity.py "$SOURCE_COMMIT" > target/floor-proof/source-identity.json
+python3 scripts/floor_source_identity.py "$SOURCE_COMMIT" \
+  target/floor-proof/product-workspace-identity.json \
+  > target/floor-proof/source-identity.json
 
 # 3. Bounded proof classes, run against the product's own package
 #    closure — never the whole workspace — so the receipt's commands
@@ -448,6 +459,7 @@ product = os.environ["PRODUCT"]
 package_roots = json.loads(os.environ["ROOTS_JSON"])
 execution = json.load(open("target/floor-proof/execution-identity.json", encoding="utf-8"))
 subject = json.load(open("target/floor-proof/source-identity.json", encoding="utf-8"))
+projection = json.load(open("target/floor-proof/product-workspace-identity.json", encoding="utf-8"))
 
 snapshot = settlement.read_lock_snapshot(Path(lock_path))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -535,15 +547,17 @@ limitations.append(
 )
 if os.environ["PACKAGE_CMD"]:
     limitations.append("package is a single-package --no-verify archive sample; see its exact command")
-subject_posture = (
-    "reuses the unchanged source commit"
-    if subject["derived_commit"] == subject["source_commit"]
-    else "only Cargo.lock differs from source; this local derived candidate is not an upstream commit"
+limitations.append(
+    f"product workspace projection: {projection['schema_id']}; "
+    f"manifest {projection['projected_manifest_digest']}; certified members "
+    f"{', '.join(projection['certified_member_paths'])}; execution members "
+    f"{', '.join(projection['execution_member_paths'])}"
 )
 limitations.append(
     f"local floor subject: source {subject['source_commit']}; "
     f"executed commit {subject['derived_commit']}; tree {subject['derived_tree']}; "
-    f"{subject_posture}"
+    "only the deterministic root workspace projection and floor lock differ; "
+    "this local derived candidate is not an upstream commit"
 )
 
 receipt = {
@@ -579,6 +593,7 @@ receipt_bytes = receipt_path.read_bytes()
 receipt = json.loads(receipt_bytes)
 selection = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 subject = json.loads(Path("target/floor-proof/source-identity.json").read_text(encoding="utf-8"))
+projection = json.loads(Path("target/floor-proof/product-workspace-identity.json").read_text(encoding="utf-8"))
 
 def cell(value):
     return (str(value).replace("\\", "\\\\").replace("|", "\\|")
@@ -593,6 +608,10 @@ lines = [
     f"- Package roots: {cell(', '.join(selection['roots']))}",
     f"- Selected closure: {cell(', '.join(selection['closure']))}",
     f"- Starting source commit: {cell(sys.argv[3])}",
+    f"- Workspace projection: {cell(projection['schema_id'])}",
+    f"- Projected manifest digest: {cell(projection['projected_manifest_digest'])}",
+    f"- Certified member paths: {cell(', '.join(projection['certified_member_paths']))}",
+    f"- Execution member paths: {cell(', '.join(projection['execution_member_paths']))}",
     f"- Executed floor commit: {cell(subject['derived_commit'])}",
     f"- Executed floor tree: {cell(subject['derived_tree'])}",
     f"- Receipt: {cell(receipt_path.name)}",

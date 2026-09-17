@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 # Characterization checks for scripts/proof-direct-floors.sh and
 # scripts/proof-advisory-products.sh.
-#
-# Proves the proof lane's shell contracts stay in place: both scripts
-# parse, the product registry keeps its entries and its fail-closed
-# arm, the advisory collector pins product identity and the check-only
-# class per product, and the floored test class still excludes the
-# drift meta-tests by name (recorded verbatim in the receipt commands).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -50,6 +44,12 @@ contains "$registry" 'return 1' "unregistered products fail closed"
 
 proof_text="$(cat "$PROOF")"
 contains "$proof_text" \
+  'floor_product_workspace.py' \
+  "proof constructs the selected product workspace"
+contains "$proof_text" \
+  'product-workspace-identity.json' \
+  "proof retains the workspace projection identity"
+contains "$proof_text" \
   '--skip minimum_direct_version_drift' \
   "floored test class skips the drift meta-tests"
 contains "$proof_text" \
@@ -66,6 +66,14 @@ contains "$collector_text" 'for product in shared cargo-intent cargo-proof; do' 
   "collector iterates exactly the advisory products"
 contains "$collector_text" 'export CI_PROOF_PRODUCT="$product"' \
   "collector pins the product identity per product"
+contains "$collector_text" 'rm -f -- "$CI_PROOF_OUT" "$selection_out"' \
+  "collector clears prior retained outputs"
+contains "$collector_text" '[[ ! -s "$CI_PROOF_OUT" ]]' \
+  "collector requires a current advisory receipt"
+contains "$collector_text" '[[ ! -s "$selection_out" ]]' \
+  "collector requires a current selection companion"
+contains "$collector_text" 'statuses+=("$product:$status")' \
+  "collector retains each advisory product result"
 
 # An unregistered product must fail closed before any worktree exists.
 work="$(mktemp -d)"
@@ -77,5 +85,80 @@ fi
 grep -q "unknown product 'not-a-product'" "${work}/out.log" ||
   fail "unregistered product error names the product"
 ok "unregistered product fails closed"
+
+# A producer that fails before emitting its current outputs must not inherit
+# the retained receipt or selection companion from an earlier run. A producer
+# that emits both typed artifacts may remain non-zero because advisory rows are
+# report-only and carry their non-clean disposition in the receipt itself.
+fixture="${work}/advisory-collector"
+mkdir -p "${fixture}/scripts" "${fixture}/docs/ci/receipts"
+cp "$COLLECTOR" "${fixture}/scripts/proof-advisory-products.sh"
+cat >"${fixture}/scripts/proof-direct-floors.sh" <<'STUB'
+#!/usr/bin/env bash
+set -u
+selection_out="${CI_PROOF_OUT%.json}.selection.md"
+mode="${STUB_MODE:-partial}"
+if [[ "$mode" == "typed" || "$CI_PROOF_PRODUCT" == "cargo-proof" ]]; then
+  printf '{"product":"%s","result":"instrument_failure"}\n' "$CI_PROOF_PRODUCT" >"$CI_PROOF_OUT"
+  printf '# current %s selection\n' "$CI_PROOF_PRODUCT" >"$selection_out"
+  exit 7
+fi
+if [[ "$CI_PROOF_PRODUCT" == "cargo-intent" ]]; then
+  printf '{"product":"cargo-intent","result":"instrument_failure"}\n' >"$CI_PROOF_OUT"
+  exit 8
+fi
+exit 9
+STUB
+git -C "$fixture" init -q
+
+for product in shared cargo-intent cargo-proof; do
+  printf 'stale %s receipt\n' "$product" \
+    >"${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.json"
+  printf 'stale %s selection\n' "$product" \
+    >"${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.selection.md"
+done
+
+if (
+  cd "$fixture"
+  bash scripts/proof-advisory-products.sh >"${work}/collector-partial.log" 2>&1
+); then
+  fail "stale advisory outputs cannot satisfy a failed producer"
+fi
+[[ ! -e "${fixture}/docs/ci/receipts/direct-floor-proof-shared-v1.json" ]] ||
+  fail "failed shared producer cannot retain a stale receipt"
+[[ ! -e "${fixture}/docs/ci/receipts/direct-floor-proof-shared-v1.selection.md" ]] ||
+  fail "failed shared producer cannot retain a stale selection"
+[[ -s "${fixture}/docs/ci/receipts/direct-floor-proof-cargo-intent-v1.json" ]] ||
+  fail "cargo-intent current receipt remains visible"
+[[ ! -e "${fixture}/docs/ci/receipts/direct-floor-proof-cargo-intent-v1.selection.md" ]] ||
+  fail "missing cargo-intent selection cannot inherit a stale companion"
+[[ -s "${fixture}/docs/ci/receipts/direct-floor-proof-cargo-proof-v1.json" ]] ||
+  fail "typed cargo-proof receipt is retained"
+[[ -s "${fixture}/docs/ci/receipts/direct-floor-proof-cargo-proof-v1.selection.md" ]] ||
+  fail "typed cargo-proof selection is retained"
+grep -q 'shared emitted no current typed receipt' "${work}/collector-partial.log" ||
+  fail "missing current receipt is diagnosed"
+grep -q 'cargo-intent emitted no current selection companion' "${work}/collector-partial.log" ||
+  fail "missing current selection is diagnosed"
+grep -q 'shared:9 cargo-intent:8 cargo-proof:7' "${work}/collector-partial.log" ||
+  fail "all advisory statuses remain visible"
+ok "stale advisory outputs cannot satisfy a failed producer"
+
+if ! (
+  cd "$fixture"
+  STUB_MODE=typed bash scripts/proof-advisory-products.sh >"${work}/collector-typed.log" 2>&1
+); then
+  cat "${work}/collector-typed.log" >&2
+  fail "typed non-clean advisory receipts remain report-only"
+fi
+for product in shared cargo-intent cargo-proof; do
+  [[ -s "${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.json" ]] ||
+    fail "typed $product receipt is retained"
+  [[ -s "${fixture}/docs/ci/receipts/direct-floor-proof-${product}-v1.selection.md" ]] ||
+    fail "typed $product selection is retained"
+done
+grep -q 'shared:7 cargo-intent:7 cargo-proof:7' "${work}/collector-typed.log" ||
+  fail "typed non-clean statuses remain visible"
+ok "typed non-clean advisory receipts remain report-only"
 
 bash scripts/test-proof-direct-floors-protocol.sh

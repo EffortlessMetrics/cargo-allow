@@ -451,6 +451,26 @@ fn minimum_direct_version_drift_blocking_follows_the_release_set_only() {
 }
 
 #[test]
+fn minimum_direct_version_drift_non_clean_advisory_is_visible_but_not_blocking() {
+    let failing = receipt(
+        "cargo-intent",
+        vec![row("serde", MinimumFloorResultV1::UnsupportedCombination)],
+    );
+    let evaluation = evaluate_minimum_version_drift(&observation("cargo-intent"), Some(&failing));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        !evaluation.blocking,
+        "report-only product rows never block cargo-allow"
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("non-clean dispositions: serde"))
+    );
+}
+
+#[test]
 fn minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree() {
     // The live drift guard: every retained receipt must grade current
     // against the live manifest-derived observation. Any dependency,

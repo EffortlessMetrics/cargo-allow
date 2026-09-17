@@ -12,12 +12,15 @@ Uncommitted edits are not proof inputs. Manifest and original-lock digests bind
 the source inputs; the floor-lock digest binds the executed dependency candidate.
 
 Before executing classes, the collector places its JSON scratch under the
-ignored root `target/floor-proof` directory and commits only the derived
-`Cargo.lock` in its detached temporary checkout. An unchanged lock reuses the
+ignored root `target/floor-proof` directory, projects the root workspace to the
+selected product closure, and commits the projected `Cargo.toml` plus the
+derived `Cargo.lock` when its bytes changed. The workspace projection itself is
+a required visible derived change, so an unchanged lock does not reuse the
 source commit. Derivation rejects other tracked, staged, untracked, ignored
-source, and hidden-index changes. It verifies the single original parent,
-lock-only tree delta, and clean checkout. This gives strict rehearsal admission
-the actual committed floor subject without weakening its clean-source checks.
+source, and hidden-index changes. It verifies the single original parent, the
+exact admitted derived-path delta (`Cargo.toml` required and `Cargo.lock`
+optional), and a clean checkout. This gives strict rehearsal admission the
+actual committed floor subject without weakening its clean-source checks.
 The local derived commit uses a command-scoped `cargo-allow floor proof`
 identity, disables commit hooks and signing, and is never pushed. No repository
 or global Git identity setting is changed. The collector removes its
@@ -93,17 +96,18 @@ Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
 invalid product/class rejection, observed MSRV rejection, the exact five test
 exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
 controls do not compile packages or establish real floor compatibility.
-The same command runs real-Git derived-source controls for lock-only changes,
-unchanged locks, attached checkouts, and rejected source/index changes. The
-producer simulation separately rejects derivation failure before any class runs.
-The default suite also runs the actual rehearsal's strict checkout admission
-against the derived-source fixture and all 36 `TestRehearsalSubjectBinding`
-controls. The focused derived-source/admission check can be run separately:
+The same command runs real-Git derived-source controls for projected-manifest-
+plus-lock changes, projection-only derivations, attached checkouts, and rejected
+source/index changes. The producer simulation separately rejects derivation
+failure before any class runs. The default suite also runs the actual rehearsal's
+strict checkout admission against the derived-source fixture and all 36
+`TestRehearsalSubjectBinding` controls. The focused derived-source/admission check
+can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
 
-This reproduces the original four root scratch files plus modified lock,
-requires their rejection, and then requires admission of the derived subject.
+This reproduces the original scratch files plus the projected root manifest and
+floor lock, requires their rejection, and then admits only the bounded derived subject.
 Selecting an older rehearsal script without strict admission fails explicitly.
 The subject-binding controls reject foreign commits and staged, hidden, ignored,
 or untracked source, including changes observed after mocked phases. Admission
