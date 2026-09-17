@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -37,6 +38,49 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
                 archive.addfile(info, io.BytesIO(data))
         return archive_path, package
 
+    def run_cli(
+        self,
+        package_set: Path,
+        packages: Path,
+        output: Path,
+        expected_version: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        command = [
+            sys.executable,
+            str(ROOT / "final-packaged-surface.py"),
+            "--package-set-receipt",
+            str(package_set),
+            "--packages-dir",
+            str(packages),
+            "--output",
+            str(output),
+        ]
+        if expected_version is not None:
+            command.extend(["--expected-version", expected_version])
+        return subprocess.run(command, capture_output=True, text=True)
+
+    def write_package_set(
+        self,
+        path: Path,
+        name: str,
+        version: str,
+        workspace_version: str | None = None,
+    ) -> None:
+        candidate = (
+            {"workspace_version": workspace_version}
+            if workspace_version is not None
+            else {}
+        )
+        path.write_text(
+            json.dumps(
+                {
+                    "candidate": candidate,
+                    "package_set": {"crates": [{"name": name, "version": version}]},
+                }
+            ),
+            encoding="utf-8",
+        )
+
     def test_surface_binds_archive_digest_and_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             archive, _ = self.make_crate(Path(directory))
@@ -58,35 +102,34 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             root = Path(directory)
             archive, packages = self.make_crate(root)
             package_set = root / "package-set.json"
-            package_set.write_text(
-                json.dumps(
-                    {
-                        "candidate": {},
-                        "package_set": {
-                            "crates": [{"name": "demo", "version": "0.2.0"}]
-                        },
-                    }
-                )
-            )
+            self.write_package_set(package_set, "demo", "0.2.0", "0.2.0")
             output = root / "surface.json"
-            subprocess.run(
-                [
-                    "python3",
-                    str(ROOT / "final-packaged-surface.py"),
-                    "--package-set-receipt",
-                    str(package_set),
-                    "--packages-dir",
-                    str(packages),
-                    "--output",
-                    str(output),
-                    "--expected-version",
-                    "0.2.0",
-                ],
-                check=True,
-            )
+            result = self.run_cli(package_set, packages, output, "0.2.0")
+            self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["result"], "Complete")
             self.assertTrue(archive.exists())
 
+    def test_cli_preserves_prerelease_and_build_identity_end_to_end(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            name = "effortless-repo-protocol"
+            version = "1.2.3-alpha.1+build.7"
+            archive, packages = self.make_crate(root, name=name, version=version)
+            package_set = root / "package-set.json"
+            self.write_package_set(package_set, name, version, version)
+            output = root / "surface.json"
+
+            result = self.run_cli(package_set, packages, output, version)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            receipt = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["result"], "Complete")
+            self.assertEqual(receipt["candidate"]["workspace_version"], version)
+            self.assertEqual(receipt["package_set"]["order"], [name])
+            row = receipt["package_set"]["packages"][0]
+            self.assertEqual(row["name"], name)
+            self.assertEqual(row["version"], version)
+            self.assertEqual(row["metadata"]["package"]["version"], version)
+            self.assertEqual(row["crate_file"], archive.name)
 
     def test_surface_preserves_prerelease_and_hyphenated_identity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -106,18 +149,40 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             root = Path(directory)
             archive, packages = self.make_crate(root, version="0.2.0-rc.1")
             package_set = root / "package-set.json"
-            package_set.write_text(
-                json.dumps(
-                    {"candidate": {}, "package_set": {"crates": [{"name": "demo", "version": "0.2.0"}]}}
-                )
-            )
-            result = subprocess.run(
-                ["python3", str(ROOT / "final-packaged-surface.py"), "--package-set-receipt", str(package_set), "--packages-dir", str(packages), "--output", str(root / "surface.json")],
-                capture_output=True,
-                text=True,
-            )
+            self.write_package_set(package_set, "demo", "0.2.0")
+            result = self.run_cli(package_set, packages, root / "surface.json")
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(f"unexpected packaged crate: {archive.name}", result.stderr)
+
+    def test_cli_rejects_final_hyphen_truncation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, packages = self.make_crate(
+                root,
+                name="allow-core",
+                version="0.2.0-rc.1",
+            )
+            truncated = packages / "allow-core-rc.1.crate"
+            archive.rename(truncated)
+            package_set = root / "package-set.json"
+            self.write_package_set(
+                package_set,
+                "allow-core",
+                "0.2.0-rc.1",
+                "0.2.0-rc.1",
+            )
+
+            result = self.run_cli(
+                package_set,
+                packages,
+                root / "surface.json",
+                "0.2.0-rc.1",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "unexpected packaged crate: allow-core-rc.1.crate",
+                result.stderr,
+            )
 
 
 if __name__ == "__main__":

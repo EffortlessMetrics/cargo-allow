@@ -1,5 +1,15 @@
 use std::error::Error;
 use std::io;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+
+use allow_report::{
+    CandidatePackageRowV1, CandidatePreparationOperationV1, CandidateSelectedRowV1,
+    ReleaseVersionV1, validate_candidate_operation_set,
+};
+
+const INCIDENT_3967: &str = "RC1-ESCAPE-3967";
+const INCIDENT_3968: &str = "RC1-ESCAPE-3968";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IncidentDefect {
@@ -120,7 +130,7 @@ fn rc1_incident_corpus_1_to_8() -> Result<(), Box<dyn Error>> {
 
     // 8. Release-critical action is floating or unapproved
     let action_ref = "actions/checkout@v4";
-    require(!action_ref.contains("@"), "unpinned action rejected")
+    require(!action_ref.contains('@'), "unpinned action rejected")
         .or_else(|_| require(action_ref.len() != 57, "floating action detected"))?;
 
     Ok(())
@@ -192,4 +202,142 @@ fn rc1_incident_corpus_9_to_16() -> Result<(), Box<dyn Error>> {
     )?;
 
     Ok(())
+}
+
+#[test]
+fn incident_3967_non_exact_internal_requirements_are_blocked_by_the_production_validator(
+) -> Result<(), Box<dyn Error>> {
+    let selected = vec![selected_product_row("allow-core", "0.2.0-rc.1")];
+    let target = ReleaseVersionV1::parse("0.2.0-rc.1")?;
+
+    let exact = vec![CandidatePreparationOperationV1::SetInternalRequirement {
+        dependency: "allow-core".to_string(),
+        from: "=0.1.11".to_string(),
+        to: "=0.2.0-rc.1".to_string(),
+    }];
+    require(
+        validate_candidate_operation_set(&selected, &target, &exact).is_ok(),
+        &format!("{INCIDENT_3967}: the exact RC requirement must remain admissible"),
+    )?;
+
+    for invalid in [
+        "0.2.0-rc.1",
+        "^0.2.0-rc.1",
+        "~0.2.0-rc.1",
+        ">=0.2.0-rc.1",
+        "=0.2.0-rc.10",
+        "=0.2.0-rc.1+build.7",
+        "prefix-=0.2.0-rc.1-suffix",
+    ] {
+        let operations = vec![CandidatePreparationOperationV1::SetInternalRequirement {
+            dependency: "allow-core".to_string(),
+            from: "=0.1.11".to_string(),
+            to: invalid.to_string(),
+        }];
+        match validate_candidate_operation_set(&selected, &target, &operations) {
+            Ok(()) => {
+                return Err(io::Error::other(format!(
+                    "{INCIDENT_3967}: production validation accepted non-exact requirement {invalid:?}"
+                ))
+                .into());
+            }
+            Err(error) => require(
+                error.contains("instead of the exact `=0.2.0-rc.1`"),
+                &format!(
+                    "{INCIDENT_3967}: non-exact requirement {invalid:?} produced the wrong semantic error: {error}"
+                ),
+            )?,
+        }
+    }
+
+    let stable_target = ReleaseVersionV1::parse("0.2.0")?;
+    let stable = vec![CandidatePreparationOperationV1::SetInternalRequirement {
+        dependency: "allow-core".to_string(),
+        from: "=0.2.0-rc.1".to_string(),
+        to: "=0.2.0".to_string(),
+    }];
+    require(
+        validate_candidate_operation_set(&selected, &stable_target, &stable).is_ok(),
+        &format!("{INCIDENT_3967}: the stable-final exact requirement must remain admissible"),
+    )
+    .map_err(Into::into)
+}
+
+#[test]
+fn incident_3968_package_identity_consumers_preserve_prerelease_and_build_metadata(
+) -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+    for script in [
+        "scripts/test-exact-candidate-package-identity.py",
+        "scripts/test-final-packaged-surface.py",
+    ] {
+        let output = run_python_test(&root, script)?;
+        let transcript = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        require(
+            output.status.success(),
+            &format!(
+                "{INCIDENT_3968}: production identity test {script} failed:\n{transcript}"
+            ),
+        )?;
+        require(
+            transcript.contains("OK"),
+            &format!(
+                "{INCIDENT_3968}: production identity test {script} did not report semantic success:\n{transcript}"
+            ),
+        )?;
+    }
+    Ok(())
+}
+
+fn selected_product_row(name: &str, version: &str) -> CandidateSelectedRowV1 {
+    CandidateSelectedRowV1 {
+        row: CandidatePackageRowV1 {
+            logical_id: name.to_string(),
+            cargo_package_name: name.to_string(),
+            product_family: "cargo-allow".to_string(),
+            posture: "CargoAllowSupported".to_string(),
+            package_version: version.to_string(),
+            version_line: "cargo-allow-0.2".to_string(),
+            version_source: "WorkspaceProduct".to_string(),
+            publication_state: "UnpublishedInternal".to_string(),
+            candidate_inclusion: true,
+            publish: true,
+            release_order: 10,
+            support_tier: "supported".to_string(),
+        },
+        role: "product".to_string(),
+        prospective_version: version.to_string(),
+    }
+}
+
+fn repository_root() -> Result<PathBuf, io::Error> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf)
+        .ok_or_else(|| io::Error::other("cargo-allow manifest should be under crates/"))
+}
+
+fn run_python_test(root: &Path, script: &str) -> Result<Output, Box<dyn Error>> {
+    let path = root.join(script);
+    for executable in ["python3", "python"] {
+        match Command::new(executable)
+            .arg(&path)
+            .current_dir(root)
+            .output()
+        {
+            Ok(output) => return Ok(output),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        format!("no Python interpreter is available to run {}", path.display()),
+    )
+    .into())
 }
