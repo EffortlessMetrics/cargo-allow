@@ -31,7 +31,11 @@ pub fn evaluate_release_experience_v1(
     if input.schema_id != RELEASE_EXPERIENCE_SCHEMA_ID
         || input.schema_version != RELEASE_EXPERIENCE_SCHEMA_VERSION
     {
-        finding(&mut findings, ResultState::Unsupported, "non-current experience generation");
+        finding(
+            &mut findings,
+            ResultState::Unsupported,
+            "non-current experience generation",
+        );
     }
     for (field, value) in [
         ("candidate_digest", input.candidate_digest.as_str()),
@@ -69,9 +73,16 @@ pub fn evaluate_release_experience_v1(
         );
     }
     if input.maximum_age_seconds == 0 {
-        finding(&mut findings, ResultState::Malformed, "freshness window must be positive");
+        finding(
+            &mut findings,
+            ResultState::Malformed,
+            "freshness window must be positive",
+        );
     }
-    match input.evaluated_at_unix_seconds.checked_sub(input.observed_at_unix_seconds) {
+    match input
+        .evaluated_at_unix_seconds
+        .checked_sub(input.observed_at_unix_seconds)
+    {
         Some(age) if input.maximum_age_seconds > 0 && age <= input.maximum_age_seconds => {}
         _ => finding(
             &mut findings,
@@ -218,9 +229,7 @@ pub fn evaluate_release_experience_v1(
         "exact installed journey truth is retained".to_string(),
     ];
     if result == ResultState::NotProven {
-        retained_evidence.push(
-            "no low-friction external adoption is claimed".to_string(),
-        );
+        retained_evidence.push("no low-friction external adoption is claimed".to_string());
     }
     CargoAllowReleaseExperienceV1 {
         schema_id: RELEASE_EXPERIENCE_SCHEMA_ID.to_string(),

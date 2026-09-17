@@ -156,8 +156,7 @@ fn release_experience_open_blockers_are_incomplete() -> TestResult {
 #[test]
 fn release_experience_brownfield_receipt_rules() -> TestResult {
     let mut included = fixture();
-    included.brownfield_posture =
-        ReleaseExperienceBrownfieldPostureV1::IncludedWithReceipt;
+    included.brownfield_posture = ReleaseExperienceBrownfieldPostureV1::IncludedWithReceipt;
     check_result(&included, State::Malformed)?;
     included.brownfield_receipt_digest = Some(digest(70));
     let receipt = evaluate_release_experience_v1(&included);

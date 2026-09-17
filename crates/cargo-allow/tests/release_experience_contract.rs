@@ -3,14 +3,13 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use allow_report::{
-    CargoAllowReleaseExperienceV1, ReleaseExperienceBrownfieldPostureV1,
-    ReleaseExperienceDocsIdentityV1, ReleaseExperienceFrictionDispositionV1,
-    ReleaseExperienceFrictionV1, ReleaseExperienceInputV1, ReleaseExperienceResultV1,
-    evaluate_release_experience_v1, render_release_experience_v1,
-    RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
-};
 use ReleaseExperienceResultV1 as State;
+use allow_report::{
+    CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
+    ReleaseExperienceBrownfieldPostureV1, ReleaseExperienceDocsIdentityV1,
+    ReleaseExperienceFrictionDispositionV1, ReleaseExperienceFrictionV1, ReleaseExperienceInputV1,
+    ReleaseExperienceResultV1, evaluate_release_experience_v1, render_release_experience_v1,
+};
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
@@ -49,8 +48,7 @@ fn input() -> ReleaseExperienceInputV1 {
         migration_denominator_digest: digest(5),
         migration_schema_id: "cargo-allow.migration.v1".to_string(),
         clean_pilot: None,
-        brownfield_posture:
-            ReleaseExperienceBrownfieldPostureV1::NotIncludedPendingPublishedPilot,
+        brownfield_posture: ReleaseExperienceBrownfieldPostureV1::NotIncludedPendingPublishedPilot,
         brownfield_receipt_digest: None,
         docs_identities: RELEASE_EXPERIENCE_REQUIRED_DOCS
             .into_iter()
@@ -82,8 +80,7 @@ fn receipt(input: &ReleaseExperienceInputV1) -> CargoAllowReleaseExperienceV1 {
 }
 
 #[test]
-fn release_experience_contract_notproven_without_pilot(
-) -> Result<(), Box<dyn Error>> {
+fn release_experience_contract_notproven_without_pilot() -> Result<(), Box<dyn Error>> {
     let document = input();
     let compiled = receipt(&document);
     require(
@@ -100,8 +97,8 @@ fn release_experience_contract_notproven_without_pilot(
 }
 
 #[test]
-fn release_experience_contract_complete_claim_without_pilot_mismatches(
-) -> Result<(), Box<dyn Error>> {
+fn release_experience_contract_complete_claim_without_pilot_mismatches()
+-> Result<(), Box<dyn Error>> {
     let mut document = input();
     document.claimed_result = State::Complete;
     document.not_proven_reason.clear();
@@ -113,8 +110,7 @@ fn release_experience_contract_complete_claim_without_pilot_mismatches(
 }
 
 #[test]
-fn release_experience_contract_rendered_receipt_matches_schema(
-) -> Result<(), Box<dyn Error>> {
+fn release_experience_contract_rendered_receipt_matches_schema() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     if !root.join(".git").exists() {
         return Ok(());
