@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json",
+  "title": "CargoAllowReleaseAuthorizationCustodyV1",
+  "description": "Operator-side custody record for one minted out-of-tree final-release authorization: mint binding, storage locator, validity window, one-use nonce, append-only state transitions, and readback observation. Structural validation does not authenticate the maintainer, create a tag, or authorize publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "authorization_id",
+    "authorization_digest",
+    "operation",
+    "freeze",
+    "evidence_digest",
+    "mint",
+    "storage",
+    "valid_from_unix_seconds",
+    "expires_at_unix_seconds",
+    "one_run_scope",
+    "nonce",
+    "state",
+    "consumed_nonces",
+    "transitions",
+    "readback_verified",
+    "readback_digest",
+    "redacted",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-authorization-custody.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "authorization_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Operator-assigned authorization identity. Never a credential."
+    },
+    "authorization_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the immutable authorization decision."
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "tag", "channel", "github_prerelease", "authority_kind"],
+      "properties": {
+        "name": {
+          "const": "publish_cargo_allow_final_0_2_0"
+        },
+        "version": {
+          "const": "0.2.0"
+        },
+        "tag": {
+          "const": "v0.2.0"
+        },
+        "channel": {
+          "const": "stable"
+        },
+        "github_prerelease": {
+          "const": false
+        },
+        "authority_kind": {
+          "const": "clean"
+        }
+      }
+    },
+    "freeze": {
+      "type": "object",
+      "description": "Full frozen denominator rows bound at mint time.",
+      "additionalProperties": false,
+      "required": [
+        "receipt_digest",
+        "candidate_digest",
+        "denominator_digest",
+        "commit",
+        "tree",
+        "lock_digest",
+        "topology_id",
+        "packages",
+        "shared_prerequisites"
+      ],
+      "properties": {
+        "receipt_digest": { "$ref": "#/$defs/digest" },
+        "candidate_digest": { "$ref": "#/$defs/digest" },
+        "denominator_digest": { "$ref": "#/$defs/digest" },
+        "commit": { "type": "string", "minLength": 40 },
+        "tree": { "type": "string", "minLength": 40 },
+        "lock_digest": { "$ref": "#/$defs/digest" },
+        "topology_id": { "const": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001" },
+        "packages": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/package_row" }
+        },
+        "shared_prerequisites": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/shared_row" }
+        }
+      }
+    },
+    "evidence_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the evidence snapshot the decision selects. Selection must reproduce it."
+    },
+    "mint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "freeze_receipt_digest",
+        "replay_digest",
+        "replay_result",
+        "candidate_custody_digest",
+        "minted_by",
+        "minted_at_unix_seconds"
+      ],
+      "properties": {
+        "freeze_receipt_digest": { "$ref": "#/$defs/digest" },
+        "replay_digest": { "$ref": "#/$defs/digest" },
+        "replay_result": { "enum": ["Complete", "CompleteEquivalent"] },
+        "candidate_custody_digest": { "$ref": "#/$defs/digest" },
+        "minted_by": { "type": "string", "minLength": 1 },
+        "minted_at_unix_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locator", "access_policy", "retention_expiry_unix_seconds"],
+      "properties": {
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute out-of-tree storage locator with explicit scheme. Never an in-tree path."
+        },
+        "access_policy": { "type": "string", "minLength": 1 },
+        "retention_expiry_unix_seconds": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "valid_from_unix_seconds": { "type": "integer", "minimum": 1 },
+    "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "one_run_scope": { "const": true },
+    "nonce": { "type": "string", "minLength": 1 },
+    "state": { "$ref": "#/$defs/consumption_state" },
+    "consumed_nonces": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "readback_verified": { "type": "boolean" },
+    "readback_digest": {
+      "type": ["string", "null"],
+      "description": "Digest of the independently read-back bytes once verified."
+    },
+    "redacted": {
+      "const": true,
+      "description": "Secret values never travel in authorization documents."
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "consumption_state": {
+      "type": "string",
+      "enum": [
+        "available",
+        "selected_for_run",
+        "irreversible_operation_started",
+        "consumed_complete",
+        "consumed_incident",
+        "expired",
+        "revoked"
+      ]
+    },
+    "package_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_id",
+        "package_name",
+        "package_version",
+        "package_digest",
+        "package_size_bytes"
+      ],
+      "properties": {
+        "logical_id": { "type": "string" },
+        "package_name": { "type": "string" },
+        "package_version": { "type": "string" },
+        "package_digest": { "$ref": "#/$defs/digest" },
+        "package_size_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "shared_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_id",
+        "package_name",
+        "package_version",
+        "expected_checksum",
+        "authority_digest"
+      ],
+      "properties": {
+        "logical_id": { "type": "string" },
+        "package_name": { "type": "string" },
+        "package_version": { "type": "string" },
+        "expected_checksum": { "$ref": "#/$defs/digest" },
+        "authority_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "at_unix_seconds", "reason"],
+      "properties": {
+        "from": { "$ref": "#/$defs/consumption_state" },
+        "to": { "$ref": "#/$defs/consumption_state" },
+        "at_unix_seconds": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

@@ -151,6 +151,7 @@ runtime, reachability, or semantic analysis.
 | [Candidate preparation result](candidate-preparation-plan-v1.schema.json) | `cargo-allow.candidate-preparation-result.v1` (embedding `cargo-allow.candidate-preparation-plan.v1`) | hidden `cargo-allow prep-candidate plan` projection, typed `allow-report` contract (#3831) |
 | [Candidate preparation receipt](candidate-preparation-receipt-v1.schema.json) | `cargo-allow.candidate-preparation-receipt.v1` | hidden `cargo-allow prep-candidate apply --final-receipt`, typed `allow-report` contract (#3834) |
 | [Final package-docs receipt](final-package-docs.v1.schema.json) | `cargo-allow.final-package-docs.v1` | `scripts/final-package-docs.py` (#3773) |
+| [Release authorization custody](cargo-allow.release-authorization-custody.v1.schema.json) | `cargo-allow.release-authorization-custody.v1` | typed `allow-report` custody model, selection payload, and canonical renderers (#3927) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
 OIDC authentication) was retired with its schema: no release ever attached a V1
@@ -244,6 +245,7 @@ promote policy, authorize publication, or establish release readiness.
 - [operator-latency.schema.json](operator-latency.schema.json) v1 historical compatibility schema; [operator-latency.v2.schema.json](operator-latency.v2.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
+- [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
