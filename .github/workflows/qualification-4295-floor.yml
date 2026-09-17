@@ -1,0 +1,95 @@
+name: PR 4295 native floor qualification
+
+on:
+  push:
+    branches: [automation/4295-floor-native-qualification]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualification-4295-floor-native
+  cancel-in-progress: false
+
+jobs:
+  native-floor:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: '1.95.0'
+      CI_PROOF_MSRV: '1.95.0'
+      CI_PROOF_PRODUCT: cargo-allow
+      CI_PROOF_CLASSES: check,test,package
+      CI_PROOF_OUT: target/qualification-4295/direct-floor-proof-cargo-allow-v1.json
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      RUST_TEST_THREADS: '2'
+      SUBJECT_SHA: ecf7c7fc051e1734d1118bc4ea347219cdbb3d1d
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out exact repair subject, not the carrier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ecf7c7fc051e1734d1118bc4ea347219cdbb3d1d
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Admit source and record native tools
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          mkdir -p target/qualification-4295
+          {
+            git rev-parse HEAD HEAD^{tree}
+            rustc -vV
+            cargo -vV
+            rustdoc -vV
+            python3 --version
+            printf 'CARGO_BUILD_JOBS=%s\nRUST_TEST_THREADS=%s\nCARGO_INCREMENTAL=%s\n' \
+              "$CARGO_BUILD_JOBS" "$RUST_TEST_THREADS" "$CARGO_INCREMENTAL"
+          } 2>&1 | tee target/qualification-4295/subject-tools.log
+      - name: Run native producer protocol and collector controls
+        run: |
+          set -euo pipefail
+          bash scripts/test-proof-direct-floors.sh 2>&1 | tee target/qualification-4295/protocol.log
+      - name: Execute original-workspace preflight and real projected floor proof
+        run: |
+          set -euo pipefail
+          bash scripts/proof-direct-floors.sh 2>&1 | tee target/qualification-4295/floor.log
+      - name: Verify exact successful receipt and unchanged source
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          receipt_path = Path(os.environ['CI_PROOF_OUT'])
+          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          if receipt['schema_id'] != 'cargo-allow.minimum-direct-version.v1':
+              raise SystemExit('unexpected receipt schema')
+          if receipt['product'] != 'cargo-allow' or receipt['package_roots'] != ['cargo-allow']:
+              raise SystemExit('wrong product denominator')
+          if receipt['toolchain'] != '1.95.0' or receipt['target'] != 'host:x86_64-pc-windows-msvc':
+              raise SystemExit('wrong observed native toolchain or target')
+          if not receipt['rows'] or any(row['result'] != 'proven' for row in receipt['rows']):
+              raise SystemExit('one or more direct floors are not proven')
+          marker = 'local floor subject: source ' + os.environ['SUBJECT_SHA'] + ';'
+          if not any(value.startswith(marker) for value in receipt['limitations']):
+              raise SystemExit('receipt source binding mismatch')
+          companion = receipt_path.with_suffix('.selection.md').read_text(encoding='utf-8')
+          if companion.count('Passed before projection:') != 5:
+              raise SystemExit('missing original-workspace preflight passes')
+          print('Verified exact native source and', len(receipt['rows']), 'proven direct floors')
+          PY
+          test "$(git rev-parse HEAD)" = "$SUBJECT_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Retain diagnostic or successful evidence without committing it
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pr-4295-native-floor-ecf7c7fc
+          path: target/qualification-4295/
+          if-no-files-found: error
