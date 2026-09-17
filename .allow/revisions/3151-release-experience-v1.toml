@@ -1,0 +1,21 @@
+# Issue #3151: exact-path contract artifacts for the installed-experience
+# receipt, with no broadening of policy.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11301"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8ea1ff5f251843a94147d620fcaf3542e0b5fc394fb60010d0a88ecc9f59dd30"
+reason = "Retain the versioned installed-experience result schema, checked against production rendering by the contract test. Shape validation never proves usability."
+
+[[records]]
+allow_ids = ["allow-11302"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c631ad6a842782e322a6fa17320c0010a384080dcec9aac88a1b757a7d419178"
+reason = "Retain the producer/consumer contract for the installed-experience receipt, including the explicit NotProven path. This exact documentation path carries no live adoption evidence."
+
+[[records]]
+allow_ids = ["allow-11303"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:36a9ae809e460eaef213a4cd0b60e92ec3eff4c8d518626d2a72d00be939aab3"
+reason = "Receipt this note's exact tracked configuration path and the scoped transition rationale."

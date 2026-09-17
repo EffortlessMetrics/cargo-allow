@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Add a typed installed-experience receipt with an explicit NotProven path.
+  No clean external pilot ran, so the 0.2.0 receipt stays NotProven with a
+  stated reason and narrowed claims: installed truth holds, brownfield proof
+  is scheduled post-publication, and no low-friction external adoption is
+  claimed. Complete claims without pilot proof mismatch instead of compiling.

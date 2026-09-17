@@ -19,6 +19,12 @@ See the [producer and consumer contract](../release/release-authorization-v1.md)
 It is a pure compilation component; it models authority without granting or
 executing it.
 
+The [release experience](cargo-allow.release-experience.v1.schema.json)
+(`cargo-allow.release-experience.v1`) is produced by
+`allow_report::evaluate_release_experience_v1` and its canonical renderer.
+See the [producer and consumer contract](../release/release-experience-v1.md).
+It is a pure evaluation component; it installs nothing and executes no candidate.
+
 | Component | Schema ID | Producer |
 |---|---|---|
 | [Resolved source-exception configuration](resolved-cargo-allow-config-v1.schema.json) | `cargo-allow.resolved-config.v1` | `allow_policy::resolve_cargo_allow_config_v1`, rendered by `allow_report::render_resolved_cargo_allow_config_json` |

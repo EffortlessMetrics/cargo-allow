@@ -338,6 +338,16 @@ pub use artifacts::{
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
     transition_authorization_consumption,
 };
+// Root re-exports for the installed-experience receipt (#3151).
+pub use artifacts::{
+    CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
+    RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
+    RELEASE_EXPERIENCE_SCHEMA_VERSION, ReleaseExperienceBrownfieldPostureV1,
+    ReleaseExperienceDocsIdentityV1, ReleaseExperienceFindingV1,
+    ReleaseExperienceFrictionDispositionV1, ReleaseExperienceFrictionV1, ReleaseExperienceInputV1,
+    ReleaseExperiencePilotResultV1, ReleaseExperiencePilotV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_v1, render_release_experience_v1,
+};
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
     ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,
