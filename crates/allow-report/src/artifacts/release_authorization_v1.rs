@@ -1,11 +1,11 @@
-//! Production one-operation release authorization contract (#3789).
+//! Production final-release authorization contract (#3789).
 //!
-//! The compiler validates an exact authorization document against the frozen
-//! candidate facts it names. It performs no network access, reads no
-//! credentials, creates no tags, uploads nothing, and mutates no live state:
-//! modeling authority is not granting it. The actual authorization artifact
-//! lives outside the frozen source tree; a document whose digest appears in
-//! the frozen file inventory is rejected.
+//! The compiler reconciles one immutable, out-of-tree maintainer decision
+//! against a separately supplied trusted context assembled from retained freeze,
+//! evidence, control, and one-use observations. The decision cannot provide the
+//! values against which it is validated. This module performs no network access,
+//! reads no credentials, creates no tags, uploads nothing, and mutates no live
+//! state: modeling authority is not granting or executing it.
 
 use serde::{Deserialize, Serialize};
 
@@ -21,18 +21,30 @@ pub use evaluate::{
 
 pub const RELEASE_AUTHORIZATION_SCHEMA_ID: &str = "cargo-allow.release-authorization.v1";
 pub const RELEASE_AUTHORIZATION_SCHEMA_VERSION: u32 = 1;
+pub const RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID: &str =
+    "cargo-allow.release-authorization-expected-context.v1";
+pub const RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION: u32 = 1;
 
+/// Repository selected by the final-release authorization generation.
+pub const RELEASE_AUTHORIZATION_REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 /// The single clean final operation this generation may authorize.
 pub const RELEASE_AUTHORIZATION_FINAL_OPERATION: &str = "publish_cargo_allow_final_0_2_0";
-/// The single recovery operation this generation may authorize.
-pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str = "publish_cargo_allow_recovery_0_2_0";
+/// Compatibility name retained for downstream compilation. This final-only
+/// compiler always rejects it; #3791/#2509 own recovery authority.
+pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str =
+    "publish_cargo_allow_recovery_0_2_0";
 pub const RELEASE_AUTHORIZATION_FINAL_VERSION: &str = "0.2.0";
 pub const RELEASE_AUTHORIZATION_FINAL_TAG: &str = "v0.2.0";
 pub const RELEASE_AUTHORIZATION_STABLE_CHANNEL: &str = "stable";
 /// Only this authentication class may carry the clean final operation.
 pub const RELEASE_AUTHORIZATION_AUTH_CLASS: &str = "crates_io_api_token";
-/// Structured maintainer statements longer than this are unbounded prose.
-pub const RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN: usize = 2000;
+/// Exact bounded statement accepted by this generation.
+pub const RELEASE_AUTHORIZATION_EXACT_STATEMENT: &str =
+    "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.";
+/// Compatibility limit retained for existing consumers. Exact equality, not
+/// merely this bound, is required by the compiler.
+pub const RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN: usize =
+    RELEASE_AUTHORIZATION_EXACT_STATEMENT.len();
 
 /// Exact final denominator in release order: (logical_id, package, version, shared).
 pub const RELEASE_AUTHORIZATION_SELECTION: [(&str, &str, &str, bool); 13] = [
@@ -51,11 +63,12 @@ pub const RELEASE_AUTHORIZATION_SELECTION: [(&str, &str, &str, bool); 13] = [
     ("cargo-allow", "cargo-allow", "0.2.0", false),
 ];
 
+/// This schema generation represents clean initial publication only. Recovery
+/// uses the distinct incident-bound contract owned by #3791/#2509.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReleaseAuthorizationAuthorityKindV1 {
     Clean,
-    Recovery,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -157,8 +170,8 @@ pub struct ReleaseAuthorizationSourceV1 {
     pub statement: String,
 }
 
-/// One-use lifecycle. Only `Available` may be selected for a run; every other
-/// state is terminal for selection and maps to a receipt result.
+/// Append-only release-operation state observed independently of the immutable
+/// authorization decision. Only `Available` may be selected by the compiler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReleaseAuthorizationConsumptionV1 {
@@ -175,7 +188,6 @@ pub enum ReleaseAuthorizationConsumptionV1 {
 #[serde(deny_unknown_fields)]
 pub struct ReleaseAuthorizationAuthorityV1 {
     pub selected_auth_class: String,
-    pub secret_availability: ReleaseAuthorizationSecretAvailabilityV1,
     pub maintainer_actor: String,
     pub maintainer_role: String,
     pub source: ReleaseAuthorizationSourceV1,
@@ -183,10 +195,11 @@ pub struct ReleaseAuthorizationAuthorityV1 {
     pub expires_at_unix_seconds: u64,
     pub one_run_scope: bool,
     pub nonce: String,
-    pub prior_consumptions: Vec<String>,
-    pub consumption: ReleaseAuthorizationConsumptionV1,
 }
 
+/// Immutable out-of-tree maintainer decision. It binds the exact operation,
+/// frozen subject, and evidence snapshot but carries no mutable use state or
+/// provider observation used to validate itself.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReleaseAuthorizationInputV1 {
@@ -196,8 +209,32 @@ pub struct ReleaseAuthorizationInputV1 {
     pub freeze: ReleaseAuthorizationFreezeV1,
     pub evidence: ReleaseAuthorizationEvidenceV1,
     pub authority: ReleaseAuthorizationAuthorityV1,
-    /// Digest inventory of the frozen tree. A document whose digest appears
-    /// here authorized itself and is rejected.
+}
+
+/// Independent append-only observation of authorization use.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReleaseAuthorizationUseObservationV1 {
+    pub state: ReleaseAuthorizationConsumptionV1,
+    pub consumed_nonces: Vec<String>,
+}
+
+/// Trusted expected side of compilation, assembled from retained production
+/// objects and current provider/control readbacks rather than copied from the
+/// authorization decision. This type remains internal to the artifact parser;
+/// external consumers pass its canonical JSON bytes to the compiler.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReleaseAuthorizationExpectedContextV1 {
+    pub schema_id: String,
+    pub schema_version: u32,
+    pub repository: String,
+    pub freeze: ReleaseAuthorizationFreezeV1,
+    pub evidence: ReleaseAuthorizationEvidenceV1,
+    pub secret_availability: ReleaseAuthorizationSecretAvailabilityV1,
+    pub use_observation: ReleaseAuthorizationUseObservationV1,
+    /// Digest inventory of the frozen tree. A decision whose semantic digest
+    /// appears here authorized itself and is rejected.
     pub frozen_file_digests: Vec<String>,
     pub evaluated_at_unix_seconds: u64,
 }
@@ -232,11 +269,14 @@ pub struct CargoAllowReleaseAuthorizationV1 {
     pub result: ReleaseAuthorizationResultV1,
     pub findings: Vec<ReleaseAuthorizationFindingV1>,
     /// Non-blocking residual risks (e.g. unproven registry permission).
-    /// A Complete receipt with caveats is authority with eyes open.
+    /// A Complete receipt with caveats is eligibility with eyes open.
     pub caveats: Vec<String>,
-    /// Canonical digest of the compiled authorization document.
+    /// Canonical digest of the immutable authorization decision.
     pub authorization_digest: String,
+    /// Canonical digest of the independently supplied trusted context.
+    pub expected_context_digest: String,
     pub evaluated_at_unix_seconds: u64,
+    pub claim_boundary: String,
 }
 
 /// Declaration order is canonical; consumers must reconcile before trusting fields.

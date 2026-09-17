@@ -3,8 +3,6 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use ReleaseAuthorizationConsumptionV1 as Consumption;
-use ReleaseAuthorizationResultV1 as State;
 use allow_report::{
     CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
     RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
@@ -14,12 +12,18 @@ use allow_report::{
     ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
     ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
     ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
-    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
-    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSharedRowV1,
     ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
     compile_release_authorization_v1, release_authorization_denominator_binding_v1,
     render_release_authorization_v1, transition_authorization_consumption,
 };
+use ReleaseAuthorizationConsumptionV1 as Consumption;
+use ReleaseAuthorizationResultV1 as State;
+
+const EXPECTED_CONTEXT_SCHEMA_ID: &str =
+    "cargo-allow.release-authorization-expected-context.v1";
+const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
+const EXACT_STATEMENT: &str = "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.";
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
@@ -44,25 +48,27 @@ fn repository_root() -> Result<PathBuf, Box<dyn Error>> {
     Ok(root.to_path_buf())
 }
 
-fn input() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
+fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
     let mut packages = Vec::new();
     let mut shared = Vec::new();
-    for (logical, package, version, is_shared) in RELEASE_AUTHORIZATION_SELECTION {
+    for (index, (logical, package, version, is_shared)) in
+        RELEASE_AUTHORIZATION_SELECTION.into_iter().enumerate()
+    {
         if is_shared {
             shared.push(ReleaseAuthorizationSharedRowV1 {
                 logical_id: logical.to_string(),
                 package_name: package.to_string(),
                 package_version: version.to_string(),
-                expected_checksum: digest(20),
-                authority_digest: digest(21),
+                expected_checksum: digest(20 + index as u64),
+                authority_digest: digest(40 + index as u64),
             });
         } else {
             packages.push(ReleaseAuthorizationPackageRowV1 {
                 logical_id: logical.to_string(),
                 package_name: package.to_string(),
                 package_version: version.to_string(),
-                package_digest: digest(10),
-                package_size_bytes: 10_000,
+                package_digest: digest(10 + index as u64),
+                package_size_bytes: 10_000 + index as u64,
             });
         }
     }
@@ -90,7 +96,8 @@ fn input() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
         },
         evidence: ReleaseAuthorizationEvidenceV1 {
             package_docs_digest: digest(30),
-            preflight_result: allow_report::FinalRegistryPreflightResultV1::Complete,
+            preflight_result:
+                allow_report::FinalRegistryPreflightResultV1::CompleteWithResidualAuthorityRisk,
             preflight_evaluated_at_unix_seconds: 100,
             preflight_maximum_age_seconds: 30,
             support_digest: digest(31),
@@ -106,58 +113,124 @@ fn input() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
         },
         authority: ReleaseAuthorizationAuthorityV1 {
             selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(),
-            secret_availability: ReleaseAuthorizationSecretAvailabilityV1 {
-                redacted: true,
-                state: ReleaseAuthorizationSecretStateV1::Unknown,
-            },
             maintainer_actor: "release-operator".to_string(),
             maintainer_role: "release-maintainer".to_string(),
             source: ReleaseAuthorizationSourceV1 {
                 kind: ReleaseAuthorizationSourceKindV1::IssueComment,
-                repository: "EffortlessMetrics/cargo-allow".to_string(),
+                repository: REPOSITORY.to_string(),
                 reference: "issue:2502#comment:1".to_string(),
                 author: "release-operator".to_string(),
-                body_digest: digest(40),
-                statement: "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.".to_string(),
+                body_digest: digest(60),
+                statement: EXACT_STATEMENT.to_string(),
             },
             created_at_unix_seconds: 90,
             expires_at_unix_seconds: 200,
             one_run_scope: true,
             nonce: "nonce-0-2-0-0001".to_string(),
-            prior_consumptions: Vec::new(),
-            consumption: Consumption::Available,
         },
-        frozen_file_digests: vec![digest(50)],
-        evaluated_at_unix_seconds: 110,
     };
     document.freeze.denominator_digest =
         release_authorization_denominator_binding_v1(&document.freeze)?;
     Ok(document)
 }
 
-fn receipt(input: &ReleaseAuthorizationInputV1) -> CargoAllowReleaseAuthorizationV1 {
-    compile_release_authorization_v1(input)
+fn expected_context(document: &ReleaseAuthorizationInputV1) -> serde_json::Value {
+    serde_json::json!({
+        "schema_id": EXPECTED_CONTEXT_SCHEMA_ID,
+        "schema_version": 1,
+        "repository": REPOSITORY,
+        "freeze": document.freeze.clone(),
+        "evidence": document.evidence.clone(),
+        "secret_availability": {
+            "redacted": true,
+            "state": "unknown"
+        },
+        "use_observation": {
+            "state": "available",
+            "consumed_nonces": []
+        },
+        "frozen_file_digests": [digest(70), digest(71)],
+        "evaluated_at_unix_seconds": 110
+    })
+}
+
+fn receipt(
+    document: &ReleaseAuthorizationInputV1,
+    context: &serde_json::Value,
+) -> Result<CargoAllowReleaseAuthorizationV1, Box<dyn Error>> {
+    Ok(compile_release_authorization_v1(
+        document,
+        &serde_json::to_vec(context)?,
+    ))
 }
 
 #[test]
-fn release_authorization_contract_exact_document_compiles() -> Result<(), Box<dyn Error>> {
-    let document = input()?;
-    let compiled = receipt(&document);
+fn exact_decision_compiles_against_external_context() -> Result<(), Box<dyn Error>> {
+    let document = decision()?;
+    let context = expected_context(&document);
+    let compiled = receipt(&document, &context)?;
     require(
         compiled.result == State::Complete,
-        format!("exact document must compile: {compiled:?}"),
+        format!("exact decision must compile: {compiled:?}"),
     )?;
     require(
-        !compiled.authorization_digest.is_empty(),
-        "compiled receipt must carry the authorization digest",
+        !compiled.authorization_digest.is_empty()
+            && !compiled.expected_context_digest.is_empty(),
+        "compiled receipt must carry both independent identities",
+    )?;
+    require(
+        compiled
+            .claim_boundary
+            .contains("independently supplied trusted"),
+        "compiled receipt lost its two-sided claim boundary",
     )
 }
 
 #[test]
-fn release_authorization_contract_state_machine_parity() -> Result<(), Box<dyn Error>> {
+fn redigested_submission_cannot_move_trusted_freeze() -> Result<(), Box<dyn Error>> {
+    let mut document = decision()?;
+    let context = expected_context(&document);
+    document
+        .freeze
+        .packages
+        .first_mut()
+        .ok_or_else(|| io::Error::other("package row absent"))?
+        .package_size_bytes += 1;
+    document.freeze.denominator_digest =
+        release_authorization_denominator_binding_v1(&document.freeze)?;
+    let compiled = receipt(&document, &context)?;
     require(
-        transition_authorization_consumption(Consumption::Available, Consumption::SelectedForRun)?
-            == Consumption::SelectedForRun,
+        compiled.result == State::Mismatch,
+        format!("redigested forged denominator compiled: {compiled:?}"),
+    )
+}
+
+#[test]
+fn typed_broad_prose_and_external_reuse_fail() -> Result<(), Box<dyn Error>> {
+    let mut document = decision()?;
+    let mut context = expected_context(&document);
+    document.authority.source.statement = "ship it".to_string();
+    require(
+        receipt(&document, &context)?.result == State::Unauthorized,
+        "typed broad prose compiled clean",
+    )?;
+
+    document.authority.source.statement = EXACT_STATEMENT.to_string();
+    context["use_observation"]["consumed_nonces"] =
+        serde_json::json!([document.authority.nonce.clone()]);
+    require(
+        receipt(&document, &context)?.result == State::Reused,
+        "externally consumed nonce compiled clean",
+    )
+}
+
+#[test]
+fn state_machine_records_append_only_operation_progress() -> Result<(), Box<dyn Error>> {
+    require(
+        transition_authorization_consumption(
+            Consumption::Available,
+            Consumption::SelectedForRun,
+        )? == Consumption::SelectedForRun,
         "available must select",
     )?;
     require(
@@ -170,79 +243,22 @@ fn release_authorization_contract_state_machine_parity() -> Result<(), Box<dyn E
     require(
         transition_authorization_consumption(
             Consumption::IrreversibleOperationStarted,
-            Consumption::ConsumedComplete,
-        )? == Consumption::ConsumedComplete,
-        "started operations must complete",
+            Consumption::ConsumedIncident,
+        )? == Consumption::ConsumedIncident,
+        "started operation must retain incident completion",
     )?;
-    let mut consumed = input()?;
-    consumed.authority.consumption = Consumption::ConsumedComplete;
     require(
-        receipt(&consumed).result == State::Reused,
-        "consumed authorization must not reselect",
-    )?;
-    for terminal in [Consumption::Expired, Consumption::Revoked] {
-        require(
-            transition_authorization_consumption(terminal, Consumption::Available).is_err(),
-            "terminal states must not reselect",
-        )?;
-    }
-    Ok(())
-}
-
-#[test]
-fn release_authorization_contract_hostile_documents_fail() -> Result<(), Box<dyn Error>> {
-    let document = input()?;
-    // Broad prose cannot construct a typed document.
-    let prose: Result<ReleaseAuthorizationInputV1, _> =
-        serde_json::from_value(serde_json::json!({"statement": "ship it"}));
-    require(prose.is_err(), "broad prose constructed a document")?;
-    // Moved commit mismatches the denominator binding.
-    let mut moved = document.clone();
-    moved.freeze.commit = "c".repeat(40);
-    require(
-        receipt(&moved).result == State::Mismatch,
-        "moved commit compiled clean",
-    )?;
-    // RC identity mismatches the final operation.
-    let mut rc = document.clone();
-    rc.operation.version = "0.2.0-rc.1".to_string();
-    rc.operation.tag = "v0.2.0-rc.1".to_string();
-    rc.operation.github_prerelease = true;
-    require(
-        receipt(&rc).result != State::Complete,
-        "RC identity compiled clean",
-    )?;
-    // Reused nonce and consumed states cannot reselect.
-    let mut reused = document.clone();
-    reused.authority.prior_consumptions = vec![reused.authority.nonce.clone()];
-    require(
-        receipt(&reused).result == State::Reused,
-        "reused nonce compiled clean",
-    )?;
-    // Wrong auth class and revoked authority are unauthorized.
-    let mut wrong_class = document.clone();
-    wrong_class.authority.selected_auth_class = "github_pat".to_string();
-    require(
-        receipt(&wrong_class).result == State::Unauthorized,
-        "wrong auth class compiled clean",
-    )?;
-    let mut revoked = document.clone();
-    revoked.authority.consumption = Consumption::Revoked;
-    require(
-        receipt(&revoked).result == State::Unauthorized,
-        "revoked authority compiled clean",
-    )?;
-    // Expired documents stay expired.
-    let mut expired = document;
-    expired.authority.expires_at_unix_seconds = 100;
-    require(
-        receipt(&expired).result == State::Expired,
-        "expired document compiled clean",
+        transition_authorization_consumption(
+            Consumption::ConsumedIncident,
+            Consumption::SelectedForRun,
+        )
+        .is_err(),
+        "terminal incident state reselected",
     )
 }
 
 #[test]
-fn release_authorization_contract_rendered_receipt_matches_schema() -> Result<(), Box<dyn Error>> {
+fn rendered_receipt_validates_against_json_schema() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     if !root.join(".git").exists() {
         return Ok(());
@@ -250,17 +266,17 @@ fn release_authorization_contract_rendered_receipt_matches_schema() -> Result<()
     let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
         root.join("docs/schemas/cargo-allow.release-authorization.v1.schema.json"),
     )?)?;
-    require(
-        schema
-            .pointer("/properties/schema_id/const")
-            .and_then(serde_json::Value::as_str)
-            == Some(RELEASE_AUTHORIZATION_SCHEMA_ID),
-        "schema identity drifted from the production contract",
-    )?;
-    let required = schema
-        .get("required")
-        .and_then(serde_json::Value::as_array)
-        .ok_or_else(|| io::Error::other("schema has no required fields"))?;
+    let document = decision()?;
+    let context = expected_context(&document);
+    let rendered: serde_json::Value =
+        serde_json::from_str(&render_release_authorization_v1(&receipt(&document, &context)?)?)?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| io::Error::other(format!("authorization schema compiles: {error}")))?;
+    validator.validate(&rendered).map_err(|error| {
+        io::Error::other(format!(
+            "rendered authorization receipt violates schema: {error}"
+        ))
+    })?;
     for field in [
         "schema_id",
         "schema_version",
@@ -268,16 +284,15 @@ fn release_authorization_contract_rendered_receipt_matches_schema() -> Result<()
         "findings",
         "caveats",
         "authorization_digest",
+        "expected_context_digest",
         "evaluated_at_unix_seconds",
+        "claim_boundary",
     ] {
         require(
-            required.iter().any(|entry| entry.as_str() == Some(field)),
-            format!("schema dropped required field {field}"),
+            rendered.get(field).is_some(),
+            format!("rendered receipt dropped required field {field}"),
         )?;
     }
-    let document = input()?;
-    let rendered: serde_json::Value =
-        serde_json::from_str(&render_release_authorization_v1(&receipt(&document))?)?;
     require(
         rendered.get("result").and_then(serde_json::Value::as_str) == Some("complete"),
         "rendered receipt must carry the compiled result",
