@@ -142,6 +142,70 @@ fn compile(
     ))
 }
 
+#[test]
+fn trusted_observation_hygiene_is_enforced() -> TestResult {
+    // Secret material, wrong repositories, and nonce-list corruption in the
+    // trusted context fail closed instead of compiling.
+    let decision = decision()?;
+    let mut unredacted = expected(&decision);
+    unredacted.secret_availability.redacted = false;
+    check_result(&decision, &unredacted, State::InstrumentFailure)?;
+    let mut wrong_repository = expected(&decision);
+    wrong_repository.repository = "Other/repository".to_string();
+    check_result(&decision, &wrong_repository, State::InstrumentFailure)?;
+    for nonces in [
+        vec!["".to_string()],
+        vec!["nonce-a".to_string(), "nonce-a".to_string()],
+    ] {
+        let mut corrupt = expected(&decision);
+        corrupt.use_observation.consumed_nonces = nonces;
+        check_result(&decision, &corrupt, State::InstrumentFailure)?;
+    }
+    let mut bad_inventory = expected(&decision);
+    bad_inventory.frozen_file_digests = vec!["not-a-digest".to_string()];
+    check_result(&decision, &bad_inventory, State::InstrumentFailure)?;
+    let mut duplicated = expected(&decision);
+    duplicated.frozen_file_digests = vec![digest(50), digest(50)];
+    check_result(&decision, &duplicated, State::InstrumentFailure)
+}
+
+#[test]
+fn dispatch_sources_and_expiry_transitions_are_bound() -> TestResult {
+    // WorkflowDispatch references validate by shape; expiry transitions obey
+    // the append-only law.
+    let mut decision = decision()?;
+    decision.authority.source.kind = ReleaseAuthorizationSourceKindV1::WorkflowDispatch;
+    decision.authority.source.reference =
+        "workflow:release.yml#run:35177436334#attempt:1".to_string();
+    let expected = expected(&decision);
+    check_result(&decision, &expected, State::Complete)?;
+    let mut bad_dispatch = decision.clone();
+    bad_dispatch.authority.source.reference = "workflow:release.yml".to_string();
+    check_result(&bad_dispatch, &expected, State::Unauthorized)?;
+    require(
+        transition_authorization_consumption(Consumption::Available, Consumption::Expired)?
+            == Consumption::Expired,
+        "available authority must expire",
+    )?;
+    require(
+        transition_authorization_consumption(
+            Consumption::SelectedForRun,
+            Consumption::Expired,
+        )? == Consumption::Expired,
+        "selected authority must expire",
+    )?;
+    require(
+        transition_authorization_consumption(Consumption::Expired, Consumption::Revoked)?
+            == Consumption::Revoked,
+        "expired authority must revoke",
+    )?;
+    require(
+        transition_authorization_consumption(Consumption::Expired, Consumption::Available)
+            .is_err(),
+        "expired authority must not reselect",
+    )
+}
+
 fn check_result(
     decision: &ReleaseAuthorizationInputV1,
     expected: &ReleaseAuthorizationExpectedContextV1,
