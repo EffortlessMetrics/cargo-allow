@@ -250,8 +250,7 @@ fn exact_decision_compiles_against_independent_context() -> TestResult {
 }
 
 #[test]
-fn malformed_or_unsupported_context_fails_closed() -> TestResult {
-    let decision = decision()?;
+fn malformed_or_unsupported_context_fails_closed() -> TestResult {    let decision = decision()?;
     let malformed = compile_release_authorization_v1(&decision, b"not-json");
     require(
         malformed.result == State::Malformed,
@@ -500,4 +499,29 @@ fn compiler_touches_no_external_state() -> TestResult {
         )?;
     }
     Ok(())
+}
+
+#[test]
+fn malformed_trusted_sides_fail_as_instrument_failures() -> TestResult {
+    // Trusted-side shape failures are instrument failures, never clean
+    // permission and never decision-shaped findings.
+    let decision = decision()?;
+    let mut bad_freeze = expected(&decision);
+    bad_freeze.freeze.receipt_digest = "not-a-digest".to_string();
+    check_result(&decision, &bad_freeze, State::InstrumentFailure)?;
+    let mut bad_commit = expected(&decision);
+    bad_commit.freeze.commit = "xyz".to_string();
+    check_result(&decision, &bad_commit, State::InstrumentFailure)?;
+    let mut wrong_counts = expected(&decision);
+    wrong_counts.freeze.packages.pop();
+    check_result(&decision, &wrong_counts, State::InstrumentFailure)?;
+    let mut wrong_topology = expected(&decision);
+    wrong_topology.freeze.topology_id = "OTHER-TOPOLOGY".to_string();
+    check_result(&decision, &wrong_topology, State::InstrumentFailure)?;
+    let mut bad_evidence = expected(&decision);
+    bad_evidence.evidence.support_digest = "not-a-digest".to_string();
+    check_result(&decision, &bad_evidence, State::InstrumentFailure)?;
+    let mut zero_window = expected(&decision);
+    zero_window.evidence.preflight_maximum_age_seconds = 0;
+    check_result(&decision, &zero_window, State::InstrumentFailure)
 }
