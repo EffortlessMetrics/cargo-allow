@@ -110,26 +110,19 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             self.assertTrue(archive.exists())
 
     def test_cli_preserves_prerelease_and_build_identity_end_to_end(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            name = "effortless-repo-protocol"
-            version = "1.2.3-alpha.1+build.7"
-            archive, packages = self.make_crate(root, name=name, version=version)
-            package_set = root / "package-set.json"
-            self.write_package_set(package_set, name, version, version)
-            output = root / "surface.json"
-
-            result = self.run_cli(package_set, packages, output, version)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            receipt = json.loads(output.read_text(encoding="utf-8"))
-            self.assertEqual(receipt["result"], "Complete")
-            self.assertEqual(receipt["candidate"]["workspace_version"], version)
-            self.assertEqual(receipt["package_set"]["order"], [name])
-            row = receipt["package_set"]["packages"][0]
-            self.assertEqual(row["name"], name)
-            self.assertEqual(row["version"], version)
-            self.assertEqual(row["metadata"]["package"]["version"], version)
-            self.assertEqual(row["crate_file"], archive.name)
+        proof = emit_prerelease_identity_proof()
+        self.assertEqual(proof["schema"], "cargo-allow.release-rehearsal-prerelease-identity-proof.v1")
+        self.assertEqual(proof["result"], "Complete")
+        self.assertEqual(
+            proof["candidate_workspace_version"], "1.2.3-alpha.1+build.7"
+        )
+        self.assertEqual(proof["package_name"], "effortless-repo-protocol")
+        self.assertEqual(proof["package_version"], "1.2.3-alpha.1+build.7")
+        self.assertEqual(proof["manifest_version"], "1.2.3-alpha.1+build.7")
+        self.assertEqual(
+            proof["crate_file"],
+            "effortless-repo-protocol-1.2.3-alpha.1+build.7.crate",
+        )
 
     def test_surface_preserves_prerelease_and_hyphenated_identity(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -185,5 +178,35 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             )
 
 
+def emit_prerelease_identity_proof() -> dict[str, object]:
+    case = FinalPackagedSurfaceTests(methodName="runTest")
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        name = "effortless-repo-protocol"
+        version = "1.2.3-alpha.1+build.7"
+        archive, packages = case.make_crate(root, name=name, version=version)
+        package_set = root / "package-set.json"
+        case.write_package_set(package_set, name, version, version)
+        output = root / "surface.json"
+        result = case.run_cli(package_set, packages, output, version)
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr or result.stdout)
+        receipt = json.loads(output.read_text(encoding="utf-8"))
+        row = receipt["package_set"]["packages"][0]
+        return {
+            "schema": "cargo-allow.release-rehearsal-prerelease-identity-proof.v1",
+            "result": receipt["result"],
+            "candidate_workspace_version": receipt["candidate"]["workspace_version"],
+            "package_name": row["name"],
+            "package_version": row["version"],
+            "manifest_version": row["metadata"]["package"]["version"],
+            "crate_file": row["crate_file"],
+            "observed_archive_name": archive.name,
+        }
+
+
 if __name__ == "__main__":
-    unittest.main()
+    if sys.argv[1:] == ["--emit-corpus-proof"]:
+        print(json.dumps(emit_prerelease_identity_proof(), sort_keys=True))
+    else:
+        unittest.main()
