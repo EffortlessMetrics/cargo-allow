@@ -9,6 +9,8 @@
 #   COMMIT         commit SHA
 #   TREE           tree SHA (optional; derived from commit if absent)
 #   AUTH_SOURCE    "crates_io_api_token"
+#   AUTHORIZATION_DIGEST  canonical digest of the compiled one-use
+#     authorization (optional; recorded verbatim when present)
 #   WORKFLOW_RUN_ID  GitHub Actions run ID (optional)
 #   MSRV           minimum supported Rust version
 #   PLATFORMS      space-separated proven platforms (e.g. "linux")
@@ -32,6 +34,7 @@ repository="${REPOSITORY:?REPOSITORY is required}"
 tag="${TAG:?TAG is required}"
 commit="${COMMIT:?COMMIT is required}"
 auth_source="${AUTH_SOURCE:?AUTH_SOURCE is required}"
+authorization_digest="${AUTHORIZATION_DIGEST:-}"
 msrv="${MSRV:?MSRV is required}"
 tree="${TREE:-$(git rev-parse "${commit}^{tree}" 2>/dev/null || echo "")}"
 workflow_run_id="${WORKFLOW_RUN_ID:-}"
@@ -66,6 +69,7 @@ python3 - "${output}" "${version}" "${repository}" "${tag}" "${commit}" \
 import functools
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -417,6 +421,9 @@ manifest = {
         ),
     ],
     "authorization_reference": f"workflow/{workflow_run_id}/crates-io" if workflow_run_id else "workflow/crates-io",
+    # #3790: canonical digest of the compiled one-use authorization that gated
+    # token access. Absent (None) for historical manifests predating the gate.
+    "authorization_digest": os.environ.get("AUTHORIZATION_DIGEST") or None,
     "instrument_diagnostics": [] if binary_attestation_verified else ["binary attestation is not verified"],
 }
 manifest = {key: value for key, value in manifest.items() if value is not None}
