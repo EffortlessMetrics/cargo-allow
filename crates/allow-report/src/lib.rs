@@ -316,6 +316,38 @@ pub use artifacts::{
     PostMergeQualificationInitV1, ProducerIdentityV1, RetainedCustodyItemV1, ReviewedContextV1,
     TrustClassV1, UntrustedInputPostureV1,
 };
+
+// Root re-exports for the one-operation release authorization contract (#3789).
+pub use artifacts::{
+    CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
+    RELEASE_AUTHORIZATION_EXACT_STATEMENT, RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION, RELEASE_AUTHORIZATION_FINAL_OPERATION,
+    RELEASE_AUTHORIZATION_FINAL_TAG, RELEASE_AUTHORIZATION_FINAL_VERSION,
+    RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN, RELEASE_AUTHORIZATION_RECOVERY_OPERATION,
+    RELEASE_AUTHORIZATION_REPOSITORY, RELEASE_AUTHORIZATION_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_AUTHORIZATION_STABLE_CHANNEL, ReleaseAuthorizationAuthorityKindV1,
+    ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
+    ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationExpectedContextV1,
+    ReleaseAuthorizationFindingV1, ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
+    ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
+    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+    ReleaseAuthorizationUseObservationV1, compile_release_authorization_v1,
+    release_authorization_denominator_binding_v1, render_release_authorization_v1,
+    transition_authorization_consumption,
+};
+// Root re-exports for the installed-experience receipt (#3151).
+pub use artifacts::{
+    CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
+    RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
+    RELEASE_EXPERIENCE_SCHEMA_VERSION, ReleaseExperienceBrownfieldPostureV1,
+    ReleaseExperienceDocsIdentityV1, ReleaseExperienceFindingV1,
+    ReleaseExperienceFrictionDispositionV1, ReleaseExperienceFrictionV1, ReleaseExperienceInputV1,
+    ReleaseExperiencePilotResultV1, ReleaseExperiencePilotV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_v1, render_release_experience_v1,
+};
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
     ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,

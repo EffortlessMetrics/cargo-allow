@@ -41,6 +41,8 @@ mod rc_publication_incident_v1;
 mod reconciled_package_publication_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
+mod release_authorization_v1;
+mod release_experience_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
@@ -360,6 +362,35 @@ pub use release_artifact_transfer_v1::{
     ActualDownloadedFileV1, ArtifactTransferDispositionV1, ArtifactTransferFileV1,
     ArtifactTransferInitV1, CargoAllowReleaseArtifactTransferV1, ConsumerContextV1,
     ProducerIdentityV1, TrustClassV1, UntrustedInputPostureV1,
+};
+pub use release_authorization_v1::{
+    CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
+    RELEASE_AUTHORIZATION_EXACT_STATEMENT, RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_VERSION, RELEASE_AUTHORIZATION_FINAL_OPERATION,
+    RELEASE_AUTHORIZATION_FINAL_TAG, RELEASE_AUTHORIZATION_FINAL_VERSION,
+    RELEASE_AUTHORIZATION_MAX_STATEMENT_LEN, RELEASE_AUTHORIZATION_RECOVERY_OPERATION,
+    RELEASE_AUTHORIZATION_REPOSITORY, RELEASE_AUTHORIZATION_SCHEMA_ID,
+    RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_AUTHORIZATION_STABLE_CHANNEL, ReleaseAuthorizationAuthorityKindV1,
+    ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
+    ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationExpectedContextV1,
+    ReleaseAuthorizationFindingV1, ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
+    ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
+    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+    ReleaseAuthorizationUseObservationV1, compile_release_authorization_v1,
+    release_authorization_denominator_binding_v1, render_release_authorization_v1,
+    transition_authorization_consumption,
+};
+pub use release_experience_v1::{
+    CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
+    RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
+    RELEASE_EXPERIENCE_SCHEMA_VERSION, ReleaseExperienceBrownfieldPostureV1,
+    ReleaseExperienceDocsIdentityV1, ReleaseExperienceFindingV1,
+    ReleaseExperienceFrictionDispositionV1, ReleaseExperienceFrictionV1, ReleaseExperienceInputV1,
+    ReleaseExperiencePilotResultV1, ReleaseExperiencePilotV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_v1, render_release_experience_v1,
 };
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,

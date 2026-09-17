@@ -307,6 +307,29 @@ separate explicit authorization for that irreversible operation. Before tag
 authorization, require the reconciled namespace receipt and a recent green
 non-publishing `workflow_dispatch` rehearsal.
 
+## Authorization-gated tag pushes (#3790)
+
+A pushed tag is evidence of an attempted operation, never authority. The
+release workflow refuses every tag-triggered run before token access unless
+the tag carries the authorization binding and the out-of-tree authorization
+document compiles `Complete` against independently observed facts:
+
+```bash
+git tag -a v0.2.0 -m "cargo-allow 0.2.0
+
+authorization-run-id: <authorizing workflow run id>
+authorization-digest: <canonical sha256 digest, optional>"
+git push origin v0.2.0
+```
+
+The `authorize` job verifies the tag peels to the preflight commit/tree,
+downloads the `release-authorization` artifact (immutable decision plus
+trusted expected context plus freeze receipt) from the named run, compiles it with
+`cargo-allow release-authorization validate`, transitions the use observation to
+`selected-for-run`, and propagates the digest to the publish receipt and the
+release manifest. Rehearsal dispatches and incident-owned recovery follow
+their own paths and never present clean authorization.
+
 ## Canonical Path
 
 1. Complete and reconcile the namespace rail described above, then merge
@@ -324,6 +347,9 @@ non-publishing `workflow_dispatch` rehearsal.
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
    - **preflight** — `fmt`, `clippy`, `cargo test --workspace`, the
      topology-derived candidate preflight, and the default no-new guard.
+   - **authorize** (#3790) — validates the out-of-tree authorization
+     document before any token access; rehearsal and recovery branch
+     without clean authority.
    - **publish** — runs [release version preflight](../../scripts/release-version-preflight.sh)
      (tag/workspace alignment, internal dependency versions, CHANGELOG section,
      and release-record files; release-record checks skip on workflow_dispatch),

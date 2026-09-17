@@ -18,6 +18,7 @@ mod dependency_graph_evidence_command;
 mod frozen_subject_lock_command;
 mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
+pub(crate) mod release_authorization_command;
 pub(crate) mod release_freeze_command;
 mod release_identity_command;
 mod review_disposition_command;
@@ -134,6 +135,9 @@ pub(crate) enum CargoAllowCommand {
     /// Validate and project release identity for repository automation.
     #[command(hide = true)]
     ReleaseIdentity(release_identity_command::ReleaseIdentityArgs),
+    /// Validate one out-of-tree release authorization against observed facts.
+    #[command(hide = true)]
+    ReleaseAuthorization(release_authorization_command::ReleaseAuthorizationArgs),
     /// Project release-candidate preparation without writing.
     #[command(hide = true)]
     PrepCandidate(candidate_preparation_command::PrepCandidateArgs),
@@ -268,6 +272,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::ReleaseIdentity(args) => {
             release_identity_command::cmd_release_identity(&args)
+        }
+        CargoAllowCommand::ReleaseAuthorization(args) => {
+            release_authorization_command::cmd_release_authorization(&args)
         }
         CargoAllowCommand::PrepCandidate(args) => {
             candidate_preparation_command::cmd_prep_candidate(&args)
@@ -500,6 +507,7 @@ impl CargoAllowCommand {
         "extraction-parity",
         "changie",
         "release-identity",
+        "release-authorization",
         "reconcile-package-publication",
         "prep-candidate",
         "release-freeze",
