@@ -250,7 +250,8 @@ fn exact_decision_compiles_against_independent_context() -> TestResult {
 }
 
 #[test]
-fn malformed_or_unsupported_context_fails_closed() -> TestResult {    let decision = decision()?;
+fn malformed_or_unsupported_context_fails_closed() -> TestResult {
+    let decision = decision()?;
     let malformed = compile_release_authorization_v1(&decision, b"not-json");
     require(
         malformed.result == State::Malformed,
