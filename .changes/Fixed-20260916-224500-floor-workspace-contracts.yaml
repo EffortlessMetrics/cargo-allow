@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Run full-workspace topology contracts on their original locked source before
+  product-scoped direct-floor tests, preserving the assertions and rejecting
+  missing, ignored, duplicate, or failed preflight results.
+time: 2026-09-16T22:45:00-04:00

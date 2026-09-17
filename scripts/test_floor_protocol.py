@@ -22,6 +22,21 @@ SKIPS = [
     "minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure",
 ]
 
+WORKSPACE_TESTS = [
+    "ci_lane_topology_tests::crate_sets_partition_the_workspace_exactly",
+    "package_topology_enforcement_tests::topology_classifies_every_workspace_package_exactly",
+    "product_package_topology_tests::current_v2_authorities_drive_package_candidate",
+    "publish_order_validation_tests::publish_order_covers_all_workspace_members",
+    "release_prep_tests::published_release_versions_match_workspace",
+]
+
+
+def floor_classes(calls):
+    return [call["arguments"] for call in calls if call["program"] == "cargo"
+            and call["arguments"][0] in ("check", "test", "package")
+            and "--bin" not in call["arguments"]]
+
+
 # There is deliberately no real-process fallback in either shim. Python child
 # calls see the same recorder through a fixture-only subprocess facade; this
 # avoids depending on Windows executable/PATHEXT behavior for shell shims.
@@ -39,6 +54,7 @@ def invoke(program, arguments):
     with Path(case["calls"]).open("a", encoding="utf-8") as output:
         output.write(json.dumps({"program": program, "arguments": arguments,
                                  "executable": executable,
+                                 "projected": Path("target/floor-proof/product-workspace-identity.json").exists(),
                                  "rustc": os.environ.get("RUSTC"),
                                  "rustdoc": os.environ.get("RUSTDOC")}) + "\n")
     if program == "git":
@@ -118,8 +134,39 @@ def invoke(program, arguments):
                 configured = os.environ.get("CARGO_BUILD_" + wrapper, case["config_wrapper"])
                 if os.environ.get(wrapper, configured) != "":
                     return 44, "", "simulated Cargo compiler wrapper remained active"
+        if arguments[0] == "test" and "--bin" in arguments:
+            expected = ["test", "--locked", "--target", "x86_64-pc-windows-msvc",
+                        "--target-dir", "target/floor-proof/source-workspace-target",
+                        "-p", "cargo-allow", "--bin", "cargo-allow", "--", "--format",
+                        "pretty", "--color", "never", *case["workspace_tests"]]
+            if arguments != expected:
+                return 70, "", "unexpected source-workspace preflight command"
+            if Path("target/floor-proof/product-workspace-identity.json").exists():
+                return 70, "", "source-workspace preflight ran after projection"
+            for name in ("Cargo.toml", "Cargo.lock"):
+                if Path(name).read_bytes() != (Path(case["fixture"]) / name).read_bytes():
+                    return 70, "", "source-workspace preflight ran after input mutation"
+            mode = case.get("workspace_result", "passed")
+            names = list(case["workspace_tests"])
+            if mode == "wrong":
+                names[0] = "foreign::test"
+            if mode == "duplicate":
+                names[0] = names[1]
+            if mode == "extra":
+                names.append(names[0] + "_extra")
+            output = "running 5 tests\n"
+            output += "".join("test " + name + " ... " +
+                              ("ignored" if mode == "ignored" else "ok") + "\n" for name in names)
+            output += ("test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; "
+                       "1556 filtered out; finished in 0.01s\n")
+            if mode == "empty":
+                output = ""
+            if mode == "source-moved":
+                with Path("Cargo.lock").open("a") as lock:
+                    lock.write("\n# changed during preflight\n")
+            return (41 if mode == "failed" else 0), output, ""
         if arguments[0] == "test":
-            expected = [value for name in case["skips"] for value in ("--skip", name)]
+            expected = [value for name in case["skips"] + case["workspace_tests"] for value in ("--skip", name)]
             if "--" not in arguments or arguments[arguments.index("--") + 1:] != expected:
                 return 39, "", "simulated retained-output skip contract mismatch"
         failed = arguments[0] == case.get("fail_class")
@@ -177,6 +224,7 @@ class FloorProtocolTests(unittest.TestCase):
             "floor_product_workspace.py",
             "floor_execution_identity.py",
             "floor_source_identity.py",
+            "floor_workspace_contract.py",
         ):
             shutil.copyfile(REPO / "scripts" / name, scripts / name)
         (fixture / "Cargo.toml").write_text(
@@ -228,6 +276,7 @@ class FloorProtocolTests(unittest.TestCase):
         worktrees.mkdir()
         calls_path = run_root / "calls.jsonl"
         case = {"fixture": str(fixture), "worktrees": str(worktrees), "calls": str(calls_path), "skips": SKIPS,
+                "workspace_tests": WORKSPACE_TESTS,
                 "selected_tools": {tool: str(fake_bin / tool) for tool in ("rustc", "rustdoc")},
                 "config_tools": {tool: str(run_root / ("configured-" + tool)) for tool in ("rustc", "rustdoc")},
                 "config_wrapper": str(run_root / "configured-wrapper")}
@@ -287,7 +336,7 @@ class FloorProtocolTests(unittest.TestCase):
 
     def test_failed_source_derivation_prevents_classes_and_receipt(self):
         failures = {
-            "dirty_source": "floor derivation permits only unstaged Cargo.toml and Cargo.lock changes",
+            "dirty_source": "source-workspace preflight requires clean source",
             "fail_derivation": "simulated derived commit failure",
         }
         for failure, diagnostic in failures.items():
@@ -296,8 +345,7 @@ class FloorProtocolTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 1)
                 self.assertIn(diagnostic, result.stderr)
                 self.assertIsNone(receipt)
-                self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0]
-                                     in ("check", "test", "package") for call in calls))
+                self.assertFalse(floor_classes(calls))
 
     def test_cargo_uses_observed_tools_despite_inherited_and_configured_overrides(self):
         for mode in ("environment", "config_environment", "configuration"):
@@ -329,13 +377,13 @@ class FloorProtocolTests(unittest.TestCase):
                 self.assertEqual(receipt["rows"][0]["result"], "proven")
                 self.assertEqual(receipt["toolchain"], "1.95.2")
                 self.assertEqual(receipt["target"], "host:x86_64-pc-windows-msvc")
-                classes = [call["arguments"] for call in calls if call["program"] == "cargo" and call["arguments"][0] in ("check", "test", "package")]
+                classes = floor_classes(calls)
                 self.assertEqual([arguments[0] for arguments in classes], ["check", "test", "package"])
                 for arguments in classes:
                     self.assertEqual(arguments[arguments.index("--target") + 1], "x86_64-pc-windows-msvc")
                 test_arguments = classes[1]
                 self.assertEqual(test_arguments[test_arguments.index("--") + 1:],
-                                 [value for name in SKIPS for value in ("--skip", name)])
+                                 [value for name in SKIPS + WORKSPACE_TESTS for value in ("--skip", name)])
                 self.assertTrue(any(" ".join(test_arguments) == command.removeprefix("cargo ") for command in receipt["commands"]))
 
     def test_bad_product_and_unknown_classes_reject_before_worktree(self):
@@ -376,8 +424,7 @@ class FloorProtocolTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(
-            [call["arguments"][0] for call in calls if call["program"] == "cargo"
-             and call["arguments"][0] in ("check", "test", "package")],
+            [arguments[0] for arguments in floor_classes(calls)],
             ["check", "test", "package"],
         )
         failed = next(row for row in receipt["rows"] if row["package"] == "second")
@@ -396,6 +443,49 @@ class FloorProtocolTests(unittest.TestCase):
         self.assertIn("Starting source commit: " + "1" * 40, companion)
         self.assertIn("Workspace projection: cargo-allow.direct-floor-product-workspace.v1", companion)
         self.assertIn("Execution member paths:", companion)
+
+
+    def test_original_workspace_pass_precedes_projection_and_floor_resolution(self):
+        result, calls, receipt, receipt_path = self.run_producer()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        preflights = [(index, call) for index, call in enumerate(calls)
+                      if call["program"] == "cargo" and "--bin" in call["arguments"]]
+        self.assertEqual(len(preflights), 1)
+        index, call = preflights[0]
+        self.assertFalse(call["projected"])
+        updates = [(position, item) for position, item in enumerate(calls)
+                   if item["program"] == "cargo" and item["arguments"][0] == "update"]
+        self.assertTrue(updates)
+        self.assertTrue(all(position > index and item["projected"] for position, item in updates))
+        self.assertTrue(all("--bin" not in command for command in receipt["commands"]))
+        self.assertTrue(any("original-workspace topology preflight:" in limitation
+                            for limitation in receipt["limitations"]))
+        companion = receipt_path.with_suffix(".selection.md").read_text(encoding="utf-8")
+        self.assertIn("## Original-workspace topology preflight", companion)
+        self.assertIn("not direct-floor proof", companion)
+        self.assertEqual(companion.count("Passed before projection:"), 5)
+        self.assertIn("Source commit: " + "1" * 40, companion)
+
+    def test_invalid_workspace_preflight_prevents_projection_floor_classes_and_receipt(self):
+        for mode in ("failed", "empty", "ignored", "wrong", "duplicate", "extra", "source-moved"):
+            with self.subTest(mode=mode):
+                result, calls, receipt, _ = self.run_producer(overrides={"workspace_result": mode})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("source-workspace", result.stderr)
+                self.assertIsNone(receipt)
+                self.assertFalse(floor_classes(calls))
+                self.assertFalse(any(call["projected"] for call in calls))
+                self.assertFalse(any(call["program"] == "cargo" and call["arguments"][0] == "update"
+                                     for call in calls))
+
+    def test_check_only_proof_has_no_topology_test_preflight(self):
+        result, calls, receipt, receipt_path = self.run_producer(classes="check")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any("--bin" in call["arguments"] for call in calls))
+        self.assertEqual([arguments[0] for arguments in floor_classes(calls)], ["check"])
+        self.assertFalse(any("topology preflight" in text for text in receipt["limitations"]))
+        self.assertNotIn("Original-workspace topology preflight",
+                         receipt_path.with_suffix(".selection.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -448,3 +448,17 @@ marker_classes = ["workspace-reader"]
 exact_counts = [{ class = "workspace-reader", count = 3 }]
 sites = ["def run_producer("]
 claim_boundary = "The workspace markers construct temporary fixture manifests for the real floor producer. The driver does not classify product release versions, tags, or channels; observed Rust/Cargo versions are synthetic execution-identity inputs."
+
+[[consumers]]
+id = "floor-workspace-contract-fixtures"
+path = "scripts/test_floor_workspace_contract.py"
+role = "real-Git original-workspace preflight controls for product direct-floor proof (#4283)"
+disposition = "historical-fixture-only"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = [
+  "class WorkspaceSourceAdmissionTests(unittest.TestCase):",
+  "def test_skip_worktree_manifest_is_rejected_before_cargo(self):",
+]
+claim_boundary = "The two workspace markers construct temporary Git fixture manifests for original-source admission and hidden-manifest rejection. These controls do not parse release versions, infer tags or channels, or decide prerelease posture."

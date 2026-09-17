@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add production-gripping escaped-defect corpus coverage for exact RC internal
+  dependency requirements and prerelease/build-metadata package archive
+  identity across the package-set and final packaged-surface consumers (#3793).
