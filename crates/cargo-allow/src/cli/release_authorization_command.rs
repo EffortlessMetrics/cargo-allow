@@ -488,4 +488,95 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn malformed_inputs_fail_closed() -> Result<(), String> {
+        let dir = scratch_dir("malformed")?;
+        let args = write_args(&dir)?;
+        std::fs::write(&args.document, b"{not json").map_err(|error| error.to_string())?;
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "malformed document was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InvalidConfig
+            || !error.to_string().contains("parses")
+        {
+            return Err(format!("unexpected parse error: {error}"));
+        }
+        let mut args = write_args(&dir)?;
+        args.freeze_receipt = dir.join("absent.receipt.json");
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "missing freeze receipt was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InvalidConfig {
+            return Err(format!("unexpected missing-file error: {error}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn version_tag_and_receipt_drift_fail_closed() -> Result<(), String> {
+        let dir = scratch_dir("drift")?;
+        let mut args = write_args(&dir)?;
+        args.expected_tree = "d".repeat(40);
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "drifted tree was accepted".to_string())?;
+        if !error.to_string().contains("differs from observed") {
+            return Err(format!("unexpected tree error: {error}"));
+        }
+        let mut args = write_args(&dir)?;
+        args.expected_version = "0.1.0".to_string();
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "drifted version was accepted".to_string())?;
+        if !error.to_string().contains("differs from resolved") {
+            return Err(format!("unexpected version error: {error}"));
+        }
+        let mut args = write_args(&dir)?;
+        args.expected_tag = "v0.1.0".to_string();
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "drifted tag was accepted".to_string())?;
+        if !error.to_string().contains("differs from resolved") {
+            return Err(format!("unexpected tag error: {error}"));
+        }
+        let args = write_args(&dir)?;
+        std::fs::write(&args.freeze_receipt, b"{} ").map_err(|error| error.to_string())?;
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "drifted receipt bytes were accepted".to_string())?;
+        if !error.to_string().contains("do not match") {
+            return Err(format!("unexpected receipt error: {error}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn hostile_documents_and_bad_transitions_fail_closed() -> Result<(), String> {
+        let dir = scratch_dir("hostile")?;
+        let args = write_args(&dir)?;
+        let raw = std::fs::read_to_string(&args.document).map_err(|error| error.to_string())?;
+        let hostile = raw.replace(
+            "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.",
+            "Authorize publish_cargo_allow_final_0_2_0!",
+        );
+        std::fs::write(&args.document, hostile).map_err(|error| error.to_string())?;
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "hostile document compiled".to_string())?;
+        if !error.to_string().contains("compiled as") {
+            return Err(format!("unexpected compile error: {error}"));
+        }
+        let mut args = write_args(&dir)?;
+        let transitioned = dir.join("transitioned.json");
+        args.transition_to = Some(ReleaseAuthorizationConsumptionV1::ConsumedComplete);
+        args.transition_out = Some(transitioned);
+        let error = cmd_release_authorization(&args)
+            .err()
+            .ok_or_else(|| "skipped transition was accepted".to_string())?;
+        if !error.to_string().contains("transition") {
+            return Err(format!("unexpected transition error: {error}"));
+        }
+        Ok(())
+    }
 }
