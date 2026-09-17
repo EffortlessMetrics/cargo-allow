@@ -19,14 +19,28 @@ SPEC.loader.exec_module(surface)
 
 
 class FinalPackagedSurfaceTests(unittest.TestCase):
-    def make_crate(self, root: Path, name="demo", version="0.2.0", readme=True):
+    def make_crate(
+        self,
+        root: Path,
+        name="demo",
+        version="0.2.0",
+        readme=True,
+        *,
+        manifest_name=None,
+        manifest_version=None,
+    ):
+        """Keep archive and manifest identities independent for hostile fixtures."""
+        if manifest_name is None:
+            manifest_name = name
+        if manifest_version is None:
+            manifest_version = version
         package = root / "packages"
         package.mkdir()
         archive_path = package / f"{name}-{version}.crate"
         with tarfile.open(archive_path, "w:gz") as archive:
             files = {
                 f"{name}-{version}/Cargo.toml": (
-                    f"[package]\nname = '{name}'\nversion = '{version}'\n"
+                    f"[package]\nname = '{manifest_name}'\nversion = '{manifest_version}'\n"
                 ).encode(),
                 f"{name}-{version}/LICENSE": b"MIT\n",
             }
@@ -57,7 +71,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
         ]
         if expected_version is not None:
             command.extend(["--expected-version", expected_version])
-        return subprocess.run(command, capture_output=True, text=True)
+        return subprocess.run(command, capture_output=True, text=True, timeout=30)
 
     def write_package_set(
         self,
@@ -146,6 +160,37 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             result = self.run_cli(package_set, packages, root / "surface.json")
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(f"unexpected packaged crate: {archive.name}", result.stderr)
+
+    def test_cli_rejects_packaged_manifest_identity_mismatch(self):
+        """A correct archive name must not authorize a different packaged identity."""
+        name = "allow-core"
+        version = "0.2.0-rc.1"
+        for manifest_name, manifest_version in [
+            ("allow-policy", version),
+            (name, "rc.1"),
+            (name, "0.2.0"),
+            (name, "0.2.0-rc.10"),
+            (name, "0.2.0-rc.1+build.7"),
+        ]:
+            with self.subTest(name=manifest_name, version=manifest_version):
+                with tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    archive, packages = self.make_crate(
+                        root,
+                        name=name,
+                        version=version,
+                        manifest_name=manifest_name,
+                        manifest_version=manifest_version,
+                    )
+                    package_set = root / "package-set.json"
+                    self.write_package_set(package_set, name, version, version)
+                    output = root / "surface.json"
+                    result = self.run_cli(package_set, packages, output, version)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(
+                        f"manifest identity mismatch: {archive.name}", result.stderr
+                    )
+                    self.assertFalse(output.exists())
 
     def test_cli_rejects_final_hyphen_truncation(self):
         with tempfile.TemporaryDirectory() as directory:
