@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-authorization.v1.schema.json",
+  "title": "CargoAllowReleaseAuthorizationV1",
+  "description": "Compiled eligibility result for one immutable final-release authorization decision reconciled against a separately supplied trusted context. Structural validation does not authenticate either producer, prove permission, create a tag, or authorize publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "result",
+    "findings",
+    "caveats",
+    "authorization_digest",
+    "expected_context_digest",
+    "evaluated_at_unix_seconds",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-authorization.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Non-blocking residual risks retained alongside a Complete result."
+    },
+    "authorization_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the immutable authorization decision. Provider observations, evaluation time, and mutable operation state are excluded."
+    },
+    "expected_context_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Canonical digest of the independently supplied trusted freeze, evidence, provider/control, and authorization-use context."
+    },
+    "evaluated_at_unix_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "result": {
+      "enum": [
+        "unsupported",
+        "malformed",
+        "instrument_failure",
+        "unauthorized",
+        "mismatch",
+        "expired",
+        "reused",
+        "stale",
+        "complete"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/result"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

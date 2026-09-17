@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Add a production final-release authorization contract that reconciles one
+  immutable out-of-tree maintainer decision against a separately supplied
+  trusted freeze, evidence, control, provider, and one-use context. Re-digested
+  moved facts, broad prose, RC or recovery identity, stale evidence, expired or
+  reused nonces, unredacted secret observations, and authorization bytes filed
+  inside the frozen tree fail closed. The compiler performs no network access,
+  reads no credentials, creates no tags, and executes nothing.

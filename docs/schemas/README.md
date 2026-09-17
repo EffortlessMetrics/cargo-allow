@@ -12,6 +12,13 @@ The [final registry preflight](cargo-allow.final-registry-preflight.v1.schema.js
 See the [producer and consumer contract](../release/final-registry-preflight-v1.md).
 It is a pure feasibility component; there is no CLI or live provider in this generation.
 
+The [release authorization](cargo-allow.release-authorization.v1.schema.json)
+(`cargo-allow.release-authorization.v1`) is produced by
+`allow_report::compile_release_authorization_v1` and its canonical renderer.
+See the [producer and consumer contract](../release/release-authorization-v1.md).
+It is a pure compilation component; it models authority without granting or
+executing it.
+
 The [release experience](cargo-allow.release-experience.v1.schema.json)
 (`cargo-allow.release-experience.v1`) is produced by
 `allow_report::evaluate_release_experience_v1` and its canonical renderer.
