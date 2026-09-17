@@ -214,8 +214,15 @@ fn typed_broad_prose_and_external_reuse_fail() -> Result<(), Box<dyn Error>> {
     )?;
 
     document.authority.source.statement = EXACT_STATEMENT.to_string();
-    context["use_observation"]["consumed_nonces"] =
-        serde_json::json!([document.authority.nonce.clone()]);
+    let nonce = serde_json::Value::String(document.authority.nonce.clone());
+    let use_observation = context
+        .get_mut("use_observation")
+        .and_then(serde_json::Value::as_object_mut)
+        .ok_or_else(|| io::Error::other("use observation is not an object"))?;
+    use_observation.insert(
+        "consumed_nonces".to_string(),
+        serde_json::Value::Array(vec![nonce]),
+    );
     require(
         receipt(&document, &context)?.result == State::Reused,
         "externally consumed nonce compiled clean",
