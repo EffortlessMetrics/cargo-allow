@@ -3,6 +3,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use ReleaseAuthorizationConsumptionV1 as Consumption;
+use ReleaseAuthorizationResultV1 as State;
 use allow_report::{
     CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
     RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
@@ -17,11 +19,8 @@ use allow_report::{
     compile_release_authorization_v1, release_authorization_denominator_binding_v1,
     render_release_authorization_v1, transition_authorization_consumption,
 };
-use ReleaseAuthorizationConsumptionV1 as Consumption;
-use ReleaseAuthorizationResultV1 as State;
 
-const EXPECTED_CONTEXT_SCHEMA_ID: &str =
-    "cargo-allow.release-authorization-expected-context.v1";
+const EXPECTED_CONTEXT_SCHEMA_ID: &str = "cargo-allow.release-authorization-expected-context.v1";
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 const EXACT_STATEMENT: &str = "Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.";
 
@@ -174,8 +173,7 @@ fn exact_decision_compiles_against_external_context() -> Result<(), Box<dyn Erro
         format!("exact decision must compile: {compiled:?}"),
     )?;
     require(
-        !compiled.authorization_digest.is_empty()
-            && !compiled.expected_context_digest.is_empty(),
+        !compiled.authorization_digest.is_empty() && !compiled.expected_context_digest.is_empty(),
         "compiled receipt must carry both independent identities",
     )?;
     require(
@@ -227,10 +225,8 @@ fn typed_broad_prose_and_external_reuse_fail() -> Result<(), Box<dyn Error>> {
 #[test]
 fn state_machine_records_append_only_operation_progress() -> Result<(), Box<dyn Error>> {
     require(
-        transition_authorization_consumption(
-            Consumption::Available,
-            Consumption::SelectedForRun,
-        )? == Consumption::SelectedForRun,
+        transition_authorization_consumption(Consumption::Available, Consumption::SelectedForRun)?
+            == Consumption::SelectedForRun,
         "available must select",
     )?;
     require(
@@ -268,8 +264,9 @@ fn rendered_receipt_validates_against_json_schema() -> Result<(), Box<dyn Error>
     )?)?;
     let document = decision()?;
     let context = expected_context(&document);
-    let rendered: serde_json::Value =
-        serde_json::from_str(&render_release_authorization_v1(&receipt(&document, &context)?)?)?;
+    let rendered: serde_json::Value = serde_json::from_str(&render_release_authorization_v1(
+        &receipt(&document, &context)?,
+    )?)?;
     let validator = jsonschema::validator_for(&schema)
         .map_err(|error| io::Error::other(format!("authorization schema compiles: {error}")))?;
     validator.validate(&rendered).map_err(|error| {
