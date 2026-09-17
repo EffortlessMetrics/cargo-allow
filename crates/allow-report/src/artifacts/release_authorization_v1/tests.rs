@@ -308,28 +308,16 @@ fn rehearsal_and_preflight_and_authority_arms_fail_closed() -> TestResult {
     rehearsal.evidence.rehearsal_complete_except_authorization = false;
     check_result(&rehearsal, &expected(&rehearsal), State::Mismatch)?;
     for (response, state) in [
-        (
-            Preflight::Complete,
-            State::Complete,
-        ),
+        (Preflight::Complete, State::Complete),
         (
             Preflight::CompleteWithResidualAuthorityRisk,
             State::Complete,
         ),
         (Preflight::Incomplete, State::Stale),
-        (
-            Preflight::ProviderUnavailable,
-            State::Stale,
-        ),
-        (
-            Preflight::InstrumentFailure,
-            State::InstrumentFailure,
-        ),
+        (Preflight::ProviderUnavailable, State::Stale),
+        (Preflight::InstrumentFailure, State::InstrumentFailure),
         (Preflight::Malformed, State::Malformed),
-        (
-            Preflight::UnsupportedGeneration,
-            State::Malformed,
-        ),
+        (Preflight::UnsupportedGeneration, State::Malformed),
     ] {
         let mut decision = decision()?;
         decision.evidence.preflight_result = response;
@@ -340,11 +328,7 @@ fn rehearsal_and_preflight_and_authority_arms_fail_closed() -> TestResult {
     check_result(&conflict, &expected(&conflict), State::Unauthorized)?;
     let mut stale_preflight = decision()?;
     stale_preflight.evidence.preflight_result = Preflight::Stale;
-    check_result(
-        &stale_preflight,
-        &expected(&stale_preflight),
-        State::Stale,
-    )?;
+    check_result(&stale_preflight, &expected(&stale_preflight), State::Stale)?;
     let mut wrong_class = decision()?;
     wrong_class.authority.selected_auth_class = "github_pat".to_string();
     check_result(&wrong_class, &expected(&wrong_class), State::Unauthorized)?;
