@@ -152,11 +152,101 @@ jobs:
           name: release-preflight-receipts
           path: target/cargo-allow/
 
-  publish:
+  authorize:
+    # #3790: exact one-use authorization gate. This job runs before any
+    # CARGO_REGISTRY_TOKEN access or upload step. Tag pushes and dispatches
+    # are evidence of an attempted operation, never authority: only a
+    # Complete compilation of the out-of-tree authorization document against
+    # independently observed facts yields valid=true. Rehearsal dispatches
+    # stay zero-token by construction.
     needs: preflight
     runs-on: ubuntu-latest
     outputs:
+      valid: ${{ steps.authorize.outputs.valid }}
+      rehearsal: ${{ steps.authorize.outputs.rehearsal }}
+      recovery: ${{ steps.authorize.outputs.recovery }}
+      authorization_digest: ${{ steps.authorize.outputs.authorization_digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-tags: true
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: stable
+      - name: Validate release authorization before token access
+        id: authorize
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ needs.preflight.outputs.tag }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          COMMIT: ${{ needs.preflight.outputs.commit }}
+          TREE: ${{ needs.preflight.outputs.tree }}
+          RECOVERY: ${{ needs.preflight.outputs.recovery }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          valid=false
+          rehearsal=false
+          recovery=false
+          authorization_digest=""
+          if [ "${RECOVERY}" = "true" ]; then
+            echo "Recovery path uses incident authorization owned outside this gate; clean authorization not applicable."
+            recovery=true
+          elif [ "${EVENT}" = "workflow_dispatch" ]; then
+            echo "Rehearsal dispatch performs no publication and reads no token; authorization gate not applicable."
+            rehearsal=true
+          else
+            [ -n "${TAG}" ] || { echo "::error::tag-push run without a release tag cannot authorize"; exit 1; }
+            git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || { echo "::error::release tag ${TAG} is not observable"; exit 1; }
+            [ "$(git rev-parse "${TAG}^{commit}")" = "${COMMIT}" ] || { echo "::error::release tag does not peel to the preflight commit"; exit 1; }
+            [ "$(git rev-parse "${TAG}^{tree}")" = "${TREE}" ] || { echo "::error::release tag does not peel to the preflight tree"; exit 1; }
+            tag_message="$(git log -1 --format=%B "refs/tags/${TAG}")"
+            run_id="$(printf '%s' "${tag_message}" | sed -n 's/^authorization-run-id: \([0-9][0-9]*\)$/\1/p' | head -n 1)"
+            [ -n "${run_id}" ] || { echo "::error::release tag carries no authorization-run-id; tag push is evidence of an attempt, never authority"; exit 1; }
+            advertised="$(printf '%s' "${tag_message}" | sed -n 's/^authorization-digest: \(sha256:[0-9a-fA-F]\{64\}\)$/\1/p' | head -n 1)"
+            mkdir -p target/cargo-allow/authorization
+            gh run download "${run_id}" --name release-authorization --dir target/cargo-allow/authorization --repo "${GITHUB_REPOSITORY}"
+            [ -f target/cargo-allow/authorization/authorization.json ] || { echo "::error::authorization run ${run_id} holds no authorization document"; exit 1; }
+            [ -f target/cargo-allow/authorization/freeze.receipt.json ] || { echo "::error::authorization run ${run_id} holds no freeze receipt"; exit 1; }
+            compiled="$(cargo run -p cargo-allow --locked --quiet -- release-authorization validate \
+              --document target/cargo-allow/authorization/authorization.json \
+              --expected-commit "${COMMIT}" \
+              --expected-tree "${TREE}" \
+              --expected-version "${VERSION}" \
+              --expected-tag "${TAG}" \
+              --freeze-receipt target/cargo-allow/authorization/freeze.receipt.json \
+              --out-receipt target/cargo-allow/authorization.compiled.receipt.json \
+              --transition-to selected-for-run \
+              --transition-out target/cargo-allow/authorization.selected.json)"
+            echo "${compiled}"
+            authorization_digest="$(printf '%s' "${compiled}" | sed -n 's/^authorization \(sha256:[0-9a-f]*\) compiled complete.*/\1/p' | head -n 1)"
+            [ -n "${authorization_digest}" ] || { echo "::error::authorization digest missing from validator output"; exit 1; }
+            if [ -n "${advertised}" ] && [ "${advertised}" != "${authorization_digest}" ]; then
+              echo "::error::tag-advertised authorization digest differs from the compiled document"; exit 1;
+            fi
+            valid=true
+          fi
+          {
+            echo "valid=${valid}"
+            echo "rehearsal=${rehearsal}"
+            echo "recovery=${recovery}"
+            echo "authorization_digest=${authorization_digest}"
+          } >> "${GITHUB_OUTPUT}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: release-authorization-gate
+          path: |
+            target/cargo-allow/authorization.compiled.receipt.json
+            target/cargo-allow/authorization.selected.json
+
+  publish:
+    needs: [preflight, authorize]
+    runs-on: ubuntu-latest
+    outputs:
       auth_source: ${{ steps.registry_token.outputs.source }}
+      authorization_digest: ${{ needs.authorize.outputs.authorization_digest }}
       version: ${{ needs.preflight.outputs.version }}
       github_prerelease: ${{ needs.preflight.outputs.github_prerelease }}
     steps:
@@ -205,7 +295,11 @@ jobs:
           echo "source=crates_io_api_token" >> "${GITHUB_OUTPUT}"
 
       - name: Require crates.io API token for publication
-        if: github.event_name != 'workflow_dispatch' || inputs.publish_recovery
+        # #3790: reachable only when the authorize gate compiled Complete
+        # (valid) or when the incident-owned recovery path applies. A skipped
+        # or failed authorize job skips this job via needs semantics, and an
+        # explicit false output keeps the token unread.
+        if: needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
@@ -228,7 +322,7 @@ jobs:
             --receipt target/cargo-allow/shared-registry-preflight.receipt.json
       - name: Publish cargo-allow topology rows in dependency order
         env:
-          CARGO_REGISTRY_TOKEN: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || '' }}
+          CARGO_REGISTRY_TOKEN: ${{ ((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || '' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
           RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
           RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
@@ -274,6 +368,7 @@ jobs:
             "candidate_tree": "${{ needs.preflight.outputs.tree }}",
             "recovery": ${{ needs.preflight.outputs.recovery }},
             "authorization": "${{ needs.preflight.outputs.authorization }}",
+            "authorization_digest": "${{ needs.authorize.outputs.authorization_digest }}",
             "recovery_receipt_run_id": "${{ needs.preflight.outputs.recovery_receipt_run_id }}",
             "dry_run": ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery }},
             "workflow_run_id": ${{ github.run_id }},
@@ -399,6 +494,7 @@ jobs:
           TAG: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
           AUTH_SOURCE: ${{ needs.publish.outputs.auth_source }}
+          AUTHORIZATION_DIGEST: ${{ needs.publish.outputs.authorization_digest }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
           # Retained as release evidence. Must equal Cargo.toml
           # `rust-version` (scripts/check-msrv-consistency.sh enforces this).

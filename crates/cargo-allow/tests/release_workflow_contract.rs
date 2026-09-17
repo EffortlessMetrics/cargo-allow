@@ -47,6 +47,90 @@ fn test_release_workflow_structure() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// #3790: every final tag/token/upload path is downstream of exact typed
+/// authorization validation. The authorize gate compiles the out-of-tree
+/// document before any token access; token steps cannot run when the gate
+/// is skipped, failed, or stale.
+#[test]
+fn test_release_workflow_authorize_gate_precedes_token_access(
+) -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let release_wf_path = root.join(".github/workflows/release.yml");
+    if !release_wf_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(release_wf_path)?;
+
+    let authorize = job_block(&content, "authorize")
+        .ok_or_else(|| io::Error::other("release.yml must define the authorize gate job"))?;
+    require(
+        authorize.contains("needs: preflight") || authorize.contains("needs: [preflight"),
+        "the authorize gate must run after preflight",
+    )?;
+    // The gate compiles the document with the production validator and
+    // transitions one-use state; tag pushes and dispatches alone prove nothing.
+    for required in [
+        "release-authorization validate",
+        "--transition-to selected-for-run",
+        "authorization-run-id",
+    ] {
+        require(
+            authorize.contains(required),
+            &format!("authorize gate must enforce {required}"),
+        )?;
+    }
+    // Tag peel binding: the tag must resolve to the preflight commit/tree.
+    require(
+        authorize.contains("does not peel to the preflight"),
+        "authorize gate must bind the tag peel to preflight identities",
+    )?;
+
+    let publish = job_block(&content, "publish")
+        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+    require(
+        publish.contains("authorize"),
+        "the publish job must depend on the authorize gate",
+    )?;
+    // Token lookup requires a Complete gate (or the incident-owned recovery
+    // path); rehearsal and failed gates stay zero-token.
+    require(
+        publish.contains("needs.authorize.outputs.valid == 'true'"),
+        "token access must require a valid authorization gate",
+    )?;
+    // The compiled digest propagates to evidence.
+    require(
+        content.contains("authorization_digest"),
+        "the authorization digest must propagate to publish evidence",
+    )?;
+    Ok(())
+}
+
+/// Extract one top-level job block from a workflow document.
+fn job_block(content: &str, job: &str) -> Option<String> {
+    let header = format!("  {job}:");
+    let lines: Vec<&str> = content.lines().collect();
+    let mut collected: Vec<&str> = Vec::new();
+    let mut in_block = false;
+    for line in &lines {
+        if !in_block {
+            if line.trim_end() == header.trim_end() {
+                in_block = true;
+                collected.push(line);
+            }
+            continue;
+        }
+        if line.starts_with("  ") && !line.starts_with("    ") && line.ends_with(':') {
+            break;
+        }
+        collected.push(line);
+    }
+    if collected.is_empty() {
+        None
+    } else {
+        Some(collected.join("\n"))
+    }
+}
+
 /// Drift guard for #3915 PR C: every platform row of the release-set lane
 /// must run allow-rust's persistent scan-cache suites. A platform-wide
 /// `--skip` exclusion (the pre-PR-C macOS workaround) must not silently
