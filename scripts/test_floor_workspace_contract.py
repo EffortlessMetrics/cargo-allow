@@ -78,6 +78,7 @@ class WorkspaceExecutionTests(unittest.TestCase):
         arguments = call.args[0]
         self.assertEqual(arguments[:2], ["cargo", "test"])
         self.assertIn("--locked", arguments)
+        self.assertEqual(call.kwargs["timeout"], 3600)
         self.assertEqual(arguments[arguments.index("--target-dir") + 1], contract.TARGET_DIR)
         self.assertEqual(arguments[arguments.index("--bin") + 1], "cargo-allow")
         self.assertEqual(arguments[-len(contract.TESTS):], list(contract.TESTS))
@@ -126,6 +127,152 @@ class WorkspaceExecutionTests(unittest.TestCase):
                      SimpleNamespace(stdout=value, returncode=0) for value in outputs
                  ]), self.assertRaises(ValueError):
                 contract.source_identity("1" * 40)
+
+
+class WorkspaceSourceAdmissionTests(unittest.TestCase):
+    """Real Git controls; Cargo is intercepted and must not run on bad source."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(prefix="floor-workspace-source-")
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        self.real_run = subprocess.run
+        self.git("init", "-q")
+        self.git("config", "user.name", "floor source fixture")
+        self.git("config", "user.email", "fixture@example.invalid")
+        self.git("config", "core.autocrlf", "false")
+        (self.root / ".gitignore").write_text("target/\n.cargo/\ntarget-other/\n")
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = []\n')
+        (self.root / "Cargo.lock").write_text("version = 4\n")
+        (self.root / "source.rs").write_text("// committed source\n")
+        self.git("add", ".")
+        self.git("-c", "core.hooksPath=", "-c", "commit.gpgSign=false",
+                 "commit", "-qm", "source admission fixture")
+        self.source = self.git("rev-parse", "HEAD").strip()
+        self.git("checkout", "--detach", "-q", self.source)
+        self.output = self.root / "target/floor-proof/source-workspace-contract.json"
+
+    def git(self, *arguments):
+        return self.real_run(["git", "-C", str(self.root), *arguments],
+                             capture_output=True, text=True, check=True, timeout=30).stdout
+
+    def identity(self):
+        with contextlib.chdir(self.root):
+            return contract.source_identity(self.source)
+
+    def assert_rejected_before_cargo(self, message):
+        cargo_calls = []
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        self.output.write_text('{"result":"passed"}')
+
+        def run(arguments, **kwargs):
+            if arguments[0] == "cargo":
+                cargo_calls.append(arguments)
+                return SimpleNamespace(stdout=passing_output(), stderr="", returncode=0)
+            self.assertEqual(kwargs.get("timeout"), 30)
+            return self.real_run(arguments, **kwargs)
+
+        with contextlib.chdir(self.root), patch.object(contract.subprocess, "run", side_effect=run), \
+             self.assertRaisesRegex(ValueError, message):
+            contract.run_preflight(self.source, "x86_64-pc-windows-msvc", self.output)
+        self.assertEqual(cargo_calls, [])
+        self.assertFalse(self.output.exists())
+
+    def test_clean_detached_source_is_admitted(self):
+        identity = self.identity()
+        self.assertEqual(identity["source_commit"], self.source)
+        self.assertEqual(identity["source_tree"], self.git("rev-parse", "HEAD^{tree}").strip())
+        self.assertEqual(identity["manifest_digest"],
+                         contract.digest((self.root / "Cargo.toml").read_bytes()))
+        self.assertEqual(identity["lock_digest"],
+                         contract.digest((self.root / "Cargo.lock").read_bytes()))
+
+    def test_attached_source_is_rejected_before_cargo(self):
+        self.git("checkout", "-qb", "attached-fixture")
+        self.assert_rejected_before_cargo("detached")
+
+    def test_skip_worktree_manifest_is_rejected_before_cargo(self):
+        self.git("update-index", "--skip-worktree", "Cargo.toml")
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = ["changed"]\n')
+        self.assertEqual(self.git("status", "--porcelain=v1", "--untracked-files=all"), "")
+        self.assert_rejected_before_cargo("hidden index")
+
+    def test_assume_unchanged_source_is_rejected_before_cargo(self):
+        self.git("update-index", "--assume-unchanged", "source.rs")
+        (self.root / "source.rs").write_text("// different source\n")
+        self.assertEqual(self.git("status", "--porcelain=v1", "--untracked-files=all"), "")
+        self.assert_rejected_before_cargo("hidden index")
+
+    def test_ignored_cargo_config_is_rejected_before_cargo(self):
+        (self.root / ".cargo").mkdir()
+        (self.root / ".cargo/config.toml").write_text('[build]\nrustflags = ["--cfg", "changed"]\n')
+        self.assertEqual(self.git("status", "--porcelain=v1", "--untracked-files=all"), "")
+        self.assert_rejected_before_cargo("ignored files outside root target")
+
+    def test_ignored_root_target_scratch_remains_allowed(self):
+        before = self.identity()
+        (self.root / "target/floor-proof").mkdir(parents=True)
+        (self.root / "target/floor-proof/scratch.txt").write_text("diagnostics")
+        self.assertEqual(self.identity(), before)
+
+    def test_ignored_sibling_of_target_is_not_scratch(self):
+        (self.root / "target-other").mkdir()
+        (self.root / "target-other/config.toml").write_text("unadmitted")
+        self.assert_rejected_before_cargo("ignored files outside root target")
+
+    def test_staged_source_is_rejected_before_cargo(self):
+        (self.root / "source.rs").write_text("// staged source\n")
+        self.git("add", "source.rs")
+        self.assert_rejected_before_cargo("clean source")
+
+    def test_unstaged_source_is_rejected_before_cargo(self):
+        (self.root / "source.rs").write_text("// unstaged source\n")
+        self.assert_rejected_before_cargo("clean source")
+
+    def test_untracked_source_is_rejected_before_cargo(self):
+        (self.root / "untracked.rs").write_text("// untracked source\n")
+        self.assert_rejected_before_cargo("clean source")
+
+    def test_passing_cargo_cannot_hide_a_source_edit(self):
+        cargo_calls = []
+
+        def run(arguments, **kwargs):
+            if arguments[0] == "cargo":
+                cargo_calls.append(arguments)
+                (self.root / "source.rs").write_text("// changed during execution\n")
+                return SimpleNamespace(stdout=passing_output(), stderr="", returncode=0)
+            return self.real_run(arguments, **kwargs)
+
+        with contextlib.chdir(self.root), patch.object(contract.subprocess, "run", side_effect=run), \
+             contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()), \
+             self.assertRaisesRegex(ValueError, "clean source"):
+            contract.run_preflight(self.source, "x86_64-pc-windows-msvc", self.output)
+        self.assertEqual(len(cargo_calls), 1)
+        self.assertFalse(self.output.exists())
+
+
+class WorkspaceTimeoutTests(unittest.TestCase):
+    def test_git_timeout_is_bounded_and_non_clean(self):
+        error = subprocess.TimeoutExpired(["git", "rev-parse", "HEAD"], 30)
+        with patch.object(contract.subprocess, "run", side_effect=error) as run:
+            with self.assertRaises(subprocess.TimeoutExpired):
+                contract.source_identity("1" * 40)
+        self.assertEqual(run.call_args.kwargs["timeout"], 30)
+
+    def test_cargo_timeout_clears_stale_admission_and_fails_cli(self):
+        with tempfile.TemporaryDirectory(prefix="floor-workspace-timeout-") as directory:
+            output = Path(directory) / "contract.json"
+            output.write_text('{"result":"passed"}')
+            error = subprocess.TimeoutExpired(["cargo", "test"], 3600)
+            with patch.object(contract, "source_identity", return_value={}), \
+                 patch.object(contract.subprocess, "run", side_effect=error) as run, \
+                 contextlib.redirect_stderr(io.StringIO()) as diagnostic:
+                result = contract.main(["floor_workspace_contract.py", "1" * 40,
+                                        "x86_64-pc-windows-msvc", str(output)])
+            self.assertEqual(result, 1)
+            self.assertEqual(run.call_args.kwargs["timeout"], 3600)
+            self.assertIn("timed out", diagnostic.getvalue())
+            self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":
