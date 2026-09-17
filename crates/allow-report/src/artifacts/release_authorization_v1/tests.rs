@@ -216,6 +216,161 @@ fn check_result(
 }
 
 #[test]
+fn freeze_shape_and_row_arms_fail_closed() -> TestResult {
+    // Malformed operation identity, commit/tree syntax, row counts, row
+    // identities, and digest shapes fail closed on both sides.
+    let mut bad_version = decision()?;
+    bad_version.operation.version = " 0.2.0 ".to_string();
+    check_result(&bad_version, &expected(&bad_version), State::Malformed)?;
+    for mutate in [
+        |freeze: &mut ReleaseAuthorizationFreezeV1| freeze.commit = "xyz".to_string(),
+        |freeze: &mut ReleaseAuthorizationFreezeV1| freeze.tree = "xyz".to_string(),
+    ] {
+        let mut decision = decision()?;
+        mutate(&mut decision.freeze);
+        check_result(&decision, &expected(&decision), State::Malformed)?;
+    }
+    let mut missing_shared = decision()?;
+    missing_shared.freeze.shared_prerequisites.pop();
+    check_result(
+        &missing_shared,
+        &expected(&missing_shared),
+        State::Malformed,
+    )?;
+    let mut renamed_shared = decision()?;
+    renamed_shared
+        .freeze
+        .shared_prerequisites
+        .first_mut()
+        .ok_or("shared row absent")?
+        .package_name = "other-package".to_string();
+    check_result(
+        &renamed_shared,
+        &expected(&renamed_shared),
+        State::InstrumentFailure,
+    )?;
+    let mut bad_shared_checksum = decision()?;
+    bad_shared_checksum
+        .freeze
+        .shared_prerequisites
+        .first_mut()
+        .ok_or("shared row absent")?
+        .expected_checksum = "garbage".to_string();
+    check_result(
+        &bad_shared_checksum,
+        &expected(&bad_shared_checksum),
+        State::Malformed,
+    )?;
+    let mut missing_final = decision()?;
+    missing_final.freeze.packages.pop();
+    check_result(&missing_final, &expected(&missing_final), State::Malformed)?;
+    let mut renamed_final = decision()?;
+    renamed_final
+        .freeze
+        .packages
+        .first_mut()
+        .ok_or("package row absent")?
+        .package_name = "other-package".to_string();
+    check_result(
+        &renamed_final,
+        &expected(&renamed_final),
+        State::InstrumentFailure,
+    )?;
+    let mut unequal_digest = decision()?;
+    unequal_digest
+        .freeze
+        .packages
+        .first_mut()
+        .ok_or("package row absent")?
+        .package_digest = digest(999);
+    // Well-formed but unequal digests fail the trusted binding as an
+    // instrument failure; the decision side alone would mismatch.
+    check_result(
+        &unequal_digest,
+        &expected(&unequal_digest),
+        State::InstrumentFailure,
+    )?;
+    let mut bad_digest = decision()?;
+    bad_digest
+        .freeze
+        .packages
+        .first_mut()
+        .ok_or("package row absent")?
+        .package_digest = "garbage".to_string();
+    check_result(&bad_digest, &expected(&bad_digest), State::Malformed)
+}
+
+#[test]
+fn rehearsal_and_preflight_and_authority_arms_fail_closed() -> TestResult {
+    // Incomplete rehearsal, every preflight outcome, and authority
+    // misconfigurations map to their closed states on agreeing sides.
+    let mut rehearsal = decision()?;
+    rehearsal.evidence.rehearsal_complete_except_authorization = false;
+    check_result(&rehearsal, &expected(&rehearsal), State::Mismatch)?;
+    for (response, state) in [
+        (
+            Preflight::Complete,
+            State::Complete,
+        ),
+        (
+            Preflight::CompleteWithResidualAuthorityRisk,
+            State::Complete,
+        ),
+        (Preflight::Incomplete, State::Stale),
+        (
+            Preflight::ProviderUnavailable,
+            State::Stale,
+        ),
+        (
+            Preflight::InstrumentFailure,
+            State::InstrumentFailure,
+        ),
+        (Preflight::Malformed, State::Malformed),
+        (
+            Preflight::UnsupportedGeneration,
+            State::Malformed,
+        ),
+    ] {
+        let mut decision = decision()?;
+        decision.evidence.preflight_result = response;
+        check_result(&decision, &expected(&decision), state)?;
+    }
+    let mut conflict = decision()?;
+    conflict.evidence.preflight_result = Preflight::Conflict;
+    check_result(&conflict, &expected(&conflict), State::Unauthorized)?;
+    let mut stale_preflight = decision()?;
+    stale_preflight.evidence.preflight_result = Preflight::Stale;
+    check_result(
+        &stale_preflight,
+        &expected(&stale_preflight),
+        State::Stale,
+    )?;
+    let mut wrong_class = decision()?;
+    wrong_class.authority.selected_auth_class = "github_pat".to_string();
+    check_result(&wrong_class, &expected(&wrong_class), State::Unauthorized)?;
+    let mut anonymous = decision()?;
+    anonymous.authority.maintainer_actor.clear();
+    check_result(&anonymous, &expected(&anonymous), State::Unauthorized)?;
+    let mut wide_scope = decision()?;
+    wide_scope.authority.one_run_scope = false;
+    check_result(&wide_scope, &expected(&wide_scope), State::Unauthorized)?;
+    let mut no_nonce = decision()?;
+    no_nonce.authority.nonce.clear();
+    check_result(&no_nonce, &expected(&no_nonce), State::Malformed)?;
+    let mut future_made = decision()?;
+    future_made.authority.created_at_unix_seconds = 500;
+    check_result(&future_made, &expected(&future_made), State::Malformed)?;
+    let mut inverted_expiry = decision()?;
+    inverted_expiry.authority.expires_at_unix_seconds =
+        inverted_expiry.authority.created_at_unix_seconds;
+    check_result(
+        &inverted_expiry,
+        &expected(&inverted_expiry),
+        State::Malformed,
+    )
+}
+
+#[test]
 fn exact_decision_compiles_against_independent_context() -> TestResult {
     let decision = decision()?;
     let expected = expected(&decision);
