@@ -174,7 +174,10 @@ fn write_text(path: &Path, text: &str) -> CargoAllowResult<()> {
         .filter(|parent| !parent.as_os_str().is_empty())
     {
         std::fs::create_dir_all(parent).map_err(|error| {
-            invalid_authorization(format!("receipt parent {} creates: {error}", parent.display()))
+            invalid_authorization(format!(
+                "receipt parent {} creates: {error}",
+                parent.display()
+            ))
         })?;
     }
     std::fs::write(path, format!("{text}\n")).map_err(|error| {
