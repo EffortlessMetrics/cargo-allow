@@ -60,9 +60,7 @@ pub(crate) struct ReleaseAuthorizationArgs {
     pub(super) transition_out: Option<PathBuf>,
 }
 
-fn parse_consumption(
-    value: &str,
-) -> Result<ReleaseAuthorizationConsumptionV1, String> {
+fn parse_consumption(value: &str) -> Result<ReleaseAuthorizationConsumptionV1, String> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
     match value {
         "available" => Ok(Consumption::Available),
@@ -79,13 +77,9 @@ fn parse_consumption(
     }
 }
 
-pub(super) fn cmd_release_authorization(
-    args: &ReleaseAuthorizationArgs,
-) -> CargoAllowResult<()> {
+pub(super) fn cmd_release_authorization(args: &ReleaseAuthorizationArgs) -> CargoAllowResult<()> {
     if args.transition_to.is_some() && args.transition_out.is_none() {
-        return Err(invalid_authorization(
-            "--transition-out is required with --transition-to",
-        ));
+        return Err(invalid_authorization("--transition-out is required with --transition-to"));
     }
     let raw = read_json(&args.document, "authorization document")?;
     let document: ReleaseAuthorizationInputV1 = serde_json::from_slice(&raw).map_err(|error| {
@@ -118,7 +112,8 @@ pub(super) fn cmd_release_authorization(
         )));
     }
     let receipt_bytes = read_json(&args.freeze_receipt, "freeze receipt")?;
-    let receipt_digest = allow_core::sha256_v1_bytes(&receipt_bytes).replacen("sha256:v1:", "sha256:", 1);
+    let receipt_digest =
+        allow_core::sha256_v1_bytes(&receipt_bytes).replacen("sha256:v1:", "sha256:", 1);
     if !receipt_digest.eq_ignore_ascii_case(&document.freeze.receipt_digest) {
         return Err(invalid_authorization(
             "freeze receipt bytes do not match the authorization claim",
@@ -126,11 +121,8 @@ pub(super) fn cmd_release_authorization(
     }
     let compiled = compile_release_authorization_v1(&document);
     if compiled.result != ReleaseAuthorizationResultV1::Complete {
-        let reasons: Vec<&str> = compiled
-            .findings
-            .iter()
-            .map(|finding| finding.reason.as_str())
-            .collect();
+        let reasons: Vec<&str> =
+            compiled.findings.iter().map(|finding| finding.reason.as_str()).collect();
         return Err(invalid_authorization(format!(
             "authorization compiled as {:?}: {}",
             compiled.result,
@@ -244,8 +236,7 @@ mod tests {
             },
             evidence: ReleaseAuthorizationEvidenceV1 {
                 package_docs_digest: digest(30),
-                preflight_result:
-                    allow_report::FinalRegistryPreflightResultV1::Complete,
+                preflight_result: allow_report::FinalRegistryPreflightResultV1::Complete,
                 preflight_evaluated_at_unix_seconds: 100,
                 preflight_maximum_age_seconds: 30,
                 support_digest: digest(31),
@@ -292,10 +283,8 @@ mod tests {
     }
 
     fn scratch_dir(name: &str) -> Result<PathBuf, String> {
-        let dir = std::env::temp_dir().join(format!(
-            "cargo-allow-release-authorization-{name}-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir()
+            .join(format!("cargo-allow-release-authorization-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
         Ok(dir)
     }
@@ -378,9 +367,7 @@ mod tests {
             &std::fs::read_to_string(&transitioned).map_err(|error| error.to_string())?,
         )
         .map_err(|error| error.to_string())?;
-        if rewritten
-            .pointer("/authority/consumption")
-            .and_then(serde_json::Value::as_str)
+        if rewritten.pointer("/authority/consumption").and_then(serde_json::Value::as_str)
             != Some("selected_for_run")
         {
             return Err(format!("transition was not applied: {rewritten}"));

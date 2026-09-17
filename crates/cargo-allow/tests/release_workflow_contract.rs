@@ -52,8 +52,7 @@ fn test_release_workflow_structure() -> Result<(), Box<dyn Error>> {
 /// document before any token access; token steps cannot run when the gate
 /// is skipped, failed, or stale.
 #[test]
-fn test_release_workflow_authorize_gate_precedes_token_access(
-) -> Result<(), Box<dyn Error>> {
+fn test_release_workflow_authorize_gate_precedes_token_access() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let release_wf_path = root.join(".github/workflows/release.yml");
     if !release_wf_path.exists() {
@@ -74,10 +73,7 @@ fn test_release_workflow_authorize_gate_precedes_token_access(
         "--transition-to selected-for-run",
         "authorization-run-id",
     ] {
-        require(
-            authorize.contains(required),
-            &format!("authorize gate must enforce {required}"),
-        )?;
+        require(authorize.contains(required), &format!("authorize gate must enforce {required}"))?;
     }
     // Tag peel binding: the tag must resolve to the preflight commit/tree.
     require(
@@ -87,10 +83,7 @@ fn test_release_workflow_authorize_gate_precedes_token_access(
 
     let publish = job_block(&content, "publish")
         .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
-    require(
-        publish.contains("authorize"),
-        "the publish job must depend on the authorize gate",
-    )?;
+    require(publish.contains("authorize"), "the publish job must depend on the authorize gate")?;
     // Token lookup requires a Complete gate (or the incident-owned recovery
     // path); rehearsal and failed gates stay zero-token.
     require(

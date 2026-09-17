@@ -30,18 +30,14 @@ fn release_workflows(root: &Path) -> Result<Vec<(String, String)>, Box<dyn Error
             workflows.push((name.to_string(), fs::read_to_string(&path)?));
         }
     }
-    require(
-        !workflows.is_empty(),
-        "no release workflow under test",
-    )?;
+    require(!workflows.is_empty(), "no release workflow under test")?;
     Ok(workflows)
 }
 
 /// #3790: token-access inventory. Exactly the two known steps may reference
 /// the registry secret, and both are gated on the authorize job.
 #[test]
-fn test_token_access_points_are_inventoried_and_gated(
-) -> Result<(), Box<dyn Error>> {
+fn test_token_access_points_are_inventoried_and_gated() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     if !root.join(".git").exists() {
         return Ok(());
@@ -52,16 +48,11 @@ fn test_token_access_points_are_inventoried_and_gated(
         .find(|(name, _)| name == "release.yml")
         .map(|(_, content)| content.clone())
         .ok_or_else(|| io::Error::other("release.yml is absent"))?;
-    let references: Vec<&str> = release
-        .lines()
-        .filter(|line| line.contains("secrets.CARGO_REGISTRY_TOKEN"))
-        .collect();
+    let references: Vec<&str> =
+        release.lines().filter(|line| line.contains("secrets.CARGO_REGISTRY_TOKEN")).collect();
     require(
         references.len() == 2,
-        &format!(
-            "exactly two token references must exist, found {}",
-            references.len()
-        ),
+        &format!("exactly two token references must exist, found {}", references.len()),
     )?;
     // The publish upload env carries the secret only behind the gate.
     require(
@@ -82,8 +73,7 @@ fn test_token_access_points_are_inventoried_and_gated(
 /// depends on the authorize job, and the token steps additionally require
 /// its explicit valid output, so an empty (skipped) output also fails closed.
 #[test]
-fn test_skipped_or_failed_gate_cannot_reach_token(
-) -> Result<(), Box<dyn Error>> {
+fn test_skipped_or_failed_gate_cannot_reach_token() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     if !root.join(".git").exists() {
         return Ok(());
@@ -129,10 +119,7 @@ fn test_skipped_or_failed_gate_cannot_reach_token(
         }
     }
     flush(&mut step_has_always, &mut step_has_token);
-    require(
-        !offending,
-        "token steps must never run under always()",
-    )?;
+    require(!offending, "token steps must never run under always()")?;
     Ok(())
 }
 
@@ -163,10 +150,7 @@ fn test_rehearsal_stays_zero_token_and_recovery_stays_separate(
         .lines()
         .filter(|line| line.trim() == "valid=true")
         .count();
-    require(
-        grants == 1,
-        "exactly one clean-authorization grant may exist",
-    )?;
+    require(grants == 1, "exactly one clean-authorization grant may exist")?;
     let recovery_branch = release
         .split_once("[ \"${RECOVERY}\" = \"true\" ]")
         .and_then(|(_, tail)| tail.split_once("elif"))
