@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-experience.v1.schema.json",
+  "title": "CargoAllowReleaseExperienceV1",
+  "description": "Installed-experience receipt. A NotProven result with narrowed claims is explicit; only Complete satisfies release evidence reconciliation. Structural validation does not prove usability.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "result",
+    "findings",
+    "retained_evidence",
+    "evaluated_at_unix_seconds"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-experience.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "retained_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Evidence that remains proven when the receipt is not Complete."
+    },
+    "evaluated_at_unix_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    }
+  },
+  "$defs": {
+    "result": {
+      "enum": [
+        "unsupported",
+        "malformed",
+        "instrument_failure",
+        "mismatch",
+        "stale",
+        "incomplete",
+        "not_proven",
+        "complete"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "result": {
+          "$ref": "#/$defs/result"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
