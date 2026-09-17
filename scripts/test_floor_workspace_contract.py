@@ -141,10 +141,10 @@ class WorkspaceSourceAdmissionTests(unittest.TestCase):
         self.git("config", "user.name", "floor source fixture")
         self.git("config", "user.email", "fixture@example.invalid")
         self.git("config", "core.autocrlf", "false")
-        (self.root / ".gitignore").write_text("target/\n.cargo/\ntarget-other/\n")
-        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = []\n')
-        (self.root / "Cargo.lock").write_text("version = 4\n")
-        (self.root / "source.rs").write_text("// committed source\n")
+        (self.root / ".gitignore").write_text("target/\n.cargo/\ntarget-other/\n", encoding="utf-8", newline="\n")
+        (self.root / "Cargo.toml").write_text('[workspace]\nmembers = []\n', encoding="utf-8", newline="\n")
+        (self.root / "Cargo.lock").write_text("version = 4\n", encoding="utf-8", newline="\n")
+        (self.root / "source.rs").write_text("// committed source\n", encoding="utf-8", newline="\n")
         self.git("add", ".")
         self.git("-c", "core.hooksPath=", "-c", "commit.gpgSign=false",
                  "commit", "-qm", "source admission fixture")
@@ -183,9 +183,20 @@ class WorkspaceSourceAdmissionTests(unittest.TestCase):
         self.assertEqual(identity["source_commit"], self.source)
         self.assertEqual(identity["source_tree"], self.git("rev-parse", "HEAD^{tree}").strip())
         self.assertEqual(identity["manifest_digest"],
-                         contract.digest((self.root / "Cargo.toml").read_bytes()))
+                         contract.digest((self.root / "Cargo.toml").read_bytes().replace(b"\r", b"")))
         self.assertEqual(identity["lock_digest"],
-                         contract.digest((self.root / "Cargo.lock").read_bytes()))
+                         contract.digest((self.root / "Cargo.lock").read_bytes().replace(b"\r", b"")))
+
+    def test_crlf_checkout_preserves_source_identity(self):
+        before = self.identity()
+        self.git("config", "core.autocrlf", "true")
+        for name in ("Cargo.toml", "Cargo.lock"):
+            path = self.root / name
+            path.write_bytes(path.read_bytes().replace(b"\r", b"").replace(b"\n", b"\r\n"))
+        self.git("add", "--", "Cargo.toml", "Cargo.lock")
+        self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
+        self.assertEqual(self.git("status", "--porcelain=v1", "--untracked-files=all"), "")
+        self.assertEqual(self.identity(), before)
 
     def test_attached_source_is_rejected_before_cargo(self):
         self.git("checkout", "-qb", "attached-fixture")
