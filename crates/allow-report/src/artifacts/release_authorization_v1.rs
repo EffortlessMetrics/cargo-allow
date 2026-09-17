@@ -31,8 +31,7 @@ pub const RELEASE_AUTHORIZATION_REPOSITORY: &str = "EffortlessMetrics/cargo-allo
 pub const RELEASE_AUTHORIZATION_FINAL_OPERATION: &str = "publish_cargo_allow_final_0_2_0";
 /// Compatibility name retained for downstream compilation. This final-only
 /// compiler always rejects it; #3791/#2509 own recovery authority.
-pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str =
-    "publish_cargo_allow_recovery_0_2_0";
+pub const RELEASE_AUTHORIZATION_RECOVERY_OPERATION: &str = "publish_cargo_allow_recovery_0_2_0";
 pub const RELEASE_AUTHORIZATION_FINAL_VERSION: &str = "0.2.0";
 pub const RELEASE_AUTHORIZATION_FINAL_TAG: &str = "v0.2.0";
 pub const RELEASE_AUTHORIZATION_STABLE_CHANNEL: &str = "stable";

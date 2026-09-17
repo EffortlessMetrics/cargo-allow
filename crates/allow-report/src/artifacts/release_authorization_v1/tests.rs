@@ -181,7 +181,9 @@ fn exact_decision_compiles_against_independent_context() -> TestResult {
         "residual registry risk must travel visibly",
     )?;
     require(
-        receipt.claim_boundary.contains("independently supplied trusted"),
+        receipt
+            .claim_boundary
+            .contains("independently supplied trusted"),
         "receipt must state the two-sided claim boundary",
     )
 }
@@ -375,10 +377,12 @@ fn authorization_digest_is_immutable_across_context_refresh() -> TestResult {
 #[test]
 fn unknown_fields_and_secret_material_cannot_enter_the_decision() -> TestResult {
     let mut raw = serde_json::to_value(decision()?)?;
-    raw.as_object_mut().ok_or("decision is not an object")?.insert(
-        "registry_token".to_string(),
-        serde_json::Value::String("secret".to_string()),
-    );
+    raw.as_object_mut()
+        .ok_or("decision is not an object")?
+        .insert(
+            "registry_token".to_string(),
+            serde_json::Value::String("secret".to_string()),
+        );
     let parsed: Result<ReleaseAuthorizationInputV1, _> = serde_json::from_value(raw);
     require(parsed.is_err(), "token field constructed a decision")
 }
@@ -386,10 +390,8 @@ fn unknown_fields_and_secret_material_cannot_enter_the_decision() -> TestResult 
 #[test]
 fn authorization_use_transition_is_checked() -> TestResult {
     require(
-        transition_authorization_consumption(
-            Consumption::Available,
-            Consumption::SelectedForRun,
-        )? == Consumption::SelectedForRun,
+        transition_authorization_consumption(Consumption::Available, Consumption::SelectedForRun)?
+            == Consumption::SelectedForRun,
         "available authorization did not select",
     )?;
     require(

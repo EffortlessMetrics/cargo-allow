@@ -685,11 +685,7 @@ fn compile_with_context(
                 .to_string(),
         );
     }
-    validate_use_observation(
-        &input.authority,
-        &expected.use_observation,
-        &mut findings,
-    );
+    validate_use_observation(&input.authority, &expected.use_observation, &mut findings);
 
     let authorization_digest = match authorization_statement_digest(input) {
         Ok(value) => value,
