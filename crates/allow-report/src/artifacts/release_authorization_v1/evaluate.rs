@@ -37,8 +37,6 @@ fn content_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> 
     Ok(allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1))
 }
 
-/// Canonical digest of the immutable authorization decision. Evaluation time,
-/// provider observations, and mutable use state are deliberately excluded.
 fn authorization_statement_digest(
     input: &ReleaseAuthorizationInputV1,
 ) -> Result<String, serde_json::Error> {
@@ -52,8 +50,6 @@ fn authorization_statement_digest(
     ))
 }
 
-/// Canonical digest of the independently supplied expected context. Set-like
-/// inventories are sorted so provider enumeration order is not authority.
 fn expected_context_digest(
     context: &ReleaseAuthorizationExpectedContextV1,
 ) -> Result<String, serde_json::Error> {
@@ -550,11 +546,49 @@ fn validate_use_observation(
     }
 }
 
-/// Pure two-sided compilation. No adapter is invoked, no credential is read,
-/// no tag is created, and no supplied evidence is authenticated by this
-/// function. Callers must assemble `expected` from trusted retained objects and
-/// current readbacks independently of `input`.
+fn malformed_context_receipt(
+    input: &ReleaseAuthorizationInputV1,
+    reason: String,
+) -> CargoAllowReleaseAuthorizationV1 {
+    let authorization_digest = authorization_statement_digest(input).unwrap_or_default();
+    CargoAllowReleaseAuthorizationV1 {
+        schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(),
+        schema_version: RELEASE_AUTHORIZATION_SCHEMA_VERSION,
+        result: ResultState::Malformed,
+        findings: vec![ReleaseAuthorizationFindingV1 {
+            result: ResultState::Malformed,
+            reason,
+        }],
+        caveats: Vec::new(),
+        authorization_digest,
+        expected_context_digest: String::new(),
+        evaluated_at_unix_seconds: 0,
+        claim_boundary: CLAIM_BOUNDARY.to_string(),
+    }
+}
+
+/// Pure two-sided compilation from an immutable decision and independently
+/// retained expected-context bytes. The context bytes must deserialize into the
+/// closed typed contract; the compiler never copies expected values from the
+/// decision document.
 pub fn compile_release_authorization_v1(
+    input: &ReleaseAuthorizationInputV1,
+    expected_context_json: &[u8],
+) -> CargoAllowReleaseAuthorizationV1 {
+    let expected: ReleaseAuthorizationExpectedContextV1 =
+        match serde_json::from_slice(expected_context_json) {
+            Ok(value) => value,
+            Err(error) => {
+                return malformed_context_receipt(
+                    input,
+                    format!("expected-context artifact is malformed: {error}"),
+                );
+            }
+        };
+    compile_with_context(input, &expected)
+}
+
+fn compile_with_context(
     input: &ReleaseAuthorizationInputV1,
     expected: &ReleaseAuthorizationExpectedContextV1,
 ) -> CargoAllowReleaseAuthorizationV1 {
