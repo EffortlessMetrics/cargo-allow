@@ -42,6 +42,7 @@ mod reconciled_package_publication_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
 mod release_identity_v1;
+mod release_experience_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
 mod review_disposition_v1;
@@ -363,6 +364,16 @@ pub use release_artifact_transfer_v1::{
 };
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
+};
+pub use release_experience_v1::{
+    CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
+    RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
+    RELEASE_EXPERIENCE_SCHEMA_VERSION,     ReleaseExperienceBrownfieldPostureV1,
+    ReleaseExperienceDocsIdentityV1, ReleaseExperienceFindingV1,
+    ReleaseExperienceFrictionDispositionV1,
+    ReleaseExperienceFrictionV1, ReleaseExperienceInputV1, ReleaseExperiencePilotResultV1,
+    ReleaseExperiencePilotV1, ReleaseExperienceResultV1, evaluate_release_experience_v1,
+    render_release_experience_v1,
 };
 pub use release_manifest_v2::{
     RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
