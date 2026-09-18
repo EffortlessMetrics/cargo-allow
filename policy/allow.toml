@@ -21473,3 +21473,25 @@ glob = ".allow/revisions/4283-workspace-contract-admission.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11306"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+owner = "core/release"
+classification = "release_authorization_contract"
+reason = "Published closed JSON Schema for append-only authorization selection and consumption observations; structural validation neither grants authority nor executes publication."
+evidence = ["issue:3927", "test:release_authorization_custody"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1

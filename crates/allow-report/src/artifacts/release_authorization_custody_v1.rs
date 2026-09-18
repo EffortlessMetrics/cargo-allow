@@ -97,10 +97,32 @@ fn secret_marker(value: &str) -> Option<&'static str> {
         .find(|marker| value.contains(marker))
 }
 
-fn normalize_locator_path(path: &str) -> String {
+fn normalize_locator_path(path: &str) -> Option<Vec<String>> {
     let normalized = path.replace('\\', "/");
-    let normalized = normalized.trim_start_matches('/').trim_end_matches('/');
-    normalized.to_string()
+    if normalized.contains('%') {
+        return None;
+    }
+    let bytes = normalized.as_bytes();
+    let absolute = normalized.starts_with('/')
+        || (bytes.len() >= 3
+            && bytes[0].is_ascii_alphabetic()
+            && bytes[1] == b':'
+            && bytes[2] == b'/');
+    if !absolute {
+        return None;
+    }
+
+    let mut parts = Vec::new();
+    for part in normalized.trim_start_matches('/').split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            component => parts.push(component.to_string()),
+        }
+    }
+    Some(parts)
 }
 
 /// Fail-closed in-tree classification. Relative locators are matched against
@@ -114,9 +136,16 @@ fn in_tree_locator(locator: &str, repository_root: &str) -> bool {
         if repository_root.trim().is_empty() {
             return true;
         }
-        let root = normalize_locator_path(repository_root);
-        let path = normalize_locator_path(path);
-        return !root.is_empty() && (path == root || path.starts_with(format!("{root}/").as_str()));
+        let Some(root) = normalize_locator_path(repository_root) else {
+            return true;
+        };
+        let Some(path) = normalize_locator_path(path) else {
+            return true;
+        };
+        if root.is_empty() {
+            return true;
+        }
+        return path.len() >= root.len() && path[..root.len()] == root[..];
     }
     !locator.contains("://")
         || IN_TREE_PREFIXES
@@ -325,6 +354,12 @@ pub fn mint_authorization_custody_v1(
     }
     validate_mint_operation(&init.decision.operation)?;
     validate_mint_freeze(&init.decision.freeze)?;
+    if !init
+        .freeze_receipt_digest
+        .eq_ignore_ascii_case(&init.decision.freeze.receipt_digest)
+    {
+        return Err("minting freeze receipt must match the authorization decision");
+    }
     if init.decision.schema_id != RELEASE_AUTHORIZATION_SCHEMA_ID
         || init.decision.schema_version != RELEASE_AUTHORIZATION_SCHEMA_VERSION
     {
@@ -359,6 +394,7 @@ pub fn mint_authorization_custody_v1(
         init.storage_locator.as_str(),
         init.storage_access_policy.as_str(),
         init.minted_by.as_str(),
+        init.decision.authority.nonce.as_str(),
     ] {
         if let Some(marker) = secret_marker(value) {
             let _ = marker;
@@ -425,7 +461,10 @@ pub fn verify_custody_readback_v1(
     record: &CargoAllowReleaseAuthorizationCustodyV1,
     readback_json: &[u8],
 ) -> CustodyReadbackV1 {
-    let stored = match serde_json::to_vec(record) {
+    let mut expected_record = record.clone();
+    expected_record.readback_verified = false;
+    expected_record.readback_digest = None;
+    let stored = match serde_json::to_vec(&expected_record) {
         Ok(bytes) => bytes,
         Err(_) => return CustodyReadbackV1::Malformed,
     };
@@ -457,7 +496,11 @@ pub fn note_custody_readback_v1(
             record.readback_digest = Some(digest);
             CustodyReadbackV1::Match
         }
-        verdict => verdict,
+        verdict => {
+            record.readback_verified = false;
+            record.readback_digest = None;
+            verdict
+        }
     }
 }
 
@@ -467,6 +510,18 @@ fn advance_custody_state(
     at_unix_seconds: u64,
     reason: &str,
 ) -> Result<(), &'static str> {
+    let previous_at = record
+        .transitions
+        .last()
+        .map_or(record.mint.minted_at_unix_seconds, |transition| {
+            transition.at_unix_seconds
+        });
+    if at_unix_seconds < previous_at {
+        return Err("authorization custody transition time moved backwards");
+    }
+    if secret_marker(reason).is_some() {
+        return Err("secret material must never enter authorization custody records");
+    }
     let checked = transition_authorization_consumption(record.state, next)?;
     record.transitions.push(AuthorizationCustodyTransitionV1 {
         from: record.state,
@@ -564,6 +619,18 @@ pub fn note_irreversible_start_v1(
     use ReleaseAuthorizationConsumptionV1 as Consumption;
     if record.state != Consumption::SelectedForRun {
         return Err("only a selected authorization can start the irreversible operation");
+    }
+    if now_unix_seconds < record.valid_from_unix_seconds {
+        return Err("authorization is not yet valid at the irreversible boundary");
+    }
+    if now_unix_seconds > record.expires_at_unix_seconds {
+        advance_custody_state(
+            record,
+            Consumption::Expired,
+            now_unix_seconds,
+            "expired-before-irreversible-start",
+        )?;
+        return Err("authorization expired before the irreversible operation started");
     }
     advance_custody_state(
         record,

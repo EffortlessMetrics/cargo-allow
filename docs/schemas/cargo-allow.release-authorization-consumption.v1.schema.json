@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json",
+  "title": "CargoAllowReleaseAuthorizationConsumptionV1",
+  "description": "Append-only observation of one authorization selection or consumption transition. Structural validation does not grant authority, expose a credential, or execute publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "authorization_id",
+    "authorization_digest",
+    "nonce",
+    "from",
+    "to",
+    "observed_at_unix_seconds",
+    "evidence_digest",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-authorization-consumption.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "authorization_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorization_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 1
+    },
+    "from": {
+      "$ref": "#/$defs/consumption_state"
+    },
+    "to": {
+      "$ref": "#/$defs/consumption_state"
+    },
+    "observed_at_unix_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "evidence_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "consumption_state": {
+      "type": "string",
+      "enum": [
+        "available",
+        "selected_for_run",
+        "irreversible_operation_started",
+        "consumed_complete",
+        "consumed_incident",
+        "expired",
+        "revoked"
+      ]
+    }
+  }
+}

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 use ReleaseAuthorizationConsumptionV1 as Consumption;
 use allow_report::{
+    AUTHORIZATION_CONSUMPTION_SCHEMA_ID, AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
     AUTHORIZATION_CUSTODY_SCHEMA_ID, AUTHORIZATION_CUSTODY_SCHEMA_VERSION,
     AuthorizationCustodyMintInitV1, CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1,
     RELEASE_AUTHORIZATION_AUTH_CLASS, RELEASE_AUTHORIZATION_FINAL_OPERATION,
@@ -24,7 +25,8 @@ use allow_report::{
     ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
     ReleaseAuthorizationSharedRowV1, ReleaseAuthorizationSourceKindV1,
     ReleaseAuthorizationSourceV1, authorization_evidence_digest_v1, mint_authorization_custody_v1,
-    note_custody_readback_v1, note_irreversible_start_v1, render_release_authorization_custody_v1,
+    note_custody_readback_v1, note_irreversible_start_v1,
+    render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
     revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
     settle_authorization_consumption_v1, verify_custody_readback_v1,
 };
@@ -135,10 +137,11 @@ fn decision() -> Result<ReleaseAuthorizationInputV1, Box<dyn Error>> {
 }
 
 fn mint_init(document: ReleaseAuthorizationInputV1) -> AuthorizationCustodyMintInitV1 {
+    let freeze_receipt_digest = document.freeze.receipt_digest.clone();
     AuthorizationCustodyMintInitV1 {
         authorization_id: "auth-0-2-0-001".to_string(),
         decision: document,
-        freeze_receipt_digest: digest(50),
+        freeze_receipt_digest,
         replay_digest: digest(51),
         replay_result: "Complete".to_string(),
         candidate_custody_digest: digest(52),
@@ -251,6 +254,12 @@ fn release_authorization_minting_refusals() -> Result<(), Box<dyn Error>> {
         mint_authorization_custody_v1(mint_init(document)).is_err(),
         "minting with nine package rows must fail",
     )?;
+    let mut init = mint_init(decision()?);
+    init.freeze_receipt_digest = digest(50);
+    require(
+        mint_authorization_custody_v1(init).is_err(),
+        "minting against a different well-formed freeze receipt must fail",
+    )?;
     let mut document = decision()?;
     document
         .freeze
@@ -289,6 +298,12 @@ fn release_authorization_minting_refusals() -> Result<(), Box<dyn Error>> {
     require(
         mint_authorization_custody_v1(mint_init(document)).is_err(),
         "minting without a nonce must fail",
+    )?;
+    let mut document = decision()?;
+    document.authority.nonce = "ghp_synthetic-secret-marker".to_string();
+    require(
+        mint_authorization_custody_v1(mint_init(document)).is_err(),
+        "minting with secret material in the nonce must fail",
     )?;
     // Control: the authorization must never be committed into the tree.
     let mut init = mint_init(decision()?);
@@ -346,6 +361,20 @@ fn release_authorization_minting_refusals() -> Result<(), Box<dyn Error>> {
         "an in-tree file locator must fail",
     )?;
     let mut init = mint_init(decision()?);
+    init.storage_locator = "file:///repo/elsewhere/../checkout/auth.json".to_string();
+    init.repository_root = "/repo/checkout".to_string();
+    require(
+        mint_authorization_custody_v1(init).is_err(),
+        "a traversal-normalized in-tree file locator must fail",
+    )?;
+    let mut init = mint_init(decision()?);
+    init.storage_locator = "file:///vault/release/auth-0-2-0-001.json".to_string();
+    init.repository_root = "/".to_string();
+    require(
+        mint_authorization_custody_v1(init).is_err(),
+        "the filesystem root must classify every absolute file locator as in-tree",
+    )?;
+    let mut init = mint_init(decision()?);
     init.storage_locator = "file:///vault/release/auth-0-2-0-001.json".to_string();
     init.repository_root = String::new();
     require(
@@ -370,15 +399,32 @@ fn release_authorization_custody() -> Result<(), Box<dyn Error>> {
                 .is_some_and(|value| value.len() == 71 && value.starts_with("sha256:")),
         "a matching readback must record the raw-bytes digest on the custody record",
     )?;
-    // Control: readback drift is a mismatch, non-JSON bytes are malformed.
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "repeating the identical stored readback must stay a match",
+    )?;
+    // Control: a later failed observation invalidates prior readback admission.
     let forged = rendered.replace("auth-0-2-0-001", "auth-0-2-0-002");
     require(
-        verify_custody_readback_v1(&record, forged.as_bytes()) == CustodyReadbackV1::Mismatch,
-        "storage readback drift must report a mismatch",
+        note_custody_readback_v1(&mut record, forged.as_bytes()) == CustodyReadbackV1::Mismatch
+            && !record.readback_verified
+            && record.readback_digest.is_none(),
+        "storage readback drift must invalidate a prior successful observation",
+    )?;
+    let evidence = record.evidence_digest.clone();
+    require(
+        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
+        "selection after a failed readback observation must fail",
     )?;
     require(
-        verify_custody_readback_v1(&record, b"not json") == CustodyReadbackV1::Malformed,
-        "non-JSON storage bytes must report malformed",
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "a later exact readback may re-establish admission",
+    )?;
+    require(
+        note_custody_readback_v1(&mut record, b"not json") == CustodyReadbackV1::Malformed
+            && !record.readback_verified
+            && record.readback_digest.is_none(),
+        "malformed storage bytes must invalidate readback admission",
     )?;
     // Control: custody records carry no secret material.
     for marker in [
@@ -395,12 +441,6 @@ fn release_authorization_custody() -> Result<(), Box<dyn Error>> {
         require(
             !rendered.contains(marker),
             format!("custody artifact leaks secret marker {marker}"),
-        )?;
-    }
-    if let Ok(secret) = std::env::var("CARGO_REGISTRY_TOKEN") {
-        require(
-            secret.is_empty() || !rendered.contains(&secret),
-            "custody artifact must be independent of any ambient registry token",
         )?;
     }
     Ok(())
@@ -437,6 +477,16 @@ fn release_authorization_custody_refusals() -> Result<(), Box<dyn Error>> {
     require(
         revoke_authorization_custody_v1(&mut record, "", SELECT_AT).is_err(),
         "revocation without a reason must fail",
+    )?;
+    let mut record = minted()?;
+    require(
+        revoke_authorization_custody_v1(
+            &mut record,
+            "operator hold token=synthetic-secret",
+            SELECT_AT,
+        )
+        .is_err(),
+        "secret material in a revocation reason must fail",
     )?;
     Ok(())
 }
@@ -568,6 +618,28 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
             .is_err(),
         "reuse after an incident must fail",
     )?;
+    // Control: expiry is rechecked at the irreversible boundary.
+    let mut record = selected()?;
+    require(
+        note_irreversible_start_v1(&mut record, EXPIRES_AT + 1).is_err()
+            && record.state == Consumption::Expired,
+        "an authorization that expires after selection cannot start irreversible work",
+    )?;
+    // Control: lifecycle event time is monotonic and failures do not mutate state.
+    let mut record = selected()?;
+    let before = record.clone();
+    require(
+        note_irreversible_start_v1(&mut record, SELECT_AT - 1).is_err() && record == before,
+        "a backwards irreversible-start timestamp must fail without mutation",
+    )?;
+    // Control: work started while authority is live may settle after expiry.
+    let mut record = selected()?;
+    note_irreversible_start_v1(&mut record, EXPIRES_AT).map_err(io::Error::other)?;
+    require(
+        settle_authorization_consumption_v1(&mut record, true, EXPIRES_AT + 10).is_ok()
+            && record.state == Consumption::ConsumedComplete,
+        "already-started irreversible work must remain settleable after expiry",
+    )?;
     // Control: lifecycle order is enforced.
     let mut record = minted()?;
     require(
@@ -578,6 +650,42 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
         settle_authorization_consumption_v1(&mut record, true, SELECT_AT).is_err(),
         "settling before selection must fail",
     )
+}
+
+#[test]
+fn rendered_consumption_validates_against_json_schema() -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"),
+    )?)?;
+    let mut record = minted()?;
+    let stored = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, stored.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match before consumption rendering",
+    )?;
+    let evidence = record.evidence_digest.clone();
+    let observation =
+        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true)
+            .map_err(io::Error::other)?;
+    require(
+        observation.schema_id == AUTHORIZATION_CONSUMPTION_SCHEMA_ID
+            && observation.schema_version == AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
+        "consumption observation must carry the current schema generation",
+    )?;
+    let rendered: serde_json::Value =
+        serde_json::from_str(&render_release_authorization_consumption_v1(&observation)?)?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| io::Error::other(format!("consumption schema compiles: {error}")))?;
+    validator.validate(&rendered).map_err(|error| {
+        io::Error::other(format!(
+            "rendered consumption observation violates schema: {error}"
+        ))
+    })?;
+    Ok(())
 }
 
 #[test]

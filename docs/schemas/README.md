@@ -19,6 +19,14 @@ See the [producer and consumer contract](../release/release-authorization-v1.md)
 It is a pure compilation component; it models authority without granting or
 executing it.
 
+The [authorization custody](cargo-allow.release-authorization-custody.v1.schema.json)
+(`cargo-allow.release-authorization-custody.v1`) models the out-of-tree custody
+record for one immutable authorization. The companion
+[authorization consumption](cargo-allow.release-authorization-consumption.v1.schema.json)
+(`cargo-allow.release-authorization-consumption.v1`) records one append-only
+selection or terminal consumption observation. Both are structural reusable
+components; neither grants authority or performs release work.
+
 The [release experience](cargo-allow.release-experience.v1.schema.json)
 (`cargo-allow.release-experience.v1`) is produced by
 `allow_report::evaluate_release_experience_v1` and its canonical renderer.

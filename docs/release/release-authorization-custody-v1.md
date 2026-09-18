@@ -3,7 +3,9 @@
 Issue [#3927](https://github.com/EffortlessMetrics/cargo-allow/issues/3927)
 owns the operator-side minting, custody, exposure, one-use selection, and
 consumption protocol for one exact cargo-allow final-release authorization,
-under #3760/#3790/#3768. The [schema](../schemas/cargo-allow.release-authorization-custody.v1.schema.json),
+under #3760/#3790/#3768. The
+[custody schema](../schemas/cargo-allow.release-authorization-custody.v1.schema.json),
+[consumption schema](../schemas/cargo-allow.release-authorization-consumption.v1.schema.json),
 public `allow-report` model (`release_authorization_custody_v1`), and canonical
 JSON renderers make the maintainer decision machine-checkable without
 embedding it in candidate source. They do not make or execute that decision:
@@ -49,11 +51,16 @@ The constructor refuses unless **all** of these hold:
   under the token-backed authentication class;
 - custody expiry does not outlive the maintainer decision expiry, so the
   record can never stay selectable after the decision expires;
+- the retained freeze receipt digest equals the freeze receipt selected by the
+  immutable authorization decision;
 - storage is available, retention outlives the mint act, the validity window
   is ordered, and the locator is an absolute URI that is not an in-tree path
   (absolute `file://` locators resolve against a caller-supplied repository
-  root; a `file://` locator without a root fails closed);
-- no operator-supplied text carries secret markers.
+  root; dot segments are normalized, ambiguous percent-encoded paths fail
+  closed, a filesystem-root repository treats every absolute file locator as
+  in-tree, and a `file://` locator without a root fails closed);
+- no operator-supplied text, including the one-use nonce or transition reason,
+  carries secret markers.
 
 In particular: no Complete freeze/replay, no mint. A recovery operation, a
 prerelease identity, an in-tree locator, an unavailable provider, or any
@@ -66,10 +73,19 @@ refuse without mutation; expiry observed from `Available` or `SelectedForRun`
 moves the record to `Expired`), a live validity window on both ends, a
 verified independent readback, an available storage provider, the exact bound
 nonce (fresh, never consumed), and a current evidence digest equal to the
-bound evidence digest. A changed freeze, custody object, workflow, live
+bound evidence digest. Readback observation metadata is excluded from the
+stored-content comparison, so repeated observation of the same stored payload
+is stable; any later mismatched or malformed observation clears admission
+until an exact readback is observed again. A changed freeze, custody object, workflow, live
 control, registry preflight, support decision, or freshness input changes
 that digest upstream, so selection fails before token access rather than
 after it.
+
+Immediately before the first irreversible action, custody rechecks the
+authorization validity window and monotonic event time. Expiry after selection
+therefore records `Expired` and refuses the start. Once irreversible work
+actually started while authority was live, later expiry does not prevent the
+required append-only complete/incident settlement.
 
 The `#3790` gate consumes only `selection_payload_v1`: authorization and
 denominator identity plus validity window. The payload type has no secret
@@ -100,15 +116,15 @@ Each control below is a named hostile case in
 5. expired or revoked authorizations cannot be selected;
 6. the second selection of one authorization is refused;
 7. clean reuse after an incident is refused;
-8. secret markers in operator text fail the mint; rendered artifacts are
-   scanned for secret markers and for any ambient registry token value;
-9. storage readback drift reports `Mismatch`, non-JSON bytes `Malformed`;
+8. secret markers in operator text, the nonce, or transition reasons are
+   refused; fixtures use synthetic markers and never read ambient credentials;
+9. storage readback drift reports `Mismatch`, non-JSON bytes `Malformed`,
+   and either failed observation clears any prior readback admission;
 10. unavailable storage fails mint and selection (never coerced to Available);
 11. prerelease identities, recovery operations, and non-final scopes are
     refused at mint;
 12. fixtures are synthetic and side-effect-free: the module performs no
-    environment, filesystem, network, tag, or upload operations, and rendered
-    output is proven independent of any ambient `CARGO_REGISTRY_TOKEN`.
+    environment, filesystem, network, tag, credential, or upload operations.
 
 ## Consumers and proof
 
