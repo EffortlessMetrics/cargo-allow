@@ -1,0 +1,100 @@
+name: Bounded custody repair 4296
+on:
+  push:
+    branches: [automation/4296-custody-regressions]
+permissions:
+  contents: read
+concurrency:
+  group: bounded-custody-repair-4296
+  cancel-in-progress: false
+jobs:
+  qualify:
+    if: >-
+      github.repository == 'EffortlessMetrics/cargo-allow' &&
+      github.event.head_commit.message == 'ci: qualify 4296 custody repair'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RUSTUP_TOOLCHAIN: 1.95.0
+      CARGO_TERM_COLOR: never
+      PYTHONDONTWRITEBYTECODE: '1'
+    defaults:
+      run:
+        shell: bash
+        working-directory: source
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: driver
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0025b0bcb10f2ed025f435bb540e1aef530962cd
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt, clippy
+      - name: Verify source and install credential-free hostile fixtures
+        run: |
+          set -euo pipefail
+          python3 ../driver/.github/repair-4296.py setup
+          rustc -vV > target/custody-repair-4296/rustc.txt
+          cargo -vV > target/custody-repair-4296/cargo.txt
+      - name: Prove nine named predecessor failures and one positive
+        run: |
+          set -euo pipefail
+          status=0
+          cargo test -p cargo-allow --locked --test release_authorization_custody custody_review_ -- --test-threads=1 > target/custody-repair-4296/red.log 2>&1 || status=$?
+          test "$status" = 101 || { tail -100 target/custody-repair-4296/red.log; exit 1; }
+          python3 ../driver/.github/repair-4296.py verify-red
+      - name: Apply the bounded repair and run all custody controls
+        run: |
+          set -euo pipefail
+          python3 ../driver/.github/repair-4296.py repair
+          cargo fmt --all
+          cargo fmt --all --check
+          cargo test -p cargo-allow --locked --test release_authorization_custody -- --test-threads=1 2>&1 | tee target/custody-repair-4296/green.log
+          cargo test -p cargo-allow --locked --test release_authorization_contract 2>&1 | tee target/custody-repair-4296/authorization-contract.log
+          cargo test -p allow-report --locked release_authorization 2>&1 | tee target/custody-repair-4296/authorization-model.log
+      - name: Lint and guard the actual changed source
+        run: |
+          set -euo pipefail
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings 2>&1 | tee target/custody-repair-4296/clippy.log
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown --receipt target/custody-repair-4296/no-new.json --output target/custody-repair-4296/no-new.md
+          git diff --check
+          python3 ../driver/.github/repair-4296.py retain
+      - name: Retain exact bytes and diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: custody-repair-4296-qualified
+          path: source/target/custody-repair-4296/
+          include-hidden-files: true
+          if-no-files-found: error
+  prepare-detached-objects:
+    needs: qualify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: custody-repair-4296-qualified
+          path: qualification
+      - name: Create only detached tested Git objects; never update refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/prepare-4296-objects.py
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: custody-repair-4296-prepared-objects
+          path: prepared/
+          if-no-files-found: error
