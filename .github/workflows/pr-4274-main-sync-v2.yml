@@ -1,0 +1,180 @@
+name: Exact PR 4274 source sync v2
+on:
+  push:
+    branches: [automation/pr-4274-main-sync-v2]
+permissions:
+  contents: write
+concurrency:
+  group: pr-4274-main-sync-v2
+  cancel-in-progress: false
+jobs:
+  synchronize:
+    if: >-
+      github.repository == 'EffortlessMetrics/cargo-allow' &&
+      github.event.head_commit.message == 'ci: synchronize exact PR 4274 source v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OLD_HEAD: 0e38c8f0ec2ef7e9721298134b1d8701e5549087
+      OLD_BASE: 3a12a486aa4001d3d1a902749197f5f6a7ea9c80
+      OLD_TREE: 76fb17fb8e4670de705cee02a0c238e8bec72d74
+      MAIN_HEAD: 86b768bcbcf31d676ca8517f6e903f28b1449f80
+      MAIN_TREE: c5c363fabd179da21a66fd6970b46d9208d50214
+      OUTPUT_BRANCH: automation/pr-4274-main-sync-output-v2
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0e38c8f0ec2ef7e9721298134b1d8701e5549087
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Construct bounded normal merge without changing remote source refs
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config core.hooksPath /dev/null
+          git config core.autocrlf false
+          git fetch --no-tags origin "$MAIN_HEAD"
+          cat > "$RUNNER_TEMP/sync.py" <<'PYCODE'
+          from __future__ import annotations
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tomllib
+          
+          VERSIONS = {
+              'jsonschema': ('ca2ea2207f8ccb34b6d4d041fe9deb08fff3cbc43750012caa2c3d1e860188e4', 'b6a806f80c1f5560431009ce5ec29b59d38f950e0cd7db5f1b8925e6d8104e21'),
+              'jsonschema-regex': ('5426a01d944d044c9c5e459f603419d1b539358f5496b1041df45a7a86d2d38f', 'cb862addfa7782108933abcf842fe25334523a9df5b89ea4d9620e3dd7b42181'),
+              'jsonschema-value': ('65b6ec7deaeaab6320efc3084d8a9e91d5b4985ee36ffffef45dbff9516ff7a8', 'a05cd404c5ff6e2731dbbf7e290a27417750acfb59e329560a1d0af384c93fb0'),
+              'referencing': ('fb406ba984c08d1b91781d7507d103296cf6dec3256c33c388b468957f4b43bb', 'a3b4a92fac7e28c27de3ad26df2ecb9e652f227b258e845af034052e5b22c96c'),
+          }
+          PATHS = {'Cargo.lock', 'crates/cargo-allow/Cargo.toml'}
+          
+          def upgrade_lock(raw: bytes) -> bytes:
+              before = tomllib.loads(raw.decode())
+              expected = json.loads(json.dumps(before))
+              text = raw.decode()
+              for name, (old_checksum, new_checksum) in VERSIONS.items():
+                  rows = [row for row in expected['package'] if row['name'] == name]
+                  assert len(rows) == 1, ('ambiguous package', name)
+                  row = rows[0]
+                  assert row['version'] == '0.53.0' and row['checksum'] == old_checksum, ('changed input', name)
+                  assert row['source'] == 'registry+https://github.com/rust-lang/crates.io-index'
+                  block = f'[[package]]\nname = "{name}"\nversion = "0.53.0"\nsource = "{row["source"]}"\nchecksum = "{old_checksum}"'
+                  assert text.count(block) == 1, ('unexpected package encoding', name)
+                  text = text.replace(block, block.replace('version = "0.53.0"', 'version = "0.56.0"').replace(old_checksum, new_checksum), 1)
+                  row['version'], row['checksum'] = '0.56.0', new_checksum
+              result = text.encode()
+              assert tomllib.loads(text) == expected, 'unrelated lock mutation'
+              return result
+          
+          def upgrade_manifest(raw: bytes) -> bytes:
+              original = b'jsonschema = { version = "0.53.0", default-features = false }'
+              replacement = original.replace(b'0.53.0', b'0.56.0')
+              before = tomllib.loads(raw.decode())
+              assert before['dev-dependencies']['jsonschema'] == {'version': '0.53.0', 'default-features': False}
+              assert raw.count(original) == 1
+              for section in ('dependencies', 'build-dependencies'):
+                  assert 'jsonschema' not in before.get(section, {})
+              for target in before.get('target', {}).values():
+                  assert all('jsonschema' not in target.get(section, {}) for section in ('dependencies', 'dev-dependencies', 'build-dependencies'))
+              result = raw.replace(original, replacement, 1)
+              before['dev-dependencies']['jsonschema']['version'] = '0.56.0'
+              assert tomllib.loads(result.decode()) == before
+              return result
+          
+          def git(*args: str) -> bytes:
+              return subprocess.check_output(['git', *args], timeout=60)
+          
+          def sync() -> dict:
+              old, base, main = (os.environ[key] for key in ('OLD_HEAD', 'OLD_BASE', 'MAIN_HEAD'))
+              assert all(re.fullmatch('[0-9a-f]{40}', sha) for sha in (old, base, main))
+              assert git('rev-parse', 'HEAD').decode().strip() == old
+              assert git('rev-parse', 'HEAD^{tree}').decode().strip() == os.environ['OLD_TREE']
+              assert git('rev-parse', f'{main}^{{tree}}').decode().strip() == os.environ['MAIN_TREE']
+              assert git('rev-list', '--parents', '-1', old).decode().split() == [old, base]
+              assert git('merge-base', '--all', old, main).decode().strip() == base
+              assert not git('status', '--porcelain=v1', '--untracked-files=all')
+              assert not git('branch', '--show-current').strip()
+              assert set(git('diff', '--name-only', base, old).decode().splitlines()) == PATHS
+              upgrades = {'Cargo.lock': upgrade_lock, 'crates/cargo-allow/Cargo.toml': upgrade_manifest}
+              wanted = {}
+              for path, upgrade in upgrades.items():
+                  # Reproduce the original PR bytes before replaying that exact intent on main.
+                  assert upgrade(git('show', f'{base}:{path}')) == git('show', f'{old}:{path}'), ('unreviewed original delta', path)
+                  wanted[path] = upgrade(git('show', f'{main}:{path}'))
+              rows = tomllib.loads(wanted['Cargo.lock'].decode())['package']
+              assert [r['version'] for r in rows if r['name'] == 'yaml-rust2'] == ['0.13.0']
+              assert [r['version'] for r in rows if r['name'] == 'hashbrown'] == ['0.17.1']
+              assert [r['version'] for r in rows if r['name'] == 'hashlink'] == ['0.12.2']
+              merged = subprocess.run(['git', 'merge', '--no-ff', '--no-commit', '--no-edit', main], capture_output=True, timeout=60)
+              diagnostics = Path(os.environ['RUNNER_TEMP']) / 'pr4274-sync'
+              diagnostics.mkdir(exist_ok=True)
+              (diagnostics / 'merge.log').write_bytes(merged.stdout + merged.stderr)
+              assert merged.returncode in (0, 1), merged.returncode
+              assert git('rev-parse', 'MERGE_HEAD').decode().strip() == main
+              conflicts = set(git('diff', '--name-only', '--diff-filter=U').decode().splitlines())
+              assert conflicts <= PATHS, ('unreviewed conflicts', sorted(conflicts))
+              for path, raw in wanted.items():
+                  Path(path).write_bytes(raw)
+              git('add', '--', *sorted(PATHS))
+              assert not git('ls-files', '-u')
+              assert not git('diff', '--name-only')
+              assert set(git('diff', '--cached', '--name-only', main).decode().splitlines()) == PATHS
+              assert git('diff', '--cached', '--numstat', main).decode().splitlines() == ['8\t8\tCargo.lock', '1\t1\tcrates/cargo-allow/Cargo.toml']
+              git('diff', '--cached', '--check')
+              tree = git('write-tree').decode().strip()
+              git('-c', 'core.hooksPath=', '-c', 'commit.gpgSign=false', 'commit', '-m', 'Merge reviewed main into jsonschema upgrade (#4274)', '-m', 'Resolve only the lockfile overlap by preserving current-main dependency rows and replaying the original four jsonschema version/checksum changes. No receipt is refreshed here; committed-source regeneration and final-head qualification remain required.')
+              head = git('rev-parse', 'HEAD').decode().strip()
+              assert git('rev-list', '--parents', '-1', head).decode().split() == [head, old, main]
+              assert git('rev-parse', 'HEAD^{tree}').decode().strip() == tree
+              assert not git('status', '--porcelain=v1', '--untracked-files=all')
+              files = []
+              for path in sorted(PATHS):
+                  raw = git('show', f'HEAD:{path}')
+                  assert raw == wanted[path]
+                  files.append({'path': path, 'size': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(), 'git_blob': git('rev-parse', f'HEAD:{path}').decode().strip()})
+              result = {'result': 'source_sync_only', 'old_head': old, 'old_base': base, 'main_head': main, 'head': head, 'tree': tree, 'conflicts': sorted(conflicts), 'files': files, 'workflow_run': os.environ.get('GITHUB_RUN_ID', 'local'), 'claim_boundary': 'Exact bounded two-parent source synchronization only; no Rust test, fresh dependency receipt, native qualification or release proof.'}
+              (diagnostics / 'source-sync.json').write_text(json.dumps(result, indent=2) + '\n')
+              (diagnostics / 'source.patch').write_bytes(git('diff', main, head))
+              print(json.dumps(result, indent=2))
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                  output.write(f'commit={head}\n')
+              return result
+          
+          if __name__ == '__main__':
+              sync()
+          PYCODE
+          python3 -B "$RUNNER_TEMP/sync.py"
+      - name: Publish only the new disposable output branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_HEAD: ${{ steps.source.outputs.commit }}
+        run: |
+          set -euo pipefail
+          test "$OUTPUT_BRANCH" = automation/pr-4274-main-sync-output-v2
+          test "$(git rev-parse HEAD)" = "$SYNC_HEAD"
+          test "$(gh api repos/EffortlessMetrics/cargo-allow/git/ref/heads/main --jq .object.sha)" = "$MAIN_HEAD"
+          test "$(gh api repos/EffortlessMetrics/cargo-allow/pulls/4274 --jq .head.sha)" = "$OLD_HEAD"
+          if git ls-remote --exit-code --heads origin "refs/heads/$OUTPUT_BRANCH" > "$RUNNER_TEMP/output-ref.txt"; then
+            echo 'Output branch already exists; refusing to update it' >&2
+            exit 1
+          else
+            test "$?" = 2
+          fi
+          git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin "$SYNC_HEAD:refs/heads/$OUTPUT_BRANCH"
+          test "$(gh api "repos/EffortlessMetrics/cargo-allow/git/ref/heads/$OUTPUT_BRANCH" --jq .object.sha)" = "$SYNC_HEAD"
+      - name: Retain source identities and exact two-file patch
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pr-4274-main-sync-v2
+          path: ${{ runner.temp }}/pr4274-sync/
+          if-no-files-found: error
