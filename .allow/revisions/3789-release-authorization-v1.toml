@@ -1,0 +1,21 @@
+# Issue #3789: exact-path contract artifacts for the production authorization
+# compiler, with no broadening of policy.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11298"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3fcd3da0b73e7865d00df2f7e690192476efc23586ac78dd2c945d3ef4a9e757"
+reason = "Retain the versioned authorization result schema, checked against production rendering by the contract test. Shape validation remains separate from release authorization."
+
+[[records]]
+allow_ids = ["allow-11299"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0418b7f4b4f8e827d41c7ee8c66a2d012bd5aecb29598a5fe9475c5996498098"
+reason = "Retain the producer/consumer contract for the production one-operation authorization compiler. This exact documentation path carries no live release evidence."
+
+[[records]]
+allow_ids = ["allow-11300"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:af1a64a9ed05bd031e00860d41753abd40a0dce16c9376f0e1799535b427a16c"
+reason = "Receipt this note's exact tracked configuration path and the scoped transition rationale."

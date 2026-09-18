@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add a credential-free crates.io observation adapter for the exact final
+  registry denominator with bounded retries, typed preservation of missing,
+  malformed, rate-limited, timed-out, and unavailable outcomes, independent
+  per-dimension provenance, surplus retention, and reconciliation through the
+  production preflight evaluator. Owner permission defaults to unproven and
+  the adapter never reads tokens, packages, uploads, or authorizes release.

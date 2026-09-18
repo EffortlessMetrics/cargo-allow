@@ -329,6 +329,28 @@ fi
 jq '.floors' target/floor-proof/floors-selection.json > target/floor-proof/floors.json
 mapfile -t CLOSURE < <(jq -r '.closure[]' target/floor-proof/floors-selection.json)
 
+# Full-repository topology assertions belong to the unprojected committed
+# workspace, not its smaller product-floor projection. Require actual passes
+# before adding their exact observed names to the projected test exclusions.
+WORKSPACE_TEST_SKIPS=()
+if [[ "$PRODUCT" == "cargo-allow" && " ${CLASS_LIST[*]} " == *" test "* ]]; then
+  python3 scripts/floor_workspace_contract.py "$SOURCE_COMMIT" "$host_target" \
+    target/floor-proof/source-workspace-contract.json
+  mapfile -t WORKSPACE_TESTS < <(jq -r '.tests[]' target/floor-proof/source-workspace-contract.json)
+  for name in "${WORKSPACE_TESTS[@]}"; do
+    WORKSPACE_TEST_SKIPS+=(--skip "$name")
+  done
+fi
+
+# Project the detached checkout to the selected product's causal path-dependency
+# workspace before Cargo resolves a lock. The projected Cargo.toml is committed
+# beside the floor lock, so the executed subject remains an exact Git tree.
+python3 scripts/floor_product_workspace.py \
+  Cargo.toml \
+  target/floor-proof/floors-selection.json \
+  target/floor-proof/product-workspace-identity.json
+cat target/floor-proof/product-workspace-identity.json
+
 # 2. Build one simultaneous direct-floor candidate lock. The settlement
 #    retries an early resolver failure after sibling floors have changed,
 #    then stops at an exact fixed point or a repeated incompatible state.
@@ -370,7 +392,9 @@ if [ -n "$floor_move_failures" ]; then
 fi
 
 # Establish the actual committed floor subject before strict source admission.
-python3 scripts/floor_source_identity.py "$SOURCE_COMMIT" > target/floor-proof/source-identity.json
+python3 scripts/floor_source_identity.py "$SOURCE_COMMIT" \
+  target/floor-proof/product-workspace-identity.json \
+  > target/floor-proof/source-identity.json
 
 # 3. Bounded proof classes, run against the product's own package
 #    closure — never the whole workspace — so the receipt's commands
@@ -379,7 +403,8 @@ check_args=()
 for member in "${CLOSURE[@]}"; do
   check_args+=(-p "$member")
 done
-# The floored test class excludes only retained-output meta-tests:
+# These exclusions cover retained-output meta-tests, separately from the
+# already-executed full-workspace contracts in WORKSPACE_TEST_SKIPS:
 # they grade the proof's own retained receipts against the tree, so
 # they cannot pass inside the very run that refreshes those receipts.
 # The skip is recorded verbatim in the receipt's command list, and CI
@@ -398,7 +423,7 @@ if [[ " ${CLASS_LIST[*]} " == *" check "* ]]; then
   check_cmd="cargo check --locked --target $host_target ${check_args[*]}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" test "* ]]; then
-  test_cmd="cargo test --locked --target $host_target ${check_args[*]} -- ${DRIFT_TEST_SKIPS[*]}"
+  test_cmd="cargo test --locked --target $host_target ${check_args[*]} -- ${DRIFT_TEST_SKIPS[*]}${WORKSPACE_TEST_SKIPS[*]:+ ${WORKSPACE_TEST_SKIPS[*]}}"
 fi
 if [[ " ${CLASS_LIST[*]} " == *" package "* ]]; then
   package_cmd="cargo package -p ${CLOSURE[0]} --locked --target $host_target --no-verify --allow-dirty --target-dir target/package-proof"
@@ -412,7 +437,7 @@ if [[ -n "$check_cmd" ]]; then
 fi
 if [[ -n "$test_cmd" ]]; then
   cargo test --locked --target "$host_target" "${check_args[@]}" \
-    -- "${DRIFT_TEST_SKIPS[@]}" || test_status=$?
+    -- "${DRIFT_TEST_SKIPS[@]}" "${WORKSPACE_TEST_SKIPS[@]}" || test_status=$?
 fi
 if [[ -n "$package_cmd" ]]; then
   cargo package -p "${CLOSURE[0]}" --locked --target "$host_target" --no-verify --allow-dirty \
@@ -448,6 +473,7 @@ product = os.environ["PRODUCT"]
 package_roots = json.loads(os.environ["ROOTS_JSON"])
 execution = json.load(open("target/floor-proof/execution-identity.json", encoding="utf-8"))
 subject = json.load(open("target/floor-proof/source-identity.json", encoding="utf-8"))
+projection = json.load(open("target/floor-proof/product-workspace-identity.json", encoding="utf-8"))
 
 snapshot = settlement.read_lock_snapshot(Path(lock_path))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -535,16 +561,31 @@ limitations.append(
 )
 if os.environ["PACKAGE_CMD"]:
     limitations.append("package is a single-package --no-verify archive sample; see its exact command")
-subject_posture = (
-    "reuses the unchanged source commit"
-    if subject["derived_commit"] == subject["source_commit"]
-    else "only Cargo.lock differs from source; this local derived candidate is not an upstream commit"
+limitations.append(
+    f"product workspace projection: {projection['schema_id']}; "
+    f"manifest {projection['projected_manifest_digest']}; certified members "
+    f"{', '.join(projection['certified_member_paths'])}; execution members "
+    f"{', '.join(projection['execution_member_paths'])}"
 )
 limitations.append(
     f"local floor subject: source {subject['source_commit']}; "
     f"executed commit {subject['derived_commit']}; tree {subject['derived_tree']}; "
-    f"{subject_posture}"
+    "only the deterministic root workspace projection and floor lock differ; "
+    "this local derived candidate is not an upstream commit"
 )
+
+workspace_contract = Path("target/floor-proof/source-workspace-contract.json")
+if workspace_contract.exists():
+    original = json.loads(workspace_contract.read_text(encoding="utf-8"))
+    if original["source_commit"] != subject["source_commit"]:
+        raise ValueError("source-workspace contract is bound to a different source")
+    limitations.append(
+        f"original-workspace topology preflight: source {original['source_commit']}; "
+        f"tree {original['source_tree']}; {len(original['tests'])} passed; "
+        f"stdout {original['stdout_digest']}; stderr {original['stderr_digest']}; "
+        "the selection companion records its command and tests; current-lock "
+        "repository contracts are not direct-floor compatibility evidence"
+    )
 
 receipt = {
     "schema_id": "cargo-allow.minimum-direct-version.v1",
@@ -579,6 +620,7 @@ receipt_bytes = receipt_path.read_bytes()
 receipt = json.loads(receipt_bytes)
 selection = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 subject = json.loads(Path("target/floor-proof/source-identity.json").read_text(encoding="utf-8"))
+projection = json.loads(Path("target/floor-proof/product-workspace-identity.json").read_text(encoding="utf-8"))
 
 def cell(value):
     return (str(value).replace("\\", "\\\\").replace("|", "\\|")
@@ -593,6 +635,10 @@ lines = [
     f"- Package roots: {cell(', '.join(selection['roots']))}",
     f"- Selected closure: {cell(', '.join(selection['closure']))}",
     f"- Starting source commit: {cell(sys.argv[3])}",
+    f"- Workspace projection: {cell(projection['schema_id'])}",
+    f"- Projected manifest digest: {cell(projection['projected_manifest_digest'])}",
+    f"- Certified member paths: {cell(', '.join(projection['certified_member_paths']))}",
+    f"- Execution member paths: {cell(', '.join(projection['execution_member_paths']))}",
     f"- Executed floor commit: {cell(subject['derived_commit'])}",
     f"- Executed floor tree: {cell(subject['derived_tree'])}",
     f"- Receipt: {cell(receipt_path.name)}",
@@ -611,6 +657,22 @@ for decision in selection["optional_dependencies"]:
     )) + " |")
 if not selection["optional_dependencies"]:
     lines += ["", "No optional dependency declarations were encountered in this selected closure."]
+workspace_contract = Path("target/floor-proof/source-workspace-contract.json")
+if workspace_contract.exists():
+    original = json.loads(workspace_contract.read_text(encoding="utf-8"))
+    lines += [
+        "", "## Original-workspace topology preflight", "",
+        original["claim_boundary"], "",
+        f"- Source commit: {cell(original['source_commit'])}",
+        f"- Source tree: {cell(original['source_tree'])}",
+        f"- Original manifest digest: {cell(original['manifest_digest'])}",
+        f"- Original lock digest: {cell(original['lock_digest'])}",
+        f"- Target: {cell(original['target'])}",
+        f"- Command: {cell(' '.join(original['command']))}",
+        f"- Standard-output digest: {cell(original['stdout_digest'])}",
+        f"- Standard-error digest: {cell(original['stderr_digest'])}", "",
+    ]
+    lines += [f"- Passed before projection: {cell(name)}" for name in original["tests"]]
 receipt_path.with_suffix(".selection.md").write_text(
     "\n".join(lines) + "\n", encoding="utf-8", newline="\n",
 )

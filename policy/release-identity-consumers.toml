@@ -77,6 +77,48 @@ sites = ["data = tomllib.load(open(sys.argv[1], \"rb\"))"]
 claim_boundary = "Reads workspace and member manifest metadata to enumerate a product closure's declared direct floors; decides no release channel, tag, or prerelease semantics."
 
 [[consumers]]
+id = "direct-floor-product-workspace-projector"
+path = "scripts/floor_product_workspace.py"
+role = "selected product workspace projection for bounded direct-floor proof (#4283)"
+disposition = "non-semantic-formatting"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = [
+  "root manifest does not define [workspace]",
+  "[workspace.dependencies] must be a table",
+]
+claim_boundary = "Reads and rewrites only workspace membership for one selected product proof; it does not parse package release versions, infer release channels, or decide prerelease posture."
+
+[[consumers]]
+id = "floor-product-workspace-fixtures"
+path = "scripts/test_floor_product_workspace.py"
+role = "synthetic product-workspace projection controls for the bounded direct-floor proof (#4283)"
+disposition = "historical-fixture-only"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 3 }]
+sites = [
+  "class ProductWorkspaceProjectionTests(unittest.TestCase):",
+  "def test_unrelated_member_cannot_enter_the_execution_workspace(self):",
+]
+claim_boundary = "The workspace markers occur only in temporary synthetic manifests used to test membership projection and isolation. The fixture driver does not classify a product release version, tag, channel, or prerelease posture."
+
+[[consumers]]
+id = "floor-source-identity-projection-fixtures"
+path = "scripts/test_floor_source_identity.py"
+role = "real-Git source-identity controls for the derived product-workspace proof subject (#4283)"
+disposition = "historical-fixture-only"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = [
+  "class FloorSourceIdentityTests(unittest.TestCase):",
+  "def write_projection(self):",
+]
+claim_boundary = "The workspace markers occur only in temporary Git fixture manifests that exercise projection binding and dirty-source admission. The fixture driver does not infer package release versions, tags, channels, or prerelease posture."
+
+[[consumers]]
 id = "changie-config"
 path = ".changie.yaml"
 role = "Changie changelog heading format"
@@ -406,3 +448,17 @@ marker_classes = ["workspace-reader"]
 exact_counts = [{ class = "workspace-reader", count = 3 }]
 sites = ["def run_producer("]
 claim_boundary = "The workspace markers construct temporary fixture manifests for the real floor producer. The driver does not classify product release versions, tags, or channels; observed Rust/Cargo versions are synthetic execution-identity inputs."
+
+[[consumers]]
+id = "floor-workspace-contract-fixtures"
+path = "scripts/test_floor_workspace_contract.py"
+role = "real-Git original-workspace preflight controls for product direct-floor proof (#4283)"
+disposition = "historical-fixture-only"
+owner = "#4283"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = [
+  "class WorkspaceSourceAdmissionTests(unittest.TestCase):",
+  "def test_skip_worktree_manifest_is_rejected_before_cargo(self):",
+]
+claim_boundary = "The two workspace markers construct temporary Git fixture manifests for original-source admission and hidden-manifest rejection. These controls do not parse release versions, infer tags or channels, or decide prerelease posture."

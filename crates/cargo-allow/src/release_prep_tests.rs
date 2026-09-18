@@ -360,9 +360,9 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
         require_token_step.contains("CARGO_REGISTRY_TOKEN is absent; no upload was attempted")
             && require_token_step.contains("if [ -z \"${CARGO_REGISTRY_TOKEN}\" ]")
             && require_token_step.contains(
-                "if: github.event_name != 'workflow_dispatch' || inputs.publish_recovery"
+                "if: needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true'"
             ),
-        "tag and recovery publication should fail closed before upload when the token is absent"
+        "tag and recovery publication should fail closed before upload when the token is absent, and only after the authorize gate"
     );
 
     let publish_step = workflow
@@ -374,9 +374,7 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
         publish_step.contains("if [ \"${DRY_RUN}\" = \"true\" ]")
             && publish_step.contains("exit 0")
             && publish_step.contains("--publish")
-            && publish_step.contains(
-                "CARGO_REGISTRY_TOKEN: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || '' }}"
-            ),
+            && publish_step.contains("needs.authorize.outputs.valid == 'true'"),
         "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish"
     );
 }

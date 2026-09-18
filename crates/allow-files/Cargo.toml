@@ -13,7 +13,7 @@ categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
-yaml-rust2 = { version = "0.11", optional = true }
+yaml-rust2 = { version = "0.13", optional = true }
 
 [[bench]]
 name = "classification"

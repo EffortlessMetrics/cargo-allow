@@ -184,6 +184,12 @@ routing_owner = "core/release"
 blocking = false
 
 [[jobs]]
+name = "authorize"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
 name = "publish"
 purpose = "ReleaseRehearsal"
 routing_owner = "core/release"

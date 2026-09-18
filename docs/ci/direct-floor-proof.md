@@ -12,12 +12,15 @@ Uncommitted edits are not proof inputs. Manifest and original-lock digests bind
 the source inputs; the floor-lock digest binds the executed dependency candidate.
 
 Before executing classes, the collector places its JSON scratch under the
-ignored root `target/floor-proof` directory and commits only the derived
-`Cargo.lock` in its detached temporary checkout. An unchanged lock reuses the
+ignored root `target/floor-proof` directory, projects the root workspace to the
+selected product closure, and commits the projected `Cargo.toml` plus the
+derived `Cargo.lock` when its bytes changed. The workspace projection itself is
+a required visible derived change, so an unchanged lock does not reuse the
 source commit. Derivation rejects other tracked, staged, untracked, ignored
-source, and hidden-index changes. It verifies the single original parent,
-lock-only tree delta, and clean checkout. This gives strict rehearsal admission
-the actual committed floor subject without weakening its clean-source checks.
+source, and hidden-index changes. It verifies the single original parent, the
+exact admitted derived-path delta (`Cargo.toml` required and `Cargo.lock`
+optional), and a clean checkout. This gives strict rehearsal admission the
+actual committed floor subject without weakening its clean-source checks.
 The local derived commit uses a command-scoped `cargo-allow floor proof`
 identity, disables commit hooks and signing, and is never pushed. No repository
 or global Git identity setting is changed. The collector removes its
@@ -61,7 +64,25 @@ named in its command. It does not establish full closure packaging, installed
 behavior, publication, or release qualification. Advisory products remain
 check-only by default and never gate the cargo-allow release set.
 
-During regeneration, the test class excludes five retained-output graders that
+For the cargo-allow `test` class, five repository-topology tests run first on
+that original committed workspace and its original `Cargo.lock`, before any
+projection or floor resolution. `scripts/floor_workspace_contract.py` runs only
+the cargo-allow binary test target with a separate explicit target directory,
+using the collector's already-observed MSRV and host. It requires exactly the
+five named passes and one non-ignored five-test summary; failed, empty, ignored,
+wrong, duplicate, and extra matching tests cannot authorize an exclusion.
+Source identity and clean status must remain unchanged across this preflight.
+
+Only after that success are those full-workspace tests omitted from the smaller
+projected floor test phase. Their assertions and normal CI execution are
+unchanged. The preflight is recorded separately in the selection companion with
+its original commit/tree, input digests, command, test names, and output digests.
+The floor receipt names the limitation, but its `commands` remain commands run
+against the floor candidate: original-lock topology success is **not** floor
+compatibility proof. A `check`-only selection adds no topology-test preflight.
+See [#4283](https://github.com/EffortlessMetrics/cargo-allow/issues/4283).
+
+Separately, during regeneration the test class excludes five retained-output graders that
 would otherwise grade the old receipts while their replacements are being
 produced. Their exact names are recorded in `commands`. Synthetic drift and
 proof-law tests and ordinary product tests remain enabled. After collecting
@@ -90,20 +111,24 @@ The producer and protocol controls require Python 3.11 or newer available as
 `bash scripts/test-proof-direct-floors-protocol.sh` exercises selection,
 execution identity, and the actual producer using temporary fixtures and strict
 Git/Cargo/rustc substitutes. It checks unchanged and changed floor pinning,
-invalid product/class rejection, observed MSRV rejection, the exact five test
-exclusions, failed-pin and failed-class dispositions, and selection-companion binding. These
+invalid product/class rejection, observed MSRV rejection, the five retained-output
+exclusions plus the five successfully preflighted topology exclusions, failed-pin
+and failed-class dispositions, and selection-companion binding. It also verifies
+preflight-before-projection ordering, unchanged source inputs, and rejection of
+failed or incomplete original-workspace observations before any floor class. These
 controls do not compile packages or establish real floor compatibility.
-The same command runs real-Git derived-source controls for lock-only changes,
-unchanged locks, attached checkouts, and rejected source/index changes. The
-producer simulation separately rejects derivation failure before any class runs.
-The default suite also runs the actual rehearsal's strict checkout admission
-against the derived-source fixture and all 36 `TestRehearsalSubjectBinding`
-controls. The focused derived-source/admission check can be run separately:
+The same command runs real-Git derived-source controls for projected-manifest-
+plus-lock changes, projection-only derivations, attached checkouts, and rejected
+source/index changes. The producer simulation separately rejects derivation
+failure before any class runs. The default suite also runs the actual rehearsal's
+strict checkout admission against the derived-source fixture and all 36
+`TestRehearsalSubjectBinding` controls. The focused derived-source/admission check
+can be run separately:
 
 `python scripts/test_floor_source_identity.py --rehearsal-script scripts/release-rehearsal.py`.
 
-This reproduces the original four root scratch files plus modified lock,
-requires their rejection, and then requires admission of the derived subject.
+This reproduces the original scratch files plus the projected root manifest and
+floor lock, requires their rejection, and then admits only the bounded derived subject.
 Selecting an older rehearsal script without strict admission fails explicitly.
 The subject-binding controls reject foreign commits and staged, hidden, ignored,
 or untracked source, including changes observed after mocked phases. Admission
@@ -150,32 +175,34 @@ a complete cross-crate feature graph or promote any proof disposition.
 ### Current retained execution
 
 The four retained receipts were generated from committed source
-`7a2cfbce2ec419086300a02a6f58fdddd45220f4` on 2026-09-12, using observed
+`aa9a3a761f3db80e85734c70afeb183266da4e0d` on 2026-09-17, using observed
 Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
 The collector binds the observed compiler and rustdoc paths to execution and
 disables inherited compiler wrappers before running each proof class.
 
-| Product | Proven direct floors | Executed classes | Selection evidence |
+| Product | Proven / observed direct floors | Executed classes | Selection evidence |
 | --- | ---: | --- | --- |
-| cargo-allow | 15 | check, test, single allow-core archive sample | [companion](receipts/direct-floor-proof-cargo-allow-v1.selection.md) |
-| shared | 6 | check only, advisory | [companion](receipts/direct-floor-proof-shared-v1.selection.md) |
-| cargo-intent | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-intent-v1.selection.md) |
-| cargo-proof | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-proof-v1.selection.md) |
+| cargo-allow | 15 / 15 | check, test, single allow-core archive sample | [companion](receipts/direct-floor-proof-cargo-allow-v1.selection.md) |
+| shared | 6 / 6 | check only, advisory | [companion](receipts/direct-floor-proof-shared-v1.selection.md) |
+| cargo-intent | 7 / 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-intent-v1.selection.md) |
+| cargo-proof | 7 / 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-proof-v1.selection.md) |
 
-All four commands completed successfully. The cargo-allow receipt includes
-the activated yaml-rust2 floor at 0.11.0 and its companion records the
-`allow-files/changie -> allow-files/dep:yaml-rust2` witness. All eight tracked
-JSON/Markdown artifacts are byte-identical copies of generated LF outputs.
-No identity fields, rows, or dispositions were rewritten.
+The cargo-allow check, test, and single-package archive classes completed
+successfully. Its receipt proves the activated yaml-rust2 floor at 0.13.0;
+the companion retains the `allow-files/changie -> allow-files/dep:yaml-rust2`
+activation witness. Advisory outcomes remain visible in their own rows and
+do not become cargo-allow release gates.
 
-The floored cargo-allow unit suite passed 1,541 tests with exactly the five
-recorded bootstrap exclusions; the remaining selected integration and doc tests
-also passed. Outside-the-floor grading passed all 59 `minimum_` tests without
-bootstrap exclusions, including all five retained-output graders. The producer
-protocol wrapper passed all 15 controls on native Windows.
+Five original-workspace topology tests passed before projection. Their
+current-lock evidence is separate from the floor commands. The projected
+test run records those five exclusions and the five existing retained-output
+bootstrap exclusions; ordinary CI continues to run the original assertions.
+The generated receipts are then graded without bootstrap exclusions.
 
-Earlier successful execution from `813c594d` on 2026-09-10 remains historical
-in commit `ac1c3fa5`; it is not the source of the current retained copies.
+The eight JSON/Markdown receipt artifacts are exact generated LF outputs.
+No identity fields, dependency floors, or dispositions were hand-edited.
+Prior retained runs remain historical in Git; they are not the source of
+the refreshed copies.
 
 These are bounded historical executions, not proof for arbitrary later source
 trees or release qualification. The v1 receipt's manifest/lock freshness does
