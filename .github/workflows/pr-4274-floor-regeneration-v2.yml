@@ -1,0 +1,241 @@
+name: Exact PR 4274 floor regeneration v2
+
+on:
+  push:
+    branches:
+      - automation/pr-4274-floor-regeneration-v2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-4274-floor-regeneration-v2
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    if: >-
+      github.repository == 'EffortlessMetrics/cargo-allow' &&
+      github.event.head_commit.message == 'ci: qualify exact PR 4274 floor source v2'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      SOURCE_HEAD: d60511ad507beb50771f2a514c03a5630b83b3da
+      SOURCE_TREE: b5e0fb93afd647707d5cc216337f0e3bc85d1eba
+      MAIN_HEAD: 86b768bcbcf31d676ca8517f6e903f28b1449f80
+      RUSTUP_TOOLCHAIN: 1.95.0
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out the immutable dependency source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: d60511ad507beb50771f2a514c03a5630b83b3da
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Verify source and test-only dependency identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_HEAD"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$SOURCE_TREE"
+          git merge-base --is-ancestor "$MAIN_HEAD" HEAD
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test -z "$(git branch --show-current)"
+          mkdir -p target/pr-4274-floor-v2
+          git --version | tee target/pr-4274-floor-v2/git.txt
+          python3 --version | tee target/pr-4274-floor-v2/python.txt
+          rustc -vV | tee target/pr-4274-floor-v2/rustc.txt
+          cargo -vV | tee target/pr-4274-floor-v2/cargo.txt
+          rustdoc -vV | tee target/pr-4274-floor-v2/rustdoc.txt
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import tomllib
+
+          def validate_inputs(manifest, lock, changed):
+              assert changed == {'Cargo.lock', 'crates/cargo-allow/Cargo.toml'}, sorted(changed)
+              assert manifest['dev-dependencies']['jsonschema'] == {'version': '0.56.0', 'default-features': False}
+              for section in ('dependencies', 'build-dependencies'):
+                  assert 'jsonschema' not in manifest.get(section, {})
+              for target in manifest.get('target', {}).values():
+                  for section in ('dependencies', 'build-dependencies', 'dev-dependencies'):
+                      assert 'jsonschema' not in target.get(section, {})
+              for name, version in (
+                  ('jsonschema', '0.56.0'), ('jsonschema-regex', '0.56.0'),
+                  ('jsonschema-value', '0.56.0'), ('referencing', '0.56.0'), ('yaml-rust2', '0.13.0')
+              ):
+                  rows = [row for row in lock['package'] if row['name'] == name]
+                  assert len(rows) == 1 and rows[0]['version'] == version, (name, rows)
+              return {'jsonschema': '0.56.0', 'yaml-rust2': '0.13.0', 'jsonschema_scope': 'dev-only', 'default_features': False}
+
+          manifest = tomllib.loads(Path('crates/cargo-allow/Cargo.toml').read_text(encoding='utf-8'))
+          lock = tomllib.loads(Path('Cargo.lock').read_text(encoding='utf-8'))
+          changed = set(subprocess.check_output(['git', 'diff', '--name-only', os.environ['MAIN_HEAD'], 'HEAD'], text=True).splitlines())
+          observation = validate_inputs(manifest, lock, changed)
+          Path('target/pr-4274-floor-v2/source-dependency.json').write_text(json.dumps(observation, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+      - name: Regenerate release-set floors using original-workspace preflight
+        env:
+          CI_PROOF_PRODUCT: cargo-allow
+          CI_PROOF_MSRV: '1.95'
+          CI_PROOF_CLASSES: check,test,package
+          CI_PROOF_OUT: docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json
+        run: |
+          set -euo pipefail
+          rm -f docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md
+          bash scripts/proof-direct-floors.sh 2>&1 | tee target/pr-4274-floor-v2/cargo-allow-floor.log
+
+      - name: Regenerate all advisory products without promoting their posture
+        env:
+          CI_PROOF_MSRV: '1.95'
+        run: |
+          set -euo pipefail
+          bash scripts/proof-advisory-products.sh 2>&1 | tee target/pr-4274-floor-v2/advisory-floors.log
+
+      - name: Verify receipts and project bounded documentation
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          source = os.environ['SOURCE_HEAD']
+          observed = {}
+          for product in ('cargo-allow', 'shared', 'cargo-intent', 'cargo-proof'):
+              path = Path(f'docs/ci/receipts/direct-floor-proof-{product}-v1.json')
+              raw = path.read_bytes()
+              receipt = json.loads(raw)
+              companion = path.with_suffix('.selection.md').read_text(encoding='utf-8')
+              assert receipt['product'] == product
+              assert receipt['toolchain'] == '1.95.0'
+              assert receipt['target'] == 'host:x86_64-pc-windows-msvc'
+              assert receipt['rows']
+              assert f'- Starting source commit: {source}' in companion
+              assert hashlib.sha256(raw).hexdigest() in companion
+              assert b'\r' not in raw
+              assert all(row['package'] != 'jsonschema' for row in receipt['rows']), 'dev dependency is not a certified floor'
+              observed[product] = receipt
+          core = observed['cargo-allow']
+          assert all(row['result'] == 'proven' for row in core['rows'])
+          yaml = [row for row in core['rows'] if row['package'] == 'yaml-rust2']
+          assert len(yaml) == 1
+          assert yaml[0]['tested_floor'] == yaml[0]['resolved_version'] == '0.13.0'
+          companion = Path('docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md').read_text(encoding='utf-8')
+          assert 'allow-files/changie -> allow-files/dep:yaml-rust2' in companion
+          assert companion.count('Passed before projection:') == 5
+          assert all('--bin' not in command for command in core['commands'])
+
+          path = Path('docs/ci/direct-floor-proof.md')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('### Current retained execution\n')
+          end = text.index('These are bounded historical executions', start)
+          lines = [
+              '### Current retained execution', '',
+              'The four retained receipts were generated from committed source',
+              f'`{source}` on {datetime.now(timezone.utc).date().isoformat()}, using observed',
+              'Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.',
+              'The collector binds the observed compiler and rustdoc paths to execution and',
+              'disables inherited compiler wrappers before running each proof class.', '',
+              '| Product | Proven / observed direct floors | Executed classes | Selection evidence |',
+              '| --- | ---: | --- | --- |',
+          ]
+          for product, receipt in observed.items():
+              proven = sum(row['result'] == 'proven' for row in receipt['rows'])
+              classes = 'check, test, single allow-core archive sample' if product == 'cargo-allow' else 'check only, advisory'
+              lines.append(f'| {product} | {proven} / {len(receipt["rows"])} | {classes} | [companion](receipts/direct-floor-proof-{product}-v1.selection.md) |')
+          lines += ['',
+              'The cargo-allow check, test, and single-package archive classes completed',
+              'successfully. Its receipt proves the activated yaml-rust2 floor at 0.13.0;',
+              'the companion retains the `allow-files/changie -> allow-files/dep:yaml-rust2`',
+              'activation witness. Advisory outcomes remain visible in their own rows and',
+              'do not become cargo-allow release gates.', '',
+              'Five original-workspace topology tests passed before projection. Their',
+              'current-lock evidence is separate from the floor commands. The projected',
+              'test run records those five exclusions and the five existing retained-output',
+              'bootstrap exclusions; ordinary CI continues to run the original assertions.',
+              'The generated receipts are then graded without bootstrap exclusions.', '',
+              'The eight JSON/Markdown receipt artifacts are exact generated LF outputs.',
+              'No identity fields, dependency floors, or dispositions were hand-edited.',
+              'Prior retained runs remain historical in Git; they are not the source of',
+              'the refreshed copies.', '',
+          ]
+          path.write_text(text[:start] + '\n'.join(lines) + '\n' + text[end:], encoding='utf-8', newline='\n')
+          PY
+          python3 scripts/exact-candidate-package-candidate.py --mode derive --output docs/dogfood/receipts/package-candidate-v2.example.json
+
+      - name: Grade regenerated evidence and schema consumers without exclusions
+        run: |
+          set -euo pipefail
+          bash scripts/test-proof-direct-floors.sh 2>&1 | tee target/pr-4274-floor-v2/script-characterization.log
+          bash scripts/test-proof-direct-floors-protocol.sh 2>&1 | tee target/pr-4274-floor-v2/protocol.log
+          cargo test -p cargo-allow --locked --bin cargo-allow minimum_direct_version 2>&1 | tee target/pr-4274-floor-v2/minimum-direct-version.log
+          cargo test -p cargo-allow --locked --bin cargo-allow check_exits_zero_when_every_release_set_receipt_is_current 2>&1 | tee target/pr-4274-floor-v2/release-set-current.log
+          cargo test -p cargo-allow --locked --all-targets schema 2>&1 | tee target/pr-4274-floor-v2/schema-consumers.log
+          cargo run -p cargo-allow --locked -- min-version-drift check --format json 2>&1 | tee target/pr-4274-floor-v2/drift.log
+          python3 scripts/exact-candidate-package-candidate.py --mode baseline --baseline docs/dogfood/receipts/package-candidate-v2.example.json
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown --receipt target/pr-4274-floor-v2/no-new.receipt.json --output target/pr-4274-floor-v2/no-new.md
+          git diff --check
+
+      - name: Retain only bounded outputs and exact source metadata
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import shutil
+          import subprocess
+
+          root = Path('target/pr-4274-floor-v2')
+          schema_log = (root / 'schema-consumers.log').read_text(encoding='utf-8')
+          summaries = re.findall(r'test result: ok\. ([0-9]+) passed; 0 failed;', schema_log)
+          assert summaries and sum(map(int, summaries)) > 0, 'schema filter must execute actual passing tests'
+          expected = {'docs/ci/direct-floor-proof.md', 'docs/dogfood/receipts/package-candidate-v2.example.json'}
+          for product in ('cargo-allow', 'shared', 'cargo-intent', 'cargo-proof'):
+              for suffix in ('.json', '.selection.md'):
+                  expected.add(f'docs/ci/receipts/direct-floor-proof-{product}-v1{suffix}')
+          changed = set(subprocess.check_output(['git', 'diff', '--name-only'], text=True).splitlines())
+          assert changed == expected, (sorted(changed), sorted(expected))
+          assert not subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).strip()
+          assert not subprocess.check_output(['git', 'ls-files', '--others', '--exclude-standard'], text=True).strip()
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == os.environ['SOURCE_HEAD']
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip() == os.environ['SOURCE_TREE']
+          rows = []
+          for name in sorted(expected):
+              raw = Path(name).read_bytes()
+              assert b'\r' not in raw, name
+              destination = root / 'files' / name
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(name, destination)
+              blob = hashlib.sha1(f'blob {len(raw)}\0'.encode() + raw).hexdigest()
+              rows.append({'path': name, 'size': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(), 'git_blob': blob})
+          (root / 'generated.patch').write_bytes(subprocess.check_output(['git', 'diff', '--binary']))
+          (root / 'qualification.json').write_text(json.dumps({
+              'source_commit': os.environ['SOURCE_HEAD'], 'source_tree': os.environ['SOURCE_TREE'],
+              'main_commit': os.environ['MAIN_HEAD'], 'workflow_run': os.environ['GITHUB_RUN_ID'],
+              'workflow_attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'result': 'passed',
+              'files': rows,
+              'claim_boundary': 'Exact native Windows dependency-floor regeneration and unsuppressed schema/grader execution only; jsonschema remains a dev dependency, not a certified floor; no publication or final release qualification.'
+          }, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+      - name: Retain execution diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pr-4274-floor-regeneration-v2
+          path: target/pr-4274-floor-v2/
+          if-no-files-found: error
