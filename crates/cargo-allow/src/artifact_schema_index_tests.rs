@@ -11,6 +11,7 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "cargo-allow.final-registry-preflight.v1",
     "cargo-allow.final-tag-transaction.v1",
     "cargo-allow.release-authorization.v1",
+    "cargo-allow.release-operation-lease.v1",
     "cargo-allow.release-authorization-custody.v1",
     "cargo-allow.release-authorization-consumption.v1",
     "cargo-allow.release-experience.v1",

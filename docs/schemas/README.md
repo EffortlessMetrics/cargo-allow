@@ -160,6 +160,7 @@ runtime, reachability, or semantic analysis.
 | [Candidate preparation receipt](candidate-preparation-receipt-v1.schema.json) | `cargo-allow.candidate-preparation-receipt.v1` | hidden `cargo-allow prep-candidate apply --final-receipt`, typed `allow-report` contract (#3834) |
 | [Final package-docs receipt](final-package-docs.v1.schema.json) | `cargo-allow.final-package-docs.v1` | `scripts/final-package-docs.py` (#3773) |
 | [Release authorization custody](cargo-allow.release-authorization-custody.v1.schema.json) | `cargo-allow.release-authorization-custody.v1` | typed `allow-report` custody model, selection payload, and canonical renderers (#3927) |
+| [Release operation lease](cargo-allow.release-operation-lease.v1.schema.json) | `cargo-allow.release-operation-lease.v1` | typed `allow-report` one-operation lease model and canonical renderer (#3925) |
 | [Final tag transaction](cargo-allow.final-tag-transaction.v1.schema.json) | `cargo-allow.final-tag-transaction.v1` | typed `allow-report` exactly-once tag transaction model and canonical renderer (#3930) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
@@ -255,6 +256,7 @@ promote policy, authorize publication, or establish release readiness.
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
+- [cargo-allow.release-operation-lease.v1.schema.json](cargo-allow.release-operation-lease.v1.schema.json) durable one-operation lease contract (serialization-only; not an operation authorization)
 - [cargo-allow.final-tag-transaction.v1.schema.json](cargo-allow.final-tag-transaction.v1.schema.json) exactly-once annotated tag transaction contract (consistency-only; not a tag creation or push authority)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas

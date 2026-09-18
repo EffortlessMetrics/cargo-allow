@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11312"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:69e81de20e6ace1f437d5c3e39d296566742903e120e6cc5c81960ec00c1d27d"
+reason = "receipt for docs/schemas/cargo-allow.release-operation-lease.v1.schema.json, the durable one-operation lease contract schema (#3925)"
+
+[[records]]
+allow_ids = ["allow-11307"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b7603ddc8fc5d72984fb342fdc56f188d99b08d62f3d2bcb70185e1e8a7be46b"
+reason = "receipt for docs/release/release-operation-lease-v1.md, the operator-side lease protocol (#3925)"
+
+[[records]]
+allow_ids = ["allow-11313"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2ce2042ee8555dc342fc4d5f6864a3e328e105698fb239bb66b28f0730daddb7"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

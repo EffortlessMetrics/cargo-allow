@@ -224,6 +224,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11312"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Versioned durable one-operation lease schema; shape validation neither authorizes the operation nor proves provider success."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11308"
 kind = "non_rust_file"
 family = "documentation"
@@ -240,6 +262,28 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11313"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3925-release-operation-lease.toml"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Revision note covering the operation lease ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3925-release-operation-lease.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3925-release-operation-lease.toml"
 
 [allow.last_seen]
 line = 1
@@ -356,6 +400,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11307"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-lease-v1.md"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Operator-side durable lease protocol serializing clean and recovery runs; modeling only, no operation authority."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-lease-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-lease-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11309"
 kind = "non_rust_file"
 family = "documentation"
@@ -376,7 +442,6 @@ glob = "docs/release/final-tag-transaction-v1.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 [[allow]]
 id = "allow-11310"
 kind = "non_rust_file"

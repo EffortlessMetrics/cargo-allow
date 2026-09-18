@@ -47,6 +47,7 @@ mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
+mod release_operation_lease_v1;
 mod release_operation_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
@@ -427,6 +428,17 @@ pub use release_manifest_v2::{
     render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
     validate_release_manifest_v2,
+};
+pub use release_operation_lease_v1::{
+    CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
+    OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
+    OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
+    OperationLeaseClassV1, OperationLeaseHolderV1, OperationLeaseKeyV1, OperationLeaseStateV1,
+    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_v1,
+    cancel_operation_lease_v1, note_lease_irreversible_start_v1,
+    observe_lease_provider_unavailable_v1, observe_runner_loss_v1, operation_lease_key_digest_v1,
+    operation_lease_subject_digest_v1, release_operation_lease_v1,
+    render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,
 };
 pub use release_operation_v1::{
     AggregateOperationStateV1, CargoAllowReleaseOperationV1, OperationClassV1,
