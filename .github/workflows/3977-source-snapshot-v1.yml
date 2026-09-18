@@ -1,0 +1,35 @@
+name: Exact source snapshot for 3977
+
+on:
+  push:
+    branches:
+      - automation/3977-source-snapshot-v1
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: e161787eeba57c52c852ea39598516546927bb67
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Retain exact source without repository metadata
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = e161787eeba57c52c852ea39598516546927bb67
+          test "$(git rev-parse HEAD^{tree})" = 22ad993f4580f299cfa87a4ca265db51e46b6a9e
+          mkdir -p target/source-snapshot
+          git archive --format=tar.gz --prefix=cargo-allow/ HEAD > target/source-snapshot/cargo-allow-e161787.tar.gz
+          sha256sum target/source-snapshot/cargo-allow-e161787.tar.gz > target/source-snapshot/SHA256SUMS
+          printf '%s\n' e161787eeba57c52c852ea39598516546927bb67 > target/source-snapshot/commit.txt
+          printf '%s\n' 22ad993f4580f299cfa87a4ca265db51e46b6a9e > target/source-snapshot/tree.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-allow-3977-source-e161787
+          path: target/source-snapshot/
+          if-no-files-found: error
