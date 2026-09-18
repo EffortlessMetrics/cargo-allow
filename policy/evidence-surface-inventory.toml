@@ -513,3 +513,20 @@ required_stronger_owner = "#3759"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "The retained record is checked against the typed contract and its internal consistency; external receipt bytes were byte-verified during the reconciliation observation and by independent review, not continuously re-verified here."
+
+[[surfaces]]
+id = "release-authorization-custody-v1"
+owner_issue = 3927
+semantic_authority = "typed out-of-tree release authorization custody and consumption lifecycle"
+path = "crates/cargo-allow/tests/release_authorization_custody.rs"
+subject = "CargoAllowReleaseAuthorizationCustodyV1 / CargoAllowReleaseAuthorizationConsumptionV1"
+producer = "production custody model with hostile synthetic lifecycle and storage fixtures"
+consumer = "#3790 authorization gate, #3925 operation lease, and #2502 execution evidence"
+claimed_acceptance_row = "freeze-bound custody, independent readback admission, one-use selection, irreversible-boundary expiry, and append-only consumption semantics"
+assertion_mechanism = "production custody functions with hostile state, readback, path, expiry, secret-marker, and JSON Schema fixtures"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3790/#3925"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove local custody and consumption semantics only; no external authorization is minted, no durable provider lease/readback is observed, and no tag, credential, or publication operation occurs."

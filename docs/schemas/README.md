@@ -19,6 +19,14 @@ See the [producer and consumer contract](../release/release-authorization-v1.md)
 It is a pure compilation component; it models authority without granting or
 executing it.
 
+The [authorization custody](cargo-allow.release-authorization-custody.v1.schema.json)
+(`cargo-allow.release-authorization-custody.v1`) models the out-of-tree custody
+record for one immutable authorization. The companion
+[authorization consumption](cargo-allow.release-authorization-consumption.v1.schema.json)
+(`cargo-allow.release-authorization-consumption.v1`) records one append-only
+selection or terminal consumption observation. Both are structural reusable
+components; neither grants authority or performs release work.
+
 The [release experience](cargo-allow.release-experience.v1.schema.json)
 (`cargo-allow.release-experience.v1`) is produced by
 `allow_report::evaluate_release_experience_v1` and its canonical renderer.
@@ -151,6 +159,7 @@ runtime, reachability, or semantic analysis.
 | [Candidate preparation result](candidate-preparation-plan-v1.schema.json) | `cargo-allow.candidate-preparation-result.v1` (embedding `cargo-allow.candidate-preparation-plan.v1`) | hidden `cargo-allow prep-candidate plan` projection, typed `allow-report` contract (#3831) |
 | [Candidate preparation receipt](candidate-preparation-receipt-v1.schema.json) | `cargo-allow.candidate-preparation-receipt.v1` | hidden `cargo-allow prep-candidate apply --final-receipt`, typed `allow-report` contract (#3834) |
 | [Final package-docs receipt](final-package-docs.v1.schema.json) | `cargo-allow.final-package-docs.v1` | `scripts/final-package-docs.py` (#3773) |
+| [Release authorization custody](cargo-allow.release-authorization-custody.v1.schema.json) | `cargo-allow.release-authorization-custody.v1` | typed `allow-report` custody model, selection payload, and canonical renderers (#3927) |
 | [Final tag transaction](cargo-allow.final-tag-transaction.v1.schema.json) | `cargo-allow.final-tag-transaction.v1` | typed `allow-report` exactly-once tag transaction model and canonical renderer (#3930) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
@@ -245,6 +254,7 @@ promote policy, authorize publication, or establish release readiness.
 - [operator-latency.schema.json](operator-latency.schema.json) v1 historical compatibility schema; [operator-latency.v2.schema.json](operator-latency.v2.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
+- [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
 - [cargo-allow.final-tag-transaction.v1.schema.json](cargo-allow.final-tag-transaction.v1.schema.json) exactly-once annotated tag transaction contract (consistency-only; not a tag creation or push authority)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
