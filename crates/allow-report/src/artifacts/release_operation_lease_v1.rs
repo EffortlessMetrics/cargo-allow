@@ -96,6 +96,7 @@ pub struct CargoAllowReleaseOperationLeaseV1 {
     pub class: OperationLeaseClassV1,
     pub key: OperationLeaseKeyV1,
     pub key_digest: String,
+    pub subject_digest: String,
     pub holder: OperationLeaseHolderV1,
     pub acquired_at_unix_seconds: u64,
     pub renewed_at_unix_seconds: u64,
@@ -149,14 +150,24 @@ const SECRET_MARKERS: [&str; 12] = [
     "token=",
 ];
 
+/// Canonical lowercase hexadecimal: uppercase forms identify the same
+/// object but hash to different key digests, so they are rejected rather
+/// than normalized. All real producers (git, content digests) emit lowercase.
+fn lower_hex_shape(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
 fn digest_shape(value: &str) -> bool {
     value
         .strip_prefix("sha256:")
-        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        .is_some_and(|hex| hex.len() == 64 && lower_hex_shape(hex))
 }
 
 fn git_sha_shape(value: &str) -> bool {
-    (value.len() == 40 || value.len() == 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+    (value.len() == 40 || value.len() == 64) && lower_hex_shape(value)
 }
 
 fn secret_marker(value: &str) -> bool {
@@ -170,15 +181,31 @@ fn content_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> 
     Ok(allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1))
 }
 
-/// Canonical lease-key digest. The key binds exact operation identity only:
-/// two dispatches for one subject (tag event or workflow dispatch, any ref)
-/// derive the same key, while any moved commit, tree, denominator, version,
-/// or operation class derives another.
+/// Canonical lease-key digest. The key binds exact operation identity:
+/// any moved commit, tree, denominator, version, or operation class derives
+/// another key.
 pub fn operation_lease_key_digest_v1(
     key: &OperationLeaseKeyV1,
 ) -> Result<String, serde_json::Error> {
     content_digest(&(
         key.operation.as_str(),
+        key.version.as_str(),
+        key.tag.as_str(),
+        key.commit.as_str(),
+        key.tree.as_str(),
+        key.denominator_digest.as_str(),
+    ))
+}
+
+/// Subject-contention digest: the operation-excluded identity two dispatches
+/// for one subject share (tag event or workflow dispatch, any ref; clean or
+/// recovery class). Held-state, conflict, and generation checks compare this
+/// digest so clean and recovery runs for one subject always serialize, while
+/// the operation-specific key digest stays record metadata.
+pub fn operation_lease_subject_digest_v1(
+    key: &OperationLeaseKeyV1,
+) -> Result<String, serde_json::Error> {
+    content_digest(&(
         key.version.as_str(),
         key.tag.as_str(),
         key.commit.as_str(),
@@ -264,30 +291,33 @@ pub fn acquire_operation_lease_v1(
     }
     let key_digest =
         operation_lease_key_digest_v1(&init.key).map_err(|_| "lease key digest failed")?;
+    let subject_digest =
+        operation_lease_subject_digest_v1(&init.key).map_err(|_| "lease subject digest failed")?;
+    if init.expires_at_unix_seconds <= now_unix_seconds {
+        return Err("acquire refuses an already-expired window");
+    }
     let mut generation = 1;
-    if let Some(existing) = observed {
-        let existing_key = operation_lease_key_digest_v1(&existing.key)
-            .map_err(|_| "observed lease key digest failed")?;
-        if existing_key == key_digest {
-            match existing.state {
-                State::HeldPreIrreversible | State::HeldIrreversible => {
-                    return Err("operation lease is already held");
+    if let Some(existing) = observed
+        && existing.subject_digest == subject_digest
+    {
+        match existing.state {
+            State::HeldPreIrreversible | State::HeldIrreversible => {
+                return Err("operation lease is already held");
+            }
+            State::ExpiredPreIrreversible => {
+                if existing.first_irreversible_started {
+                    return Err("post-irreversible expiry requires reconciliation");
                 }
-                State::ExpiredPreIrreversible => {
-                    if existing.first_irreversible_started {
-                        return Err("post-irreversible expiry requires reconciliation");
-                    }
-                    generation = existing.holder.generation.saturating_add(1);
-                }
-                State::Available
-                | State::ReleasedComplete
-                | State::ReleasedIncident
-                | State::RecoveryRequired
-                | State::Conflict
-                | State::ProviderUnavailable
-                | State::InstrumentFailure => {
-                    return Err("observed lease state requires reconciliation first");
-                }
+                generation = existing.holder.generation.saturating_add(1);
+            }
+            State::Available
+            | State::ReleasedComplete
+            | State::ReleasedIncident
+            | State::RecoveryRequired
+            | State::Conflict
+            | State::ProviderUnavailable
+            | State::InstrumentFailure => {
+                return Err("observed lease state requires reconciliation first");
             }
         }
     }
@@ -298,6 +328,7 @@ pub fn acquire_operation_lease_v1(
         class: init.class,
         key: init.key,
         key_digest,
+        subject_digest,
         holder: OperationLeaseHolderV1 {
             lease_id: init.lease_id,
             generation,
@@ -428,6 +459,13 @@ pub fn renew_operation_lease_v1(
     if record.renewals >= record.max_renewals {
         return Err("lease renewal bound reached");
     }
+    if record
+        .transitions
+        .last()
+        .is_some_and(|previous| now_unix_seconds < previous.at_unix_seconds)
+    {
+        return Err("lease renewal must not predate the latest transition");
+    }
     if new_expires_at_unix_seconds <= record.expires_at_unix_seconds {
         return Err("renewal must extend the lease window");
     }
@@ -508,14 +546,40 @@ pub fn cancel_operation_lease_v1(
     }
 }
 
+/// Runner-loss evidence. Termination and handle release (fencing) must both
+/// be attested: a missing session or heartbeat alone never expires a live
+/// holder, or a stale observation could free the operation for a concurrent
+/// runner. The #2502 execution lane supplies provider-verified evidence.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RunnerLossEvidenceV1 {
+    pub holder_terminated: bool,
+    pub handle_released: bool,
+    pub observed_at_unix_seconds: u64,
+}
+
 /// Runner-loss observation. Loss after the irreversible start leaves a
 /// recovery-required lease: no clean retry may acquire it. Loss before the
 /// start expires the hold so a clean run may re-acquire.
 pub fn observe_runner_loss_v1(
     record: &mut CargoAllowReleaseOperationLeaseV1,
+    evidence: RunnerLossEvidenceV1,
     now_unix_seconds: u64,
 ) -> Result<(), &'static str> {
     use OperationLeaseStateV1 as State;
+    if !evidence.holder_terminated || !evidence.handle_released {
+        return Err("runner loss requires termination and handle-release evidence");
+    }
+    if evidence.observed_at_unix_seconds > now_unix_seconds {
+        return Err("runner-loss evidence cannot be future-dated");
+    }
+    if record
+        .transitions
+        .last()
+        .is_some_and(|previous| evidence.observed_at_unix_seconds < previous.at_unix_seconds)
+    {
+        return Err("stale runner-loss observation cannot expire the lease");
+    }
     match record.state {
         State::HeldIrreversible => advance_lease_state(
             record,

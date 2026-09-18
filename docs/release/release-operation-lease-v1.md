@@ -18,7 +18,11 @@ runner may leave an uncertain external state, and a second run may begin
 while the first authorization is only locally marked selected. The lease key
 derives from the exact operation identity (operation, version, tag, commit,
 tree, denominator digest) — never from branch or ref text — so a tag event
-and a workflow dispatch for one subject derive one key.
+and a workflow dispatch for one subject derive one key. A separate
+subject-contention digest excludes the operation class, so clean and
+recovery runs for one subject always serialize against each other. Identity
+values are canonical lowercase hex: uppercase forms identify the same object
+but hash to another key, so the constructor refuses them.
 
 ## Lifecycle
 
@@ -36,13 +40,19 @@ RecoveryRequired (read-only reconciliation + exact recovery authority only)
 ```
 
 - An expired pre-irreversible lease is **not** an incident: a clean run may
-  re-acquire at the next generation.
+  re-acquire at the next generation with a fresh window (acquiring an
+  already-expired window is refused).
 - An expired or lost post-irreversible lease is **never** safe to restart:
   it becomes `RecoveryRequired`, and no clean retry may acquire it.
 - Clean and recovery classes derive distinct keys and never overlap on one
   subject; a foreign key neither blocks nor authorizes the current subject.
 - Renewal is bounded by `max_renewals` and cannot rewrite holder, key, or
-  journal history. An expired lease must re-acquire, never renew.
+  journal history. An expired lease must re-acquire, never renew. Renewal
+  and every transition refuse backwards-dated time.
+- Runner-loss observation requires termination **and** handle-release
+  (fencing) evidence from the execution lane; heartbeats or missing
+  sessions alone never expire a live holder, and stale observations are
+  refused.
 - Cancellation before the irreversible start expires the hold; after the
   start it is refused. `cancel-in-progress` can never silently free the
   operation.

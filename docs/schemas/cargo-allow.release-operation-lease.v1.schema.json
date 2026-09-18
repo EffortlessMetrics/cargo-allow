@@ -12,6 +12,7 @@
     "class",
     "key",
     "key_digest",
+    "subject_digest",
     "holder",
     "acquired_at_unix_seconds",
     "renewed_at_unix_seconds",
@@ -48,17 +49,21 @@
       "additionalProperties": false,
       "required": ["operation", "version", "tag", "commit", "tree", "denominator_digest"],
       "properties": {
-        "operation": { "type": "string", "minLength": 1 },
+        "operation": { "enum": ["publish_cargo_allow_final_0_2_0", "publish_cargo_allow_recovery_0_2_0"] },
         "version": { "const": "0.2.0" },
         "tag": { "const": "v0.2.0" },
-        "commit": { "type": "string", "minLength": 40 },
-        "tree": { "type": "string", "minLength": 40 },
+        "commit": { "$ref": "#/$defs/git_sha" },
+        "tree": { "$ref": "#/$defs/git_sha" },
         "denominator_digest": { "$ref": "#/$defs/digest" }
       }
     },
     "key_digest": {
       "$ref": "#/$defs/digest",
       "description": "Canonical digest of the exact operation identity. Branch and ref text never enter the key."
+    },
+    "subject_digest": {
+      "$ref": "#/$defs/digest",
+      "description": "Operation-excluded contention digest clean and recovery runs share for one subject."
     },
     "holder": {
       "type": "object",
@@ -99,7 +104,11 @@
   "$defs": {
     "digest": {
       "type": "string",
-      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "git_sha": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
     },
     "lease_state": {
       "type": "string",
