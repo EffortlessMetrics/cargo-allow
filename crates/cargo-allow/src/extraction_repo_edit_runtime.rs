@@ -93,7 +93,7 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         true,
         crate::EvidenceValidationMode::ReportOnly,
     )?;
-    let preflight_outcomes = evaluate(&preflight_config, &preflight_findings, CheckMode::NoNew);
+    let preflight_outcomes = evaluate(&preflight_config, &preflight_findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let preflight_status = preflight_outcomes
         .iter()
         .find(|outcome| outcome.allow_id.as_deref() == Some("allow-0250"))

@@ -285,7 +285,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 "--line is required with --path (or use --glob)",
             )
         })?;
-        let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+        let outcomes = evaluate(&cfg, &findings, CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
         // Infer --kind from the scanned finding if not explicitly declared (#3194).
         let effective_kind = match &declared_kind {
             Some(_) => parsed_kind,

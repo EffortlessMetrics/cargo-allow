@@ -221,12 +221,10 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             .as_deref()
             .unwrap_or(report_cfg.workspace.default_mode.as_str()),
     );
-    let outcomes = evaluate(&report_cfg, &findings, mode);
-    let projected_outcomes = allow_report::ledger_project_outcomes(
-        &report_cfg,
-        &outcomes,
-        allow_core::SimpleDate::today_utc_approx(),
-    );
+    let as_of = allow_core::SimpleDate::today_utc_approx();
+    let outcomes = evaluate(&report_cfg, &findings, mode, as_of);
+    let projected_outcomes =
+        allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
@@ -467,12 +465,10 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             "exact staged source-exception evaluation does not yet support product-move ledger enforcement in no-new or strict mode; use audit mode or the tracked-worktree check",
         ));
     }
-    let outcomes = evaluate(&report_cfg, &staged.findings, mode);
-    let projected_outcomes = allow_report::ledger_project_outcomes(
-        &report_cfg,
-        &outcomes,
-        allow_core::SimpleDate::today_utc_approx(),
-    );
+    let as_of = allow_core::SimpleDate::today_utc_approx();
+    let outcomes = evaluate(&report_cfg, &staged.findings, mode, as_of);
+    let projected_outcomes =
+        allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
         &staged.root,
         &report_cfg,

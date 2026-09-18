@@ -131,12 +131,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     } else {
         current_world_loaded(&current_world)?.findings.clone()
     };
-    let outcomes = evaluate(&report_cfg, &findings_for_report, CheckMode::NoNew);
-    let projected_outcomes = allow_report::ledger_project_outcomes(
-        &report_cfg,
-        &outcomes,
-        allow_core::SimpleDate::today_utc_approx(),
-    );
+    let as_of = allow_core::SimpleDate::today_utc_approx();
+    let outcomes = evaluate(&report_cfg, &findings_for_report, CheckMode::NoNew, as_of);
+    let projected_outcomes =
+        allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
     let head_coverage = if let Some(scan) = &head_revision_scan {
         allow_diff::DiffScanCoverage {
             inventory_complete: scan.inventory_completeness == "complete",
