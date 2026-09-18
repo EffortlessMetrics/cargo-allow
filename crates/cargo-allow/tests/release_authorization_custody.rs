@@ -246,6 +246,16 @@ fn release_authorization_minting_refusals() -> Result<(), Box<dyn Error>> {
         mint_authorization_custody_v1(init).is_err(),
         "minting with a malformed replay digest must fail",
     )?;
+    // Control: identity values are canonical lowercase hex, converged with
+    // the #3930 tag transaction contract; uppercase aliases are refused.
+    let mut document = decision()?;
+    document.freeze.commit = "A".repeat(40);
+    document.freeze.denominator_digest =
+        allow_report::release_authorization_denominator_binding_v1(&document.freeze)?;
+    require(
+        mint_authorization_custody_v1(mint_init(document)).is_err(),
+        "minting with an uppercase custody commit must fail",
+    )?;
     let mut document = decision()?;
     document.freeze.packages.truncate(9);
     document.freeze.denominator_digest =
@@ -454,6 +464,22 @@ fn release_authorization_custody_refusals() -> Result<(), Box<dyn Error>> {
     require(
         select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
         "selection without a verified readback must fail",
+    )?;
+    // Control: evidence identity is canonical lowercase hex; an uppercase
+    // alias of the same digest is refused rather than case-folded.
+    let mut record = minted()?;
+    let rendered = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    let evidence = format!(
+        "sha256:{}",
+        record.evidence_digest["sha256:".len()..].to_uppercase()
+    );
+    require(
+        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
+        "selection with an uppercase evidence digest must fail",
     )?;
     // Control: revocation ends selection; terminal history cannot be revoked.
     let mut record = minted()?;

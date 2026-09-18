@@ -76,14 +76,26 @@ const IN_TREE_PREFIXES: [&str; 12] = [
     ".allow/",
 ];
 
+/// Canonical lowercase hexadecimal: uppercase forms identify the same
+/// object but hash or compare differently across boundaries, so they are
+/// rejected rather than normalized. Converged with the #3930 tag
+/// transaction contract. All real producers (git, content digests) emit
+/// lowercase.
+fn lower_hex_shape(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
 fn digest_shape(value: &str) -> bool {
     value
         .strip_prefix("sha256:")
-        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        .is_some_and(|hex| hex.len() == 64 && lower_hex_shape(hex))
 }
 
 fn git_sha_shape(value: &str) -> bool {
-    (value.len() == 40 || value.len() == 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+    (value.len() == 40 || value.len() == 64) && lower_hex_shape(value)
 }
 
 fn content_digest<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json::Error> {
