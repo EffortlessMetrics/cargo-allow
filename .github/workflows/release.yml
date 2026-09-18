@@ -80,7 +80,11 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
             version="${GITHUB_REF_NAME#v}"
             tag="${GITHUB_REF_NAME}"
-            authorization="${GITHUB_REF_NAME}"
+            # #3790: a pushed tag name is evidence of an attempted operation,
+            # never authority. The authorize gate compiles the out-of-tree
+            # authorization document and exports its digest; the publish job
+            # selects that digest and refuses an empty authorization.
+            authorization=""
           elif [ "${{ inputs.publish_recovery }}" = "true" ]; then
             recovery=true
             version="${RECOVERY_VERSION}"
@@ -201,7 +205,11 @@ jobs:
             git fetch origin "refs/tags/${TAG}:refs/tags/${TAG}" || { echo "::error::release tag ${TAG} is not observable"; exit 1; }
             [ "$(git rev-parse "${TAG}^{commit}")" = "${COMMIT}" ] || { echo "::error::release tag does not peel to the preflight commit"; exit 1; }
             [ "$(git rev-parse "${TAG}^{tree}")" = "${TREE}" ] || { echo "::error::release tag does not peel to the preflight tree"; exit 1; }
-            tag_message="$(git log -1 --format=%B "refs/tags/${TAG}")"
+            # #3790: read the annotated tag object itself, never the peeled
+            # commit message. A lightweight tag has no tag object and can
+            # never carry authorization references.
+            tag_obj="$(git rev-parse "refs/tags/${TAG}^{tag}")" || { echo "::error::release tag ${TAG} is not an annotated tag object; lightweight tags never authorize"; exit 1; }
+            tag_message="$(git cat-file -p "${tag_obj}")"
             run_id="$(printf '%s' "${tag_message}" | sed -n 's/^authorization-run-id: \([0-9][0-9]*\)$/\1/p' | head -n 1)"
             [ -n "${run_id}" ] || { echo "::error::release tag carries no authorization-run-id; tag push is evidence of an attempt, never authority"; exit 1; }
             advertised="$(printf '%s' "${tag_message}" | sed -n 's/^authorization-digest: \(sha256:[0-9a-fA-F]\{64\}\)$/\1/p' | head -n 1)"
@@ -330,11 +338,23 @@ jobs:
           RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
           RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
           RECOVERY: ${{ needs.preflight.outputs.recovery }}
+          RECOVERY_AUTHORIZATION: ${{ needs.preflight.outputs.authorization }}
+          GATE_AUTHORIZATION_DIGEST: ${{ needs.authorize.outputs.authorization_digest }}
           RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json
         run: |
           set -euo pipefail
           version="${RELEASE_VERSION}"
           [ -n "${version}" ] || { echo "::error::preflight did not resolve a release version"; exit 1; }
+          # #3790: the publish authorization is the compiled gate digest on
+          # the clean path and the incident-owned recovery reference on the
+          # recovery path. A tag name is never authority; an empty value
+          # fails closed in the publisher before any upload.
+          if [ "${RECOVERY}" = "true" ]; then
+            AUTHORIZATION="${RECOVERY_AUTHORIZATION}"
+          else
+            AUTHORIZATION="${GATE_AUTHORIZATION_DIGEST}"
+          fi
+          [ -n "${AUTHORIZATION}" ] || { echo "::error::no compiled authorization for publication; tag pushes alone never authorize"; exit 1; }
           if [ "${RECOVERY}" = "true" ]; then
             [ "$(git rev-parse HEAD^{commit})" = "${RELEASE_COMMIT}" ] || { echo "::error::publish checkout commit differs from preflight"; exit 1; }
             [ "$(git rev-parse HEAD^{tree})" = "${RELEASE_TREE}" ] || { echo "::error::publish checkout tree differs from preflight"; exit 1; }
@@ -348,7 +368,7 @@ jobs:
           publisher_args=(
             --mode cargo-allow
             --publish
-            --authorization "${{ needs.preflight.outputs.authorization }}"
+            --authorization "${AUTHORIZATION}"
             --receipt target/cargo-allow/topology-publish.receipt.json
           )
           if [ "${RECOVERY}" = "true" ]; then
