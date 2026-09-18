@@ -1,0 +1,176 @@
+name: Validate and publish 3977 PR A
+
+on:
+  push:
+    branches:
+      - automation/3977-pr-a-carrier-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: validate-3977-pr-a-v1
+  cancel-in-progress: false
+
+env:
+  SOURCE_COMMIT: e161787eeba57c52c852ea39598516546927bb67
+  SOURCE_TREE: 22ad993f4580f299cfa87a4ca265db51e46b6a9e
+  OUTPUT_BRANCH: feature/3977-review-production-profile
+  PATCH_B64_SHA256: 420196042d41701014337cd8125e719170fa72429af98263142d17d0b7227a9c
+  PATCH_SHA256: a9c097b9ccfdd1fc8ea3f34246264729196d2b08d2f75f1829745492d05ec55b
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Reconstruct and verify the bounded patch
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/3977" target/3977-carrier
+          cat .github/patches/3977-pr-a.patch.gz.b64.* > "${RUNNER_TEMP}/3977/patch.gz.b64"
+          test "$(sha256sum "${RUNNER_TEMP}/3977/patch.gz.b64" | awk '{print $1}')" = "${PATCH_B64_SHA256}"
+          base64 --decode "${RUNNER_TEMP}/3977/patch.gz.b64" | gzip -d > "${RUNNER_TEMP}/3977/3977-pr-a.patch"
+          test "$(sha256sum "${RUNNER_TEMP}/3977/3977-pr-a.patch" | awk '{print $1}')" = "${PATCH_SHA256}"
+          cp "${RUNNER_TEMP}/3977/3977-pr-a.patch" target/3977-carrier/input.patch
+
+      - name: Check out the immutable implementation source
+        run: |
+          set -euo pipefail
+          git checkout --detach "${SOURCE_COMMIT}"
+          test "$(git rev-parse HEAD)" = "${SOURCE_COMMIT}"
+          test "$(git rev-parse HEAD^{tree})" = "${SOURCE_TREE}"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git switch -c "${OUTPUT_BRANCH}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config core.hooksPath /dev/null
+          git config commit.gpgSign false
+
+      - name: Apply only the selected PR A files
+        run: |
+          set -euo pipefail
+          git apply --check "${RUNNER_TEMP}/3977/3977-pr-a.patch"
+          git apply "${RUNNER_TEMP}/3977/3977-pr-a.patch"
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+              '.changes/Added-20260918-review-production-profile.yaml',
+              'crates/cargo-allow/src/main.rs',
+              'crates/cargo-allow/src/review_production_parity_tests.rs',
+              'crates/intent-model/src/agentic_review_production.rs',
+              'crates/intent-model/src/lib.rs',
+              'docs/architecture/product-move-map.md',
+              'policy/product-move-ledger.toml',
+          }
+          changed = set(subprocess.check_output(
+              ['git', 'status', '--short'], text=True
+          ).splitlines())
+          paths = {line[3:] for line in changed}
+          assert paths == expected, (sorted(paths), sorted(expected))
+          PY
+          git diff --check
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt, clippy
+
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: review-production-3977-pr-a
+
+      - name: Format and recheck the exact write set
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+              '.changes/Added-20260918-review-production-profile.yaml',
+              'crates/cargo-allow/src/main.rs',
+              'crates/cargo-allow/src/review_production_parity_tests.rs',
+              'crates/intent-model/src/agentic_review_production.rs',
+              'crates/intent-model/src/lib.rs',
+              'docs/architecture/product-move-map.md',
+              'policy/product-move-ledger.toml',
+          }
+          paths = set(subprocess.check_output(
+              ['git', 'status', '--short'], text=True
+          ).splitlines())
+          observed = {line[3:] for line in paths}
+          assert observed == expected, (sorted(observed), sorted(expected))
+          PY
+
+      - name: Run focused review-production contracts
+        run: |
+          set -euo pipefail
+          mkdir -p target/3977-carrier
+          cargo test -p intent-model --locked agentic_review_production -- --nocapture \
+            2>&1 | tee target/3977-carrier/intent-model-tests.log
+          cargo test -p cargo-allow --locked --bin cargo-allow review_production -- --nocapture \
+            2>&1 | tee target/3977-carrier/cargo-allow-parity-tests.log
+          cargo test -p cargo-allow --locked --bin cargo-allow \
+            product_move_ledger_repository_inventory_is_valid -- --exact --nocapture \
+            2>&1 | tee target/3977-carrier/product-move-ledger.log
+          cargo test -p cargo-allow --locked --bin cargo-allow \
+            review_packet_schema_family_consts_are_exactly_sanctioned -- --exact --nocapture \
+            2>&1 | tee target/3977-carrier/schema-family.log
+
+      - name: Run clippy over affected crates
+        run: |
+          set -euo pipefail
+          cargo clippy -p intent-model -p cargo-allow --all-targets --locked -- -D warnings \
+            2>&1 | tee target/3977-carrier/clippy.log
+
+      - name: Run enforcing source guard
+        run: |
+          set -euo pipefail
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
+            --receipt target/3977-carrier/no-new.receipt.json \
+            --output target/3977-carrier/no-new.md \
+            2>&1 | tee target/3977-carrier/no-new.log
+
+      - name: Commit the formatted validated implementation
+        id: commit
+        run: |
+          set -euo pipefail
+          git add -- \
+            .changes/Added-20260918-review-production-profile.yaml \
+            crates/cargo-allow/src/main.rs \
+            crates/cargo-allow/src/review_production_parity_tests.rs \
+            crates/intent-model/src/agentic_review_production.rs \
+            crates/intent-model/src/lib.rs \
+            docs/architecture/product-move-map.md \
+            policy/product-move-ledger.toml
+          test -z "$(git diff --name-only)"
+          test "$(git diff --cached --name-only | wc -l)" -eq 7
+          git diff --cached --check
+          git commit -m 'feat(review): validate exact-head review production (#3977)'
+          head="$(git rev-parse HEAD)"
+          tree="$(git rev-parse HEAD^{tree})"
+          printf 'head=%s\ntree=%s\n' "$head" "$tree" | tee target/3977-carrier/output-identity.txt
+          printf 'head=%s\n' "$head" >> "$GITHUB_OUTPUT"
+          printf 'tree=%s\n' "$tree" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the new implementation branch without rewriting
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin "refs/heads/${OUTPUT_BRANCH}" >/dev/null 2>&1; then
+            echo "output branch already exists; refusing to rewrite ${OUTPUT_BRANCH}" >&2
+            exit 1
+          fi
+          git push origin "HEAD:refs/heads/${OUTPUT_BRANCH}"
+
+      - name: Retain diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: review-production-3977-pr-a-v1
+          path: target/3977-carrier/
+          if-no-files-found: warn
