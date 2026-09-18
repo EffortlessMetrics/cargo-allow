@@ -58,8 +58,8 @@
     "lease_key_digest": { "$ref": "#/$defs/digest" },
     "lease_observed_state": { "type": "string", "minLength": 1 },
     "lease_holder_generation": { "type": "integer", "minimum": 1 },
-    "custody_commit": { "type": "string", "minLength": 40 },
-    "custody_tree": { "type": "string", "minLength": 40 },
+    "custody_commit": { "$ref": "#/$defs/git_sha" },
+    "custody_tree": { "$ref": "#/$defs/git_sha" },
     "freeze_digest": { "$ref": "#/$defs/digest" },
     "custody_digest": { "$ref": "#/$defs/digest" },
     "replay_digest": { "$ref": "#/$defs/digest" },
@@ -83,9 +83,9 @@
         "tag": { "const": "v0.2.0" },
         "channel": { "const": "stable" },
         "github_prerelease": { "const": false },
-        "commit": { "type": "string", "minLength": 40 },
-        "tree": { "type": "string", "minLength": 40 },
-        "tag_object_id": { "type": "string", "minLength": 40 },
+        "commit": { "$ref": "#/$defs/git_sha" },
+        "tree": { "$ref": "#/$defs/git_sha" },
+        "tag_object_id": { "$ref": "#/$defs/git_sha" },
         "tagger_digest": { "$ref": "#/$defs/digest" },
         "message_digest": { "$ref": "#/$defs/digest" }
       }
@@ -116,7 +116,11 @@
   "$defs": {
     "digest": {
       "type": "string",
-      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "git_sha": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
     },
     "tag_state": {
       "type": "string",

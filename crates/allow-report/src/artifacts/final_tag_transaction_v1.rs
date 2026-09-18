@@ -167,14 +167,24 @@ pub struct FinalTagTransactionInitV1 {
 
 const CLAIM_BOUNDARY: &str = "This record owns exactly-once construction, durable push intent, checkpoint agreement, response uncertainty, and exact remote observation for one annotated final-release tag. It does not create or push the tag, read credentials, upload packages, or execute publication.";
 
+/// Canonical lowercase hexadecimal: uppercase forms identify the same
+/// object but hash to different intent digests, so they are rejected rather
+/// than normalized. All real producers (git, content digests) emit lowercase.
+fn lower_hex_shape(value: &str) -> bool {
+    !value.is_empty()
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
+
 fn digest_shape(value: &str) -> bool {
     value
         .strip_prefix("sha256:")
-        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+        .is_some_and(|hex| hex.len() == 64 && lower_hex_shape(hex))
 }
 
 fn git_sha_shape(value: &str) -> bool {
-    (value.len() == 40 || value.len() == 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+    (value.len() == 40 || value.len() == 64) && lower_hex_shape(value)
 }
 
 fn content_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
@@ -224,6 +234,12 @@ pub fn begin_tag_transaction_v1(
     init: FinalTagTransactionInitV1,
 ) -> Result<CargoAllowFinalTagTransactionV1, &'static str> {
     validate_tag_identity(&init.tag)?;
+    if init.lease_holder_generation < 1 {
+        return Err("tag transaction requires a positive lease holder generation");
+    }
+    if init.created_at_unix_seconds < 1 {
+        return Err("tag transaction requires a positive construction time");
+    }
     if !git_sha_shape(&init.custody_commit) || !git_sha_shape(&init.custody_tree) {
         return Err("tag transaction requires canonical custody commit and tree SHAs");
     }
@@ -341,12 +357,13 @@ fn advance_tag_state(
     if !legal {
         return Err("invalid tag transaction transition");
     }
-    if record
+    let baseline = record
         .transitions
         .last()
-        .is_some_and(|previous| at_unix_seconds < previous.at_unix_seconds)
-    {
-        return Err("tag transitions must not move backwards in time");
+        .map(|previous| previous.at_unix_seconds)
+        .unwrap_or(record.created_at_unix_seconds);
+    if at_unix_seconds < baseline {
+        return Err("tag transitions must not predate construction or predecessors");
     }
     record.transitions.push(TagTransactionTransitionV1 {
         from: record.state,
@@ -367,20 +384,18 @@ pub fn record_tag_push_intent_v1(
     at_unix_seconds: u64,
 ) -> Result<(), &'static str> {
     use TagTransactionStateV1 as State;
-    // A fresh intent is recorded at construction, after an uncertain push
-    // that has not yet reconciled, or exactly once per absent-reconciliation
-    // that authorizes a careful retry. Recording twice against one
-    // authorization is refused.
+    // A fresh intent is recorded at construction, or exactly once per
+    // absent-reconciliation that authorizes a careful retry. An uncertain
+    // push must reconcile first: recording straight from an unknown response
+    // would start a second irreversible push while remote state is unknown.
+    // Recording twice against one authorization is refused.
     let retry_authorized = record.state == State::PushIntentDurable
         && record.transitions.last().is_some_and(|transition| {
             transition.reason == "observed-absent-retry-authorized"
                 && transition.to == State::PushIntentDurable
         });
-    if record.state != State::CreatedLocally
-        && record.state != State::PushResponseUnknown
-        && !retry_authorized
-    {
-        return Err("push intent belongs to construction or authorized retry only");
+    if record.state != State::CreatedLocally && !retry_authorized {
+        return Err("push intent belongs to construction or reconciled retry only");
     }
     for value in [
         durability.journal_head_digest.as_str(),
@@ -480,6 +495,14 @@ pub fn reconcile_tag_push_unknown_v1(
         );
     }
     if !observation.ref_exists {
+        // An observed success with an absent ref (dropped push, replication
+        // lag) must never auto-authorize another push: success may have
+        // landed invisibly. Operator decision only.
+        if record.state == State::PushResponseObserved {
+            return Err(
+                "observed success with an absent ref requires operator decision; retry refused",
+            );
+        }
         if record.push_attempts >= FINAL_TAG_MAX_PUSH_ATTEMPTS {
             return Err("push attempt bound reached; operator decision required");
         }

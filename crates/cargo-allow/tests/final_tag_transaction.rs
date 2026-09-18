@@ -182,6 +182,34 @@ fn final_tag_transaction() -> Result<(), Box<dyn Error>> {
         record.state == State::RemoteObservedExact && tag_release_gate_open_v1(&record),
         "exact remote observation must open the release gate",
     )?;
+    // Control: construction validates generation, time, and hex shape so
+    // the producer cannot emit an out-of-contract record.
+    let mut init = begin_init();
+    init.lease_holder_generation = 0;
+    require(
+        begin_tag_transaction_v1(init).is_err(),
+        "construction with generation zero must fail",
+    )?;
+    let mut init = begin_init();
+    init.created_at_unix_seconds = 0;
+    require(
+        begin_tag_transaction_v1(init).is_err(),
+        "construction with zero time must fail",
+    )?;
+    let mut init = begin_init();
+    init.tag.commit = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
+    init.custody_commit = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
+    require(
+        begin_tag_transaction_v1(init).is_err(),
+        "uppercase commit hex must fail closed",
+    )?;
+    // Control: the first transition cannot predate construction.
+    let mut record = begun()?;
+    let durable = durability(&record)?;
+    require(
+        record_tag_push_intent_v1(&mut record, durable, CREATED_AT - 1).is_err(),
+        "intent dated before construction must fail",
+    )?;
     // Control: the gate is open in exactly one state.
     for state in [
         State::CreatedLocally,
@@ -213,6 +241,13 @@ fn final_tag_transaction_unknown_response() -> Result<(), Box<dyn Error>> {
     require(
         record.state == State::PushResponseUnknown,
         "a lost response must be recorded as unknown, never inferred",
+    )?;
+    // Control: an unknown response cannot start another push without
+    // reconciling first; that would be a blind retry.
+    let durable = durability(&record)?;
+    require(
+        record_tag_push_intent_v1(&mut record, durable, CREATED_AT + 35).is_err(),
+        "intent straight from an unknown response must fail",
     )?;
     let exact = FinalTagRemoteObservationV1 {
         provider_reachable: true,
@@ -247,6 +282,20 @@ fn final_tag_transaction_unknown_response() -> Result<(), Box<dyn Error>> {
     require(
         record.push_attempts == 2,
         "the authorized retry must count as a second attempt",
+    )?;
+    // Control: an observed success with an absent ref refuses retry for
+    // operator decision instead of auto-authorizing another push.
+    let mut observed_absent = begun()?;
+    let durable = durability(&observed_absent)?;
+    record_tag_push_intent_v1(&mut observed_absent, durable, CREATED_AT + 10)
+        .map_err(io::Error::other)?;
+    record_tag_push_started_v1(&mut observed_absent, CREATED_AT + 20).map_err(io::Error::other)?;
+    record_tag_push_response_v1(&mut observed_absent, true, CREATED_AT + 30)
+        .map_err(io::Error::other)?;
+    require(
+        reconcile_tag_push_unknown_v1(&mut observed_absent, absent_remote(), CREATED_AT + 40)
+            .is_err(),
+        "observed success with an absent ref must refuse retry",
     )?;
     // Control: the attempt bound stops retry loops for operator decision.
     record_tag_push_response_v1(&mut record, false, CREATED_AT + 70).map_err(io::Error::other)?;
