@@ -644,3 +644,13 @@ fn genuine_tie_reports_ambiguous_without_demoting_to_stale() -> Result<(), Strin
     );
     Ok(())
 }
+
+
+#[test]
+fn evaluator_source_has_no_hidden_system_clock() {
+    let source = include_str!("../evaluation.rs");
+    assert!(
+        !source.contains("today_utc_approx"),
+        "core matcher evaluation must receive its lifecycle date from the caller"
+    );
+}
