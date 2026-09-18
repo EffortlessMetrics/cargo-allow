@@ -413,6 +413,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove compilation semantics; no live authorization, permission proof, or release execution is produced."
 
 [[surfaces]]
+id = "release-operation-lease-v1"
+owner_issue = 3925
+semantic_authority = "durable one-operation lease serialization"
+path = "crates/cargo-allow/tests/release_operation_lease.rs"
+subject = "CargoAllowReleaseOperationLeaseV1"
+producer = "production lease model with hostile concurrency and runner-loss fixtures"
+consumer = "#2502 clean and #2509 recovery execution evidence"
+claimed_acceptance_row = "one-holder acquisition, clean/recovery exclusion, bounded renewal, and runner-loss semantics"
+assertion_mechanism = "production lease model over synthetic subjects with JSON Schema read-back"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove lease semantics; no live operation, provider proof, or release execution is produced."
+
+[[surfaces]]
 id = "repository-release-controls"
 owner_issue = 3790
 semantic_authority = "release workflow token-gate controls"

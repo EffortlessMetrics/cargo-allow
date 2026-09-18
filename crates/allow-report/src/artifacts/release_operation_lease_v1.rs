@@ -355,6 +355,13 @@ fn advance_lease_state(
     if !legal {
         return Err("invalid operation lease transition");
     }
+    if record
+        .transitions
+        .last()
+        .is_some_and(|previous| at_unix_seconds < previous.at_unix_seconds)
+    {
+        return Err("lease transitions must not move backwards in time");
+    }
     record.transitions.push(OperationLeaseTransitionV1 {
         from: record.state,
         to: next,
@@ -423,6 +430,9 @@ pub fn renew_operation_lease_v1(
     }
     if new_expires_at_unix_seconds <= record.expires_at_unix_seconds {
         return Err("renewal must extend the lease window");
+    }
+    if now_unix_seconds < record.renewed_at_unix_seconds {
+        return Err("lease renewal must not move backwards in time");
     }
     record.renewals += 1;
     record.renewed_at_unix_seconds = now_unix_seconds;

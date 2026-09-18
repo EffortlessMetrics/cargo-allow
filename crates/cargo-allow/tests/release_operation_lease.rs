@@ -151,6 +151,20 @@ fn release_operation_lease() -> Result<(), Box<dyn Error>> {
         renew_operation_lease_v1(&mut record, NOW + 40, EXPIRES_AT + 2400, true).is_err(),
         "renewal past the bound must fail",
     )?;
+    // Control: lifecycle time never moves backwards.
+    let mut record = acquired()?;
+    note_lease_irreversible_start_v1(&mut record, NOW + 10).map_err(io::Error::other)?;
+    require(
+        release_operation_lease_v1(&mut record, true, NOW + 5).is_err()
+            && record.state == State::HeldIrreversible,
+        "settlement dated before the start must fail without mutating the lease",
+    )?;
+    renew_operation_lease_v1(&mut record, NOW + 20, EXPIRES_AT + 600, true)
+        .map_err(io::Error::other)?;
+    require(
+        renew_operation_lease_v1(&mut record, NOW + 10, EXPIRES_AT + 1200, true).is_err(),
+        "renewal dated before the last renewal must fail",
+    )?;
     // Control: lease records carry no credential material.
     let rendered = render_release_operation_lease_v1(&record)?;
     for marker in [
