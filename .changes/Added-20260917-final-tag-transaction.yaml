@@ -1,0 +1,4 @@
+kind: Added
+body: >-
+  Model the exactly-once annotated final-tag transaction with durable push
+  intent, unknown-response reconciliation, and exact remote observation (#3930).

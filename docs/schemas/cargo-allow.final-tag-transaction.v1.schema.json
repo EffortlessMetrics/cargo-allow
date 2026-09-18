@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json",
+  "title": "CargoAllowFinalTagTransactionV1",
+  "description": "Exactly-once annotated tag transaction for one final release: local construction, durable push intent, response uncertainty, and exact remote observation. Structural validation does not create or push the tag, read credentials, or authorize publication.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "transaction_id",
+    "operation",
+    "authorization_digest",
+    "authorization_observed_state",
+    "lease_key_digest",
+    "lease_observed_state",
+    "lease_holder_generation",
+    "custody_commit",
+    "custody_tree",
+    "freeze_digest",
+    "custody_digest",
+    "replay_digest",
+    "evidence_digest",
+    "tag",
+    "remote_repository",
+    "remote_ref",
+    "journal_prefix",
+    "journal_head_digest",
+    "checkpoint_digest",
+    "intent_digest",
+    "push_attempts",
+    "created_at_unix_seconds",
+    "workflow",
+    "run",
+    "attempt",
+    "job",
+    "state",
+    "transitions",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.final-tag-transaction.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "transaction_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operation": {
+      "const": "publish_cargo_allow_final_0_2_0"
+    },
+    "authorization_digest": { "$ref": "#/$defs/digest" },
+    "authorization_observed_state": { "type": "string", "minLength": 1 },
+    "lease_key_digest": { "$ref": "#/$defs/digest" },
+    "lease_observed_state": { "type": "string", "minLength": 1 },
+    "lease_holder_generation": { "type": "integer", "minimum": 1 },
+    "custody_commit": { "$ref": "#/$defs/git_sha" },
+    "custody_tree": { "$ref": "#/$defs/git_sha" },
+    "freeze_digest": { "$ref": "#/$defs/digest" },
+    "custody_digest": { "$ref": "#/$defs/digest" },
+    "replay_digest": { "$ref": "#/$defs/digest" },
+    "evidence_digest": { "$ref": "#/$defs/digest" },
+    "tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "tag",
+        "channel",
+        "github_prerelease",
+        "commit",
+        "tree",
+        "tag_object_id",
+        "tagger_digest",
+        "message_digest"
+      ],
+      "properties": {
+        "version": { "const": "0.2.0" },
+        "tag": { "const": "v0.2.0" },
+        "channel": { "const": "stable" },
+        "github_prerelease": { "const": false },
+        "commit": { "$ref": "#/$defs/git_sha" },
+        "tree": { "$ref": "#/$defs/git_sha" },
+        "tag_object_id": { "$ref": "#/$defs/git_sha" },
+        "tagger_digest": { "$ref": "#/$defs/digest" },
+        "message_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "remote_repository": { "type": "string", "minLength": 1 },
+    "remote_ref": { "type": "string", "minLength": 1 },
+    "journal_prefix": { "type": "string", "minLength": 1 },
+    "journal_head_digest": { "type": "string" },
+    "checkpoint_digest": { "type": "string" },
+    "intent_digest": { "type": "string" },
+    "push_attempts": { "type": "integer", "minimum": 0 },
+    "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "workflow": { "type": "string", "minLength": 1 },
+    "run": { "type": "string", "minLength": 1 },
+    "attempt": { "type": "string", "minLength": 1 },
+    "job": { "type": "string", "minLength": 1 },
+    "state": { "$ref": "#/$defs/tag_state" },
+    "transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "git_sha": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "tag_state": {
+      "type": "string",
+      "enum": [
+        "created_locally",
+        "push_intent_durable",
+        "push_started",
+        "push_response_observed",
+        "push_response_unknown",
+        "remote_observed_exact",
+        "remote_conflict",
+        "provider_unavailable",
+        "instrument_failure"
+      ]
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "at_unix_seconds", "reason"],
+      "properties": {
+        "from": { "$ref": "#/$defs/tag_state" },
+        "to": { "$ref": "#/$defs/tag_state" },
+        "at_unix_seconds": { "type": "integer", "minimum": 0 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

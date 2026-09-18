@@ -24,6 +24,7 @@ mod final_freeze_replay_v1;
 mod final_readiness_v1;
 mod final_registry_preflight_v1;
 mod final_support_selection_v1;
+mod final_tag_transaction_v1;
 mod frozen_candidate_custody_v1;
 mod frozen_subject_lock_v1;
 mod github_pr_check_v1;
@@ -41,6 +42,7 @@ mod rc_publication_incident_v1;
 mod reconciled_package_publication_v1;
 mod refresh;
 mod release_artifact_transfer_v1;
+mod release_authorization_custody_v1;
 mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
@@ -210,6 +212,16 @@ pub use final_support_selection_v1::{
     FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
     FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
 };
+pub use final_tag_transaction_v1::{
+    CargoAllowFinalTagTransactionV1, FINAL_TAG_CHANNEL, FINAL_TAG_MAX_PUSH_ATTEMPTS,
+    FINAL_TAG_OPERATION, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE, FINAL_TAG_REQUIRED_LEASE_STATE,
+    FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
+    FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
+    FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
+    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
+    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+};
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
     CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,
@@ -363,6 +375,18 @@ pub use release_artifact_transfer_v1::{
     ActualDownloadedFileV1, ArtifactTransferDispositionV1, ArtifactTransferFileV1,
     ArtifactTransferInitV1, CargoAllowReleaseArtifactTransferV1, ConsumerContextV1,
     ProducerIdentityV1, TrustClassV1, UntrustedInputPostureV1,
+};
+pub use release_authorization_custody_v1::{
+    AUTHORIZATION_CONSUMPTION_SCHEMA_ID, AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
+    AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS, AUTHORIZATION_CUSTODY_SCHEMA_ID,
+    AUTHORIZATION_CUSTODY_SCHEMA_VERSION, AuthorizationCustodyMintInitV1,
+    AuthorizationCustodyMintV1, AuthorizationCustodyStorageV1, AuthorizationCustodyTransitionV1,
+    AuthorizationSelectionPayloadV1, CargoAllowReleaseAuthorizationConsumptionV1,
+    CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1, authorization_evidence_digest_v1,
+    mint_authorization_custody_v1, note_custody_readback_v1, note_irreversible_start_v1,
+    render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
+    revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
+    settle_authorization_consumption_v1, verify_custody_readback_v1,
 };
 pub use release_authorization_v1::{
     CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,

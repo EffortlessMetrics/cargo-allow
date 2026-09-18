@@ -37,7 +37,7 @@ fn content_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> 
     Ok(allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1))
 }
 
-fn authorization_statement_digest(
+pub(crate) fn authorization_statement_digest(
     input: &ReleaseAuthorizationInputV1,
 ) -> Result<String, serde_json::Error> {
     content_digest(&(
