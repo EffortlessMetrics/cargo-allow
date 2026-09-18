@@ -128,7 +128,7 @@ jobs:
               assert not git('diff', '--name-only')
               assert set(git('diff', '--cached', '--name-only', main).decode().splitlines()) == PATHS
               assert git('diff', '--cached', '--numstat', main).decode().splitlines() == ['8\t8\tCargo.lock', '1\t1\tcrates/cargo-allow/Cargo.toml']
-              git('diff', '--cached', '--check')
+              git('diff', '--cached', '--check', main)
               tree = git('write-tree').decode().strip()
               git('-c', 'core.hooksPath=', '-c', 'commit.gpgSign=false', 'commit', '-m', 'Merge reviewed main into jsonschema upgrade (#4274)', '-m', 'Resolve only the lockfile overlap by preserving current-main dependency rows and replaying the original four jsonschema version/checksum changes. No receipt is refreshed here; committed-source regeneration and final-head qualification remain required.')
               head = git('rev-parse', 'HEAD').decode().strip()
