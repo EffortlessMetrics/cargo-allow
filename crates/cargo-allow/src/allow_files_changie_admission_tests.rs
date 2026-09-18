@@ -111,7 +111,7 @@ fn changie_feature_is_declared_in_the_crate_manifest() {
     // The dependency is optional so feature-disabled consumers never
     // compile it (falsifier 3).
     assert!(
-        manifest.contains("yaml-rust2 = { version = \"0.11\", optional = true }"),
+        manifest.contains("yaml-rust2 = { version = \"0.13\", optional = true }"),
         "yaml-rust2 must be an optional dependency"
     );
 }

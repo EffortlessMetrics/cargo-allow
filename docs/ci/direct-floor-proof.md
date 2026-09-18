@@ -175,32 +175,34 @@ a complete cross-crate feature graph or promote any proof disposition.
 ### Current retained execution
 
 The four retained receipts were generated from committed source
-`7a2cfbce2ec419086300a02a6f58fdddd45220f4` on 2026-09-12, using observed
+`aa9a3a761f3db80e85734c70afeb183266da4e0d` on 2026-09-17, using observed
 Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
 The collector binds the observed compiler and rustdoc paths to execution and
 disables inherited compiler wrappers before running each proof class.
 
-| Product | Proven direct floors | Executed classes | Selection evidence |
+| Product | Proven / observed direct floors | Executed classes | Selection evidence |
 | --- | ---: | --- | --- |
-| cargo-allow | 15 | check, test, single allow-core archive sample | [companion](receipts/direct-floor-proof-cargo-allow-v1.selection.md) |
-| shared | 6 | check only, advisory | [companion](receipts/direct-floor-proof-shared-v1.selection.md) |
-| cargo-intent | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-intent-v1.selection.md) |
-| cargo-proof | 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-proof-v1.selection.md) |
+| cargo-allow | 15 / 15 | check, test, single allow-core archive sample | [companion](receipts/direct-floor-proof-cargo-allow-v1.selection.md) |
+| shared | 6 / 6 | check only, advisory | [companion](receipts/direct-floor-proof-shared-v1.selection.md) |
+| cargo-intent | 7 / 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-intent-v1.selection.md) |
+| cargo-proof | 7 / 7 | check only, advisory | [companion](receipts/direct-floor-proof-cargo-proof-v1.selection.md) |
 
-All four commands completed successfully. The cargo-allow receipt includes
-the activated yaml-rust2 floor at 0.11.0 and its companion records the
-`allow-files/changie -> allow-files/dep:yaml-rust2` witness. All eight tracked
-JSON/Markdown artifacts are byte-identical copies of generated LF outputs.
-No identity fields, rows, or dispositions were rewritten.
+The cargo-allow check, test, and single-package archive classes completed
+successfully. Its receipt proves the activated yaml-rust2 floor at 0.13.0;
+the companion retains the `allow-files/changie -> allow-files/dep:yaml-rust2`
+activation witness. Advisory outcomes remain visible in their own rows and
+do not become cargo-allow release gates.
 
-The floored cargo-allow unit suite passed 1,541 tests with exactly the five
-recorded bootstrap exclusions; the remaining selected integration and doc tests
-also passed. Outside-the-floor grading passed all 59 `minimum_` tests without
-bootstrap exclusions, including all five retained-output graders. The producer
-protocol wrapper passed all 15 controls on native Windows.
+Five original-workspace topology tests passed before projection. Their
+current-lock evidence is separate from the floor commands. The projected
+test run records those five exclusions and the five existing retained-output
+bootstrap exclusions; ordinary CI continues to run the original assertions.
+The generated receipts are then graded without bootstrap exclusions.
 
-Earlier successful execution from `813c594d` on 2026-09-10 remains historical
-in commit `ac1c3fa5`; it is not the source of the current retained copies.
+The eight JSON/Markdown receipt artifacts are exact generated LF outputs.
+No identity fields, dependency floors, or dispositions were hand-edited.
+Prior retained runs remain historical in Git; they are not the source of
+the refreshed copies.
 
 These are bounded historical executions, not proof for arbitrary later source
 trees or release qualification. The v1 receipt's manifest/lock freshness does
