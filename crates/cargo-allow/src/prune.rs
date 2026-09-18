@@ -101,7 +101,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             None,
             true,
         )?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let candidates = prune_stale_candidates(&cfg, &outcomes);
     // --allow-id selects one entry before any preview, receipt,
     // summary, or write derives from the candidate set (#4176): an

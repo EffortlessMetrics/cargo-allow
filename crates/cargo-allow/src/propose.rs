@@ -149,7 +149,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         }
         Err(error) => return Err(error),
     };
-    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     let new_findings_total = outcomes
         .iter()
         .filter(|o| o.status == MatchStatus::New)

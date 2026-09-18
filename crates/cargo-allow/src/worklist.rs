@@ -88,7 +88,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         EvidenceValidationMode::ReportOnly,
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let filters = worklist_filters(args);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
