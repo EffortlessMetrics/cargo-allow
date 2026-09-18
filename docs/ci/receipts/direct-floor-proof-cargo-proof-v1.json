@@ -8,8 +8,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host:x86_64-pc-windows-msvc",
- "manifest_set_digest": "e7f431c883f3d492e7f6be40e377562468334f81701d6ed7a8058acbcc135a52",
- "lock_digest": "dccad79fa88bb2cfe03674b5e69e907d3f00dad94d6f66595b0cd35e75e91120",
+ "manifest_set_digest": "2bac8c4a8f2c583948dc365a5c77cb6f694e47f75a9ece6fd24980417ec2474f",
+ "lock_digest": "c6730d656e7686213bf37e4fa4474bbe61824039b31fdfb02d25bcee92e98775",
  "rows": [
   {
    "package": "clap",
@@ -87,7 +87,7 @@
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:b5412eaaba6fcfc1368a7f6bf6251a0b6a218899cef6c64fc918570d7a042c74; certified members crates/effortless-repo-protocol, crates/effortless-rust-source-index, crates/intent-protocol, crates/proof-protocol, crates/proof-engine, crates/cargo-proof; execution members crates/effortless-repo-protocol, crates/effortless-rust-source-index, crates/intent-protocol, crates/proof-protocol, crates/proof-engine, crates/cargo-proof",
-  "local floor subject: source aa9a3a761f3db80e85734c70afeb183266da4e0d; executed commit dfc9d80ca488f543db33e2181fdd85f472375876; tree bc4c98a9af47b3331a51df87121100e3f48b7b7c; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "local floor subject: source d60511ad507beb50771f2a514c03a5630b83b3da; executed commit 48d05194497b2421a8cba2a127add3db9605c2cd; tree 55e2bde547c44fbc103a3495d7b1e7bbb41175d3; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the cargo-proof package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }

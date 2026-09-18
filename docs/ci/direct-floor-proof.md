@@ -175,7 +175,7 @@ a complete cross-crate feature graph or promote any proof disposition.
 ### Current retained execution
 
 The four retained receipts were generated from committed source
-`aa9a3a761f3db80e85734c70afeb183266da4e0d` on 2026-09-17, using observed
+`d60511ad507beb50771f2a514c03a5630b83b3da` on 2026-09-18, using observed
 Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
 The collector binds the observed compiler and rustdoc paths to execution and
 disables inherited compiler wrappers before running each proof class.
