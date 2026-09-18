@@ -1,0 +1,125 @@
+name: Exact PR 4274 evidence import v1
+
+on:
+  push:
+    branches: [automation/pr-4274-evidence-import-v1]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: pr-4274-evidence-import-v1
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: >-
+      github.repository == 'EffortlessMetrics/cargo-allow' &&
+      github.event.head_commit.message == 'ci: import verified PR 4274 evidence v1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SOURCE_HEAD: d60511ad507beb50771f2a514c03a5630b83b3da
+      SOURCE_TREE: b5e0fb93afd647707d5cc216337f0e3bc85d1eba
+      MAIN_HEAD: 86b768bcbcf31d676ca8517f6e903f28b1449f80
+      NATIVE_RUN: '35297370852'
+      NATIVE_ATTEMPT: '1'
+      NATIVE_ARTIFACT: '10529276252'
+      NATIVE_DIGEST: 5919d6bc28afb4a99db06e6229d156f38c76ab44c1d8908ebded602c5831b20d
+      OUTPUT_BRANCH: automation/pr-4274-evidence-output-v1
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: d60511ad507beb50771f2a514c03a5630b83b3da
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Admit exact completed native run and download pinned artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pr4274-import"
+          api='https://api.github.com/repos/EffortlessMetrics/cargo-allow'
+          curl --fail --silent --show-error --max-time 60 -H "Authorization: Bearer $GH_TOKEN" "$api/actions/runs/$NATIVE_RUN" -o "$RUNNER_TEMP/pr4274-import/native-run.json"
+          curl --fail --silent --show-error --max-time 60 -H "Authorization: Bearer $GH_TOKEN" "$api/actions/artifacts/$NATIVE_ARTIFACT" -o "$RUNNER_TEMP/pr4274-import/native-artifact.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'pr4274-import'
+          run = json.loads((root / 'native-run.json').read_text())
+          artifact = json.loads((root / 'native-artifact.json').read_text())
+          assert run['id'] == int(os.environ['NATIVE_RUN'])
+          assert run['run_attempt'] == int(os.environ['NATIVE_ATTEMPT'])
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['head_sha'] == '37ecbdce11cefaeae2d7a8da9bf458411613929f'
+          assert artifact['id'] == int(os.environ['NATIVE_ARTIFACT'])
+          assert artifact['name'] == 'pr-4274-floor-regeneration-v2'
+          assert artifact['expired'] is False and artifact['size_in_bytes'] == 139816
+          assert artifact['digest'] == 'sha256:' + os.environ['NATIVE_DIGEST']
+          assert artifact['workflow_run']['id'] == run['id']
+          assert artifact['workflow_run']['head_sha'] == run['head_sha']
+          print('Exact terminal native run and archive identity admitted')
+          PY
+          curl --fail --silent --show-error --location --max-time 120 -H "Authorization: Bearer $GH_TOKEN" "$api/actions/artifacts/$NATIVE_ARTIFACT/zip" -o "$RUNNER_TEMP/pr4274-native.zip"
+
+      - name: Verify and import only the reviewed ten generated outputs
+        id: imported
+        env:
+          NATIVE_ARCHIVE: ${{ runner.temp }}/pr4274-native.zip
+          IMPORT_RECORD: ${{ runner.temp }}/pr4274-import/import.json
+          IMPORT_MESSAGE: >-
+            test(deps): retain verified jsonschema 0.56 floor evidence (#4274)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$MAIN_HEAD"
+          test "$(git ls-remote origin refs/heads/dependabot/cargo/jsonschema-0.56.0 | cut -f1)" = "$SOURCE_HEAD"
+          git show "$GITHUB_SHA:.github/scripts/pr-4274-import-evidence.py" > "$RUNNER_TEMP/pr4274-import.py"
+          test "$(git hash-object "$RUNNER_TEMP/pr4274-import.py")" = '7de3aa99e7283e6ca041931b83dea9362ce0c415'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config core.autocrlf false
+          python3 -B "$RUNNER_TEMP/pr4274-import.py"
+          git diff --binary "$SOURCE_HEAD" HEAD > "$RUNNER_TEMP/pr4274-import/import.patch"
+
+      - name: Publish only a new disposable output branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMPORT_COMMIT: ${{ steps.imported.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$IMPORT_COMMIT"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$MAIN_HEAD"
+          test "$(git ls-remote origin refs/heads/dependabot/cargo/jsonschema-0.56.0 | cut -f1)" = "$SOURCE_HEAD"
+          set +e
+          git ls-remote --exit-code origin "refs/heads/$OUTPUT_BRANCH" > /dev/null
+          absent=$?
+          set -e
+          test "$absent" -eq 2
+          askpass="$RUNNER_TEMP/pr4274-askpass.sh"
+          trap 'rm -f "$askpass"' EXIT
+          cat > "$askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' 'x-access-token' ;;
+            *Password*) printf '%s\n' "$GH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "$askpass"
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git -c credential.helper= push 'https://github.com/EffortlessMetrics/cargo-allow.git' "HEAD:refs/heads/$OUTPUT_BRANCH"
+          test "$(git ls-remote origin "refs/heads/$OUTPUT_BRANCH" | cut -f1)" = "$IMPORT_COMMIT"
+          test "$(git ls-remote origin refs/heads/dependabot/cargo/jsonschema-0.56.0 | cut -f1)" = "$SOURCE_HEAD"
+
+      - name: Retain import identity and diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pr-4274-evidence-import-v1
+          path: ${{ runner.temp }}/pr4274-import/
+          if-no-files-found: error
