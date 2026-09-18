@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Model the append-only publication journal with durable pre-intent,
+  unknown-response preservation, exact observation verdicts, and incident
+  preservation for every package row (#3921).

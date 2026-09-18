@@ -38,6 +38,7 @@ mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
+mod publication_journal_v1;
 mod rc_publication_incident_v1;
 mod reconciled_package_publication_v1;
 mod refresh;
@@ -345,6 +346,18 @@ pub use rc_publication_incident_v1::{
     ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
     ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
     RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
+};
+
+pub use publication_journal_v1::{
+    CargoAllowPublicationJournalEntryV1, CargoAllowPublicationJournalV1,
+    PUBLICATION_JOURNAL_GENESIS_DIGEST, PUBLICATION_JOURNAL_MAX_RESPONSE_DETAIL_LEN,
+    PUBLICATION_JOURNAL_MAX_UPLOAD_ATTEMPTS, PUBLICATION_JOURNAL_OPERATION,
+    PUBLICATION_JOURNAL_RECOVERY_OPERATION, PUBLICATION_JOURNAL_SCHEMA_ID,
+    PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
+    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
+    verify_publication_journal_v1,
 };
 
 pub use evaluation_artifact_set_v1::{

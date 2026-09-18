@@ -162,6 +162,7 @@ runtime, reachability, or semantic analysis.
 | [Release authorization custody](cargo-allow.release-authorization-custody.v1.schema.json) | `cargo-allow.release-authorization-custody.v1` | typed `allow-report` custody model, selection payload, and canonical renderers (#3927) |
 | [Release operation lease](cargo-allow.release-operation-lease.v1.schema.json) | `cargo-allow.release-operation-lease.v1` | typed `allow-report` one-operation lease model and canonical renderer (#3925) |
 | [Final tag transaction](cargo-allow.final-tag-transaction.v1.schema.json) | `cargo-allow.final-tag-transaction.v1` | typed `allow-report` exactly-once tag transaction model and canonical renderer (#3930) |
+| [Publication journal](cargo-allow.publication-journal.v1.schema.json) | `cargo-allow.publication-journal.v1` | typed `allow-report` append-only publication journal model and canonical renderer (#3921) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
 OIDC authentication) was retired with its schema: no release ever attached a V1
@@ -258,6 +259,7 @@ promote policy, authorize publication, or establish release readiness.
 - [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
 - [cargo-allow.release-operation-lease.v1.schema.json](cargo-allow.release-operation-lease.v1.schema.json) durable one-operation lease contract (serialization-only; not an operation authorization)
 - [cargo-allow.final-tag-transaction.v1.schema.json](cargo-allow.final-tag-transaction.v1.schema.json) exactly-once annotated tag transaction contract (consistency-only; not a tag creation or push authority)
+- [cargo-allow.publication-journal.v1.schema.json](cargo-allow.publication-journal.v1.schema.json) append-only publication journal contract (history-only; not an upload or observation authority)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
