@@ -102,12 +102,12 @@ fn normalize_locator_path(path: &str) -> Option<Vec<String>> {
     if normalized.contains('%') {
         return None;
     }
-    let bytes = normalized.as_bytes();
-    let absolute = normalized.starts_with('/')
-        || (bytes.len() >= 3
-            && bytes[0].is_ascii_alphabetic()
-            && bytes[1] == b':'
-            && bytes[2] == b'/');
+    let mut chars = normalized.chars();
+    let drive_absolute = matches!(
+        (chars.next(), chars.next(), chars.next()),
+        (Some(letter), Some(':'), Some('/')) if letter.is_ascii_alphabetic()
+    );
+    let absolute = normalized.starts_with('/') || drive_absolute;
     if !absolute {
         return None;
     }
@@ -145,7 +145,11 @@ fn in_tree_locator(locator: &str, repository_root: &str) -> bool {
         if root.is_empty() {
             return true;
         }
-        return path.len() >= root.len() && path[..root.len()] == root[..];
+        return path.len() >= root.len()
+            && root
+                .iter()
+                .zip(path.iter())
+                .all(|(root_component, path_component)| root_component == path_component);
     }
     !locator.contains("://")
         || IN_TREE_PREFIXES
