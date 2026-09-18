@@ -75,6 +75,7 @@ fn generated_compat_preserves_missing_and_stale_drift() {
             "policy/no-panic-baseline.toml",
         ))],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(matched.iter().any(|outcome| {
         outcome.finding_index.is_some()
@@ -91,6 +92,7 @@ fn generated_compat_preserves_missing_and_stale_drift() {
             "policy/extra-baseline.toml",
         ))],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -98,7 +100,7 @@ fn generated_compat_preserves_missing_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(
@@ -293,6 +295,7 @@ fn executable_compat_preserves_missing_and_stale_drift() {
             "scripts/package-proof.sh",
         ))],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(matched.iter().any(|outcome| {
         outcome.finding_index.is_some()
@@ -307,6 +310,7 @@ fn executable_compat_preserves_missing_and_stale_drift() {
         &cfg,
         &[executable_finding(PathBuf::from("scripts/new-tool.sh"))],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -314,7 +318,7 @@ fn executable_compat_preserves_missing_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(

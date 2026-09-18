@@ -45,7 +45,7 @@ fn advisory_drift_import_reports_location_drift_without_failing_no_new() {
         column: 4,
     });
 
-    let outcomes = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew);
+    let outcomes = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     let drift = outcomes
         .iter()

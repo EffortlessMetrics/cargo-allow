@@ -70,6 +70,7 @@ fn no_panic_baseline_occurrence_limit_prevents_unbounded_matches() {
         &cfg,
         &[finding.clone(), finding.clone(), finding],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
 
     assert_eq!(
@@ -230,7 +231,7 @@ fn no_panic_allowlist_compat_preserves_matched_new_and_stale_drift() {
         line: 7,
         column: 12,
     });
-    let matched = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew);
+    let matched = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     assert!(
         matched
             .iter()
@@ -248,6 +249,7 @@ fn no_panic_allowlist_compat_preserves_matched_new_and_stale_drift() {
             "let value = maybe.expect(\"value\");",
         )],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -255,7 +257,7 @@ fn no_panic_allowlist_compat_preserves_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(
         stale_allow
             .iter()

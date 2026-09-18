@@ -108,6 +108,7 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
             ),
         ],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert_eq!(
         matched
@@ -133,6 +134,7 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
             ),
         ],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -140,7 +142,7 @@ fn workflow_compat_preserves_missing_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(
@@ -324,6 +326,7 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
             dependency_surface_finding(PathBuf::from("crates/core/Cargo.toml")),
         ],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert_eq!(
         matched
@@ -345,6 +348,7 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
             "xtask/Cargo.toml",
         ))],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -352,7 +356,7 @@ fn dependency_surface_compat_preserves_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(
