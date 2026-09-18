@@ -152,6 +152,11 @@ fn final_tag_transaction() -> Result<(), Box<dyn Error>> {
         record.state == State::PushIntentDurable && !record.intent_digest.is_empty(),
         "agreeing durability records must make the push intent durable",
     )?;
+    // Control: lifecycle time never moves backwards.
+    require(
+        record_tag_push_started_v1(&mut record, CREATED_AT + 5).is_err(),
+        "starting dated before the durable intent must fail",
+    )?;
     // Control: only a durable intent may start, within the attempt bound.
     record_tag_push_started_v1(&mut record, CREATED_AT + 20).map_err(io::Error::other)?;
     require(

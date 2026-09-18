@@ -341,6 +341,13 @@ fn advance_tag_state(
     if !legal {
         return Err("invalid tag transaction transition");
     }
+    if record
+        .transitions
+        .last()
+        .is_some_and(|previous| at_unix_seconds < previous.at_unix_seconds)
+    {
+        return Err("tag transitions must not move backwards in time");
+    }
     record.transitions.push(TagTransactionTransitionV1 {
         from: record.state,
         to: next,
