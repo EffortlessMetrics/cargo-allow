@@ -59,10 +59,15 @@ jobs:
           cargo test -p cargo-allow --locked --test release_authorization_custody -- --test-threads=1 2>&1 | tee target/custody-repair-4296/green.log
           cargo test -p cargo-allow --locked --test release_authorization_contract 2>&1 | tee target/custody-repair-4296/authorization-contract.log
           cargo test -p allow-report --locked release_authorization 2>&1 | tee target/custody-repair-4296/authorization-model.log
+      - name: Install the repository CI lint toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - name: Lint and guard the actual changed source
         run: |
           set -euo pipefail
-          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings 2>&1 | tee target/custody-repair-4296/clippy.log
+          rustc +stable -vV > target/custody-repair-4296/lint-rustc.txt
+          RUSTUP_TOOLCHAIN=stable cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings 2>&1 | tee target/custody-repair-4296/clippy.log
           cargo run -p cargo-allow --locked -- check --mode no-new --format markdown --receipt target/custody-repair-4296/no-new.json --output target/custody-repair-4296/no-new.md
           git diff --check
           python3 ../driver/.github/repair-4296.py retain
