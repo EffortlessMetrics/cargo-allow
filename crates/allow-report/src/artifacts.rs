@@ -24,6 +24,7 @@ mod final_freeze_replay_v1;
 mod final_readiness_v1;
 mod final_registry_preflight_v1;
 mod final_support_selection_v1;
+mod final_tag_transaction_v1;
 mod frozen_candidate_custody_v1;
 mod frozen_subject_lock_v1;
 mod github_pr_check_v1;
@@ -209,6 +210,16 @@ pub use final_support_selection_v1::{
     FINAL_SELECTION_IDENTITY_ROLE, FINAL_SUPPORT_SELECTION_SCHEMA_ID,
     FINAL_SUPPORT_SELECTION_SCHEMA_VERSION, FinalSelectionDispositionV1, FinalSelectionRowV1,
     FinalSupportSelectionErrorV1, FinalSupportSelectionV1,
+};
+pub use final_tag_transaction_v1::{
+    CargoAllowFinalTagTransactionV1, FINAL_TAG_CHANNEL, FINAL_TAG_MAX_PUSH_ATTEMPTS,
+    FINAL_TAG_OPERATION, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE, FINAL_TAG_REQUIRED_LEASE_STATE,
+    FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
+    FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
+    FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
+    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
+    tag_push_intent_digest_v1, tag_release_gate_open_v1,
 };
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,

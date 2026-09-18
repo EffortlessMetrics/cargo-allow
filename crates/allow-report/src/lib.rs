@@ -351,6 +351,17 @@ pub use artifacts::{
     revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
     settle_authorization_consumption_v1, verify_custody_readback_v1,
 };
+// Root re-exports for the exactly-once tag transaction (#3930).
+pub use artifacts::{
+    CargoAllowFinalTagTransactionV1, FINAL_TAG_CHANNEL, FINAL_TAG_MAX_PUSH_ATTEMPTS,
+    FINAL_TAG_OPERATION, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE, FINAL_TAG_REQUIRED_LEASE_STATE,
+    FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
+    FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
+    FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
+    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
+    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+};
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
