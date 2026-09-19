@@ -1,0 +1,300 @@
+name: Repair PR 4303 recovery incident stop
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4303-recovery-incident
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[repair-4303-recovery-incident]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Apply the bounded transition repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "4f5602faf945d1ce21f3597ffea644a139039772"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/automation-pr4303-recovery-incident-stop.yml"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(
+                      f"{path}: expected exactly one replacement, found {count}: {old[:120]!r}"
+                  )
+              target.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+          authority = "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+          replace_once(
+              authority,
+              '''    if identity.operation_class == Class::CleanFinalPublication
+              && has_event(events, Event::IncidentRecorded)
+          {
+              return Err(
+                  "clean operation cannot continue after an incident; recovery needs its own lineage",
+              );
+          }
+''',
+              '''    if has_event(events, Event::IncidentRecorded) {
+              match identity.operation_class {
+                  Class::CleanFinalPublication => {
+                      return Err(
+                          "clean operation cannot continue after an incident; recovery needs its own lineage",
+                      );
+                  }
+                  Class::IncidentRecovery => {
+                      if !matches!(
+                          init.event_class,
+                          Event::TagObservedExact
+                              | Event::PackageRowObservedExact
+                              | Event::GitHubDraftObservedExact
+                              | Event::AssetObservedExact
+                              | Event::PublicReleaseObservedExact
+                              | Event::RepositoryReconciled
+                              | Event::IncidentRecorded
+                      ) {
+                          return Err(
+                              "incident-bearing recovery is observation-only; new mutation or settlement needs separate authority",
+                          );
+                      }
+                  }
+                  Class::Containment => {}
+              }
+          }
+''',
+          )
+
+          tests = "crates/cargo-allow/tests/release_operation_authority.rs"
+          replace_once(
+              tests,
+              '''    let mut unavailable_events = Vec::new();
+''',
+              '''    let recovery = build_release_operation_identity_with_predecessor_v1(
+              identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery),
+              &identity,
+              &events,
+              EVALUATED_AT_UNIX_SECONDS,
+          )
+          .map_err(io::Error::other)?;
+          let recovery_proof = validate_release_operation_predecessor_v1(
+              &recovery,
+              &identity,
+              &events,
+              EVALUATED_AT_UNIX_SECONDS,
+          )
+          .map_err(io::Error::other)?;
+          let mut recovery_events = Vec::new();
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::OperationSelected,
+              Operation,
+              72,
+          )?;
+          let mut recovery_selected = event_init(
+              &recovery,
+              Event::RecoverySelected,
+              Operation,
+              ResultClass::Exact,
+              73,
+          );
+          recovery_selected.payload_digest = recovery
+              .incident_predecessor_head_digest
+              .clone()
+              .ok_or_else(|| io::Error::other("recovery predecessor head missing"))?;
+          recovery_events.push(
+              append_release_operation_event_with_predecessor_v1(
+                  &recovery,
+                  &recovery_events,
+                  recovery_selected,
+                  &recovery_proof,
+              )
+              .map_err(io::Error::other)?,
+          );
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::AuthorizationSelected,
+              Operation,
+              74,
+          )?;
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::LeaseAcquired,
+              Operation,
+              75,
+          )?;
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::TagObservedExact,
+              Operation,
+              76,
+          )?;
+          let first_package = recovery
+              .packages
+              .first()
+              .ok_or_else(|| io::Error::other("recovery package denominator missing"))?
+              .logical_id
+              .clone();
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::PackageRowIntentDurable,
+              CargoAllowReleaseOperationEventSubjectV1::Package(first_package.clone()),
+              77,
+          )?;
+          append_request_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              CargoAllowReleaseOperationEventSubjectV1::Package(first_package.clone()),
+              78,
+          )?;
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::IncidentRecorded,
+              Operation,
+              79,
+          )?;
+          append_with_proof(
+              &recovery,
+              &recovery_proof,
+              &mut recovery_events,
+              Event::PackageRowObservedExact,
+              CargoAllowReleaseOperationEventSubjectV1::Package(first_package),
+              80,
+          )?;
+          require(
+              evaluate_release_operation_with_predecessor_v1(
+                  &recovery,
+                  &recovery_events,
+                  EVALUATED_AT_UNIX_SECONDS,
+                  &recovery_proof,
+              )
+              .map_err(io::Error::other)?
+              .state
+                  == State::RecoveryRequired,
+              "exact readback after a recovery incident must preserve RecoveryRequired",
+          )?;
+          let second_package = recovery
+              .packages
+              .get(1)
+              .ok_or_else(|| io::Error::other("recovery needs a second package row"))?
+              .logical_id
+              .clone();
+          require(
+              append_release_operation_event_with_predecessor_v1(
+                  &recovery,
+                  &recovery_events,
+                  event_init(
+                      &recovery,
+                      Event::PackageRowIntentDurable,
+                      CargoAllowReleaseOperationEventSubjectV1::Package(second_package),
+                      ResultClass::Exact,
+                      81,
+                  ),
+                  &recovery_proof,
+              )
+              .is_err(),
+              "incident-bearing recovery must not start another package mutation",
+          )?;
+
+          let mut unavailable_events = Vec::new();
+''',
+          )
+
+          docs = "docs/release/release-operation-authority-v1.md"
+          replace_once(
+              docs,
+              '''Clean operations stop after IncidentRecorded, recovery authorization requires an
+          exact RecoverySelected, and containment is barred from the publication path.
+          A later successful child observation cannot delete incident history.
+''',
+              '''Clean operations stop after IncidentRecorded. Incident-recovery operations become
+          observation-only after IncidentRecorded: exact correlated provider observations and
+          repository reconciliation may still be appended to preserve public truth, but no new
+          authorization, lease, durable intent, irreversible request, or settlement may start
+          under that lineage. Recovery authorization requires an exact RecoverySelected, and
+          containment is barred from the publication path. A later successful child observation
+          cannot delete incident history.
+''',
+          )
+          PY
+
+          git rm .github/workflows/automation-pr4303-recovery-incident-stop.yml
+          cargo fmt --all
+
+          python3 - <<'PY'
+          import subprocess
+
+          expected = {
+              ".github/workflows/automation-pr4303-recovery-incident-stop.yml",
+              "crates/allow-report/src/artifacts/release_operation_authority_v1.rs",
+              "crates/cargo-allow/tests/release_operation_authority.rs",
+              "docs/release/release-operation-authority-v1.md",
+          }
+          actual = set(
+              subprocess.check_output(["git", "diff", "--name-only", "HEAD"], text=True)
+              .splitlines()
+          )
+          if actual != expected:
+              raise SystemExit(f"unexpected repair paths: {sorted(actual)}")
+          PY
+
+      - name: Prove the source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          bash scripts/check-workflow-syntax.sh
+          python3 scripts/test-verify-evidence-surface-inventory.py
+          python3 scripts/verify-evidence-surface-inventory.py
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Commit and transfer the proven source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(release): stop recovery mutation after incident (#3940)"
+          git push origin HEAD:release/3940-operation-authority-v1
