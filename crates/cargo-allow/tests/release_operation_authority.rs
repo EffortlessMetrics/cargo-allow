@@ -9,16 +9,17 @@ use allow_report::{
     CargoAllowReleaseOperationEventInitV1, CargoAllowReleaseOperationEventSubjectV1,
     CargoAllowReleaseOperationEventV1, CargoAllowReleaseOperationIdentityInitV1,
     CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
-    CargoAllowReleaseOperationProducerV1, CargoAllowReleaseOperationResponsePostureV1,
-    CargoAllowReleaseOperationSemanticResultV1, CargoAllowReleaseOperationStateV1,
-    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
-    append_release_operation_event_v1, build_release_operation_identity_v1,
-    build_release_operation_identity_with_predecessor_v1,
-    compile_release_operation_head_v1, evaluate_release_operation_v1,
+    CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationStateV1, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_OPERATION_ASSET_SELECTION, append_release_operation_event_v1,
+    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
+    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
+    evaluate_release_operation_v1, evaluate_release_operation_with_predecessor_v1,
     release_operation_identity_digest_v1, render_release_operation_evaluation_v1,
     render_release_operation_event_v1, render_release_operation_head_v1,
     render_release_operation_identity_v1, validate_release_operation_history_v1,
-    validate_release_operation_identity_v1,
+    validate_release_operation_identity_v1, validate_release_operation_predecessor_v1,
 };
 
 const EVALUATED_AT_UNIX_SECONDS: u64 = 1_790_100_000;
@@ -95,10 +96,8 @@ fn identity_init(
         workflow_digest: digest(10),
         action_inventory_digest: digest(11),
         live_controls_digest: digest(12),
-        incident_predecessor_operation_digest: match class {
-            CargoAllowReleaseOperationClassV1::CleanFinalPublication => None,
-            _ => Some(digest(13)),
-        },
+        incident_predecessor_operation_digest: None,
+        incident_predecessor_head_digest: None,
         one_run_scope: true,
         expires_at_unix_seconds: 1_800_000_000,
     }
@@ -144,6 +143,19 @@ fn event_init(
     result: CargoAllowReleaseOperationSemanticResultV1,
     ordinal: u64,
 ) -> CargoAllowReleaseOperationEventInitV1 {
+    let artifact_digest = match &subject {
+        CargoAllowReleaseOperationEventSubjectV1::Package(id) => identity
+            .packages
+            .iter()
+            .find(|row| row.logical_id == *id)
+            .map(|row| row.package_digest.clone()),
+        CargoAllowReleaseOperationEventSubjectV1::Asset(id) => identity
+            .assets
+            .iter()
+            .find(|row| row.asset_id == *id)
+            .map(|row| row.asset_digest.clone()),
+        CargoAllowReleaseOperationEventSubjectV1::Operation => Some(digest(2_000 + ordinal)),
+    };
     CargoAllowReleaseOperationEventInitV1 {
         event_class: class,
         subject,
@@ -155,11 +167,10 @@ fn event_init(
         request_boundary: "synthetic-no-provider-call".to_string(),
         response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
         semantic_result: result,
-        artifact_digest: Some(digest(2_000 + ordinal)),
+        artifact_digest,
         observed_at_unix_seconds: 1_790_000_000 + ordinal,
     }
 }
-
 fn append(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &mut Vec<CargoAllowReleaseOperationEventV1>,
@@ -181,6 +192,7 @@ fn append(
             | CargoAllowReleaseOperationEventClassV1::GitHubDraftObservedExact
             | CargoAllowReleaseOperationEventClassV1::AssetObservedExact
             | CargoAllowReleaseOperationEventClassV1::PublicReleaseObservedExact
+            | CargoAllowReleaseOperationEventClassV1::ContainmentObservedExact
     ) {
         init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
         if let Some(request) = events.iter().rev().find(|event| {
@@ -189,6 +201,7 @@ fn append(
                 && event.subject == subject
         }) {
             init.payload_schema_id = request.payload_schema_id.clone();
+            init.payload_digest = request.payload_digest.clone();
             init.request_boundary = request.request_boundary.clone();
             init.artifact_digest = request.artifact_digest.clone();
         }
@@ -219,6 +232,72 @@ fn append_request(
     Ok(())
 }
 
+fn append_with_proof(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+    events: &mut Vec<CargoAllowReleaseOperationEventV1>,
+    class: CargoAllowReleaseOperationEventClassV1,
+    subject: CargoAllowReleaseOperationEventSubjectV1,
+    ordinal: u64,
+) -> Result<(), Box<dyn Error>> {
+    let mut init = event_init(
+        identity,
+        class,
+        subject.clone(),
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        ordinal,
+    );
+    if matches!(
+        class,
+        CargoAllowReleaseOperationEventClassV1::TagObservedExact
+            | CargoAllowReleaseOperationEventClassV1::PackageRowObservedExact
+            | CargoAllowReleaseOperationEventClassV1::GitHubDraftObservedExact
+            | CargoAllowReleaseOperationEventClassV1::AssetObservedExact
+            | CargoAllowReleaseOperationEventClassV1::PublicReleaseObservedExact
+            | CargoAllowReleaseOperationEventClassV1::ContainmentObservedExact
+    ) {
+        init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
+        if let Some(request) = events.iter().rev().find(|event| {
+            event.event_class
+                == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+                && event.subject == subject
+        }) {
+            init.payload_schema_id = request.payload_schema_id.clone();
+            init.payload_digest = request.payload_digest.clone();
+            init.request_boundary = request.request_boundary.clone();
+            init.artifact_digest = request.artifact_digest.clone();
+        }
+    }
+    let event = append_release_operation_event_with_predecessor_v1(identity, events, init, proof)
+        .map_err(io::Error::other)?;
+    events.push(event);
+    Ok(())
+}
+
+fn append_request_with_proof(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+    events: &mut Vec<CargoAllowReleaseOperationEventV1>,
+    subject: CargoAllowReleaseOperationEventSubjectV1,
+    ordinal: u64,
+) -> Result<(), Box<dyn Error>> {
+    let mut init = event_init(
+        identity,
+        CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted,
+        subject,
+        CargoAllowReleaseOperationSemanticResultV1::Unknown,
+        ordinal,
+    );
+    init.payload_schema_id = format!("cargo-allow.synthetic-request-{ordinal}.v1");
+    init.request_boundary = format!("synthetic-request-{ordinal}");
+    init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
+    let event =
+        append_release_operation_event_with_predecessor_v1(identity, events, init, proof)
+            .map_err(io::Error::other)?;
+    events.push(event);
+    Ok(())
+}
+
 fn append_preamble(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &mut Vec<CargoAllowReleaseOperationEventV1>,
@@ -234,7 +313,6 @@ fn append_preamble(
 }
 
 #[test]
-fn release_operation_identity_is_semantic_and_lineage_bound()#[test]
 fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<dyn Error>> {
     let first = identity()?;
     let second = identity()?;
@@ -257,6 +335,7 @@ fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<
 
     let mut clean = identity_init(CargoAllowReleaseOperationClassV1::CleanFinalPublication);
     clean.incident_predecessor_operation_digest = Some(digest(99));
+    clean.incident_predecessor_head_digest = Some(digest(100));
     require(
         build_release_operation_identity_v1(clean).is_err(),
         "clean authority cannot claim recovery lineage",
@@ -578,12 +657,53 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
     unrelated.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
     unrelated.payload_schema_id = request.payload_schema_id.clone();
     unrelated.request_boundary = request.request_boundary.clone();
-    unrelated.artifact_digest = Some(digest(9_002));
+    unrelated.artifact_digest = request.artifact_digest.clone();
     require(
         append_release_operation_event_v1(&identity, &events, unrelated).is_err(),
         "unrelated exact observation must not resolve another request",
     )?;
     append(&identity, &mut events, Event::TagObservedExact, Operation, 16)?;
+
+    let package_id = identity
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("package denominator missing"))?
+        .logical_id
+        .clone();
+    append(
+        &identity,
+        &mut events,
+        Event::PackageRowIntentDurable,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id.clone()),
+        17,
+    )?;
+    append_request(
+        &identity,
+        &mut events,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id.clone()),
+        18,
+    )?;
+    let request = events
+        .last()
+        .ok_or_else(|| io::Error::other("package request absent"))?
+        .clone();
+    let mut wrong_bytes = event_init(
+        &identity,
+        Event::PackageRowObservedExact,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id),
+        ResultClass::Exact,
+        19,
+    );
+    wrong_bytes.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
+    wrong_bytes.payload_schema_id = request.payload_schema_id.clone();
+    wrong_bytes.payload_digest = request.payload_digest.clone();
+    wrong_bytes.request_boundary = request.request_boundary.clone();
+    wrong_bytes.artifact_digest = Some(digest(9_999));
+    require(
+        append_release_operation_event_v1(&identity, &events, wrong_bytes).is_err(),
+        "exact package observation cannot substitute bytes outside the frozen denominator",
+    )?;
+
     require(
         evaluate_release_operation_v1(
             &identity,
@@ -601,7 +721,7 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
 fn release_operation_recovery_and_containment_require_validated_predecessor(
 ) -> Result<(), Box<dyn Error>> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
-    use CargoAllowReleaseOperationEventSubjectV1::Operation;
+    use CargoAllowReleaseOperationEventSubjectV1::{Operation, Package};
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
     use CargoAllowReleaseOperationStateV1 as State;
 
@@ -621,27 +741,49 @@ fn release_operation_recovery_and_containment_require_validated_predecessor(
         Operation,
         2,
     )?;
-    let predecessor_digest = release_operation_identity_digest_v1(&predecessor)?;
 
-    let mut recovery_init = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
-    recovery_init.incident_predecessor_operation_digest = Some(predecessor_digest.clone());
     let recovery = build_release_operation_identity_with_predecessor_v1(
-        recovery_init,
+        identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery),
         &predecessor,
         &predecessor_events,
         EVALUATED_AT_UNIX_SECONDS,
     )
     .map_err(io::Error::other)?;
-    let mut recovery_events = Vec::new();
-    append(
+    let recovery_proof = validate_release_operation_predecessor_v1(
         &recovery,
+        &predecessor,
+        &predecessor_events,
+        EVALUATED_AT_UNIX_SECONDS,
+    )
+    .map_err(io::Error::other)?;
+
+    require(
+        append_release_operation_event_v1(
+            &recovery,
+            &[],
+            event_init(
+                &recovery,
+                Event::OperationSelected,
+                Operation,
+                ResultClass::Exact,
+                10,
+            ),
+        )
+        .is_err(),
+        "non-clean operation must not use the clean append API without predecessor proof",
+    )?;
+
+    let mut recovery_events = Vec::new();
+    append_with_proof(
+        &recovery,
+        &recovery_proof,
         &mut recovery_events,
         Event::OperationSelected,
         Operation,
         10,
     )?;
     require(
-        append_release_operation_event_v1(
+        append_release_operation_event_with_predecessor_v1(
             &recovery,
             &recovery_events,
             event_init(
@@ -651,6 +793,7 @@ fn release_operation_recovery_and_containment_require_validated_predecessor(
                 ResultClass::Exact,
                 11,
             ),
+            &recovery_proof,
         )
         .is_err(),
         "recovery cannot progress before RecoverySelected",
@@ -662,24 +805,81 @@ fn release_operation_recovery_and_containment_require_validated_predecessor(
         ResultClass::Exact,
         12,
     );
-    recovery_selected.payload_digest = predecessor_digest.clone();
+    recovery_selected.payload_digest = recovery
+        .incident_predecessor_head_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("recovery predecessor head missing"))?;
     recovery_events.push(
-        append_release_operation_event_v1(&recovery, &recovery_events, recovery_selected)
-            .map_err(io::Error::other)?,
+        append_release_operation_event_with_predecessor_v1(
+            &recovery,
+            &recovery_events,
+            recovery_selected,
+            &recovery_proof,
+        )
+        .map_err(io::Error::other)?,
     );
+    append_with_proof(
+        &recovery,
+        &recovery_proof,
+        &mut recovery_events,
+        Event::AuthorizationSelected,
+        Operation,
+        13,
+    )?;
+    append_with_proof(
+        &recovery,
+        &recovery_proof,
+        &mut recovery_events,
+        Event::LeaseAcquired,
+        Operation,
+        14,
+    )?;
+    append_with_proof(
+        &recovery,
+        &recovery_proof,
+        &mut recovery_events,
+        Event::TagObservedExact,
+        Operation,
+        15,
+    )?;
+    let package_id = recovery
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("package denominator missing"))?
+        .logical_id
+        .clone();
+    append_with_proof(
+        &recovery,
+        &recovery_proof,
+        &mut recovery_events,
+        Event::PackageRowObservedExact,
+        Package(package_id),
+        16,
+    )?;
+    require(
+        evaluate_release_operation_v1(&recovery, &recovery_events, EVALUATED_AT_UNIX_SECONDS)
+            .is_err(),
+        "non-clean operation must not use the clean evaluation API",
+    )?;
 
-    let mut containment_init = identity_init(CargoAllowReleaseOperationClassV1::Containment);
-    containment_init.incident_predecessor_operation_digest = Some(predecessor_digest.clone());
     let containment = build_release_operation_identity_with_predecessor_v1(
-        containment_init,
+        identity_init(CargoAllowReleaseOperationClassV1::Containment),
+        &predecessor,
+        &predecessor_events,
+        EVALUATED_AT_UNIX_SECONDS,
+    )
+    .map_err(io::Error::other)?;
+    let containment_proof = validate_release_operation_predecessor_v1(
+        &containment,
         &predecessor,
         &predecessor_events,
         EVALUATED_AT_UNIX_SECONDS,
     )
     .map_err(io::Error::other)?;
     let mut containment_events = Vec::new();
-    append(
+    append_with_proof(
         &containment,
+        &containment_proof,
         &mut containment_events,
         Event::OperationSelected,
         Operation,
@@ -692,57 +892,97 @@ fn release_operation_recovery_and_containment_require_validated_predecessor(
         ResultClass::Exact,
         21,
     );
-    containment_selected.payload_digest = predecessor_digest;
+    containment_selected.payload_digest = containment
+        .incident_predecessor_head_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("containment predecessor head missing"))?;
     containment_events.push(
-        append_release_operation_event_v1(
+        append_release_operation_event_with_predecessor_v1(
             &containment,
             &containment_events,
             containment_selected,
+            &containment_proof,
         )
         .map_err(io::Error::other)?,
     );
-    append(
+    append_with_proof(
         &containment,
+        &containment_proof,
         &mut containment_events,
         Event::AuthorizationSelected,
         Operation,
         22,
     )?;
-    append(
+    append_with_proof(
         &containment,
+        &containment_proof,
         &mut containment_events,
         Event::LeaseAcquired,
         Operation,
         23,
     )?;
-    append(
-        &containment,
-        &mut containment_events,
-        Event::IncidentRecorded,
-        Operation,
-        24,
+    require(
+        append_release_operation_event_with_predecessor_v1(
+            &containment,
+            &containment_events,
+            event_init(
+                &containment,
+                Event::OperationSettled,
+                Operation,
+                ResultClass::Exact,
+                24,
+            ),
+            &containment_proof,
+        )
+        .is_err(),
+        "containment cannot settle without an observed external containment action",
     )?;
-    append(
+    append_request_with_proof(
         &containment,
+        &containment_proof,
         &mut containment_events,
-        Event::OperationSettled,
         Operation,
         25,
     )?;
+    append_with_proof(
+        &containment,
+        &containment_proof,
+        &mut containment_events,
+        Event::ContainmentObservedExact,
+        Operation,
+        26,
+    )?;
+    append_with_proof(
+        &containment,
+        &containment_proof,
+        &mut containment_events,
+        Event::RepositoryReconciled,
+        Operation,
+        27,
+    )?;
+    append_with_proof(
+        &containment,
+        &containment_proof,
+        &mut containment_events,
+        Event::OperationSettled,
+        Operation,
+        28,
+    )?;
     require(
-        evaluate_release_operation_v1(
+        evaluate_release_operation_with_predecessor_v1(
             &containment,
             &containment_events,
             EVALUATED_AT_UNIX_SECONDS,
+            &containment_proof,
         )
         .map_err(io::Error::other)?
         .state
             == State::CompleteWithIncidentLineage,
-        "containment settles only as incident lineage without publication",
+        "containment settles only after exact external action and reconciliation",
     )?;
 
     let mut wrong = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
-    wrong.incident_predecessor_operation_digest = Some(digest(999));
+    wrong.freeze_digest = digest(999);
     require(
         build_release_operation_identity_with_predecessor_v1(
             wrong,
@@ -751,13 +991,11 @@ fn release_operation_recovery_and_containment_require_validated_predecessor(
             EVALUATED_AT_UNIX_SECONDS,
         )
         .is_err(),
-        "foreign predecessor digest cannot create recovery lineage",
+        "recovery authority cannot silently switch the frozen candidate",
     )
 }
 
 #[test]
-fn release_operation_authority_renderings_validate_against_schema()#[test]
-fn release_operation_authority_renderings_validate_against_schema()#[test]
 fn release_operation_authority_renderings_validate_against_schema() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     if !root.join(".git").exists() {
