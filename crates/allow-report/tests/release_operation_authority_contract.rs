@@ -170,6 +170,15 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
                 .ok_or_else(|| io::Error::other("event fixture should not be empty"))?,
         "canonical event must round-trip without semantic drift",
     )?;
+    let rendered_events = serde_json::to_string_pretty(&events)?;
+    let loaded_events: Vec<CargoAllowReleaseOperationEventV1> =
+        serde_json::from_str(&rendered_events)?;
+    require(
+        loaded_events == events,
+        "complete event history must round-trip without semantic drift",
+    )?;
+    validate_release_operation_history_v1(&loaded_identity, &loaded_events)
+        .map_err(io::Error::other)?;
 
     let head = compile_release_operation_head_v1(&identity, &events).map_err(io::Error::other)?;
     let rendered_head = render_release_operation_head_v1(&head)?;

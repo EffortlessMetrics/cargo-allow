@@ -435,7 +435,8 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
     )?;
     let one_asset = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
     require(
-        one_asset.state == State::GitHubReleaseInProgress && one_asset.missing_assets.len() == 1,
+        one_asset.state == State::GitHubReleaseInProgress
+            && one_asset.missing_assets.len() == identity.assets.len() - 1,
         "one exact asset must never satisfy the required asset denominator",
     )?;
     require(
@@ -454,19 +455,23 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         "public release observation must fail before every required asset is exact",
     )?;
 
-    let second_asset = identity
+    let remaining_assets = identity
         .assets
-        .get(1)
-        .ok_or_else(|| io::Error::other("asset denominator should contain two fixture rows"))?
-        .asset_id
-        .clone();
-    append(
-        &identity,
-        &mut events,
-        Event::AssetObservedExact,
-        Asset(second_asset),
-        63,
-    )?;
+        .iter()
+        .skip(1)
+        .map(|row| row.asset_id.clone())
+        .collect::<Vec<_>>();
+    let mut asset_ordinal = 63;
+    for asset_id in remaining_assets {
+        append(
+            &identity,
+            &mut events,
+            Event::AssetObservedExact,
+            Asset(asset_id),
+            asset_ordinal,
+        )?;
+        asset_ordinal += 1;
+    }
     append(
         &identity,
         &mut events,
@@ -503,6 +508,161 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
     )
 }
 
+
+#[test]
+fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
+) -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1::Operation;
+    use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+    use CargoAllowReleaseOperationStateV1 as State;
+
+    let identity = identity()?;
+
+    for result in [
+        ResultClass::Partial,
+        ResultClass::Conflict,
+        ResultClass::Stale,
+        ResultClass::ProviderUnavailable,
+        ResultClass::InstrumentFailure,
+    ] {
+        let mut events = Vec::new();
+        append(&identity, &mut events, Event::OperationSelected, Operation, 1)?;
+        let non_exact = append_release_operation_event_v1(
+            &identity,
+            &events,
+            event_init(&identity, Event::AuthorizationSelected, Operation, result, 2),
+        )
+        .map_err(io::Error::other)?;
+        events.push(non_exact);
+        require(
+            append_release_operation_event_v1(
+                &identity,
+                &events,
+                event_init(
+                    &identity,
+                    Event::LeaseAcquired,
+                    Operation,
+                    ResultClass::Exact,
+                    3,
+                ),
+            )
+            .is_err(),
+            format!("non-exact {result:?} authorization must never unlock the lease"),
+        )?;
+    }
+
+    let mut events = Vec::new();
+    append(&identity, &mut events, Event::OperationSelected, Operation, 10)?;
+    append(&identity, &mut events, Event::AuthorizationSelected, Operation, 11)?;
+    append(&identity, &mut events, Event::LeaseAcquired, Operation, 12)?;
+    let mut unknown = event_init(
+        &identity,
+        Event::TagIntentDurable,
+        Operation,
+        ResultClass::Unknown,
+        13,
+    );
+    unknown.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
+    unknown.request_boundary = "tag-push-request-001".to_string();
+    unknown.payload_schema_id = "cargo-allow.synthetic-tag-transaction.v1".to_string();
+    unknown.artifact_digest = Some(digest(9_001));
+    let unknown = append_release_operation_event_v1(&identity, &events, unknown)
+        .map_err(io::Error::other)?;
+    events.push(unknown.clone());
+    require(
+        evaluate_release_operation_v1(&identity, &events)
+            .map_err(io::Error::other)?
+            .state
+            == State::RecoveryRequired,
+        "an unresolved unknown request must require recovery",
+    )?;
+
+    let mut unrelated = event_init(
+        &identity,
+        Event::TagObservedExact,
+        Operation,
+        ResultClass::Exact,
+        14,
+    );
+    unrelated.request_boundary = unknown.request_boundary.clone();
+    unrelated.payload_schema_id = unknown.payload_schema_id.clone();
+    unrelated.artifact_digest = Some(digest(9_002));
+    require(
+        append_release_operation_event_v1(&identity, &events, unrelated).is_err(),
+        "an unrelated exact tag observation must not resolve another request",
+    )?;
+
+    let mut matching = event_init(
+        &identity,
+        Event::TagObservedExact,
+        Operation,
+        ResultClass::Exact,
+        15,
+    );
+    matching.request_boundary = unknown.request_boundary.clone();
+    matching.payload_schema_id = unknown.payload_schema_id.clone();
+    matching.artifact_digest = unknown.artifact_digest.clone();
+    let matching = append_release_operation_event_v1(&identity, &events, matching)
+        .map_err(io::Error::other)?;
+    events.push(matching);
+    require(
+        evaluate_release_operation_v1(&identity, &events)
+            .map_err(io::Error::other)?
+            .state
+            == State::TagObservedPackagesPending,
+        "the exact correlated observation must resolve the unknown tag request",
+    )?;
+
+    let package_id = identity
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("package denominator should not be empty"))?
+        .logical_id
+        .clone();
+    let mut expired = event_init(
+        &identity,
+        Event::PackageRowIntentDurable,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id.clone()),
+        ResultClass::Exact,
+        16,
+    );
+    expired.observed_at_unix_seconds = identity.expires_at_unix_seconds + 1;
+    require(
+        append_release_operation_event_v1(&identity, &events, expired).is_err(),
+        "events after operation expiry must fail",
+    )?;
+
+    let mut backwards = event_init(
+        &identity,
+        Event::PackageRowIntentDurable,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id.clone()),
+        ResultClass::Exact,
+        17,
+    );
+    backwards.observed_at_unix_seconds = events
+        .last()
+        .ok_or_else(|| io::Error::other("history should not be empty"))?
+        .observed_at_unix_seconds
+        - 1;
+    require(
+        append_release_operation_event_v1(&identity, &events, backwards).is_err(),
+        "event time cannot move backwards",
+    )?;
+
+    let mut foreign_run = event_init(
+        &identity,
+        Event::PackageRowIntentDurable,
+        CargoAllowReleaseOperationEventSubjectV1::Package(package_id),
+        ResultClass::Exact,
+        18,
+    );
+    foreign_run.producer.run = "different-run".to_string();
+    require(
+        append_release_operation_event_v1(&identity, &events, foreign_run).is_err(),
+        "one-run operation cannot silently continue in another run",
+    )
+}
 
 #[test]
 fn release_operation_authority_renderings_validate_against_schema() -> Result<(), Box<dyn Error>> {

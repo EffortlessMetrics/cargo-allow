@@ -392,12 +392,13 @@ fn denominator_digest<T: Serialize>(rows: &[T]) -> Result<String, serde_json::Er
 fn validate_package_rows(
     rows: &[CargoAllowReleaseOperationPackageRowV1],
 ) -> Result<(), &'static str> {
-    if rows.len() != 10 {
-        return Err("release operation identity requires exactly ten final package rows");
-    }
     let expected = RELEASE_AUTHORIZATION_SELECTION
         .iter()
-        .filter(|(_, _, _, shared)| !*shared);
+        .filter(|(_, _, _, shared)| !*shared)
+        .collect::<Vec<_>>();
+    if rows.len() != expected.len() {
+        return Err("release operation identity requires exactly the selected final package rows");
+    }
     for (row, (logical_id, package_name, version, _)) in rows.iter().zip(expected) {
         if row.logical_id != *logical_id
             || row.package_name != *package_name
@@ -760,11 +761,17 @@ fn validate_event_envelope_fields(
     event: &CargoAllowReleaseOperationEventV1,
 ) -> Result<(), &'static str> {
     validate_producer(&event.producer)?;
+    if event.observed_at_unix_seconds > identity.expires_at_unix_seconds {
+        return Err("operation event is outside the operation expiry");
+    }
     if event.payload_schema_id.trim().is_empty()
+        || event.payload_schema_id.len() > 256
         || !digest_shape(&event.payload_digest)
         || event.actor.trim().is_empty()
+        || event.actor.len() > 256
         || contains_secret_marker(&event.actor)
         || event.request_boundary.trim().is_empty()
+        || event.request_boundary.len() > 256
         || contains_secret_marker(&event.request_boundary)
         || event.observed_at_unix_seconds == 0
         || event
@@ -785,6 +792,51 @@ fn has_event(
     class: CargoAllowReleaseOperationEventClassV1,
 ) -> bool {
     events.iter().any(|event| event.event_class == class)
+}
+
+fn has_exact_event(
+    events: &[CargoAllowReleaseOperationEventV1],
+    class: CargoAllowReleaseOperationEventClassV1,
+) -> bool {
+    events.iter().any(|event| {
+        event.event_class == class
+            && event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+    })
+}
+
+fn is_singleton_event_class(class: CargoAllowReleaseOperationEventClassV1) -> bool {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    matches!(
+        class,
+        Event::OperationSelected
+            | Event::AuthorizationSelected
+            | Event::LeaseAcquired
+            | Event::TagIntentDurable
+            | Event::TagObservedExact
+            | Event::GitHubDraftObservedExact
+            | Event::PublicReleaseObservedExact
+            | Event::RepositoryReconciled
+            | Event::RecoverySelected
+            | Event::OperationSettled
+    )
+}
+
+fn init_resolves_unknown(
+    events: &[CargoAllowReleaseOperationEventV1],
+    init: &CargoAllowReleaseOperationEventInitV1,
+    origin_class: CargoAllowReleaseOperationEventClassV1,
+) -> bool {
+    events.iter().any(|event| {
+        event.event_class == origin_class
+            && (event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Unknown
+                || event.response_posture
+                    == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
+            && event.subject == init.subject
+            && event.payload_schema_id == init.payload_schema_id
+            && event.request_boundary == init.request_boundary
+            && event.artifact_digest.is_some()
+            && event.artifact_digest == init.artifact_digest
+    })
 }
 
 fn exact_package_subjects(events: &[CargoAllowReleaseOperationEventV1]) -> BTreeSet<String> {
@@ -851,6 +903,19 @@ fn validate_event_transition(
     {
         return Err("operation history is terminal after OperationSettled");
     }
+    if let Some(last) = events.last() {
+        if init.observed_at_unix_seconds < last.observed_at_unix_seconds {
+            return Err("operation event time must be monotonic");
+        }
+        if init.producer.run != events[0].producer.run
+            || init.producer.attempt != events[0].producer.attempt
+        {
+            return Err("one-run operation events must retain the selected run and attempt");
+        }
+    }
+    if is_singleton_event_class(init.event_class) && has_event(events, init.event_class) {
+        return Err("singleton operation event was already recorded");
+    }
     if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication
         && has_event(events, Event::IncidentRecorded)
     {
@@ -866,17 +931,17 @@ fn validate_event_transition(
             }
         }
         Event::AuthorizationSelected => {
-            if !has_event(events, Event::OperationSelected) {
+            if !has_exact_event(events, Event::OperationSelected) {
                 return Err("authorization selection requires OperationSelected");
             }
         }
         Event::LeaseAcquired => {
-            if !has_event(events, Event::AuthorizationSelected) {
+            if !has_exact_event(events, Event::AuthorizationSelected) {
                 return Err("lease acquisition requires AuthorizationSelected");
             }
         }
         Event::TagIntentDurable => {
-            if !has_event(events, Event::LeaseAcquired) {
+            if !has_exact_event(events, Event::LeaseAcquired) {
                 return Err("tag intent requires the durable operation lease");
             }
         }
@@ -884,16 +949,17 @@ fn validate_event_transition(
             let ready = if identity.operation_class
                 == CargoAllowReleaseOperationClassV1::CleanFinalPublication
             {
-                has_event(events, Event::TagIntentDurable)
+                has_exact_event(events, Event::TagIntentDurable)
+                    || init_resolves_unknown(events, init, Event::TagIntentDurable)
             } else {
-                has_event(events, Event::LeaseAcquired)
+                has_exact_event(events, Event::LeaseAcquired)
             };
             if !ready {
                 return Err("exact tag observation is out of order");
             }
         }
         Event::PackageRowIntentDurable => {
-            if !has_event(events, Event::TagObservedExact) {
+            if !has_exact_event(events, Event::TagObservedExact) {
                 return Err("package intent requires exact tag observation");
             }
             if events.iter().any(|event| {
@@ -910,6 +976,8 @@ fn validate_event_transition(
                 event.event_class == Event::PackageRowIntentDurable
                     && event.subject
                         == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
+                    && (event.semantic_result == ResultClass::Exact
+                        || init_resolves_unknown(events, init, Event::PackageRowIntentDurable))
             });
             if !intent_exists {
                 return Err("package observation requires the same row's durable intent");
@@ -926,7 +994,7 @@ fn validate_event_transition(
             }
         }
         Event::AssetObservedExact => {
-            if !has_event(events, Event::GitHubDraftObservedExact) {
+            if !has_exact_event(events, Event::GitHubDraftObservedExact) {
                 return Err("asset observation requires exact GitHub draft observation");
             }
             if events.iter().any(|event| {
@@ -941,7 +1009,7 @@ fn validate_event_transition(
             }
         }
         Event::RepositoryReconciled => {
-            if !has_event(events, Event::PublicReleaseObservedExact) {
+            if !has_exact_event(events, Event::PublicReleaseObservedExact) {
                 return Err("repository reconciliation follows exact public release observation");
             }
         }
@@ -958,10 +1026,10 @@ fn validate_event_transition(
             }
         }
         Event::OperationSettled => {
-            if !has_event(events, Event::RepositoryReconciled)
+            if !has_exact_event(events, Event::RepositoryReconciled)
                 || !all_packages_exact(identity, events)
                 || !all_assets_exact(identity, events)
-                || !has_event(events, Event::PublicReleaseObservedExact)
+                || !has_exact_event(events, Event::PublicReleaseObservedExact)
             {
                 return Err("operation settlement requires the complete selected denominator");
             }
@@ -1117,19 +1185,24 @@ fn response_unknown_is_resolved(
     let Some(event) = events.get(index) else {
         return false;
     };
+    let correlated = |later: &CargoAllowReleaseOperationEventV1| {
+        later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+            && later.subject == event.subject
+            && later.payload_schema_id == event.payload_schema_id
+            && later.request_boundary == event.request_boundary
+            && later.artifact_digest.is_some()
+            && later.artifact_digest == event.artifact_digest
+    };
     match (&event.event_class, &event.subject) {
         (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => {
-            events.iter().skip(index + 1).any(|later| {
-                later.event_class == Event::TagObservedExact
-                    && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
-            })
+            events
+                .iter()
+                .skip(index + 1)
+                .any(|later| later.event_class == Event::TagObservedExact && correlated(later))
         }
-        (Event::PackageRowIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Package(id)) => {
+        (Event::PackageRowIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Package(_)) => {
             events.iter().skip(index + 1).any(|later| {
-                later.event_class == Event::PackageRowObservedExact
-                    && later.subject
-                        == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
-                    && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+                later.event_class == Event::PackageRowObservedExact && correlated(later)
             })
         }
         _ => false,
@@ -1239,14 +1312,16 @@ fn first_irreversible_digest(events: &[CargoAllowReleaseOperationEventV1]) -> Op
     events
         .iter()
         .find(|event| {
-            matches!(
-                event.event_class,
-                Event::TagObservedExact
-                    | Event::PackageRowObservedExact
-                    | Event::GitHubDraftObservedExact
-                    | Event::AssetObservedExact
-                    | Event::PublicReleaseObservedExact
-            )
+            event.response_posture
+                == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+                || matches!(
+                    event.event_class,
+                    Event::TagObservedExact
+                        | Event::PackageRowObservedExact
+                        | Event::GitHubDraftObservedExact
+                        | Event::AssetObservedExact
+                        | Event::PublicReleaseObservedExact
+                )
         })
         .map(|event| event.event_digest.clone())
 }
