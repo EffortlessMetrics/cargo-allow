@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "f7746ee33da1f21378ce66761bf1e87a5191457a"
+          test "$(git rev-parse HEAD^)" = "bc91d8d5db10258cc5eb49726c7576affc71bb1e"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/sync-pr4305-after-4303.yml"
           git fetch --no-tags origin main
           test "$(git rev-parse origin/main)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
@@ -62,6 +62,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           set +e
           git merge --no-commit --no-ff origin/main
           merge_status=$?
@@ -75,7 +77,6 @@ jobs:
           git checkout --theirs -- policy/allow.toml
           python3 - <<'PY'
           from pathlib import Path
-          import re
           import tomllib
 
           main = Path('/tmp/main-policy.toml').read_bytes()
@@ -210,8 +211,6 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse MERGE_HEAD)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
             .allow/revisions/4304-package-byte-authority.toml \
             policy/allow.toml \
