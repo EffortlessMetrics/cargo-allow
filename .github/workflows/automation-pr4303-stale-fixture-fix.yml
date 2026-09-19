@@ -1,0 +1,69 @@
+name: PR 4303 stale fixture repair
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4303-stale-fixture-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[fixture-4303]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Replace stale clean-builder expectation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "ed6c46b49af90b61ae13eeb282eed00442ee7166"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/cargo-allow/tests/release_operation_authority.rs")
+          text = path.read_text(encoding="utf-8")
+          old = '''    let recovery = build_release_operation_identity_v1(identity_init(
+              CargoAllowReleaseOperationClassV1::IncidentRecovery,
+          ))
+          .map_err(io::Error::other)?;
+          require(
+              recovery.incident_predecessor_operation_digest.is_some()
+                  && recovery.authority_kind == CargoAllowReleaseOperationAuthorityKindV1::Recovery,
+              "recovery identity must retain distinct incident lineage and authority",
+          )
+          '''
+          new = '''    require(
+              build_release_operation_identity_v1(identity_init(
+                  CargoAllowReleaseOperationClassV1::IncidentRecovery,
+              ))
+              .is_err(),
+              "recovery identity must require the typed predecessor builder",
+          )
+          '''
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one stale recovery fixture, found {text.count(old)}")
+          path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+          PY
+          git rm .github/workflows/automation-pr4303-stale-fixture-fix.yml
+          git diff --check
+
+      - name: Publish source-only fixture repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "EffortlessSteven"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git add -A
+          git commit -m "test(release,#3940): require typed predecessor builder for recovery"
+          git push origin HEAD:release/3940-operation-authority-v1
