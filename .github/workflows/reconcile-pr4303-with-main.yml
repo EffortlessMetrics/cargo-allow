@@ -32,8 +32,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "fc7be0d41de121a48c8a50410e2114275c74a31e"
+          test "$(git rev-parse HEAD^)" = "8c7720c74cf16fe1b128d4c9706d147fc3ef9373"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/reconcile-pr4303-with-main.yml"
+          git rev-parse HEAD > /tmp/pr4303-carrier-head
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
@@ -80,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "fc7be0d41de121a48c8a50410e2114275c74a31e"
+          test "$(git rev-parse HEAD)" = "$(cat /tmp/pr4303-carrier-head)"
           test "$(git rev-parse MERGE_HEAD)" = "89d1376390726a34ae8b2cac14f69af7e684153d"
           test ! -e .github/workflows/reconcile-pr4303-with-main.yml
           git commit -m "merge(main): reconcile #4302 checkpoint with #3940 PR A"
