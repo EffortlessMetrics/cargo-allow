@@ -883,8 +883,7 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
         Event::AuthorizationConsumed,
         Event::TagObservedExact,
     ] {
-        append_journal_event_v1(&mut conflict, ev(kind, None, next()))
-            .map_err(io::Error::other)?;
+        append_journal_event_v1(&mut conflict, ev(kind, None, next())).map_err(io::Error::other)?;
     }
     append_journal_event_v1(
         &mut conflict,
@@ -940,7 +939,12 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
 
     // Hostile: completion is once-only and terminal.
     let mut done = clean_two_rows()?;
-    let head_at = done.entries.last().map(|entry| entry.at_unix_seconds).unwrap_or(CREATED_AT) + 10;
+    let head_at = done
+        .entries
+        .last()
+        .map(|entry| entry.at_unix_seconds)
+        .unwrap_or(CREATED_AT)
+        + 10;
     require(
         append_journal_event_v1(&mut done, ev(Event::OperationComplete, None, head_at)).is_err(),
         "a second completion must fail",
@@ -1013,7 +1017,9 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
         let rendered: serde_json::Value =
             serde_json::from_str(&render_publication_journal_v1(&clean_two_rows()?)?)?;
         validator.validate(&rendered).map_err(|error| {
-            io::Error::other(format!("clean journal with null prior must validate: {error}"))
+            io::Error::other(format!(
+                "clean journal with null prior must validate: {error}"
+            ))
         })?;
         // Clean with a bound prior digest must fail.
         let mut clean_bound = rendered.clone();
@@ -1033,7 +1039,11 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
             "operation_class",
             serde_json::Value::String("incident_recovery".into()),
         )?;
-        set_field(&mut recovery_null, "prior_journal_digest", serde_json::Value::Null)?;
+        set_field(
+            &mut recovery_null,
+            "prior_journal_digest",
+            serde_json::Value::Null,
+        )?;
         require(
             validator.validate(&recovery_null).is_err(),
             "recovery journals require a prior digest in schema",
