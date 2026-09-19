@@ -968,12 +968,12 @@ fn validate_event_transition(
         })
         .map(|(_, event)| event)
         .collect::<Vec<_>>();
-    if !unresolved.is_empty() && init.event_class != Event::IncidentRecorded {
-        if unresolved.len() != 1
-            || !init_resolves_unknown(events, init, unresolved[0].event_class)
-        {
-            return Err("unresolved response-unknown blocks unrelated progression");
-        }
+    if !unresolved.is_empty()
+        && init.event_class != Event::IncidentRecorded
+        && (unresolved.len() != 1
+            || !init_resolves_unknown(events, init, unresolved[0].event_class))
+    {
+        return Err("unresolved response-unknown blocks unrelated progression");
     }
     if identity.operation_class == CargoAllowReleaseOperationClassV1::Containment
         && matches!(
