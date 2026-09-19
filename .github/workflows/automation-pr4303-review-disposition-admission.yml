@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   repair:
-    if: contains(github.event.head_commit.message, '[repair-4303-review-admission-v2]')
+    if: contains(github.event.head_commit.message, '[repair-4303-review-admission-v3]')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "acd6ade81f0554758e279d9b31976d2f5a1d25b7"
+          test "$(git rev-parse HEAD^)" = "6d1fb4cf065a6cbe77cc7ebbbeca1ceec415e81c"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/automation-pr4303-review-disposition-admission.yml"
 
           python3 - <<'PY'
@@ -117,6 +117,7 @@ jobs:
           set +e
           cargo run -p cargo-allow --locked -- diff \
             --base origin/main \
+            --require-change-note \
             --write-change-note-template target/cargo-allow/pr4303-review-admission.toml \
             --format json \
             --output target/cargo-allow/pr4303-review-admission.diff.json
