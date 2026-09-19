@@ -1,5 +1,7 @@
 use std::error::Error;
+use std::fs;
 use std::io;
+use std::path::{Path, PathBuf};
 
 use allow_report::{
     CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
@@ -10,8 +12,11 @@ use allow_report::{
     CargoAllowReleaseOperationProducerV1, CargoAllowReleaseOperationResponsePostureV1,
     CargoAllowReleaseOperationSemanticResultV1, CargoAllowReleaseOperationStateV1,
     append_release_operation_event_v1, build_release_operation_identity_v1,
-    evaluate_release_operation_v1, release_operation_identity_digest_v1,
-    validate_release_operation_history_v1, validate_release_operation_identity_v1,
+    compile_release_operation_head_v1, evaluate_release_operation_v1,
+    release_operation_identity_digest_v1, render_release_operation_evaluation_v1,
+    render_release_operation_event_v1, render_release_operation_head_v1,
+    render_release_operation_identity_v1, validate_release_operation_history_v1,
+    validate_release_operation_identity_v1,
 };
 
 fn digest(n: u64) -> String {
@@ -91,6 +96,17 @@ fn identity_init(
         one_run_scope: true,
         expires_at_unix_seconds: 1_800_000_000,
     }
+}
+
+fn repository_root() -> Result<PathBuf, Box<dyn Error>> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crates_dir = manifest_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow manifest has no crates parent"))?;
+    Ok(crates_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow crates directory has no repository parent"))?
+        .to_path_buf())
 }
 
 fn identity() -> Result<CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
@@ -469,6 +485,51 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
     )
 }
 
+
+#[test]
+fn release_operation_authority_renderings_validate_against_schema() -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"),
+    )?)?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| io::Error::other(format!("operation authority schema compiles: {error}")))?;
+
+    let identity = identity()?;
+    let event = append_release_operation_event_v1(
+        &identity,
+        &[],
+        event_init(
+            &identity,
+            CargoAllowReleaseOperationEventClassV1::OperationSelected,
+            CargoAllowReleaseOperationEventSubjectV1::Operation,
+            CargoAllowReleaseOperationSemanticResultV1::Exact,
+            1,
+        ),
+    )
+    .map_err(io::Error::other)?;
+    let events = vec![event.clone()];
+    let head = compile_release_operation_head_v1(&identity, &events).map_err(io::Error::other)?;
+    let evaluation = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+
+    let rendered = [
+        render_release_operation_identity_v1(&identity)?,
+        render_release_operation_event_v1(&event)?,
+        render_release_operation_head_v1(&head)?,
+        render_release_operation_evaluation_v1(&evaluation)?,
+    ];
+    for document in rendered {
+        let value: serde_json::Value = serde_json::from_str(&document)?;
+        validator.validate(&value).map_err(|error| {
+            io::Error::other(format!("operation authority rendering violates schema: {error}"))
+        })?;
+    }
+    Ok(())
+}
+
 #[test]
 fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Result<(), Box<dyn Error>> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
@@ -493,7 +554,12 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
                 &identity,
                 Event::PackageRowIntentDurable,
                 CargoAllowReleaseOperationEventSubjectV1::Package(
-                    identity.packages[0].logical_id.clone(),
+                    identity
+                        .packages
+                        .first()
+                        .ok_or_else(|| io::Error::other("package denominator should not be empty"))?
+                        .logical_id
+                        .clone(),
                 ),
                 ResultClass::Exact,
                 71,
