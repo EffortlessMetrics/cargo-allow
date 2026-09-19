@@ -164,6 +164,7 @@ pub struct CargoAllowReleaseOperationIdentityInitV1 {
     pub action_inventory_digest: String,
     pub live_controls_digest: String,
     pub incident_predecessor_operation_digest: Option<String>,
+    pub incident_predecessor_head_digest: Option<String>,
     pub one_run_scope: bool,
     pub expires_at_unix_seconds: u64,
 }
@@ -200,6 +201,7 @@ pub struct CargoAllowReleaseOperationIdentityV1 {
     pub action_inventory_digest: String,
     pub live_controls_digest: String,
     pub incident_predecessor_operation_digest: Option<String>,
+    pub incident_predecessor_head_digest: Option<String>,
     pub one_run_scope: bool,
     pub expires_at_unix_seconds: u64,
     pub claim_boundary: String,
@@ -314,6 +316,13 @@ pub struct CargoAllowReleaseOperationEvaluationV1 {
     pub claim_boundary: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CargoAllowReleaseOperationPredecessorProofV1 {
+    successor_operation_identity_digest: String,
+    predecessor_operation_identity_digest: String,
+    predecessor_head_digest: String,
+}
+
 #[derive(Serialize)]
 struct IdentitySeedV1<'a> {
     nonce: &'a str,
@@ -342,6 +351,7 @@ struct IdentitySeedV1<'a> {
     action_inventory_digest: &'a str,
     live_controls_digest: &'a str,
     incident_predecessor_operation_digest: &'a Option<String>,
+    incident_predecessor_head_digest: &'a Option<String>,
     one_run_scope: bool,
     expires_at_unix_seconds: u64,
 }
@@ -455,25 +465,36 @@ fn validate_asset_rows(rows: &[CargoAllowReleaseOperationAssetRowV1]) -> Result<
 fn validate_authority_lineage(
     operation_class: CargoAllowReleaseOperationClassV1,
     authority_kind: CargoAllowReleaseOperationAuthorityKindV1,
-    predecessor: &Option<String>,
+    predecessor_operation: &Option<String>,
+    predecessor_head: &Option<String>,
 ) -> Result<(), &'static str> {
-    match (operation_class, authority_kind, predecessor) {
+    match (
+        operation_class,
+        authority_kind,
+        predecessor_operation,
+        predecessor_head,
+    ) {
         (
             CargoAllowReleaseOperationClassV1::CleanFinalPublication,
             CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            None,
             None,
         ) => Ok(()),
         (
             CargoAllowReleaseOperationClassV1::IncidentRecovery,
             CargoAllowReleaseOperationAuthorityKindV1::Recovery,
-            Some(digest),
+            Some(operation_digest),
+            Some(head_digest),
         )
         | (
             CargoAllowReleaseOperationClassV1::Containment,
             CargoAllowReleaseOperationAuthorityKindV1::Containment,
-            Some(digest),
-        ) if digest_shape(digest) => Ok(()),
-        _ => Err("operation class, authority kind, and incident predecessor do not agree"),
+            Some(operation_digest),
+            Some(head_digest),
+        ) if digest_shape(operation_digest) && digest_shape(head_digest) => Ok(()),
+        _ => Err(
+            "operation class, authority kind, and incident predecessor binding do not agree",
+        ),
     }
 }
 
@@ -505,6 +526,7 @@ fn identity_seed<'a>(identity: &'a CargoAllowReleaseOperationIdentityV1) -> Iden
         action_inventory_digest: &identity.action_inventory_digest,
         live_controls_digest: &identity.live_controls_digest,
         incident_predecessor_operation_digest: &identity.incident_predecessor_operation_digest,
+        incident_predecessor_head_digest: &identity.incident_predecessor_head_digest,
         one_run_scope: identity.one_run_scope,
         expires_at_unix_seconds: identity.expires_at_unix_seconds,
     }
@@ -542,6 +564,7 @@ fn build_release_operation_identity_unchecked_predecessor_v1(
         init.operation_class,
         init.authority_kind,
         &init.incident_predecessor_operation_digest,
+        &init.incident_predecessor_head_digest,
     )?;
     for digest in [
         init.freeze_digest.as_str(),
@@ -598,6 +621,7 @@ fn build_release_operation_identity_unchecked_predecessor_v1(
         action_inventory_digest: init.action_inventory_digest,
         live_controls_digest: init.live_controls_digest,
         incident_predecessor_operation_digest: init.incident_predecessor_operation_digest,
+        incident_predecessor_head_digest: init.incident_predecessor_head_digest,
         one_run_scope: init.one_run_scope,
         expires_at_unix_seconds: init.expires_at_unix_seconds,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
@@ -606,6 +630,32 @@ fn build_release_operation_identity_unchecked_predecessor_v1(
         digest_json(&identity_seed(&identity)).map_err(|_| "operation identity digest failed")?;
     identity.operation_id = derived_operation_id(&seed_digest)?;
     Ok(identity)
+}
+
+pub fn release_operation_head_digest_v1(
+    head: &CargoAllowReleaseOperationHeadV1,
+) -> Result<String, serde_json::Error> {
+    digest_json(head)
+}
+
+fn same_frozen_candidate(
+    successor: &CargoAllowReleaseOperationIdentityInitV1,
+    predecessor: &CargoAllowReleaseOperationIdentityV1,
+) -> bool {
+    successor.repository == predecessor.repository
+        && successor.product == predecessor.product
+        && successor.version == predecessor.version
+        && successor.tag == predecessor.tag
+        && successor.channel == predecessor.channel
+        && successor.github_prerelease == predecessor.github_prerelease
+        && successor.freeze_digest == predecessor.freeze_digest
+        && successor.final_evidence_graph_digest == predecessor.final_evidence_graph_digest
+        && successor.cargo_lock_digest == predecessor.cargo_lock_digest
+        && successor.topology_digest == predecessor.topology_digest
+        && successor.support_digest == predecessor.support_digest
+        && successor.channel_digest == predecessor.channel_digest
+        && successor.packages == predecessor.packages
+        && successor.assets == predecessor.assets
 }
 
 pub fn build_release_operation_identity_v1(
@@ -618,7 +668,7 @@ pub fn build_release_operation_identity_v1(
 }
 
 pub fn build_release_operation_identity_with_predecessor_v1(
-    init: CargoAllowReleaseOperationIdentityInitV1,
+    mut init: CargoAllowReleaseOperationIdentityInitV1,
     predecessor_identity: &CargoAllowReleaseOperationIdentityV1,
     predecessor_events: &[CargoAllowReleaseOperationEventV1],
     evaluated_at_unix_seconds: u64,
@@ -626,12 +676,15 @@ pub fn build_release_operation_identity_with_predecessor_v1(
     if init.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication {
         return Err("clean operation identity must not carry a predecessor");
     }
+    if predecessor_identity.operation_class
+        != CargoAllowReleaseOperationClassV1::CleanFinalPublication
+    {
+        return Err("v1 predecessor must be the original clean operation");
+    }
     validate_release_operation_identity_v1(predecessor_identity)?;
     validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
-    let predecessor_digest = release_operation_identity_digest_v1(predecessor_identity)
-        .map_err(|_| "predecessor identity digest failed")?;
-    if init.incident_predecessor_operation_digest.as_deref() != Some(predecessor_digest.as_str()) {
-        return Err("non-clean operation predecessor digest does not match validated history");
+    if !same_frozen_candidate(&init, predecessor_identity) {
+        return Err("non-clean operation must retain the exact frozen candidate");
     }
     let predecessor = evaluate_release_operation_v1(
         predecessor_identity,
@@ -643,9 +696,107 @@ pub fn build_release_operation_identity_with_predecessor_v1(
     {
         return Err("non-clean operation requires an incident-bearing predecessor");
     }
+    let predecessor_operation_digest =
+        release_operation_identity_digest_v1(predecessor_identity)
+            .map_err(|_| "predecessor identity digest failed")?;
+    let predecessor_head_digest = release_operation_head_digest_v1(&predecessor.head)
+        .map_err(|_| "predecessor head digest failed")?;
+    if init
+        .incident_predecessor_operation_digest
+        .as_ref()
+        .is_some_and(|digest| digest != &predecessor_operation_digest)
+        || init
+            .incident_predecessor_head_digest
+            .as_ref()
+            .is_some_and(|digest| digest != &predecessor_head_digest)
+    {
+        return Err("caller predecessor binding conflicts with validated predecessor");
+    }
+    init.incident_predecessor_operation_digest = Some(predecessor_operation_digest);
+    init.incident_predecessor_head_digest = Some(predecessor_head_digest);
     build_release_operation_identity_unchecked_predecessor_v1(init)
 }
 
+pub fn validate_release_operation_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    predecessor_identity: &CargoAllowReleaseOperationIdentityV1,
+    predecessor_events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+) -> Result<CargoAllowReleaseOperationPredecessorProofV1, &'static str> {
+    if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("clean operation has no predecessor proof");
+    }
+    if predecessor_identity.operation_class
+        != CargoAllowReleaseOperationClassV1::CleanFinalPublication
+    {
+        return Err("v1 predecessor proof requires the original clean operation");
+    }
+    validate_release_operation_identity_v1(identity)?;
+    validate_release_operation_identity_v1(predecessor_identity)?;
+    validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
+    let predecessor = evaluate_release_operation_v1(
+        predecessor_identity,
+        predecessor_events,
+        evaluated_at_unix_seconds,
+    )?;
+    if !predecessor.incident_lineage
+        || predecessor.state == CargoAllowReleaseOperationStateV1::CompleteClean
+    {
+        return Err("predecessor proof requires incident-bearing non-clean history");
+    }
+    let predecessor_operation_identity_digest =
+        release_operation_identity_digest_v1(predecessor_identity)
+            .map_err(|_| "predecessor identity digest failed")?;
+    let predecessor_head_digest = release_operation_head_digest_v1(&predecessor.head)
+        .map_err(|_| "predecessor head digest failed")?;
+    if identity.incident_predecessor_operation_digest.as_deref()
+        != Some(predecessor_operation_identity_digest.as_str())
+        || identity.incident_predecessor_head_digest.as_deref()
+            != Some(predecessor_head_digest.as_str())
+    {
+        return Err("non-clean operation is not bound to this exact predecessor head");
+    }
+    let successor_projection = CargoAllowReleaseOperationIdentityInitV1 {
+        nonce: identity.nonce.clone(),
+        operation_class: identity.operation_class,
+        authority_kind: identity.authority_kind,
+        repository: identity.repository.clone(),
+        product: identity.product.clone(),
+        version: identity.version.clone(),
+        tag: identity.tag.clone(),
+        channel: identity.channel.clone(),
+        github_prerelease: identity.github_prerelease,
+        freeze_digest: identity.freeze_digest.clone(),
+        final_evidence_graph_digest: identity.final_evidence_graph_digest.clone(),
+        custody_digest: identity.custody_digest.clone(),
+        replay_digest: identity.replay_digest.clone(),
+        authorization_digest: identity.authorization_digest.clone(),
+        cargo_lock_digest: identity.cargo_lock_digest.clone(),
+        topology_digest: identity.topology_digest.clone(),
+        support_digest: identity.support_digest.clone(),
+        channel_digest: identity.channel_digest.clone(),
+        packages: identity.packages.clone(),
+        assets: identity.assets.clone(),
+        workflow_digest: identity.workflow_digest.clone(),
+        action_inventory_digest: identity.action_inventory_digest.clone(),
+        live_controls_digest: identity.live_controls_digest.clone(),
+        incident_predecessor_operation_digest: identity
+            .incident_predecessor_operation_digest
+            .clone(),
+        incident_predecessor_head_digest: identity.incident_predecessor_head_digest.clone(),
+        one_run_scope: identity.one_run_scope,
+        expires_at_unix_seconds: identity.expires_at_unix_seconds,
+    };
+    if !same_frozen_candidate(&successor_projection, predecessor_identity) {
+        return Err("predecessor proof belongs to a different frozen candidate");
+    }
+    Ok(CargoAllowReleaseOperationPredecessorProofV1 {
+        successor_operation_identity_digest: release_operation_identity_digest_v1(identity)
+            .map_err(|_| "successor identity digest failed")?,
+        predecessor_operation_identity_digest,
+        predecessor_head_digest,
+    })
+}
 pub fn validate_release_operation_identity_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
 ) -> Result<(), &'static str> {
@@ -659,6 +810,7 @@ pub fn validate_release_operation_identity_v1(
         identity.operation_class,
         identity.authority_kind,
         &identity.incident_predecessor_operation_digest,
+        &identity.incident_predecessor_head_digest,
     )?;
     validate_package_rows(&identity.packages)?;
     validate_asset_rows(&identity.assets)?;
