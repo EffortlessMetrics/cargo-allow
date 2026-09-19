@@ -213,6 +213,18 @@ pub enum CheckpointProviderOutcomeV1 {
     InstrumentFailure,
 }
 
+/// Runtime-only proof that exact immutable provider bytes were independently
+/// read back. The fields are private and this type is deliberately not
+/// serializable/deserializable: editing a checkpoint JSON document can never
+/// manufacture progress authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicationCheckpointReadbackWitnessV1 {
+    checkpoint_link_digest: String,
+    provider_object_id: String,
+    downloaded_bytes_digest: String,
+    observed_at_unix_seconds: u64,
+}
+
 const CLAIM_BOUNDARY: &str = "This record owns one remotely durable, independently readable checkpoint per publication journal prefix: exact operation and journal-prefix identity, monotonic sequence linkage, immutable provider object identity, producer trust, retention, and readback classification. It does not upload packages, observe the registry, authorize the operation, or execute recovery.";
 
 /// Canonical lowercase hexadecimal, converged with the #3921 contract.
@@ -245,6 +257,24 @@ pub fn render_publication_checkpoint_v1(
     serde_json::to_string_pretty(checkpoint)
 }
 
+fn canonical_stored_checkpoint_v1(
+    checkpoint: &CargoAllowPublicationCheckpointV1,
+) -> CargoAllowPublicationCheckpointV1 {
+    let mut stored = checkpoint.clone();
+    stored.readback = PublicationCheckpointReadbackV1::Missing;
+    stored.readback_at_unix_seconds = None;
+    stored
+}
+
+fn canonical_stored_checkpoint_bytes_v1(
+    checkpoint: &CargoAllowPublicationCheckpointV1,
+) -> Result<Vec<u8>, serde_json::Error> {
+    Ok(render_publication_checkpoint_v1(&canonical_stored_checkpoint_v1(
+        checkpoint,
+    ))?
+    .into_bytes())
+}
+
 /// Canonical digest of a checkpoint record, binding one sequence link to the
 /// next. Computed over the rendered record the provider stores.
 pub fn digest_publication_checkpoint_v1(
@@ -262,11 +292,8 @@ pub fn digest_publication_checkpoint_v1(
 pub fn digest_publication_checkpoint_link_v1(
     checkpoint: &CargoAllowPublicationCheckpointV1,
 ) -> Result<String, serde_json::Error> {
-    let mut stable = checkpoint.clone();
-    stable.readback = PublicationCheckpointReadbackV1::Missing;
-    stable.readback_at_unix_seconds = None;
-    let stored = render_publication_checkpoint_v1(&stable)?;
-    Ok(digest_publication_checkpoint_bytes_v1(stored.as_bytes()))
+    let stored = canonical_stored_checkpoint_bytes_v1(checkpoint)?;
+    Ok(digest_publication_checkpoint_bytes_v1(&stored))
 }
 
 /// The checkpoint body: every record field except the provider object and
@@ -546,13 +573,17 @@ pub fn begin_publication_checkpoint_v1(
     })
 }
 
-/// Record an independent readback of the stored provider bytes. Latest
-/// observation wins; only `Complete` authorizes progress.
-pub fn record_checkpoint_readback_v1(
+fn record_checkpoint_readback_internal_v1(
     checkpoint: &mut CargoAllowPublicationCheckpointV1,
     outcome: CheckpointProviderOutcomeV1,
     at_unix_seconds: u64,
-) -> Result<PublicationCheckpointReadbackV1, &'static str> {
+) -> Result<
+    (
+        PublicationCheckpointReadbackV1,
+        Option<PublicationCheckpointReadbackWitnessV1>,
+    ),
+    &'static str,
+> {
     if at_unix_seconds < checkpoint.created_at_unix_seconds {
         return Err("readbacks must not predate checkpoint construction");
     }
@@ -562,18 +593,62 @@ pub fn record_checkpoint_readback_v1(
     {
         return Err("checkpoint readback observation time never moves backward");
     }
-    let readback = match outcome {
+    let (readback, witness) = match outcome {
         CheckpointProviderOutcomeV1::Unavailable => {
-            PublicationCheckpointReadbackV1::ProviderUnavailable
+            (PublicationCheckpointReadbackV1::ProviderUnavailable, None)
         }
         CheckpointProviderOutcomeV1::InstrumentFailure => {
-            PublicationCheckpointReadbackV1::InstrumentFailure
+            (PublicationCheckpointReadbackV1::InstrumentFailure, None)
         }
-        CheckpointProviderOutcomeV1::Delivered(bytes) => classify_delivered_v1(checkpoint, &bytes),
+        CheckpointProviderOutcomeV1::Delivered(bytes) => {
+            let readback = classify_delivered_v1(checkpoint, &bytes);
+            let witness = if readback == PublicationCheckpointReadbackV1::Complete {
+                Some(PublicationCheckpointReadbackWitnessV1 {
+                    checkpoint_link_digest: digest_publication_checkpoint_link_v1(checkpoint)
+                        .map_err(|_| "checkpoint readback witness digest failed")?,
+                    provider_object_id: checkpoint.provider.object_id.clone(),
+                    downloaded_bytes_digest: digest_publication_checkpoint_bytes_v1(&bytes),
+                    observed_at_unix_seconds: at_unix_seconds,
+                })
+            } else {
+                None
+            };
+            (readback, witness)
+        }
     };
     checkpoint.readback = readback;
     checkpoint.readback_at_unix_seconds = Some(at_unix_seconds);
-    Ok(readback)
+    Ok((readback, witness))
+}
+
+/// Record an independent readback observation as serializable evidence. This
+/// compatibility surface intentionally discards the runtime-only witness; code
+/// that needs progress authority must use
+/// `record_checkpoint_readback_with_witness_v1`.
+pub fn record_checkpoint_readback_v1(
+    checkpoint: &mut CargoAllowPublicationCheckpointV1,
+    outcome: CheckpointProviderOutcomeV1,
+    at_unix_seconds: u64,
+) -> Result<PublicationCheckpointReadbackV1, &'static str> {
+    record_checkpoint_readback_internal_v1(checkpoint, outcome, at_unix_seconds)
+        .map(|(readback, _)| readback)
+}
+
+/// Record independent readback and retain the opaque witness required by
+/// verification and progress gates. A witness is returned only for exact
+/// `Complete` readback.
+pub fn record_checkpoint_readback_with_witness_v1(
+    checkpoint: &mut CargoAllowPublicationCheckpointV1,
+    outcome: CheckpointProviderOutcomeV1,
+    at_unix_seconds: u64,
+) -> Result<
+    (
+        PublicationCheckpointReadbackV1,
+        Option<PublicationCheckpointReadbackWitnessV1>,
+    ),
+    &'static str,
+> {
+    record_checkpoint_readback_internal_v1(checkpoint, outcome, at_unix_seconds)
 }
 
 /// Classify delivered provider bytes against the retained object identity.
@@ -625,6 +700,13 @@ fn classify_delivered_v1(
     expected.readback = Readback::Missing;
     expected.readback_at_unix_seconds = None;
     if parsed != expected {
+        return Readback::Mismatch;
+    }
+    let canonical = match canonical_stored_checkpoint_bytes_v1(checkpoint) {
+        Ok(bytes) => bytes,
+        Err(_) => return Readback::Mismatch,
+    };
+    if bytes != canonical.as_slice() {
         return Readback::Mismatch;
     }
     if bytes.len() as u64 != checkpoint.provider.object_size_bytes {
@@ -709,16 +791,43 @@ fn journal_prefix_first_irreversible_row_v1(
         .and_then(|entry| entry.package_name.as_deref())
 }
 
-/// Verify a checkpoint against the live journal, the expected producer, and
-/// the wall clock. Fails closed on operation drift, truncated or rewritten
-/// journal prefixes, producer mismatch, missing readback, expiry, and
-/// incident under-reporting.
+fn verify_readback_witness_v1(
+    checkpoint: &CargoAllowPublicationCheckpointV1,
+    witness: &PublicationCheckpointReadbackWitnessV1,
+) -> Result<(), &'static str> {
+    if checkpoint.readback != PublicationCheckpointReadbackV1::Complete {
+        return Err("checkpoint progress requires a Complete readback observation");
+    }
+    if checkpoint.readback_at_unix_seconds != Some(witness.observed_at_unix_seconds) {
+        return Err("checkpoint readback witness time must match the retained observation");
+    }
+    if checkpoint.provider.object_id != witness.provider_object_id {
+        return Err("checkpoint readback witness belongs to another provider object");
+    }
+    let link_digest = digest_publication_checkpoint_link_v1(checkpoint)
+        .map_err(|_| "checkpoint readback witness link digest failed")?;
+    if link_digest != witness.checkpoint_link_digest {
+        return Err("checkpoint readback witness belongs to another immutable checkpoint");
+    }
+    let stored = canonical_stored_checkpoint_bytes_v1(checkpoint)
+        .map_err(|_| "checkpoint canonical stored bytes failed")?;
+    if digest_publication_checkpoint_bytes_v1(&stored) != witness.downloaded_bytes_digest {
+        return Err("checkpoint readback witness does not bind the exact downloaded bytes");
+    }
+    Ok(())
+}
+
+/// Verify a checkpoint against the live journal, the expected producer, the
+/// opaque exact-byte readback witness, and the wall clock. Serialized
+/// `readback=complete` fields are evidence only and never progress authority.
 pub fn verify_checkpoint_against_journal_v1(
     checkpoint: &CargoAllowPublicationCheckpointV1,
+    witness: &PublicationCheckpointReadbackWitnessV1,
     journal: &CargoAllowPublicationJournalV1,
     expected_producer: &PublicationCheckpointProducerV1,
     now_unix_seconds: u64,
 ) -> Result<(), &'static str> {
+    verify_readback_witness_v1(checkpoint, witness)?;
     verify_publication_journal_v1(journal)?;
     if checkpoint.journal_schema_id != PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID
         || journal.schema_id != PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID
@@ -800,11 +909,18 @@ fn journal_has_incident(journal: &CargoAllowPublicationJournalV1) -> bool {
 /// A read-back pre-intent checkpoint authorizes exactly one upload to begin.
 pub fn checkpoint_permits_upload_v1(
     checkpoint: &CargoAllowPublicationCheckpointV1,
+    witness: &PublicationCheckpointReadbackWitnessV1,
     journal: &CargoAllowPublicationJournalV1,
     expected_producer: &PublicationCheckpointProducerV1,
     now_unix_seconds: u64,
 ) -> Result<(), &'static str> {
-    verify_checkpoint_against_journal_v1(checkpoint, journal, expected_producer, now_unix_seconds)?;
+    verify_checkpoint_against_journal_v1(
+        checkpoint,
+        witness,
+        journal,
+        expected_producer,
+        now_unix_seconds,
+    )?;
     if checkpoint.kind != PublicationCheckpointKindV1::PreIntentDurable
         || checkpoint.row.state != PublicationCheckpointRowStateV1::IntentDurable
     {
@@ -817,17 +933,33 @@ pub fn checkpoint_permits_upload_v1(
     {
         return Err("upload checkpoint must bind the exact row's durable intent journal entry");
     }
+    let live_head = journal
+        .entries
+        .last()
+        .ok_or("upload checkpoints require a live journal head")?;
+    if live_head.sequence != checkpoint.journal_head_sequence
+        || live_head.entry_digest != checkpoint.journal_head_digest
+    {
+        return Err("upload checkpoint permission is consumed by any later journal advancement");
+    }
     Ok(())
 }
 
 /// A read-back post-observation checkpoint unlocks exactly one dependant row.
 pub fn checkpoint_permits_dependant_v1(
     checkpoint: &CargoAllowPublicationCheckpointV1,
+    witness: &PublicationCheckpointReadbackWitnessV1,
     journal: &CargoAllowPublicationJournalV1,
     expected_producer: &PublicationCheckpointProducerV1,
     now_unix_seconds: u64,
 ) -> Result<(), &'static str> {
-    verify_checkpoint_against_journal_v1(checkpoint, journal, expected_producer, now_unix_seconds)?;
+    verify_checkpoint_against_journal_v1(
+        checkpoint,
+        witness,
+        journal,
+        expected_producer,
+        now_unix_seconds,
+    )?;
     if checkpoint.kind != PublicationCheckpointKindV1::PostObservation
         || checkpoint.row.state != PublicationCheckpointRowStateV1::VisibleExact
     {
@@ -839,6 +971,19 @@ pub fn checkpoint_permits_dependant_v1(
         || !bound_entry_matches_row_v1(bound, row)
     {
         return Err("dependant checkpoint must bind the exact row's visible-exact journal entry");
+    }
+    if journal.entries.iter().any(|entry| {
+        entry.sequence > checkpoint.journal_head_sequence
+            && (entry.package_name.as_deref() == Some(row.package_name.as_str())
+                || matches!(
+                    entry.kind,
+                    PublicationJournalEventV1::OperationIncident
+                        | PublicationJournalEventV1::OperationComplete
+                ))
+    }) {
+        return Err(
+            "dependant checkpoint permission is consumed by later same-row or terminal operation history",
+        );
     }
     Ok(())
 }

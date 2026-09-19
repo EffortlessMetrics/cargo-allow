@@ -19,13 +19,15 @@ use allow_report::{
     PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
-    PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
+    PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
     PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
     UploadResponseClassV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
+    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
+    verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -326,13 +328,10 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         first.expires_at_unix_seconds == CREATED_AT + u64::from(RETENTION_DAYS) * 86_400,
         "expiry must equal construction plus retention exactly",
     )?;
-    require(
-        checkpoint_permits_upload_v1(&first, &journal, &expected_producer, now).is_err(),
-        "uploads must not begin before a verified readback",
-    )?;
-    // Store the exact bytes, then read them back independently.
+    // The progress APIs require an opaque runtime witness, so a fresh
+    // serialized checkpoint has no authority before exact readback.
     let stored = store_checkpoint(&mut first)?;
-    let readback = record_checkpoint_readback_v1(
+    let (readback, first_witness) = record_checkpoint_readback_with_witness_v1(
         &mut first,
         CheckpointProviderOutcomeV1::Delivered(stored.clone()),
         now,
@@ -342,17 +341,49 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         readback == PublicationCheckpointReadbackV1::Complete,
         "exact stored bytes must read back Complete",
     )?;
-    verify_checkpoint_against_journal_v1(&first, &journal, &expected_producer, now)
-        .map_err(io::Error::other)?;
-    checkpoint_permits_upload_v1(&first, &journal, &expected_producer, now)
-        .map_err(io::Error::other)?;
+    let first_witness: PublicationCheckpointReadbackWitnessV1 =
+        first_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    verify_checkpoint_against_journal_v1(
+        &first,
+        &first_witness,
+        &journal,
+        &expected_producer,
+        now,
+    )
+    .map_err(io::Error::other)?;
+    checkpoint_permits_upload_v1(
+        &first,
+        &first_witness,
+        &journal,
+        &expected_producer,
+        now,
+    )
+    .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_dependant_v1(&first, &journal, &expected_producer, now).is_err(),
+        checkpoint_permits_dependant_v1(
+            &first,
+            &first_witness,
+            &journal,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
         "a pre-intent checkpoint must not unlock dependants",
     )?;
     // Advance the real journal through upload and exact registry visibility.
     // The post-observation checkpoint must bind that exact clean transition.
     advance_to_visible_exact(&mut journal)?;
+    require(
+        checkpoint_permits_upload_v1(
+            &first,
+            &first_witness,
+            &journal,
+            &expected_producer,
+            CREATED_AT + 150,
+        )
+        .is_err(),
+        "a durable-intent checkpoint cannot authorize another upload after journal advancement",
+    )?;
     let mut second_init =
         checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PostObservation)?;
     second_init.row.state = PublicationCheckpointRowStateV1::VisibleExact;
@@ -364,17 +395,31 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         "sequence two must bind its predecessor",
     )?;
     let stored_second = store_checkpoint(&mut second)?;
-    record_checkpoint_readback_v1(
+    let (_, second_witness) = record_checkpoint_readback_with_witness_v1(
         &mut second,
         CheckpointProviderOutcomeV1::Delivered(stored_second),
         CREATED_AT + 160,
     )
     .map_err(io::Error::other)?;
-    checkpoint_permits_dependant_v1(&second, &journal, &expected_producer, CREATED_AT + 160)
-        .map_err(io::Error::other)?;
+    let second_witness =
+        second_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    checkpoint_permits_dependant_v1(
+        &second,
+        &second_witness,
+        &journal,
+        &expected_producer,
+        CREATED_AT + 160,
+    )
+    .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_upload_v1(&second, &journal, &expected_producer, CREATED_AT + 160)
-            .is_err(),
+        checkpoint_permits_upload_v1(
+            &second,
+            &second_witness,
+            &journal,
+            &expected_producer,
+            CREATED_AT + 160,
+        )
+        .is_err(),
         "a post-observation checkpoint must not authorize uploads",
     )?;
     // Hostile: non-clean post-observation states never unlock dependants.
@@ -390,6 +435,7 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         require(
             checkpoint_permits_dependant_v1(
                 &hostile,
+                &second_witness,
                 &journal,
                 &expected_producer,
                 CREATED_AT + 160,
@@ -406,12 +452,36 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     require(
         checkpoint_permits_dependant_v1(
             &wrong_prefix,
+            &second_witness,
             &journal,
             &expected_producer,
             CREATED_AT + 160,
         )
         .is_err(),
         "visible-exact claims bound to a durable-intent prefix must fail",
+    )?;
+    append_journal_event_v1(
+        &mut journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::OperationComplete,
+            row: None,
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 170,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    require(
+        checkpoint_permits_dependant_v1(
+            &second,
+            &second_witness,
+            &journal,
+            &expected_producer,
+            CREATED_AT + 170,
+        )
+        .is_err(),
+        "operation completion must consume prior dependant permission",
     )?;
 
     // Control: the rendered checkpoints validate against the schema, with

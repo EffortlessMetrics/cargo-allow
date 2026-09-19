@@ -16,12 +16,14 @@ use allow_report::{
     PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
-    PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
+    PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
     PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
+    select_checkpoint_by_exact_identity_v1,
     verify_checkpoint_against_journal_v1,
 };
 
@@ -212,12 +214,14 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     // Hostile: an untrusted producer (fork job reusing the object ID and
     // operation) is never selected and never verifies.
     let (mut trusted, stored) = stored_first(&journal)?;
-    record_checkpoint_readback_v1(
+    let (_, trusted_witness) = record_checkpoint_readback_with_witness_v1(
         &mut trusted,
         CheckpointProviderOutcomeV1::Delivered(stored),
         now,
     )
     .map_err(io::Error::other)?;
+    let trusted_witness: PublicationCheckpointReadbackWitnessV1 =
+        trusted_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     let mut fork_producer = producer();
     fork_producer.run = "7777".to_string();
     require(
@@ -232,7 +236,14 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         "fork producers must never resolve a checkpoint",
     )?;
     require(
-        verify_checkpoint_against_journal_v1(&trusted, &journal, &fork_producer, now).is_err(),
+        verify_checkpoint_against_journal_v1(
+            &trusted,
+            &trusted_witness,
+            &journal,
+            &fork_producer,
+            now,
+        )
+        .is_err(),
         "fork producers must never verify a checkpoint",
     )?;
     // Hostile: every byte fault classifies honestly, never Complete.
@@ -316,6 +327,64 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
             == PublicationCheckpointReadbackV1::Mismatch,
         "provider-object tampering must read back Mismatch",
     )?;
+    // Hostile: semantically equivalent but byte-different JSON is not exact
+    // provider readback, even when length and parsed structure match.
+    let (mut whitespace, whitespace_bytes) = stored_first(&journal)?;
+    let canonical = String::from_utf8(whitespace_bytes.clone())?;
+    let mutated = canonical.replacen("\": ", "\" :", 1).into_bytes();
+    require(
+        mutated.len() == whitespace_bytes.len(),
+        "whitespace mutation control must preserve byte length",
+    )?;
+    require(
+        record_checkpoint_readback_v1(
+            &mut whitespace,
+            CheckpointProviderOutcomeV1::Delivered(mutated),
+            now,
+        )
+        .map_err(io::Error::other)?
+            == PublicationCheckpointReadbackV1::Mismatch,
+        "same-length semantically equivalent byte drift must read back Mismatch",
+    )?;
+
+    // Hostile: serialized Complete fields alone cannot authorize progress.
+    let (mut self_edited_source, self_edited_bytes) = stored_first(&journal)?;
+    let mut self_edited: CargoAllowPublicationCheckpointV1 =
+        serde_json::from_slice(&self_edited_bytes)?;
+    self_edited.readback = PublicationCheckpointReadbackV1::Complete;
+    self_edited.readback_at_unix_seconds = Some(now);
+    let mut other_init = checkpoint_init(&journal, 1)?;
+    other_init.checkpoint_id = "checkpoint-other-witness".to_string();
+    other_init.provider.object_id = "artifact-other-witness".to_string();
+    let mut other =
+        begin_publication_checkpoint_v1(other_init, None).map_err(io::Error::other)?;
+    let other_bytes = store_checkpoint(&mut other)?;
+    let (_, other_witness) = record_checkpoint_readback_with_witness_v1(
+        &mut other,
+        CheckpointProviderOutcomeV1::Delivered(other_bytes),
+        now,
+    )
+    .map_err(io::Error::other)?;
+    let other_witness =
+        other_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    require(
+        checkpoint_permits_upload_v1(
+            &self_edited,
+            &other_witness,
+            &journal,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
+        "self-edited serialized Complete state without its exact runtime witness must not authorize",
+    )?;
+    // Keep the source variable alive as an explicit proof that no readback was
+    // performed on the self-edited checkpoint.
+    require(
+        self_edited_source.readback == PublicationCheckpointReadbackV1::Missing,
+        "self-edited control must originate from immutable Missing bytes",
+    )?;
+
     // Hostile: observation time never moves backward.
     let (mut monotonic, monotonic_bytes) = stored_first(&journal)?;
     record_checkpoint_readback_v1(
@@ -338,12 +407,14 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
 
     // Hostile: older same-operation bytes are Stale, never silently current.
     let (mut current, current_bytes) = stored_first(&journal)?;
-    record_checkpoint_readback_v1(
+    let (_, current_witness) = record_checkpoint_readback_with_witness_v1(
         &mut current,
         CheckpointProviderOutcomeV1::Delivered(current_bytes),
         now,
     )
     .map_err(io::Error::other)?;
+    let current_witness =
+        current_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     let mut older = current.clone();
     older.checkpoint_sequence = 0;
     let older_rendered = serde_json::to_vec_pretty(&older)?;
@@ -358,17 +429,26 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         "older same-operation bytes must read back Stale",
     )?;
     require(
-        checkpoint_permits_upload_v1(&current, &journal, &expected_producer, now + 10).is_err(),
+        checkpoint_permits_upload_v1(
+            &current,
+            &current_witness,
+            &journal,
+            &expected_producer,
+            now + 10,
+        )
+        .is_err(),
         "stale readbacks must block uploads",
     )?;
     // Hostile: instrument failure blocks progress like any non-clean outcome.
     let (mut broken, bytes) = stored_first(&journal)?;
-    record_checkpoint_readback_v1(
+    let (_, broken_witness) = record_checkpoint_readback_with_witness_v1(
         &mut broken,
         CheckpointProviderOutcomeV1::Delivered(bytes),
         now,
     )
     .map_err(io::Error::other)?;
+    let broken_witness =
+        broken_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     record_checkpoint_readback_v1(
         &mut broken,
         CheckpointProviderOutcomeV1::InstrumentFailure,
@@ -380,7 +460,14 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         "instrument failures must persist as instrument failure",
     )?;
     require(
-        checkpoint_permits_upload_v1(&broken, &journal, &expected_producer, now + 10).is_err(),
+        checkpoint_permits_upload_v1(
+            &broken,
+            &broken_witness,
+            &journal,
+            &expected_producer,
+            now + 10,
+        )
+        .is_err(),
         "instrument failures must block uploads",
     )?;
     // Hostile: retention outside the provider window fails at construction;
@@ -466,15 +553,18 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     let mut clean_recorded =
         begin_publication_checkpoint_v1(clean_claim, None).map_err(io::Error::other)?;
     let clean_bytes = store_checkpoint(&mut clean_recorded)?;
-    record_checkpoint_readback_v1(
+    let (_, clean_witness) = record_checkpoint_readback_with_witness_v1(
         &mut clean_recorded,
         CheckpointProviderOutcomeV1::Delivered(clean_bytes),
         now,
     )
     .map_err(io::Error::other)?;
+    let clean_witness =
+        clean_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     require(
         verify_checkpoint_against_journal_v1(
             &clean_recorded,
+            &clean_witness,
             &incident_journal,
             &expected_producer,
             now,
@@ -491,14 +581,17 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     let mut incident_recorded =
         begin_publication_checkpoint_v1(incident_claim, None).map_err(io::Error::other)?;
     let incident_bytes = store_checkpoint(&mut incident_recorded)?;
-    record_checkpoint_readback_v1(
+    let (_, incident_witness) = record_checkpoint_readback_with_witness_v1(
         &mut incident_recorded,
         CheckpointProviderOutcomeV1::Delivered(incident_bytes),
         now,
     )
     .map_err(io::Error::other)?;
+    let incident_witness = incident_witness
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     verify_checkpoint_against_journal_v1(
         &incident_recorded,
+        &incident_witness,
         &incident_journal,
         &expected_producer,
         now,
@@ -519,7 +612,24 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         },
     )
     .map_err(io::Error::other)?;
-    verify_checkpoint_against_journal_v1(&trusted, &moved, &expected_producer, now)
-        .map_err(io::Error::other)?;
+    verify_checkpoint_against_journal_v1(
+        &trusted,
+        &trusted_witness,
+        &moved,
+        &expected_producer,
+        now,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        checkpoint_permits_upload_v1(
+            &trusted,
+            &trusted_witness,
+            &moved,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
+        "historical prefix authenticity must not replay consumed upload permission",
+    )?;
     Ok(())
 }

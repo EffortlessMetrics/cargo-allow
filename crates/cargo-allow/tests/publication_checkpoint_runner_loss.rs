@@ -16,12 +16,14 @@ use allow_report::{
     PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
-    PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
+    PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
     PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
+    select_checkpoint_by_exact_identity_v1,
     verify_checkpoint_against_journal_v1,
 };
 
@@ -200,13 +202,18 @@ fn read_back(
     checkpoint: &mut CargoAllowPublicationCheckpointV1,
     bytes: Vec<u8>,
     at: u64,
-) -> Result<PublicationCheckpointReadbackV1, Box<dyn Error>> {
-    Ok(record_checkpoint_readback_v1(
+) -> Result<PublicationCheckpointReadbackWitnessV1, Box<dyn Error>> {
+    let (readback, witness) = record_checkpoint_readback_with_witness_v1(
         checkpoint,
         CheckpointProviderOutcomeV1::Delivered(bytes),
         at,
     )
-    .map_err(io::Error::other)?)
+    .map_err(io::Error::other)?;
+    require(
+        readback == PublicationCheckpointReadbackV1::Complete,
+        "exact stored checkpoint bytes must read back Complete",
+    )?;
+    witness.ok_or_else(|| io::Error::other("Complete readback must return a witness").into())
 }
 
 #[test]
@@ -230,7 +237,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         reconstructed.readback == PublicationCheckpointReadbackV1::Missing,
         "remote bytes must not self-claim a successful readback",
     )?;
-    read_back(&mut reconstructed, stored_first.clone(), now + 1)?;
+    let resumed_witness = read_back(&mut reconstructed, stored_first.clone(), now + 1)?;
     // The fresh runner acts after the first runner's observation: its clock
     // reads later than the reconstructed readback.
     let resumed = now + 1;
@@ -251,15 +258,27 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             && discovered.readback == PublicationCheckpointReadbackV1::Complete,
         "discovery must return the verified pre-intent checkpoint",
     )?;
-    checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, resumed)
-        .map_err(io::Error::other)?;
+    checkpoint_permits_upload_v1(
+        &discovered,
+        &resumed_witness,
+        &journal,
+        &expected_producer,
+        resumed,
+    )
+    .map_err(io::Error::other)?;
     // Control: runner lost after registry acceptance, before the
     // post-observation checkpoint. Without a verified post-observation
     // checkpoint the dependant row never begins, even though the journal
     // advanced: absence of remote evidence is not evidence of absence.
     require(
-        checkpoint_permits_dependant_v1(&discovered, &journal, &expected_producer, resumed)
-            .is_err(),
+        checkpoint_permits_dependant_v1(
+            &discovered,
+            &resumed_witness,
+            &journal,
+            &expected_producer,
+            resumed,
+        )
+        .is_err(),
         "a pre-intent checkpoint must never unlock dependants",
     )?;
     // Control: same checkpoint name from another run is never selected.
@@ -326,25 +345,45 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     let mut truncated = journal.clone();
     truncated.entries.pop();
     require(
-        verify_checkpoint_against_journal_v1(&discovered, &truncated, &expected_producer, now)
-            .is_err(),
+        verify_checkpoint_against_journal_v1(
+            &discovered,
+            &resumed_witness,
+            &truncated,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
         "a truncated journal prefix must fail verification",
     )?;
     let mut rebound = checkpoint_init(&journal, 1, "artifact-1")?;
     rebound.journal_head_digest = digest(999);
-    let rebound_record =
+    let mut rebound_record =
         begin_publication_checkpoint_v1(rebound, None).map_err(io::Error::other)?;
+    let rebound_bytes = store_checkpoint(&mut rebound_record)?;
+    let rebound_witness = read_back(&mut rebound_record, rebound_bytes, now)?;
     require(
-        verify_checkpoint_against_journal_v1(&rebound_record, &journal, &expected_producer, now)
-            .is_err(),
+        verify_checkpoint_against_journal_v1(
+            &rebound_record,
+            &rebound_witness,
+            &journal,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
         "a rebound head digest must fail verification",
     )?;
     // Control: an expired checkpoint never authorizes progress, even with a
     // Complete readback and an intact prefix.
     let expired_at = first.expires_at_unix_seconds + 1;
     require(
-        verify_checkpoint_against_journal_v1(&discovered, &journal, &expected_producer, expired_at)
-            .is_err(),
+        verify_checkpoint_against_journal_v1(
+            &discovered,
+            &resumed_witness,
+            &journal,
+            &expected_producer,
+            expired_at,
+        )
+        .is_err(),
         "expired checkpoints must fail verification",
     )?;
     // Control: provider outage is not absence. Unavailable readbacks block
@@ -354,7 +393,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         begin_publication_checkpoint_v1(checkpoint_init(&journal, 1, "artifact-1")?, None)
             .map_err(io::Error::other)?;
     let stored_outage = store_checkpoint(&mut outage)?;
-    read_back(&mut outage, stored_outage, now)?;
+    let outage_witness = read_back(&mut outage, stored_outage, now)?;
     record_checkpoint_readback_v1(
         &mut outage,
         CheckpointProviderOutcomeV1::Unavailable,
@@ -366,7 +405,14 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         "outages must persist as unavailable",
     )?;
     require(
-        checkpoint_permits_upload_v1(&outage, &journal, &expected_producer, now + 10).is_err(),
+        checkpoint_permits_upload_v1(
+            &outage,
+            &outage_witness,
+            &journal,
+            &expected_producer,
+            now + 10,
+        )
+        .is_err(),
         "outage readbacks must block uploads",
     )?;
     // Control: later clean state must not overwrite incident history. A

@@ -52,6 +52,24 @@
           "prior_checkpoint_digest": { "$ref": "#/$defs/digest" }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "readback": { "const": "missing" }
+        },
+        "required": ["readback"]
+      },
+      "then": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "integer", "minimum": 1 }
+        }
+      }
     }
   ],
   "properties": {
@@ -90,7 +108,10 @@
     "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
     "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
     "note": { "type": "string", "maxLength": 256 },
-    "readback": { "$ref": "#/$defs/readback" },
+    "readback": {
+      "$ref": "#/$defs/readback",
+      "description": "Serializable observation only. Progress gates additionally require the opaque runtime exact-byte readback witness returned by the readback API."
+    },
     "readback_at_unix_seconds": {
       "type": ["integer", "null"],
       "minimum": 1
@@ -138,7 +159,10 @@
         "provider": { "const": "github_actions_artifact" },
         "object_id": { "type": "string", "minLength": 1 },
         "object_name": { "type": "string", "minLength": 1 },
-        "object_digest": { "$ref": "#/$defs/digest" },
+        "object_digest": {
+          "$ref": "#/$defs/digest",
+          "description": "Digest of the normalized checkpoint body excluding provider metadata and readback observation. Exact downloaded-byte identity is runtime-only witness evidence."
+        },
         "object_size_bytes": { "type": "integer", "minimum": 1 }
       }
     },

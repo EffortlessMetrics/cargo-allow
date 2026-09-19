@@ -36,12 +36,12 @@ begin checkpoint (sequence 1, or prior + 1 with linkage)
 store exact bytes at the provider (producer protocol:
 render → bind body digest → measure → converge size)
         ▼
-independent readback (download → classify: Complete |
-Missing | Stale | Mismatch | ProviderUnavailable |
-InstrumentFailure)
+independent readback (download exact canonical bytes → classify:
+Complete | Missing | Stale | Mismatch | ProviderUnavailable |
+InstrumentFailure) → opaque runtime witness on Complete
         ▼ per gate
-PreIntentDurable + verified readback ──► upload may begin
-PostObservation + verified readback ──► dependant may begin
+PreIntentDurable + exact-byte witness ──► upload may begin once
+PostObservation + exact-byte witness ──► dependant may begin
 ```
 
 - A fresh checkpoint reads back `Missing`: provider success without an
@@ -64,19 +64,26 @@ PostObservation + verified readback ──► dependant may begin
 - A provider outage is `ProviderUnavailable`: an outage, never absence.
   Absence is a journal verdict with its own provider observation.
 - Row state is not authority by itself. Verification first validates the
-  entire journal chain/header and exact authorization/custody/freeze subject,
-  then reconciles the checkpoint row to the declared journal row and bound
-  prefix. Upload opens only for `PreIntentDurable + IntentDurable` bound to
-  that row's `UploadIntentDurable`; dependant progress opens only for
-  `PostObservation + VisibleExact` bound to `RegistryVisibleExact`.
+  entire journal chain/header, exact authorization/custody/freeze subject, and
+  the opaque exact-byte readback witness, then reconciles the checkpoint row
+  to the declared journal row and bound prefix. Upload opens only for
+  `PreIntentDurable + IntentDurable` bound to the row's current
+  `UploadIntentDurable` journal head; any later journal advancement consumes
+  that upload permission. Dependant progress opens only for
+  `PostObservation + VisibleExact` bound to `RegistryVisibleExact`; later
+  unrelated package rows may coexist, but any later event for the checkpointed
+  row or any operation incident/completion consumes that dependant permission.
   Conflict, absence, waiting, unknown-response, and incident states remain
   blocking.
 - Fork and untrusted jobs cannot create authoritative checkpoints: producer
   equality against the expected release producer fails closed.
-- Delivered checkpoint bytes must reproduce the entire immutable checkpoint
-  record, including provider identity, with the stored record still carrying
-  the initial Missing/no-readback posture. Readback observations are local
-  monotonic evidence and cannot rewrite the stored subject.
+- Delivered checkpoint bytes must equal the canonical immutable stored
+  rendering byte-for-byte, including provider identity, with the stored record
+  still carrying the initial Missing/no-readback posture. Parsing to an equal
+  object is insufficient. The provider `object_digest` remains the normalized
+  checkpoint-body digest; exact downloaded-byte SHA-256 is retained only in
+  the opaque runtime readback witness. Serialized `readback=complete` is
+  evidence, not authority, and cannot manufacture that witness.
 - Provider notes are bounded (256 chars) and screened under the shared
   custody secret-marker law; no credentials, raw authorization, unbounded
   logs, or response bodies are retained.
@@ -84,8 +91,11 @@ PostObservation + verified readback ──► dependant may begin
 ## Recovery
 
 A runner lost after remote pre-intent resumes by discovering the exact
-checkpoint, verifying it against the surviving journal, and continuing the
-upload: it must not record a second pre-intent for the same row. A runner
+checkpoint, downloading and classifying the exact immutable bytes to obtain a
+fresh runtime witness, verifying it against the surviving journal, and
+continuing the upload exactly once: it must not record a second pre-intent for
+the same row. Once `UploadRequestStarted` is appended, the pre-intent
+checkpoint remains authentic history but no longer grants upload permission. A runner
 lost after registry acceptance but before the post-observation checkpoint
 blocks every dependant until observation is re-verified: missing remote
 evidence is never evidence of absence. Incident checkpoints carry the
