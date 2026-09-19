@@ -1097,6 +1097,32 @@ pub fn validate_release_operation_history_v1(
     Ok(())
 }
 
+fn response_unknown_is_resolved(
+    events: &[CargoAllowReleaseOperationEventV1],
+    index: usize,
+) -> bool {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    let event = &events[index];
+    match (&event.event_class, &event.subject) {
+        (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => events
+            .iter()
+            .skip(index + 1)
+            .any(|later| {
+                later.event_class == Event::TagObservedExact
+                    && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+            }),
+        (
+            Event::PackageRowIntentDurable,
+            CargoAllowReleaseOperationEventSubjectV1::Package(id),
+        ) => events.iter().skip(index + 1).any(|later| {
+            later.event_class == Event::PackageRowObservedExact
+                && later.subject == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
+                && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+        }),
+        _ => false,
+    }
+}
+
 fn limiting_state(events: &[CargoAllowReleaseOperationEventV1]) -> Option<CargoAllowReleaseOperationStateV1> {
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
     use CargoAllowReleaseOperationStateV1 as State;
@@ -1124,11 +1150,16 @@ fn limiting_state(events: &[CargoAllowReleaseOperationEventV1]) -> Option<CargoA
     {
         return Some(State::Stale);
     }
-    if events.iter().any(|event| {
-        matches!(
-            event.semantic_result,
-            ResultClass::Partial | ResultClass::Unknown
-        )
+    if events
+        .iter()
+        .any(|event| event.semantic_result == ResultClass::Partial)
+    {
+        return Some(State::RecoveryRequired);
+    }
+    if events.iter().enumerate().any(|(index, event)| {
+        (event.semantic_result == ResultClass::Unknown
+            || event.response_posture == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
+            && !response_unknown_is_resolved(events, index)
     }) {
         return Some(State::RecoveryRequired);
     }
