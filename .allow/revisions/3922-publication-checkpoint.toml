@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11317"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:33b2923cea5048a910600bb78162cbc5f72f217f05f4445a60be5f84604c22f6"
+reason = "receipt for docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json, the remote checkpoint contract schema (#3922)"
+
+[[records]]
+allow_ids = ["allow-11318"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bd46e9ad0d9ce25955767658842dc3fca0d760e4e24a1368050d13d135fd41ef"
+reason = "receipt for docs/release/publication-checkpoint-v1.md, the operator-side checkpoint protocol with retained substrate decision (#3922)"
+
+[[records]]
+allow_ids = ["allow-11319"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ecc30e9801cc84b565706c4c86565ccb9afe9e12782d60500eed41da770fdc5f"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
