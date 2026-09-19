@@ -12,6 +12,13 @@ The [final registry preflight](cargo-allow.final-registry-preflight.v1.schema.js
 See the [producer and consumer contract](../release/final-registry-preflight-v1.md).
 It is a pure feasibility component; there is no CLI or live provider in this generation.
 
+The [release operation authority](cargo-allow.release-operation-authority.v1.schema.json)
+(`cargo-allow.release-operation-authority.v1`) is the reusable closed schema
+family for the canonical #3940 final-release operation identity, append-only
+event envelope, current head, and aggregate evaluation. It is pure semantic
+authority; provider-specific children compose it and no external action is
+performed by the model.
+
 The [release authorization](cargo-allow.release-authorization.v1.schema.json)
 (`cargo-allow.release-authorization.v1`) is produced by
 `allow_report::compile_release_authorization_v1` and its canonical renderer.
