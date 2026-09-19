@@ -33,7 +33,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "c16026eb2536ef187a79a79cea83e3b1fa67ffd2"
+          test "$(git rev-parse HEAD^^)" = "c16026eb2536ef187a79a79cea83e3b1fa67ffd2"
+          mapfile -t carrier_changes < <(git diff --name-only c16026eb2536ef187a79a79cea83e3b1fa67ffd2 HEAD | sort)
+          test "${#carrier_changes[@]}" -eq 1
+          test "${carrier_changes[0]}" = ".github/workflows/automation-pr4303-phase-bound-request.yml"
           python3 - <<'PY'
           from pathlib import Path
 
@@ -57,7 +60,7 @@ jobs:
               if request.event_class != Event::IrreversibleRequestStarted {
                   return None;
               }
-              let prefix = &events[..request_index];
+              let prefix = events.get(..request_index)?;
               match &request.subject {
                   Subject::Package(_) => Some(Event::PackageRowObservedExact),
                   Subject::Asset(_) => Some(Event::AssetObservedExact),
@@ -386,7 +389,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "c16026eb2536ef187a79a79cea83e3b1fa67ffd2"
+          test "$(git rev-parse HEAD^^)" = "c16026eb2536ef187a79a79cea83e3b1fa67ffd2"
           mapfile -t changed < <(git diff --name-only HEAD | sort)
           test "${#changed[@]}" -eq 3
           test "${changed[0]}" = ".github/workflows/automation-pr4303-phase-bound-request.yml"
