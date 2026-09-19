@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4303,
+  "base_ref": "main",
+  "base_sha": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "head_ref": "release/3940-operation-authority-v1",
+  "head_sha": "a5ba4f907e03d911b8d4f8cef9c05f6fb73c0678",
+  "merge_base": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "reviewed_diff_digest": "sha256:v1:00964fd85e283fc517b5428c6e950180300132730376471cfb87c63f7f238b5b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5257099533; same-maintainer exact-pair technical review; not independent-human approval",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PR 4303 GraphQL reviewThreads: all inline threads resolved at the latest inspection before exact reviewed head a5ba4f907e03d911b8d4f8cef9c05f6fb73c0678",
+    "Same-maintainer exact-pair technical review 5257099533 found no additional blocking source-semantic or governance defect in the fifteen-file PR-A surface",
+    "Reviewed head tree 7ca95cd4126ef14e2a6ab6e1f917ab51434f28e6 differs from the accepted 01bdd73c bootstrap only by the one-line allow-11323 evidence correction in policy/allow.toml",
+    "Policy allow-11323 remains anchored to review 5257051368, the review that authorized the retained-disposition repair; the policy record is intentionally not mutated to cite its own successor review",
+    "Focused proof run 35460153089 passed rustfmt, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene for terminal recovery and global-expiry coverage",
+    "Review-readiness check 105948739991 correctly invalidated the predecessor disposition and reported live diff sha256:v1:00964fd85e283fc517b5428c6e950180300132730376471cfb87c63f7f238b5b",
+    "Retained UB/model-review output is supporting telemetry only; unavailable or degraded sensors are not represented as independent-human approval"
+  ],
+  "required_ci": {
+    "owner": "backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4303",
+  "reviewed_at_utc": "2026-09-19T18:51:20Z"
+}

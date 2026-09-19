@@ -338,6 +338,37 @@ pub use artifacts::{
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
     transition_authorization_consumption,
 };
+// Canonical shared release-operation authority (#3940 PR A).
+pub use artifacts::{
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEvaluationV1,
+    CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
+    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
+    CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    RELEASE_OPERATION_ASSET_SELECTION, RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
+    RELEASE_OPERATION_CHANNEL, RELEASE_OPERATION_EVALUATION_SCHEMA_ID,
+    RELEASE_OPERATION_EVENT_SCHEMA_ID, RELEASE_OPERATION_GENESIS_DIGEST,
+    RELEASE_OPERATION_HEAD_SCHEMA_ID, RELEASE_OPERATION_IDENTITY_SCHEMA_ID,
+    RELEASE_OPERATION_PRODUCT, RELEASE_OPERATION_REPOSITORY, RELEASE_OPERATION_TAG,
+    RELEASE_OPERATION_VERSION, append_release_operation_event_v1,
+    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
+    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
+    compile_release_operation_head_with_predecessor_v1, evaluate_release_operation_v1,
+    evaluate_release_operation_with_predecessor_v1, release_operation_event_digest_v1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    render_release_operation_evaluation_v1, render_release_operation_event_v1,
+    render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1,
+    validate_release_operation_evaluation_with_predecessor_v1, validate_release_operation_head_v1,
+    validate_release_operation_head_with_predecessor_v1, validate_release_operation_history_v1,
+    validate_release_operation_history_with_predecessor_v1, validate_release_operation_identity_v1,
+    validate_release_operation_predecessor_v1,
+};
+
 // Root re-exports for the durable operation lease (#3925).
 pub use artifacts::{
     CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
