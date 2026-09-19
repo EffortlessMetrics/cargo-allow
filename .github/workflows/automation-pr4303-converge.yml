@@ -31,6 +31,7 @@ jobs:
           set -euo pipefail
 
           cat > /tmp/apply-pr4303.py <<'PY'
+          import re
           from pathlib import Path
 
           lib = Path("crates/allow-report/src/lib.rs")
@@ -85,21 +86,30 @@ jobs:
               helper_end = text.index("fn exact_package_subjects(", helper_start)
               text = text[:helper_start] + text[helper_end:]
 
-          nested = '''            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject) {
-              if init.artifact_digest.as_deref() != Some(expected) {
-                  return Err("provider request bytes do not match the immutable denominator");
-              }
-          }
-          '''
-          collapsed = '''            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject)
-              && init.artifact_digest.as_deref() != Some(expected)
-          {
-              return Err("provider request bytes do not match the immutable denominator");
-          }
-          '''
-          if nested in text:
-              text = text.replace(nested, collapsed, 1)
-          elif collapsed not in text:
+          nested = re.compile(
+              r'(?m)^(?P<indent>[ \t]*)if let Some\(expected\) = '
+              r'expected_subject_artifact_digest\(identity, &init\.subject\) \{\n'
+              r'(?P=indent)    if init\.artifact_digest\.as_deref\(\) != Some\(expected\) \{\n'
+              r'(?P=indent)        return Err\("provider request bytes do not match the immutable denominator"\);\n'
+              r'(?P=indent)    \}\n'
+              r'(?P=indent)\}\n'
+          )
+          match = nested.search(text)
+          if match:
+              indent = match.group("indent")
+              collapsed = (
+                  f"{indent}if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject)\n"
+                  f"{indent}    && init.artifact_digest.as_deref() != Some(expected)\n"
+                  f"{indent}{{\n"
+                  f"{indent}    return Err(\"provider request bytes do not match the immutable denominator\");\n"
+                  f"{indent}}}\n"
+              )
+              text = nested.sub(collapsed, text, count=1)
+          elif not re.search(
+              r'if let Some\(expected\) = expected_subject_artifact_digest\(identity, &init\.subject\)\n'
+              r'[ \t]*&& init\.artifact_digest\.as_deref\(\) != Some\(expected\)',
+              text,
+          ):
               raise SystemExit("request-byte guard has an unexpected shape")
           authority.write_text(text, encoding="utf-8", newline="\n")
 
