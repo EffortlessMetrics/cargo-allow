@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-operation-authority.v1.schema.json",
+  "title": "CargoAllowReleaseOperationAuthorityV1",
+  "description": "Reusable closed contracts for the canonical cargo-allow final-release operation identity, append-only event envelope, current head, and aggregate evaluation. Structural validation performs no external release action.",
+  "oneOf": [
+    { "$ref": "#/$defs/identity" },
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/head" },
+    { "$ref": "#/$defs/evaluation" }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "operation_class": {
+      "enum": ["clean_final_publication", "incident_recovery", "containment"]
+    },
+    "authority_kind": {
+      "enum": ["clean", "recovery", "containment"]
+    },
+    "event_class": {
+      "enum": [
+        "operation_selected",
+        "authorization_selected",
+        "lease_acquired",
+        "tag_intent_durable",
+        "tag_observed_exact",
+        "package_row_intent_durable",
+        "package_row_observed_exact",
+        "git_hub_draft_observed_exact",
+        "asset_observed_exact",
+        "public_release_observed_exact",
+        "repository_reconciled",
+        "incident_recorded",
+        "recovery_selected",
+        "operation_settled"
+      ]
+    },
+    "semantic_result": {
+      "enum": [
+        "exact",
+        "partial",
+        "unknown",
+        "conflict",
+        "stale",
+        "provider_unavailable",
+        "instrument_failure"
+      ]
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "authorized",
+        "held_pre_irreversible",
+        "tag_observed_packages_pending",
+        "package_publication_in_progress",
+        "packages_published_exact",
+        "git_hub_release_in_progress",
+        "public_release_observed",
+        "repository_reconciliation_required",
+        "complete_clean",
+        "complete_with_incident_lineage",
+        "recovery_required",
+        "conflict",
+        "stale",
+        "provider_unavailable",
+        "instrument_failure"
+      ]
+    },
+    "package_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_id", "package_name", "package_version", "package_digest"],
+      "properties": {
+        "logical_id": { "type": "string", "minLength": 1 },
+        "package_name": { "type": "string", "minLength": 1 },
+        "package_version": { "const": "0.2.0" },
+        "package_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "asset_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "asset_name", "asset_digest"],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "asset_name": { "type": "string", "minLength": 1 },
+        "asset_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tool", "schema", "generation", "repository", "workflow", "workflow_ref",
+        "run", "attempt", "job", "commit"
+      ],
+      "properties": {
+        "tool": { "type": "string", "minLength": 1 },
+        "schema": { "type": "string", "minLength": 1 },
+        "generation": { "type": "integer", "minimum": 1 },
+        "repository": { "const": "EffortlessMetrics/cargo-allow" },
+        "workflow": { "type": "string", "minLength": 1 },
+        "workflow_ref": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "job": { "type": "string", "minLength": 1 },
+        "commit": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"
+        }
+      }
+    },
+    "subject": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "operation" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "package" },
+            "id": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "id"],
+          "properties": {
+            "kind": { "const": "asset" },
+            "id": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id", "schema_version", "operation_id", "nonce", "operation_class",
+        "authority_kind", "repository", "product", "version", "tag", "channel",
+        "github_prerelease", "freeze_digest", "final_evidence_graph_digest",
+        "custody_digest", "replay_digest", "authorization_digest", "cargo_lock_digest",
+        "topology_digest", "support_digest", "channel_digest",
+        "package_denominator_digest", "packages", "asset_denominator_digest", "assets",
+        "workflow_digest", "action_inventory_digest", "live_controls_digest",
+        "incident_predecessor_operation_digest", "one_run_scope",
+        "expires_at_unix_seconds", "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.release-operation-identity.v1" },
+        "schema_version": { "const": 1 },
+        "operation_id": { "type": "string", "pattern": "^cargo-allow-op-[0-9a-f]{24}$" },
+        "nonce": { "type": "string", "minLength": 1 },
+        "operation_class": { "$ref": "#/$defs/operation_class" },
+        "authority_kind": { "$ref": "#/$defs/authority_kind" },
+        "repository": { "const": "EffortlessMetrics/cargo-allow" },
+        "product": { "const": "cargo-allow" },
+        "version": { "const": "0.2.0" },
+        "tag": { "const": "v0.2.0" },
+        "channel": { "const": "stable" },
+        "github_prerelease": { "const": false },
+        "freeze_digest": { "$ref": "#/$defs/digest" },
+        "final_evidence_graph_digest": { "$ref": "#/$defs/digest" },
+        "custody_digest": { "$ref": "#/$defs/digest" },
+        "replay_digest": { "$ref": "#/$defs/digest" },
+        "authorization_digest": { "$ref": "#/$defs/digest" },
+        "cargo_lock_digest": { "$ref": "#/$defs/digest" },
+        "topology_digest": { "$ref": "#/$defs/digest" },
+        "support_digest": { "$ref": "#/$defs/digest" },
+        "channel_digest": { "$ref": "#/$defs/digest" },
+        "package_denominator_digest": { "$ref": "#/$defs/digest" },
+        "packages": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/package_row" }
+        },
+        "asset_denominator_digest": { "$ref": "#/$defs/digest" },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/asset_row" }
+        },
+        "workflow_digest": { "$ref": "#/$defs/digest" },
+        "action_inventory_digest": { "$ref": "#/$defs/digest" },
+        "live_controls_digest": { "$ref": "#/$defs/digest" },
+        "incident_predecessor_operation_digest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
+        "one_run_scope": { "const": true },
+        "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id", "schema_version", "operation_identity_digest", "sequence",
+        "previous_event_digest", "event_digest", "event_class", "subject",
+        "payload_schema_id", "payload_digest", "producer", "actor", "authority_class",
+        "request_boundary", "response_posture", "semantic_result", "artifact_digest",
+        "observed_at_unix_seconds", "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.release-operation-event.v1" },
+        "schema_version": { "const": 1 },
+        "operation_identity_digest": { "$ref": "#/$defs/digest" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "previous_event_digest": { "$ref": "#/$defs/digest" },
+        "event_digest": { "$ref": "#/$defs/digest" },
+        "event_class": { "$ref": "#/$defs/event_class" },
+        "subject": { "$ref": "#/$defs/subject" },
+        "payload_schema_id": { "type": "string", "minLength": 1 },
+        "payload_digest": { "$ref": "#/$defs/digest" },
+        "producer": { "$ref": "#/$defs/producer" },
+        "actor": { "type": "string", "minLength": 1 },
+        "authority_class": { "$ref": "#/$defs/authority_kind" },
+        "request_boundary": { "type": "string", "minLength": 1 },
+        "response_posture": {
+          "enum": ["not_applicable", "response_known", "response_unknown"]
+        },
+        "semantic_result": { "$ref": "#/$defs/semantic_result" },
+        "artifact_digest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
+        "observed_at_unix_seconds": { "type": "integer", "minimum": 1 },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id", "schema_version", "operation_identity_digest", "sequence",
+        "event_digest", "state", "first_irreversible_event_digest",
+        "incident_lineage", "packages_observed_exact", "assets_observed_exact",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.release-operation-head.v1" },
+        "schema_version": { "const": 1 },
+        "operation_identity_digest": { "$ref": "#/$defs/digest" },
+        "sequence": { "type": "integer", "minimum": 0 },
+        "event_digest": { "$ref": "#/$defs/digest" },
+        "state": { "$ref": "#/$defs/state" },
+        "first_irreversible_event_digest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
+        "incident_lineage": { "type": "boolean" },
+        "packages_observed_exact": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "assets_observed_exact": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id", "schema_version", "operation_identity_digest", "state",
+        "head", "missing_packages", "missing_assets", "incident_lineage",
+        "findings", "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.release-operation-evaluation.v1" },
+        "schema_version": { "const": 1 },
+        "operation_identity_digest": { "$ref": "#/$defs/digest" },
+        "state": { "$ref": "#/$defs/state" },
+        "head": { "$ref": "#/$defs/head" },
+        "missing_packages": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "missing_assets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "incident_lineage": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
