@@ -399,7 +399,7 @@ fn contains_secret_marker(value: &str) -> bool {
 fn bounded_retained_text(value: &str) -> bool {
     !value.trim().is_empty()
         && value.len() <= 256
-        && !value.contains(['\n', '\r', '\0'])
+        && !value.chars().any(|ch| matches!(ch, '\n' | '\r' | '\0'))
         && !contains_secret_marker(value)
 }
 
