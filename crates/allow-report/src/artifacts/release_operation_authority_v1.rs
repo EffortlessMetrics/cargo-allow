@@ -743,6 +743,31 @@ pub fn release_operation_event_digest_v1(
     digest_json(&event_digest_body(event))
 }
 
+fn validate_event_envelope_fields(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    event: &CargoAllowReleaseOperationEventV1,
+) -> Result<(), &'static str> {
+    validate_producer(&event.producer)?;
+    if event.payload_schema_id.trim().is_empty()
+        || !digest_shape(&event.payload_digest)
+        || event.actor.trim().is_empty()
+        || contains_secret_marker(&event.actor)
+        || event.request_boundary.trim().is_empty()
+        || contains_secret_marker(&event.request_boundary)
+        || event.observed_at_unix_seconds == 0
+        || event
+            .artifact_digest
+            .as_ref()
+            .is_some_and(|digest| !digest_shape(digest))
+    {
+        return Err("operation event envelope is malformed");
+    }
+    if event.authority_class != identity.authority_kind {
+        return Err("operation event authority class does not match the immutable operation");
+    }
+    Ok(())
+}
+
 fn has_event(
     events: &[CargoAllowReleaseOperationEventV1],
     class: CargoAllowReleaseOperationEventClassV1,
@@ -857,6 +882,11 @@ fn validate_event_transition(
             if !has_event(events, Event::TagObservedExact) {
                 return Err("package intent requires exact tag observation");
             }
+            if events.iter().any(|event| event.event_class == Event::PackageRowIntentDurable
+                && event.subject == init.subject)
+            {
+                return Err("package row durable intent is append-once for one operation");
+            }
         }
         Event::PackageRowObservedExact => {
             let CargoAllowReleaseOperationEventSubjectV1::Package(id) = &init.subject else {
@@ -870,6 +900,11 @@ fn validate_event_transition(
             if !intent_exists {
                 return Err("package observation requires the same row's durable intent");
             }
+            if events.iter().any(|event| event.event_class == Event::PackageRowObservedExact
+                && event.subject == init.subject)
+            {
+                return Err("package row exact observation is append-once for one operation");
+            }
         }
         Event::GitHubDraftObservedExact => {
             if !all_packages_exact(identity, events) {
@@ -879,6 +914,11 @@ fn validate_event_transition(
         Event::AssetObservedExact => {
             if !has_event(events, Event::GitHubDraftObservedExact) {
                 return Err("asset observation requires exact GitHub draft observation");
+            }
+            if events.iter().any(|event| event.event_class == Event::AssetObservedExact
+                && event.subject == init.subject)
+            {
+                return Err("asset exact observation is append-once for one operation");
             }
         }
         Event::PublicReleaseObservedExact => {
@@ -940,23 +980,33 @@ pub fn append_release_operation_event_v1(
     validate_event_subject(identity, init.event_class, &init.subject)?;
     validate_event_transition(identity, events, &init)?;
     validate_producer(&init.producer)?;
-    if init.payload_schema_id.trim().is_empty()
-        || !digest_shape(&init.payload_digest)
-        || init.actor.trim().is_empty()
-        || contains_secret_marker(&init.actor)
-        || init.request_boundary.trim().is_empty()
-        || contains_secret_marker(&init.request_boundary)
-        || init.observed_at_unix_seconds == 0
-        || init
-            .artifact_digest
-            .as_ref()
-            .is_some_and(|digest| !digest_shape(digest))
-    {
-        return Err("operation event envelope is malformed");
-    }
-    if init.authority_class != identity.authority_kind {
-        return Err("operation event authority class does not match the immutable operation");
-    }
+    let probe = CargoAllowReleaseOperationEventV1 {
+        schema_id: RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(),
+        schema_version: RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
+        operation_identity_digest: release_operation_identity_digest_v1(identity)
+            .map_err(|_| "identity digest failed")?,
+        sequence: events.len() as u64 + 1,
+        previous_event_digest: events
+            .last()
+            .map_or_else(|| RELEASE_OPERATION_GENESIS_DIGEST.to_string(), |event| {
+                event.event_digest.clone()
+            }),
+        event_digest: RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
+        event_class: init.event_class,
+        subject: init.subject.clone(),
+        payload_schema_id: init.payload_schema_id.clone(),
+        payload_digest: init.payload_digest.clone(),
+        producer: init.producer.clone(),
+        actor: init.actor.clone(),
+        authority_class: init.authority_class,
+        request_boundary: init.request_boundary.clone(),
+        response_posture: init.response_posture,
+        semantic_result: init.semantic_result,
+        artifact_digest: init.artifact_digest.clone(),
+        observed_at_unix_seconds: init.observed_at_unix_seconds,
+        claim_boundary: CLAIM_BOUNDARY.to_string(),
+    };
+    validate_event_envelope_fields(identity, &probe)?;
 
     let operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
@@ -1019,7 +1069,7 @@ pub fn validate_release_operation_history_v1(
         {
             return Err("release operation event chain identity/sequence is invalid");
         }
-        validate_producer(&event.producer)?;
+        validate_event_envelope_fields(identity, event)?;
         validate_event_subject(identity, event.event_class, &event.subject)?;
         let init = CargoAllowReleaseOperationEventInitV1 {
             event_class: event.event_class,
