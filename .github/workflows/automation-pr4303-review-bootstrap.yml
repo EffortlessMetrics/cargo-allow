@@ -29,9 +29,12 @@ jobs:
         run: |
           set -euo pipefail
           reviewed_head=d6773c62ef123b9a09d2feb78080c70ffc11c045
+          qualification_head=a4806480c24acf123b239f7c3a5d4c4262e3e481
           base=89d1376390726a34ae8b2cac14f69af7e684153d
-          test "$(git rev-parse HEAD^)" = "$reviewed_head"
-          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/automation-pr4303-review-bootstrap.yml"
+          git merge-base --is-ancestor "$reviewed_head" HEAD
+          git merge-base --is-ancestor "$qualification_head" HEAD
+          test "$(git show -s --format=%T "$reviewed_head")" = "$(git show -s --format=%T "$qualification_head")"
+          test "$(git diff --name-only "$reviewed_head" HEAD)" = ".github/workflows/automation-pr4303-review-bootstrap.yml"
           test "$(git merge-base "$base" "$reviewed_head")" = "$base"
 
           digest="$(git diff "$base..$reviewed_head" | sha256sum | cut -d' ' -f1)"
