@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Model deterministic unknown-upload recovery with exact journal, checkpoint,
+  custody, authorization, and multi-surface observation inputs so every crash
+  window has one safe disposition and unknown outcomes can never become
+  duplicate uploads (#3924).

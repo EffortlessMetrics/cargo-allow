@@ -391,6 +391,15 @@ pub use artifacts::{
     record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
     select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
 };
+// Root re-exports for unknown-upload recovery (#3924).
+pub use artifacts::{
+    CargoAllowUnknownUploadRecoveryV1, PUBLICATION_RECOVERY_MAX_OBSERVATION_ROUNDS,
+    PUBLICATION_RECOVERY_SCHEMA_ID, PUBLICATION_RECOVERY_SCHEMA_VERSION, RecoveryAuthorizationV1,
+    RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1, RecoveryCustodyV1,
+    RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1,
+    decide_unknown_upload_recovery_v1, recovery_dependant_may_begin_v1,
+    render_unknown_upload_recovery_v1,
+};
 // Root re-exports for the append-only publication journal (#3921).
 pub use artifacts::{
     CargoAllowPublicationJournalEntryV1, CargoAllowPublicationJournalV1,
