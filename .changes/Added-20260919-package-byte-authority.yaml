@@ -6,5 +6,7 @@ body: >-
   and the shared verifier rejects dirty or malformed package metadata. Exact
   authority always packages from that worktree; self-attested prebuilt archives
   are refused. Cargo's canonical clean encoding omits
-  `git.dirty`; `dirty: true` is proven and rejected by a real worktree control
-  (#4304).
+  `git.dirty`; `dirty: true` is proven and rejected by a real worktree control.
+  The producer also scrubs inherited Git repository and object-location
+  variables and removes registered worktrees when terminal head validation
+  fails (#4304).
