@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11320"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a66fe8d42e583fa79c5b4f9dec7ac764f0536fe809be788cf954039e0292de54"
+reason = "receipt for docs/schemas/cargo-allow.release-operation-authority.v1.schema.json, the canonical #3940 operation identity/event/head/evaluation schema"
+
+[[records]]
+allow_ids = ["allow-11321"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:197a59bf0ec69e3c6e5eaf1ec70d82641e0c4a260f2107b5f00155739697ceca"
+reason = "receipt for docs/release/release-operation-authority-v1.md, the #3940 PR A operator and migration contract"
+
+[[records]]
+allow_ids = ["allow-11322"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:88037861b1199677c34a20c8e1c2f5572f8c055d65d337fffdceea83d02e3ec3"
+reason = "self-receipt for this #3940 PR A revision note; no external release operation is authorized"
