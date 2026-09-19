@@ -32,8 +32,10 @@ CargoAllowReleaseOperationIdentityV1 binds one exact semantic subject:
     incident predecessor for recovery/containment
 
 The operation ID is derived from a canonical semantic digest. A caller cannot
-choose it. Run, attempt, job, provider object IDs, and observation time are event
-metadata and do not alter the immutable subject.
+choose it. Execution metadata does not alter the immutable subject, but the
+one-run event chain is continuous: repository, workflow, workflow ref, run,
+attempt, and commit must remain unchanged after selection. Jobs may differ
+within that one run because child authorities execute in separate jobs.
 
 The selected package order is the existing final-release authorization
 selection with the three shared 0.1.0 prerequisites excluded. The selected
@@ -54,8 +56,11 @@ as equivalent bytes.
 
 
 
-Clean operations have no incident predecessor. Recovery and containment require
-one exact predecessor digest and the matching authority class.
+Clean operations have no incident predecessor. Recovery and containment
+currently require a canonical digest-shaped predecessor and the matching
+authority class. PR A is not accepted until that lineage is verified against a
+typed predecessor identity/head/history; a syntactically valid digest alone is
+not sufficient release authority.
 
 ## Event and chain law
 
@@ -78,6 +83,13 @@ transition.
 
 Provider-specific response fields remain in child payloads. The common envelope
 references their schema/digest and retains only bounded result/response posture.
+Retained digests and commit identities use canonical lowercase hex; retained
+producer/actor/request text is bounded and secret-marked text is rejected.
+
+Event time is monotonic and no event may be appended after operation expiry.
+Aggregate evaluation carries its own explicit evaluation timestamp; evaluation
+after expiry is Stale, so a historically complete chain cannot be reused as a
+current clean verdict.
 
 ## Denominator and aggregate law
 
@@ -94,11 +106,20 @@ observation requires all packages and all required assets exact.
 OperationSettled additionally requires public observation and repository
 reconciliation.
 
-Partial, Unknown, Conflict, Stale, ProviderUnavailable, and InstrumentFailure
-never strengthen to clean completion. Clean operations stop after
-IncidentRecorded; recovery/containment use distinct immutable identities with
-explicit predecessor lineage. A later successful child observation cannot
-delete incident history.
+Partial, Conflict, Stale, ProviderUnavailable, and InstrumentFailure stop later
+publication progression. An unresolved Unknown/ResponseUnknown can continue
+only through the exact correlated observation for the same typed request
+identity and candidate bytes; unrelated observations remain blocked. Clean
+operations stop after IncidentRecorded, recovery authorization requires an
+exact RecoverySelected, and containment is barred from the publication path.
+A later successful child observation cannot delete incident history.
+
+Two structural items remain explicit PR-A blockers rather than being inferred:
+the first irreversible outbound request needs its own typed transition instead
+of being reconstructed from an observation/unknown posture, and
+recovery/containment lineage still needs validated typed predecessor proof.
+Containment also needs a distinct terminal path before it can be considered a
+complete operation model.
 
 ## Consumers
 
