@@ -1250,3 +1250,118 @@ fn release_operation_rejects_private_path_metadata() -> Result<(), Box<dyn Error
         "machine-private Windows paths must never enter retained operation metadata",
     )
 }
+
+#[test]
+fn release_operation_request_correlation_is_phase_bound() -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1::{Asset, Operation, Package};
+    use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+
+    let identity = identity()?;
+    let mut events = Vec::new();
+    append_preamble(&identity, &mut events)?;
+    let tag_request = events
+        .iter()
+        .find(|event| {
+            event.event_class == Event::IrreversibleRequestStarted && event.subject == Operation
+        })
+        .cloned()
+        .ok_or_else(|| io::Error::other("tag request should be retained"))?;
+
+    let package_ids = identity
+        .packages
+        .iter()
+        .map(|row| row.logical_id.clone())
+        .collect::<Vec<_>>();
+    let mut ordinal = 10;
+    for id in package_ids {
+        append(
+            &identity,
+            &mut events,
+            Event::PackageRowIntentDurable,
+            Package(id.clone()),
+            ordinal,
+        )?;
+        ordinal += 1;
+        append_request(&identity, &mut events, Package(id.clone()), ordinal)?;
+        ordinal += 1;
+        append(
+            &identity,
+            &mut events,
+            Event::PackageRowObservedExact,
+            Package(id),
+            ordinal,
+        )?;
+        ordinal += 1;
+    }
+
+    let mut replay_tag_as_draft = event_init(
+        &identity,
+        Event::GitHubDraftObservedExact,
+        Operation,
+        ResultClass::Exact,
+        ordinal,
+    );
+    replay_tag_as_draft.response_posture =
+        CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
+    replay_tag_as_draft.payload_schema_id = tag_request.payload_schema_id.clone();
+    replay_tag_as_draft.payload_digest = tag_request.payload_digest.clone();
+    replay_tag_as_draft.request_boundary = tag_request.request_boundary.clone();
+    replay_tag_as_draft.artifact_digest = tag_request.artifact_digest.clone();
+    require(
+        append_release_operation_event_v1(&identity, &events, replay_tag_as_draft).is_err(),
+        "a tag request tuple must not authorize GitHub draft observation",
+    )?;
+
+    ordinal += 1;
+    append_request(&identity, &mut events, Operation, ordinal)?;
+    let draft_request = events
+        .last()
+        .cloned()
+        .ok_or_else(|| io::Error::other("draft request should be retained"))?;
+    ordinal += 1;
+    append(
+        &identity,
+        &mut events,
+        Event::GitHubDraftObservedExact,
+        Operation,
+        ordinal,
+    )?;
+    ordinal += 1;
+
+    let asset_ids = identity
+        .assets
+        .iter()
+        .map(|row| row.asset_id.clone())
+        .collect::<Vec<_>>();
+    for id in asset_ids {
+        append_request(&identity, &mut events, Asset(id.clone()), ordinal)?;
+        ordinal += 1;
+        append(
+            &identity,
+            &mut events,
+            Event::AssetObservedExact,
+            Asset(id),
+            ordinal,
+        )?;
+        ordinal += 1;
+    }
+
+    let mut replay_draft_as_public = event_init(
+        &identity,
+        Event::PublicReleaseObservedExact,
+        Operation,
+        ResultClass::Exact,
+        ordinal,
+    );
+    replay_draft_as_public.response_posture =
+        CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
+    replay_draft_as_public.payload_schema_id = draft_request.payload_schema_id.clone();
+    replay_draft_as_public.payload_digest = draft_request.payload_digest.clone();
+    replay_draft_as_public.request_boundary = draft_request.request_boundary.clone();
+    replay_draft_as_public.artifact_digest = draft_request.artifact_digest.clone();
+    require(
+        append_release_operation_event_v1(&identity, &events, replay_draft_as_public).is_err(),
+        "a GitHub draft request tuple must not authorize public-release observation",
+    )
+}

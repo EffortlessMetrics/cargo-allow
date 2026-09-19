@@ -1200,12 +1200,65 @@ fn expected_subject_artifact_digest<'a>(
     }
 }
 
+fn expected_observation_class_for_request(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    request_index: usize,
+) -> Option<CargoAllowReleaseOperationEventClassV1> {
+    use CargoAllowReleaseOperationClassV1 as Class;
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1 as Subject;
+
+    let request = events.get(request_index)?;
+    if request.event_class != Event::IrreversibleRequestStarted {
+        return None;
+    }
+    let prefix = events.get(..request_index)?;
+    match &request.subject {
+        Subject::Package(_) => Some(Event::PackageRowObservedExact),
+        Subject::Asset(_) => Some(Event::AssetObservedExact),
+        Subject::Operation
+            if identity.operation_class == Class::CleanFinalPublication
+                && has_exact_event(prefix, Event::TagIntentDurable)
+                && !has_exact_event(prefix, Event::TagObservedExact) =>
+        {
+            Some(Event::TagObservedExact)
+        }
+        Subject::Operation
+            if identity.operation_class != Class::Containment
+                && all_packages_exact(identity, prefix)
+                && !has_exact_event(prefix, Event::GitHubDraftObservedExact) =>
+        {
+            Some(Event::GitHubDraftObservedExact)
+        }
+        Subject::Operation
+            if identity.operation_class != Class::Containment
+                && all_assets_exact(identity, prefix)
+                && has_exact_event(prefix, Event::GitHubDraftObservedExact)
+                && !has_exact_event(prefix, Event::PublicReleaseObservedExact) =>
+        {
+            Some(Event::PublicReleaseObservedExact)
+        }
+        Subject::Operation
+            if identity.operation_class == Class::Containment
+                && has_exact_event(prefix, Event::ContainmentSelected)
+                && has_exact_event(prefix, Event::AuthorizationSelected)
+                && has_exact_event(prefix, Event::LeaseAcquired)
+                && !has_exact_event(prefix, Event::ContainmentObservedExact) =>
+        {
+            Some(Event::ContainmentObservedExact)
+        }
+        Subject::Operation => None,
+    }
+}
+
 fn matching_irreversible_request(
+    identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     init: &CargoAllowReleaseOperationEventInitV1,
 ) -> bool {
-    events.iter().any(|event| {
-        event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+    events.iter().enumerate().any(|(index, event)| {
+        expected_observation_class_for_request(identity, events, index) == Some(init.event_class)
             && event.subject == init.subject
             && event.payload_schema_id == init.payload_schema_id
             && event.payload_digest == init.payload_digest
@@ -1215,10 +1268,13 @@ fn matching_irreversible_request(
     })
 }
 
-fn unresolved_irreversible_request_exists(events: &[CargoAllowReleaseOperationEventV1]) -> bool {
+fn unresolved_irreversible_request_exists(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+) -> bool {
     events.iter().enumerate().any(|(index, event)| {
         event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
-            && !response_unknown_is_resolved(events, index)
+            && !response_unknown_is_resolved(identity, events, index)
     })
 }
 
@@ -1275,7 +1331,7 @@ fn validate_event_transition(
     {
         return Err("non-clean operation result blocks later transitions");
     }
-    if unresolved_irreversible_request_exists(events)
+    if unresolved_irreversible_request_exists(identity, events)
         && init.event_class != Event::IncidentRecorded
         && !(matches!(
             init.event_class,
@@ -1285,7 +1341,7 @@ fn validate_event_transition(
                 | Event::AssetObservedExact
                 | Event::PublicReleaseObservedExact
                 | Event::ContainmentObservedExact
-        ) && matching_irreversible_request(events, init))
+        ) && matching_irreversible_request(identity, events, init))
     {
         return Err("unresolved irreversible response blocks unrelated progression");
     }
@@ -1427,7 +1483,7 @@ fn validate_event_transition(
             let ready = match identity.operation_class {
                 Class::CleanFinalPublication => {
                     has_exact_event(events, Event::TagIntentDurable)
-                        && matching_irreversible_request(events, init)
+                        && matching_irreversible_request(identity, events, init)
                 }
                 Class::IncidentRecovery => has_exact_event(events, Event::LeaseAcquired),
                 Class::Containment => false,
@@ -1460,7 +1516,7 @@ fn validate_event_transition(
                 event.event_class == Event::PackageRowIntentDurable
                     && event.subject == subject
                     && event_is_exact_authority(event)
-            }) && matching_irreversible_request(events, init);
+            }) && matching_irreversible_request(identity, events, init);
             let read_only_recovery = identity.operation_class == Class::IncidentRecovery
                 && has_exact_event(events, Event::TagObservedExact)
                 && !events.iter().any(|event| {
@@ -1478,9 +1534,9 @@ fn validate_event_transition(
             }
         }
         Event::GitHubDraftObservedExact => {
-            let mutation_path = matching_irreversible_request(events, init);
+            let mutation_path = matching_irreversible_request(identity, events, init);
             let read_only_recovery = identity.operation_class == Class::IncidentRecovery
-                && !unresolved_irreversible_request_exists(events);
+                && !unresolved_irreversible_request_exists(identity, events);
             if !all_packages_exact(identity, events) || !(mutation_path || read_only_recovery) {
                 return Err(
                     "GitHub draft observation requires every package exact plus its request or read-only recovery reconciliation",
@@ -1493,9 +1549,9 @@ fn validate_event_transition(
             if init.artifact_digest.as_deref() != Some(expected) {
                 return Err("asset observation bytes differ from the immutable denominator");
             }
-            let mutation_path = matching_irreversible_request(events, init);
+            let mutation_path = matching_irreversible_request(identity, events, init);
             let read_only_recovery = identity.operation_class == Class::IncidentRecovery
-                && !unresolved_irreversible_request_exists(events);
+                && !unresolved_irreversible_request_exists(identity, events);
             if !has_exact_event(events, Event::GitHubDraftObservedExact)
                 || !(mutation_path || read_only_recovery)
             {
@@ -1510,9 +1566,9 @@ fn validate_event_transition(
             }
         }
         Event::PublicReleaseObservedExact => {
-            let mutation_path = matching_irreversible_request(events, init);
+            let mutation_path = matching_irreversible_request(identity, events, init);
             let read_only_recovery = identity.operation_class == Class::IncidentRecovery
-                && !unresolved_irreversible_request_exists(events);
+                && !unresolved_irreversible_request_exists(identity, events);
             if !all_packages_exact(identity, events)
                 || !all_assets_exact(identity, events)
                 || !(mutation_path || read_only_recovery)
@@ -1524,7 +1580,7 @@ fn validate_event_transition(
         }
         Event::ContainmentObservedExact => {
             if identity.operation_class != Class::Containment
-                || !matching_irreversible_request(events, init)
+                || !matching_irreversible_request(identity, events, init)
             {
                 return Err("containment observation requires the exact containment request");
             }
@@ -1743,33 +1799,19 @@ pub fn append_release_operation_event_with_predecessor_v1(
 }
 
 fn response_unknown_is_resolved(
+    identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     index: usize,
 ) -> bool {
-    use CargoAllowReleaseOperationEventClassV1 as Event;
     let Some(event) = events.get(index) else {
         return false;
     };
-    if event.event_class != Event::IrreversibleRequestStarted {
+    let Some(expected_class) = expected_observation_class_for_request(identity, events, index)
+    else {
         return false;
-    }
+    };
     events.iter().skip(index + 1).any(|later| {
-        let compatible_class = match &event.subject {
-            CargoAllowReleaseOperationEventSubjectV1::Operation => matches!(
-                later.event_class,
-                Event::TagObservedExact
-                    | Event::GitHubDraftObservedExact
-                    | Event::PublicReleaseObservedExact
-                    | Event::ContainmentObservedExact
-            ),
-            CargoAllowReleaseOperationEventSubjectV1::Package(_) => {
-                later.event_class == Event::PackageRowObservedExact
-            }
-            CargoAllowReleaseOperationEventSubjectV1::Asset(_) => {
-                later.event_class == Event::AssetObservedExact
-            }
-        };
-        compatible_class
+        later.event_class == expected_class
             && event_is_exact_authority(later)
             && later.subject == event.subject
             && later.payload_schema_id == event.payload_schema_id
@@ -1781,6 +1823,7 @@ fn response_unknown_is_resolved(
 }
 
 fn limiting_state(
+    identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
 ) -> Option<CargoAllowReleaseOperationStateV1> {
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
@@ -1819,7 +1862,7 @@ fn limiting_state(
         (event.semantic_result == ResultClass::Unknown
             || event.response_posture
                 == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
-            && !response_unknown_is_resolved(events, index)
+            && !response_unknown_is_resolved(identity, events, index)
     }) {
         return Some(State::RecoveryRequired);
     }
@@ -1838,7 +1881,7 @@ fn evaluate_state(
     if evaluated_at_unix_seconds > identity.expires_at_unix_seconds {
         return State::Stale;
     }
-    if let Some(state) = limiting_state(events) {
+    if let Some(state) = limiting_state(identity, events) {
         return state;
     }
     if identity.operation_class == Class::Containment {
