@@ -39,6 +39,7 @@ jobs:
           expected=(
             ".github/scripts/repair_pr4303_envelope.py"
             ".github/scripts/repair_pr4303_envelope_v3.py"
+            ".github/scripts/repair_pr4303_envelope_v4.py"
             ".github/workflows/automation-pr4303-envelope-carrier-fix.yml"
             ".github/workflows/automation-pr4303-envelope-closure-v2.yml"
             ".github/workflows/automation-pr4303-envelope-closure-v3.yml"
@@ -50,10 +51,11 @@ jobs:
             test "${carrier_changes[$i]}" = "${expected[$i]}"
           done
 
-          python3 .github/scripts/repair_pr4303_envelope_v3.py
+          python3 .github/scripts/repair_pr4303_envelope_v4.py
           git rm \
             .github/scripts/repair_pr4303_envelope.py \
             .github/scripts/repair_pr4303_envelope_v3.py \
+            .github/scripts/repair_pr4303_envelope_v4.py \
             .github/workflows/automation-pr4303-envelope-carrier-fix.yml \
             .github/workflows/automation-pr4303-envelope-closure-v2.yml \
             .github/workflows/automation-pr4303-envelope-closure-v3.yml \
