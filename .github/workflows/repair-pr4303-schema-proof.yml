@@ -1,0 +1,68 @@
+name: Repair PR 4303 schema proof
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4303-schema-proof
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/3940-operation-authority-v1
+          fetch-depth: 2
+          persist-credentials: true
+
+      - name: Guard and repair the exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "291fdee8d0ccc71553a597347cf340e16e84cc45"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4303-schema-proof.yml"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/cargo-allow/tests/release_operation_authority.rs")
+          text = path.read_text(encoding="utf-8")
+          old = '''    if !root.join(".git").exists() {\n        return Ok(());\n    }\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one silent schema skip, found {text.count(old)}")
+          path.write_text(text.replace(old, ""), encoding="utf-8", newline="\n")
+          PY
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+        with:
+          toolchain: 1.95.0
+
+      - name: Prove the bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Commit the bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "291fdee8d0ccc71553a597347cf340e16e84cc45"
+          test "$(git diff --name-only)" = "crates/cargo-allow/tests/release_operation_authority.rs"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/cargo-allow/tests/release_operation_authority.rs
+          git commit -m "test(release): require operation schema in every proof environment"
+          git push origin HEAD:release/3940-operation-authority-v1
