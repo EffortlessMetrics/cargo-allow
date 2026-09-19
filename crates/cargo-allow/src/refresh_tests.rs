@@ -157,7 +157,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         crate::load_world(Some(&root), Some(&config_arg), true, None, true).unwrap_or_else(|err| {
             std::panic::panic_any(format!("load refresh fixture world: {err}"))
         });
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     assert!(
         outcomes.iter().any(|outcome| {
             outcome.allow_id.as_deref() == Some("allow-0250")
@@ -226,7 +226,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         "refresh should move last_seen to the current finding coordinates"
     );
 
-    let post_outcomes = evaluate(&after, &findings, CheckMode::NoNew);
+    let post_outcomes = evaluate(&after, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     assert!(
         post_outcomes.iter().any(|outcome| {
             outcome.allow_id.as_deref() == Some("allow-0250")

@@ -6,7 +6,7 @@ fn lint_policy_reference_must_match_entry_id() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(lint_entry("allow-lint"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::InvalidSelector
@@ -20,7 +20,7 @@ fn lint_policy_reference_matching_entry_id_passes() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(lint_entry("allow-lint"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(
         outcomes
@@ -37,7 +37,7 @@ fn bare_allow_attribute_fails_when_policy_disallows_it() {
     cfg.allow
         .push(lint_entry_with_family("allow-lint", "allow_attribute"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::InvalidSelector
@@ -55,7 +55,7 @@ fn bare_allow_attribute_passes_when_policy_allows_it() {
     cfg.allow
         .push(lint_entry_with_family("allow-lint", "allow_attribute"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(
         outcomes
@@ -71,7 +71,7 @@ fn lint_policy_id_is_required_when_configured() {
     cfg.requirements.lint_policy_id_required = true;
     cfg.allow.push(lint_entry("allow-lint"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::InvalidSelector
@@ -87,7 +87,7 @@ fn lint_policy_id_is_optional_by_default() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(lint_entry("allow-lint"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert!(
         outcomes

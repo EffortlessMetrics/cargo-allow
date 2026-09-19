@@ -317,7 +317,7 @@ fn explain_entry_state(
         .collect::<Vec<_>>();
     let mut single_entry_cfg = cfg.clone();
     single_entry_cfg.allow = vec![entry.clone()];
-    let outcomes = evaluate(&single_entry_cfg, &matching_findings, CheckMode::NoNew);
+    let outcomes = evaluate(&single_entry_cfg, &matching_findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     (matching_findings, outcomes)
 }
 

@@ -66,7 +66,7 @@ fn process_compat_synthesizes_matched_new_and_stale_drift() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("process compat config loads: {err}")));
     let findings = process_findings_from_config(&cfg);
 
-    let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew);
+    let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     assert_eq!(
         matched
             .iter()
@@ -88,6 +88,7 @@ fn process_compat_synthesizes_matched_new_and_stale_drift() {
             "bash scripts/publish.sh",
         )],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -95,7 +96,7 @@ fn process_compat_synthesizes_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(
@@ -273,7 +274,7 @@ fn network_compat_synthesizes_matched_new_and_stale_drift() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("network compat config loads: {err}")));
     let findings = network_findings_from_config(&cfg);
 
-    let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew);
+    let matched = allow_match::evaluate(&cfg, &findings, allow_match::CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     assert_eq!(
         matched
             .iter()
@@ -292,6 +293,7 @@ fn network_compat_synthesizes_matched_new_and_stale_drift() {
         &cfg,
         &[network_policy_finding("example.com lane test")],
         allow_match::CheckMode::NoNew,
+    allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -299,7 +301,7 @@ fn network_compat_synthesizes_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit);
+    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     assert!(stale_allow.iter().any(|outcome| {
         outcome.finding_index.is_none()
             && matches!(

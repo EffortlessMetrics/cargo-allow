@@ -193,7 +193,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     // The finding must still be uniquely `New`; a receipted, blocked, or
     // otherwise non-New posture (including replay after a prior successful
     // application) is rejected without mutating policy.
-    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+    let as_of = allow_core::SimpleDate::today_utc_approx();
+    let outcomes = evaluate(&cfg, &findings, CheckMode::Audit, as_of);
     let selected = outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
@@ -270,7 +271,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     // policy (already in memory) to confirm the receipt actually landed. This
     // is NOT a full check — it reuses the loaded findings and the mutated cfg.
     // The operator still needs to run the full check argv for CI-grade proof.
-    let recheck_outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let recheck_outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, as_of);
     let targeted_recheck = match recheck_outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
