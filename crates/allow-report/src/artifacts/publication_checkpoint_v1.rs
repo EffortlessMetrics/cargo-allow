@@ -792,8 +792,6 @@ pub fn verify_checkpoint_against_journal_v1(
     Ok(())
 }
 
-fn journal_has_incident}
-
 fn journal_has_incident(journal: &CargoAllowPublicationJournalV1) -> bool {
     journal
         .entries
@@ -823,8 +821,6 @@ pub fn checkpoint_permits_upload_v1(
     }
     Ok(())
 }
-
-/// A read-back post-observation checkpoint unlocks exactly one dependant row.}
 
 /// A read-back post-observation checkpoint unlocks exactly one dependant row.
 pub fn checkpoint_permits_dependant_v1(

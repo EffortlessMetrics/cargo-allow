@@ -21,9 +21,8 @@ use allow_report::{
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, PublicationRegistryObservationV1,
-    PublicationUploadResponseV1, UploadResponseClassV1, append_journal_event_v1,
-    begin_publication_checkpoint_v1,
+    PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
+    UploadResponseClassV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
     render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
@@ -369,21 +368,11 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         CREATED_AT + 160,
     )
     .map_err(io::Error::other)?;
-    checkpoint_permits_dependant_v1(
-        &second,
-        &journal,
-        &expected_producer,
-        CREATED_AT + 160,
-    )
+    checkpoint_permits_dependant_v1(&second, &journal, &expected_producer, CREATED_AT + 160)
         .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_upload_v1(
-            &second,
-            &journal,
-            &expected_producer,
-            CREATED_AT + 160,
-        )
-        .is_err(),
+        checkpoint_permits_upload_v1(&second, &journal, &expected_producer, CREATED_AT + 160)
+            .is_err(),
         "a post-observation checkpoint must not authorize uploads",
     )?;
     // Hostile: non-clean post-observation states never unlock dependants.

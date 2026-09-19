@@ -20,8 +20,9 @@ use allow_report::{
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
     PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
-    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1, render_publication_checkpoint_v1,
-    select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
+    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -370,8 +371,8 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     incident_init.row.state = PublicationCheckpointRowStateV1::Incident;
     incident_init.first_irreversible_row = Some("cargo-allow".to_string());
     incident_init.incident_recorded = true;
-    let mut incident =
-        begin_publication_checkpoint_v1(incident_init, Some(&discovered)).map_err(io::Error::other)?;
+    let mut incident = begin_publication_checkpoint_v1(incident_init, Some(&discovered))
+        .map_err(io::Error::other)?;
     require(
         incident.prior_checkpoint_digest.is_some(),
         "the incident checkpoint must link its reconstructed predecessor",
