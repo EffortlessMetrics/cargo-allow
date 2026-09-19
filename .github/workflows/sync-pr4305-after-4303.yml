@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "bc91d8d5db10258cc5eb49726c7576affc71bb1e"
+          test "$(git rev-parse HEAD^)" = "26c0af563939ac0f56c4b3f3e7ce22724abb2794"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/sync-pr4305-after-4303.yml"
           git fetch --no-tags origin main
           test "$(git rev-parse origin/main)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
@@ -74,7 +74,7 @@ jobs:
             test "${#unresolved[@]}" -eq 1
             test "${unresolved[0]}" = "policy/allow.toml"
           fi
-          git checkout --theirs -- policy/allow.toml
+          git show origin/main:policy/allow.toml > policy/allow.toml
           python3 - <<'PY'
           from pathlib import Path
           import tomllib
@@ -82,7 +82,7 @@ jobs:
           main = Path('/tmp/main-policy.toml').read_bytes()
           policy = Path('policy/allow.toml')
           if policy.read_bytes() != main:
-              raise SystemExit('theirs resolution does not exactly equal current main policy bytes')
+              raise SystemExit('forced policy does not exactly equal current main policy bytes')
           text = main.decode('utf-8')
           if 'allow-11324' in text or 'allow-11325' in text:
               raise SystemExit('next policy IDs are no longer free on current main')
