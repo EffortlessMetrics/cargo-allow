@@ -9,6 +9,7 @@ and by these real Cargo packaging controls.
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -98,6 +99,31 @@ def rewrite_vcs_dirty(archive, prefix, output, dirty):
     if rewritten != 1:
         raise AssertionError(
             f"expected one VCS metadata member to rewrite, found {rewritten}"
+        )
+
+
+def rewrite_source_member(archive, prefix, output):
+    """Change source bytes while retaining the archive's VCS assertion."""
+    member_name = f"{prefix}/src/lib.rs"
+    rewritten = 0
+    with tarfile.open(archive, mode="r:gz") as source, tarfile.open(
+        output, mode="w:gz"
+    ) as target:
+        for member in source.getmembers():
+            data = None
+            if member.isfile():
+                payload = source.extractfile(member)
+                if payload is None:
+                    raise AssertionError(f"could not read archive member {member.name}")
+                data = payload.read()
+            if member.name == member_name:
+                data += b"\n// tampered prebuilt source with retained VCS metadata\n"
+                member.size = len(data)
+                rewritten += 1
+            target.addfile(member, BytesIO(data) if data is not None else None)
+    if rewritten != 1:
+        raise AssertionError(
+            f"expected one source member to rewrite, found {rewritten}"
         )
 
 
@@ -312,6 +338,37 @@ class PackageByteAuthorityTests(unittest.TestCase):
                     "git.dirty must be a JSON boolean when present",
                     rejected.stderr,
                 )
+
+        # Embedded VCS metadata is self-reported archive content. Prove that a
+        # non-VCS source mutation can retain an apparently clean exact SHA, then
+        # prove the exact-set authority refuses the prebuilt route entirely.
+        tampered = root / "tampered-source-with-clean-vcs.crate"
+        rewrite_source_member(archive, prefix, tampered)
+        metadata_only = verifier_process(tampered, prefix, head)
+        self.assertEqual(
+            metadata_only.returncode,
+            0,
+            "the discriminator requires intact VCS metadata on changed source bytes",
+        )
+        prebuilt = root / "prebuilt-input"
+        prebuilt.mkdir()
+        shutil.copyfile(tampered, prebuilt / archive.name)
+        rejected_prebuilt = subprocess.run(
+            ["bash", str(REPO / "scripts" / "exact-candidate-package-set.sh")],
+            cwd=str(REPO),
+            env={
+                **os.environ,
+                "SKIP_PACKAGE": "1",
+                "PACKAGE_INPUT_DIR": str(prebuilt),
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(rejected_prebuilt.returncode, 0)
+        self.assertIn(
+            "SKIP_PACKAGE=1 is snapshot-probe-only", rejected_prebuilt.stderr
+        )
 
     def test_dirty_worktree_package_is_rejected(self):
         """Same SHA plus dirty tracked bytes must never satisfy authority."""

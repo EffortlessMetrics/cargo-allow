@@ -25,12 +25,24 @@
 #   bash scripts/exact-candidate-package-set.sh
 #
 # Optional:
-#   PACKAGE_INPUT_DIR=<path>  prebuilt .crate input for SKIP_PACKAGE=1
-#   SKIP_PACKAGE=1            reuse PACKAGE_INPUT_DIR without re-packing
+#   PACKAGE_INPUT_DIR=<path>  snapshot-probe fixture input only
+#   SKIP_PACKAGE=1            snapshot-probe characterization only; never authority
 #   SKIP_NEGATIVES=1          skip negative controls (debug only)
 #   SKIP_LOCAL_REGISTRY=1     reuse OFFLINE_ROOT/local-registry if present (debug only)
 #   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
+
+# Archive-embedded VCS metadata is not independent authority over supplied
+# bytes. The exact candidate must always be packaged from its selected detached
+# worktree. Retained prebuilt staging exists only for the explicitly injected
+# snapshot-probe characterization, which exits before candidate production.
+if [[ "${SKIP_PACKAGE:-0}" == "1" ]] \
+  && { [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" != "1" ]] \
+    || [[ "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" != "1" ]]; }; then
+  printf '%s\n' \
+    'exact-candidate-package-set: error: SKIP_PACKAGE=1 is snapshot-probe-only; exact-subject authority packages from the selected worktree' >&2
+  exit 1
+fi
 
 # Child JSON helpers can emit CRLF line endings on Windows; a trailing CR
 # would corrupt every token and git-head comparison below.
