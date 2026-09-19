@@ -80,6 +80,7 @@ fn identity() -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<
             action_inventory_digest: digest(11),
             live_controls_digest: digest(12),
             incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
             one_run_scope: true,
             expires_at_unix_seconds: 1_800_000_000,
         },
