@@ -867,6 +867,33 @@ pub fn release_operation_identity_digest_v1(
     digest_json(identity)
 }
 
+fn validate_predecessor_proof_matches(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<(), &'static str> {
+    let identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication
+        || proof.successor_operation_identity_digest != identity_digest
+        || identity.incident_predecessor_operation_digest.as_deref()
+            != Some(proof.predecessor_operation_identity_digest.as_str())
+        || identity.incident_predecessor_head_digest.as_deref()
+            != Some(proof.predecessor_head_digest.as_str())
+    {
+        return Err("non-clean operation predecessor proof does not match the operation identity");
+    }
+    Ok(())
+}
+
+fn require_clean_operation_api(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+) -> Result<(), &'static str> {
+    if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("non-clean operation requires the predecessor-bound API");
+    }
+    Ok(())
+}
+
 fn validate_producer(producer: &CargoAllowReleaseOperationProducerV1) -> Result<(), &'static str> {
     for value in [
         producer.tool.as_str(),
@@ -1544,13 +1571,13 @@ fn validate_event_transition(
     Ok(())
 }
 
-pub fn append_release_operation_event_v1(
+fn append_release_operation_event_internal_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     init: CargoAllowReleaseOperationEventInitV1,
 ) -> Result<CargoAllowReleaseOperationEventV1, &'static str> {
     validate_release_operation_identity_v1(identity)?;
-    validate_release_operation_history_v1(identity, events)?;
+    validate_release_operation_history_internal_v1(identity, events)?;
     validate_event_subject(identity, init.event_class, &init.subject)?;
     validate_event_transition(identity, events, &init)?;
     validate_producer(&init.producer)?;
@@ -1615,7 +1642,7 @@ pub fn append_release_operation_event_v1(
     Ok(event)
 }
 
-pub fn validate_release_operation_history_v1(
+fn validate_release_operation_history_internal_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
 ) -> Result<(), &'static str> {
@@ -1667,6 +1694,42 @@ pub fn validate_release_operation_history_v1(
         accepted.push(event.clone());
     }
     Ok(())
+}
+
+pub fn validate_release_operation_history_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+) -> Result<(), &'static str> {
+    require_clean_operation_api(identity)?;
+    validate_release_operation_history_internal_v1(identity, events)
+}
+
+pub fn validate_release_operation_history_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<(), &'static str> {
+    validate_predecessor_proof_matches(identity, proof)?;
+    validate_release_operation_history_internal_v1(identity, events)
+}
+
+pub fn append_release_operation_event_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    init: CargoAllowReleaseOperationEventInitV1,
+) -> Result<CargoAllowReleaseOperationEventV1, &'static str> {
+    require_clean_operation_api(identity)?;
+    append_release_operation_event_internal_v1(identity, events, init)
+}
+
+pub fn append_release_operation_event_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    init: CargoAllowReleaseOperationEventInitV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<CargoAllowReleaseOperationEventV1, &'static str> {
+    validate_predecessor_proof_matches(identity, proof)?;
+    append_release_operation_event_internal_v1(identity, events, init)
 }
 
 fn response_unknown_is_resolved(
@@ -1831,12 +1894,12 @@ fn first_irreversible_digest(events: &[CargoAllowReleaseOperationEventV1]) -> Op
         .map(|event| event.event_digest.clone())
 }
 
-pub fn compile_release_operation_head_v1(
+fn compile_release_operation_head_internal_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     evaluated_at_unix_seconds: u64,
 ) -> Result<CargoAllowReleaseOperationHeadV1, &'static str> {
-    validate_release_operation_history_v1(identity, events)?;
+    validate_release_operation_history_internal_v1(identity, events)?;
     if evaluated_at_unix_seconds == 0
         || events.last().is_some_and(|event| evaluated_at_unix_seconds < event.observed_at_unix_seconds)
     {
@@ -1866,7 +1929,7 @@ pub fn compile_release_operation_head_v1(
     })
 }
 
-pub fn evaluate_release_operation_v1(
+fn evaluate_release_operation_internal_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     evaluated_at_unix_seconds: u64,
@@ -1878,7 +1941,7 @@ pub fn evaluate_release_operation_v1(
     {
         return Err("release operation evaluation time is invalid for retained history");
     }
-    let head = compile_release_operation_head_v1(identity, events, evaluated_at_unix_seconds)?;
+    let head = compile_release_operation_head_internal_v1(identity, events, evaluated_at_unix_seconds)?;
     let expired = evaluated_at_unix_seconds > identity.expires_at_unix_seconds;
     let exact_packages = exact_package_subjects(events);
     let exact_assets = exact_asset_subjects(events);
@@ -1926,6 +1989,44 @@ pub fn evaluate_release_operation_v1(
     })
 }
 
+pub fn compile_release_operation_head_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+) -> Result<CargoAllowReleaseOperationHeadV1, &'static str> {
+    require_clean_operation_api(identity)?;
+    compile_release_operation_head_internal_v1(identity, events, evaluated_at_unix_seconds)
+}
+
+pub fn compile_release_operation_head_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<CargoAllowReleaseOperationHeadV1, &'static str> {
+    validate_predecessor_proof_matches(identity, proof)?;
+    compile_release_operation_head_internal_v1(identity, events, evaluated_at_unix_seconds)
+}
+
+pub fn evaluate_release_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+) -> Result<CargoAllowReleaseOperationEvaluationV1, &'static str> {
+    require_clean_operation_api(identity)?;
+    evaluate_release_operation_internal_v1(identity, events, evaluated_at_unix_seconds)
+}
+
+pub fn evaluate_release_operation_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<CargoAllowReleaseOperationEvaluationV1, &'static str> {
+    validate_predecessor_proof_matches(identity, proof)?;
+    evaluate_release_operation_internal_v1(identity, events, evaluated_at_unix_seconds)
+}
+
 pub fn validate_release_operation_head_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
@@ -1948,6 +2049,46 @@ pub fn validate_release_operation_evaluation_v1(
     let expected = evaluate_release_operation_v1(identity, events, evaluated_at_unix_seconds)?;
     if &expected != evaluation {
         return Err("release operation evaluation does not match the recomputed canonical result");
+    }
+    Ok(())
+}
+
+pub fn validate_release_operation_head_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    head: &CargoAllowReleaseOperationHeadV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<(), &'static str> {
+    let expected = compile_release_operation_head_with_predecessor_v1(
+        identity,
+        events,
+        evaluated_at_unix_seconds,
+        proof,
+    )?;
+    if &expected != head {
+        return Err("release operation head does not match the predecessor-bound canonical head");
+    }
+    Ok(())
+}
+
+pub fn validate_release_operation_evaluation_with_predecessor_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    evaluation: &CargoAllowReleaseOperationEvaluationV1,
+    proof: &CargoAllowReleaseOperationPredecessorProofV1,
+) -> Result<(), &'static str> {
+    let expected = evaluate_release_operation_with_predecessor_v1(
+        identity,
+        events,
+        evaluated_at_unix_seconds,
+        proof,
+    )?;
+    if &expected != evaluation {
+        return Err(
+            "release operation evaluation does not match the predecessor-bound canonical result",
+        );
     }
     Ok(())
 }
