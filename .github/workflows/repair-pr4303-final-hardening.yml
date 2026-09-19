@@ -14,25 +14,25 @@ concurrency:
 
 jobs:
   repair:
-    if: contains(github.event.head_commit.message, '[repair-4303-final-v2]')
+    if: contains(github.event.head_commit.message, '[repair-4303-final-v3]')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: release/3940-operation-authority-v1
-          fetch-depth: 2
+          fetch-depth: 0
           persist-credentials: true
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Guard and stage the exact bounded repair
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "c3543b2cd426bb0c568063ded92b0677bf6b581d"
+          test "$(git rev-parse HEAD^)" = "af7498da72f4df99a589cbb81a9ae3abda52c488"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4303-final-hardening.yml"
           python3 - <<'PY'
           from pathlib import Path
@@ -208,6 +208,7 @@ jobs:
           tests.write_text(test_text, encoding="utf-8", newline="\n")
           PY
           git rm .github/workflows/repair-pr4303-final-hardening.yml
+          git rm .github/workflows/repair-pr4303-schema-proof.yml
           cargo fmt --all
 
       - name: Prove the bounded repair
@@ -217,19 +218,21 @@ jobs:
           cargo fmt --all -- --check
           cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
           cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
           cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
           git diff --check
 
-      - name: Commit the bounded repair and carrier removal
+      - name: Commit the bounded repair and both carrier removals
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "c3543b2cd426bb0c568063ded92b0677bf6b581d"
+          test "$(git rev-parse HEAD^)" = "af7498da72f4df99a589cbb81a9ae3abda52c488"
           mapfile -t changed < <(git diff --name-only HEAD | sort)
-          test "${#changed[@]}" -eq 3
+          test "${#changed[@]}" -eq 4
           test "${changed[0]}" = ".github/workflows/repair-pr4303-final-hardening.yml"
-          test "${changed[1]}" = "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
-          test "${changed[2]}" = "crates/cargo-allow/tests/release_operation_authority.rs"
+          test "${changed[1]}" = ".github/workflows/repair-pr4303-schema-proof.yml"
+          test "${changed[2]}" = "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+          test "${changed[3]}" = "crates/cargo-allow/tests/release_operation_authority.rs"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
