@@ -1005,6 +1005,43 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
         verify_publication_journal_v1(&foreign).is_err(),
         "entries copied into a foreign journal must fail verification",
     )?;
+    // Hostile: header execution identity drift must break verification.
+    // Entries record the workflow/run/attempt/job they were appended under;
+    // a rewritten header reports a second identity the entries disprove.
+    for field in ["workflow", "run", "attempt", "job"] {
+        let mut drifted = clean.clone();
+        match field {
+            "workflow" => drifted.workflow = "other-workflow".to_string(),
+            "run" => drifted.run = "9999".to_string(),
+            "attempt" => drifted.attempt = "9".to_string(),
+            _ => drifted.job = "other-job".to_string(),
+        }
+        require(
+            verify_publication_journal_v1(&drifted).is_err(),
+            format!("{field} header drift must break verification"),
+        )?;
+    }
+    // Hostile: construction-time mutation must break verification. Moving
+    // the header time earlier is not caught by entry ordering, so the
+    // construction time travels in every entry digest instead.
+    let mut drifted_time = clean.clone();
+    drifted_time.created_at_unix_seconds = CREATED_AT - 1;
+    require(
+        verify_publication_journal_v1(&drifted_time).is_err(),
+        "construction-time mutation must break verification",
+    )?;
+    // Hostile: entry-level execution identity tampering must break
+    // verification even when the header is untouched.
+    let mut tampered_identity = clean.clone();
+    tampered_identity
+        .entries
+        .get_mut(0)
+        .ok_or_else(|| io::Error::other("journal entry absent"))?
+        .job = "rewritten-job".to_string();
+    require(
+        verify_publication_journal_v1(&tampered_identity).is_err(),
+        "entry execution-identity tampering must break verification",
+    )?;
 
     // Hostile: schema enforces the same prior-digest law as Rust.
     let root = repository_root()?;

@@ -7,8 +7,8 @@
 //! unrecorded", which invites duplicate uploads, unsafe recovery, or a later
 //! green run hiding the first irreversible event.
 //!
-//! This module gives every package row one durable pre-intent and one
-//! append-only outcome history under a single operation identity. Responses
+//! This module gives every package row one durable pre-intent per attempt
+//! and one append-only outcome history under a single operation identity. Responses
 //! are recorded as observed or unknown, never inferred; registry visibility
 //! comes from caller-supplied provider observations, never process narrative;
 //! entries are never edited (correction is another entry); a later success
@@ -228,9 +228,10 @@ fn entry_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
 }
 
 /// Canonical digest input: every chained field, nothing ambient. The header
-/// identity (journal/operation/authorization/custody/freeze/recovery) and the
-/// bound row set travel in every entry digest, so header or denominator
-/// mutation breaks verification; the chain proves belonging, not just order.
+/// identity (journal/operation/authorization/custody/freeze/recovery,
+/// construction time) and the bound row set travel in every entry digest,
+/// so header or denominator mutation breaks verification; the chain proves
+/// belonging, not just order.
 #[derive(Serialize)]
 struct JournalEntryDigestInputV1<'a> {
     sequence: u64,
@@ -243,6 +244,7 @@ struct JournalEntryDigestInputV1<'a> {
     freeze_digest: &'a str,
     prior_journal_digest: Option<&'a str>,
     rows: &'a [PublicationJournalRowV1],
+    created_at_unix_seconds: u64,
     kind: PublicationJournalEventV1,
     package_name: Option<&'a str>,
     row_order: Option<u32>,
@@ -720,6 +722,7 @@ pub fn append_journal_event_v1(
         freeze_digest: &journal.freeze_digest,
         prior_journal_digest: journal.prior_journal_digest.as_deref(),
         rows: &journal.rows,
+        created_at_unix_seconds: journal.created_at_unix_seconds,
         kind: append.kind,
         package_name: row.map(|row| row.package_name.as_str()),
         row_order: row.map(|row| row.row_order),
@@ -753,7 +756,8 @@ pub fn append_journal_event_v1(
 }
 
 /// Recompute every link and digest. Detects edited entries, reordered
-/// entries, and broken chains after retries or storage faults.
+/// entries, header/execution-identity drift, and broken chains after retries
+/// or storage faults.
 pub fn verify_publication_journal_v1(
     journal: &CargoAllowPublicationJournalV1,
 ) -> Result<(), &'static str> {
@@ -764,6 +768,16 @@ pub fn verify_publication_journal_v1(
         }
         if entry.previous_digest != previous {
             return Err("journal previous digest must chain to the prior entry");
+        }
+        // Entries carry the execution identity they were appended under;
+        // drift between an entry and the journal header breaks verification
+        // instead of silently reporting two identities.
+        if entry.workflow != journal.workflow
+            || entry.run != journal.run
+            || entry.attempt != journal.attempt
+            || entry.job != journal.job
+        {
+            return Err("journal entries must carry the journal execution identity");
         }
         let input = JournalEntryDigestInputV1 {
             sequence: entry.sequence,
@@ -776,6 +790,7 @@ pub fn verify_publication_journal_v1(
             freeze_digest: &journal.freeze_digest,
             prior_journal_digest: journal.prior_journal_digest.as_deref(),
             rows: &journal.rows,
+            created_at_unix_seconds: journal.created_at_unix_seconds,
             kind: entry.kind,
             package_name: entry.package_name.as_deref(),
             row_order: entry.row_order,

@@ -4,7 +4,7 @@ Issue [#3921](https://github.com/EffortlessMetrics/cargo-allow/issues/3921)
 owns the append-only publication journal for the final release, under
 #2502/#2509. The [schema](../schemas/cargo-allow.publication-journal.v1.schema.json),
 public `allow-report` model (`publication_journal_v1`), and canonical JSON
-renderer give every package row one durable pre-intent and one append-only
+renderer give every package row one durable pre-intent per attempt and one append-only
 outcome history under a single operation identity. They do not upload
 packages, observe the registry, authorize the operation, or execute recovery.
 
@@ -38,10 +38,13 @@ OperationIncident (clean journal refuses further intent; recovery
   the null-hash genesis. Callers cannot reuse or forge positions.
 - Every entry digest also binds the journal identity and header
   (`journal_id`, `operation_id`, `operation_class`, authorization, custody,
-  and freeze digests, `prior_journal_digest`) and the exact bound row set, so
-  header, operation, authorization, custody, freeze, recovery, or denominator
-  mutation breaks `verify_publication_journal_v1`. The chain proves entries
-  belong to this operation, not merely their order.
+  and freeze digests, `prior_journal_digest`, construction time) and the
+  exact bound row set, so header, operation, authorization, custody, freeze,
+  recovery, construction-time, or denominator mutation breaks
+  `verify_publication_journal_v1`. Verification additionally refuses entries
+  whose recorded execution identity (`workflow`/`run`/`attempt`/`job`)
+  drifts from the journal header. The chain proves entries belong to this
+  operation, not merely their order.
 - `operation_id` is bound to its class exactly: clean journals carry
   `publish_cargo_allow_final_0_2_0`, recovery journals carry
   `recover_cargo_allow_final_publication`.
