@@ -20,15 +20,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: fix/package-byte-authority
-          fetch-depth: 2
+          fetch-depth: 10
           persist-credentials: true
 
       - name: Guard the exact repair carrier
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "555e5c582bfaa166c43342e3322a6b8b0168fa34"
-          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4305-git-environment.yml"
+          git merge-base --is-ancestor "555e5c582bfaa166c43342e3322a6b8b0168fa34" HEAD
+          test "$(git diff --name-only 555e5c582bfaa166c43342e3322a6b8b0168fa34 HEAD)" = ".github/workflows/repair-pr4305-git-environment.yml"
 
       - name: Apply the bounded Git-environment repair
         shell: bash
@@ -57,8 +57,8 @@ jobs:
               r'run_git(\n\g<indent>[',
               text,
           )
-          if count != 7:
-              raise SystemExit(f"{harness}: expected seven Git subprocess replacements, found {count}")
+          if count != 8:
+              raise SystemExit(f"{harness}: expected eight Git subprocess replacements, found {count}")
           if re.search(r'subprocess\.run\(\n\s*\["git",', text):
               raise SystemExit(f"{harness}: an unsanitized Git subprocess remains")
           harness.write_text(text, encoding="utf-8", newline="\n")
@@ -142,7 +142,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "555e5c582bfaa166c43342e3322a6b8b0168fa34"
+          git merge-base --is-ancestor "555e5c582bfaa166c43342e3322a6b8b0168fa34" HEAD
           mapfile -t changed < <(git diff --name-only)
           printf '%s\n' "${changed[@]}"
           test "${#changed[@]}" -eq 3
