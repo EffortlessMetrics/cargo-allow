@@ -88,27 +88,23 @@ jobs:
 
           test_path = Path("crates/cargo-allow/tests/release_operation_authority.rs")
           text = test_path.read_text(encoding="utf-8")
-          old = '''    let recovery = build_release_operation_identity_v1(identity_init(
-              CargoAllowReleaseOperationClassV1::IncidentRecovery,
-          ))
-          .map_err(io::Error::other)?;
-          require(
-              recovery.incident_predecessor_operation_digest.is_some()
-                  && recovery.authority_kind == CargoAllowReleaseOperationAuthorityKindV1::Recovery,
-              "recovery identity must retain distinct incident lineage and authority",
-          )
-          '''
+          function_marker = "fn release_operation_incident_and_unknown_states_never_reset_to_clean"
+          function_start = text.index(function_marker)
+          old_start_marker = "    let recovery = build_release_operation_identity_v1("
+          old_start = text.find(old_start_marker, function_start)
           new = '''    require(
               build_release_operation_identity_v1(identity_init(
                   CargoAllowReleaseOperationClassV1::IncidentRecovery,
               ))
               .is_err(),
               "recovery identity must require the typed predecessor builder",
-          )
-          '''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
+          )'''
+          if old_start >= 0:
+              old_end_marker = '''        "recovery identity must retain distinct incident lineage and authority",
+              )'''
+              old_end = text.index(old_end_marker, old_start) + len(old_end_marker)
+              text = text[:old_start] + new + text[old_end:]
+          elif new not in text[function_start:]:
               raise SystemExit("stale recovery fixture has an unexpected shape")
           test_path.write_text(text, encoding="utf-8", newline="\n")
           PY
