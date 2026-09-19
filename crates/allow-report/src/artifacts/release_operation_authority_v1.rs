@@ -1276,6 +1276,7 @@ fn validate_event_transition(
                 | Event::GitHubDraftObservedExact
                 | Event::AssetObservedExact
                 | Event::PublicReleaseObservedExact
+                | Event::ContainmentObservedExact
         ) && matching_irreversible_request(events, init))
     {
         return Err("unresolved irreversible response blocks unrelated progression");
