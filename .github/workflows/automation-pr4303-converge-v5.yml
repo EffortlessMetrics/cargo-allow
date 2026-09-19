@@ -105,6 +105,17 @@ jobs:
           )
           if replacements != 1 and collapsed_marker not in authority:
               raise SystemExit("provider request byte guard has an unexpected semantic shape")
+
+          indexed_first = "        let first = &events[0].producer;"
+          safe_first = '''        let first = &events
+              .first()
+              .ok_or("operation history unexpectedly lost its first event")?
+              .producer;'''
+          if authority.count(indexed_first) == 1:
+              authority = authority.replace(indexed_first, safe_first, 1)
+          elif safe_first not in authority:
+              raise SystemExit("first-event producer binding has an unexpected semantic shape")
+
           authority_path.write_text(authority, encoding="utf-8", newline="\n")
 
           tests = test_path.read_text(encoding="utf-8")
