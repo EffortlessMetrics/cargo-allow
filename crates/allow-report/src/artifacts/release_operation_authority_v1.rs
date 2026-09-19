@@ -1378,12 +1378,31 @@ fn validate_event_transition(
     {
         return Err("unresolved irreversible response blocks unrelated progression");
     }
-    if identity.operation_class == Class::CleanFinalPublication
-        && has_event(events, Event::IncidentRecorded)
-    {
-        return Err(
-            "clean operation cannot continue after an incident; recovery needs its own lineage",
-        );
+    if has_event(events, Event::IncidentRecorded) {
+        match identity.operation_class {
+            Class::CleanFinalPublication => {
+                return Err(
+                    "clean operation cannot continue after an incident; recovery needs its own lineage",
+                );
+            }
+            Class::IncidentRecovery => {
+                if !matches!(
+                    init.event_class,
+                    Event::TagObservedExact
+                        | Event::PackageRowObservedExact
+                        | Event::GitHubDraftObservedExact
+                        | Event::AssetObservedExact
+                        | Event::PublicReleaseObservedExact
+                        | Event::RepositoryReconciled
+                        | Event::IncidentRecorded
+                ) {
+                    return Err(
+                        "incident-bearing recovery is observation-only; new mutation or settlement needs separate authority",
+                    );
+                }
+            }
+            Class::Containment => {}
+        }
     }
     if identity.operation_class == Class::Containment
         && matches!(

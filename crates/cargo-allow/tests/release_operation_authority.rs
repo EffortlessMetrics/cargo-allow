@@ -1709,3 +1709,182 @@ fn release_operation_request_correlation_is_phase_bound() -> Result<(), Box<dyn 
         "a GitHub draft request tuple must not authorize public-release observation",
     )
 }
+
+#[test]
+fn release_operation_recovery_incident_stops_new_mutation() -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1::{Operation, Package};
+    use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+    use CargoAllowReleaseOperationStateV1 as State;
+
+    let predecessor = identity()?;
+    let mut predecessor_events = Vec::new();
+    append(
+        &predecessor,
+        &mut predecessor_events,
+        Event::OperationSelected,
+        Operation,
+        1,
+    )?;
+    append(
+        &predecessor,
+        &mut predecessor_events,
+        Event::IncidentRecorded,
+        Operation,
+        2,
+    )?;
+
+    let recovery = build_release_operation_identity_with_predecessor_v1(
+        identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery),
+        &predecessor,
+        &predecessor_events,
+        EVALUATED_AT_UNIX_SECONDS,
+    )
+    .map_err(io::Error::other)?;
+    let proof = validate_release_operation_predecessor_v1(
+        &recovery,
+        &predecessor,
+        &predecessor_events,
+        EVALUATED_AT_UNIX_SECONDS,
+    )
+    .map_err(io::Error::other)?;
+
+    let mut events = Vec::new();
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::OperationSelected,
+        Operation,
+        10,
+    )?;
+    let mut selected = event_init(
+        &recovery,
+        Event::RecoverySelected,
+        Operation,
+        ResultClass::Exact,
+        11,
+    );
+    selected.payload_digest = recovery
+        .incident_predecessor_head_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("recovery predecessor head missing"))?;
+    events.push(
+        append_release_operation_event_with_predecessor_v1(&recovery, &events, selected, &proof)
+            .map_err(io::Error::other)?,
+    );
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::AuthorizationSelected,
+        Operation,
+        12,
+    )?;
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::LeaseAcquired,
+        Operation,
+        13,
+    )?;
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::TagObservedExact,
+        Operation,
+        14,
+    )?;
+
+    let first_package = recovery
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("recovery package denominator missing"))?
+        .logical_id
+        .clone();
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::PackageRowIntentDurable,
+        Package(first_package.clone()),
+        15,
+    )?;
+    append_request_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Package(first_package.clone()),
+        16,
+    )?;
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::IncidentRecorded,
+        Operation,
+        17,
+    )?;
+    append_with_proof(
+        &recovery,
+        &proof,
+        &mut events,
+        Event::PackageRowObservedExact,
+        Package(first_package),
+        18,
+    )?;
+
+    require(
+        evaluate_release_operation_with_predecessor_v1(
+            &recovery,
+            &events,
+            EVALUATED_AT_UNIX_SECONDS,
+            &proof,
+        )
+        .map_err(io::Error::other)?
+        .state
+            == State::RecoveryRequired,
+        "exact readback after a recovery incident must preserve RecoveryRequired",
+    )?;
+
+    let second_package = recovery
+        .packages
+        .get(1)
+        .ok_or_else(|| io::Error::other("recovery needs a second package row"))?
+        .logical_id
+        .clone();
+    require(
+        append_release_operation_event_with_predecessor_v1(
+            &recovery,
+            &events,
+            event_init(
+                &recovery,
+                Event::PackageRowIntentDurable,
+                Package(second_package),
+                ResultClass::Exact,
+                19,
+            ),
+            &proof,
+        )
+        .is_err(),
+        "incident-bearing recovery must not start another package mutation",
+    )?;
+    require(
+        append_release_operation_event_with_predecessor_v1(
+            &recovery,
+            &events,
+            event_init(
+                &recovery,
+                Event::OperationSettled,
+                Operation,
+                ResultClass::Exact,
+                20,
+            ),
+            &proof,
+        )
+        .is_err(),
+        "incident-bearing recovery must not settle under the same authority",
+    )
+}

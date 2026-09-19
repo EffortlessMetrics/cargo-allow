@@ -127,10 +127,13 @@ reconciliation is still missing after it has already been retained.
 Partial, Conflict, Stale, ProviderUnavailable, and InstrumentFailure stop later
 publication progression. An unresolved Unknown/ResponseUnknown can continue
 only through the exact correlated observation for the same typed request
-identity and candidate bytes; unrelated observations remain blocked. Clean
-operations stop after IncidentRecorded, recovery authorization requires an
-exact RecoverySelected, and containment is barred from the publication path.
-A later successful child observation cannot delete incident history.
+identity and candidate bytes; unrelated observations remain blocked. Clean operations stop after IncidentRecorded. Incident-recovery operations become
+observation-only after IncidentRecorded: exact correlated provider observations and
+repository reconciliation may still be appended to preserve public truth, but no new
+authorization, lease, durable intent, irreversible request, or settlement may start
+under that lineage. Recovery authorization requires an exact RecoverySelected, and
+containment is barred from the publication path. A later successful child observation
+cannot delete incident history.
 
 Every external mutation is preceded by an explicit
 IrreversibleRequestStarted event. Its operation/package/asset subject, payload
