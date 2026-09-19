@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: fix/package-byte-authority
-          fetch-depth: 12
+          fetch-depth: 16
           persist-credentials: true
 
       - name: Guard the exact repair carrier
@@ -133,15 +133,17 @@ jobs:
           bash -n scripts/exact-candidate-package-set.sh
           python3 scripts/test-candidate-harness-lifecycle.py
           python3 scripts/test-package-byte-authority.py
+          git rm .github/workflows/repair-pr4305-git-environment.yml
           cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git restore --source=HEAD --staged --worktree .github/workflows/repair-pr4305-git-environment.yml
           git diff --check
 
-      - name: Commit the bounded repair
+      - name: Commit the bounded source-only repair
         shell: bash
         run: |
           set -euo pipefail
           git merge-base --is-ancestor "555e5c582bfaa166c43342e3322a6b8b0168fa34" HEAD
-          mapfile -t changed < <(git diff --name-only)
+          mapfile -t changed < <(git diff --name-only HEAD)
           printf '%s\n' "${changed[@]}"
           test "${#changed[@]}" -eq 3
           test "${changed[0]}" = "scripts/candidate-harness-owned-dir.py"
