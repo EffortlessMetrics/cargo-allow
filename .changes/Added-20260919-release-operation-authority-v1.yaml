@@ -3,5 +3,7 @@ body: >-
   Establish the canonical cargo-allow final-release operation identity,
   append-only event envelope, typed predecessor and containment/recovery law,
   explicit irreversible-request correlation, time-bound current head, and
-  exact package/asset denominator evaluator as #3940 PR A; provider-specific
-  children migrate in the separately reviewed PR B/C sequence.
+  exact package/asset denominator evaluator as #3940 PR A. The complete clean
+  and predecessor-aware append, head, evaluation, and validation API is exposed
+  through `allow_report`; provider-specific children migrate in the separately
+  reviewed PR B/C sequence.
