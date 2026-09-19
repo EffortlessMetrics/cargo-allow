@@ -79,7 +79,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
+        created_at_unix_seconds: CREATED_AT,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -260,7 +260,9 @@ fn checkpoint_init(
         },
         producer: producer(),
         retention_days: RETENTION_DAYS,
-        created_at_unix_seconds: CREATED_AT,
+        // Construction time advances with the sequence so linkage can prove
+        // it never moves backward past the predecessor's readback.
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         note: "synthetic".to_string(),
     })
 }

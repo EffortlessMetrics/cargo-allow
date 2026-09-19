@@ -485,7 +485,9 @@ pub fn begin_publication_checkpoint_v1(
             if init.checkpoint_id == previous.checkpoint_id
                 || init.provider.object_id == previous.provider.object_id
             {
-                return Err("later checkpoints require new checkpoint and provider object identities");
+                return Err(
+                    "later checkpoints require new checkpoint and provider object identities",
+                );
             }
             if init.journal_head_sequence < previous.journal_head_sequence {
                 return Err("checkpoint journal prefixes never move backward");
@@ -686,23 +688,19 @@ fn bound_entry_matches_row_v1(
 ) -> bool {
     entry.package_name.as_deref() == Some(row.package_name.as_str())
         && entry.row_order == Some(row.row_order)
-        && entry.candidate_archive_digest.as_deref()
-            == Some(row.candidate_archive_digest.as_str())
+        && entry.candidate_archive_digest.as_deref() == Some(row.candidate_archive_digest.as_str())
 }
 
-fn journal_prefix_has_incident_v1(
-    journal: &CargoAllowPublicationJournalV1,
-    sequence: u64,
-) -> bool {
+fn journal_prefix_has_incident_v1(journal: &CargoAllowPublicationJournalV1, sequence: u64) -> bool {
     journal.entries.iter().any(|entry| {
         entry.sequence <= sequence && entry.kind == PublicationJournalEventV1::OperationIncident
     })
 }
 
-fn journal_prefix_first_irreversible_row_v1<'a>(
-    journal: &'a CargoAllowPublicationJournalV1,
+fn journal_prefix_first_irreversible_row_v1(
+    journal: &CargoAllowPublicationJournalV1,
     sequence: u64,
-) -> Option<&'a str> {
+) -> Option<&str> {
     journal
         .entries
         .iter()
@@ -842,7 +840,5 @@ pub fn checkpoint_permits_dependant_v1(
     {
         return Err("dependant checkpoint must bind the exact row's visible-exact journal entry");
     }
-    Ok(())
-}}
     Ok(())
 }

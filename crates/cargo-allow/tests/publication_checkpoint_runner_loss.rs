@@ -64,7 +64,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
+        created_at_unix_seconds: CREATED_AT,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -168,7 +168,9 @@ fn checkpoint_init(
         },
         producer: producer(),
         retention_days: RETENTION_DAYS,
-        created_at_unix_seconds: CREATED_AT,
+        // Construction time advances with the sequence so linkage can prove
+        // it never moves backward past the predecessor's readback.
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         note: "synthetic".to_string(),
     })
 }
@@ -229,6 +231,9 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         "remote bytes must not self-claim a successful readback",
     )?;
     read_back(&mut reconstructed, stored_first.clone(), now + 1)?;
+    // The fresh runner acts after the first runner's observation: its clock
+    // reads later than the reconstructed readback.
+    let resumed = now + 1;
     let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![reconstructed];
     let discovered = match select_checkpoint_by_exact_identity_v1(
         &remote,
@@ -246,14 +251,15 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             && discovered.readback == PublicationCheckpointReadbackV1::Complete,
         "discovery must return the verified pre-intent checkpoint",
     )?;
-    checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, now)
+    checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, resumed)
         .map_err(io::Error::other)?;
     // Control: runner lost after registry acceptance, before the
     // post-observation checkpoint. Without a verified post-observation
     // checkpoint the dependant row never begins, even though the journal
     // advanced: absence of remote evidence is not evidence of absence.
     require(
-        checkpoint_permits_dependant_v1(&discovered, &journal, &expected_producer, now).is_err(),
+        checkpoint_permits_dependant_v1(&discovered, &journal, &expected_producer, resumed)
+            .is_err(),
         "a pre-intent checkpoint must never unlock dependants",
     )?;
     // Control: same checkpoint name from another run is never selected.

@@ -64,7 +64,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
+        created_at_unix_seconds: CREATED_AT,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -167,7 +167,9 @@ fn checkpoint_init(
         },
         producer: producer(),
         retention_days: RETENTION_DAYS,
-        created_at_unix_seconds: CREATED_AT,
+        // Construction time advances with the sequence so linkage can prove
+        // it never moves backward past the predecessor's readback.
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         note: "synthetic".to_string(),
     })
 }
@@ -288,8 +290,22 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     // Hostile: provider identity is immutable and must match delivered bytes.
     let (mut provider_tamper, provider_bytes) = stored_first(&journal)?;
     let mut provider_json: serde_json::Value = serde_json::from_slice(&provider_bytes)?;
-    provider_json["provider"]["object_id"] = serde_json::Value::String("artifact-9".to_string());
-    let tampered_provider_bytes = serde_json::to_vec_pretty(&provider_json)?;
+    let tampered_provider_bytes = match provider_json.as_object_mut() {
+        Some(object) => match object.get_mut("provider") {
+            Some(provider) => match provider.as_object_mut() {
+                Some(inner) => {
+                    inner.insert(
+                        "object_id".to_string(),
+                        serde_json::Value::String("artifact-9".to_string()),
+                    );
+                    serde_json::to_vec_pretty(&provider_json)
+                }
+                None => return fail("stored provider block not an object"),
+            },
+            None => return fail("stored provider block absent"),
+        },
+        None => return fail("stored checkpoint not an object"),
+    }?;
     require(
         record_checkpoint_readback_v1(
             &mut provider_tamper,
@@ -414,15 +430,16 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         begin_publication_checkpoint_v1(leaked, None).is_err(),
         "secret material in a checkpoint note must fail",
     )?;
-    // Hostile: checkpoints must not under-report journal incidents. The
-    // journal gains an incident after the checkpoint; verification then fails
-    // until an incident-bound checkpoint replaces it.
-    let mut advanced = journal.clone();
+    // Hostile: checkpoints must not under-report journal incidents. Posture
+    // is prefix-scoped: a checkpoint bound to a prefix containing the
+    // incident must record it, so a clean claim over an incident prefix
+    // fails while a matching incident claim verifies.
+    let mut incident_journal = journal.clone();
     append_journal_event_v1(
-        &mut advanced,
+        &mut incident_journal,
         PublicationJournalAppendV1 {
-            kind: PublicationJournalEventV1::OperationIncident,
-            row: None,
+            kind: PublicationJournalEventV1::UploadRequestStarted,
+            row: Some(journal_row("cargo-allow", 0, 10)),
             response: None,
             observation: None,
             at_unix_seconds: CREATED_AT + 100,
@@ -430,10 +447,63 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         },
     )
     .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut incident_journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::OperationIncident,
+            row: None,
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 110,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    let mut clean_claim = checkpoint_init(&incident_journal, 1)?;
+    clean_claim.checkpoint_id = "checkpoint-clean-claim-001".to_string();
+    clean_claim.provider.object_id = "artifact-clean-claim".to_string();
+    clean_claim.first_irreversible_row = Some("cargo-allow".to_string());
+    let mut clean_recorded =
+        begin_publication_checkpoint_v1(clean_claim, None).map_err(io::Error::other)?;
+    let clean_bytes = store_checkpoint(&mut clean_recorded)?;
+    record_checkpoint_readback_v1(
+        &mut clean_recorded,
+        CheckpointProviderOutcomeV1::Delivered(clean_bytes),
+        now,
+    )
+    .map_err(io::Error::other)?;
     require(
-        verify_checkpoint_against_journal_v1(&trusted, &advanced, &expected_producer, now).is_err(),
+        verify_checkpoint_against_journal_v1(
+            &clean_recorded,
+            &incident_journal,
+            &expected_producer,
+            now,
+        )
+        .is_err(),
         "checkpoints must not under-report journal incidents",
     )?;
+    let mut incident_claim = checkpoint_init(&incident_journal, 1)?;
+    incident_claim.checkpoint_id = "checkpoint-incident-claim-001".to_string();
+    incident_claim.provider.object_id = "artifact-incident-claim".to_string();
+    incident_claim.row.state = PublicationCheckpointRowStateV1::Incident;
+    incident_claim.first_irreversible_row = Some("cargo-allow".to_string());
+    incident_claim.incident_recorded = true;
+    let mut incident_recorded =
+        begin_publication_checkpoint_v1(incident_claim, None).map_err(io::Error::other)?;
+    let incident_bytes = store_checkpoint(&mut incident_recorded)?;
+    record_checkpoint_readback_v1(
+        &mut incident_recorded,
+        CheckpointProviderOutcomeV1::Delivered(incident_bytes),
+        now,
+    )
+    .map_err(io::Error::other)?;
+    verify_checkpoint_against_journal_v1(
+        &incident_recorded,
+        &incident_journal,
+        &expected_producer,
+        now,
+    )
+    .map_err(io::Error::other)?;
     // Control: honest journal advancement past the checkpoint keeps
     // verification green: the row-state claim is history, the prefix is law.
     let mut moved = journal.clone();
