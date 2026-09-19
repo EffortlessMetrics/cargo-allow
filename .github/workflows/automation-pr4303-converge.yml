@@ -84,6 +84,23 @@ jobs:
               helper_start = text.index(helper)
               helper_end = text.index("fn exact_package_subjects(", helper_start)
               text = text[:helper_start] + text[helper_end:]
+
+          nested = '''            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject) {
+              if init.artifact_digest.as_deref() != Some(expected) {
+                  return Err("provider request bytes do not match the immutable denominator");
+              }
+          }
+          '''
+          collapsed = '''            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject)
+              && init.artifact_digest.as_deref() != Some(expected)
+          {
+              return Err("provider request bytes do not match the immutable denominator");
+          }
+          '''
+          if nested in text:
+              text = text.replace(nested, collapsed, 1)
+          elif collapsed not in text:
+              raise SystemExit("request-byte guard has an unexpected shape")
           authority.write_text(text, encoding="utf-8", newline="\n")
 
           test_path = Path("crates/cargo-allow/tests/release_operation_authority.rs")
