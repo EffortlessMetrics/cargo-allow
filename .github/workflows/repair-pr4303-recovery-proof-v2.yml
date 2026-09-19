@@ -1,0 +1,68 @@
+name: Repair PR 4303 recovery proof v2
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4303-recovery-proof-v2
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/3940-operation-authority-v1
+          fetch-depth: 8
+          persist-credentials: true
+
+      - name: Guard and apply the exact bounded repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 7fab54da503b73d45db45b7a785516d2095b3768 HEAD
+          mapfile -t carrier_files < <(git diff --name-only 7fab54da503b73d45db45b7a785516d2095b3768 HEAD | sort)
+          test "${#carrier_files[@]}" -eq 2
+          test "${carrier_files[0]}" = ".github/scripts/repair_pr4303_recovery_proof.py"
+          test "${carrier_files[1]}" = ".github/workflows/repair-pr4303-recovery-proof-v2.yml"
+          python3 .github/scripts/repair_pr4303_recovery_proof.py
+          git rm .github/scripts/repair_pr4303_recovery_proof.py
+          git rm .github/workflows/repair-pr4303-recovery-proof-v2.yml
+          cargo fmt --all
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+
+      - name: Prove the source-only recovery contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Commit the source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 7fab54da503b73d45db45b7a785516d2095b3768 HEAD
+          mapfile -t changed < <(git diff --name-only HEAD | sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 3
+          test "${changed[0]}" = ".github/scripts/repair_pr4303_recovery_proof.py"
+          test "${changed[1]}" = ".github/workflows/repair-pr4303-recovery-proof-v2.yml"
+          test "${changed[2]}" = "crates/cargo-allow/tests/release_operation_authority.rs"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test(release): prove terminal recovery lineage"
+          git push origin HEAD:release/3940-operation-authority-v1
