@@ -1,0 +1,277 @@
+name: PR 4302 author repair v1
+
+on:
+  push:
+    branches:
+      - automation/pr-4302-author-repair-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4302-author-repair-v1
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TARGET_HEAD: 751c9bf17526b64a91285c8fa944ca25e91e4b48
+      OUTPUT_BRANCH: automation/pr-4302-author-repair-output-v1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TARGET_HEAD }}
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@1.95.0
+
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: pr-4302-author-repair-v1
+
+      - name: Apply fail-closed checkpoint authority repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          cat > "$RUNNER_TEMP/repair.py" <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise AssertionError(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          def replace_between(text: str, start: str, end: str, replacement: str, label: str) -> str:
+              begin = text.find(start)
+              if begin < 0:
+                  raise AssertionError(f"{label}: start marker missing")
+              finish = text.find(end, begin)
+              if finish < 0:
+                  raise AssertionError(f"{label}: end marker missing")
+              return text[:begin] + replacement + text[finish:]
+
+          source_path = Path("crates/allow-report/src/artifacts/publication_checkpoint_v1.rs")
+          text = source_path.read_text(encoding="utf-8")
+
+          text = replace_once(
+              text,
+              "    PublicationJournalClassV1, PublicationJournalEventV1,\n};",
+              "    PublicationJournalClassV1, PublicationJournalEventV1,\n    verify_publication_journal_v1,\n};",
+              "journal verifier import",
+          )
+
+          seal = '''/// Opaque in-process witness that exact immutable provider bytes were\n/// independently classified as Complete. It is deliberately absent from\n/// serialized checkpoint records: deserializing a record that merely claims\n/// `readback = complete` cannot manufacture gate authority.\n#[derive(Debug, Clone, PartialEq, Eq)]\nstruct PublicationCheckpointVerifiedReadbackV1 {\n    checkpoint_digest: String,\n    provider_object_id: String,\n    downloaded_bytes_digest: String,\n    readback_at_unix_seconds: u64,\n}\n\n'''
+          text = replace_once(
+              text,
+              "/// One remotely durable publication checkpoint.\n",
+              seal + "/// One remotely durable publication checkpoint.\n",
+              "verified readback seal",
+          )
+
+          text = replace_once(
+              text,
+              "    pub readback_at_unix_seconds: Option<u64>,\n    pub claim_boundary: String,",
+              "    pub readback_at_unix_seconds: Option<u64>,\n    /// Runtime-only proof created by exact byte classification. Serialized\n    /// claims never carry this witness and therefore never authorize gates.\n    #[serde(skip)]\n    verified_readback: Option<PublicationCheckpointVerifiedReadbackV1>,\n    pub claim_boundary: String,",
+              "checkpoint seal field",
+          )
+
+          digest_replacement = '''fn immutable_checkpoint_v1(\n    checkpoint: &CargoAllowPublicationCheckpointV1,\n) -> CargoAllowPublicationCheckpointV1 {\n    let mut immutable = checkpoint.clone();\n    immutable.readback = PublicationCheckpointReadbackV1::Missing;\n    immutable.readback_at_unix_seconds = None;\n    immutable.verified_readback = None;\n    immutable\n}\n\n/// Canonical digest of the immutable stored checkpoint subject. Readback\n/// observations never change sequence linkage, so a fresh runner hashing the\n/// downloaded bytes derives the same predecessor identity.\npub fn digest_publication_checkpoint_v1(\n    checkpoint: &CargoAllowPublicationCheckpointV1,\n) -> Result<String, serde_json::Error> {\n    let immutable = immutable_checkpoint_v1(checkpoint);\n    let rendered = serde_json::to_vec(&immutable)?;\n    Ok(checkpoint_digest_bytes(&rendered))\n}\n\n'''
+          text = replace_between(
+              text,
+              "/// Canonical digest of a checkpoint record, binding one sequence link to the\n",
+              "/// The checkpoint body:",
+              digest_replacement,
+              "stable checkpoint digest",
+          )
+
+          producer_start = text.index("fn validate_producer(")
+          producer_end = text.index("/// Begin a checkpoint", producer_start)
+          producer = text[producer_start:producer_end]
+          producer = replace_once(
+              producer,
+              "    Ok(())\n}\n\n",
+              "    if producer.commit.len() != 40 || !lower_hex_shape(&producer.commit) {\n        return Err(\"checkpoint producer commits require canonical 40-byte lowercase hex\");\n    }\n    if !producer.git_ref.starts_with(\"refs/\") {\n        return Err(\"checkpoint producer refs require an exact refs/ identity\");\n    }\n    Ok(())\n}\n\n",
+              "producer identity shape",
+          )
+          text = text[:producer_start] + producer + text[producer_end:]
+
+          text = replace_once(
+              text,
+              "    if init.incident_recorded != init.first_irreversible_row.is_some() {\n        return Err(\"incident posture requires its first irreversible row, and vice versa\");\n    }",
+              "    if init.incident_recorded && init.first_irreversible_row.is_none() {\n        return Err(\"incident posture requires its first irreversible row\");\n    }",
+              "separate first irreversible and incident facts",
+          )
+          text = replace_once(
+              text,
+              "    if let Some(first) = init.first_irreversible_row.as_deref()\n        && first.trim().is_empty()\n    {\n        return Err(\"the first irreversible row must name a package\");\n    }",
+              "    if let Some(first) = init.first_irreversible_row.as_deref()\n        && first.trim().is_empty()\n    {\n        return Err(\"the first irreversible row must name a package\");\n    }\n    if init.kind == PublicationCheckpointKindV1::PostObservation\n        && init.first_irreversible_row.is_none()\n    {\n        return Err(\"post-observation checkpoints require the first irreversible row\");\n    }",
+              "post observation irreversible identity",
+          )
+          text = replace_once(
+              text,
+              "    let expected_expiry =\n        init.created_at_unix_seconds + u64::from(init.retention_days) * RETENTION_SECONDS_PER_DAY;",
+              "    let retention_seconds = u64::from(init.retention_days)\n        .checked_mul(RETENTION_SECONDS_PER_DAY)\n        .ok_or(\"checkpoint retention overflow\")?;\n    let expected_expiry = init\n        .created_at_unix_seconds\n        .checked_add(retention_seconds)\n        .ok_or(\"checkpoint expiry overflow\")?;",
+              "checked expiry arithmetic",
+          )
+          text = replace_once(
+              text,
+              "            if init.operation_class != previous.operation_class {\n                return Err(\"checkpoint linkage never crosses operation classes\");\n            }\n            if init.journal_head_sequence < previous.journal_head_sequence {",
+              "            if init.operation_class != previous.operation_class {\n                return Err(\"checkpoint linkage never crosses operation classes\");\n            }\n            if init.provider.object_id == previous.provider.object_id {\n                return Err(\"checkpoint sequences require a new immutable provider object\");\n            }\n            if init.created_at_unix_seconds < previous.created_at_unix_seconds {\n                return Err(\"checkpoint construction time never moves backward\");\n            }\n            if init.journal_head_sequence < previous.journal_head_sequence {",
+              "monotonic provider identity and time",
+          )
+          text = replace_once(
+              text,
+              "        readback_at_unix_seconds: None,\n        claim_boundary: CLAIM_BOUNDARY.to_string(),",
+              "        readback_at_unix_seconds: None,\n        verified_readback: None,\n        claim_boundary: CLAIM_BOUNDARY.to_string(),",
+              "initialize readback seal",
+          )
+
+          record = '''pub fn record_checkpoint_readback_v1(\n    checkpoint: &mut CargoAllowPublicationCheckpointV1,\n    outcome: CheckpointProviderOutcomeV1,\n    at_unix_seconds: u64,\n) -> Result<PublicationCheckpointReadbackV1, &'static str> {\n    if at_unix_seconds < checkpoint.created_at_unix_seconds {\n        return Err("readbacks must not predate checkpoint construction");\n    }\n    let (readback, downloaded_bytes_digest) = match outcome {\n        CheckpointProviderOutcomeV1::Unavailable => (\n            PublicationCheckpointReadbackV1::ProviderUnavailable,\n            None,\n        ),\n        CheckpointProviderOutcomeV1::InstrumentFailure => (\n            PublicationCheckpointReadbackV1::InstrumentFailure,\n            None,\n        ),\n        CheckpointProviderOutcomeV1::Delivered(bytes) => {\n            let bytes_digest = checkpoint_digest_bytes(&bytes);\n            (classify_delivered_v1(checkpoint, &bytes), Some(bytes_digest))\n        }\n    };\n    checkpoint.readback = readback;\n    checkpoint.readback_at_unix_seconds = Some(at_unix_seconds);\n    checkpoint.verified_readback = match (readback, downloaded_bytes_digest) {\n        (PublicationCheckpointReadbackV1::Complete, Some(bytes_digest)) => {\n            Some(PublicationCheckpointVerifiedReadbackV1 {\n                checkpoint_digest: digest_publication_checkpoint_v1(checkpoint)\n                    .map_err(|_| "checkpoint readback seal digest failed")?,\n                provider_object_id: checkpoint.provider.object_id.clone(),\n                downloaded_bytes_digest: bytes_digest,\n                readback_at_unix_seconds: at_unix_seconds,\n            })\n        }\n        _ => None,\n    };\n    Ok(readback)\n}\n\n'''
+          text = replace_between(
+              text,
+              "pub fn record_checkpoint_readback_v1(",
+              "/// Classify delivered provider bytes",
+              record,
+              "readback seal producer",
+          )
+
+          classifier = '''/// Classify exact downloaded provider bytes. The stored checkpoint is the\n/// immutable Missing/no-readback subject; a serialized record that claims its\n/// own successful readback is a mismatch, never authority.\nfn classify_delivered_v1(\n    checkpoint: &CargoAllowPublicationCheckpointV1,\n    bytes: &[u8],\n) -> PublicationCheckpointReadbackV1 {\n    use PublicationCheckpointReadbackV1 as Readback;\n    if bytes.is_empty() {\n        return Readback::Mismatch;\n    }\n    let parsed: CargoAllowPublicationCheckpointV1 = match serde_json::from_slice(bytes) {\n        Ok(parsed) => parsed,\n        Err(_) => return Readback::Mismatch,\n    };\n    if parsed.operation_id != checkpoint.operation_id {\n        return Readback::Mismatch;\n    }\n    if parsed.checkpoint_sequence < checkpoint.checkpoint_sequence {\n        return Readback::Stale;\n    }\n    if parsed.checkpoint_sequence != checkpoint.checkpoint_sequence {\n        return Readback::Mismatch;\n    }\n    let expected = immutable_checkpoint_v1(checkpoint);\n    if parsed != expected {\n        return Readback::Mismatch;\n    }\n    if bytes.len() as u64 != expected.provider.object_size_bytes {\n        return Readback::Mismatch;\n    }\n    let canonical = match serde_json::to_vec_pretty(&expected) {\n        Ok(canonical) => canonical,\n        Err(_) => return Readback::InstrumentFailure,\n    };\n    if canonical.as_slice() != bytes {\n        return Readback::Mismatch;\n    }\n    let body_digest = digest_publication_checkpoint_body_v1(&expected).unwrap_or_default();\n    if body_digest != expected.provider.object_digest {\n        return Readback::Mismatch;\n    }\n    Readback::Complete\n}\n\n'''
+          text = replace_between(
+              text,
+              "/// Classify delivered provider bytes",
+              "/// Select one checkpoint by exact identity.",
+              classifier,
+              "exact immutable byte classifier",
+          )
+
+          selector = '''/// Select one checkpoint by exact identity. The provider object name never\n/// participates. Duplicate exact matches are ambiguous and therefore return\n/// `None` rather than selecting whichever provider record happened to appear\n/// first.\npub fn select_checkpoint_by_exact_identity_v1<'a>(\n    candidates: &'a [CargoAllowPublicationCheckpointV1],\n    object_id: &str,\n    expected_producer: &PublicationCheckpointProducerV1,\n    operation_id: &str,\n) -> Option<&'a CargoAllowPublicationCheckpointV1> {\n    let mut matches = candidates.iter().filter(|candidate| {\n        candidate.provider.object_id == object_id\n            && candidate.producer == *expected_producer\n            && candidate.operation_id == operation_id\n    });\n    let selected = matches.next()?;\n    if matches.next().is_some() {\n        None\n    } else {\n        Some(selected)\n    }\n}\n\n'''
+          text = replace_between(
+              text,
+              "/// Select one checkpoint by exact identity.",
+              "/// Verify a checkpoint against the live journal",
+              selector,
+              "unambiguous exact selector",
+          )
+
+          verifier = '''/// Verify one checkpoint as authority over one exact, already-verified journal\n/// transition. A Complete string in serialized input is insufficient: the\n/// opaque readback seal must have been created by exact downloaded-byte\n/// classification in this process.\npub fn verify_checkpoint_against_journal_v1(\n    checkpoint: &CargoAllowPublicationCheckpointV1,\n    journal: &CargoAllowPublicationJournalV1,\n    expected_producer: &PublicationCheckpointProducerV1,\n    now_unix_seconds: u64,\n) -> Result<(), &'static str> {\n    verify_publication_journal_v1(journal)?;\n    if checkpoint.schema_id != PUBLICATION_CHECKPOINT_SCHEMA_ID\n        || checkpoint.schema_version != PUBLICATION_CHECKPOINT_SCHEMA_VERSION\n        || checkpoint.journal_schema_id != PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID\n        || journal.schema_id != PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID\n    {\n        return Err("checkpoint and journal schema identities must be exact");\n    }\n    if checkpoint.operation_id != journal.operation_id {\n        return Err("checkpoints verify against their own operation only");\n    }\n    let expected_journal_class = match checkpoint.operation_class {\n        PublicationCheckpointClassV1::CleanFinalPublication => {\n            PublicationJournalClassV1::CleanFinalPublication\n        }\n        PublicationCheckpointClassV1::IncidentRecovery => {\n            PublicationJournalClassV1::IncidentRecovery\n        }\n    };\n    if journal.operation_class != expected_journal_class {\n        return Err("checkpoint and journal operation classes must agree");\n    }\n    if checkpoint.authorization_digest != journal.authorization_digest\n        || checkpoint.custody_digest != journal.custody_digest\n        || checkpoint.freeze_digest != journal.freeze_digest\n    {\n        return Err("checkpoint operation identities must match the journal header");\n    }\n    if checkpoint.producer != *expected_producer {\n        return Err("checkpoint producer must match the expected release producer");\n    }\n    let seal = checkpoint\n        .verified_readback\n        .as_ref()\n        .ok_or("serialized readback claims never authorize progress")?;\n    let readback_at = checkpoint\n        .readback_at_unix_seconds\n        .ok_or("complete readbacks require an observation time")?;\n    if checkpoint.readback != PublicationCheckpointReadbackV1::Complete\n        || seal.readback_at_unix_seconds != readback_at\n        || seal.provider_object_id != checkpoint.provider.object_id\n        || !digest_shape(&seal.downloaded_bytes_digest)\n        || seal.checkpoint_digest\n            != digest_publication_checkpoint_v1(checkpoint)\n                .map_err(|_| "checkpoint readback seal digest failed")?\n    {\n        return Err("checkpoint readback authority does not match the immutable subject");\n    }\n    if readback_at < checkpoint.created_at_unix_seconds\n        || readback_at >= checkpoint.expires_at_unix_seconds\n        || readback_at > now_unix_seconds\n    {\n        return Err("checkpoint readback time must be current and inside retention");\n    }\n    if now_unix_seconds < checkpoint.created_at_unix_seconds\n        || now_unix_seconds >= checkpoint.expires_at_unix_seconds\n    {\n        return Err("expired or premature checkpoints never authorize progress");\n    }\n    let body_digest = digest_publication_checkpoint_body_v1(checkpoint)\n        .map_err(|_| "checkpoint body digest failed")?;\n    if body_digest != checkpoint.provider.object_digest {\n        return Err("checkpoint provider object digest must bind its immutable body");\n    }\n    let entry_index = checkpoint\n        .journal_head_sequence\n        .checked_sub(1)\n        .and_then(|index| usize::try_from(index).ok())\n        .ok_or("checkpoint journal sequence is outside the local index")?;\n    let bound = journal\n        .entries\n        .get(entry_index)\n        .filter(|entry| entry.sequence == checkpoint.journal_head_sequence)\n        .filter(|entry| entry.entry_digest == checkpoint.journal_head_digest)\n        .ok_or("checkpoint journal prefix does not match the verified journal")?;\n    let declared = journal\n        .rows\n        .iter()\n        .find(|row| {\n            row.package_name == checkpoint.row.package_name\n                && row.row_order == checkpoint.row.row_order\n        })\n        .ok_or("checkpoint row must belong to the journal denominator")?;\n    if bound.package_name.as_deref() != Some(declared.package_name.as_str())\n        || bound.row_order != Some(declared.row_order)\n        || bound.candidate_archive_digest.as_deref()\n            != Some(declared.candidate_archive_digest.as_str())\n    {\n        return Err("checkpoint must bind the exact journal row transition");\n    }\n    match (checkpoint.kind, checkpoint.row.state, bound.kind) {\n        (\n            PublicationCheckpointKindV1::PreIntentDurable,\n            PublicationCheckpointRowStateV1::IntentDurable,\n            PublicationJournalEventV1::UploadIntentDurable,\n        )\n        | (\n            PublicationCheckpointKindV1::PostObservation,\n            PublicationCheckpointRowStateV1::VisibleExact,\n            PublicationJournalEventV1::RegistryVisibleExact,\n        ) => {}\n        _ => {\n            return Err(\n                "checkpoint kind and row state must match the exact clean journal transition",\n            );\n        }\n    }\n    let journal_first_irreversible = journal\n        .entries\n        .iter()\n        .find(|entry| entry.kind == PublicationJournalEventV1::UploadRequestStarted)\n        .and_then(|entry| entry.package_name.as_deref());\n    if checkpoint.first_irreversible_row.as_deref() != journal_first_irreversible {\n        return Err("checkpoint first irreversible row must match the journal");\n    }\n    if checkpoint.incident_recorded != journal_has_incident(journal) {\n        return Err("checkpoint incident posture must match the journal");\n    }\n    Ok(())\n}\n\n'''
+          text = replace_between(
+              text,
+              "/// Verify a checkpoint against the live journal",
+              "fn journal_has_incident(",
+              verifier,
+              "journal-bound authority verifier",
+          )
+
+          source_path.write_text(text, encoding="utf-8", newline="\n")
+
+          test_path = Path("crates/cargo-allow/tests/publication_checkpoint.rs")
+          test = test_path.read_text(encoding="utf-8")
+          test = replace_once(
+              test,
+              "    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,\n    PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,\n    begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,\n    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,",
+              "    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,\n    PublicationJournalRowV1, PublicationRegistryObservationV1,\n    PublicationUploadResponseV1, UploadResponseClassV1, append_journal_event_v1,\n    begin_publication_checkpoint_v1, begin_publication_journal_v1,\n    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,\n    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_v1,\n    record_checkpoint_readback_v1,",
+              "checkpoint test imports",
+          )
+          test = replace_once(
+              test,
+              "    // Store the exact bytes, then read them back independently.\n    let stored = store_checkpoint(&mut first)?;\n    let readback = record_checkpoint_readback_v1(",
+              "    // Store the exact bytes, then read them back independently.\n    let stored = store_checkpoint(&mut first)?;\n    let immutable_digest_before = digest_publication_checkpoint_v1(&first)?;\n    let readback = record_checkpoint_readback_v1(",
+              "stable digest before readback",
+          )
+          test = replace_once(
+              test,
+              "    require(\n        readback == PublicationCheckpointReadbackV1::Complete,\n        \"exact stored bytes must read back Complete\",\n    )?;\n    verify_checkpoint_against_journal_v1",
+              "    require(\n        readback == PublicationCheckpointReadbackV1::Complete,\n        \"exact stored bytes must read back Complete\",\n    )?;\n    require(\n        digest_publication_checkpoint_v1(&first)? == immutable_digest_before,\n        \"readback observation must not change sequence linkage\",\n    )?;\n    verify_checkpoint_against_journal_v1",
+              "stable digest after readback",
+          )
+
+          old_second = '''    // The second checkpoint links the first and unlocks the dependant row.\n    let mut second_init =\n        checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PostObservation)?;\n    second_init.row.state = PublicationCheckpointRowStateV1::VisibleExact;\n    let mut second =\n        begin_publication_checkpoint_v1(second_init, Some(&first)).map_err(io::Error::other)?;\n    require(\n        second.prior_checkpoint_digest.is_some(),\n        "sequence two must bind its predecessor",\n    )?;\n    let stored_second = store_checkpoint(&mut second)?;\n    record_checkpoint_readback_v1(\n        &mut second,\n        CheckpointProviderOutcomeV1::Delivered(stored_second),\n        now + 10,\n    )\n    .map_err(io::Error::other)?;\n    checkpoint_permits_dependant_v1(&second, &journal, &expected_producer, now + 10)\n        .map_err(io::Error::other)?;\n    require(\n        checkpoint_permits_upload_v1(&second, &journal, &expected_producer, now + 10).is_err(),\n        "a post-observation checkpoint must not authorize uploads",\n    )?;\n'''
+          new_second = '''    // Advance the append-only journal through one exact successful registry\n    // observation. A post-observation checkpoint must bind this event, not\n    // merely carry a producer-claimed VisibleExact state.\n    let mut observed_journal = journal.clone();\n    let row = journal_row("cargo-allow", 0, 10);\n    append_journal_event_v1(\n        &mut observed_journal,\n        PublicationJournalAppendV1 {\n            kind: PublicationJournalEventV1::UploadRequestStarted,\n            row: Some(row.clone()),\n            response: None,\n            observation: None,\n            at_unix_seconds: CREATED_AT + 60,\n            reason: "synthetic".to_string(),\n        },\n    )\n    .map_err(io::Error::other)?;\n    append_journal_event_v1(\n        &mut observed_journal,\n        PublicationJournalAppendV1 {\n            kind: PublicationJournalEventV1::UploadResponseObserved,\n            row: Some(row.clone()),\n            response: Some(PublicationUploadResponseV1 {\n                class: UploadResponseClassV1::Success,\n                detail: "synthetic".to_string(),\n            }),\n            observation: None,\n            at_unix_seconds: CREATED_AT + 70,\n            reason: "synthetic".to_string(),\n        },\n    )\n    .map_err(io::Error::other)?;\n    append_journal_event_v1(\n        &mut observed_journal,\n        PublicationJournalAppendV1 {\n            kind: PublicationJournalEventV1::RegistryObservationStarted,\n            row: Some(row.clone()),\n            response: None,\n            observation: None,\n            at_unix_seconds: CREATED_AT + 80,\n            reason: "synthetic".to_string(),\n        },\n    )\n    .map_err(io::Error::other)?;\n    append_journal_event_v1(\n        &mut observed_journal,\n        PublicationJournalAppendV1 {\n            kind: PublicationJournalEventV1::RegistryVisibleExact,\n            row: Some(row),\n            response: None,\n            observation: Some(PublicationRegistryObservationV1 {\n                provider_reachable: true,\n                row_visible: true,\n                archive_digest_matches: true,\n            }),\n            at_unix_seconds: CREATED_AT + 90,\n            reason: "synthetic".to_string(),\n        },\n    )\n    .map_err(io::Error::other)?;\n\n    // The second checkpoint links the first and unlocks the dependant row.\n    let mut second_init = checkpoint_init(\n        &observed_journal,\n        2,\n        PublicationCheckpointKindV1::PostObservation,\n    )?;\n    second_init.row.state = PublicationCheckpointRowStateV1::VisibleExact;\n    second_init.first_irreversible_row = Some("cargo-allow".to_string());\n    let mut second =\n        begin_publication_checkpoint_v1(second_init, Some(&first)).map_err(io::Error::other)?;\n    require(\n        second.prior_checkpoint_digest.is_some(),\n        "sequence two must bind its predecessor",\n    )?;\n    let stored_second = store_checkpoint(&mut second)?;\n    record_checkpoint_readback_v1(\n        &mut second,\n        CheckpointProviderOutcomeV1::Delivered(stored_second),\n        now + 50,\n    )\n    .map_err(io::Error::other)?;\n    checkpoint_permits_dependant_v1(\n        &second,\n        &observed_journal,\n        &expected_producer,\n        now + 50,\n    )\n    .map_err(io::Error::other)?;\n    require(\n        checkpoint_permits_upload_v1(\n            &second,\n            &observed_journal,\n            &expected_producer,\n            now + 50,\n        )\n        .is_err(),\n        "a post-observation checkpoint must not authorize uploads",\n    )?;\n    let mut non_clean = second.clone();\n    non_clean.row.state = PublicationCheckpointRowStateV1::VisibleConflict;\n    require(\n        checkpoint_permits_dependant_v1(\n            &non_clean,\n            &observed_journal,\n            &expected_producer,\n            now + 50,\n        )\n        .is_err(),\n        "a conflict checkpoint must never unlock dependants",\n    )?;\n'''
+          test = replace_once(test, old_second, new_second, "journal-bound post observation test")
+
+          test = replace_once(
+              test,
+              "    let mut skipped = checkpoint_init(&journal, 3, PublicationCheckpointKindV1::PreIntentDurable)?;",
+              "    let mut reused = checkpoint_init(\n        &observed_journal,\n        2,\n        PublicationCheckpointKindV1::PostObservation,\n    )?;\n    reused.row.state = PublicationCheckpointRowStateV1::VisibleExact;\n    reused.first_irreversible_row = Some(\"cargo-allow\".to_string());\n    reused.provider.object_id = first.provider.object_id.clone();\n    require(\n        begin_publication_checkpoint_v1(reused, Some(&first)).is_err(),\n        \"checkpoint sequences must not reuse one provider object\",\n    )?;\n    let mut overflow =\n        checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;\n    overflow.created_at_unix_seconds = u64::MAX - 10;\n    overflow.retention_days = 90;\n    require(\n        begin_publication_checkpoint_v1(overflow, None).is_err(),\n        \"checkpoint expiry arithmetic must fail closed on overflow\",\n    )?;\n    let mut skipped = checkpoint_init(&journal, 3, PublicationCheckpointKindV1::PreIntentDurable)?;",
+              "construction hostile controls",
+          )
+          test_path.write_text(test, encoding="utf-8", newline="\n")
+
+          runner_path = Path("crates/cargo-allow/tests/publication_checkpoint_runner_loss.rs")
+          runner = runner_path.read_text(encoding="utf-8")
+          old_remote = '''    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![first.clone()];\n    let discovered = match select_checkpoint_by_exact_identity_v1(\n        &remote,\n        "artifact-1",\n        &expected_producer,\n        "publish_cargo_allow_final_0_2_0",\n    ) {\n        Some(checkpoint) => checkpoint.clone(),\n        None => return fail("exact checkpoint discovery must succeed"),\n    };\n    require(\n        discovered.checkpoint_sequence == 1\n            && discovered.readback == PublicationCheckpointReadbackV1::Complete,\n        "discovery must return the verified pre-intent checkpoint",\n    )?;\n    checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, now)\n        .map_err(io::Error::other)?;\n'''
+          new_remote = '''    let stored_remote: CargoAllowPublicationCheckpointV1 =\n        serde_json::from_slice(&stored_first)?;\n    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![stored_remote];\n    let mut discovered = match select_checkpoint_by_exact_identity_v1(\n        &remote,\n        "artifact-1",\n        &expected_producer,\n        "publish_cargo_allow_final_0_2_0",\n    ) {\n        Some(checkpoint) => checkpoint.clone(),\n        None => return fail("exact checkpoint discovery must succeed"),\n    };\n    require(\n        discovered.checkpoint_sequence == 1\n            && discovered.readback == PublicationCheckpointReadbackV1::Missing,\n        "remote bytes must not self-attest an independent readback",\n    )?;\n    read_back(&mut discovered, stored_first.clone(), now)?;\n    checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, now)\n        .map_err(io::Error::other)?;\n'''
+          runner = replace_once(runner, old_remote, new_remote, "fresh runner remote reconstruction")
+          runner = replace_once(
+              runner,
+              "    require(\n        select_checkpoint_by_exact_identity_v1(\n            &crowded,\n            \"publication-checkpoint\",",
+              "    let duplicate_exact = vec![first.clone(), first.clone()];\n    require(\n        select_checkpoint_by_exact_identity_v1(\n            &duplicate_exact,\n            \"artifact-1\",\n            &expected_producer,\n            \"publish_cargo_allow_final_0_2_0\",\n        )\n        .is_none(),\n        \"duplicate exact provider identities must fail ambiguity\",\n    )?;\n    require(\n        select_checkpoint_by_exact_identity_v1(\n            &crowded,\n            \"publication-checkpoint\",",
+              "ambiguous exact selection control",
+          )
+          runner = replace_once(
+              runner,
+              "    // Control: checkpoint prefix does not match the live journal. A\n",
+              "    let mut reused_object = checkpoint_init(&journal, 2, \"artifact-1\")?;\n    require(\n        begin_publication_checkpoint_v1(reused_object.clone(), Some(&first)).is_err(),\n        \"later sequences must use a new immutable provider object\",\n    )?;\n    reused_object.provider.object_id = \"artifact-2\".to_string();\n    reused_object.created_at_unix_seconds = CREATED_AT - 1;\n    require(\n        begin_publication_checkpoint_v1(reused_object, Some(&first)).is_err(),\n        \"checkpoint construction time must not move backward\",\n    )?;\n    // Control: checkpoint prefix does not match the live journal. A\n",
+              "runner-loss monotonic controls",
+          )
+          runner_path.write_text(runner, encoding="utf-8", newline="\n")
+
+          trust_path = Path("crates/cargo-allow/tests/publication_checkpoint_trust.rs")
+          trust = trust_path.read_text(encoding="utf-8")
+          trust = replace_once(
+              trust,
+              "        CheckpointProviderOutcomeV1::Delivered(stored),\n        now,",
+              "        CheckpointProviderOutcomeV1::Delivered(stored.clone()),\n        now,",
+              "preserve trusted bytes for provider tamper test",
+          )
+          tamper_anchor = '''    require(\n        verify_checkpoint_against_journal_v1(&trusted, &journal, &fork_producer, now).is_err(),\n        "fork producers must never verify a checkpoint",\n    )?;\n'''
+          tamper_insert = tamper_anchor + '''    let mut provider_tamper: serde_json::Value = serde_json::from_slice(&stored)?;\n    let provider = provider_tamper\n        .get_mut("provider")\n        .and_then(serde_json::Value::as_object_mut)\n        .ok_or_else(|| io::Error::other("checkpoint provider object missing"))?;\n    provider.insert(\n        "object_id".to_string(),\n        serde_json::Value::String("artifact-9".to_string()),\n    );\n    let tampered_provider_bytes = serde_json::to_vec_pretty(&provider_tamper)?;\n    let (mut provider_subject, _) = stored_first(&journal)?;\n    let verdict = record_checkpoint_readback_v1(\n        &mut provider_subject,\n        CheckpointProviderOutcomeV1::Delivered(tampered_provider_bytes),\n        now,\n    )\n    .map_err(io::Error::other)?;\n    require(\n        verdict == PublicationCheckpointReadbackV1::Mismatch,\n        "provider-object tampering must never read back Complete",\n    )?;\n    let mut self_attested: CargoAllowPublicationCheckpointV1 = serde_json::from_slice(&stored)?;\n    self_attested.readback = PublicationCheckpointReadbackV1::Complete;\n    self_attested.readback_at_unix_seconds = Some(now);\n    require(\n        checkpoint_permits_upload_v1(&self_attested, &journal, &expected_producer, now).is_err(),\n        "a deserialized Complete claim must not manufacture readback authority",\n    )?;\n'''
+          trust = replace_once(trust, tamper_anchor, tamper_insert, "provider and self-attestation controls")
+          trust_path.write_text(trust, encoding="utf-8", newline="\n")
+          PY
+          python3 "$RUNNER_TEMP/repair.py"
+          cargo fmt --all
+          git diff --check
+
+      - name: Run focused checkpoint and adjacent authority proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p cargo-allow --test publication_checkpoint --locked -- --nocapture
+          cargo test -p cargo-allow --test publication_checkpoint_runner_loss --locked -- --nocapture
+          cargo test -p cargo-allow --test publication_checkpoint_trust --locked -- --nocapture
+          cargo test -p cargo-allow --test publication_journal --locked -- --nocapture
+          cargo test -p cargo-allow --locked --bin cargo-allow artifact_schema_index
+          cargo clippy -p allow-report -p cargo-allow --all-targets -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
+            --receipt target/pr-4302-author-repair/check.receipt.json \
+            --output target/pr-4302-author-repair/check.md
+          git diff --check
+
+      - name: Commit and publish only the repaired source head
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=$'crates/allow-report/src/artifacts/publication_checkpoint_v1.rs\ncrates/cargo-allow/tests/publication_checkpoint.rs\ncrates/cargo-allow/tests/publication_checkpoint_runner_loss.rs\ncrates/cargo-allow/tests/publication_checkpoint_trust.rs'
+          actual="$(git diff --name-only | sort)"
+          test "$actual" = "$expected"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            crates/allow-report/src/artifacts/publication_checkpoint_v1.rs \
+            crates/cargo-allow/tests/publication_checkpoint.rs \
+            crates/cargo-allow/tests/publication_checkpoint_runner_loss.rs \
+            crates/cargo-allow/tests/publication_checkpoint_trust.rs
+          git commit -m 'fix(release): bind checkpoint gates to verified remote evidence (#3922)' \
+            -m 'Separate immutable stored identity from runtime readback authority, verify the complete publication journal and exact row transition, preserve stable checkpoint linkage, and add fail-closed hostile controls for provider tampering, ambiguity, conflicts, and construction bounds.'
+          if git ls-remote --exit-code --heads origin "$OUTPUT_BRANCH" >/dev/null 2>&1; then
+            echo "output branch already exists: $OUTPUT_BRANCH" >&2
+            exit 1
+          fi
+          git push origin "HEAD:refs/heads/$OUTPUT_BRANCH"
+          git show --stat --oneline --decorate HEAD
