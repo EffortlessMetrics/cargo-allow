@@ -9,6 +9,8 @@ use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 
+use super::release_authorization_v1::RELEASE_AUTHORIZATION_SELECTION;
+
 pub const RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION: u32 = 1;
 pub const RELEASE_OPERATION_IDENTITY_SCHEMA_ID: &str =
     "cargo-allow.release-operation-identity.v1";
@@ -23,6 +25,24 @@ pub const RELEASE_OPERATION_PRODUCT: &str = "cargo-allow";
 pub const RELEASE_OPERATION_VERSION: &str = "0.2.0";
 pub const RELEASE_OPERATION_TAG: &str = "v0.2.0";
 pub const RELEASE_OPERATION_CHANNEL: &str = "stable";
+pub const RELEASE_OPERATION_ASSET_SELECTION: [(&str, &str); 7] = [
+    ("release-manifest", "release-manifest-v2.json"),
+    ("release-manifest-checksum", "release-manifest-v2.sha256"),
+    (
+        "linux-archive",
+        "cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz",
+    ),
+    (
+        "linux-archive-checksum",
+        "cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz.sha256",
+    ),
+    (
+        "linux-executable-checksum",
+        "cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz.executable.sha256",
+    ),
+    ("linux-package-receipt", "release-binary.receipt.json"),
+    ("linux-install-receipt", "release-binary-install.receipt.json"),
+];
 
 const CLAIM_BOUNDARY: &str = "Canonical semantic identity, append-only event order, current head, and aggregate state for one exact cargo-allow final-release operation. This authority performs no provider call, credential access, tag mutation, package publication, GitHub Release mutation, recovery action, or live-control change.";
 const SECRET_MARKERS: [&str; 8] = [
@@ -376,40 +396,35 @@ fn validate_package_rows(
     if rows.len() != 10 {
         return Err("release operation identity requires exactly ten final package rows");
     }
-    let mut logical_ids = BTreeSet::new();
-    let mut package_names = BTreeSet::new();
-    for row in rows {
-        if row.logical_id.trim().is_empty()
-            || row.package_name.trim().is_empty()
-            || row.package_version != RELEASE_OPERATION_VERSION
+    let expected = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared);
+    for (row, (logical_id, package_name, version, _)) in rows.iter().zip(expected) {
+        if row.logical_id != *logical_id
+            || row.package_name != *package_name
+            || row.package_version != *version
             || !digest_shape(&row.package_digest)
         {
-            return Err("release operation package row is malformed");
-        }
-        if !logical_ids.insert(row.logical_id.as_str())
-            || !package_names.insert(row.package_name.as_str())
-        {
-            return Err("release operation package denominator contains duplicate identities");
+            return Err(
+                "release operation package denominator must equal the selected final release order",
+            );
         }
     }
     Ok(())
 }
 
 fn validate_asset_rows(rows: &[CargoAllowReleaseOperationAssetRowV1]) -> Result<(), &'static str> {
-    if rows.is_empty() {
-        return Err("release operation identity requires at least one required asset row");
+    if rows.len() != RELEASE_OPERATION_ASSET_SELECTION.len() {
+        return Err("release operation identity requires the exact selected asset denominator");
     }
-    let mut ids = BTreeSet::new();
-    let mut names = BTreeSet::new();
-    for row in rows {
-        if row.asset_id.trim().is_empty()
-            || row.asset_name.trim().is_empty()
+    for (row, (asset_id, asset_name)) in rows.iter().zip(RELEASE_OPERATION_ASSET_SELECTION) {
+        if row.asset_id != asset_id
+            || row.asset_name != asset_name
             || !digest_shape(&row.asset_digest)
         {
-            return Err("release operation asset row is malformed");
-        }
-        if !ids.insert(row.asset_id.as_str()) || !names.insert(row.asset_name.as_str()) {
-            return Err("release operation asset denominator contains duplicate identities");
+            return Err(
+                "release operation asset denominator must equal the selected GitHub Release attachment order",
+            );
         }
     }
     Ok(())
