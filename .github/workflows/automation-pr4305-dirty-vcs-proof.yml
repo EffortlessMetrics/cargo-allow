@@ -1,0 +1,83 @@
+name: PR 4305 dirty VCS package proof
+
+on:
+  push:
+    branches:
+      - fix/package-byte-authority
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[dirty-vcs-4305]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
+        with:
+          toolchain: 1.95.0
+
+      - name: Wire production authority to the shared verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "fdaa477e0a71766dd9613803a4ba0cbff3fef3e8"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/exact-candidate-package-set.sh")
+          text = path.read_text(encoding="utf-8")
+          start_marker = '  vcs_sha="$(python3 - "${src}" "${crate}-${crate_version}" <<\'PY\'\n'
+          end_marker = '  digest="$(sha256_file "${src}")"'
+          if text.count(start_marker) != 1 or text.count(end_marker) != 1:
+              raise SystemExit("package VCS verification markers are not unique")
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          replacement = "\n".join(
+              [
+                  "  # One authority validates both fresh and restored archives: the exact",
+                  "  # frozen Git head plus an explicit JSON boolean dirty=false.",
+                  "  if ! python3 \"${SCRIPT_ROOT}/scripts/test-package-byte-authority.py\" verify-archive \\",
+                  "    --archive \"${src}\" \\",
+                  "    --prefix \"${crate}-${crate_version}\" \\",
+                  "    --expected-head \"${snapshot_head}\" >/dev/null",
+                  "  then",
+                  "    fail \"package-byte authority broken for ${crate_file}\"",
+                  "  fi",
+                  "",
+              ]
+          )
+          path.write_text(text[:start] + replacement + text[end:], encoding="utf-8", newline="\n")
+          PY
+          git rm .github/workflows/automation-pr4305-dirty-vcs-proof.yml
+          python3 -m py_compile scripts/test-package-byte-authority.py
+          bash -n scripts/exact-candidate-package-set.sh
+          git diff --check
+
+      - name: Run focused byte-authority proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/test-package-byte-authority.py
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Publish source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin fix/package-byte-authority
+          test "$(git rev-parse origin/fix/package-byte-authority)" = "$(git rev-parse HEAD)"
+          git config user.name "EffortlessSteven"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(#4304): reject dirty package archives"
+          git push origin HEAD:fix/package-byte-authority
