@@ -1311,7 +1311,7 @@ fn validate_event_transition(
         Event::RecoverySelected => {
             if identity.operation_class != Class::IncidentRecovery
                 || !has_exact_event(events, Event::OperationSelected)
-                || identity.incident_predecessor_operation_digest.as_deref()
+                || identity.incident_predecessor_head_digest.as_deref()
                     != Some(init.payload_digest.as_str())
                 || init.semantic_result != ResultClass::Exact
             {
@@ -1323,7 +1323,7 @@ fn validate_event_transition(
         Event::ContainmentSelected => {
             if identity.operation_class != Class::Containment
                 || !has_exact_event(events, Event::OperationSelected)
-                || identity.incident_predecessor_operation_digest.as_deref()
+                || identity.incident_predecessor_head_digest.as_deref()
                     != Some(init.payload_digest.as_str())
                 || init.semantic_result != ResultClass::Exact
             {
