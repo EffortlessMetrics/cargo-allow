@@ -46,6 +46,9 @@ jobs:
           end = source.index(end_marker, start)
           body = []
           for line in source[start:end]:
+              if line == "":
+                  body.append("")
+                  continue
               if not line.startswith("          "):
                   raise SystemExit(f"unexpected embedded-script indentation: {line!r}")
               body.append(line[10:])
