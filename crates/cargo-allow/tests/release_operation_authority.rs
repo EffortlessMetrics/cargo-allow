@@ -20,6 +20,8 @@ use allow_report::{
     validate_release_operation_identity_v1,
 };
 
+const EVALUATED_AT_UNIX_SECONDS: u64 = 1_790_100_000;
+
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
 }
@@ -259,6 +261,13 @@ fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<
     require(
         validate_release_operation_identity_v1(&mutated).is_err(),
         "caller-mutated operation IDs must fail canonical validation",
+    )?;
+
+    let mut uppercase = identity_init(CargoAllowReleaseOperationClassV1::CleanFinalPublication);
+    uppercase.freeze_digest = format!("sha256:{}", "A".repeat(64));
+    require(
+        build_release_operation_identity_v1(uppercase).is_err(),
+        "digest identities must use canonical lowercase hex",
     )
 }
 
@@ -360,7 +369,7 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         Package(first_package),
         11,
     )?;
-    let partial = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let partial = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         partial.state == State::PackagePublicationInProgress
             && partial.missing_packages.len() == 9,
@@ -407,7 +416,7 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         )?;
         ordinal += 1;
     }
-    let packages = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let packages = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         packages.state == State::PackagesPublishedExact && packages.missing_packages.is_empty(),
         "every selected package must be exact before package completion",
@@ -433,7 +442,7 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         Asset(first_asset),
         61,
     )?;
-    let one_asset = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let one_asset = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         one_asset.state == State::GitHubReleaseInProgress
             && one_asset.missing_assets.len() == identity.assets.len() - 1,
@@ -477,17 +486,18 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         &mut events,
         Event::PublicReleaseObservedExact,
         Operation,
-        64,
+        asset_ordinal,
     )?;
+    asset_ordinal += 1;
     append(
         &identity,
         &mut events,
         Event::RepositoryReconciled,
         Operation,
-        65,
+        asset_ordinal,
     )?;
     let before_settle =
-        evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         before_settle.state == State::RepositoryReconciliationRequired,
         "exact public truth must still require explicit operation settlement",
@@ -497,9 +507,9 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         &mut events,
         Event::OperationSettled,
         Operation,
-        66,
+        asset_ordinal + 1,
     )?;
-    let complete = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let complete = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         complete.state == State::CompleteClean
             && complete.missing_packages.is_empty()
@@ -571,7 +581,7 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
         .map_err(io::Error::other)?;
     events.push(unknown.clone());
     require(
-        evaluate_release_operation_v1(&identity, &events)
+        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
             .map_err(io::Error::other)?
             .state
             == State::RecoveryRequired,
@@ -602,12 +612,13 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
     );
     matching.request_boundary = unknown.request_boundary.clone();
     matching.payload_schema_id = unknown.payload_schema_id.clone();
+    matching.payload_digest = unknown.payload_digest.clone();
     matching.artifact_digest = unknown.artifact_digest.clone();
     let matching = append_release_operation_event_v1(&identity, &events, matching)
         .map_err(io::Error::other)?;
     events.push(matching);
     require(
-        evaluate_release_operation_v1(&identity, &events)
+        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
             .map_err(io::Error::other)?
             .state
             == State::TagObservedPackagesPending,
@@ -631,6 +642,20 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
     require(
         append_release_operation_event_v1(&identity, &events, expired).is_err(),
         "events after operation expiry must fail",
+    )?;
+    let stale = evaluate_release_operation_v1(
+        &identity,
+        &events,
+        identity.expires_at_unix_seconds + 1,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        stale.state == State::Stale
+            && stale
+                .findings
+                .iter()
+                .any(|finding| finding.contains("expired")),
+        "evaluation after operation expiry must be explicitly stale",
     )?;
 
     let mut backwards = event_init(
@@ -691,7 +716,7 @@ fn release_operation_authority_renderings_validate_against_schema() -> Result<()
     .map_err(io::Error::other)?;
     let events = vec![event.clone()];
     let head = compile_release_operation_head_v1(&identity, &events).map_err(io::Error::other)?;
-    let evaluation = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let evaluation = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
 
     let rendered = [
         render_release_operation_identity_v1(&identity)?,
@@ -719,7 +744,7 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
     let mut events = Vec::new();
     append_preamble(&identity, &mut events)?;
     append(&identity, &mut events, Event::IncidentRecorded, Operation, 70)?;
-    let incident = evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+    let incident = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         incident.state == State::RecoveryRequired && incident.incident_lineage,
         "a clean incident must permanently require recovery",
@@ -769,7 +794,7 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
     .map_err(io::Error::other)?;
     unavailable_events.push(unavailable);
     let evaluation =
-        evaluate_release_operation_v1(&identity, &unavailable_events).map_err(io::Error::other)?;
+        evaluate_release_operation_v1(&identity, &unavailable_events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     require(
         evaluation.state == State::ProviderUnavailable,
         "provider unavailability must not become an authorized/clean state",
