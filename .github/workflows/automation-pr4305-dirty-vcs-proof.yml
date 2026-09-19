@@ -20,34 +20,34 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
-        with:
-          toolchain: 1.95.0
+      - uses: dtolnay/rust-toolchain@1.95.0
 
       - name: Align the verifier and production authority
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "da791ee50b2643501a15fcf62d0ff951b051d393"
+          test "$(git rev-parse HEAD^)" = "8e0845e1976615f3d7000a736adc3ff7e660e780"
           python3 - <<'PY'
           from pathlib import Path
 
           verifier = Path("scripts/test-package-byte-authority.py")
           text = verifier.read_text(encoding="utf-8")
-          old_doc = '''def verify_archive(archive, prefix, expected_head):
-              """Require the exact Git subject and an explicit clean-worktree bit."""
-          '''
-          new_doc = '''def verify_archive(archive, prefix, expected_head):
+          start = text.index("def verify_archive(archive, prefix, expected_head):")
+          end = text.index("\ndef verifier_process(", start)
+          replacement = '''def verify_archive(archive, prefix, expected_head):
               """Require the exact Git subject and Cargo's canonical clean posture."""
-          '''
-          old_rule = '''    if "dirty" not in git or type(git["dirty"]) is not bool:
-              raise ValueError("git.dirty must be an explicit JSON boolean")
-          if git["dirty"]:
-              raise ValueError("git.dirty must be false")
+              info = read_vcs_info(archive, prefix)
+              git = info.get("git")
+              if not isinstance(git, dict):
+                  raise ValueError(".cargo_vcs_info.json must contain a git object")
 
-              return info
-          '''
-          new_rule = '''    dirty = git.get("dirty", False)
+              sha = git.get("sha1")
+              if not isinstance(sha, str) or not sha:
+                  raise ValueError("missing git.sha1 in .cargo_vcs_info.json")
+              if sha != expected_head:
+                  raise ValueError(f"git.sha1 {sha} does not match frozen subject {expected_head}")
+
+              dirty = git.get("dirty", False)
               if type(dirty) is not bool:
                   raise ValueError("git.dirty must be a JSON boolean when present")
               if dirty:
@@ -58,27 +58,26 @@ jobs:
               normalized_git["dirty"] = dirty
               normalized["git"] = normalized_git
               return normalized
+
           '''
-          old_clean_assertion = '''        self.assertEqual(info.get("git", {}).get("sha1"), head)
-              self.assertIs(info.get("git", {}).get("dirty"), False)
-              accepted = verifier_process(archive, prefix, head)
-          '''
-          new_clean_assertion = '''        self.assertEqual(info.get("git", {}).get("sha1"), head)
+          text = text[:start] + replacement + text[end + 1:]
+
+          clean_start = text.index(
+              '        self.assertEqual(info.get("git", {}).get("sha1"), head)\n',
+              text.index("def test_worktree_packaging_carries_exact_clean_head"),
+          )
+          clean_end = text.index(
+              "        accepted = verifier_process(archive, prefix, head)\n",
+              clean_start,
+          )
+          clean_replacement = '''        self.assertEqual(info.get("git", {}).get("sha1"), head)
               self.assertNotIn(
                   "dirty",
                   info.get("git", {}),
                   "Cargo canonically omits dirty for a clean package",
               )
-              accepted = verifier_process(archive, prefix, head)
           '''
-          for old, new, label in (
-              (old_doc, new_doc, "verifier docstring"),
-              (old_rule, new_rule, "dirty rule"),
-              (old_clean_assertion, new_clean_assertion, "clean control"),
-          ):
-              if text.count(old) != 1:
-                  raise SystemExit(f"{label} is not uniquely identifiable: {text.count(old)}")
-              text = text.replace(old, new, 1)
+          text = text[:clean_start] + clean_replacement + text[clean_end:]
           verifier.write_text(text, encoding="utf-8", newline="\n")
 
           producer = Path("scripts/exact-candidate-package-set.sh")
@@ -104,11 +103,7 @@ jobs:
                   "",
               ]
           )
-          producer.write_text(
-              text[:start] + replacement + text[end:],
-              encoding="utf-8",
-              newline="\n",
-          )
+          producer.write_text(text[:start] + replacement + text[end:], encoding="utf-8", newline="\n")
           PY
           git rm .github/workflows/automation-pr4305-dirty-vcs-proof.yml
           python3 -m py_compile scripts/test-package-byte-authority.py
