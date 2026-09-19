@@ -1039,9 +1039,6 @@ fn release_operation_recovery_and_containment_require_validated_predecessor()
 #[test]
 fn release_operation_authority_renderings_validate_against_schema() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
-    if !root.join(".git").exists() {
-        return Ok(());
-    }
     let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
         root.join("docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"),
     )?)?;
