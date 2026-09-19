@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "26c0af563939ac0f56c4b3f3e7ce22724abb2794"
+          test "$(git rev-parse HEAD^)" = "ff532c44bf0db62b8f9ee7a742527bb3010d00b0"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/sync-pr4305-after-4303.yml"
           git fetch --no-tags origin main
           test "$(git rev-parse origin/main)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
@@ -111,26 +111,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          generated=.allow/revisions/4304-generated.tmp.toml
           printf 'schema_version = 1\n' > .allow/revisions/4304-package-byte-authority.toml
-          rm -f /tmp/4304-generated.toml /tmp/4304-diff.json
+          rm -f "${generated}" /tmp/4304-diff.json
           set +e
           cargo run -p cargo-allow --locked -- diff \
             --base origin/main \
             --require-change-note \
-            --write-change-note-template /tmp/4304-generated.toml \
+            --write-change-note-template "${generated}" \
             --format json \
             --output /tmp/4304-diff.json
           initial_status=$?
           set -e
           test ${initial_status} -ne 0
-          test -s /tmp/4304-generated.toml
+          test -s "${generated}"
           printf '%s\n' '--- generated change-note template ---'
-          cat /tmp/4304-generated.toml
+          cat "${generated}"
           python3 - <<'PY'
           from pathlib import Path
           import tomllib
 
-          data = tomllib.loads(Path('/tmp/4304-generated.toml').read_text(encoding='utf-8'))
+          generated = Path('.allow/revisions/4304-generated.tmp.toml')
+          data = tomllib.loads(generated.read_text(encoding='utf-8'))
           records = data.get('records', [])
           by_id = {}
           for record in records:
@@ -162,6 +164,7 @@ jobs:
           Path('.allow/revisions/4304-package-byte-authority.toml').write_text(
               '\n'.join(lines), encoding='utf-8', newline='\n'
           )
+          generated.unlink()
           PY
           cargo run -p cargo-allow --locked -- diff \
             --base origin/main \
