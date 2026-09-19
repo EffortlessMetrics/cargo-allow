@@ -52,8 +52,8 @@ jobs:
               r'run_git(\n\g<indent>[',
               text,
           )
-          if count != 8:
-              raise SystemExit(f"{harness}: expected eight Git subprocess replacements, found {count}")
+          if count != 7:
+              raise SystemExit(f"{harness}: expected seven Git subprocess replacements, found {count}")
           if re.search(r'subprocess\.run\(\n\s*\["git",', text):
               raise SystemExit(f"{harness}: an unsanitized Git subprocess remains")
           harness.write_text(text, encoding="utf-8", newline="\n")
