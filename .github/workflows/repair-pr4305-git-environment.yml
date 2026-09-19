@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: fix/package-byte-authority
-          fetch-depth: 10
+          fetch-depth: 12
           persist-credentials: true
 
       - name: Guard the exact repair carrier
@@ -46,11 +46,6 @@ jobs:
               path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
 
           harness = Path("scripts/candidate-harness-owned-dir.py")
-          replace_once(
-              harness,
-              'MARKER = ".candidate-harness-owner.json"\nREPARSE_POINT = 0x400\n',
-              '''MARKER = ".candidate-harness-owner.json"\nREPARSE_POINT = 0x400\nGIT_REPOSITORY_ENVIRONMENT_VARIABLES = (\n    "GIT_DIR",\n    "GIT_WORK_TREE",\n    "GIT_COMMON_DIR",\n    "GIT_INDEX_FILE",\n    "GIT_OBJECT_DIRECTORY",\n    "GIT_ALTERNATE_OBJECT_DIRECTORIES",\n    "GIT_CEILING_DIRECTORIES",\n    "GIT_DISCOVERY_ACROSS_FILESYSTEM",\n)\nGIT_SUBPROCESS_ENVIRONMENT = os.environ.copy()\nfor variable in GIT_REPOSITORY_ENVIRONMENT_VARIABLES:\n    GIT_SUBPROCESS_ENVIRONMENT.pop(variable, None)\n\n\ndef run_git(arguments: list[str], **kwargs):\n    return subprocess.run(\n        ["git", *arguments],\n        env=GIT_SUBPROCESS_ENVIRONMENT,\n        **kwargs,\n    )\n''',
-          )
           text = harness.read_text(encoding="utf-8")
           text, count = re.subn(
               r'subprocess\.run\(\n(?P<indent>\s*)\["git",',
@@ -62,6 +57,11 @@ jobs:
           if re.search(r'subprocess\.run\(\n\s*\["git",', text):
               raise SystemExit(f"{harness}: an unsanitized Git subprocess remains")
           harness.write_text(text, encoding="utf-8", newline="\n")
+          replace_once(
+              harness,
+              'MARKER = ".candidate-harness-owner.json"\nREPARSE_POINT = 0x400\n',
+              '''MARKER = ".candidate-harness-owner.json"\nREPARSE_POINT = 0x400\nGIT_REPOSITORY_ENVIRONMENT_VARIABLES = (\n    "GIT_DIR",\n    "GIT_WORK_TREE",\n    "GIT_COMMON_DIR",\n    "GIT_INDEX_FILE",\n    "GIT_OBJECT_DIRECTORY",\n    "GIT_ALTERNATE_OBJECT_DIRECTORIES",\n    "GIT_CEILING_DIRECTORIES",\n    "GIT_DISCOVERY_ACROSS_FILESYSTEM",\n)\nGIT_SUBPROCESS_ENVIRONMENT = os.environ.copy()\nfor variable in GIT_REPOSITORY_ENVIRONMENT_VARIABLES:\n    GIT_SUBPROCESS_ENVIRONMENT.pop(variable, None)\n\n\ndef run_git(arguments: list[str], **kwargs):\n    return subprocess.run(\n        ["git", *arguments],\n        env=GIT_SUBPROCESS_ENVIRONMENT,\n        **kwargs,\n    )\n''',
+          )
 
           package_set = Path("scripts/exact-candidate-package-set.sh")
           replace_once(
@@ -121,8 +121,6 @@ jobs:
           PY
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
-        with:
-          toolchain: 1.95.0
 
       - name: Prove the exact repair
         shell: bash
