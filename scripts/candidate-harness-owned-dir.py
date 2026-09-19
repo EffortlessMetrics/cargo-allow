@@ -174,6 +174,8 @@ def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
     if resolved.parent != allowed:
         fail(f"owned directory must be a direct child of {allowed}: {resolved}")
     marker = load_marker(resolved)
+    if marker.get("worktree") is True:
+        fail(f"use worktree-remove for worktree directories: {resolved}")
     if (
         resolved.name != purpose
         and not resolved.name.startswith(f"{purpose}.")
@@ -227,6 +229,99 @@ def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str
         raise
 
 
+def worktree_head(repository: Path) -> str:
+    repo = canonical_existing(repository, "repository")
+    head = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    if len(head) != 40 or any(
+        character not in "0123456789abcdef" for character in head
+    ):
+        fail(f"repository HEAD is not a canonical commit: {head!r}")
+    return head
+
+
+def worktree(root: Path, repository: Path, purpose: str, head: str | None) -> tuple[Path, str, str]:
+    """Check out an isolated detached git worktree at an exact head.
+
+    Unlike snapshot(), the worktree keeps its git metadata, so tools that
+    bind bytes to the version-control subject (notably `cargo package` via
+    `.cargo_vcs_info.json`) observe the true head instead of omitting it.
+    """
+    validate_purpose(purpose)
+    allowed = canonical_existing(root, "allowed root")
+    repo = canonical_existing(repository, "repository")
+    resolved_head = head.strip() if head else worktree_head(repo)
+    if len(resolved_head) != 40 or any(
+        character not in "0123456789abcdef" for character in resolved_head
+    ):
+        fail(f"worktree head is not a canonical commit: {resolved_head!r}")
+    directory = None
+    for _ in range(16):
+        candidate = allowed / f"{purpose}.{secrets.token_hex(8)}"
+        if not candidate.exists() and not candidate.is_symlink():
+            directory = candidate
+            break
+    if directory is None:
+        fail(f"could not reserve a worktree directory under {allowed}")
+    token = secrets.token_hex(32)
+    try:
+        subprocess.run(
+            ["git", "-C", str(repo), "worktree", "add", "--detach", str(directory), resolved_head],
+            check=True, capture_output=True, text=True,
+        )
+        observed = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip()
+        if observed != resolved_head:
+            fail(f"worktree HEAD drifted from {resolved_head}: {observed}")
+        write_marker(
+            directory, purpose, token,
+            git_head=resolved_head, repository=str(repo), worktree=True,
+        )
+        return directory.resolve(strict=True), token, resolved_head
+    except Exception:
+        subprocess.run(
+            ["git", "-C", str(repo), "worktree", "remove", "--force", str(directory)],
+            capture_output=True, text=True,
+        )
+        if directory.exists():
+            if shutil.rmtree.avoids_symlink_attacks:
+                remove(root, directory, purpose, token)
+        raise
+
+
+def worktree_remove(root: Path, directory: Path, purpose: str, token: str) -> None:
+    """Remove a harness-owned worktree without leaving stale registration.
+
+    Plain remove() must never touch worktree directories: recursive deletion
+    would orphan the worktree registration in the repository metadata.
+    """
+    validate_purpose(purpose)
+    allowed = canonical_existing(root, "allowed root")
+    if not directory.exists() or directory.is_symlink():
+        fail(f"owned worktree must exist and must not be a symlink: {directory}")
+    resolved = directory.resolve(strict=True)
+    if resolved.parent != allowed:
+        fail(f"owned worktree must be a direct child of {allowed}: {resolved}")
+    marker = load_marker(resolved)
+    if marker.get("purpose") != purpose or marker.get("token") != token:
+        fail(f"ownership marker mismatch for {resolved}")
+    if marker.get("worktree") is not True:
+        fail(f"worktree removal refused for non-worktree directory: {resolved}")
+    repository = marker.get("repository")
+    if not isinstance(repository, str) or not repository.strip():
+        fail(f"worktree marker lacks its repository: {resolved}")
+    subprocess.run(
+        ["git", "-C", repository, "worktree", "remove", "--force", str(resolved)],
+        check=True, capture_output=True, text=True,
+    )
+    if resolved.exists():
+        fail(f"worktree removal left its directory behind: {resolved}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -243,6 +338,16 @@ def main() -> int:
     snapshot_parser.add_argument("--root", type=Path, required=True)
     snapshot_parser.add_argument("--repository", type=Path, required=True)
     snapshot_parser.add_argument("--purpose", required=True)
+    worktree_parser = subparsers.add_parser("worktree")
+    worktree_parser.add_argument("--root", type=Path, required=True)
+    worktree_parser.add_argument("--repository", type=Path, required=True)
+    worktree_parser.add_argument("--purpose", required=True)
+    worktree_parser.add_argument("--head", required=False, default=None)
+    worktree_remove_parser = subparsers.add_parser("worktree-remove")
+    worktree_remove_parser.add_argument("--root", type=Path, required=True)
+    worktree_remove_parser.add_argument("--path", type=Path, required=True)
+    worktree_remove_parser.add_argument("--purpose", required=True)
+    worktree_remove_parser.add_argument("--token", required=True)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--root", type=Path, required=True)
     verify_parser.add_argument("--path", type=Path, required=True)
@@ -280,6 +385,13 @@ def main() -> int:
     if args.command == "snapshot":
         directory, token, head = snapshot(args.root, args.repository, args.purpose)
         print(json.dumps({"path": str(directory), "purpose": args.purpose, "token": token, "git_head": head}))
+        return 0
+    if args.command == "worktree":
+        directory, token, head = worktree(args.root, args.repository, args.purpose, args.head)
+        print(json.dumps({"path": str(directory), "purpose": args.purpose, "token": token, "git_head": head}))
+        return 0
+    if args.command == "worktree-remove":
+        worktree_remove(args.root, args.path, args.purpose, args.token)
         return 0
     if args.command == "verify":
         allowed = canonical_existing(args.root, "allowed root")

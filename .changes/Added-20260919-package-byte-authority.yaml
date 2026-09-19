@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Freeze Git-backed package bytes: the exact-candidate set now packages
+  inside a harness-owned git worktree at the exact snapshot head, every
+  frozen archive must carry `.cargo_vcs_info.json` with the frozen subject
+  SHA, and a cross-producer proof pins the byte authority (#4304).

@@ -341,4 +341,35 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if result.returncode != 0 or "disposable snapshot ok" not in result.stdout:
             raise SystemExit(f"checkout-root package staging probe failed:\n{result.stdout}{result.stderr}")
 
+    work = json.loads(
+        run("worktree", "--root", str(root), "--repository", str(ROOT), "--purpose", "worktree-auth").stdout
+    )
+    work_path = Path(work["path"])
+    observed = subprocess.run(
+        ["git", "-C", str(work_path), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=False,
+    )
+    if observed.returncode != 0 or observed.stdout.strip() != work["git_head"]:
+        raise SystemExit(f"worktree HEAD drifted from {work['git_head']}: {observed.stdout}{observed.stderr}")
+    reject("worktree", "--root", str(root), "--repository", str(ROOT),
+           "--purpose", "worktree-auth", "--head", "forged")
+    reject("worktree-remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", "wrong")
+    reject("remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", work["token"])
+    if not (work_path / ".candidate-harness-owner.json").is_file():
+        raise SystemExit("worktree lost its ownership marker")
+    run("worktree-remove", "--root", str(root), "--path", str(work_path),
+        "--purpose", "worktree-auth", "--token", work["token"])
+    if work_path.exists():
+        raise SystemExit("worktree removal left its directory behind")
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "worktree", "list", "--porcelain"],
+        capture_output=True, text=True, check=False,
+    )
+    if str(work_path) in listed.stdout:
+        raise SystemExit("worktree removal left stale registration")
+    reject("worktree-remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", work["token"])
+
 print("ok candidate harness owned-directory containment")
