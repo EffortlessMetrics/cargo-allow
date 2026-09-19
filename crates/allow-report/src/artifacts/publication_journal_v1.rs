@@ -13,8 +13,9 @@
 //! comes from caller-supplied provider observations, never process narrative;
 //! entries are never edited (correction is another entry); a later success
 //! cannot rewrite or omit an earlier incident. After an incident the clean
-//! journal refuses further upload intent: recovery starts a new journal bound
-//! to this one under #2509.
+//! journal refuses further upload intent and new upload requests (responses
+//! for already-started uploads stay recordable): recovery starts a new
+//! journal bound to this one under #2509.
 //!
 //! Everything here is pure and side-effect-free: no network access, no
 //! uploads, no credential reads, no registry observation fetching, and no
@@ -226,11 +227,22 @@ fn entry_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
     Ok(allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1))
 }
 
-/// Canonical digest input: every chained field, nothing ambient.
+/// Canonical digest input: every chained field, nothing ambient. The header
+/// identity (journal/operation/authorization/custody/freeze/recovery) and the
+/// bound row set travel in every entry digest, so header or denominator
+/// mutation breaks verification; the chain proves belonging, not just order.
 #[derive(Serialize)]
 struct JournalEntryDigestInputV1<'a> {
     sequence: u64,
     previous_digest: &'a str,
+    journal_id: &'a str,
+    operation_id: &'a str,
+    operation_class: PublicationJournalClassV1,
+    authorization_digest: &'a str,
+    custody_digest: &'a str,
+    freeze_digest: &'a str,
+    prior_journal_digest: Option<&'a str>,
+    rows: &'a [PublicationJournalRowV1],
     kind: PublicationJournalEventV1,
     package_name: Option<&'a str>,
     row_order: Option<u32>,
@@ -265,8 +277,15 @@ fn validate_row(row: &PublicationJournalRowV1) -> Result<(), &'static str> {
 pub fn begin_publication_journal_v1(
     init: PublicationJournalInitV1,
 ) -> Result<CargoAllowPublicationJournalV1, &'static str> {
-    if init.journal_id.trim().is_empty() || init.operation_id.trim().is_empty() {
+    if init.journal_id.trim().is_empty() {
         return Err("journal requires operation and journal identity");
+    }
+    let expected_operation = match init.operation_class {
+        PublicationJournalClassV1::CleanFinalPublication => PUBLICATION_JOURNAL_OPERATION,
+        PublicationJournalClassV1::IncidentRecovery => PUBLICATION_JOURNAL_RECOVERY_OPERATION,
+    };
+    if init.operation_id != expected_operation {
+        return Err("journal operation identity must match its class");
     }
     for value in [
         init.authorization_digest.as_str(),
@@ -305,6 +324,13 @@ pub fn begin_publication_journal_v1(
             return Err("journal row names must be unique");
         }
         seen.push(row.package_name.as_str());
+    }
+    for row in &init.rows {
+        for dependency in &row.depends_on {
+            if !seen.contains(&dependency.as_str()) {
+                return Err("journal row dependencies must be present in the bound row set");
+            }
+        }
     }
     for value in [
         init.workflow.as_str(),
@@ -443,6 +469,9 @@ pub fn append_journal_event_v1(
     if secret_marker(&append.reason).is_some() {
         return Err("secret material must never enter journal records");
     }
+    if journal_has(journal, Event::OperationComplete) {
+        return Err("the journal is complete; further history requires a new journal");
+    }
     if append
         .response
         .as_ref()
@@ -552,6 +581,11 @@ pub fn append_journal_event_v1(
         }
         Event::UploadRequestStarted => {
             let package = row_name.ok_or("row events require a row")?;
+            if operation_incident_recorded(journal) {
+                return Err(
+                    "upload requests cannot start after an incident; recovery starts a new journal",
+                );
+            }
             if row_latest_kind(journal, package) != Some(Event::UploadIntentDurable) {
                 return Err("upload requests start only from durable intent");
             }
@@ -613,8 +647,15 @@ pub fn append_journal_event_v1(
         }
         Event::RegistryVisibleConflict => {
             let package = row_name.ok_or("row events require a row")?;
-            if append.observation.is_none() {
-                return Err("conflict verdicts require provider observation");
+            let observation = append
+                .observation
+                .as_ref()
+                .ok_or("conflict verdicts require provider observation")?;
+            if !observation.provider_reachable || !observation.row_visible {
+                return Err("a conflict requires a reachable provider and a visible row");
+            }
+            if observation.archive_digest_matches {
+                return Err("a matching digest is exact visibility, never a conflict");
             }
             match row_latest_kind(journal, package) {
                 Some(Event::UploadResponseObserved)
@@ -671,6 +712,14 @@ pub fn append_journal_event_v1(
     let input = JournalEntryDigestInputV1 {
         sequence,
         previous_digest: &previous_digest,
+        journal_id: &journal.journal_id,
+        operation_id: &journal.operation_id,
+        operation_class: journal.operation_class,
+        authorization_digest: &journal.authorization_digest,
+        custody_digest: &journal.custody_digest,
+        freeze_digest: &journal.freeze_digest,
+        prior_journal_digest: journal.prior_journal_digest.as_deref(),
+        rows: &journal.rows,
         kind: append.kind,
         package_name: row.map(|row| row.package_name.as_str()),
         row_order: row.map(|row| row.row_order),
@@ -719,6 +768,14 @@ pub fn verify_publication_journal_v1(
         let input = JournalEntryDigestInputV1 {
             sequence: entry.sequence,
             previous_digest: &entry.previous_digest,
+            journal_id: &journal.journal_id,
+            operation_id: &journal.operation_id,
+            operation_class: journal.operation_class,
+            authorization_digest: &journal.authorization_digest,
+            custody_digest: &journal.custody_digest,
+            freeze_digest: &journal.freeze_digest,
+            prior_journal_digest: journal.prior_journal_digest.as_deref(),
+            rows: &journal.rows,
             kind: entry.kind,
             package_name: entry.package_name.as_deref(),
             row_order: entry.row_order,

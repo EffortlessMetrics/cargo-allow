@@ -13,7 +13,8 @@ use std::path::{Path, PathBuf};
 
 use PublicationJournalEventV1 as Event;
 use allow_report::{
-    CargoAllowPublicationJournalV1, PUBLICATION_JOURNAL_SCHEMA_ID,
+    CargoAllowPublicationJournalV1, PUBLICATION_JOURNAL_OPERATION,
+    PUBLICATION_JOURNAL_RECOVERY_OPERATION, PUBLICATION_JOURNAL_SCHEMA_ID,
     PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
     PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
@@ -116,6 +117,20 @@ fn ev_response(
         observation: None,
         at_unix_seconds: at,
         reason: "synthetic".to_string(),
+    }
+}
+
+fn set_field(
+    value: &mut serde_json::Value,
+    key: &str,
+    field: serde_json::Value,
+) -> Result<(), Box<dyn Error>> {
+    match value.as_object_mut() {
+        Some(object) => {
+            object.insert(key.to_string(), field);
+            Ok(())
+        }
+        None => Err(io::Error::other("journal JSON not an object").into()),
     }
 }
 
@@ -754,11 +769,299 @@ fn publication_journal_incident_preservation() -> Result<(), Box<dyn Error>> {
     let mut recovery_init = begin_init();
     recovery_init.journal_id = "journal-0-2-0-002".to_string();
     recovery_init.operation_class = PublicationJournalClassV1::IncidentRecovery;
+    recovery_init.operation_id = PUBLICATION_JOURNAL_RECOVERY_OPERATION.to_string();
     recovery_init.prior_journal_digest = Some(head.clone());
     let recovery = begin_publication_journal_v1(recovery_init).map_err(io::Error::other)?;
     require(
         recovery.prior_journal_digest.as_deref() == Some(head.as_str()),
         "recovery must bind the original journal head",
     )?;
+    Ok(())
+}
+
+#[test]
+fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
+    // Hostile: depends_on names outside the bound row set must fail at init.
+    require(
+        begin_publication_journal_v1(begin_init_with(vec![row(
+            "cargo-allow",
+            0,
+            10,
+            &["absent-crate"],
+        )]))
+        .is_err(),
+        "external depends_on must fail closed at construction",
+    )?;
+    // Hostile: operation_id must match its class exactly.
+    let mut clean_wrong = begin_init();
+    clean_wrong.operation_id = PUBLICATION_JOURNAL_RECOVERY_OPERATION.to_string();
+    require(
+        begin_publication_journal_v1(clean_wrong).is_err(),
+        "clean journals must refuse the recovery operation id",
+    )?;
+    let mut recovery_wrong = begin_init();
+    recovery_wrong.operation_class = PublicationJournalClassV1::IncidentRecovery;
+    recovery_wrong.operation_id = PUBLICATION_JOURNAL_OPERATION.to_string();
+    recovery_wrong.prior_journal_digest = Some(digest(99));
+    require(
+        begin_publication_journal_v1(recovery_wrong).is_err(),
+        "recovery journals must refuse the clean operation id",
+    )?;
+    let mut recovery_ok = begin_init();
+    recovery_ok.operation_class = PublicationJournalClassV1::IncidentRecovery;
+    recovery_ok.operation_id = PUBLICATION_JOURNAL_RECOVERY_OPERATION.to_string();
+    recovery_ok.prior_journal_digest = Some(digest(99));
+    begin_publication_journal_v1(recovery_ok).map_err(io::Error::other)?;
+
+    // Hostile: a not-yet-started row cannot start after an incident, while a
+    // response for an already-started upload stays recordable.
+    let mut journal =
+        begin_publication_journal_v1(begin_init_with(vec![row("cargo-allow", 0, 10, &[])]))
+            .map_err(io::Error::other)?;
+    let mut at = CREATED_AT;
+    let mut next = || {
+        at += 10;
+        at
+    };
+    let first = row("cargo-allow", 0, 10, &[]);
+    append_journal_event_v1(&mut journal, ev(Event::OperationSelected, None, next()))
+        .map_err(io::Error::other)?;
+    append_journal_event_v1(&mut journal, ev(Event::AuthorizationConsumed, None, next()))
+        .map_err(io::Error::other)?;
+    append_journal_event_v1(&mut journal, ev(Event::TagObservedExact, None, next()))
+        .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut journal,
+        ev(Event::RowPreflightComplete, Some(first.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut journal,
+        ev(Event::UploadIntentDurable, Some(first.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut journal,
+        ev(Event::UploadRequestStarted, Some(first.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(&mut journal, ev(Event::OperationIncident, None, next()))
+        .map_err(io::Error::other)?;
+    // The started row may still record its observed response.
+    append_journal_event_v1(
+        &mut journal,
+        ev_response(
+            Event::UploadResponseObserved,
+            first.clone(),
+            UploadResponseClassV1::TransportError,
+            next(),
+        ),
+    )
+    .map_err(io::Error::other)?;
+    // A fresh row (or a second request on the same row) must not start.
+    require(
+        append_journal_event_v1(
+            &mut journal,
+            ev(Event::UploadRequestStarted, Some(first.clone()), next()),
+        )
+        .is_err(),
+        "upload requests must not start after an incident",
+    )?;
+
+    // Hostile: conflict verdicts require reachable + visible + mismatched.
+    let mut conflict =
+        begin_publication_journal_v1(begin_init_with(vec![row("cargo-allow", 0, 10, &[])]))
+            .map_err(io::Error::other)?;
+    let mut at = CREATED_AT;
+    let mut next = || {
+        at += 10;
+        at
+    };
+    let row0 = row("cargo-allow", 0, 10, &[]);
+    for kind in [
+        Event::OperationSelected,
+        Event::AuthorizationConsumed,
+        Event::TagObservedExact,
+    ] {
+        append_journal_event_v1(&mut conflict, ev(kind, None, next()))
+            .map_err(io::Error::other)?;
+    }
+    append_journal_event_v1(
+        &mut conflict,
+        ev(Event::RowPreflightComplete, Some(row0.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut conflict,
+        ev(Event::UploadIntentDurable, Some(row0.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut conflict,
+        ev(Event::UploadRequestStarted, Some(row0.clone()), next()),
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut conflict,
+        ev_response(
+            Event::UploadResponseObserved,
+            row0.clone(),
+            UploadResponseClassV1::Success,
+            next(),
+        ),
+    )
+    .map_err(io::Error::other)?;
+    for bad in [
+        PublicationRegistryObservationV1 {
+            provider_reachable: false,
+            row_visible: true,
+            archive_digest_matches: false,
+        },
+        PublicationRegistryObservationV1 {
+            provider_reachable: true,
+            row_visible: false,
+            archive_digest_matches: false,
+        },
+        PublicationRegistryObservationV1 {
+            provider_reachable: true,
+            row_visible: true,
+            archive_digest_matches: true,
+        },
+    ] {
+        require(
+            append_journal_event_v1(
+                &mut conflict,
+                ev_observed(Event::RegistryVisibleConflict, row0.clone(), bad, next()),
+            )
+            .is_err(),
+            "non-conflicting observations must refuse conflict verdicts",
+        )?;
+    }
+
+    // Hostile: completion is once-only and terminal.
+    let mut done = clean_two_rows()?;
+    let head_at = done.entries.last().map(|entry| entry.at_unix_seconds).unwrap_or(CREATED_AT) + 10;
+    require(
+        append_journal_event_v1(&mut done, ev(Event::OperationComplete, None, head_at)).is_err(),
+        "a second completion must fail",
+    )?;
+    require(
+        append_journal_event_v1(&mut done, ev(Event::OperationIncident, None, head_at)).is_err(),
+        "incidents after completion must fail",
+    )?;
+    require(
+        append_journal_event_v1(
+            &mut done,
+            ev(
+                Event::RowPreflightComplete,
+                Some(row("cargo-allow", 0, 10, &[])),
+                head_at,
+            ),
+        )
+        .is_err(),
+        "appends after completion must fail",
+    )?;
+
+    // Hostile: header and denominator mutation must break verification.
+    let clean = clean_two_rows()?;
+    let mut mutated_header = clean.clone();
+    mutated_header.freeze_digest = digest(999);
+    require(
+        verify_publication_journal_v1(&mutated_header).is_err(),
+        "freeze digest mutation must break verification",
+    )?;
+    let mut mutated_operation = clean.clone();
+    mutated_operation.operation_id = PUBLICATION_JOURNAL_RECOVERY_OPERATION.to_string();
+    require(
+        verify_publication_journal_v1(&mutated_operation).is_err(),
+        "operation identity mutation must break verification",
+    )?;
+    let mut mutated_prior = clean.clone();
+    mutated_prior.prior_journal_digest = Some(digest(99));
+    require(
+        verify_publication_journal_v1(&mutated_prior).is_err(),
+        "prior journal mutation must break verification",
+    )?;
+    let mut mutated_rows = clean.clone();
+    mutated_rows
+        .rows
+        .get_mut(0)
+        .ok_or_else(|| io::Error::other("bound row absent"))?
+        .candidate_archive_digest = digest(999);
+    require(
+        verify_publication_journal_v1(&mutated_rows).is_err(),
+        "bound row set mutation must break verification",
+    )?;
+    // Control: copying entries into a foreign journal identity must fail.
+    let mut foreign_init = begin_init();
+    foreign_init.journal_id = "journal-foreign".to_string();
+    let mut foreign = begin_publication_journal_v1(foreign_init).map_err(io::Error::other)?;
+    foreign.entries = clean.entries.clone();
+    require(
+        verify_publication_journal_v1(&foreign).is_err(),
+        "entries copied into a foreign journal must fail verification",
+    )?;
+
+    // Hostile: schema enforces the same prior-digest law as Rust.
+    let root = repository_root()?;
+    if root.join(".git").exists() {
+        let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+            root.join("docs/schemas/cargo-allow.publication-journal.v1.schema.json"),
+        )?)?;
+        let validator = jsonschema::validator_for(&schema)
+            .map_err(|error| io::Error::other(format!("journal schema compiles: {error}")))?;
+        let rendered: serde_json::Value =
+            serde_json::from_str(&render_publication_journal_v1(&clean_two_rows()?)?)?;
+        validator.validate(&rendered).map_err(|error| {
+            io::Error::other(format!("clean journal with null prior must validate: {error}"))
+        })?;
+        // Clean with a bound prior digest must fail.
+        let mut clean_bound = rendered.clone();
+        set_field(
+            &mut clean_bound,
+            "prior_journal_digest",
+            serde_json::Value::String(format!("sha256:{:064x}", 99)),
+        )?;
+        require(
+            validator.validate(&clean_bound).is_err(),
+            "clean journals must not bind a prior digest in schema",
+        )?;
+        // Recovery with null prior must fail; with a digest must pass.
+        let mut recovery_null = rendered.clone();
+        set_field(
+            &mut recovery_null,
+            "operation_class",
+            serde_json::Value::String("incident_recovery".into()),
+        )?;
+        set_field(&mut recovery_null, "prior_journal_digest", serde_json::Value::Null)?;
+        require(
+            validator.validate(&recovery_null).is_err(),
+            "recovery journals require a prior digest in schema",
+        )?;
+        let mut recovery_bound = rendered.clone();
+        set_field(
+            &mut recovery_bound,
+            "operation_class",
+            serde_json::Value::String("incident_recovery".into()),
+        )?;
+        set_field(
+            &mut recovery_bound,
+            "prior_journal_digest",
+            serde_json::Value::String(format!("sha256:{:064x}", 99)),
+        )?;
+        validator.validate(&recovery_bound).map_err(|error| {
+            io::Error::other(format!("bound recovery journal must validate: {error}"))
+        })?;
+        // Missing field must fail for both classes.
+        let mut missing = rendered.clone();
+        missing
+            .as_object_mut()
+            .ok_or_else(|| io::Error::other("journal JSON not an object"))?
+            .remove("prior_journal_digest");
+        require(
+            validator.validate(&missing).is_err(),
+            "missing prior_journal_digest must fail schema",
+        )?;
+    }
     Ok(())
 }

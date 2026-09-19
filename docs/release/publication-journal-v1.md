@@ -36,8 +36,27 @@ OperationIncident (clean journal refuses further intent; recovery
 - Sequence and chaining are journal-assigned: `sequence` is gapless from
   one and `previous_digest` chains to the prior entry digest, starting from
   the null-hash genesis. Callers cannot reuse or forge positions.
-- `verify_publication_journal_v1` recomputes every link: edited or reordered
-  entries break verification.
+- Every entry digest also binds the journal identity and header
+  (`journal_id`, `operation_id`, `operation_class`, authorization, custody,
+  and freeze digests, `prior_journal_digest`) and the exact bound row set, so
+  header, operation, authorization, custody, freeze, recovery, or denominator
+  mutation breaks `verify_publication_journal_v1`. The chain proves entries
+  belong to this operation, not merely their order.
+- `operation_id` is bound to its class exactly: clean journals carry
+  `publish_cargo_allow_final_0_2_0`, recovery journals carry
+  `recover_cargo_allow_final_publication`.
+- Declared dependencies must name rows in the bound set: a `depends_on`
+  entry outside the journal fails closed at construction instead of blocking
+  preflight forever.
+- After `OperationIncident`, a not-yet-started row cannot enter
+  `UploadRequestStarted`; responses for requests already started stay
+  recordable. Completion is once-only and terminal: nothing appends after
+  `OperationComplete`, including further completions and incidents.
+- Conflict verdicts require a reachable provider, a visible row, and a
+  mismatched digest; a matching digest is exact visibility, never conflict.
+- Schema and Rust enforce the same `prior_journal_digest` law: clean
+  journals carry null, recovery journals carry a canonical digest, and the
+  field is always present.
 - A missing or unsuccessful upload response is `UploadResponseUnknown` with
   a response class naming the last known position. There is no failure
   verdict and no registry inference.
@@ -74,6 +93,7 @@ journal can never gain a prior digest.
 cargo test -p cargo-allow publication_journal --locked -- --nocapture
 cargo test -p cargo-allow publication_journal_faults --locked -- --nocapture
 cargo test -p cargo-allow publication_journal_incident_preservation --locked -- --nocapture
+cargo test -p cargo-allow publication_journal_review_repairs --locked -- --nocapture
 cargo run -p cargo-allow -- check --mode no-new
 git diff --check
 ```

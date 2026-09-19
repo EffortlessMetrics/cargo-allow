@@ -14,6 +14,7 @@
     "authorization_digest",
     "custody_digest",
     "freeze_digest",
+    "prior_journal_digest",
     "created_at_unix_seconds",
     "workflow",
     "run",
@@ -23,6 +24,26 @@
     "entries",
     "claim_boundary",
     "limitations"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation_class": { "const": "incident_recovery" }
+        },
+        "required": ["operation_class"]
+      },
+      "then": {
+        "properties": {
+          "prior_journal_digest": { "$ref": "#/$defs/digest" }
+        }
+      },
+      "else": {
+        "properties": {
+          "prior_journal_digest": { "type": "null" }
+        }
+      }
+    }
   ],
   "properties": {
     "schema_id": { "const": "cargo-allow.publication-journal.v1" },
