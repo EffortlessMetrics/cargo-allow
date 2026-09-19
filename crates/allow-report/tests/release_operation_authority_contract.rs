@@ -8,6 +8,7 @@ use allow_report::{
     CargoAllowReleaseOperationEventV1, CargoAllowReleaseOperationIdentityInitV1,
     CargoAllowReleaseOperationPackageRowV1, CargoAllowReleaseOperationProducerV1,
     CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
     append_release_operation_event_v1, build_release_operation_identity_v1,
     compile_release_operation_head_v1, evaluate_release_operation_v1,
     render_release_operation_evaluation_v1, render_release_operation_event_v1,
@@ -28,19 +29,28 @@ fn require(ok: bool, message: impl Into<String>) -> Result<(), Box<dyn Error>> {
 }
 
 fn identity() -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
-    let packages = (0..10)
-        .map(|index| CargoAllowReleaseOperationPackageRowV1 {
-            logical_id: format!("pkg-{index:02}"),
-            package_name: format!("cargo-allow-pkg-{index:02}"),
-            package_version: "0.2.0".to_string(),
-            package_digest: digest(100 + index),
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
         })
         .collect();
-    let assets = vec![CargoAllowReleaseOperationAssetRowV1 {
-        asset_id: "linux-archive".to_string(),
-        asset_name: "cargo-allow-x86_64-unknown-linux-gnu.tar.gz".to_string(),
-        asset_digest: digest(200),
-    }];
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(|(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+            asset_id: (*asset_id).to_string(),
+            asset_name: (*asset_name).to_string(),
+            asset_digest: digest(200 + index as u64),
+        })
+        .collect();
     Ok(build_release_operation_identity_v1(
         CargoAllowReleaseOperationIdentityInitV1 {
             nonce: "contract-nonce-0001".to_string(),
