@@ -106,7 +106,7 @@ def read_vcs_info(archive, prefix):
 
 
 def verify_archive(archive, prefix, expected_head):
-    """Require the exact Git subject and an explicit clean-worktree bit."""
+    """Require the exact Git subject and Cargo's canonical clean posture."""
     info = read_vcs_info(archive, prefix)
     git = info.get("git")
     if not isinstance(git, dict):
@@ -118,13 +118,17 @@ def verify_archive(archive, prefix, expected_head):
     if sha != expected_head:
         raise ValueError(f"git.sha1 {sha} does not match frozen subject {expected_head}")
 
-    if "dirty" not in git or type(git["dirty"]) is not bool:
-        raise ValueError("git.dirty must be an explicit JSON boolean")
-    if git["dirty"]:
+    dirty = git.get("dirty", False)
+    if type(dirty) is not bool:
+        raise ValueError("git.dirty must be a JSON boolean when present")
+    if dirty:
         raise ValueError("git.dirty must be false")
 
-    return info
-
+    normalized = dict(info)
+    normalized_git = dict(git)
+    normalized_git["dirty"] = dirty
+    normalized["git"] = normalized_git
+    return normalized
 
 def verifier_process(archive, prefix, expected_head):
     return subprocess.run(
@@ -254,7 +258,11 @@ class PackageByteAuthorityTests(unittest.TestCase):
         prefix = archive.name.removesuffix(".crate")
         info = read_vcs_info(archive, prefix)
         self.assertEqual(info.get("git", {}).get("sha1"), head)
-        self.assertIs(info.get("git", {}).get("dirty"), False)
+        self.assertNotIn(
+            "dirty",
+            info.get("git", {}),
+            "Cargo canonically omits dirty for a clean package",
+        )
         accepted = verifier_process(archive, prefix, head)
         self.assertEqual(accepted.returncode, 0, accepted.stderr)
 

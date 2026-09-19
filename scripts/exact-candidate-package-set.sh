@@ -380,31 +380,16 @@ for crate in "${crates[@]}"; do
   # subject. A non-Git-backed `cargo package` omits `.cargo_vcs_info.json`
   # and freezes different bytes than the publish path; fail closed here so
   # neither a reverted producer nor prebuilt inputs can slip through.
-  vcs_sha="$(python3 - "${src}" "${crate}-${crate_version}" <<'PY'
-import json
-import sys
-import tarfile
-from pathlib import Path
-
-archive = Path(sys.argv[1])
-prefix = sys.argv[2]
-try:
-    with tarfile.open(archive, mode="r:gz") as bundle:
-        member = bundle.getmember(f"{prefix}/.cargo_vcs_info.json")
-        payload = bundle.extractfile(member)
-        if payload is None:
-            raise SystemExit("missing .cargo_vcs_info.json")
-        info = json.loads(payload.read().decode("utf-8"))
-except (KeyError, tarfile.TarError, json.JSONDecodeError, OSError) as error:
-    raise SystemExit(f"unreadable .cargo_vcs_info.json: {error}")
-sha = info.get("git", {}).get("sha1") if isinstance(info.get("git"), dict) else None
-if not sha:
-    raise SystemExit("missing git.sha1 in .cargo_vcs_info.json")
-print(sha)
-PY
-)"
-  [[ "${vcs_sha}" == "${snapshot_head}" ]] \
-    || fail "package-byte authority broken for ${crate_file}: vcs sha ${vcs_sha:-absent} != frozen subject ${snapshot_head}"
+  # One authority validates fresh and restored archives against the
+  # exact frozen head. Cargo omits git.dirty when clean and emits true
+  # when dirty; a present non-boolean value also fails closed.
+  if ! python3 "${SCRIPT_ROOT}/scripts/test-package-byte-authority.py" verify-archive \
+    --archive "${src}" \
+    --prefix "${crate}-${crate_version}" \
+    --expected-head "${snapshot_head}" >/dev/null
+  then
+    fail "package-byte authority broken for ${crate_file}"
+  fi
   digest="$(sha256_file "${src}")"
   size="$(wc -c <"${src}" | tr -d ' \r')"
   crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${crate_version}")
