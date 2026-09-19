@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: release/3940-operation-authority-v1
-          fetch-depth: 4
+          fetch-depth: 0
           persist-credentials: true
 
       - name: Guard and stage the exact source-only repair
