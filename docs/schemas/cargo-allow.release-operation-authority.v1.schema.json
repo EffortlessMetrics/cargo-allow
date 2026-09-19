@@ -26,6 +26,7 @@
         "authorization_selected",
         "lease_acquired",
         "tag_intent_durable",
+        "irreversible_request_started",
         "tag_observed_exact",
         "package_row_intent_durable",
         "package_row_observed_exact",
@@ -35,6 +36,7 @@
         "repository_reconciled",
         "incident_recorded",
         "recovery_selected",
+        "containment_selected",
         "operation_settled"
       ]
     },
@@ -242,8 +244,9 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "schema_id", "schema_version", "operation_identity_digest", "sequence",
-        "event_digest", "state", "first_irreversible_event_digest",
+        "schema_id", "schema_version", "operation_identity_digest",
+        "evaluated_at_unix_seconds", "sequence", "event_digest", "state",
+        "first_irreversible_event_digest",
         "incident_lineage", "packages_observed_exact", "assets_observed_exact",
         "claim_boundary"
       ],
@@ -251,6 +254,7 @@
         "schema_id": { "const": "cargo-allow.release-operation-head.v1" },
         "schema_version": { "const": 1 },
         "operation_identity_digest": { "$ref": "#/$defs/digest" },
+        "evaluated_at_unix_seconds": { "type": "integer", "minimum": 1 },
         "sequence": { "type": "integer", "minimum": 0 },
         "event_digest": { "$ref": "#/$defs/digest" },
         "state": { "$ref": "#/$defs/state" },

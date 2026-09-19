@@ -56,11 +56,11 @@ as equivalent bytes.
 
 
 
-Clean operations have no incident predecessor. Recovery and containment
-currently require a canonical digest-shaped predecessor and the matching
-authority class. PR A is not accepted until that lineage is verified against a
-typed predecessor identity/head/history; a syntactically valid digest alone is
-not sufficient release authority.
+Clean operations have no incident predecessor. Recovery and containment are
+constructed only through the typed predecessor builder. It revalidates the
+predecessor identity and event history, recomputes its operation digest,
+requires incident lineage, and binds that exact digest into the new identity.
+A digest-shaped string alone is never sufficient release authority.
 
 ## Event and chain law
 
@@ -114,12 +114,18 @@ operations stop after IncidentRecorded, recovery authorization requires an
 exact RecoverySelected, and containment is barred from the publication path.
 A later successful child observation cannot delete incident history.
 
-Two structural items remain explicit PR-A blockers rather than being inferred:
-the first irreversible outbound request needs its own typed transition instead
-of being reconstructed from an observation/unknown posture, and
-recovery/containment lineage still needs validated typed predecessor proof.
-Containment also needs a distinct terminal path before it can be considered a
-complete operation model.
+Every external mutation is preceded by an explicit
+IrreversibleRequestStarted event. Its operation/package/asset subject, payload
+schema, request boundary, and exact artifact digest are the common correlation
+key; only a later exact known provider observation for that same key resolves
+the response-unknown state. This event also owns the first irreversible digest,
+so runner loss after the request cannot be mistaken for a pre-irreversible
+operation.
+
+Recovery requires an exact RecoverySelected event bound to the validated
+predecessor before authorization can continue. Containment uses a distinct
+ContainmentSelected path, cannot create tag/package/asset/public-release
+progress, and settles only with incident lineage.
 
 ## Consumers
 

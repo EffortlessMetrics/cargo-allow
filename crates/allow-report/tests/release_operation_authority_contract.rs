@@ -13,6 +13,7 @@ use allow_report::{
     compile_release_operation_head_v1, evaluate_release_operation_v1,
     render_release_operation_evaluation_v1, render_release_operation_event_v1,
     render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1, validate_release_operation_head_v1,
     validate_release_operation_history_v1, validate_release_operation_identity_v1,
 };
 
@@ -182,11 +183,18 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
     validate_release_operation_history_v1(&loaded_identity, &loaded_events)
         .map_err(io::Error::other)?;
 
-    let head = compile_release_operation_head_v1(&identity, &events).map_err(io::Error::other)?;
+    let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     let rendered_head = render_release_operation_head_v1(&head)?;
     let loaded_head: allow_report::CargoAllowReleaseOperationHeadV1 =
         serde_json::from_str(&rendered_head)?;
     require(loaded_head == head, "head must round-trip exactly")?;
+    validate_release_operation_head_v1(
+        &loaded_identity,
+        &loaded_events,
+        EVALUATED_AT_UNIX_SECONDS,
+        &loaded_head,
+    )
+    .map_err(io::Error::other)?;
 
     let evaluation =
         evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
@@ -197,6 +205,13 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
         loaded_evaluation == evaluation,
         "evaluation must round-trip exactly",
     )?;
+    validate_release_operation_evaluation_v1(
+        &loaded_identity,
+        &loaded_events,
+        EVALUATED_AT_UNIX_SECONDS,
+        &loaded_evaluation,
+    )
+    .map_err(io::Error::other)?;
 
     let mut forged = events.clone();
     forged

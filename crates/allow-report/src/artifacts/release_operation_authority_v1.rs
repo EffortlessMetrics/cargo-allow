@@ -78,6 +78,7 @@ pub enum CargoAllowReleaseOperationEventClassV1 {
     AuthorizationSelected,
     LeaseAcquired,
     TagIntentDurable,
+    IrreversibleRequestStarted,
     TagObservedExact,
     PackageRowIntentDurable,
     PackageRowObservedExact,
@@ -87,6 +88,7 @@ pub enum CargoAllowReleaseOperationEventClassV1 {
     RepositoryReconciled,
     IncidentRecorded,
     RecoverySelected,
+    ContainmentSelected,
     OperationSettled,
 }
 
@@ -284,6 +286,7 @@ pub struct CargoAllowReleaseOperationHeadV1 {
     pub schema_id: String,
     pub schema_version: u32,
     pub operation_identity_digest: String,
+    pub evaluated_at_unix_seconds: u64,
     pub sequence: u64,
     pub event_digest: String,
     pub state: CargoAllowReleaseOperationStateV1,
@@ -516,7 +519,7 @@ fn derived_operation_id(seed_digest: &str) -> Result<String, &'static str> {
     Ok(format!("cargo-allow-op-{prefix}"))
 }
 
-pub fn build_release_operation_identity_v1(
+fn build_release_operation_identity_unchecked_predecessor_v1(
     init: CargoAllowReleaseOperationIdentityInitV1,
 ) -> Result<CargoAllowReleaseOperationIdentityV1, &'static str> {
     if init.repository != RELEASE_OPERATION_REPOSITORY
@@ -602,6 +605,44 @@ pub fn build_release_operation_identity_v1(
         digest_json(&identity_seed(&identity)).map_err(|_| "operation identity digest failed")?;
     identity.operation_id = derived_operation_id(&seed_digest)?;
     Ok(identity)
+}
+
+pub fn build_release_operation_identity_v1(
+    init: CargoAllowReleaseOperationIdentityInitV1,
+) -> Result<CargoAllowReleaseOperationIdentityV1, &'static str> {
+    if init.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("non-clean operation identity requires a validated predecessor");
+    }
+    build_release_operation_identity_unchecked_predecessor_v1(init)
+}
+
+pub fn build_release_operation_identity_with_predecessor_v1(
+    init: CargoAllowReleaseOperationIdentityInitV1,
+    predecessor_identity: &CargoAllowReleaseOperationIdentityV1,
+    predecessor_events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+) -> Result<CargoAllowReleaseOperationIdentityV1, &'static str> {
+    if init.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("clean operation identity must not carry a predecessor");
+    }
+    validate_release_operation_identity_v1(predecessor_identity)?;
+    validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
+    let predecessor_digest = release_operation_identity_digest_v1(predecessor_identity)
+        .map_err(|_| "predecessor identity digest failed")?;
+    if init.incident_predecessor_operation_digest.as_deref() != Some(predecessor_digest.as_str()) {
+        return Err("non-clean operation predecessor digest does not match validated history");
+    }
+    let predecessor = evaluate_release_operation_v1(
+        predecessor_identity,
+        predecessor_events,
+        evaluated_at_unix_seconds,
+    )?;
+    if !predecessor.incident_lineage
+        || predecessor.state == CargoAllowReleaseOperationStateV1::CompleteClean
+    {
+        return Err("non-clean operation requires an incident-bearing predecessor");
+    }
+    build_release_operation_identity_unchecked_predecessor_v1(init)
 }
 
 pub fn validate_release_operation_identity_v1(
@@ -718,25 +759,32 @@ fn validate_event_subject(
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1 as Subject;
     match (event_class, subject) {
-        (Event::PackageRowIntentDurable | Event::PackageRowObservedExact, Subject::Package(id))
-            if package_subject_exists(identity, id) =>
+        (
+            Event::PackageRowIntentDurable
+            | Event::PackageRowObservedExact
+            | Event::IrreversibleRequestStarted,
+            Subject::Package(id),
+        ) if package_subject_exists(identity, id) =>
         {
             Ok(())
         }
-        (Event::AssetObservedExact, Subject::Asset(id)) if asset_subject_exists(identity, id) => {
-            Ok(())
-        }
+        (
+            Event::AssetObservedExact | Event::IrreversibleRequestStarted,
+            Subject::Asset(id),
+        ) if asset_subject_exists(identity, id) => Ok(()),
         (
             Event::OperationSelected
             | Event::AuthorizationSelected
             | Event::LeaseAcquired
             | Event::TagIntentDurable
+            | Event::IrreversibleRequestStarted
             | Event::TagObservedExact
             | Event::GitHubDraftObservedExact
             | Event::PublicReleaseObservedExact
             | Event::RepositoryReconciled
             | Event::IncidentRecorded
             | Event::RecoverySelected
+            | Event::ContainmentSelected
             | Event::OperationSettled,
             Subject::Operation,
         ) => Ok(()),
@@ -777,6 +825,10 @@ fn validate_event_envelope_fields(
     identity: &CargoAllowReleaseOperationIdentityV1,
     event: &CargoAllowReleaseOperationEventV1,
 ) -> Result<(), &'static str> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationResponsePostureV1 as Response;
+    use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+
     validate_producer(&event.producer)?;
     if event.observed_at_unix_seconds > identity.expires_at_unix_seconds {
         return Err("operation event is outside the operation expiry");
@@ -795,6 +847,37 @@ fn validate_event_envelope_fields(
     }
     if event.authority_class != identity.authority_kind {
         return Err("operation event authority class does not match the immutable operation");
+    }
+    match event.event_class {
+        Event::IrreversibleRequestStarted => {
+            if event.semantic_result != ResultClass::Unknown
+                || event.response_posture != Response::ResponseUnknown
+                || event.artifact_digest.is_none()
+            {
+                return Err(
+                    "irreversible request start requires unknown response posture and artifact identity",
+                );
+            }
+        }
+        Event::TagObservedExact
+        | Event::PackageRowObservedExact
+        | Event::GitHubDraftObservedExact
+        | Event::AssetObservedExact
+        | Event::PublicReleaseObservedExact => {
+            if event.semantic_result != ResultClass::Exact
+                || event.response_posture != Response::ResponseKnown
+                || event.artifact_digest.is_none()
+            {
+                return Err("exact provider observation requires known response and artifact identity");
+            }
+        }
+        _ => {
+            if event.response_posture != Response::NotApplicable
+                || event.semantic_result == ResultClass::Unknown
+            {
+                return Err("local operation event requires a determinate non-provider posture");
+            }
+        }
     }
     Ok(())
 }
@@ -833,6 +916,7 @@ fn is_singleton_event_class(class: CargoAllowReleaseOperationEventClassV1) -> bo
             | Event::PublicReleaseObservedExact
             | Event::RepositoryReconciled
             | Event::RecoverySelected
+            | Event::ContainmentSelected
             | Event::OperationSettled
     )
 }
@@ -909,12 +993,35 @@ fn all_assets_exact(
         .all(|row| exact.contains(&row.asset_id))
 }
 
+fn matching_irreversible_request(
+    events: &[CargoAllowReleaseOperationEventV1],
+    init: &CargoAllowReleaseOperationEventInitV1,
+) -> bool {
+    events.iter().any(|event| {
+        event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+            && event.subject == init.subject
+            && event.payload_schema_id == init.payload_schema_id
+            && event.request_boundary == init.request_boundary
+            && event.artifact_digest.is_some()
+            && event.artifact_digest == init.artifact_digest
+    })
+}
+
+fn unresolved_irreversible_request_exists(events: &[CargoAllowReleaseOperationEventV1]) -> bool {
+    events.iter().enumerate().any(|(index, event)| {
+        event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+            && !response_unknown_is_resolved(events, index)
+    })
+}
+
 fn validate_event_transition(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     init: &CargoAllowReleaseOperationEventInitV1,
 ) -> Result<(), &'static str> {
+    use CargoAllowReleaseOperationClassV1 as Class;
     use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1 as Subject;
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
 
     if events
@@ -944,7 +1051,7 @@ fn validate_event_transition(
     if is_singleton_event_class(init.event_class) && has_event(events, init.event_class) {
         return Err("singleton operation event was already recorded");
     }
-    let permanent_non_clean = events.iter().any(|event| {
+    if events.iter().any(|event| {
         matches!(
             event.semantic_result,
             ResultClass::Partial
@@ -953,32 +1060,35 @@ fn validate_event_transition(
                 | ResultClass::ProviderUnavailable
                 | ResultClass::InstrumentFailure
         )
-    });
-    if permanent_non_clean && init.event_class != Event::IncidentRecorded {
+    }) && init.event_class != Event::IncidentRecorded
+    {
         return Err("non-clean operation result blocks later transitions");
     }
-    let unresolved = events
-        .iter()
-        .enumerate()
-        .filter(|(index, event)| {
-            (event.semantic_result == ResultClass::Unknown
-                || event.response_posture
-                    == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
-                && !response_unknown_is_resolved(events, *index)
-        })
-        .map(|(_, event)| event)
-        .collect::<Vec<_>>();
-    if !unresolved.is_empty()
+    if unresolved_irreversible_request_exists(events)
         && init.event_class != Event::IncidentRecorded
-        && (unresolved.len() != 1
-            || !init_resolves_unknown(events, init, unresolved[0].event_class))
+        && !(matches!(
+            init.event_class,
+            Event::TagObservedExact
+                | Event::PackageRowObservedExact
+                | Event::GitHubDraftObservedExact
+                | Event::AssetObservedExact
+                | Event::PublicReleaseObservedExact
+        ) && matching_irreversible_request(events, init))
     {
-        return Err("unresolved response-unknown blocks unrelated progression");
+        return Err("unresolved irreversible response blocks unrelated progression");
     }
-    if identity.operation_class == CargoAllowReleaseOperationClassV1::Containment
+    if identity.operation_class == Class::CleanFinalPublication
+        && has_event(events, Event::IncidentRecorded)
+    {
+        return Err(
+            "clean operation cannot continue after an incident; recovery needs its own lineage",
+        );
+    }
+    if identity.operation_class == Class::Containment
         && matches!(
             init.event_class,
             Event::TagIntentDurable
+                | Event::IrreversibleRequestStarted
                 | Event::TagObservedExact
                 | Event::PackageRowIntentDurable
                 | Event::PackageRowObservedExact
@@ -986,53 +1096,108 @@ fn validate_event_transition(
                 | Event::AssetObservedExact
                 | Event::PublicReleaseObservedExact
                 | Event::RepositoryReconciled
-                | Event::OperationSettled
         )
     {
-        return Err("containment authority cannot create or settle publication progress");
-    }
-    if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication
-        && has_event(events, Event::IncidentRecorded)
-    {
-        return Err(
-            "clean operation cannot continue after an incident; recovery needs its own lineage",
-        );
+        return Err("containment authority cannot create publication progress");
     }
 
     match init.event_class {
         Event::OperationSelected => {
-            if !events.is_empty() {
-                return Err("OperationSelected must be the first event");
+            if !events.is_empty() || init.semantic_result != ResultClass::Exact {
+                return Err("OperationSelected must be the first exact event");
+            }
+        }
+        Event::RecoverySelected => {
+            if identity.operation_class != Class::IncidentRecovery
+                || !has_exact_event(events, Event::OperationSelected)
+                || identity.incident_predecessor_operation_digest.as_deref()
+                    != Some(init.payload_digest.as_str())
+                || init.semantic_result != ResultClass::Exact
+            {
+                return Err(
+                    "RecoverySelected requires the exact validated predecessor on recovery authority",
+                );
+            }
+        }
+        Event::ContainmentSelected => {
+            if identity.operation_class != Class::Containment
+                || !has_exact_event(events, Event::OperationSelected)
+                || identity.incident_predecessor_operation_digest.as_deref()
+                    != Some(init.payload_digest.as_str())
+                || init.semantic_result != ResultClass::Exact
+            {
+                return Err(
+                    "ContainmentSelected requires the exact validated predecessor on containment authority",
+                );
             }
         }
         Event::AuthorizationSelected => {
-            if !has_exact_event(events, Event::OperationSelected) {
-                return Err("authorization selection requires exact OperationSelected");
-            }
-            if identity.operation_class == CargoAllowReleaseOperationClassV1::IncidentRecovery
-                && !has_exact_event(events, Event::RecoverySelected)
-            {
-                return Err("recovery authorization requires exact RecoverySelected");
+            let ready = match identity.operation_class {
+                Class::CleanFinalPublication => has_exact_event(events, Event::OperationSelected),
+                Class::IncidentRecovery => has_exact_event(events, Event::RecoverySelected),
+                Class::Containment => has_exact_event(events, Event::ContainmentSelected),
+            };
+            if !ready {
+                return Err("authorization selection requires exact operation-class selection");
             }
         }
         Event::LeaseAcquired => {
             if !has_exact_event(events, Event::AuthorizationSelected) {
-                return Err("lease acquisition requires AuthorizationSelected");
+                return Err("lease acquisition requires exact AuthorizationSelected");
             }
         }
         Event::TagIntentDurable => {
-            if !has_exact_event(events, Event::LeaseAcquired) {
-                return Err("tag intent requires the durable operation lease");
+            if identity.operation_class != Class::CleanFinalPublication
+                || !has_exact_event(events, Event::LeaseAcquired)
+            {
+                return Err("tag intent belongs only to an exact clean leased operation");
             }
         }
+        Event::IrreversibleRequestStarted => match &init.subject {
+            Subject::Operation => {
+                let tag_request = identity.operation_class == Class::CleanFinalPublication
+                    && has_exact_event(events, Event::TagIntentDurable)
+                    && !has_exact_event(events, Event::TagObservedExact);
+                let draft_request = all_packages_exact(identity, events)
+                    && !has_exact_event(events, Event::GitHubDraftObservedExact);
+                let public_request = all_assets_exact(identity, events)
+                    && has_exact_event(events, Event::GitHubDraftObservedExact)
+                    && !has_exact_event(events, Event::PublicReleaseObservedExact);
+                if !(tag_request || draft_request || public_request) {
+                    return Err("operation request start is out of order");
+                }
+            }
+            Subject::Package(id) => {
+                let subject = Subject::Package(id.clone());
+                if !events.iter().any(|event| {
+                    event.event_class == Event::PackageRowIntentDurable
+                        && event.subject == subject
+                        && event_is_exact_authority(event)
+                }) || events.iter().any(|event| {
+                    event.event_class == Event::PackageRowObservedExact && event.subject == subject
+                }) {
+                    return Err("package request requires one exact durable row intent");
+                }
+            }
+            Subject::Asset(id) => {
+                let subject = Subject::Asset(id.clone());
+                if !has_exact_event(events, Event::GitHubDraftObservedExact)
+                    || events.iter().any(|event| {
+                        event.event_class == Event::AssetObservedExact && event.subject == subject
+                    })
+                {
+                    return Err("asset request requires exact GitHub draft and unobserved asset");
+                }
+            }
+        },
         Event::TagObservedExact => {
-            let ready = if identity.operation_class
-                == CargoAllowReleaseOperationClassV1::CleanFinalPublication
-            {
-                has_exact_event(events, Event::TagIntentDurable)
-                    || init_resolves_unknown(events, init, Event::TagIntentDurable)
-            } else {
-                has_exact_event(events, Event::LeaseAcquired)
+            let ready = match identity.operation_class {
+                Class::CleanFinalPublication => {
+                    has_exact_event(events, Event::TagIntentDurable)
+                        && matching_irreversible_request(events, init)
+                }
+                Class::IncidentRecovery => has_exact_event(events, Event::LeaseAcquired),
+                Class::Containment => false,
             };
             if !ready {
                 return Err("exact tag observation is out of order");
@@ -1049,18 +1214,17 @@ fn validate_event_transition(
             }
         }
         Event::PackageRowObservedExact => {
-            let CargoAllowReleaseOperationEventSubjectV1::Package(id) = &init.subject else {
+            let Subject::Package(id) = &init.subject else {
                 return Err("package observation requires a package subject");
             };
-            let intent_exists = events.iter().any(|event| {
+            let subject = Subject::Package(id.clone());
+            if !events.iter().any(|event| {
                 event.event_class == Event::PackageRowIntentDurable
-                    && event.subject
-                        == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
-                    && (event_is_exact_authority(event)
-                        || init_resolves_unknown(events, init, Event::PackageRowIntentDurable))
-            });
-            if !intent_exists {
-                return Err("package observation requires the same row's durable intent");
+                    && event.subject == subject
+                    && event_is_exact_authority(event)
+            }) || !matching_irreversible_request(events, init)
+            {
+                return Err("package observation requires same row exact intent and request");
             }
             if events.iter().any(|event| {
                 event.event_class == Event::PackageRowObservedExact && event.subject == init.subject
@@ -1069,13 +1233,15 @@ fn validate_event_transition(
             }
         }
         Event::GitHubDraftObservedExact => {
-            if !all_packages_exact(identity, events) {
-                return Err("GitHub draft observation requires every selected package exact");
+            if !all_packages_exact(identity, events) || !matching_irreversible_request(events, init) {
+                return Err("GitHub draft observation requires every package exact and its request");
             }
         }
         Event::AssetObservedExact => {
-            if !has_exact_event(events, Event::GitHubDraftObservedExact) {
-                return Err("asset observation requires exact GitHub draft observation");
+            if !has_exact_event(events, Event::GitHubDraftObservedExact)
+                || !matching_irreversible_request(events, init)
+            {
+                return Err("asset observation requires exact draft and matching request");
             }
             if events.iter().any(|event| {
                 event.event_class == Event::AssetObservedExact && event.subject == init.subject
@@ -1084,11 +1250,13 @@ fn validate_event_transition(
             }
         }
         Event::PublicReleaseObservedExact => {
-            if !has_exact_event(events, Event::GitHubDraftObservedExact)
-                || !all_packages_exact(identity, events)
+            if !all_packages_exact(identity, events)
                 || !all_assets_exact(identity, events)
+                || !matching_irreversible_request(events, init)
             {
-                return Err("public release observation requires every package and asset exact");
+                return Err(
+                    "public release observation requires every package/asset exact and its request",
+                );
             }
         }
         Event::RepositoryReconciled => {
@@ -1101,48 +1269,38 @@ fn validate_event_transition(
                 return Err("incident recording requires an existing operation");
             }
         }
-        Event::RecoverySelected => {
-            if identity.operation_class != CargoAllowReleaseOperationClassV1::IncidentRecovery
-                || !has_exact_event(events, Event::OperationSelected)
-                || init.semantic_result != ResultClass::Exact
-                || init.response_posture
-                    == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
-            {
-                return Err(
-                    "RecoverySelected requires an exact selected incident-recovery operation",
-                );
+        Event::OperationSettled => match identity.operation_class {
+            Class::Containment => {
+                if !has_exact_event(events, Event::ContainmentSelected)
+                    || !has_exact_event(events, Event::AuthorizationSelected)
+                    || !has_exact_event(events, Event::LeaseAcquired)
+                    || !has_event(events, Event::IncidentRecorded)
+                {
+                    return Err(
+                        "containment settlement requires selected authority, lease, and incident record",
+                    );
+                }
             }
-        }
-        Event::OperationSettled => {
-            if !has_exact_event(events, Event::RepositoryReconciled)
-                || !all_packages_exact(identity, events)
-                || !all_assets_exact(identity, events)
-                || !has_exact_event(events, Event::PublicReleaseObservedExact)
-            {
-                return Err("operation settlement requires the complete selected denominator");
+            Class::CleanFinalPublication | Class::IncidentRecovery => {
+                if identity.operation_class == Class::IncidentRecovery
+                    && !has_exact_event(events, Event::RecoverySelected)
+                {
+                    return Err("recovery settlement requires exact RecoverySelected");
+                }
+                if !has_exact_event(events, Event::RepositoryReconciled)
+                    || !all_packages_exact(identity, events)
+                    || !all_assets_exact(identity, events)
+                    || !has_exact_event(events, Event::PublicReleaseObservedExact)
+                {
+                    return Err("operation settlement requires complete selected denominator");
+                }
             }
-        }
-    }
-
-    if matches!(
-        init.event_class,
-        Event::TagObservedExact
-            | Event::PackageRowObservedExact
-            | Event::GitHubDraftObservedExact
-            | Event::AssetObservedExact
-            | Event::PublicReleaseObservedExact
-            | Event::RepositoryReconciled
-            | Event::OperationSettled
-    ) && (init.semantic_result != ResultClass::Exact
-        || init.response_posture
-            == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
-    {
-        return Err("exact completion event classes require exact known semantic authority");
+        },
     }
     Ok(())
 }
 
-pub fn append_release_operation_event_v1(
+pub fn append_release_operation_event_v1(pub fn append_release_operation_event_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     init: CargoAllowReleaseOperationEventInitV1,
@@ -1275,29 +1433,32 @@ fn response_unknown_is_resolved(
     let Some(event) = events.get(index) else {
         return false;
     };
-    let correlated = |later: &CargoAllowReleaseOperationEventV1| {
-        event_is_exact_authority(later)
+    if event.event_class != Event::IrreversibleRequestStarted {
+        return false;
+    }
+    events.iter().skip(index + 1).any(|later| {
+        let compatible_class = match &event.subject {
+            CargoAllowReleaseOperationEventSubjectV1::Operation => matches!(
+                later.event_class,
+                Event::TagObservedExact
+                    | Event::GitHubDraftObservedExact
+                    | Event::PublicReleaseObservedExact
+            ),
+            CargoAllowReleaseOperationEventSubjectV1::Package(_) => {
+                later.event_class == Event::PackageRowObservedExact
+            }
+            CargoAllowReleaseOperationEventSubjectV1::Asset(_) => {
+                later.event_class == Event::AssetObservedExact
+            }
+        };
+        compatible_class
+            && event_is_exact_authority(later)
             && later.subject == event.subject
             && later.payload_schema_id == event.payload_schema_id
-            && later.payload_digest == event.payload_digest
             && later.request_boundary == event.request_boundary
             && later.artifact_digest.is_some()
             && later.artifact_digest == event.artifact_digest
-    };
-    match (&event.event_class, &event.subject) {
-        (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => {
-            events
-                .iter()
-                .skip(index + 1)
-                .any(|later| later.event_class == Event::TagObservedExact && correlated(later))
-        }
-        (Event::PackageRowIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Package(_)) => {
-            events.iter().skip(index + 1).any(|later| {
-                later.event_class == Event::PackageRowObservedExact && correlated(later)
-            })
-        }
-        _ => false,
-    }
+    })
 }
 
 fn limiting_state(
@@ -1349,34 +1510,42 @@ fn limiting_state(
 fn evaluate_state(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
 ) -> CargoAllowReleaseOperationStateV1 {
+    use CargoAllowReleaseOperationClassV1 as Class;
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationStateV1 as State;
+
+    if evaluated_at_unix_seconds > identity.expires_at_unix_seconds {
+        return State::Stale;
+    }
     if let Some(state) = limiting_state(events) {
         return state;
     }
-    if events
-        .iter()
-        .any(|event| event.event_class == Event::IncidentRecorded)
-    {
+    if identity.operation_class == Class::Containment {
+        if has_exact_event(events, Event::OperationSettled) {
+            return State::CompleteWithIncidentLineage;
+        }
         return State::RecoveryRequired;
     }
-    if events.is_empty() || !has_exact_event(events, Event::AuthorizationSelected) {
+    if events.iter().any(|event| event.event_class == Event::IncidentRecorded) {
+        return State::RecoveryRequired;
+    }
+    if events.is_empty()
+        || (identity.operation_class == Class::IncidentRecovery
+            && !has_exact_event(events, Event::RecoverySelected))
+        || !has_exact_event(events, Event::AuthorizationSelected)
+    {
         return State::Prepared;
     }
     if !has_exact_event(events, Event::LeaseAcquired) {
         return State::Authorized;
     }
-    if identity.operation_class == CargoAllowReleaseOperationClassV1::Containment {
-        return State::HeldPreIrreversible;
-    }
     if !has_exact_event(events, Event::TagObservedExact) {
         return State::HeldPreIrreversible;
     }
     if !all_packages_exact(identity, events) {
-        if has_event(events, Event::PackageRowIntentDurable)
-            || !exact_package_subjects(events).is_empty()
-        {
+        if has_event(events, Event::PackageRowIntentDurable) || !exact_package_subjects(events).is_empty() {
             return State::PackagePublicationInProgress;
         }
         return State::TagObservedPackagesPending;
@@ -1384,9 +1553,7 @@ fn evaluate_state(
     if !has_exact_event(events, Event::GitHubDraftObservedExact) {
         return State::PackagesPublishedExact;
     }
-    if !all_assets_exact(identity, events)
-        || !has_exact_event(events, Event::PublicReleaseObservedExact)
-    {
+    if !all_assets_exact(identity, events) || !has_exact_event(events, Event::PublicReleaseObservedExact) {
         return State::GitHubReleaseInProgress;
     }
     if !has_exact_event(events, Event::RepositoryReconciled) {
@@ -1395,7 +1562,7 @@ fn evaluate_state(
     if !has_exact_event(events, Event::OperationSettled) {
         return State::RepositoryReconciliationRequired;
     }
-    if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+    if identity.operation_class == Class::CleanFinalPublication {
         State::CompleteClean
     } else {
         State::CompleteWithIncidentLineage
@@ -1403,29 +1570,23 @@ fn evaluate_state(
 }
 
 fn first_irreversible_digest(events: &[CargoAllowReleaseOperationEventV1]) -> Option<String> {
-    use CargoAllowReleaseOperationEventClassV1 as Event;
     events
         .iter()
-        .find(|event| {
-            event.response_posture
-                == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
-                || matches!(
-                    event.event_class,
-                    Event::TagObservedExact
-                        | Event::PackageRowObservedExact
-                        | Event::GitHubDraftObservedExact
-                        | Event::AssetObservedExact
-                        | Event::PublicReleaseObservedExact
-                )
-        })
+        .find(|event| event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted)
         .map(|event| event.event_digest.clone())
 }
 
 pub fn compile_release_operation_head_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
 ) -> Result<CargoAllowReleaseOperationHeadV1, &'static str> {
     validate_release_operation_history_v1(identity, events)?;
+    if evaluated_at_unix_seconds == 0
+        || events.last().is_some_and(|event| evaluated_at_unix_seconds < event.observed_at_unix_seconds)
+    {
+        return Err("release operation head evaluation time is invalid for retained history");
+    }
     let operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     let packages_observed_exact = exact_package_subjects(events).into_iter().collect();
@@ -1434,25 +1595,23 @@ pub fn compile_release_operation_head_v1(
         schema_id: RELEASE_OPERATION_HEAD_SCHEMA_ID.to_string(),
         schema_version: RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
         operation_identity_digest,
+        evaluated_at_unix_seconds,
         sequence: events.len() as u64,
         event_digest: events.last().map_or_else(
             || RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
             |event| event.event_digest.clone(),
         ),
-        state: evaluate_state(identity, events),
+        state: evaluate_state(identity, events, evaluated_at_unix_seconds),
         first_irreversible_event_digest: first_irreversible_digest(events),
         incident_lineage: identity.incident_predecessor_operation_digest.is_some()
-            || has_event(
-                events,
-                CargoAllowReleaseOperationEventClassV1::IncidentRecorded,
-            ),
+            || has_event(events, CargoAllowReleaseOperationEventClassV1::IncidentRecorded),
         packages_observed_exact,
         assets_observed_exact,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     })
 }
 
-pub fn evaluate_release_operation_v1(
+pub fn evaluate_release_operation_v1(pub fn evaluate_release_operation_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     evaluated_at_unix_seconds: u64,
@@ -1464,11 +1623,8 @@ pub fn evaluate_release_operation_v1(
     {
         return Err("release operation evaluation time is invalid for retained history");
     }
-    let mut head = compile_release_operation_head_v1(identity, events)?;
+    let head = compile_release_operation_head_v1(identity, events, evaluated_at_unix_seconds)?;
     let expired = evaluated_at_unix_seconds > identity.expires_at_unix_seconds;
-    if expired {
-        head.state = CargoAllowReleaseOperationStateV1::Stale;
-    }
     let exact_packages = exact_package_subjects(events);
     let exact_assets = exact_asset_subjects(events);
     let missing_packages = identity
@@ -1513,6 +1669,32 @@ pub fn evaluate_release_operation_v1(
         findings,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     })
+}
+
+pub fn validate_release_operation_head_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    head: &CargoAllowReleaseOperationHeadV1,
+) -> Result<(), &'static str> {
+    let expected = compile_release_operation_head_v1(identity, events, evaluated_at_unix_seconds)?;
+    if &expected != head {
+        return Err("release operation head does not match the recomputed canonical head");
+    }
+    Ok(())
+}
+
+pub fn validate_release_operation_evaluation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    evaluated_at_unix_seconds: u64,
+    evaluation: &CargoAllowReleaseOperationEvaluationV1,
+) -> Result<(), &'static str> {
+    let expected = evaluate_release_operation_v1(identity, events, evaluated_at_unix_seconds)?;
+    if &expected != evaluation {
+        return Err("release operation evaluation does not match the recomputed canonical result");
+    }
+    Ok(())
 }
 
 pub fn render_release_operation_identity_v1(
