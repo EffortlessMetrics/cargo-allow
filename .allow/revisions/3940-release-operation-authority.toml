@@ -17,3 +17,9 @@ allow_ids = ["allow-11322"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:88037861b1199677c34a20c8e1c2f5572f8c055d65d337fffdceea83d02e3ec3"
 reason = "self-receipt for this #3940 PR A revision note; no external release operation is authorized"
+
+[[records]]
+allow_ids = ["allow-11323"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5435e7ba2a4156fd3a2f82d653d89e2c0650bf7459b26c183abb7a865fb45f79"
+reason = "exact-path receipt for the retained typed same-maintainer PR #4303 review disposition; review evidence only, with no CI, merge, authorization, or release authority"
