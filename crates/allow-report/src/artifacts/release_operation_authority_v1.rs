@@ -1102,7 +1102,9 @@ fn response_unknown_is_resolved(
     index: usize,
 ) -> bool {
     use CargoAllowReleaseOperationEventClassV1 as Event;
-    let event = &events[index];
+    let Some(event) = events.get(index) else {
+        return false;
+    };
     match (&event.event_class, &event.subject) {
         (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => events
             .iter()
