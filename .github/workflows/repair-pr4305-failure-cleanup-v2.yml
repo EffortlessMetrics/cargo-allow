@@ -1,0 +1,89 @@
+name: Repair PR 4305 failure cleanup v2
+
+on:
+  push:
+    branches:
+      - fix/package-byte-authority
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4305-failure-cleanup-v2
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/package-byte-authority
+          fetch-depth: 6
+          persist-credentials: true
+
+      - name: Guard and stage the exact cleanup repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "9983fff2aa9e10bee220091d43b7a4c6b2b31dc5" HEAD
+          test "$(git diff --name-only 9983fff2aa9e10bee220091d43b7a4c6b2b31dc5 HEAD)" = ".github/workflows/repair-pr4305-failure-cleanup-v2.yml"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, found {count}")
+              path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+          harness = Path("scripts/candidate-harness-owned-dir.py")
+          replace_once(
+              harness,
+              '''        return directory.resolve(strict=True), token, resolved_head\n    except Exception:\n        run_git(\n''',
+              '''        return directory.resolve(strict=True), token, resolved_head\n    except BaseException:\n        # fail() raises SystemExit; cleanup must still run after registration.\n        run_git(\n''',
+          )
+
+          lifecycle = Path("scripts/test-candidate-harness-lifecycle.py")
+          replace_once(
+              lifecycle,
+              '''print("ok candidate harness owned-directory containment")\n''',
+              '''# A post-registration HEAD mismatch calls fail(), which raises SystemExit.\n# The harness must still remove the Git registration and directory before\n# propagating that terminal result.\nwith tempfile.TemporaryDirectory(\n    prefix="cargo-allow-worktree-drift-cleanup."\n) as drift_temporary:\n    drift_root = Path(drift_temporary).resolve()\n    expected_head = "a" * 40\n    observed_head = "b" * 40\n    removed_worktrees: list[Path] = []\n    original_run_git = LIFECYCLE.run_git\n\n    def drifting_run_git(arguments: list[str], **kwargs):\n        command = arguments[2:]\n        if command[:3] == ["worktree", "add", "--detach"]:\n            directory = Path(command[3])\n            directory.mkdir()\n            return subprocess.CompletedProcess(\n                ["git", *arguments], 0, stdout="", stderr=""\n            )\n        if command == ["rev-parse", "HEAD"]:\n            return subprocess.CompletedProcess(\n                ["git", *arguments], 0, stdout=observed_head + "\\n", stderr=""\n            )\n        if command[:3] == ["worktree", "remove", "--force"]:\n            directory = Path(command[3])\n            __import__("shutil").rmtree(directory)\n            removed_worktrees.append(directory)\n            return subprocess.CompletedProcess(\n                ["git", *arguments], 0, stdout="", stderr=""\n            )\n        raise AssertionError(f"unexpected synthetic Git command: {arguments!r}")\n\n    LIFECYCLE.run_git = drifting_run_git\n    try:\n        try:\n            LIFECYCLE.worktree(\n                drift_root, ROOT, "worktree-drift-cleanup", expected_head\n            )\n        except SystemExit:\n            pass\n        else:\n            raise SystemExit("post-registration worktree drift unexpectedly succeeded")\n    finally:\n        LIFECYCLE.run_git = original_run_git\n    if len(removed_worktrees) != 1 or removed_worktrees[0].exists():\n        raise SystemExit("post-registration worktree drift did not clean up exactly once")\n\nprint("ok candidate harness owned-directory containment")\n''',
+          )
+          PY
+          git rm .github/workflows/repair-pr4305-failure-cleanup-v2.yml
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+
+      - name: Prove the source-only cleanup repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            scripts/candidate-harness-owned-dir.py \
+            scripts/test-candidate-harness-lifecycle.py \
+            scripts/test-package-byte-authority.py
+          bash -n scripts/exact-candidate-package-set.sh
+          python3 scripts/test-candidate-harness-lifecycle.py
+          python3 scripts/test-package-byte-authority.py
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git restore --source=HEAD --staged --worktree .github/workflows/repair-pr4305-failure-cleanup-v2.yml
+          git diff --check
+
+      - name: Commit the bounded source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "9983fff2aa9e10bee220091d43b7a4c6b2b31dc5" HEAD
+          mapfile -t changed < <(git diff --name-only HEAD)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 2
+          test "${changed[0]}" = "scripts/candidate-harness-owned-dir.py"
+          test "${changed[1]}" = "scripts/test-candidate-harness-lifecycle.py"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/candidate-harness-owned-dir.py scripts/test-candidate-harness-lifecycle.py
+          git commit -m "fix(package): clean registered worktree on terminal drift"
+          git push origin HEAD:fix/package-byte-authority
