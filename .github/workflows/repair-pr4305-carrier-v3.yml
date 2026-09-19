@@ -1,0 +1,77 @@
+name: Correct PR 4305 repair carrier v3
+
+on:
+  push:
+    branches:
+      - fix/package-byte-authority
+
+permissions:
+  contents: write
+
+concurrency:
+  group: correct-pr-4305-repair-carrier-v3
+  cancel-in-progress: false
+
+jobs:
+  correct:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/package-byte-authority
+          fetch-depth: 6
+          persist-credentials: true
+
+      - name: Correct and retire both correction carriers
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "e21f66889514b331ce08b3f0da3c165f9478e676"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4305-carrier-v3.yml"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/repair-pr4305-git-environment.yml")
+          text = path.read_text(encoding="utf-8")
+
+          old_guard = 'test "$(git rev-parse HEAD^)" = "555e5c582bfaa166c43342e3322a6b8b0168fa34"'
+          if text.count(old_guard) != 2:
+              raise SystemExit(f"expected two exact-head guards, found {text.count(old_guard)}")
+          text = text.replace(
+              old_guard,
+              'git merge-base --is-ancestor "555e5c582bfaa166c43342e3322a6b8b0168fa34" HEAD',
+          )
+
+          old_diff = 'test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4305-git-environment.yml"'
+          if text.count(old_diff) != 1:
+              raise SystemExit(f"expected one carrier diff guard, found {text.count(old_diff)}")
+          text = text.replace(
+              old_diff,
+              'test "$(git diff --name-only 555e5c582bfaa166c43342e3322a6b8b0168fa34 HEAD)" = ".github/workflows/repair-pr4305-git-environment.yml"',
+          )
+
+          if text.count("if count != 7:") != 1 or text.count("expected seven Git subprocess replacements") != 1:
+              raise SystemExit("the original subprocess-count guard changed unexpectedly")
+          text = text.replace("if count != 7:", "if count != 8:")
+          text = text.replace(
+              "expected seven Git subprocess replacements",
+              "expected eight Git subprocess replacements",
+          )
+          path.write_text(text, encoding="utf-8", newline="\n")
+          PY
+          git rm \
+            .github/workflows/repair-pr4305-carrier-v2.yml \
+            .github/workflows/repair-pr4305-carrier-v3.yml
+          git diff --check
+          mapfile -t changed < <(git diff --name-only)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 3
+          test "${changed[0]}" = ".github/workflows/repair-pr4305-carrier-v2.yml"
+          test "${changed[1]}" = ".github/workflows/repair-pr4305-carrier-v3.yml"
+          test "${changed[2]}" = ".github/workflows/repair-pr4305-git-environment.yml"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A .github/workflows
+          git commit -m "ci: correct bounded PR 4305 repair carrier"
+          git push origin HEAD:fix/package-byte-authority
