@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "8e0845e1976615f3d7000a736adc3ff7e660e780"
+          test "$(git rev-parse HEAD^)" = "54bc544e7218d7e4931675973eed1229873ac089"
           python3 - <<'PY'
           from pathlib import Path
 
@@ -34,50 +34,52 @@ jobs:
           text = verifier.read_text(encoding="utf-8")
           start = text.index("def verify_archive(archive, prefix, expected_head):")
           end = text.index("\ndef verifier_process(", start)
-          replacement = '''def verify_archive(archive, prefix, expected_head):
-              """Require the exact Git subject and Cargo's canonical clean posture."""
-              info = read_vcs_info(archive, prefix)
-              git = info.get("git")
-              if not isinstance(git, dict):
-                  raise ValueError(".cargo_vcs_info.json must contain a git object")
-
-              sha = git.get("sha1")
-              if not isinstance(sha, str) or not sha:
-                  raise ValueError("missing git.sha1 in .cargo_vcs_info.json")
-              if sha != expected_head:
-                  raise ValueError(f"git.sha1 {sha} does not match frozen subject {expected_head}")
-
-              dirty = git.get("dirty", False)
-              if type(dirty) is not bool:
-                  raise ValueError("git.dirty must be a JSON boolean when present")
-              if dirty:
-                  raise ValueError("git.dirty must be false")
-
-              normalized = dict(info)
-              normalized_git = dict(git)
-              normalized_git["dirty"] = dirty
-              normalized["git"] = normalized_git
-              return normalized
-
-          '''
+          replacement = "\n".join(
+              [
+                  "def verify_archive(archive, prefix, expected_head):",
+                  "    \"\"\"Require the exact Git subject and Cargo's canonical clean posture.\"\"\"",
+                  "    info = read_vcs_info(archive, prefix)",
+                  "    git = info.get(\"git\")",
+                  "    if not isinstance(git, dict):",
+                  "        raise ValueError(\".cargo_vcs_info.json must contain a git object\")",
+                  "",
+                  "    sha = git.get(\"sha1\")",
+                  "    if not isinstance(sha, str) or not sha:",
+                  "        raise ValueError(\"missing git.sha1 in .cargo_vcs_info.json\")",
+                  "    if sha != expected_head:",
+                  "        raise ValueError(f\"git.sha1 {sha} does not match frozen subject {expected_head}\")",
+                  "",
+                  "    dirty = git.get(\"dirty\", False)",
+                  "    if type(dirty) is not bool:",
+                  "        raise ValueError(\"git.dirty must be a JSON boolean when present\")",
+                  "    if dirty:",
+                  "        raise ValueError(\"git.dirty must be false\")",
+                  "",
+                  "    normalized = dict(info)",
+                  "    normalized_git = dict(git)",
+                  "    normalized_git[\"dirty\"] = dirty",
+                  "    normalized[\"git\"] = normalized_git",
+                  "    return normalized",
+                  "",
+                  "",
+              ]
+          )
           text = text[:start] + replacement + text[end + 1:]
 
-          clean_start = text.index(
-              '        self.assertEqual(info.get("git", {}).get("sha1"), head)\n',
-              text.index("def test_worktree_packaging_carries_exact_clean_head"),
+          old_assertion = '        self.assertIs(info.get("git", {}).get("dirty"), False)\n'
+          new_assertion = "\n".join(
+              [
+                  "        self.assertNotIn(",
+                  '            "dirty",',
+                  '            info.get("git", {}),',
+                  '            "Cargo canonically omits dirty for a clean package",',
+                  "        )",
+                  "",
+              ]
           )
-          clean_end = text.index(
-              "        accepted = verifier_process(archive, prefix, head)\n",
-              clean_start,
-          )
-          clean_replacement = '''        self.assertEqual(info.get("git", {}).get("sha1"), head)
-              self.assertNotIn(
-                  "dirty",
-                  info.get("git", {}),
-                  "Cargo canonically omits dirty for a clean package",
-              )
-          '''
-          text = text[:clean_start] + clean_replacement + text[clean_end:]
+          if text.count(old_assertion) != 1:
+              raise SystemExit(f"clean dirty assertion count: {text.count(old_assertion)}")
+          text = text.replace(old_assertion, new_assertion, 1)
           verifier.write_text(text, encoding="utf-8", newline="\n")
 
           producer = Path("scripts/exact-candidate-package-set.sh")
