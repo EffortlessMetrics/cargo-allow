@@ -28,11 +28,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Merge current main and resolve only the audited additive overlap
+      - name: Merge current main and resolve the one audited conflict
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "79d442b1cdd1d227676043ed3aca8e898b6341db"
+          test "$(git rev-parse HEAD^)" = "fc7be0d41de121a48c8a50410e2114275c74a31e"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/reconcile-pr4303-with-main.yml"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -45,25 +45,15 @@ jobs:
           set -e
           test "$merge_status" -ne 0
 
-          expected=$(cat <<'EOF'
-          crates/allow-report/src/artifacts.rs
-          crates/allow-report/src/lib.rs
-          crates/cargo-allow/src/artifact_schema_index_tests.rs
-          docs/schemas/README.md
-          policy/allow.toml
-          policy/evidence-surface-inventory.toml
-          EOF
-          )
           actual="$(git diff --name-only --diff-filter=U | sort)"
-          test "$actual" = "$expected"
+          test "$actual" = "crates/cargo-allow/src/artifact_schema_index_tests.rs"
 
-          while IFS= read -r path; do
-            git show ":1:$path" > /tmp/base
-            git show ":2:$path" > /tmp/ours
-            git show ":3:$path" > /tmp/theirs
-            git merge-file --union -p /tmp/ours /tmp/base /tmp/theirs > "$path"
-            git add "$path"
-          done <<< "$actual"
+          path="$actual"
+          git show ":1:$path" > /tmp/base
+          git show ":2:$path" > /tmp/ours
+          git show ":3:$path" > /tmp/theirs
+          git merge-file --union -p /tmp/ours /tmp/base /tmp/theirs > "$path"
+          git add "$path"
 
           test -z "$(git diff --name-only --diff-filter=U)"
           git rm .github/workflows/reconcile-pr4303-with-main.yml
@@ -90,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "79d442b1cdd1d227676043ed3aca8e898b6341db"
+          test "$(git rev-parse HEAD)" = "fc7be0d41de121a48c8a50410e2114275c74a31e"
           test "$(git rev-parse MERGE_HEAD)" = "89d1376390726a34ae8b2cac14f69af7e684153d"
           test ! -e .github/workflows/reconcile-pr4303-with-main.yml
           git commit -m "merge(main): reconcile #4302 checkpoint with #3940 PR A"
