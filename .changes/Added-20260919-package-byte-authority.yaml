@@ -2,5 +2,8 @@ kind: Added
 body: >-
   Freeze Git-backed package bytes: the exact-candidate set now packages
   inside a harness-owned git worktree at the exact snapshot head, every
-  frozen archive must carry `.cargo_vcs_info.json` with the frozen subject
-  SHA, and a cross-producer proof pins the byte authority (#4304).
+  frozen archive must carry `.cargo_vcs_info.json` for that frozen subject,
+  and the shared verifier rejects dirty or malformed package metadata on both
+  fresh and restored inputs. Cargo's canonical clean encoding omits
+  `git.dirty`; `dirty: true` is proven and rejected by a real worktree control
+  (#4304).
