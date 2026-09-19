@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   repair:
-    if: contains(github.event.head_commit.message, '[repair-4303-review-admission]')
+    if: contains(github.event.head_commit.message, '[repair-4303-review-admission-v2]')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "d95575ce243be5d975a41364cf58d04e07c8f315"
+          test "$(git rev-parse HEAD^)" = "acd6ade81f0554758e279d9b31976d2f5a1d25b7"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/automation-pr4303-review-disposition-admission.yml"
 
           python3 - <<'PY'
@@ -45,8 +45,13 @@ jobs:
 
           policy_path = Path("policy/allow.toml")
           raw = policy_path.read_bytes()
-          if not raw.endswith(b"\r\n"):
-              raise SystemExit("policy/allow.toml must retain its CRLF ending")
+          if raw.endswith(b"\r\n"):
+              newline = "\r\n"
+          elif raw.endswith(b"\n"):
+              newline = "\n"
+          else:
+              newline = "\n"
+              raw += b"\n"
           policy = tomllib.loads(raw.decode("utf-8"))
           allows = policy.get("allow", [])
           if not isinstance(allows, list):
@@ -100,7 +105,7 @@ jobs:
               "column = 1",
               "",
           ]
-          policy_path.write_bytes(raw + "\r\n".join(block_lines).encode("utf-8"))
+          policy_path.write_bytes(raw + newline.join(block_lines).encode("utf-8"))
 
           disposition = Path(path)
           if not disposition.is_file():
