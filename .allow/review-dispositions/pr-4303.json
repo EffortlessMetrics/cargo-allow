@@ -1,0 +1,32 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4303,
+  "base_ref": "main",
+  "base_sha": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "head_ref": "release/3940-operation-authority-v1",
+  "head_sha": "01059169f9155a5de19130eb4c935931ad161586",
+  "merge_base": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "reviewed_diff_digest": "sha256:v1:19de057b00b15e978744c4ac87e5c2a41ccf5b745c5ec2d7ab74b0c48e130019",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5256498951; same-maintainer exact-source technical review; not independent-human approval",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PR 4303 GraphQL reviewThreads: all threads resolved at reviewed source head 01059169f9155a5de19130eb4c935931ad161586",
+    "Maintainer exact-head affected technical review 5256498951 found no remaining blocking source-semantic defect in the fourteen-file PR-A surface",
+    "Qualification head 01059169f9155a5de19130eb4c935931ad161586 is byte-identical to final source head 9ab9c07443702348f4a434cc2f56ebc1ddfc8dcc at tree 4a4d85137b4820ddb3c578d3692880d7a4154c6e",
+    "Focused proof passed rustfmt, workflow syntax, evidence inventory, round-trip contract, ten authority tests, Clippy with warnings denied, enforcing no-new, and diff hygiene before final source commit",
+    "CodeRabbit and Devin exact-head status observations were inspected as supporting telemetry; they are not represented as retained independent-human approval"
+  ],
+  "required_ci": {
+    "owner": "backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4303",
+  "reviewed_at_utc": "2026-09-19T16:47:50Z"
+}
