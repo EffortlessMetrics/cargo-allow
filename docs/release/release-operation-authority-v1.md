@@ -35,6 +35,25 @@ The operation ID is derived from a canonical semantic digest. A caller cannot
 choose it. Run, attempt, job, provider object IDs, and observation time are event
 metadata and do not alter the immutable subject.
 
+The selected package order is the existing final-release authorization
+selection with the three shared 0.1.0 prerequisites excluded. The selected
+GitHub Release attachment identities are exactly:
+
+    release-manifest-v2.json
+    release-manifest-v2.sha256
+    cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz
+    cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz.sha256
+    cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz.executable.sha256
+    release-binary.receipt.json
+    release-binary-install.receipt.json
+
+Their digests are immutable operation inputs from the final freeze. The current
+workflow still rebuilds some of these during tag execution; PR C must cut that
+workflow over to the frozen asset subject rather than treating runtime rebuilds
+as equivalent bytes.
+
+
+
 Clean operations have no incident predecessor. Recovery and containment require
 one exact predecessor digest and the matching authority class.
 
