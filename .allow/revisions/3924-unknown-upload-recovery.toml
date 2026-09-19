@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11322"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c115d7bd626fc2e59928db6c0ef574a2dafda956f9b7717d4781ecc81a6cf308"
+reason = "receipt for docs/schemas/cargo-allow.publication-recovery.v1.schema.json, the recovery disposition contract schema (#3924)"
+
+[[records]]
+allow_ids = ["allow-11323"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:67fff73004888056bfbaff96514d04149a726ce3ac73306a5920dc901e5a0296"
+reason = "receipt for docs/release/publication-recovery-v1.md, the operator-side recovery decision protocol (#3924)"
+
+[[records]]
+allow_ids = ["allow-11324"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3d1a63117dc05c43da0d25172c8d4f4a59c28c8e00fd94b96e962c06e7d50edd"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
