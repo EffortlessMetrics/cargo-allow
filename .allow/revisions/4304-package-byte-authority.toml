@@ -1,13 +1,13 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-11320"]
+allow_ids = ["allow-11324"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:9a4d1eaacafd902ff5b020dc924c61c7cf99fe37952c10804b76bc1f353d02ee"
+after_fingerprint = "sha256:v1:507f7c86127265fb573cadbb19dfc4451a41f01fb0cfb4bae7a7176e203012ba"
 reason = "receipt for scripts/test-package-byte-authority.py, the cross-producer package-byte authority proof (#4304)"
 
 [[records]]
-allow_ids = ["allow-11321"]
+allow_ids = ["allow-11325"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:5aaccadebcde4c2a77b7636792fcd00720de7737022b74368c35cc0dcc271bbf"
+after_fingerprint = "sha256:v1:4d6d55a8171cf449e217dd84fe4ce53f066659392c1d814d58d7dd05cadba89c"
 reason = "self-receipt for this revision note file, matching the #3792 precedent"
