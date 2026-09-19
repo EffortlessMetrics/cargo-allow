@@ -21,7 +21,9 @@ use allow_report::{
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
+    PublicationJournalRowV1, PublicationRegistryObservationV1,
+    PublicationUploadResponseV1, UploadResponseClassV1, append_journal_event_v1,
+    begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
     render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
@@ -78,7 +80,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT,
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -133,6 +135,81 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         Some(row),
     )?;
     Ok(journal)
+}
+
+fn advance_to_visible_exact(
+    journal: &mut CargoAllowPublicationJournalV1,
+) -> Result<(), Box<dyn Error>> {
+    let row = journal
+        .rows
+        .first()
+        .cloned()
+        .ok_or_else(|| io::Error::other("checkpoint fixture row absent"))?;
+    let mut at = journal
+        .entries
+        .last()
+        .map(|entry| entry.at_unix_seconds)
+        .unwrap_or(CREATED_AT);
+    let mut next = || {
+        at += 10;
+        at
+    };
+    append_journal_event_v1(
+        journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::UploadRequestStarted,
+            row: Some(row.clone()),
+            response: None,
+            observation: None,
+            at_unix_seconds: next(),
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::UploadResponseObserved,
+            row: Some(row.clone()),
+            response: Some(PublicationUploadResponseV1 {
+                class: UploadResponseClassV1::Success,
+                detail: "synthetic".to_string(),
+            }),
+            observation: None,
+            at_unix_seconds: next(),
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::RegistryObservationStarted,
+            row: Some(row.clone()),
+            response: None,
+            observation: None,
+            at_unix_seconds: next(),
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::RegistryVisibleExact,
+            row: Some(row),
+            response: None,
+            observation: Some(PublicationRegistryObservationV1 {
+                provider_reachable: true,
+                row_visible: true,
+                archive_digest_matches: true,
+            }),
+            at_unix_seconds: next(),
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    Ok(())
 }
 
 fn producer() -> PublicationCheckpointProducerV1 {
@@ -224,7 +301,7 @@ fn set_field(
 
 #[test]
 fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
-    let journal = settled_journal()?;
+    let mut journal = settled_journal()?;
     let expected_producer = producer();
     let now = CREATED_AT + 60;
     // A fresh checkpoint reads back Missing: provider success without
@@ -270,10 +347,13 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         checkpoint_permits_dependant_v1(&first, &journal, &expected_producer, now).is_err(),
         "a pre-intent checkpoint must not unlock dependants",
     )?;
-    // The second checkpoint links the first and unlocks the dependant row.
+    // Advance the real journal through upload and exact registry visibility.
+    // The post-observation checkpoint must bind that exact clean transition.
+    advance_to_visible_exact(&mut journal)?;
     let mut second_init =
         checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PostObservation)?;
     second_init.row.state = PublicationCheckpointRowStateV1::VisibleExact;
+    second_init.first_irreversible_row = Some("cargo-allow".to_string());
     let mut second =
         begin_publication_checkpoint_v1(second_init, Some(&first)).map_err(io::Error::other)?;
     require(
@@ -284,15 +364,63 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     record_checkpoint_readback_v1(
         &mut second,
         CheckpointProviderOutcomeV1::Delivered(stored_second),
-        now + 10,
+        CREATED_AT + 160,
     )
     .map_err(io::Error::other)?;
-    checkpoint_permits_dependant_v1(&second, &journal, &expected_producer, now + 10)
+    checkpoint_permits_dependant_v1(
+        &second,
+        &journal,
+        &expected_producer,
+        CREATED_AT + 160,
+    )
         .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_upload_v1(&second, &journal, &expected_producer, now + 10).is_err(),
+        checkpoint_permits_upload_v1(
+            &second,
+            &journal,
+            &expected_producer,
+            CREATED_AT + 160,
+        )
+        .is_err(),
         "a post-observation checkpoint must not authorize uploads",
     )?;
+    // Hostile: non-clean post-observation states never unlock dependants.
+    for state in [
+        PublicationCheckpointRowStateV1::VisibleConflict,
+        PublicationCheckpointRowStateV1::ObservedAbsent,
+        PublicationCheckpointRowStateV1::Waiting,
+        PublicationCheckpointRowStateV1::ResponseUnknown,
+        PublicationCheckpointRowStateV1::Incident,
+    ] {
+        let mut hostile = second.clone();
+        hostile.row.state = state;
+        require(
+            checkpoint_permits_dependant_v1(
+                &hostile,
+                &journal,
+                &expected_producer,
+                CREATED_AT + 160,
+            )
+            .is_err(),
+            format!("post-observation state {state:?} must not unlock dependants"),
+        )?;
+    }
+    // Hostile: a wrong event/prefix cannot authorize even with a clean row claim.
+    let mut wrong_prefix = second.clone();
+    wrong_prefix.journal_head_sequence = first.journal_head_sequence;
+    wrong_prefix.journal_head_digest = first.journal_head_digest.clone();
+    wrong_prefix.first_irreversible_row = None;
+    require(
+        checkpoint_permits_dependant_v1(
+            &wrong_prefix,
+            &journal,
+            &expected_producer,
+            CREATED_AT + 160,
+        )
+        .is_err(),
+        "visible-exact claims bound to a durable-intent prefix must fail",
+    )?;
+
     // Control: the rendered checkpoints validate against the schema, with
     // the same sequence-one-null / later-digest prior law as the journal.
     let root = repository_root()?;

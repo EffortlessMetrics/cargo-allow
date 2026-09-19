@@ -47,21 +47,34 @@ PostObservation + verified readback ──► dependant may begin
 - A fresh checkpoint reads back `Missing`: provider success without an
   independent readback is never clean.
 - Checkpoints are append-only and immutable; correction creates a new
-  sequence linked by the predecessor's canonical digest. Sequence 1 carries
-  no prior digest; later sequences require one, in Rust and in schema.
+  sequence linked by a stable predecessor digest that excludes mutable
+  readback observation fields. Sequence 1 carries no prior digest; later
+  sequences require a successfully read-back predecessor, and a fresh runner
+  can reproduce the same linkage from the immutable remote bytes.
 - The next runner discovers the operation only through exact typed identity
   (object ID + producer + operation), never "latest artifact" naming.
-- Journal prefixes never move backward across a sequence; incident posture
-  never clears; the first irreversible row never changes.
+- Journal prefixes and checkpoint construction/readback time never move
+  backward across a sequence. Incident posture never clears. The first
+  irreversible row is independent of incident state: clean publication sets
+  it when the first upload request starts, and it never changes afterward.
 - Expiry is construction plus retention exactly (1–90 days); expired or
   premature checkpoints never authorize progress.
 - A provider outage is `ProviderUnavailable`: an outage, never absence.
   Absence is a journal verdict with its own provider observation.
-- Row state in a checkpoint is the producer's claim at checkpoint time; the
-  journal honestly advances past it. Prefix integrity (the bound head entry
-  still at its sequence) is the verification invariant, not state equality.
+- Row state is not authority by itself. Verification first validates the
+  entire journal chain/header and exact authorization/custody/freeze subject,
+  then reconciles the checkpoint row to the declared journal row and bound
+  prefix. Upload opens only for `PreIntentDurable + IntentDurable` bound to
+  that row's `UploadIntentDurable`; dependant progress opens only for
+  `PostObservation + VisibleExact` bound to `RegistryVisibleExact`.
+  Conflict, absence, waiting, unknown-response, and incident states remain
+  blocking.
 - Fork and untrusted jobs cannot create authoritative checkpoints: producer
   equality against the expected release producer fails closed.
+- Delivered checkpoint bytes must reproduce the entire immutable checkpoint
+  record, including provider identity, with the stored record still carrying
+  the initial Missing/no-readback posture. Readback observations are local
+  monotonic evidence and cannot rewrite the stored subject.
 - Provider notes are bounded (256 chars) and screened under the shared
   custody secret-marker law; no credentials, raw authorization, unbounded
   logs, or response bodies are retained.

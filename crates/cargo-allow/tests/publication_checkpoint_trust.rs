@@ -63,7 +63,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT,
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -222,6 +222,7 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
             &fork_producer,
             "publish_cargo_allow_final_0_2_0",
         )
+        .map_err(io::Error::other)?
         .is_none(),
         "fork producers must never resolve a checkpoint",
     )?;
@@ -281,6 +282,41 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         verdict == PublicationCheckpointReadbackV1::Mismatch,
         "empty stored bytes must read back Mismatch",
     )?;
+    // Hostile: provider identity is immutable and must match delivered bytes.
+    let (mut provider_tamper, provider_bytes) = stored_first(&journal)?;
+    let mut provider_json: serde_json::Value = serde_json::from_slice(&provider_bytes)?;
+    provider_json["provider"]["object_id"] = serde_json::Value::String("artifact-9".to_string());
+    let tampered_provider_bytes = serde_json::to_vec_pretty(&provider_json)?;
+    require(
+        record_checkpoint_readback_v1(
+            &mut provider_tamper,
+            CheckpointProviderOutcomeV1::Delivered(tampered_provider_bytes),
+            now,
+        )
+        .map_err(io::Error::other)?
+            == PublicationCheckpointReadbackV1::Mismatch,
+        "provider-object tampering must read back Mismatch",
+    )?;
+    // Hostile: observation time never moves backward.
+    let (mut monotonic, monotonic_bytes) = stored_first(&journal)?;
+    record_checkpoint_readback_v1(
+        &mut monotonic,
+        CheckpointProviderOutcomeV1::Delivered(monotonic_bytes),
+        now + 20,
+    )
+    .map_err(io::Error::other)?;
+    let before = monotonic.clone();
+    require(
+        record_checkpoint_readback_v1(
+            &mut monotonic,
+            CheckpointProviderOutcomeV1::Unavailable,
+            now + 10,
+        )
+        .is_err()
+            && monotonic == before,
+        "older readback observations must fail without mutating the retained state",
+    )?;
+
     // Hostile: older same-operation bytes are Stale, never silently current.
     let (mut current, current_bytes) = stored_first(&journal)?;
     record_checkpoint_readback_v1(
@@ -348,6 +384,13 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
             format!("retention {days} days must set exact expiry"),
         )?;
     }
+    let mut overflow = checkpoint_init(&journal, 1)?;
+    overflow.created_at_unix_seconds = u64::MAX - 10;
+    require(
+        begin_publication_checkpoint_v1(overflow, None).is_err(),
+        "checkpoint expiry arithmetic must fail closed on overflow",
+    )?;
+
     // Hostile: operation identity binds to its class in both directions.
     let mut wrong_clean = checkpoint_init(&journal, 1)?;
     wrong_clean.operation_id = "recover_cargo_allow_final_publication".to_string();

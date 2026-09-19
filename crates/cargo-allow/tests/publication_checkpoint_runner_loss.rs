@@ -63,7 +63,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
         freeze_digest: digest(72),
         prior_journal_digest: None,
         rows: vec![journal_row("cargo-allow", 0, 10)],
-        created_at_unix_seconds: CREATED_AT,
+        created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         workflow: "release".to_string(),
         run: "4242".to_string(),
         attempt: "1".to_string(),
@@ -219,13 +219,22 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     // runner holds no local handles: it discovers the checkpoint by exact
     // identity and verifies it against the surviving journal, then uploads.
     // It must not record a second pre-intent for the same row.
-    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![first.clone()];
+    let mut reconstructed: CargoAllowPublicationCheckpointV1 =
+        serde_json::from_slice(&stored_first)?;
+    require(
+        reconstructed.readback == PublicationCheckpointReadbackV1::Missing,
+        "remote bytes must not self-claim a successful readback",
+    )?;
+    read_back(&mut reconstructed, stored_first.clone(), now + 1)?;
+    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![reconstructed];
     let discovered = match select_checkpoint_by_exact_identity_v1(
         &remote,
         "artifact-1",
         &expected_producer,
         "publish_cargo_allow_final_0_2_0",
-    ) {
+    )
+    .map_err(io::Error::other)?
+    {
         Some(checkpoint) => checkpoint.clone(),
         None => return fail("exact checkpoint discovery must succeed"),
     };
@@ -259,7 +268,9 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         "artifact-1",
         &expected_producer,
         "publish_cargo_allow_final_0_2_0",
-    ) {
+    )
+    .map_err(io::Error::other)?
+    {
         Some(checkpoint) => checkpoint,
         None => return fail("exact discovery must skip same-name foreign objects"),
     };
@@ -274,6 +285,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             &expected_producer,
             "publish_cargo_allow_final_0_2_0",
         )
+        .map_err(io::Error::other)?
         .is_none(),
         "a foreign-producer object ID must never resolve under our producer",
     )?;
@@ -284,9 +296,22 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             &expected_producer,
             "publish_cargo_allow_final_0_2_0",
         )
+        .map_err(io::Error::other)?
         .is_none(),
         "bare object names must never resolve to a checkpoint",
     )?;
+    let duplicate_exact = vec![discovered.clone(), discovered.clone()];
+    require(
+        select_checkpoint_by_exact_identity_v1(
+            &duplicate_exact,
+            "artifact-1",
+            &expected_producer,
+            "publish_cargo_allow_final_0_2_0",
+        )
+        .is_err(),
+        "duplicate exact provider identities must fail discovery as ambiguous",
+    )?;
+
     // Control: checkpoint prefix does not match the live journal. A
     // truncated journal (head entry lost) breaks prefix verification.
     let mut truncated = journal.clone();
@@ -343,12 +368,14 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     incident_init.row.state = PublicationCheckpointRowStateV1::Incident;
     incident_init.first_irreversible_row = Some("cargo-allow".to_string());
     incident_init.incident_recorded = true;
-    let incident =
-        begin_publication_checkpoint_v1(incident_init, Some(&first)).map_err(io::Error::other)?;
+    let mut incident =
+        begin_publication_checkpoint_v1(incident_init, Some(&discovered)).map_err(io::Error::other)?;
     require(
         incident.prior_checkpoint_digest.is_some(),
-        "the incident checkpoint must link its predecessor",
+        "the incident checkpoint must link its reconstructed predecessor",
     )?;
+    let stored_incident = store_checkpoint(&mut incident)?;
+    read_back(&mut incident, stored_incident, CREATED_AT + 160)?;
     let mut cleared_init = checkpoint_init(&journal, 3, "artifact-3")?;
     cleared_init.kind = PublicationCheckpointKindV1::PostObservation;
     require(
