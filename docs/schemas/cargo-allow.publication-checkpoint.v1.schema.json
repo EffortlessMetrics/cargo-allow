@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json",
   "title": "CargoAllowPublicationCheckpointV1",
-  "description": "Remotely durable checkpoint for one publication journal prefix: exact operation and journal-prefix identity, monotonic sequence linkage, immutable provider object identity, producer trust, retention, and readback classification. Structural validation does not upload packages, observe the registry, or authorize the operation.",
+  "description": "Remotely durable checkpoint for one publication journal prefix: exact operation and journal-prefix identity, stable immutable sequence linkage, immutable provider object identity, producer trust, retention, and readback classification. Structural validation cannot create the runtime-only exact-byte readback witness used by permission gates and does not upload packages, observe the registry, or authorize the operation.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -52,6 +52,24 @@
           "prior_checkpoint_digest": { "$ref": "#/$defs/digest" }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "readback": { "const": "missing" }
+        },
+        "required": ["readback"]
+      },
+      "then": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "integer", "minimum": 1 }
+        }
+      }
     }
   ],
   "properties": {
@@ -90,8 +108,9 @@
     "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
     "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
     "note": { "type": "string", "maxLength": 256 },
-    "readback": { "$ref": "#/$defs/readback" },
+    "readback": { "$ref": "#/$defs/readback", "description": "Serialized observation only. Permission gates additionally require a runtime-only witness produced by exact downloaded-byte classification; deserializing complete never creates authority." },
     "readback_at_unix_seconds": {
+      "description": "Null only before independent readback; every classified provider outcome carries the bounded observation time.",
       "type": ["integer", "null"],
       "minimum": 1
     },
@@ -138,7 +157,7 @@
         "provider": { "const": "github_actions_artifact" },
         "object_id": { "type": "string", "minLength": 1 },
         "object_name": { "type": "string", "minLength": 1 },
-        "object_digest": { "$ref": "#/$defs/digest" },
+        "object_digest": { "$ref": "#/$defs/digest", "description": "Canonical immutable checkpoint-body digest with self-referential size/digest and later readback observation normalized; not the downloaded archive byte digest." },
         "object_size_bytes": { "type": "integer", "minimum": 1 }
       }
     },
@@ -151,8 +170,8 @@
         "run": { "type": "string", "minLength": 1 },
         "attempt": { "type": "string", "minLength": 1 },
         "job": { "type": "string", "minLength": 1 },
-        "git_ref": { "type": "string", "minLength": 1 },
-        "commit": { "type": "string", "minLength": 1 }
+        "git_ref": { "type": "string", "pattern": "^refs/.+" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
       }
     },
     "readback": {

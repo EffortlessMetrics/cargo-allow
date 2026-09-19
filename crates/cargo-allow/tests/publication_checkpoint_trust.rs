@@ -209,7 +209,7 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     let (mut trusted, stored) = stored_first(&journal)?;
     record_checkpoint_readback_v1(
         &mut trusted,
-        CheckpointProviderOutcomeV1::Delivered(stored),
+        CheckpointProviderOutcomeV1::Delivered(stored.clone()),
         now,
     )
     .map_err(io::Error::other)?;
@@ -228,6 +228,34 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     require(
         verify_checkpoint_against_journal_v1(&trusted, &journal, &fork_producer, now).is_err(),
         "fork producers must never verify a checkpoint",
+    )?;
+    let mut provider_tamper: serde_json::Value = serde_json::from_slice(&stored)?;
+    let provider = provider_tamper
+        .get_mut("provider")
+        .and_then(serde_json::Value::as_object_mut)
+        .ok_or_else(|| io::Error::other("checkpoint provider object missing"))?;
+    provider.insert(
+        "object_id".to_string(),
+        serde_json::Value::String("artifact-9".to_string()),
+    );
+    let tampered_provider_bytes = serde_json::to_vec_pretty(&provider_tamper)?;
+    let (mut provider_subject, _) = stored_first(&journal)?;
+    let verdict = record_checkpoint_readback_v1(
+        &mut provider_subject,
+        CheckpointProviderOutcomeV1::Delivered(tampered_provider_bytes),
+        now,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        verdict == PublicationCheckpointReadbackV1::Mismatch,
+        "provider-object tampering must never read back Complete",
+    )?;
+    let mut self_attested: CargoAllowPublicationCheckpointV1 = serde_json::from_slice(&stored)?;
+    self_attested.readback = PublicationCheckpointReadbackV1::Complete;
+    self_attested.readback_at_unix_seconds = Some(now);
+    require(
+        checkpoint_permits_upload_v1(&self_attested, &journal, &expected_producer, now).is_err(),
+        "a deserialized Complete claim must not manufacture readback authority",
     )?;
     // Hostile: every byte fault classifies honestly, never Complete.
     let (mut tampered, _) = stored_first(&journal)?;
@@ -399,5 +427,9 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     .map_err(io::Error::other)?;
     verify_checkpoint_against_journal_v1(&trusted, &moved, &expected_producer, now)
         .map_err(io::Error::other)?;
+    require(
+        checkpoint_permits_upload_v1(&trusted, &moved, &expected_producer, now).is_err(),
+        "an authentic historical pre-intent checkpoint must not replay an upload after journal advancement",
+    )?;
     Ok(())
 }

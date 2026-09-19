@@ -33,33 +33,53 @@ local journal settles a prefix (head sequence + head digest)
         ▼
 begin checkpoint (sequence 1, or prior + 1 with linkage)
         ▼
-store exact bytes at the provider (producer protocol:
-render → bind body digest → measure → converge size)
+store immutable bytes at the provider with
+readback = Missing and no observation timestamp
+(render → bind canonical body digest → measure → converge size)
         ▼
-independent readback (download → classify: Complete |
+independent readback (download exact bytes → classify: Complete |
 Missing | Stale | Mismatch | ProviderUnavailable |
-InstrumentFailure)
+InstrumentFailure) creates a runtime-only witness
         ▼ per gate
-PreIntentDurable + verified readback ──► upload may begin
-PostObservation + verified readback ──► dependant may begin
+PreIntentDurable + UploadIntentDurable + current journal head
+    ──► exactly one upload may begin
+PostObservation + RegistryVisibleExact + row still settled
+    ──► dependant may begin
 ```
 
 - A fresh checkpoint reads back `Missing`: provider success without an
   independent readback is never clean.
 - Checkpoints are append-only and immutable; correction creates a new
-  sequence linked by the predecessor's canonical digest. Sequence 1 carries
-  no prior digest; later sequences require one, in Rust and in schema.
+  sequence linked by the predecessor's canonical immutable-subject digest.
+  Readback observation never changes that linkage. Sequence 1 carries no prior
+  digest; later sequences require one, in Rust and in schema.
+- `provider.object_digest` is the canonical body digest used to bind the
+  immutable subject while normalizing self-referential digest/size fields and
+  later readback observation. It is not presented as the downloaded archive's
+  byte digest; exact downloaded bytes are bound by the runtime-only witness.
+- A serialized `readback = Complete` value is evidence, not authority. A fresh
+  runner must download and classify the immutable bytes to create its own
+  non-serializable witness before either gate can pass.
 - The next runner discovers the operation only through exact typed identity
   (object ID + producer + operation), never "latest artifact" naming.
-- Journal prefixes never move backward across a sequence; incident posture
-  never clears; the first irreversible row never changes.
+- Journal prefixes never move backward across a sequence. The first
+  irreversible row and incident posture are distinct monotonic facts: an
+  operation can cross its first irreversible boundary without an incident,
+  while every incident requires that boundary to be known.
 - Expiry is construction plus retention exactly (1–90 days); expired or
   premature checkpoints never authorize progress.
 - A provider outage is `ProviderUnavailable`: an outage, never absence.
   Absence is a journal verdict with its own provider observation.
-- Row state in a checkpoint is the producer's claim at checkpoint time; the
-  journal honestly advances past it. Prefix integrity (the bound head entry
-  still at its sequence) is the verification invariant, not state equality.
+- Historical verification proves that the checkpoint bound an authentic
+  journal prefix and exact row transition. Permission is stricter: a
+  pre-intent checkpoint authorizes upload only while its durable-intent entry
+  is still the current journal head, and a post-observation checkpoint
+  authorizes a dependant only while the row has no later event and the
+  operation has neither completed nor entered incident.
+- Gate state is never a free producer claim. Pre-intent authority requires the
+  exact `UploadIntentDurable` + `IntentDurable` transition; dependant authority
+  requires the exact `RegistryVisibleExact` + `VisibleExact` transition. Every
+  conflict, absence, unknown, waiting, or incident posture remains blocking.
 - Fork and untrusted jobs cannot create authoritative checkpoints: producer
   equality against the expected release producer fails closed.
 - Provider notes are bounded (256 chars) and screened under the shared
@@ -69,12 +89,15 @@ PostObservation + verified readback ──► dependant may begin
 ## Recovery
 
 A runner lost after remote pre-intent resumes by discovering the exact
-checkpoint, verifying it against the surviving journal, and continuing the
-upload: it must not record a second pre-intent for the same row. A runner
-lost after registry acceptance but before the post-observation checkpoint
-blocks every dependant until observation is re-verified: missing remote
-evidence is never evidence of absence. Incident checkpoints carry the
-incident forward; a later clean record can never overwrite that history.
+immutable checkpoint and independently downloading and classifying its bytes.
+It may continue the upload only while the journal still ends at that exact
+`UploadIntentDurable` transition. Once `UploadRequestStarted` or any later
+entry exists, the historical checkpoint remains auditable but cannot replay an
+upload. A runner lost after registry acceptance but before the
+post-observation checkpoint blocks every dependant until exact registry
+observation is re-verified: missing remote evidence is never evidence of
+absence. Incident checkpoints carry the incident forward; a later clean
+record can never overwrite that history.
 
 ## Dry-run proof (synthetic only)
 
@@ -94,9 +117,10 @@ operations.
 
 ## Consumers and proof
 
-- #2502 uploads only from a verified `PreIntentDurable` readback and starts
-  dependants only from a verified `PostObservation` readback, and must treat
-  a refused gate as a stop signal.
+- #2502 uploads only from a verified, single-use
+  `PreIntentDurable`/`UploadIntentDurable` checkpoint and starts dependants
+  only from a verified `PostObservation`/`RegistryVisibleExact` checkpoint,
+  and must treat a refused gate as a stop signal.
 - #2509 consumes the same checkpoint contract for recovery continuation.
 - #3924 consumes the checkpoint readback vocabulary for the
   unknown-upload recovery state machine.

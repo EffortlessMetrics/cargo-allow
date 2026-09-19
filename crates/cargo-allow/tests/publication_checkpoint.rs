@@ -21,10 +21,12 @@ use allow_report::{
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
+    PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
+    UploadResponseClassV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
-    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_v1,
+    record_checkpoint_readback_v1, render_publication_checkpoint_v1,
+    verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -252,6 +254,7 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     )?;
     // Store the exact bytes, then read them back independently.
     let stored = store_checkpoint(&mut first)?;
+    let immutable_digest_before = digest_publication_checkpoint_v1(&first)?;
     let readback = record_checkpoint_readback_v1(
         &mut first,
         CheckpointProviderOutcomeV1::Delivered(stored.clone()),
@@ -262,6 +265,10 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         readback == PublicationCheckpointReadbackV1::Complete,
         "exact stored bytes must read back Complete",
     )?;
+    require(
+        digest_publication_checkpoint_v1(&first)? == immutable_digest_before,
+        "readback observation must not change sequence linkage",
+    )?;
     verify_checkpoint_against_journal_v1(&first, &journal, &expected_producer, now)
         .map_err(io::Error::other)?;
     checkpoint_permits_upload_v1(&first, &journal, &expected_producer, now)
@@ -270,10 +277,75 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         checkpoint_permits_dependant_v1(&first, &journal, &expected_producer, now).is_err(),
         "a pre-intent checkpoint must not unlock dependants",
     )?;
+    // Advance the append-only journal through one exact successful registry
+    // observation. A post-observation checkpoint must bind this event, not
+    // merely carry a producer-claimed VisibleExact state.
+    let mut observed_journal = journal.clone();
+    let row = journal_row("cargo-allow", 0, 10);
+    append_journal_event_v1(
+        &mut observed_journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::UploadRequestStarted,
+            row: Some(row.clone()),
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 60,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut observed_journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::UploadResponseObserved,
+            row: Some(row.clone()),
+            response: Some(PublicationUploadResponseV1 {
+                class: UploadResponseClassV1::Success,
+                detail: "synthetic".to_string(),
+            }),
+            observation: None,
+            at_unix_seconds: CREATED_AT + 70,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut observed_journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::RegistryObservationStarted,
+            row: Some(row.clone()),
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 80,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    append_journal_event_v1(
+        &mut observed_journal,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::RegistryVisibleExact,
+            row: Some(row),
+            response: None,
+            observation: Some(PublicationRegistryObservationV1 {
+                provider_reachable: true,
+                row_visible: true,
+                archive_digest_matches: true,
+            }),
+            at_unix_seconds: CREATED_AT + 90,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+
     // The second checkpoint links the first and unlocks the dependant row.
-    let mut second_init =
-        checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PostObservation)?;
+    let mut second_init = checkpoint_init(
+        &observed_journal,
+        2,
+        PublicationCheckpointKindV1::PostObservation,
+    )?;
     second_init.row.state = PublicationCheckpointRowStateV1::VisibleExact;
+    second_init.first_irreversible_row = Some("cargo-allow".to_string());
     let mut second =
         begin_publication_checkpoint_v1(second_init, Some(&first)).map_err(io::Error::other)?;
     require(
@@ -284,14 +356,27 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     record_checkpoint_readback_v1(
         &mut second,
         CheckpointProviderOutcomeV1::Delivered(stored_second),
-        now + 10,
+        now + 50,
     )
     .map_err(io::Error::other)?;
-    checkpoint_permits_dependant_v1(&second, &journal, &expected_producer, now + 10)
+    checkpoint_permits_dependant_v1(&second, &observed_journal, &expected_producer, now + 50)
         .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_upload_v1(&second, &journal, &expected_producer, now + 10).is_err(),
+        checkpoint_permits_upload_v1(&second, &observed_journal, &expected_producer, now + 50)
+            .is_err(),
         "a post-observation checkpoint must not authorize uploads",
+    )?;
+    let mut non_clean = second.clone();
+    non_clean.row.state = PublicationCheckpointRowStateV1::VisibleConflict;
+    require(
+        checkpoint_permits_dependant_v1(
+            &non_clean,
+            &observed_journal,
+            &expected_producer,
+            now + 50,
+        )
+        .is_err(),
+        "a conflict checkpoint must never unlock dependants",
     )?;
     // Control: the rendered checkpoints validate against the schema, with
     // the same sequence-one-null / later-digest prior law as the journal.
@@ -302,11 +387,37 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         )?)?;
         let validator = jsonschema::validator_for(&schema)
             .map_err(|error| io::Error::other(format!("checkpoint schema compiles: {error}")))?;
+        let stored_subject: serde_json::Value = serde_json::from_slice(&stored)?;
+        validator.validate(&stored_subject).map_err(|error| {
+            io::Error::other(format!(
+                "immutable stored checkpoint must validate: {error}"
+            ))
+        })?;
+        let mut false_missing_observation = stored_subject.clone();
+        set_field(
+            &mut false_missing_observation,
+            "readback_at_unix_seconds",
+            serde_json::Value::from(now),
+        )?;
+        require(
+            validator.validate(&false_missing_observation).is_err(),
+            "a Missing readback must not carry an observation timestamp",
+        )?;
         let rendered: serde_json::Value =
             serde_json::from_str(&render_publication_checkpoint_v1(&first)?)?;
         validator.validate(&rendered).map_err(|error| {
             io::Error::other(format!("stored checkpoint must validate: {error}"))
         })?;
+        let mut complete_without_time = rendered.clone();
+        set_field(
+            &mut complete_without_time,
+            "readback_at_unix_seconds",
+            serde_json::Value::Null,
+        )?;
+        require(
+            validator.validate(&complete_without_time).is_err(),
+            "a classified readback requires its observation timestamp",
+        )?;
         require(
             rendered.get("schema_id")
                 == Some(&serde_json::Value::String(
@@ -360,6 +471,25 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         )
         .is_err(),
         "sequence one with a predecessor must fail",
+    )?;
+    let mut reused = checkpoint_init(
+        &observed_journal,
+        2,
+        PublicationCheckpointKindV1::PostObservation,
+    )?;
+    reused.row.state = PublicationCheckpointRowStateV1::VisibleExact;
+    reused.first_irreversible_row = Some("cargo-allow".to_string());
+    reused.provider.object_id = first.provider.object_id.clone();
+    require(
+        begin_publication_checkpoint_v1(reused, Some(&first)).is_err(),
+        "checkpoint sequences must not reuse one provider object",
+    )?;
+    let mut overflow = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    overflow.created_at_unix_seconds = u64::MAX - 10;
+    overflow.retention_days = 90;
+    require(
+        begin_publication_checkpoint_v1(overflow, None).is_err(),
+        "checkpoint expiry arithmetic must fail closed on overflow",
     )?;
     let mut skipped = checkpoint_init(&journal, 3, PublicationCheckpointKindV1::PreIntentDurable)?;
     skipped.checkpoint_id = "checkpoint-0-2-0-003".to_string();

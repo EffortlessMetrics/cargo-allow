@@ -219,8 +219,9 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     // runner holds no local handles: it discovers the checkpoint by exact
     // identity and verifies it against the surviving journal, then uploads.
     // It must not record a second pre-intent for the same row.
-    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![first.clone()];
-    let discovered = match select_checkpoint_by_exact_identity_v1(
+    let stored_remote: CargoAllowPublicationCheckpointV1 = serde_json::from_slice(&stored_first)?;
+    let remote: Vec<CargoAllowPublicationCheckpointV1> = vec![stored_remote];
+    let mut discovered = match select_checkpoint_by_exact_identity_v1(
         &remote,
         "artifact-1",
         &expected_producer,
@@ -231,11 +232,32 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
     };
     require(
         discovered.checkpoint_sequence == 1
-            && discovered.readback == PublicationCheckpointReadbackV1::Complete,
-        "discovery must return the verified pre-intent checkpoint",
+            && discovered.readback == PublicationCheckpointReadbackV1::Missing,
+        "remote bytes must not self-attest an independent readback",
     )?;
+    read_back(&mut discovered, stored_first.clone(), now)?;
     checkpoint_permits_upload_v1(&discovered, &journal, &expected_producer, now)
         .map_err(io::Error::other)?;
+    let mut upload_started = journal.clone();
+    append_journal_event_v1(
+        &mut upload_started,
+        PublicationJournalAppendV1 {
+            kind: PublicationJournalEventV1::UploadRequestStarted,
+            row: Some(journal_row("cargo-allow", 0, 10)),
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 100,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    verify_checkpoint_against_journal_v1(&discovered, &upload_started, &expected_producer, now)
+        .map_err(io::Error::other)?;
+    require(
+        checkpoint_permits_upload_v1(&discovered, &upload_started, &expected_producer, now)
+            .is_err(),
+        "a recovered pre-intent checkpoint must not replay an upload after the journal records its start",
+    )?;
     // Control: runner lost after registry acceptance, before the
     // post-observation checkpoint. Without a verified post-observation
     // checkpoint the dependant row never begins, even though the journal
@@ -277,6 +299,17 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         .is_none(),
         "a foreign-producer object ID must never resolve under our producer",
     )?;
+    let duplicate_exact = vec![first.clone(), first.clone()];
+    require(
+        select_checkpoint_by_exact_identity_v1(
+            &duplicate_exact,
+            "artifact-1",
+            &expected_producer,
+            "publish_cargo_allow_final_0_2_0",
+        )
+        .is_none(),
+        "duplicate exact provider identities must fail ambiguity",
+    )?;
     require(
         select_checkpoint_by_exact_identity_v1(
             &crowded,
@@ -286,6 +319,17 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         )
         .is_none(),
         "bare object names must never resolve to a checkpoint",
+    )?;
+    let mut reused_object = checkpoint_init(&journal, 2, "artifact-1")?;
+    require(
+        begin_publication_checkpoint_v1(reused_object.clone(), Some(&first)).is_err(),
+        "later sequences must use a new immutable provider object",
+    )?;
+    reused_object.provider.object_id = "artifact-2".to_string();
+    reused_object.created_at_unix_seconds = CREATED_AT - 1;
+    require(
+        begin_publication_checkpoint_v1(reused_object, Some(&first)).is_err(),
+        "checkpoint construction time must not move backward",
     )?;
     // Control: checkpoint prefix does not match the live journal. A
     // truncated journal (head entry lost) breaks prefix verification.
