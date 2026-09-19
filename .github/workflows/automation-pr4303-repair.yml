@@ -1,0 +1,1043 @@
+name: PR 4303 fail-closed repair
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4303-fail-closed-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[repair-4303]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/3940-operation-authority-v1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Apply bounded PR-A repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, found {count}: {old[:80]!r}")
+              p.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+          def replace_between(path: str, start: str, end: str, replacement: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              start_index = text.find(start)
+              if start_index < 0:
+                  raise SystemExit(f"{path}: start marker not found: {start!r}")
+              end_index = text.find(end, start_index)
+              if end_index < 0:
+                  raise SystemExit(f"{path}: end marker not found: {end!r}")
+              p.write_text(
+                  text[:start_index] + replacement + text[end_index:],
+                  encoding="utf-8",
+                  newline="\n",
+              )
+
+          authority = "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+
+          replace_once(
+              authority,
+              '''fn digest_shape(value: &str) -> bool {
+              value
+                  .strip_prefix("sha256:")
+                  .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+          }
+
+          fn git_sha_shape(value: &str) -> bool {
+              (value.len() == 40 || value.len() == 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+          }
+
+          fn contains_secret_marker(value: &str) -> bool {
+              SECRET_MARKERS.iter().any(|marker| value.contains(marker))
+          }
+          ''',
+              '''fn lowercase_hex_shape(value: &str, expected_len: usize) -> bool {
+              value.len() == expected_len
+                  && value
+                      .bytes()
+                      .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+          }
+
+          fn digest_shape(value: &str) -> bool {
+              value
+                  .strip_prefix("sha256:")
+                  .is_some_and(|hex| lowercase_hex_shape(hex, 64))
+          }
+
+          fn git_sha_shape(value: &str) -> bool {
+              (value.len() == 40 || value.len() == 64)
+                  && lowercase_hex_shape(value, value.len())
+          }
+
+          fn contains_secret_marker(value: &str) -> bool {
+              let value = value.to_ascii_lowercase();
+              SECRET_MARKERS
+                  .iter()
+                  .any(|marker| value.contains(&marker.to_ascii_lowercase()))
+          }
+
+          fn bounded_retained_text(value: &str) -> bool {
+              !value.trim().is_empty()
+                  && value.len() <= 256
+                  && !value.contains(['\\n', '\\r', '\\0'])
+                  && !contains_secret_marker(value)
+                  && !value.starts_with("/home/")
+                  && !value.starts_with("/Users/")
+                  && !value.starts_with("file://")
+                  && !value.contains("\\\\")
+                  && !value
+                      .as_bytes()
+                      .get(1)
+                      .is_some_and(|separator| *separator == b':')
+          }
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''fn validate_package_rows(
+              rows: &[CargoAllowReleaseOperationPackageRowV1],
+          ) -> Result<(), &'static str> {
+              if rows.len() != 10 {
+                  return Err("release operation identity requires exactly ten final package rows");
+              }
+              let expected = RELEASE_AUTHORIZATION_SELECTION
+                  .iter()
+                  .filter(|(_, _, _, shared)| !*shared);
+              for (row, (logical_id, package_name, version, _)) in rows.iter().zip(expected) {
+          ''',
+              '''fn validate_package_rows(
+              rows: &[CargoAllowReleaseOperationPackageRowV1],
+          ) -> Result<(), &'static str> {
+              let expected = RELEASE_AUTHORIZATION_SELECTION
+                  .iter()
+                  .filter(|(_, _, _, shared)| !*shared)
+                  .collect::<Vec<_>>();
+              if rows.len() != expected.len() {
+                  return Err(
+                      "release operation identity requires exactly the selected final package rows",
+                  );
+              }
+              for (row, (logical_id, package_name, version, _)) in rows.iter().zip(expected) {
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''    if init.nonce.trim().is_empty() || contains_secret_marker(&init.nonce) {
+                  return Err("operation identity requires a bounded non-secret nonce");
+              }
+          ''',
+              '''    if !bounded_retained_text(&init.nonce) {
+                  return Err("operation identity requires a bounded non-secret nonce");
+              }
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''        || identity.nonce.trim().is_empty()
+                  || contains_secret_marker(&identity.nonce)
+          ''',
+              '''        || !bounded_retained_text(&identity.nonce)
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''    for value in [
+                  producer.tool.as_str(),
+                  producer.schema.as_str(),
+                  producer.repository.as_str(),
+                  producer.workflow.as_str(),
+                  producer.workflow_ref.as_str(),
+                  producer.run.as_str(),
+                  producer.job.as_str(),
+              ] {
+                  if value.trim().is_empty() || contains_secret_marker(value) {
+                      return Err("operation event producer identity is malformed");
+                  }
+              }
+          ''',
+              '''    for value in [
+                  producer.tool.as_str(),
+                  producer.schema.as_str(),
+                  producer.repository.as_str(),
+                  producer.workflow.as_str(),
+                  producer.workflow_ref.as_str(),
+                  producer.run.as_str(),
+                  producer.job.as_str(),
+              ] {
+                  if !bounded_retained_text(value) {
+                      return Err("operation event producer identity is malformed");
+                  }
+              }
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''    if event.payload_schema_id.trim().is_empty()
+                  || !digest_shape(&event.payload_digest)
+                  || event.actor.trim().is_empty()
+                  || contains_secret_marker(&event.actor)
+                  || event.request_boundary.trim().is_empty()
+                  || contains_secret_marker(&event.request_boundary)
+                  || event.observed_at_unix_seconds == 0
+          ''',
+              '''    if !bounded_retained_text(&event.payload_schema_id)
+                  || !digest_shape(&event.payload_digest)
+                  || !bounded_retained_text(&event.actor)
+                  || !bounded_retained_text(&event.request_boundary)
+                  || event.observed_at_unix_seconds == 0
+                  || event.observed_at_unix_seconds > identity.expires_at_unix_seconds
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''fn has_event(
+              events: &[CargoAllowReleaseOperationEventV1],
+              class: CargoAllowReleaseOperationEventClassV1,
+          ) -> bool {
+              events.iter().any(|event| event.event_class == class)
+          }
+          ''',
+              '''fn has_event(
+              events: &[CargoAllowReleaseOperationEventV1],
+              class: CargoAllowReleaseOperationEventClassV1,
+          ) -> bool {
+              events.iter().any(|event| event.event_class == class)
+          }
+
+          fn event_is_exact_authority(event: &CargoAllowReleaseOperationEventV1) -> bool {
+              event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+                  && event.response_posture
+                      != CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+          }
+
+          fn has_exact_event(
+              events: &[CargoAllowReleaseOperationEventV1],
+              class: CargoAllowReleaseOperationEventClassV1,
+          ) -> bool {
+              events
+                  .iter()
+                  .any(|event| event.event_class == class && event_is_exact_authority(event))
+          }
+
+          fn same_request_identity(
+              origin: &CargoAllowReleaseOperationEventV1,
+              later: &CargoAllowReleaseOperationEventV1,
+          ) -> bool {
+              origin.subject == later.subject
+                  && origin.payload_schema_id == later.payload_schema_id
+                  && origin.payload_digest == later.payload_digest
+                  && origin.request_boundary == later.request_boundary
+                  && origin.artifact_digest == later.artifact_digest
+          }
+
+          fn init_resolves_unknown(
+              origin: &CargoAllowReleaseOperationEventV1,
+              init: &CargoAllowReleaseOperationEventInitV1,
+          ) -> bool {
+              let expected_class = match origin.event_class {
+                  CargoAllowReleaseOperationEventClassV1::TagIntentDurable => {
+                      CargoAllowReleaseOperationEventClassV1::TagObservedExact
+                  }
+                  CargoAllowReleaseOperationEventClassV1::PackageRowIntentDurable => {
+                      CargoAllowReleaseOperationEventClassV1::PackageRowObservedExact
+                  }
+                  _ => return false,
+              };
+              init.event_class == expected_class
+                  && init.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+                  && init.response_posture
+                      != CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+                  && origin.subject == init.subject
+                  && origin.payload_schema_id == init.payload_schema_id
+                  && origin.payload_digest == init.payload_digest
+                  && origin.request_boundary == init.request_boundary
+                  && origin.artifact_digest == init.artifact_digest
+          }
+
+          fn validate_event_continuity(
+              identity: &CargoAllowReleaseOperationIdentityV1,
+              events: &[CargoAllowReleaseOperationEventV1],
+              event: &CargoAllowReleaseOperationEventV1,
+          ) -> Result<(), &'static str> {
+              let Some(first) = events.first() else {
+                  return Ok(());
+              };
+              let previous = events
+                  .last()
+                  .ok_or("operation event continuity lost its previous event")?;
+              if event.observed_at_unix_seconds < previous.observed_at_unix_seconds {
+                  return Err("operation event observation time moved backwards");
+              }
+              if identity.one_run_scope
+                  && (event.producer.repository != first.producer.repository
+                      || event.producer.workflow != first.producer.workflow
+                      || event.producer.workflow_ref != first.producer.workflow_ref
+                      || event.producer.run != first.producer.run
+                      || event.producer.attempt != first.producer.attempt
+                      || event.producer.commit != first.producer.commit)
+              {
+                  return Err("one-run release operation changed producer run identity");
+              }
+              Ok(())
+          }
+
+          fn singleton_event_class(class: CargoAllowReleaseOperationEventClassV1) -> bool {
+              use CargoAllowReleaseOperationEventClassV1 as Event;
+              matches!(
+                  class,
+                  Event::OperationSelected
+                      | Event::AuthorizationSelected
+                      | Event::LeaseAcquired
+                      | Event::TagIntentDurable
+                      | Event::TagObservedExact
+                      | Event::GitHubDraftObservedExact
+                      | Event::PublicReleaseObservedExact
+                      | Event::RepositoryReconciled
+                      | Event::IncidentRecorded
+                      | Event::RecoverySelected
+                      | Event::OperationSettled
+              )
+          }
+          ''',
+          )
+
+          transition = r'''fn validate_event_transition(
+              identity: &CargoAllowReleaseOperationIdentityV1,
+              events: &[CargoAllowReleaseOperationEventV1],
+              init: &CargoAllowReleaseOperationEventInitV1,
+          ) -> Result<(), &'static str> {
+              use CargoAllowReleaseOperationEventClassV1 as Event;
+              use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+
+              if events
+                  .last()
+                  .is_some_and(|event| event.event_class == Event::OperationSettled)
+              {
+                  return Err("operation history is terminal after OperationSettled");
+              }
+              if singleton_event_class(init.event_class)
+                  && events
+                      .iter()
+                      .any(|event| event.event_class == init.event_class)
+              {
+                  return Err("singleton release-operation event cannot be appended twice");
+              }
+              if events.iter().any(|event| {
+                  matches!(
+                      event.semantic_result,
+                      ResultClass::Partial
+                          | ResultClass::Conflict
+                          | ResultClass::Stale
+                          | ResultClass::ProviderUnavailable
+                          | ResultClass::InstrumentFailure
+                  )
+              }) {
+                  return Err("non-clean operation result blocks later transitions");
+              }
+              let unresolved = events
+                  .iter()
+                  .enumerate()
+                  .filter(|(index, event)| {
+                      (event.semantic_result == ResultClass::Unknown
+                          || event.response_posture
+                              == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
+                          && !response_unknown_is_resolved(events, *index)
+                  })
+                  .map(|(_, event)| event)
+                  .collect::<Vec<_>>();
+              if !unresolved.is_empty()
+                  && !unresolved
+                      .iter()
+                      .any(|origin| init_resolves_unknown(origin, init))
+              {
+                  return Err("unresolved response-unknown blocks unrelated progression");
+              }
+              if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication
+                  && has_event(events, Event::IncidentRecorded)
+              {
+                  return Err(
+                      "clean operation cannot continue after an incident; recovery needs its own lineage",
+                  );
+              }
+              if identity.operation_class == CargoAllowReleaseOperationClassV1::Containment
+                  && matches!(
+                      init.event_class,
+                      Event::TagIntentDurable
+                          | Event::TagObservedExact
+                          | Event::PackageRowIntentDurable
+                          | Event::PackageRowObservedExact
+                          | Event::GitHubDraftObservedExact
+                          | Event::AssetObservedExact
+                          | Event::PublicReleaseObservedExact
+                          | Event::RepositoryReconciled
+                  )
+              {
+                  return Err("containment authority cannot create new publication progress");
+              }
+
+              match init.event_class {
+                  Event::OperationSelected => {
+                      if !events.is_empty() {
+                          return Err("OperationSelected must be the first event");
+                      }
+                  }
+                  Event::RecoverySelected => {
+                      if identity.operation_class
+                          != CargoAllowReleaseOperationClassV1::IncidentRecovery
+                          || !has_exact_event(events, Event::OperationSelected)
+                          || init.semantic_result != ResultClass::Exact
+                          || init.response_posture
+                              == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+                      {
+                          return Err(
+                              "RecoverySelected requires an exact incident-recovery operation selection",
+                          );
+                      }
+                  }
+                  Event::AuthorizationSelected => {
+                      if !has_exact_event(events, Event::OperationSelected) {
+                          return Err("authorization selection requires exact OperationSelected");
+                      }
+                      if identity.operation_class
+                          == CargoAllowReleaseOperationClassV1::IncidentRecovery
+                          && !has_exact_event(events, Event::RecoverySelected)
+                      {
+                          return Err("recovery authorization requires exact RecoverySelected");
+                      }
+                  }
+                  Event::LeaseAcquired => {
+                      if !has_exact_event(events, Event::AuthorizationSelected) {
+                          return Err("lease acquisition requires exact AuthorizationSelected");
+                      }
+                  }
+                  Event::TagIntentDurable => {
+                      if !has_exact_event(events, Event::LeaseAcquired) {
+                          return Err("tag intent requires the exact durable operation lease");
+                      }
+                  }
+                  Event::TagObservedExact => {
+                      let matching_intent = events.iter().any(|event| {
+                          event.event_class == Event::TagIntentDurable
+                              && (event_is_exact_authority(event)
+                                  || init_resolves_unknown(event, init))
+                      });
+                      if !matching_intent {
+                          return Err("exact tag observation is not bound to its durable intent");
+                      }
+                  }
+                  Event::PackageRowIntentDurable => {
+                      if !has_exact_event(events, Event::TagObservedExact) {
+                          return Err("package intent requires exact tag observation");
+                      }
+                      if events.iter().any(|event| {
+                          event.event_class == Event::PackageRowIntentDurable
+                              && event.subject == init.subject
+                      }) {
+                          return Err("package row durable intent is append-once for one operation");
+                      }
+                  }
+                  Event::PackageRowObservedExact => {
+                      let CargoAllowReleaseOperationEventSubjectV1::Package(id) = &init.subject else {
+                          return Err("package observation requires a package subject");
+                      };
+                      let matching_intent = events.iter().any(|event| {
+                          event.event_class == Event::PackageRowIntentDurable
+                              && event.subject
+                                  == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
+                              && (event_is_exact_authority(event)
+                                  || init_resolves_unknown(event, init))
+                      });
+                      if !matching_intent {
+                          return Err(
+                              "package observation requires the same row's exact durable intent",
+                          );
+                      }
+                      if events.iter().any(|event| {
+                          event.event_class == Event::PackageRowObservedExact
+                              && event.subject == init.subject
+                      }) {
+                          return Err("package row exact observation is append-once for one operation");
+                      }
+                  }
+                  Event::GitHubDraftObservedExact => {
+                      if !all_packages_exact(identity, events) {
+                          return Err("GitHub draft observation requires every selected package exact");
+                      }
+                  }
+                  Event::AssetObservedExact => {
+                      if !has_exact_event(events, Event::GitHubDraftObservedExact) {
+                          return Err("asset observation requires exact GitHub draft observation");
+                      }
+                      if events.iter().any(|event| {
+                          event.event_class == Event::AssetObservedExact
+                              && event.subject == init.subject
+                      }) {
+                          return Err("asset exact observation is append-once for one operation");
+                      }
+                  }
+                  Event::PublicReleaseObservedExact => {
+                      if !all_packages_exact(identity, events)
+                          || !all_assets_exact(identity, events)
+                          || !has_exact_event(events, Event::GitHubDraftObservedExact)
+                      {
+                          return Err(
+                              "public release observation requires every package and asset exact",
+                          );
+                      }
+                  }
+                  Event::RepositoryReconciled => {
+                      if !has_exact_event(events, Event::PublicReleaseObservedExact) {
+                          return Err(
+                              "repository reconciliation follows exact public release observation",
+                          );
+                      }
+                  }
+                  Event::IncidentRecorded => {
+                      if events.is_empty() {
+                          return Err("incident recording requires an existing operation");
+                      }
+                  }
+                  Event::OperationSettled => {
+                      if identity.operation_class
+                          == CargoAllowReleaseOperationClassV1::Containment
+                      {
+                          if !has_exact_event(events, Event::AuthorizationSelected)
+                              || !has_exact_event(events, Event::LeaseAcquired)
+                          {
+                              return Err(
+                                  "containment settlement requires exact authorization and lease",
+                              );
+                          }
+                      } else if !has_exact_event(events, Event::RepositoryReconciled)
+                          || !all_packages_exact(identity, events)
+                          || !all_assets_exact(identity, events)
+                          || !has_exact_event(events, Event::PublicReleaseObservedExact)
+                      {
+                          return Err(
+                              "operation settlement requires the complete selected denominator",
+                          );
+                      }
+                  }
+              }
+
+              if matches!(
+                  init.event_class,
+                  Event::TagObservedExact
+                      | Event::PackageRowObservedExact
+                      | Event::GitHubDraftObservedExact
+                      | Event::AssetObservedExact
+                      | Event::PublicReleaseObservedExact
+                      | Event::RepositoryReconciled
+                      | Event::RecoverySelected
+                      | Event::OperationSettled
+              ) && (init.semantic_result != ResultClass::Exact
+                  || init.response_posture
+                      == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
+              {
+                  return Err(
+                      "exact completion event classes require an exact known semantic result",
+                  );
+              }
+              if init.semantic_result == ResultClass::Unknown
+                  && init.response_posture
+                      != CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+              {
+                  return Err("unknown semantic result requires response_unknown posture");
+              }
+              if init.response_posture
+                  == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+                  && init.semantic_result != ResultClass::Unknown
+              {
+                  return Err("response_unknown posture requires an unknown semantic result");
+              }
+              Ok(())
+          }
+
+          '''
+          replace_between(
+              authority,
+              "fn validate_event_transition(",
+              "pub fn append_release_operation_event_v1(",
+              transition + "pub fn append_release_operation_event_v1(",
+          )
+
+          replace_once(
+              authority,
+              '''    validate_event_envelope_fields(identity, &probe)?;
+
+              let operation_identity_digest =
+          ''',
+              '''    validate_event_envelope_fields(identity, &probe)?;
+              validate_event_continuity(identity, events, &probe)?;
+
+              let operation_identity_digest =
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''        validate_event_envelope_fields(identity, event)?;
+              validate_event_subject(identity, event.event_class, &event.subject)?;
+          ''',
+              '''        validate_event_envelope_fields(identity, event)?;
+              validate_event_continuity(identity, &accepted, event)?;
+              validate_event_subject(identity, event.event_class, &event.subject)?;
+          ''',
+          )
+
+          unknown_resolution = r'''fn response_unknown_is_resolved(
+              events: &[CargoAllowReleaseOperationEventV1],
+              index: usize,
+          ) -> bool {
+              use CargoAllowReleaseOperationEventClassV1 as Event;
+              let Some(event) = events.get(index) else {
+                  return false;
+              };
+              match (&event.event_class, &event.subject) {
+                  (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => {
+                      events.iter().skip(index + 1).any(|later| {
+                          later.event_class == Event::TagObservedExact
+                              && event_is_exact_authority(later)
+                              && same_request_identity(event, later)
+                      })
+                  }
+                  (
+                      Event::PackageRowIntentDurable,
+                      CargoAllowReleaseOperationEventSubjectV1::Package(id),
+                  ) => events.iter().skip(index + 1).any(|later| {
+                      later.event_class == Event::PackageRowObservedExact
+                          && later.subject
+                              == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
+                          && event_is_exact_authority(later)
+                          && same_request_identity(event, later)
+                  }),
+                  _ => false,
+              }
+          }
+
+          '''
+          replace_between(
+              authority,
+              "fn response_unknown_is_resolved(",
+              "fn limiting_state(",
+              unknown_resolution + "fn limiting_state(",
+          )
+
+          replace_once(
+              authority,
+              '''    if events.is_empty() || !has_event(events, Event::AuthorizationSelected) {
+                  return State::Prepared;
+              }
+              if !has_event(events, Event::LeaseAcquired) {
+                  return State::Authorized;
+              }
+              if !has_event(events, Event::TagObservedExact) {
+                  return State::HeldPreIrreversible;
+              }
+          ''',
+              '''    if events.is_empty() || !has_exact_event(events, Event::AuthorizationSelected) {
+                  return State::Prepared;
+              }
+              if !has_exact_event(events, Event::LeaseAcquired) {
+                  return State::Authorized;
+              }
+              if identity.operation_class == CargoAllowReleaseOperationClassV1::Containment {
+                  return if has_exact_event(events, Event::OperationSettled) {
+                      State::CompleteWithIncidentLineage
+                  } else {
+                      State::HeldPreIrreversible
+                  };
+              }
+              if !has_exact_event(events, Event::TagObservedExact) {
+                  return State::HeldPreIrreversible;
+              }
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''    if !has_event(events, Event::GitHubDraftObservedExact) {
+                  return State::PackagesPublishedExact;
+              }
+              if !all_assets_exact(identity, events) || !has_event(events, Event::PublicReleaseObservedExact)
+              {
+                  return State::GitHubReleaseInProgress;
+              }
+              if !has_event(events, Event::RepositoryReconciled) {
+                  return State::PublicReleaseObserved;
+              }
+              if !has_event(events, Event::OperationSettled) {
+          ''',
+              '''    if !has_exact_event(events, Event::GitHubDraftObservedExact) {
+                  return State::PackagesPublishedExact;
+              }
+              if !all_assets_exact(identity, events)
+                  || !has_exact_event(events, Event::PublicReleaseObservedExact)
+              {
+                  return State::GitHubReleaseInProgress;
+              }
+              if !has_exact_event(events, Event::RepositoryReconciled) {
+                  return State::PublicReleaseObserved;
+              }
+              if !has_exact_event(events, Event::OperationSettled) {
+          ''',
+          )
+
+          replace_once(
+              authority,
+              '''                Event::TagObservedExact
+                      | Event::PackageRowObservedExact
+                      | Event::GitHubDraftObservedExact
+                      | Event::AssetObservedExact
+                      | Event::PublicReleaseObservedExact
+          ''',
+              '''                Event::TagObservedExact
+                      | Event::PackageRowObservedExact
+                      | Event::GitHubDraftObservedExact
+                      | Event::AssetObservedExact
+                      | Event::PublicReleaseObservedExact
+                  ) || matches!(
+                      event.event_class,
+                      Event::TagIntentDurable | Event::PackageRowIntentDurable
+                  ) && event.response_posture
+                      == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
+          ''',
+          )
+
+          contract = "crates/allow-report/tests/release_operation_authority_contract.rs"
+          replace_once(
+              contract,
+              '''    validate_release_operation_history_v1(&identity, &events).map_err(io::Error::other)?;
+              let rendered_event = render_release_operation_event_v1(
+          ''',
+              '''    validate_release_operation_history_v1(&identity, &events).map_err(io::Error::other)?;
+              let rendered_events = serde_json::to_string_pretty(&events)?;
+              let loaded_events: Vec<CargoAllowReleaseOperationEventV1> =
+                  serde_json::from_str(&rendered_events)?;
+              require(
+                  loaded_events == events,
+                  "complete event history must round-trip without semantic drift",
+              )?;
+              validate_release_operation_history_v1(&loaded_identity, &loaded_events)
+                  .map_err(io::Error::other)?;
+              let rendered_event = render_release_operation_event_v1(
+          ''',
+          )
+
+          tests = "crates/cargo-allow/tests/release_operation_authority.rs"
+          replace_once(
+              tests,
+              '''        one_asset.state == State::GitHubReleaseInProgress && one_asset.missing_assets.len() == 1,
+          ''',
+              '''        one_asset.state == State::GitHubReleaseInProgress
+                  && one_asset.missing_assets.len() == identity.assets.len() - 1,
+          ''',
+          )
+          replace_once(
+              tests,
+              '''    let second_asset = identity
+                  .assets
+                  .get(1)
+                  .ok_or_else(|| io::Error::other("asset denominator should contain two fixture rows"))?
+                  .asset_id
+                  .clone();
+              append(
+                  &identity,
+                  &mut events,
+                  Event::AssetObservedExact,
+                  Asset(second_asset),
+                  63,
+              )?;
+              append(
+                  &identity,
+                  &mut events,
+                  Event::PublicReleaseObservedExact,
+                  Operation,
+                  64,
+              )?;
+              append(
+                  &identity,
+                  &mut events,
+                  Event::RepositoryReconciled,
+                  Operation,
+                  65,
+              )?;
+          ''',
+              '''    let remaining_assets = identity
+                  .assets
+                  .iter()
+                  .skip(1)
+                  .map(|row| row.asset_id.clone())
+                  .collect::<Vec<_>>();
+              let mut asset_ordinal = 63;
+              for asset_id in remaining_assets {
+                  append(
+                      &identity,
+                      &mut events,
+                      Event::AssetObservedExact,
+                      Asset(asset_id),
+                      asset_ordinal,
+                  )?;
+                  asset_ordinal += 1;
+              }
+              append(
+                  &identity,
+                  &mut events,
+                  Event::PublicReleaseObservedExact,
+                  Operation,
+                  asset_ordinal,
+              )?;
+              asset_ordinal += 1;
+              append(
+                  &identity,
+                  &mut events,
+                  Event::RepositoryReconciled,
+                  Operation,
+                  asset_ordinal,
+              )?;
+          ''',
+          )
+          replace_once(
+              tests,
+              '''        Event::OperationSettled,
+                  Operation,
+                  66,
+          ''',
+              '''        Event::OperationSettled,
+                  Operation,
+                  asset_ordinal + 1,
+          ''',
+          )
+
+          extra_tests = r'''
+
+          #[test]
+          fn release_operation_blocks_non_clean_prerequisites_and_invalid_continuation(
+          ) -> Result<(), Box<dyn Error>> {
+              use CargoAllowReleaseOperationEventClassV1 as Event;
+              use CargoAllowReleaseOperationEventSubjectV1::Operation;
+              use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+
+              let identity = identity()?;
+              let mut events = Vec::new();
+              append(&identity, &mut events, Event::OperationSelected, Operation, 1)?;
+              let unavailable = append_release_operation_event_v1(
+                  &identity,
+                  &events,
+                  event_init(
+                      &identity,
+                      Event::AuthorizationSelected,
+                      Operation,
+                      ResultClass::ProviderUnavailable,
+                      2,
+                  ),
+              )
+              .map_err(io::Error::other)?;
+              events.push(unavailable);
+              require(
+                  append_release_operation_event_v1(
+                      &identity,
+                      &events,
+                      event_init(
+                          &identity,
+                          Event::LeaseAcquired,
+                          Operation,
+                          ResultClass::Exact,
+                          3,
+                      ),
+                  )
+                  .is_err(),
+                  "provider-unavailable authorization must not unlock the lease",
+              )?;
+
+              let mut expired_init =
+                  identity_init(CargoAllowReleaseOperationClassV1::CleanFinalPublication);
+              expired_init.expires_at_unix_seconds = 1;
+              let expired = build_release_operation_identity_v1(expired_init)
+                  .map_err(io::Error::other)?;
+              require(
+                  append_release_operation_event_v1(
+                      &expired,
+                      &[],
+                      event_init(
+                          &expired,
+                          Event::OperationSelected,
+                          Operation,
+                          ResultClass::Exact,
+                          1,
+                      ),
+                  )
+                  .is_err(),
+                  "event after operation expiry must fail",
+              )?;
+
+              let mut continuity = Vec::new();
+              append(
+                  &identity,
+                  &mut continuity,
+                  Event::OperationSelected,
+                  Operation,
+                  10,
+              )?;
+              let mut backwards = event_init(
+                  &identity,
+                  Event::AuthorizationSelected,
+                  Operation,
+                  ResultClass::Exact,
+                  9,
+              );
+              backwards.observed_at_unix_seconds = continuity[0].observed_at_unix_seconds - 1;
+              require(
+                  append_release_operation_event_v1(&identity, &continuity, backwards).is_err(),
+                  "event time cannot move backwards",
+              )?;
+              let mut another_run = event_init(
+                  &identity,
+                  Event::AuthorizationSelected,
+                  Operation,
+                  ResultClass::Exact,
+                  11,
+              );
+              another_run.producer.run = "101".to_string();
+              require(
+                  append_release_operation_event_v1(&identity, &continuity, another_run).is_err(),
+                  "one-run operation cannot change producer run identity",
+              )
+          }
+
+          #[test]
+          fn response_unknown_requires_the_exact_correlated_observation() -> Result<(), Box<dyn Error>> {
+              use CargoAllowReleaseOperationEventClassV1 as Event;
+              use CargoAllowReleaseOperationEventSubjectV1::Operation;
+              use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
+
+              let identity = identity()?;
+              let mut events = Vec::new();
+              append(&identity, &mut events, Event::OperationSelected, Operation, 1)?;
+              append(&identity, &mut events, Event::AuthorizationSelected, Operation, 2)?;
+              append(&identity, &mut events, Event::LeaseAcquired, Operation, 3)?;
+
+              let mut unknown = event_init(
+                  &identity,
+                  Event::TagIntentDurable,
+                  Operation,
+                  ResultClass::Unknown,
+                  4,
+              );
+              unknown.response_posture =
+                  CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
+              let unknown_event = append_release_operation_event_v1(&identity, &events, unknown)
+                  .map_err(io::Error::other)?;
+              events.push(unknown_event.clone());
+
+              let unrelated = event_init(
+                  &identity,
+                  Event::TagObservedExact,
+                  Operation,
+                  ResultClass::Exact,
+                  5,
+              );
+              require(
+                  append_release_operation_event_v1(&identity, &events, unrelated).is_err(),
+                  "unrelated exact tag observation must not resolve another request",
+              )?;
+
+              let mut matching = event_init(
+                  &identity,
+                  Event::TagObservedExact,
+                  Operation,
+                  ResultClass::Exact,
+                  6,
+              );
+              matching.payload_schema_id = unknown_event.payload_schema_id.clone();
+              matching.payload_digest = unknown_event.payload_digest.clone();
+              matching.request_boundary = unknown_event.request_boundary.clone();
+              matching.artifact_digest = unknown_event.artifact_digest.clone();
+              require(
+                  append_release_operation_event_v1(&identity, &events, matching).is_ok(),
+                  "exact correlated observation must resolve the retained unknown request",
+              )
+          }
+          '''
+          p = Path(tests)
+          p.write_text(p.read_text(encoding="utf-8") + extra_tests, encoding="utf-8", newline="\n")
+
+          evidence = "policy/evidence-surface-inventory.toml"
+          replace_once(
+              evidence,
+              'claimed_acceptance_row = "exact subject identity, internally computed event chain, complete package/asset denominator, incident lineage, and closed non-clean states"',
+              'claimed_acceptance_row = "exact subject identity, internally computed event chain, complete package/asset denominator, and fail-closed aggregate projection for retained non-clean results"',
+          )
+
+          docs = "docs/release/release-operation-authority-v1.md"
+          replace_once(
+              docs,
+              '''Clean operations have no incident predecessor. Recovery and containment require
+          one exact predecessor digest and the matching authority class.
+          ''',
+              '''Clean operations have no incident predecessor. Recovery and containment retain a
+          predecessor digest and matching authority class in this PR-A generation. Typed
+          predecessor identity/head validation remains required before PR A can be accepted.
+          ''',
+          )
+          PY
+
+          cargo fmt --all
+
+      - name: Focused authority proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Commit validated repair and remove carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/automation-pr4303-repair.yml
+          git config user.name "EffortlessSteven"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git add crates/allow-report/src/artifacts/release_operation_authority_v1.rs \
+            crates/allow-report/src/artifacts.rs \
+            crates/allow-report/src/lib.rs \
+            crates/allow-report/tests/release_operation_authority_contract.rs \
+            crates/cargo-allow/tests/release_operation_authority.rs \
+            docs/release/release-operation-authority-v1.md \
+            policy/evidence-surface-inventory.toml
+          git commit -m "fix(release): harden operation authority transitions (#3940)"
+          git push origin HEAD:release/3940-operation-authority-v1
