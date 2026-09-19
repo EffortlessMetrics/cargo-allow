@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json",
+  "title": "CargoAllowPublicationCheckpointV1",
+  "description": "Remotely durable checkpoint for one publication journal prefix: exact operation and journal-prefix identity, monotonic sequence linkage, immutable provider object identity, producer trust, retention, and readback classification. Structural validation does not upload packages, observe the registry, or authorize the operation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "checkpoint_id",
+    "operation_id",
+    "operation_class",
+    "authorization_digest",
+    "custody_digest",
+    "freeze_digest",
+    "journal_schema_id",
+    "journal_head_sequence",
+    "journal_head_digest",
+    "checkpoint_sequence",
+    "prior_checkpoint_digest",
+    "kind",
+    "row",
+    "first_irreversible_row",
+    "incident_recorded",
+    "provider",
+    "producer",
+    "retention_days",
+    "created_at_unix_seconds",
+    "expires_at_unix_seconds",
+    "note",
+    "readback",
+    "readback_at_unix_seconds",
+    "claim_boundary",
+    "limitations"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "checkpoint_sequence": { "const": 1 }
+        },
+        "required": ["checkpoint_sequence"]
+      },
+      "then": {
+        "properties": {
+          "prior_checkpoint_digest": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "prior_checkpoint_digest": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "readback": { "const": "missing" }
+        },
+        "required": ["readback"]
+      },
+      "then": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "readback_at_unix_seconds": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.publication-checkpoint.v1" },
+    "schema_version": { "const": 1 },
+    "checkpoint_id": { "type": "string", "minLength": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation_class": {
+      "type": "string",
+      "enum": ["clean_final_publication", "incident_recovery"]
+    },
+    "authorization_digest": { "$ref": "#/$defs/digest" },
+    "custody_digest": { "$ref": "#/$defs/digest" },
+    "freeze_digest": { "$ref": "#/$defs/digest" },
+    "journal_schema_id": { "const": "cargo-allow.publication-journal.v1" },
+    "journal_head_sequence": { "type": "integer", "minimum": 1 },
+    "journal_head_digest": { "$ref": "#/$defs/digest" },
+    "checkpoint_sequence": { "type": "integer", "minimum": 1 },
+    "prior_checkpoint_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["pre_intent_durable", "post_observation"]
+    },
+    "row": { "$ref": "#/$defs/row" },
+    "first_irreversible_row": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "incident_recorded": { "type": "boolean" },
+    "provider": { "$ref": "#/$defs/provider_object" },
+    "producer": { "$ref": "#/$defs/producer" },
+    "retention_days": { "type": "integer", "minimum": 1, "maximum": 90 },
+    "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "note": { "type": "string", "maxLength": 256 },
+    "readback": {
+      "$ref": "#/$defs/readback",
+      "description": "Serializable observation only. Progress gates additionally require the opaque runtime exact-byte readback witness returned by the readback API."
+    },
+    "readback_at_unix_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_name", "row_order", "state"],
+      "properties": {
+        "package_name": { "type": "string", "minLength": 1 },
+        "row_order": { "type": "integer", "minimum": 0 },
+        "state": { "$ref": "#/$defs/row_state" }
+      }
+    },
+    "row_state": {
+      "type": "string",
+      "enum": [
+        "intent_durable",
+        "upload_started",
+        "response_observed",
+        "response_unknown",
+        "visible_exact",
+        "visible_conflict",
+        "observed_absent",
+        "waiting",
+        "incident"
+      ]
+    },
+    "provider_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "object_id", "object_name", "object_digest", "object_size_bytes"],
+      "properties": {
+        "provider": { "const": "github_actions_artifact" },
+        "object_id": { "type": "string", "minLength": 1 },
+        "object_name": { "type": "string", "minLength": 1 },
+        "object_digest": {
+          "$ref": "#/$defs/digest",
+          "description": "Digest of the normalized checkpoint body excluding provider metadata and readback observation. Exact downloaded-byte identity is runtime-only witness evidence."
+        },
+        "object_size_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow", "run", "attempt", "job", "git_ref", "commit"],
+      "properties": {
+        "workflow": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1 },
+        "git_ref": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "readback": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "missing",
+        "stale",
+        "mismatch",
+        "provider_unavailable",
+        "instrument_failure"
+      ]
+    }
+  }
+}
