@@ -1,0 +1,78 @@
+name: Fix PR 4303 envelope carrier anchors
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+jobs:
+  fix-carrier:
+    if: contains(github.event.head_commit.message, '[fix-4303-envelope-carrier]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Repair and retrigger the bounded carrier
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "106f8904bdf827a9bb5d17b4df79f10afefb9cf3"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/workflows/automation-pr4303-envelope-closure.yml')
+          text = path.read_text(encoding='utf-8')
+
+          old_check = '          test "$(git rev-parse HEAD^)" = "7d9414a86ef56d470d2706136457a97563833038"\n'
+          new_check = '''          git merge-base --is-ancestor 7d9414a86ef56d470d2706136457a97563833038 HEAD
+          mapfile -t carrier_changes < <(git diff --name-only 7d9414a86ef56d470d2706136457a97563833038 HEAD | sort)
+          test "${#carrier_changes[@]}" -eq 1
+          test "${carrier_changes[0]}" = ".github/workflows/automation-pr4303-envelope-closure.yml"
+'''
+          if text.count(old_check) != 2:
+              raise SystemExit(f'expected two exact source checks, found {text.count(old_check)}')
+          text = text.replace(old_check, new_check)
+
+          old_anchor = '''              '''        artifact_digest: &event.artifact_digest,
+              observed_at_unix_seconds: event.observed_at_unix_seconds,
+              claim_boundary: &event.claim_boundary,
+          ''',
+              '''        artifact_digest: &event.artifact_digest,
+              timestamp_source: event.timestamp_source,
+              observed_at_unix_seconds: event.observed_at_unix_seconds,
+              claim_boundary: &event.claim_boundary,
+          ''',
+'''
+          new_anchor = '''              '''        artifact_digest: &event.artifact_digest,
+              observed_at_unix_seconds: event.observed_at_unix_seconds,
+              claim_boundary: &event.claim_boundary,
+          ''',
+              '''        artifact_digest: &event.artifact_digest,
+              timestamp_source: event.timestamp_source,
+              observed_at_unix_seconds: event.observed_at_unix_seconds,
+              claim_boundary: &event.claim_boundary,
+          ''',
+'''
+          # YAML indentation is stripped by the block scalar. Make all Rust field
+          # lines carry the same eight-space source indentation inside Python.
+          old_literal = "'''        artifact_digest: &event.artifact_digest,\n    observed_at_unix_seconds: event.observed_at_unix_seconds,\n    claim_boundary: &event.claim_boundary,\n''',\n        '''        artifact_digest: &event.artifact_digest,\n    timestamp_source: event.timestamp_source,\n    observed_at_unix_seconds: event.observed_at_unix_seconds,\n    claim_boundary: &event.claim_boundary,\n''',"
+          new_literal = "'''        artifact_digest: &event.artifact_digest,\n        observed_at_unix_seconds: event.observed_at_unix_seconds,\n        claim_boundary: &event.claim_boundary,\n''',\n        '''        artifact_digest: &event.artifact_digest,\n        timestamp_source: event.timestamp_source,\n        observed_at_unix_seconds: event.observed_at_unix_seconds,\n        claim_boundary: &event.claim_boundary,\n''',"
+          if text.count(old_literal) != 1:
+              raise SystemExit(f'expected one event-digest anchor, found {text.count(old_literal)}')
+          text = text.replace(old_literal, new_literal)
+          path.write_text(text, encoding='utf-8', newline='\n')
+          PY
+          git rm .github/workflows/automation-pr4303-envelope-carrier-fix.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci(repair): rerun timestamp and authorization binding [repair-4303-envelope]"
+          git push origin HEAD:release/3940-operation-authority-v1
