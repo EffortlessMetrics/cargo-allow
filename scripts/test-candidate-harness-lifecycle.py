@@ -417,4 +417,52 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     reject("worktree-remove", "--root", str(root), "--path", str(work_path),
            "--purpose", "worktree-auth", "--token", work["token"])
 
+# A post-registration HEAD mismatch calls fail(), which raises SystemExit.
+# The harness must still remove the Git registration and directory before
+# propagating that terminal result.
+with tempfile.TemporaryDirectory(
+    prefix="cargo-allow-worktree-drift-cleanup."
+) as drift_temporary:
+    drift_root = Path(drift_temporary).resolve()
+    expected_head = "a" * 40
+    observed_head = "b" * 40
+    removed_worktrees: list[Path] = []
+    original_run_git = LIFECYCLE.run_git
+
+    def drifting_run_git(arguments: list[str], **kwargs):
+        command = arguments[2:]
+        if command[:3] == ["worktree", "add", "--detach"]:
+            directory = Path(command[3])
+            directory.mkdir()
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout="", stderr=""
+            )
+        if command == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout=observed_head + "\n", stderr=""
+            )
+        if command[:3] == ["worktree", "remove", "--force"]:
+            directory = Path(command[3])
+            __import__("shutil").rmtree(directory)
+            removed_worktrees.append(directory)
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout="", stderr=""
+            )
+        raise AssertionError(f"unexpected synthetic Git command: {arguments!r}")
+
+    LIFECYCLE.run_git = drifting_run_git
+    try:
+        try:
+            LIFECYCLE.worktree(
+                drift_root, ROOT, "worktree-drift-cleanup", expected_head
+            )
+        except SystemExit:
+            pass
+        else:
+            raise SystemExit("post-registration worktree drift unexpectedly succeeded")
+    finally:
+        LIFECYCLE.run_git = original_run_git
+    if len(removed_worktrees) != 1 or removed_worktrees[0].exists():
+        raise SystemExit("post-registration worktree drift did not clean up exactly once")
+
 print("ok candidate harness owned-directory containment")

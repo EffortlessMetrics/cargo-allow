@@ -303,7 +303,8 @@ def worktree(root: Path, repository: Path, purpose: str, head: str | None) -> tu
             git_head=resolved_head, repository=str(repo), worktree=True,
         )
         return directory.resolve(strict=True), token, resolved_head
-    except Exception:
+    except BaseException:
+        # fail() raises SystemExit; cleanup must still run after registration.
         run_git(
             [ "-C", str(repo), "worktree", "remove", "--force", str(directory)],
             capture_output=True, text=True,
