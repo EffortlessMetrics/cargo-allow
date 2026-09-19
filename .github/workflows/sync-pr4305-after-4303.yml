@@ -30,7 +30,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "ff532c44bf0db62b8f9ee7a742527bb3010d00b0"
+          test "$(git rev-parse HEAD^)" = "5872ba0f089fc0a615a274000e10e2de8062d25a"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/sync-pr4305-after-4303.yml"
           git fetch --no-tags origin main
           test "$(git rev-parse origin/main)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
@@ -166,6 +166,7 @@ jobs:
           )
           generated.unlink()
           PY
+          git rm .github/workflows/sync-pr4305-after-4303.yml
           cargo run -p cargo-allow --locked -- diff \
             --base origin/main \
             --require-change-note \
@@ -189,12 +190,11 @@ jobs:
           git diff --check
           mapfile -t changed < <(git diff --name-only origin/main | sort)
           printf 'effective changed files:\n%s\n' "${changed[*]}"
-          test "${#changed[@]}" -eq 9
+          test "${#changed[@]}" -eq 8
           expected=(
             .allow/revisions/4304-package-byte-authority.toml
             .changes/Added-20260919-package-byte-authority.yaml
             .github/workflows/ci.yml
-            .github/workflows/sync-pr4305-after-4303.yml
             policy/allow.toml
             scripts/candidate-harness-owned-dir.py
             scripts/exact-candidate-package-set.sh
@@ -204,9 +204,6 @@ jobs:
           for index in "${!expected[@]}"; do
             test "${changed[$index]}" = "${expected[$index]}"
           done
-          git rm .github/workflows/sync-pr4305-after-4303.yml
-          mapfile -t final_changed < <(git diff --name-only origin/main | sort)
-          test "${#final_changed[@]}" -eq 8
           test "$(git diff --name-only --diff-filter=U | wc -l)" -eq 0
 
       - name: Commit and push the normal merge
@@ -214,10 +211,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse MERGE_HEAD)" = "6002a5582ec51de79492c06e6cd555e77b99b40f"
-          git add \
-            .allow/revisions/4304-package-byte-authority.toml \
-            policy/allow.toml \
-            .github/workflows/sync-pr4305-after-4303.yml
+          git add .allow/revisions/4304-package-byte-authority.toml policy/allow.toml
+          git add -u .github/workflows/sync-pr4305-after-4303.yml
           git commit -m "Merge main into fix/package-byte-authority" \
             -m "Reallocate the package-byte authority rows to allow-11324 and allow-11325 and regenerate their exact revision fingerprints after #4303."
           git push origin HEAD:fix/package-byte-authority
