@@ -204,7 +204,17 @@ fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<
     )?;
 
     let mut duplicate = identity_init(CargoAllowReleaseOperationClassV1::CleanFinalPublication);
-    duplicate.packages[1].logical_id = duplicate.packages[0].logical_id.clone();
+    let duplicate_id = duplicate
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("package fixture should not be empty"))?
+        .logical_id
+        .clone();
+    duplicate
+        .packages
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("package fixture should have a second row"))?
+        .logical_id = duplicate_id;
     require(
         build_release_operation_identity_v1(duplicate).is_err(),
         "duplicate package identities must fail",
@@ -232,21 +242,30 @@ fn release_operation_event_chain_rejects_foreign_and_mutated_history() -> Result
     validate_release_operation_history_v1(&identity, &events).map_err(io::Error::other)?;
 
     let mut skipped = events.clone();
-    skipped[1].sequence = 3;
+    skipped
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("expected second event"))?
+        .sequence = 3;
     require(
         validate_release_operation_history_v1(&identity, &skipped).is_err(),
         "skipped sequence must fail loaded-chain validation",
     )?;
 
     let mut rewritten = events.clone();
-    rewritten[1].previous_event_digest = digest(777);
+    rewritten
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("expected second event"))?
+        .previous_event_digest = digest(777);
     require(
         validate_release_operation_history_v1(&identity, &rewritten).is_err(),
         "rewritten previous digest must fail loaded-chain validation",
     )?;
 
     let mut payload_mutated = events.clone();
-    payload_mutated[1].payload_digest = digest(778);
+    payload_mutated
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("expected second event"))?
+        .payload_digest = digest(778);
     require(
         validate_release_operation_history_v1(&identity, &payload_mutated).is_err(),
         "payload mutation without a new event digest must fail",
@@ -287,7 +306,12 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
     let mut events = Vec::new();
     append_preamble(&identity, &mut events)?;
 
-    let first_package = identity.packages[0].logical_id.clone();
+    let first_package = identity
+        .packages
+        .first()
+        .ok_or_else(|| io::Error::other("package denominator should not be empty"))?
+        .logical_id
+        .clone();
     append(
         &identity,
         &mut events,
@@ -362,7 +386,12 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         Operation,
         60,
     )?;
-    let first_asset = identity.assets[0].asset_id.clone();
+    let first_asset = identity
+        .assets
+        .first()
+        .ok_or_else(|| io::Error::other("asset denominator should not be empty"))?
+        .asset_id
+        .clone();
     append(
         &identity,
         &mut events,
@@ -391,7 +420,12 @@ fn release_operation_completion_requires_every_selected_package_and_asset() -> R
         "public release observation must fail before every required asset is exact",
     )?;
 
-    let second_asset = identity.assets[1].asset_id.clone();
+    let second_asset = identity
+        .assets
+        .get(1)
+        .ok_or_else(|| io::Error::other("asset denominator should contain two fixture rows"))?
+        .asset_id
+        .clone();
     append(
         &identity,
         &mut events,
