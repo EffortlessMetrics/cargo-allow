@@ -1,0 +1,147 @@
+name: Retain governed PR 4303 disposition v5
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: retain-pr-4303-disposition-v5
+  cancel-in-progress: false
+
+jobs:
+  retain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/3940-operation-authority-v1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+
+      - name: Guard and render the exact governed disposition
+        shell: bash
+        env:
+          BASE_SHA: 89d1376390726a34ae8b2cac14f69af7e684153d
+          SOURCE_SHA: c44cbec2f5029046c28702b42fe1b9611f8850a3
+          SOURCE_TREE: 13d1a774471b0a8911b06915a325fda00bc297e4
+          REVIEW_ID: '5257020819'
+          FOCUSED_RUN: '35460153089'
+          ALLOW_11323_FINGERPRINT: 'sha256:v1:7d5971146b5b713a27ea3b06782049cf4cba14c3dbb2e834ac46cd9f87074991'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "${SOURCE_SHA}"
+          test "$(git rev-parse HEAD^^{tree})" = "${SOURCE_TREE}"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/retain-pr4303-disposition-v5.yml"
+          test "$(git merge-base "${BASE_SHA}" "${SOURCE_SHA}")" = "${BASE_SHA}"
+          diff_digest="$(git diff "${BASE_SHA}..${SOURCE_SHA}" | sha256sum | cut -d' ' -f1)"
+          [[ "${diff_digest}" =~ ^[0-9a-f]{64}$ ]]
+          reviewed_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          mkdir -p .allow/review-dispositions
+          jq -n \
+            --arg base "${BASE_SHA}" \
+            --arg source "${SOURCE_SHA}" \
+            --arg tree "${SOURCE_TREE}" \
+            --arg digest "sha256:v1:${diff_digest}" \
+            --arg review "${REVIEW_ID}" \
+            --arg run "${FOCUSED_RUN}" \
+            --arg reviewed_at "${reviewed_at}" \
+            '{
+              schema_id: "cargo-allow.review-disposition.v1",
+              schema_version: 1,
+              repository: "EffortlessMetrics/cargo-allow",
+              pr_number: 4303,
+              base_ref: "main",
+              base_sha: $base,
+              head_ref: "release/3940-operation-authority-v1",
+              head_sha: $source,
+              merge_base: $base,
+              reviewed_diff_digest: $digest,
+              review_protocol: "review-current-head-gen1",
+              actor_class: "same_maintainer",
+              reviewer_identity: ("EffortlessSteven / ChatGPT GitHub review " + $review + "; same-maintainer exact governed-source technical review; not independent-human approval"),
+              independent_review: "not_retained",
+              claimed_verdict: "review_clean",
+              findings: [],
+              threads_inspected: [
+                ("PR 4303 GraphQL reviewThreads: all inline threads resolved at governed reviewed source head " + $source),
+                ("Maintainer exact-source technical review " + $review + " found no blocking source-semantic or governance defect in the fourteen-file PR-A surface"),
+                ("Governed source tree " + $tree + " excludes its own disposition and every temporary repair workflow"),
+                ("Focused proof run " + $run + " passed rustfmt, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene for terminal recovery and global-expiry coverage"),
+                "Retained UB/model-review output is supporting telemetry only; unavailable or degraded sensors are not represented as independent-human approval"
+              ],
+              required_ci: {
+                owner: "backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge",
+                observation_ref: ""
+              },
+              evidence_class: "current_observation",
+              scope_claim_boundary: "pull-request:4303",
+              reviewed_at_utc: $reviewed_at
+            }' > .allow/review-dispositions/pr-4303.json
+          jq -e . .allow/review-dispositions/pr-4303.json >/dev/null
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          path = Path('.allow/revisions/3940-release-operation-authority.toml')
+          text = path.read_text(encoding='utf-8')
+          old = 'after_fingerprint = "sha256:v1:5435e7ba2a4156fd3a2f82d653d89e2c0650bf7459b26c183abb7a865fb45f79"\nreason = "exact-path receipt for the retained typed same-maintainer PR #4303 review disposition; review evidence only, with no CI, merge, authorization, or release authority"'
+          new = f'after_fingerprint = "{os.environ["ALLOW_11323_FINGERPRINT"]}"\nreason = "exact-path receipt for the retained typed same-maintainer PR #4303 review disposition; review evidence only, with no CI, merge, authorization, or release authority"'
+          if text.count(old) != 1:
+              raise SystemExit('expected one stale allow-11323 fingerprint')
+          path.write_text(text.replace(old, new), encoding='utf-8', newline='\n')
+          PY
+          git rm .github/workflows/retain-pr4303-disposition-v5.yml
+
+      - name: Verify the typed disposition and generated revision
+        shell: bash
+        env:
+          BASE_SHA: 89d1376390726a34ae8b2cac14f69af7e684153d
+          SOURCE_SHA: c44cbec2f5029046c28702b42fe1b9611f8850a3
+        run: |
+          set -euo pipefail
+          diff_digest="$(git diff "${BASE_SHA}..${SOURCE_SHA}" | sha256sum | cut -d' ' -f1)"
+          jq -n \
+            --arg base "${BASE_SHA}" \
+            --arg source "${SOURCE_SHA}" \
+            --arg digest "sha256:v1:${diff_digest}" \
+            '{repository:"EffortlessMetrics/cargo-allow", pr_number:4303,
+              base_ref:"main", base_sha:$base,
+              head_ref:"release/3940-operation-authority-v1", head_sha:$source,
+              merge_base:$base, diff_digest:$digest,
+              review_protocol:"review-current-head-gen1",
+              scope_claim_boundary:"pull-request:4303"}' > /tmp/live.json
+          jq -n '{current_state:"draft", target_state:"draft", required_checks:[]}' > /tmp/request.json
+          cargo run -p cargo-allow --locked -- review-disposition check \
+            --disposition .allow/review-dispositions/pr-4303.json \
+            --live /tmp/live.json \
+            --request /tmp/request.json \
+            --format json > /tmp/disposition-outcome.json
+          jq -e '.currentness == "review_clean" and .transition.permitted == true' \
+            /tmp/disposition-outcome.json >/dev/null
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          cargo run -p cargo-allow --locked -- diff \
+            --base "${BASE_SHA}" --require-change-note --format markdown
+          git diff --check
+
+      - name: Commit the exact bootstrap delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          mapfile -t changed < <(git diff --cached --name-only HEAD | sort)
+          printf '%s\n' "${changed[@]}"
+          test "${#changed[@]}" -eq 3
+          test "${changed[0]}" = ".allow/review-dispositions/pr-4303.json"
+          test "${changed[1]}" = ".allow/revisions/3940-release-operation-authority.toml"
+          test "${changed[2]}" = ".github/workflows/retain-pr4303-disposition-v5.yml"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "review: retain governed exact-source disposition for PR 4303"
+          git push origin HEAD:release/3940-operation-authority-v1
