@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::release_authorization_v1::RELEASE_AUTHORIZATION_SELECTION;
 
 pub const RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION: u32 = 1;
-pub const RELEASE_OPERATION_IDENTITY_SCHEMA_ID: &str =
-    "cargo-allow.release-operation-identity.v1";
+pub const RELEASE_OPERATION_IDENTITY_SCHEMA_ID: &str = "cargo-allow.release-operation-identity.v1";
 pub const RELEASE_OPERATION_EVENT_SCHEMA_ID: &str = "cargo-allow.release-operation-event.v1";
 pub const RELEASE_OPERATION_HEAD_SCHEMA_ID: &str = "cargo-allow.release-operation-head.v1";
 pub const RELEASE_OPERATION_EVALUATION_SCHEMA_ID: &str =
@@ -455,9 +454,7 @@ fn validate_authority_lineage(
     }
 }
 
-fn identity_seed<'a>(
-    identity: &'a CargoAllowReleaseOperationIdentityV1,
-) -> IdentitySeedV1<'a> {
+fn identity_seed<'a>(identity: &'a CargoAllowReleaseOperationIdentityV1) -> IdentitySeedV1<'a> {
     IdentitySeedV1 {
         nonce: &identity.nonce,
         operation_class: identity.operation_class,
@@ -857,7 +854,9 @@ fn validate_event_transition(
     if identity.operation_class == CargoAllowReleaseOperationClassV1::CleanFinalPublication
         && has_event(events, Event::IncidentRecorded)
     {
-        return Err("clean operation cannot continue after an incident; recovery needs its own lineage");
+        return Err(
+            "clean operation cannot continue after an incident; recovery needs its own lineage",
+        );
     }
 
     match init.event_class {
@@ -897,9 +896,9 @@ fn validate_event_transition(
             if !has_event(events, Event::TagObservedExact) {
                 return Err("package intent requires exact tag observation");
             }
-            if events.iter().any(|event| event.event_class == Event::PackageRowIntentDurable
-                && event.subject == init.subject)
-            {
+            if events.iter().any(|event| {
+                event.event_class == Event::PackageRowIntentDurable && event.subject == init.subject
+            }) {
                 return Err("package row durable intent is append-once for one operation");
             }
         }
@@ -915,9 +914,9 @@ fn validate_event_transition(
             if !intent_exists {
                 return Err("package observation requires the same row's durable intent");
             }
-            if events.iter().any(|event| event.event_class == Event::PackageRowObservedExact
-                && event.subject == init.subject)
-            {
+            if events.iter().any(|event| {
+                event.event_class == Event::PackageRowObservedExact && event.subject == init.subject
+            }) {
                 return Err("package row exact observation is append-once for one operation");
             }
         }
@@ -930,9 +929,9 @@ fn validate_event_transition(
             if !has_event(events, Event::GitHubDraftObservedExact) {
                 return Err("asset observation requires exact GitHub draft observation");
             }
-            if events.iter().any(|event| event.event_class == Event::AssetObservedExact
-                && event.subject == init.subject)
-            {
+            if events.iter().any(|event| {
+                event.event_class == Event::AssetObservedExact && event.subject == init.subject
+            }) {
                 return Err("asset exact observation is append-once for one operation");
             }
         }
@@ -1001,11 +1000,10 @@ pub fn append_release_operation_event_v1(
         operation_identity_digest: release_operation_identity_digest_v1(identity)
             .map_err(|_| "identity digest failed")?,
         sequence: events.len() as u64 + 1,
-        previous_event_digest: events
-            .last()
-            .map_or_else(|| RELEASE_OPERATION_GENESIS_DIGEST.to_string(), |event| {
-                event.event_digest.clone()
-            }),
+        previous_event_digest: events.last().map_or_else(
+            || RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
+            |event| event.event_digest.clone(),
+        ),
         event_digest: RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
         event_class: init.event_class,
         subject: init.subject.clone(),
@@ -1026,11 +1024,10 @@ pub fn append_release_operation_event_v1(
     let operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     let sequence = events.len() as u64 + 1;
-    let previous_event_digest = events
-        .last()
-        .map_or_else(|| RELEASE_OPERATION_GENESIS_DIGEST.to_string(), |event| {
-            event.event_digest.clone()
-        });
+    let previous_event_digest = events.last().map_or_else(
+        || RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
+        |event| event.event_digest.clone(),
+    );
 
     let mut event = CargoAllowReleaseOperationEventV1 {
         schema_id: RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(),
@@ -1121,26 +1118,27 @@ fn response_unknown_is_resolved(
         return false;
     };
     match (&event.event_class, &event.subject) {
-        (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => events
-            .iter()
-            .skip(index + 1)
-            .any(|later| {
+        (Event::TagIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Operation) => {
+            events.iter().skip(index + 1).any(|later| {
                 later.event_class == Event::TagObservedExact
                     && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
-            }),
-        (
-            Event::PackageRowIntentDurable,
-            CargoAllowReleaseOperationEventSubjectV1::Package(id),
-        ) => events.iter().skip(index + 1).any(|later| {
-            later.event_class == Event::PackageRowObservedExact
-                && later.subject == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
-                && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
-        }),
+            })
+        }
+        (Event::PackageRowIntentDurable, CargoAllowReleaseOperationEventSubjectV1::Package(id)) => {
+            events.iter().skip(index + 1).any(|later| {
+                later.event_class == Event::PackageRowObservedExact
+                    && later.subject
+                        == CargoAllowReleaseOperationEventSubjectV1::Package(id.clone())
+                    && later.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+            })
+        }
         _ => false,
     }
 }
 
-fn limiting_state(events: &[CargoAllowReleaseOperationEventV1]) -> Option<CargoAllowReleaseOperationStateV1> {
+fn limiting_state(
+    events: &[CargoAllowReleaseOperationEventV1],
+) -> Option<CargoAllowReleaseOperationStateV1> {
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
     use CargoAllowReleaseOperationStateV1 as State;
     if events
@@ -1175,7 +1173,8 @@ fn limiting_state(events: &[CargoAllowReleaseOperationEventV1]) -> Option<CargoA
     }
     if events.iter().enumerate().any(|(index, event)| {
         (event.semantic_result == ResultClass::Unknown
-            || event.response_posture == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
+            || event.response_posture
+                == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
             && !response_unknown_is_resolved(events, index)
     }) {
         return Some(State::RecoveryRequired);
@@ -1192,7 +1191,10 @@ fn evaluate_state(
     if let Some(state) = limiting_state(events) {
         return state;
     }
-    if events.iter().any(|event| event.event_class == Event::IncidentRecorded) {
+    if events
+        .iter()
+        .any(|event| event.event_class == Event::IncidentRecorded)
+    {
         return State::RecoveryRequired;
     }
     if events.is_empty() || !has_event(events, Event::AuthorizationSelected) {
@@ -1215,7 +1217,8 @@ fn evaluate_state(
     if !has_event(events, Event::GitHubDraftObservedExact) {
         return State::PackagesPublishedExact;
     }
-    if !all_assets_exact(identity, events) || !has_event(events, Event::PublicReleaseObservedExact) {
+    if !all_assets_exact(identity, events) || !has_event(events, Event::PublicReleaseObservedExact)
+    {
         return State::GitHubReleaseInProgress;
     }
     if !has_event(events, Event::RepositoryReconciled) {
@@ -1262,15 +1265,17 @@ pub fn compile_release_operation_head_v1(
         schema_version: RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
         operation_identity_digest,
         sequence: events.len() as u64,
-        event_digest: events
-            .last()
-            .map_or_else(|| RELEASE_OPERATION_GENESIS_DIGEST.to_string(), |event| {
-                event.event_digest.clone()
-            }),
+        event_digest: events.last().map_or_else(
+            || RELEASE_OPERATION_GENESIS_DIGEST.to_string(),
+            |event| event.event_digest.clone(),
+        ),
         state: evaluate_state(identity, events),
         first_irreversible_event_digest: first_irreversible_digest(events),
         incident_lineage: identity.incident_predecessor_operation_digest.is_some()
-            || has_event(events, CargoAllowReleaseOperationEventClassV1::IncidentRecorded),
+            || has_event(
+                events,
+                CargoAllowReleaseOperationEventClassV1::IncidentRecorded,
+            ),
         packages_observed_exact,
         assets_observed_exact,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
@@ -1315,7 +1320,10 @@ pub fn evaluate_release_operation_v1(
         missing_packages,
         missing_assets,
         incident_lineage: identity.incident_predecessor_operation_digest.is_some()
-            || has_event(events, CargoAllowReleaseOperationEventClassV1::IncidentRecorded),
+            || has_event(
+                events,
+                CargoAllowReleaseOperationEventClassV1::IncidentRecorded,
+            ),
         findings,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     })
