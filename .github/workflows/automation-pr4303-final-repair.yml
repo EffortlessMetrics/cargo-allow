@@ -1,0 +1,128 @@
+name: PR 4303 final source repair
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr-4303-final-source-repair
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[repair-4303-final]')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply bounded source repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "583a8c2a67124af3e235f3df458117df69918019"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          lib = Path("crates/allow-report/src/lib.rs")
+          text = lib.read_text(encoding="utf-8")
+          start_marker = "// Canonical shared release-operation authority (#3940 PR A).\npub use artifacts::{\n"
+          end_marker = "};\n\n// Root re-exports for the durable operation lease (#3925)."
+          start = text.index(start_marker)
+          end = text.index(end_marker, start) + len("};")
+          replacement = '''// Canonical shared release-operation authority (#3940 PR A).
+          pub use artifacts::{
+              CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+              CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEvaluationV1,
+              CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
+              CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+              CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
+              CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
+              CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+              CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+              CargoAllowReleaseOperationStateV1, RELEASE_OPERATION_ASSET_SELECTION,
+              RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION, RELEASE_OPERATION_CHANNEL,
+              RELEASE_OPERATION_EVALUATION_SCHEMA_ID, RELEASE_OPERATION_EVENT_SCHEMA_ID,
+              RELEASE_OPERATION_GENESIS_DIGEST, RELEASE_OPERATION_HEAD_SCHEMA_ID,
+              RELEASE_OPERATION_IDENTITY_SCHEMA_ID, RELEASE_OPERATION_PRODUCT,
+              RELEASE_OPERATION_REPOSITORY, RELEASE_OPERATION_TAG, RELEASE_OPERATION_VERSION,
+              append_release_operation_event_v1,
+              append_release_operation_event_with_predecessor_v1,
+              build_release_operation_identity_v1,
+              build_release_operation_identity_with_predecessor_v1,
+              compile_release_operation_head_v1,
+              compile_release_operation_head_with_predecessor_v1,
+              evaluate_release_operation_v1, evaluate_release_operation_with_predecessor_v1,
+              release_operation_event_digest_v1, release_operation_head_digest_v1,
+              release_operation_identity_digest_v1, render_release_operation_evaluation_v1,
+              render_release_operation_event_v1, render_release_operation_head_v1,
+              render_release_operation_identity_v1, validate_release_operation_evaluation_v1,
+              validate_release_operation_evaluation_with_predecessor_v1,
+              validate_release_operation_head_v1,
+              validate_release_operation_head_with_predecessor_v1,
+              validate_release_operation_history_v1,
+              validate_release_operation_history_with_predecessor_v1,
+              validate_release_operation_identity_v1, validate_release_operation_predecessor_v1,
+          };'''
+          lib.write_text(text[:start] + replacement + text[end:], encoding="utf-8", newline="\n")
+
+          authority = Path("crates/allow-report/src/artifacts/release_operation_authority_v1.rs")
+          text = authority.read_text(encoding="utf-8")
+          helper_start = text.index("fn init_resolves_unknown(")
+          helper_end = text.index("fn exact_package_subjects(", helper_start)
+          authority.write_text(
+              text[:helper_start] + text[helper_end:],
+              encoding="utf-8",
+              newline="\n",
+          )
+
+          final_lib = lib.read_text(encoding="utf-8")
+          required = [
+              "CargoAllowReleaseOperationPredecessorProofV1",
+              "append_release_operation_event_with_predecessor_v1",
+              "build_release_operation_identity_with_predecessor_v1",
+              "compile_release_operation_head_with_predecessor_v1",
+              "evaluate_release_operation_with_predecessor_v1",
+              "validate_release_operation_predecessor_v1",
+          ]
+          for symbol in required:
+              if final_lib.count(symbol) < 1:
+                  raise SystemExit(f"crate-root export missing: {symbol}")
+          if "fn init_resolves_unknown(" in authority.read_text(encoding="utf-8"):
+              raise SystemExit("superseded unknown-response helper remains")
+          PY
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Format and prove the repaired authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          git rm .github/workflows/automation-pr4303-final-repair.yml
+          cargo fmt --all -- --check
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Publish source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "EffortlessSteven"
+          git config user.email "15812269+EffortlessSteven@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(release,#3940): publish and prove canonical operation authority"
+          git push origin HEAD:release/3940-operation-authority-v1
