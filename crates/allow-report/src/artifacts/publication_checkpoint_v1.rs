@@ -265,7 +265,8 @@ pub fn digest_publication_checkpoint_link_v1(
     let mut stable = checkpoint.clone();
     stable.readback = PublicationCheckpointReadbackV1::Missing;
     stable.readback_at_unix_seconds = None;
-    digest_publication_checkpoint_v1(&stable)
+    let stored = render_publication_checkpoint_v1(&stable)?;
+    Ok(digest_publication_checkpoint_bytes_v1(stored.as_bytes()))
 }
 
 /// The checkpoint body: every record field except the provider object and
@@ -488,6 +489,11 @@ pub fn begin_publication_checkpoint_v1(
             }
             if init.journal_head_sequence < previous.journal_head_sequence {
                 return Err("checkpoint journal prefixes never move backward");
+            }
+            if init.journal_head_sequence == previous.journal_head_sequence
+                && init.journal_head_digest != previous.journal_head_digest
+            {
+                return Err("checkpoint journal prefixes are never rewritten");
             }
             if previous.incident_recorded && !init.incident_recorded {
                 return Err("incident history is never overwritten by later checkpoints");

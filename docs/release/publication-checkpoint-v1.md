@@ -47,10 +47,12 @@ PostObservation + verified readback ──► dependant may begin
 - A fresh checkpoint reads back `Missing`: provider success without an
   independent readback is never clean.
 - Checkpoints are append-only and immutable; correction creates a new
-  sequence linked by a stable predecessor digest that excludes mutable
-  readback observation fields. Sequence 1 carries no prior digest; later
-  sequences require a successfully read-back predecessor, and a fresh runner
-  can reproduce the same linkage from the immutable remote bytes.
+  sequence linked by the SHA-256 of the exact canonical bytes stored for the
+  predecessor (with its original Missing/no-readback posture). Sequence 1
+  carries no prior digest; later sequences require a successfully read-back
+  predecessor, and a fresh runner can reproduce the same linkage by
+  downloading the immutable remote bytes. The provider body digest remains a
+  separate field and is not used as the sequence-link digest.
 - The next runner discovers the operation only through exact typed identity
   (object ID + producer + operation), never "latest artifact" naming.
 - Journal prefixes and checkpoint construction/readback time never move

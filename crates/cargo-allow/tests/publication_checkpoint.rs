@@ -275,7 +275,9 @@ fn store_checkpoint(
         digest_publication_checkpoint_body_v1(checkpoint).map_err(io::Error::other)?;
     checkpoint.provider.object_digest = body_digest;
     for _ in 0..4 {
-        let bytes = serde_json::to_vec_pretty(checkpoint)?;
+        let bytes = render_publication_checkpoint_v1(checkpoint)
+            .map_err(io::Error::other)?
+            .into_bytes();
         let len = bytes.len() as u64;
         if checkpoint.provider.object_size_bytes == len {
             return Ok(bytes);

@@ -20,7 +20,7 @@ use allow_report::{
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
     PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
     begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
-    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
+    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1, render_publication_checkpoint_v1,
     select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
 };
 
@@ -181,7 +181,9 @@ fn store_checkpoint(
         digest_publication_checkpoint_body_v1(checkpoint).map_err(io::Error::other)?;
     checkpoint.provider.object_digest = body_digest;
     for _ in 0..4 {
-        let bytes = serde_json::to_vec_pretty(checkpoint)?;
+        let bytes = render_publication_checkpoint_v1(checkpoint)
+            .map_err(io::Error::other)?
+            .into_bytes();
         let len = bytes.len() as u64;
         if checkpoint.provider.object_size_bytes == len {
             return Ok(bytes);
