@@ -1,0 +1,101 @@
+name: Bind PR 4303 exact source review
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-pr-4303-review
+  cancel-in-progress: false
+
+jobs:
+  bind:
+    if: contains(github.event.head_commit.message, '[bootstrap-4303-review]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Compute and retain the exact reviewed pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          reviewed_head=d6773c62ef123b9a09d2feb78080c70ffc11c045
+          base=89d1376390726a34ae8b2cac14f69af7e684153d
+          test "$(git rev-parse HEAD^)" = "$reviewed_head"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/automation-pr4303-review-bootstrap.yml"
+          test "$(git merge-base "$base" "$reviewed_head")" = "$base"
+
+          digest="$(git diff "$base..$reviewed_head" | sha256sum | cut -d' ' -f1)"
+          [[ "$digest" =~ ^[a-f0-9]{64}$ ]]
+          echo "REVIEWED_DIFF_DIGEST=sha256:v1:${digest}"
+          reviewed_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          python3 - "$digest" "$reviewed_at" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          digest, reviewed_at = sys.argv[1:]
+          path = Path('.allow/review-dispositions/pr-4303.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          data.update({
+              'base_ref': 'main',
+              'base_sha': '89d1376390726a34ae8b2cac14f69af7e684153d',
+              'head_ref': 'release/3940-operation-authority-v1',
+              'head_sha': 'd6773c62ef123b9a09d2feb78080c70ffc11c045',
+              'merge_base': '89d1376390726a34ae8b2cac14f69af7e684153d',
+              'reviewed_diff_digest': f'sha256:v1:{digest}',
+              'review_protocol': 'review-current-head-gen1',
+              'actor_class': 'same_maintainer',
+              'reviewer_identity': 'EffortlessSteven / ChatGPT GitHub review 5257479440; same-maintainer exact-head technical review; not independent-human approval',
+              'independent_review': 'not_retained',
+              'claimed_verdict': 'review_clean',
+              'findings': [],
+              'threads_inspected': [
+                  'PR 4303 reviewThreads: every inline thread resolved at exact reviewed head d6773c62ef123b9a09d2feb78080c70ffc11c045',
+                  'Same-maintainer exact-head technical review 5257479440 inspected the complete fifteen-file PR-A surface and found no remaining source-semantic blocker',
+                  'Focused source-only run 35466302755 passed formatting, workflow syntax, evidence inventory, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene',
+                  'The final source delta makes incident-bearing recovery observation-only after a new incident while preserving exact correlated readback and repository reconciliation',
+                  'The hostile recovery fixture proves RecoveryRequired is retained, a second package mutation is rejected, and settlement under the same recovery authority is rejected',
+                  'Pull-request workflows at the bot-authored reviewed head were action_required with no jobs and are explicitly not counted as CI evidence',
+                  'PR B remains responsible for independently validated child authorization/custody/lease/journal/checkpoint/tag/release composition; PR C remains responsible for workflow/evidence cutover and rehearsal'
+              ],
+              'required_ci': {
+                  'owner': 'backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge',
+                  'observation_ref': ''
+              },
+              'evidence_class': 'current_observation',
+              'scope_claim_boundary': 'pull-request:4303',
+              'reviewed_at_utc': reviewed_at,
+          })
+          path.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8', newline='\n')
+          PY
+
+          git rm .github/workflows/automation-pr4303-review-bootstrap.yml
+          python3 -m json.tool .allow/review-dispositions/pr-4303.json >/dev/null
+          mapfile -t changed < <(git diff --name-only HEAD | sort)
+          expected=(
+            ".allow/review-dispositions/pr-4303.json"
+            ".github/workflows/automation-pr4303-review-bootstrap.yml"
+          )
+          test "${#changed[@]}" -eq "${#expected[@]}"
+          for i in "${!expected[@]}"; do
+            test "${changed[$i]}" = "${expected[$i]}"
+          done
+          git diff --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs(review): bind PR 4303 recovery-incident repair"
+          test "$(git diff --name-only "$reviewed_head..HEAD")" = ".allow/review-dispositions/pr-4303.json"
+          git push origin HEAD:release/3940-operation-authority-v1
