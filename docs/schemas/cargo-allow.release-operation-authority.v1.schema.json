@@ -276,14 +276,15 @@
       "additionalProperties": false,
       "required": [
         "schema_id", "schema_version", "operation_identity_digest", "state",
-        "head", "missing_packages", "missing_assets", "incident_lineage",
-        "findings", "claim_boundary"
+        "evaluated_at_unix_seconds", "head", "missing_packages", "missing_assets",
+        "incident_lineage", "findings", "claim_boundary"
       ],
       "properties": {
         "schema_id": { "const": "cargo-allow.release-operation-evaluation.v1" },
         "schema_version": { "const": 1 },
         "operation_identity_digest": { "$ref": "#/$defs/digest" },
         "state": { "$ref": "#/$defs/state" },
+        "evaluated_at_unix_seconds": { "type": "integer", "minimum": 1 },
         "head": { "$ref": "#/$defs/head" },
         "missing_packages": {
           "type": "array",
