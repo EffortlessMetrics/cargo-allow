@@ -6,22 +6,22 @@
   "base_ref": "main",
   "base_sha": "89d1376390726a34ae8b2cac14f69af7e684153d",
   "head_ref": "release/3940-operation-authority-v1",
-  "head_sha": "89333785f8d81c16736f6005b81d03cc4558b423",
+  "head_sha": "a5ba4f907e03d911b8d4f8cef9c05f6fb73c0678",
   "merge_base": "89d1376390726a34ae8b2cac14f69af7e684153d",
-  "reviewed_diff_digest": "sha256:v1:ff063da8f2731bf7db7daad6f955a508fe4d26d0bbfe7d3d9fd8cb47a79bfcc4",
+  "reviewed_diff_digest": "sha256:v1:00964fd85e283fc517b5428c6e950180300132730376471cfb87c63f7f238b5b",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
-  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5257051368; same-maintainer exact-pair technical review; not independent-human approval",
+  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5257099533; same-maintainer exact-pair technical review; not independent-human approval",
   "independent_review": "not_retained",
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "PR 4303 GraphQL reviewThreads: all inline threads resolved at exact reviewed head 89333785f8d81c16736f6005b81d03cc4558b423",
-    "Same-maintainer exact-pair technical review 5257051368 found no additional blocking source-semantic or governance defect in the fifteen-file PR-A surface",
-    "Reviewed head tree 5a791c97102beb2b3d113015122998b38b4f339c contains the qualified PR-A source, the retained predecessor disposition, and the corrected allow-11323 revision fingerprint; no temporary repair workflow is effective",
+    "PR 4303 GraphQL reviewThreads: all inline threads resolved at the latest inspection before exact reviewed head a5ba4f907e03d911b8d4f8cef9c05f6fb73c0678",
+    "Same-maintainer exact-pair technical review 5257099533 found no additional blocking source-semantic or governance defect in the fifteen-file PR-A surface",
+    "Reviewed head tree 7ca95cd4126ef14e2a6ab6e1f917ab51434f28e6 differs from the accepted 01bdd73c bootstrap only by the one-line allow-11323 evidence correction in policy/allow.toml",
+    "Policy allow-11323 remains anchored to review 5257051368, the review that authorized the retained-disposition repair; the policy record is intentionally not mutated to cite its own successor review",
     "Focused proof run 35460153089 passed rustfmt, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene for terminal recovery and global-expiry coverage",
-    "Exact-head ordinary CI 35461709958 passed formatting and enforcing no-new at the pre-gate before the heavy denominator; terminal CI and UB reconciliation remain separately required",
-    "Review-readiness run 35461709991 correctly invalidated the predecessor disposition because its bootstrap delta included the revision fingerprint; this successor is restricted to the review-disposition ledger path",
+    "Review-readiness check 105948739991 correctly invalidated the predecessor disposition and reported live diff sha256:v1:00964fd85e283fc517b5428c6e950180300132730376471cfb87c63f7f238b5b",
     "Retained UB/model-review output is supporting telemetry only; unavailable or degraded sensors are not represented as independent-human approval"
   ],
   "required_ci": {
@@ -30,5 +30,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4303",
-  "reviewed_at_utc": "2026-09-19T18:40:47Z"
+  "reviewed_at_utc": "2026-09-19T18:51:20Z"
 }
