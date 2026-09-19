@@ -15,6 +15,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -68,6 +69,36 @@ def archive_members(archive):
             for member in bundle.getmembers()
             if member.isfile()
         }
+
+
+def rewrite_vcs_dirty(archive, prefix, output, dirty):
+    """Rewrite only git.dirty in a real Cargo-produced archive."""
+    member_name = f"{prefix}/.cargo_vcs_info.json"
+    rewritten = 0
+    with tarfile.open(archive, mode="r:gz") as source, tarfile.open(
+        output, mode="w:gz"
+    ) as target:
+        for member in source.getmembers():
+            data = None
+            if member.isfile():
+                payload = source.extractfile(member)
+                if payload is None:
+                    raise AssertionError(f"could not read archive member {member.name}")
+                data = payload.read()
+            if member.name == member_name:
+                info = json.loads(data.decode("utf-8"))
+                git = info.get("git")
+                if not isinstance(git, dict):
+                    raise AssertionError("real Cargo VCS metadata lacks its git object")
+                git["dirty"] = dirty
+                data = (json.dumps(info, sort_keys=True) + "\n").encode("utf-8")
+                member.size = len(data)
+                rewritten += 1
+            target.addfile(member, BytesIO(data) if data is not None else None)
+    if rewritten != 1:
+        raise AssertionError(
+            f"expected one VCS metadata member to rewrite, found {rewritten}"
+        )
 
 
 def sole_crate(target_dir):
@@ -265,6 +296,22 @@ class PackageByteAuthorityTests(unittest.TestCase):
         )
         accepted = verifier_process(archive, prefix, head)
         self.assertEqual(accepted.returncode, 0, accepted.stderr)
+
+        explicit_false = root / "explicit-dirty-false.crate"
+        rewrite_vcs_dirty(archive, prefix, explicit_false, False)
+        accepted_false = verifier_process(explicit_false, prefix, head)
+        self.assertEqual(accepted_false.returncode, 0, accepted_false.stderr)
+
+        for label, malformed in (("string", "false"), ("null", None), ("integer", 0)):
+            with self.subTest(dirty_posture=label):
+                malformed_archive = root / f"malformed-dirty-{label}.crate"
+                rewrite_vcs_dirty(archive, prefix, malformed_archive, malformed)
+                rejected = verifier_process(malformed_archive, prefix, head)
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertIn(
+                    "git.dirty must be a JSON boolean when present",
+                    rejected.stderr,
+                )
 
     def test_dirty_worktree_package_is_rejected(self):
         """Same SHA plus dirty tracked bytes must never satisfy authority."""
