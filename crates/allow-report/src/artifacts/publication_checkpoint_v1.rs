@@ -638,11 +638,6 @@ fn classify_delivered_v1(
 /// Select one checkpoint by exact identity. The provider object name never
 /// participates: a same-name object from another run or producer is never
 /// selected, no matter how recent it claims to be.
-}
-
-/// Select one checkpoint by exact identity. The provider object name never
-/// participates: a same-name object from another run or producer is never
-/// selected, no matter how recent it claims to be.
 pub fn select_checkpoint_by_exact_identity_v1<'a>(
     candidates: &'a [CargoAllowPublicationCheckpointV1],
     object_id: &str,
@@ -715,8 +710,6 @@ fn journal_prefix_first_irreversible_row_v1<'a>(
         .find(|entry| entry.kind == PublicationJournalEventV1::UploadRequestStarted)
         .and_then(|entry| entry.package_name.as_deref())
 }
-
-/// Verify a checkpoint against the live journal}
 
 /// Verify a checkpoint against the live journal, the expected producer, and
 /// the wall clock. Fails closed on operation drift, truncated or rewritten
