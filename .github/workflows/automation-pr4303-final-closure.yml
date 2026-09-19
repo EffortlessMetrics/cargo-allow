@@ -1,0 +1,555 @@
+name: Repair PR 4303 final authority closure
+
+on:
+  push:
+    branches:
+      - release/3940-operation-authority-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4303-final-authority-closure
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    if: contains(github.event.head_commit.message, '[repair-4303-final-closure]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+        with:
+          toolchain: 1.95.0
+          components: rustfmt, clippy
+
+      - name: Apply the exact-head semantic closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import re
+          from pathlib import Path
+
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(
+                      f"{path}: expected one literal match, found {count}: {old[:160]!r}"
+                  )
+              path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+
+          def sub_once(
+              path: Path,
+              pattern: str,
+              replacement: str,
+              *,
+              flags: int = 0,
+          ) -> None:
+              text = path.read_text(encoding="utf-8")
+              updated, count = re.subn(
+                  pattern,
+                  replacement,
+                  text,
+                  count=1,
+                  flags=flags,
+              )
+              if count != 1:
+                  raise SystemExit(
+                      f"{path}: expected one structural match, found {count}: {pattern[:160]!r}"
+                  )
+              path.write_text(updated, encoding="utf-8", newline="\n")
+
+
+          authority = Path(
+              "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+          )
+          artifacts = Path("crates/allow-report/src/artifacts.rs")
+          lib = Path("crates/allow-report/src/lib.rs")
+          contract = Path(
+              "crates/allow-report/tests/release_operation_authority_contract.rs"
+          )
+          tests = Path("crates/cargo-allow/tests/release_operation_authority.rs")
+          schema = Path(
+              "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+          )
+          docs = Path("docs/release/release-operation-authority-v1.md")
+          inventory = Path("policy/evidence-surface-inventory.toml")
+
+          event_subject_marker = (
+              "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\n"
+              "#[serde(tag = \"kind\", content = \"id\", rename_all = \"snake_case\")]\n"
+              "pub enum CargoAllowReleaseOperationEventSubjectV1 {\n"
+          )
+          timestamp_source = (
+              "#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]\n"
+              "#[serde(rename_all = \"snake_case\")]\n"
+              "pub enum CargoAllowReleaseOperationTimestampSourceV1 {\n"
+              "    WorkflowRuntime,\n"
+              "    ProviderMetadata,\n"
+              "    RepositoryMetadata,\n"
+              "}\n\n"
+          )
+          replace_once(
+              authority,
+              event_subject_marker,
+              timestamp_source + event_subject_marker,
+          )
+
+          for struct_name in (
+              "CargoAllowReleaseOperationEventInitV1",
+              "CargoAllowReleaseOperationEventV1",
+          ):
+              sub_once(
+                  authority,
+                  rf"(pub struct {struct_name} \{{.*?\n    pub artifact_digest: Option<String>,\n)"
+                  r"(    pub observed_at_unix_seconds: u64,)",
+                  r"\1    pub timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,\n\2",
+                  flags=re.S,
+              )
+
+          sub_once(
+              authority,
+              r"(struct EventDigestBodyV1<'a> \{.*?\n    artifact_digest: &'a Option<String>,\n)"
+              r"(    observed_at_unix_seconds: u64,)",
+              r"\1    timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,\n\2",
+              flags=re.S,
+          )
+          replace_once(
+              authority,
+              "        artifact_digest: &event.artifact_digest,\n"
+              "        observed_at_unix_seconds: event.observed_at_unix_seconds,\n",
+              "        artifact_digest: &event.artifact_digest,\n"
+              "        timestamp_source: event.timestamp_source,\n"
+              "        observed_at_unix_seconds: event.observed_at_unix_seconds,\n",
+          )
+
+          envelope_marker = "fn validate_event_envelope_fields(\n"
+          timestamp_helper = (
+              "fn timestamp_source_is_compatible(\n"
+              "    event_class: CargoAllowReleaseOperationEventClassV1,\n"
+              "    source: CargoAllowReleaseOperationTimestampSourceV1,\n"
+              ") -> bool {\n"
+              "    use CargoAllowReleaseOperationEventClassV1 as Event;\n"
+              "    use CargoAllowReleaseOperationTimestampSourceV1 as Source;\n\n"
+              "    match event_class {\n"
+              "        Event::TagObservedExact\n"
+              "        | Event::PackageRowObservedExact\n"
+              "        | Event::GitHubDraftObservedExact\n"
+              "        | Event::AssetObservedExact\n"
+              "        | Event::PublicReleaseObservedExact\n"
+              "        | Event::ContainmentObservedExact => source == Source::ProviderMetadata,\n"
+              "        Event::RepositoryReconciled => source == Source::RepositoryMetadata,\n"
+              "        _ => source == Source::WorkflowRuntime,\n"
+              "    }\n"
+              "}\n\n"
+          )
+          replace_once(
+              authority,
+              envelope_marker,
+              timestamp_helper + envelope_marker,
+          )
+          replace_once(
+              authority,
+              "    if event.authority_class != identity.authority_kind {\n"
+              "        return Err(\"operation event authority class does not match the immutable operation\");\n"
+              "    }\n",
+              "    if event.authority_class != identity.authority_kind {\n"
+              "        return Err(\"operation event authority class does not match the immutable operation\");\n"
+              "    }\n"
+              "    if !timestamp_source_is_compatible(event.event_class, event.timestamp_source) {\n"
+              "        return Err(\"operation event timestamp source does not match its event class\");\n"
+              "    }\n",
+          )
+
+          replace_once(
+              authority,
+              "        Event::AuthorizationSelected => {\n"
+              "            let ready = match identity.operation_class {\n",
+              "        Event::AuthorizationSelected => {\n"
+              "            if init.payload_digest != identity.authorization_digest {\n"
+              "                return Err(\n"
+              "                    \"authorization selection must bind the immutable authorization digest\",\n"
+              "                );\n"
+              "            }\n"
+              "            let ready = match identity.operation_class {\n",
+          )
+
+          replace_once(
+              authority,
+              "        artifact_digest: init.artifact_digest.clone(),\n"
+              "        observed_at_unix_seconds: init.observed_at_unix_seconds,\n",
+              "        artifact_digest: init.artifact_digest.clone(),\n"
+              "        timestamp_source: init.timestamp_source,\n"
+              "        observed_at_unix_seconds: init.observed_at_unix_seconds,\n",
+          )
+          replace_once(
+              authority,
+              "        artifact_digest: init.artifact_digest,\n"
+              "        observed_at_unix_seconds: init.observed_at_unix_seconds,\n",
+              "        artifact_digest: init.artifact_digest,\n"
+              "        timestamp_source: init.timestamp_source,\n"
+              "        observed_at_unix_seconds: init.observed_at_unix_seconds,\n",
+          )
+          replace_once(
+              authority,
+              "            artifact_digest: event.artifact_digest.clone(),\n"
+              "            observed_at_unix_seconds: event.observed_at_unix_seconds,\n",
+              "            artifact_digest: event.artifact_digest.clone(),\n"
+              "            timestamp_source: event.timestamp_source,\n"
+              "            observed_at_unix_seconds: event.observed_at_unix_seconds,\n",
+          )
+
+          replace_once(
+              authority,
+              "    RepositoryReconciliationRequired,\n"
+              "    CompleteClean,\n",
+              "    RepositoryReconciliationRequired,\n"
+              "    SettlementRequired,\n"
+              "    CompleteClean,\n",
+          )
+          replace_once(
+              authority,
+              "        if has_exact_event(events, Event::OperationSettled) {\n"
+              "            return State::CompleteWithIncidentLineage;\n"
+              "        }\n"
+              "        if has_exact_event(events, Event::ContainmentObservedExact) {\n",
+              "        if has_exact_event(events, Event::OperationSettled) {\n"
+              "            return State::CompleteWithIncidentLineage;\n"
+              "        }\n"
+              "        if has_exact_event(events, Event::RepositoryReconciled) {\n"
+              "            return State::SettlementRequired;\n"
+              "        }\n"
+              "        if has_exact_event(events, Event::ContainmentObservedExact) {\n",
+          )
+          replace_once(
+              authority,
+              "    if !has_exact_event(events, Event::OperationSettled) {\n"
+              "        return State::RepositoryReconciliationRequired;\n"
+              "    }\n",
+              "    if !has_exact_event(events, Event::OperationSettled) {\n"
+              "        return State::SettlementRequired;\n"
+              "    }\n",
+          )
+
+          for path in (artifacts, lib):
+              sub_once(
+                  path,
+                  r"(CargoAllowReleaseOperationStateV1,)(\s+RELEASE_OPERATION_ASSET_SELECTION,)",
+                  r"\1 CargoAllowReleaseOperationTimestampSourceV1,\2",
+              )
+
+          replace_once(
+              contract,
+              "    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,\n"
+              "    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,\n",
+              "    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,\n"
+              "    CargoAllowReleaseOperationTimestampSourceV1, RELEASE_AUTHORIZATION_SELECTION,\n"
+              "    RELEASE_OPERATION_ASSET_SELECTION,\n",
+          )
+          replace_once(
+              tests,
+              "    CargoAllowReleaseOperationStateV1, RELEASE_AUTHORIZATION_SELECTION,\n"
+              "    RELEASE_OPERATION_ASSET_SELECTION, append_release_operation_event_v1,\n",
+              "    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,\n"
+              "    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,\n"
+              "    append_release_operation_event_v1,\n",
+          )
+
+          replace_once(
+              contract,
+              "        payload_digest: digest(1000 + sequence_hint),\n",
+              "        payload_digest: if class\n"
+              "            == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected\n"
+              "        {\n"
+              "            identity.authorization_digest.clone()\n"
+              "        } else {\n"
+              "            digest(1000 + sequence_hint)\n"
+              "        },\n",
+          )
+          replace_once(
+              tests,
+              "        payload_digest: digest(1_000 + ordinal),\n",
+              "        payload_digest: if class\n"
+              "            == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected\n"
+              "        {\n"
+              "            identity.authorization_digest.clone()\n"
+              "        } else {\n"
+              "            digest(1_000 + ordinal)\n"
+              "        },\n",
+          )
+
+          timestamp_expr_contract = (
+              "        timestamp_source: match class {\n"
+              "            CargoAllowReleaseOperationEventClassV1::TagObservedExact\n"
+              "            | CargoAllowReleaseOperationEventClassV1::PackageRowObservedExact\n"
+              "            | CargoAllowReleaseOperationEventClassV1::GitHubDraftObservedExact\n"
+              "            | CargoAllowReleaseOperationEventClassV1::AssetObservedExact\n"
+              "            | CargoAllowReleaseOperationEventClassV1::PublicReleaseObservedExact\n"
+              "            | CargoAllowReleaseOperationEventClassV1::ContainmentObservedExact => {\n"
+              "                CargoAllowReleaseOperationTimestampSourceV1::ProviderMetadata\n"
+              "            }\n"
+              "            CargoAllowReleaseOperationEventClassV1::RepositoryReconciled => {\n"
+              "                CargoAllowReleaseOperationTimestampSourceV1::RepositoryMetadata\n"
+              "            }\n"
+              "            _ => CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime,\n"
+              "        },\n"
+          )
+          replace_once(
+              contract,
+              "        observed_at_unix_seconds: 1_790_000_000 + sequence_hint,\n",
+              timestamp_expr_contract
+              + "        observed_at_unix_seconds: 1_790_000_000 + sequence_hint,\n",
+          )
+          replace_once(
+              tests,
+              "        observed_at_unix_seconds: 1_790_000_000 + ordinal,\n",
+              timestamp_expr_contract
+              + "        observed_at_unix_seconds: 1_790_000_000 + ordinal,\n",
+          )
+
+          hostile_marker = (
+              "#[test]\n"
+              "fn release_operation_transition_prerequisites_are_exact_current_and_correlated()\n"
+              "-> Result<(), Box<dyn Error>> {\n"
+          )
+          hostile_test = (
+              "#[test]\n"
+              "fn release_operation_authorization_and_timestamp_provenance_are_bound(\n"
+              ") -> Result<(), Box<dyn Error>> {\n"
+              "    use CargoAllowReleaseOperationEventClassV1 as Event;\n"
+              "    use CargoAllowReleaseOperationEventSubjectV1::Operation;\n"
+              "    use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;\n"
+              "    use CargoAllowReleaseOperationTimestampSourceV1 as Source;\n\n"
+              "    let identity = identity()?;\n"
+              "    let mut events = Vec::new();\n"
+              "    append(\n"
+              "        &identity,\n"
+              "        &mut events,\n"
+              "        Event::OperationSelected,\n"
+              "        Operation,\n"
+              "        1,\n"
+              "    )?;\n\n"
+              "    let mut wrong_authorization = event_init(\n"
+              "        &identity,\n"
+              "        Event::AuthorizationSelected,\n"
+              "        Operation,\n"
+              "        ResultClass::Exact,\n"
+              "        2,\n"
+              "    );\n"
+              "    wrong_authorization.payload_digest = digest(9_999);\n"
+              "    require(\n"
+              "        append_release_operation_event_v1(\n"
+              "            &identity,\n"
+              "            &events,\n"
+              "            wrong_authorization,\n"
+              "        )\n"
+              "        .is_err(),\n"
+              "        \"authorization selection must bind the immutable authorization digest\",\n"
+              "    )?;\n\n"
+              "    append(\n"
+              "        &identity,\n"
+              "        &mut events,\n"
+              "        Event::AuthorizationSelected,\n"
+              "        Operation,\n"
+              "        2,\n"
+              "    )?;\n"
+              "    let mut wrong_source = event_init(\n"
+              "        &identity,\n"
+              "        Event::LeaseAcquired,\n"
+              "        Operation,\n"
+              "        ResultClass::Exact,\n"
+              "        3,\n"
+              "    );\n"
+              "    wrong_source.timestamp_source = Source::ProviderMetadata;\n"
+              "    require(\n"
+              "        append_release_operation_event_v1(&identity, &events, wrong_source).is_err(),\n"
+              "        \"a local transition must not claim provider timestamp provenance\",\n"
+              "    )\n"
+              "}\n\n"
+          )
+          replace_once(tests, hostile_marker, hostile_test + hostile_marker)
+
+          reconciliation_block = (
+              "    append(\n"
+              "        &identity,\n"
+              "        &mut events,\n"
+              "        Event::RepositoryReconciled,\n"
+              "        Operation,\n"
+              "        102,\n"
+              "    )?;\n"
+              "    append(\n"
+          )
+          reconciliation_with_assertion = (
+              "    append(\n"
+              "        &identity,\n"
+              "        &mut events,\n"
+              "        Event::RepositoryReconciled,\n"
+              "        Operation,\n"
+              "        102,\n"
+              "    )?;\n"
+              "    let settlement_pending =\n"
+              "        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)\n"
+              "            .map_err(io::Error::other)?;\n"
+              "    require(\n"
+              "        settlement_pending.state == State::SettlementRequired,\n"
+              "        \"repository reconciliation and terminal settlement must be distinct states\",\n"
+              "    )?;\n"
+              "    append(\n"
+          )
+          replace_once(
+              tests,
+              reconciliation_block,
+              reconciliation_with_assertion,
+          )
+
+          replace_once(
+              schema,
+              "    \"state\": {\n"
+              "      \"enum\": [\n",
+              "    \"timestamp_source\": {\n"
+              "      \"enum\": [\"workflow_runtime\", \"provider_metadata\", \"repository_metadata\"]\n"
+              "    },\n"
+              "    \"state\": {\n"
+              "      \"enum\": [\n",
+          )
+          replace_once(
+              schema,
+              "        \"repository_reconciliation_required\",\n"
+              "        \"complete_clean\",\n",
+              "        \"repository_reconciliation_required\",\n"
+              "        \"settlement_required\",\n"
+              "        \"complete_clean\",\n",
+          )
+          replace_once(
+              schema,
+              "        \"request_boundary\", \"response_posture\", \"semantic_result\", \"artifact_digest\",\n"
+              "        \"observed_at_unix_seconds\", \"claim_boundary\"\n",
+              "        \"request_boundary\", \"response_posture\", \"semantic_result\", \"artifact_digest\",\n"
+              "        \"timestamp_source\", \"observed_at_unix_seconds\", \"claim_boundary\"\n",
+          )
+          replace_once(
+              schema,
+              "        \"artifact_digest\": {\n"
+              "          \"oneOf\": [{ \"type\": \"null\" }, { \"$ref\": \"#/$defs/digest\" }]\n"
+              "        },\n"
+              "        \"observed_at_unix_seconds\": { \"type\": \"integer\", \"minimum\": 1 },\n",
+              "        \"artifact_digest\": {\n"
+              "          \"oneOf\": [{ \"type\": \"null\" }, { \"$ref\": \"#/$defs/digest\" }]\n"
+              "        },\n"
+              "        \"timestamp_source\": { \"$ref\": \"#/$defs/timestamp_source\" },\n"
+              "        \"observed_at_unix_seconds\": { \"type\": \"integer\", \"minimum\": 1 },\n",
+          )
+
+          replace_once(
+              docs,
+              "Loaded/deserialized histories are revalidated before append, head compilation,\n"
+              "or evaluation. Validation rejects a foreign operation, skipped/duplicate\n"
+              "sequence, changed previous digest, changed payload without a recomputed event\n"
+              "digest, malformed producer/authority envelope, invalid subject, or invalid\n"
+              "transition.\n",
+              "Loaded/deserialized histories are revalidated before append, head compilation,\n"
+              "or evaluation. Validation rejects a foreign operation, skipped/duplicate\n"
+              "sequence, changed previous digest, changed payload without a recomputed event\n"
+              "digest, malformed producer/authority envelope, invalid subject, or invalid\n"
+              "transition. AuthorizationSelected must bind the immutable operation\n"
+              "authorization digest; another valid-looking authorization cannot unlock it.\n",
+          )
+          replace_once(
+              docs,
+              "Event time is monotonic and no event may be appended after operation expiry.\n"
+              "Aggregate evaluation carries its own explicit evaluation timestamp; evaluation\n"
+              "after expiry is Stale, so a historically complete chain cannot be reused as a\n"
+              "current clean verdict.\n",
+              "Event time is monotonic and no event may be appended after operation expiry.\n"
+              "Every event authenticates whether its timestamp came from workflow runtime,\n"
+              "provider metadata, or repository metadata. Local transitions, provider\n"
+              "observations, and repository reconciliation reject incompatible provenance.\n"
+              "Aggregate evaluation carries its own explicit evaluation timestamp; evaluation\n"
+              "after expiry is Stale, so a historically complete chain cannot be reused as a\n"
+              "current clean verdict.\n",
+          )
+          replace_once(
+              docs,
+              "OperationSettled additionally requires public observation and repository\n"
+              "reconciliation.\n",
+              "OperationSettled additionally requires public observation and repository\n"
+              "reconciliation. Before reconciliation the aggregate remains\n"
+              "RepositoryReconciliationRequired; after reconciliation but before the terminal\n"
+              "event it is SettlementRequired.\n",
+          )
+
+          replace_once(
+              inventory,
+              "claimed_acceptance_row = \"exact subject identity, internally computed event chain, package/asset denominator byte binding, explicit irreversible-request correlation, predecessor-head proof for non-clean APIs, and externally observed containment-without-publication law\"\n",
+              "claimed_acceptance_row = \"exact subject identity, internally computed event chain, authorization-digest and timestamp-provenance binding, package/asset denominator byte binding, phase-bound irreversible-request correlation, distinct reconciliation/settlement states, predecessor-head proof for non-clean APIs, and externally observed containment-without-publication law\"\n",
+          )
+          PY
+
+          git rm --ignore-unmatch \
+            .github/scripts/repair_pr4303_envelope.py \
+            .github/scripts/repair_pr4303_envelope_v3.py \
+            .github/workflows/automation-pr4303-envelope-carrier-fix.yml \
+            .github/workflows/automation-pr4303-envelope-closure-v2.yml \
+            .github/workflows/automation-pr4303-envelope-closure-v3.yml \
+            .github/workflows/automation-pr4303-envelope-closure.yml \
+            .github/workflows/automation-pr4303-script-anchor.yml \
+            .github/workflows/automation-pr4303-final-closure.yml
+          cargo fmt --all
+
+      - name: Prove the source-only authority closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          bash scripts/check-workflow-syntax.sh
+          python3 scripts/test-verify-evidence-surface-inventory.py
+          python3 scripts/verify-evidence-surface-inventory.py
+          cargo test -p allow-report --test release_operation_authority_contract --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_authority --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Publish the exact source-only head
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t effective < <(git diff --name-only origin/main | sort)
+          expected=(
+            ".allow/revisions/3940-release-operation-authority.toml"
+            ".changes/Added-20260919-release-operation-authority-v1.yaml"
+            "crates/allow-report/src/artifacts.rs"
+            "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+            "crates/allow-report/src/artifacts/release_operation_v1.rs"
+            "crates/allow-report/src/lib.rs"
+            "crates/allow-report/tests/release_operation_authority_contract.rs"
+            "crates/cargo-allow/src/artifact_schema_index_tests.rs"
+            "crates/cargo-allow/tests/release_operation_authority.rs"
+            "docs/release/release-operation-authority-v1.md"
+            "docs/schemas/README.md"
+            "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+            "policy/allow.toml"
+            "policy/evidence-surface-inventory.toml"
+          )
+          test "${#effective[@]}" -eq "${#expected[@]}"
+          for i in "${!expected[@]}"; do
+            test "${effective[$i]}" = "${expected[$i]}"
+          done
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(release): close canonical operation authority (#3940)"
+          git push origin HEAD:release/3940-operation-authority-v1
