@@ -23,11 +23,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Verify exact source and apply bounded authority repair
+      - name: Verify and repair the exact current source
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "027ec7b23992e5285d30cb70a34509546b548b87"
+          test "$(git rev-parse HEAD^)" = "bf79e75e2e6ca6cad394df0e1cd1ff6f677a8a73"
           python3 - <<'PY'
           from pathlib import Path
 
@@ -39,22 +39,10 @@ jobs:
                   raise SystemExit(f"{path}: expected one occurrence, found {count}: {old[:120]!r}")
               p.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
 
-          def replace_between(path: str, start: str, end: str, replacement: str) -> None:
-              p = Path(path)
-              text = p.read_text(encoding="utf-8")
-              start_index = text.find(start)
-              if start_index < 0:
-                  raise SystemExit(f"{path}: start marker missing: {start!r}")
-              end_index = text.find(end, start_index)
-              if end_index < 0:
-                  raise SystemExit(f"{path}: end marker missing: {end!r}")
-              p.write_text(
-                  text[:start_index] + replacement + text[end_index:],
-                  encoding="utf-8",
-                  newline="\n",
-              )
-
           authority = "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+          tests = "crates/cargo-allow/tests/release_operation_authority.rs"
+          lib = "crates/allow-report/src/lib.rs"
+
           replace_once(
               authority,
               "pub fn append_release_operation_event_v1(pub fn append_release_operation_event_v1(",
@@ -65,8 +53,6 @@ jobs:
               "pub fn evaluate_release_operation_v1(pub fn evaluate_release_operation_v1(",
               "pub fn evaluate_release_operation_v1(",
           )
-
-          tests = "crates/cargo-allow/tests/release_operation_authority.rs"
           replace_once(
               tests,
               "#[test]\nfn release_operation_identity_is_semantic_and_lineage_bound()#[test]\n",
@@ -78,11 +64,7 @@ jobs:
               "#[test]\n",
           )
 
-          # The predecessor must be the same frozen release subject. A recovery
-          # authorization may differ, but it cannot replace the frozen bytes,
-          # denominators, topology, workflow inventory, or live-control subject.
-          marker = "pub fn build_release_operation_identity_with_predecessor_v1("
-          helper = '''fn predecessor_subject_matches_init(
+          predecessor_helper = '''fn predecessor_subject_matches_init(
               init: &CargoAllowReleaseOperationIdentityInitV1,
               predecessor: &CargoAllowReleaseOperationIdentityV1,
           ) -> bool {
@@ -108,15 +90,17 @@ jobs:
           }
 
           '''
-          replace_once(authority, marker, helper + marker)
           replace_once(
               authority,
-              '''    validate_release_operation_identity_v1(predecessor_identity)?;
-              validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
+              "pub fn build_release_operation_identity_with_predecessor_v1(",
+              predecessor_helper + "pub fn build_release_operation_identity_with_predecessor_v1(",
+          )
+          replace_once(
+              authority,
+              '''    validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
               let predecessor_digest = release_operation_identity_digest_v1(predecessor_identity)
           ''',
-              '''    validate_release_operation_identity_v1(predecessor_identity)?;
-              validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
+              '''    validate_release_operation_history_v1(predecessor_identity, predecessor_events)?;
               if !predecessor_subject_matches_init(&init, predecessor_identity) {
                   return Err(
                       "non-clean operation must retain the predecessor frozen subject and denominators",
@@ -126,14 +110,13 @@ jobs:
           ''',
           )
 
-          # Remove the superseded generic unknown helper; irreversible requests
-          # are now the single request/response correlation authority.
-          replace_between(
-              authority,
-              "fn init_resolves_unknown(",
-              "fn exact_package_subjects(",
-              "fn exact_package_subjects(",
-          )
+          # The irreversible request is now the only request/response correlation
+          # authority; remove the superseded generic helper.
+          p = Path(authority)
+          text = p.read_text(encoding="utf-8")
+          start = text.index("fn init_resolves_unknown(")
+          end = text.index("fn exact_package_subjects(", start)
+          p.write_text(text[:start] + text[end:], encoding="utf-8", newline="\n")
 
           replace_once(
               authority,
@@ -156,9 +139,6 @@ jobs:
           ''',
           )
 
-          # Complete the root public API so the canonical predecessor builder and
-          # projection validators are actual production surfaces, not dead code.
-          lib = "crates/allow-report/src/lib.rs"
           replace_once(
               lib,
               '''    build_release_operation_identity_v1, compile_release_operation_head_v1,
@@ -181,7 +161,6 @@ jobs:
           ''',
           )
 
-          # Test observations must carry the exact request payload identity.
           replace_once(
               tests,
               '''            init.payload_schema_id = request.payload_schema_id.clone();
@@ -193,14 +172,7 @@ jobs:
           ''',
           )
 
-          # Add hostile predecessor-subject controls alongside the existing
-          # wrong-predecessor-digest check.
-          replace_once(
-              tests,
-              '''    let mut wrong = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
-              wrong.incident_predecessor_operation_digest = Some(digest(999));
-          ''',
-              '''    let mut changed_freeze =
+          predecessor_tests = '''    let mut changed_freeze =
                   identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
               changed_freeze.incident_predecessor_operation_digest = Some(predecessor_digest.clone());
               changed_freeze.freeze_digest = digest(998);
@@ -231,19 +203,50 @@ jobs:
                   "recovery cannot replace the predecessor package denominator",
               )?;
 
-              let mut wrong = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
+          '''
+          replace_once(
+              tests,
+              '''    let mut wrong = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
+              wrong.incident_predecessor_operation_digest = Some(digest(999));
+          ''',
+              predecessor_tests
+              + '''    let mut wrong = identity_init(CargoAllowReleaseOperationClassV1::IncidentRecovery);
               wrong.incident_predecessor_operation_digest = Some(digest(999));
           ''',
           )
 
+          replace_once(
+              tests,
+              '''    let recovery = build_release_operation_identity_v1(identity_init(
+                  CargoAllowReleaseOperationClassV1::IncidentRecovery,
+              ))
+              .map_err(io::Error::other)?;
+              require(
+                  recovery.incident_predecessor_operation_digest.is_some()
+                      && recovery.authority_kind == CargoAllowReleaseOperationAuthorityKindV1::Recovery,
+                  "recovery identity must retain distinct incident lineage and authority",
+              )
+          ''',
+              '''    require(
+                  build_release_operation_identity_v1(identity_init(
+                      CargoAllowReleaseOperationClassV1::IncidentRecovery,
+                  ))
+                  .is_err(),
+                  "recovery identity must require the typed predecessor builder",
+              )
+          ''',
+          )
+
           for path in (authority, tests):
-              text = Path(path).read_text(encoding="utf-8")
-              if ")#[test]" in text:
-                  raise SystemExit(f"{path}: malformed adjacent test declaration remains")
-              if "pub fn append_release_operation_event_v1(pub fn" in text:
-                  raise SystemExit(f"{path}: duplicated append signature remains")
-              if "pub fn evaluate_release_operation_v1(pub fn" in text:
-                  raise SystemExit(f"{path}: duplicated evaluation signature remains")
+              current = Path(path).read_text(encoding="utf-8")
+              forbidden = [
+                  ")#[test]",
+                  "pub fn append_release_operation_event_v1(pub fn",
+                  "pub fn evaluate_release_operation_v1(pub fn",
+              ]
+              for needle in forbidden:
+                  if needle in current:
+                      raise SystemExit(f"{path}: malformed generated token remains: {needle}")
           PY
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
@@ -251,7 +254,7 @@ jobs:
           toolchain: 1.95.0
           components: rustfmt, clippy
 
-      - name: Format, prove, and remove carrier
+      - name: Format, prove, and publish source-only repair
         shell: bash
         run: |
           set -euo pipefail
