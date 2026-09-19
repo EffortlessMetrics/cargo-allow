@@ -38,6 +38,23 @@ strip_cr() {
   printf '%s' "$1" | tr -d '\r'
 }
 
+# Git repository-location and object-store variables override `git -C` and
+# Cargo's repository discovery. Candidate packaging must be selected only by
+# the explicit repository/worktree arguments below.
+GIT_REPOSITORY_ENVIRONMENT_VARIABLES=(
+  GIT_DIR
+  GIT_WORK_TREE
+  GIT_COMMON_DIR
+  GIT_INDEX_FILE
+  GIT_OBJECT_DIRECTORY
+  GIT_ALTERNATE_OBJECT_DIRECTORIES
+  GIT_CEILING_DIRECTORIES
+  GIT_DISCOVERY_ACROSS_FILESYSTEM
+)
+for variable in "${GIT_REPOSITORY_ENVIRONMENT_VARIABLES[@]}"; do
+  unset "${variable}"
+done
+
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"

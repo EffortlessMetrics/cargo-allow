@@ -17,6 +17,27 @@ from pathlib import Path
 
 MARKER = ".candidate-harness-owner.json"
 REPARSE_POINT = 0x400
+GIT_REPOSITORY_ENVIRONMENT_VARIABLES = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+)
+GIT_SUBPROCESS_ENVIRONMENT = os.environ.copy()
+for variable in GIT_REPOSITORY_ENVIRONMENT_VARIABLES:
+    GIT_SUBPROCESS_ENVIRONMENT.pop(variable, None)
+
+
+def run_git(arguments: list[str], **kwargs):
+    return subprocess.run(
+        ["git", *arguments],
+        env=GIT_SUBPROCESS_ENVIRONMENT,
+        **kwargs,
+    )
 
 
 def fail(message: str) -> None:
@@ -202,15 +223,15 @@ def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str
     repo = canonical_existing(repository, "repository")
     directory, token = allocate(root, purpose, False)
     try:
-        head = subprocess.run(
-            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        head = run_git(
+            [ "-C", str(repo), "rev-parse", "HEAD"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
         # Keep tar bytes on a pipe.  The helper's stdout is a JSON protocol
         # consumed by the shell harness; binary archive data must never leak
         # into that stream.
-        archive_result = subprocess.run(
-            ["git", "-C", str(repo), "archive", "--format=tar", head],
+        archive_result = run_git(
+            [ "-C", str(repo), "archive", "--format=tar", head],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         archive = archive_result.stdout
@@ -231,8 +252,8 @@ def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str
 
 def worktree_head(repository: Path) -> str:
     repo = canonical_existing(repository, "repository")
-    head = subprocess.run(
-        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+    head = run_git(
+        [ "-C", str(repo), "rev-parse", "HEAD"],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
     if len(head) != 40 or any(
@@ -267,12 +288,12 @@ def worktree(root: Path, repository: Path, purpose: str, head: str | None) -> tu
         fail(f"could not reserve a worktree directory under {allowed}")
     token = secrets.token_hex(32)
     try:
-        subprocess.run(
-            ["git", "-C", str(repo), "worktree", "add", "--detach", str(directory), resolved_head],
+        run_git(
+            [ "-C", str(repo), "worktree", "add", "--detach", str(directory), resolved_head],
             check=True, capture_output=True, text=True,
         )
-        observed = subprocess.run(
-            ["git", "-C", str(directory), "rev-parse", "HEAD"],
+        observed = run_git(
+            [ "-C", str(directory), "rev-parse", "HEAD"],
             check=True, capture_output=True, text=True,
         ).stdout.strip()
         if observed != resolved_head:
@@ -283,8 +304,8 @@ def worktree(root: Path, repository: Path, purpose: str, head: str | None) -> tu
         )
         return directory.resolve(strict=True), token, resolved_head
     except Exception:
-        subprocess.run(
-            ["git", "-C", str(repo), "worktree", "remove", "--force", str(directory)],
+        run_git(
+            [ "-C", str(repo), "worktree", "remove", "--force", str(directory)],
             capture_output=True, text=True,
         )
         if directory.exists():
@@ -314,8 +335,8 @@ def worktree_remove(root: Path, directory: Path, purpose: str, token: str) -> No
     repository = marker.get("repository")
     if not isinstance(repository, str) or not repository.strip():
         fail(f"worktree marker lacks its repository: {resolved}")
-    subprocess.run(
-        ["git", "-C", repository, "worktree", "remove", "--force", str(resolved)],
+    run_git(
+        [ "-C", repository, "worktree", "remove", "--force", str(resolved)],
         check=True, capture_output=True, text=True,
     )
     if resolved.exists():

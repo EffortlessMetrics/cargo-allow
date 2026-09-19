@@ -20,9 +20,17 @@ LIFECYCLE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LIFECYCLE)
 
 
-def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
+def run(
+    *args: str,
+    expect: int = 0,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
-        [sys.executable, str(TOOL), *args], capture_output=True, text=True, check=False
+        [sys.executable, str(TOOL), *args],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
     )
     if result.returncode != expect:
         raise SystemExit(
@@ -310,12 +318,26 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         run("remove", "--root", str(root), "--path", snap_path,
             "--purpose", "snapshot-auth", "--token", snapshot["token"])
 
+    poison_root = root / "poisoned-git-environment"
+    poison_root.mkdir()
+    poisoned_git_env = {
+        **os.environ,
+        "GIT_DIR": str(poison_root / "foreign.git"),
+        "GIT_WORK_TREE": str(poison_root / "foreign-worktree"),
+        "GIT_COMMON_DIR": str(poison_root / "foreign-common"),
+        "GIT_INDEX_FILE": str(poison_root / "foreign-index"),
+        "GIT_OBJECT_DIRECTORY": str(poison_root / "foreign-objects"),
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES": str(poison_root / "alternate-objects"),
+        "GIT_CEILING_DIRECTORIES": str(poison_root),
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM": "0",
+    }
+
     if __import__("shutil").rmtree.avoids_symlink_attacks:
         for script in ("exact-candidate-package-set.sh", "source-candidate-smoke.sh"):
             result = subprocess.run(
                 ["bash", str(ROOT / "scripts" / script)],
                 cwd=ROOT,
-                env={**os.environ, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged", "CANDIDATE_HARNESS_ROOT": str(ROOT), "CANDIDATE_HARNESS_OUTPUT_ROOT": str(ROOT), "CANDIDATE_HARNESS_GIT_HEAD": "forged"},
+                env={**poisoned_git_env, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged", "CANDIDATE_HARNESS_ROOT": str(ROOT), "CANDIDATE_HARNESS_OUTPUT_ROOT": str(ROOT), "CANDIDATE_HARNESS_GIT_HEAD": "forged"},
                 capture_output=True,
                 text=True,
                 check=False,
@@ -333,7 +355,7 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         result = subprocess.run(
             ["bash", str(ROOT / "scripts" / "exact-candidate-package-set.sh")],
             cwd=ROOT,
-            env={**os.environ, "SKIP_PACKAGE": "1", "PACKAGE_INPUT_DIR": str(package_input),
+            env={**poisoned_git_env, "SKIP_PACKAGE": "1", "PACKAGE_INPUT_DIR": str(package_input),
                  "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1",
                  "CANDIDATE_HARNESS_TEST_ROOT": str(root)},
             capture_output=True, text=True, check=False,
@@ -342,7 +364,16 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             raise SystemExit(f"checkout-root package staging probe failed:\n{result.stdout}{result.stderr}")
 
     work = json.loads(
-        run("worktree", "--root", str(root), "--repository", str(ROOT), "--purpose", "worktree-auth").stdout
+        run(
+            "worktree",
+            "--root",
+            str(root),
+            "--repository",
+            str(ROOT),
+            "--purpose",
+            "worktree-auth",
+            env=poisoned_git_env,
+        ).stdout
     )
     work_path = Path(work["path"])
     observed = subprocess.run(
@@ -359,14 +390,28 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
            "--purpose", "worktree-auth", "--token", work["token"])
     if not (work_path / ".candidate-harness-owner.json").is_file():
         raise SystemExit("worktree lost its ownership marker")
-    run("worktree-remove", "--root", str(root), "--path", str(work_path),
-        "--purpose", "worktree-auth", "--token", work["token"])
+    run(
+        "worktree-remove",
+        "--root",
+        str(root),
+        "--path",
+        str(work_path),
+        "--purpose",
+        "worktree-auth",
+        "--token",
+        work["token"],
+        env=poisoned_git_env,
+    )
     if work_path.exists():
         raise SystemExit("worktree removal left its directory behind")
     listed = subprocess.run(
         ["git", "-C", str(ROOT), "worktree", "list", "--porcelain"],
         capture_output=True, text=True, check=False,
     )
+    if listed.returncode != 0:
+        raise SystemExit(
+            f"git worktree list failed while checking cleanup:\n{listed.stdout}{listed.stderr}"
+        )
     if str(work_path) in listed.stdout:
         raise SystemExit("worktree removal left stale registration")
     reject("worktree-remove", "--root", str(root), "--path", str(work_path),
