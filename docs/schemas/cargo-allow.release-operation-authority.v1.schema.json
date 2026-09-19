@@ -12,7 +12,7 @@
   "$defs": {
     "digest": {
       "type": "string",
-      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+      "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "operation_class": {
       "enum": ["clean_final_publication", "incident_recovery", "containment"]
@@ -37,6 +37,7 @@
         "incident_recorded",
         "recovery_selected",
         "containment_selected",
+        "containment_observed_exact",
         "operation_settled"
       ]
     },
@@ -100,18 +101,18 @@
         "run", "attempt", "job", "commit"
       ],
       "properties": {
-        "tool": { "type": "string", "minLength": 1 },
-        "schema": { "type": "string", "minLength": 1 },
+        "tool": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
         "generation": { "type": "integer", "minimum": 1 },
         "repository": { "const": "EffortlessMetrics/cargo-allow" },
-        "workflow": { "type": "string", "minLength": 1 },
-        "workflow_ref": { "type": "string", "minLength": 1 },
-        "run": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "workflow_ref": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "run": { "type": "string", "minLength": 1, "maxLength": 256 },
         "attempt": { "type": "integer", "minimum": 1 },
-        "job": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1, "maxLength": 256 },
         "commit": {
           "type": "string",
-          "pattern": "^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
         }
       }
     },
@@ -154,14 +155,15 @@
         "topology_digest", "support_digest", "channel_digest",
         "package_denominator_digest", "packages", "asset_denominator_digest", "assets",
         "workflow_digest", "action_inventory_digest", "live_controls_digest",
-        "incident_predecessor_operation_digest", "one_run_scope",
+        "incident_predecessor_operation_digest", "incident_predecessor_head_digest",
+        "one_run_scope",
         "expires_at_unix_seconds", "claim_boundary"
       ],
       "properties": {
         "schema_id": { "const": "cargo-allow.release-operation-identity.v1" },
         "schema_version": { "const": 1 },
         "operation_id": { "type": "string", "pattern": "^cargo-allow-op-[0-9a-f]{24}$" },
-        "nonce": { "type": "string", "minLength": 1 },
+        "nonce": { "type": "string", "minLength": 1, "maxLength": 256 },
         "operation_class": { "$ref": "#/$defs/operation_class" },
         "authority_kind": { "$ref": "#/$defs/authority_kind" },
         "repository": { "const": "EffortlessMetrics/cargo-allow" },
@@ -199,6 +201,9 @@
         "incident_predecessor_operation_digest": {
           "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
         },
+        "incident_predecessor_head_digest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        },
         "one_run_scope": { "const": true },
         "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
         "claim_boundary": { "type": "string", "minLength": 1 }
@@ -223,12 +228,12 @@
         "event_digest": { "$ref": "#/$defs/digest" },
         "event_class": { "$ref": "#/$defs/event_class" },
         "subject": { "$ref": "#/$defs/subject" },
-        "payload_schema_id": { "type": "string", "minLength": 1 },
+        "payload_schema_id": { "type": "string", "minLength": 1, "maxLength": 256 },
         "payload_digest": { "$ref": "#/$defs/digest" },
         "producer": { "$ref": "#/$defs/producer" },
-        "actor": { "type": "string", "minLength": 1 },
+        "actor": { "type": "string", "minLength": 1, "maxLength": 256 },
         "authority_class": { "$ref": "#/$defs/authority_kind" },
-        "request_boundary": { "type": "string", "minLength": 1 },
+        "request_boundary": { "type": "string", "minLength": 1, "maxLength": 256 },
         "response_posture": {
           "enum": ["not_applicable", "response_known", "response_unknown"]
         },
