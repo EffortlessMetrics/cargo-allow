@@ -89,6 +89,7 @@ pub enum CargoAllowReleaseOperationEventClassV1 {
     IncidentRecorded,
     RecoverySelected,
     ContainmentSelected,
+    ContainmentObservedExact,
     OperationSettled,
 }
 
@@ -785,6 +786,7 @@ fn validate_event_subject(
             | Event::IncidentRecorded
             | Event::RecoverySelected
             | Event::ContainmentSelected
+            | Event::ContainmentObservedExact
             | Event::OperationSettled,
             Subject::Operation,
         ) => Ok(()),
@@ -863,7 +865,8 @@ fn validate_event_envelope_fields(
         | Event::PackageRowObservedExact
         | Event::GitHubDraftObservedExact
         | Event::AssetObservedExact
-        | Event::PublicReleaseObservedExact => {
+        | Event::PublicReleaseObservedExact
+        | Event::ContainmentObservedExact => {
             if event.semantic_result != ResultClass::Exact
                 || event.response_posture != Response::ResponseKnown
                 || event.artifact_digest.is_none()
@@ -917,6 +920,7 @@ fn is_singleton_event_class(class: CargoAllowReleaseOperationEventClassV1) -> bo
             | Event::RepositoryReconciled
             | Event::RecoverySelected
             | Event::ContainmentSelected
+            | Event::ContainmentObservedExact
             | Event::OperationSettled
     )
 }
@@ -948,7 +952,7 @@ fn exact_package_subjects(events: &[CargoAllowReleaseOperationEventV1]) -> BTree
         .iter()
         .filter(|event| {
             event.event_class == CargoAllowReleaseOperationEventClassV1::PackageRowObservedExact
-                && event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+                && event_is_exact_authority(event)
         })
         .filter_map(|event| match &event.subject {
             CargoAllowReleaseOperationEventSubjectV1::Package(id) => Some(id.clone()),
@@ -962,7 +966,7 @@ fn exact_asset_subjects(events: &[CargoAllowReleaseOperationEventV1]) -> BTreeSe
         .iter()
         .filter(|event| {
             event.event_class == CargoAllowReleaseOperationEventClassV1::AssetObservedExact
-                && event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
+                && event_is_exact_authority(event)
         })
         .filter_map(|event| match &event.subject {
             CargoAllowReleaseOperationEventSubjectV1::Asset(id) => Some(id.clone()),
@@ -993,6 +997,25 @@ fn all_assets_exact(
         .all(|row| exact.contains(&row.asset_id))
 }
 
+fn expected_subject_artifact_digest<'a>(
+    identity: &'a CargoAllowReleaseOperationIdentityV1,
+    subject: &CargoAllowReleaseOperationEventSubjectV1,
+) -> Option<&'a str> {
+    match subject {
+        CargoAllowReleaseOperationEventSubjectV1::Package(id) => identity
+            .packages
+            .iter()
+            .find(|row| row.logical_id == *id)
+            .map(|row| row.package_digest.as_str()),
+        CargoAllowReleaseOperationEventSubjectV1::Asset(id) => identity
+            .assets
+            .iter()
+            .find(|row| row.asset_id == *id)
+            .map(|row| row.asset_digest.as_str()),
+        CargoAllowReleaseOperationEventSubjectV1::Operation => None,
+    }
+}
+
 fn matching_irreversible_request(
     events: &[CargoAllowReleaseOperationEventV1],
     init: &CargoAllowReleaseOperationEventInitV1,
@@ -1001,6 +1024,7 @@ fn matching_irreversible_request(
         event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
             && event.subject == init.subject
             && event.payload_schema_id == init.payload_schema_id
+            && event.payload_digest == init.payload_digest
             && event.request_boundary == init.request_boundary
             && event.artifact_digest.is_some()
             && event.artifact_digest == init.artifact_digest
@@ -1088,14 +1112,12 @@ fn validate_event_transition(
         && matches!(
             init.event_class,
             Event::TagIntentDurable
-                | Event::IrreversibleRequestStarted
                 | Event::TagObservedExact
                 | Event::PackageRowIntentDurable
                 | Event::PackageRowObservedExact
                 | Event::GitHubDraftObservedExact
                 | Event::AssetObservedExact
                 | Event::PublicReleaseObservedExact
-                | Event::RepositoryReconciled
         )
     {
         return Err("containment authority cannot create publication progress");
@@ -1153,43 +1175,64 @@ fn validate_event_transition(
                 return Err("tag intent belongs only to an exact clean leased operation");
             }
         }
-        Event::IrreversibleRequestStarted => match &init.subject {
-            Subject::Operation => {
-                let tag_request = identity.operation_class == Class::CleanFinalPublication
-                    && has_exact_event(events, Event::TagIntentDurable)
-                    && !has_exact_event(events, Event::TagObservedExact);
-                let draft_request = all_packages_exact(identity, events)
-                    && !has_exact_event(events, Event::GitHubDraftObservedExact);
-                let public_request = all_assets_exact(identity, events)
-                    && has_exact_event(events, Event::GitHubDraftObservedExact)
-                    && !has_exact_event(events, Event::PublicReleaseObservedExact);
-                if !(tag_request || draft_request || public_request) {
-                    return Err("operation request start is out of order");
+        Event::IrreversibleRequestStarted => {
+            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject) {
+                if init.artifact_digest.as_deref() != Some(expected) {
+                    return Err("provider request bytes do not match the immutable denominator");
                 }
             }
-            Subject::Package(id) => {
-                let subject = Subject::Package(id.clone());
-                if !events.iter().any(|event| {
-                    event.event_class == Event::PackageRowIntentDurable
-                        && event.subject == subject
-                        && event_is_exact_authority(event)
-                }) || events.iter().any(|event| {
-                    event.event_class == Event::PackageRowObservedExact && event.subject == subject
-                }) {
-                    return Err("package request requires one exact durable row intent");
+            match &init.subject {
+                Subject::Operation => {
+                    let tag_request = identity.operation_class == Class::CleanFinalPublication
+                        && has_exact_event(events, Event::TagIntentDurable)
+                        && !has_exact_event(events, Event::TagObservedExact);
+                    let draft_request = identity.operation_class != Class::Containment
+                        && all_packages_exact(identity, events)
+                        && !has_exact_event(events, Event::GitHubDraftObservedExact);
+                    let public_request = identity.operation_class != Class::Containment
+                        && all_assets_exact(identity, events)
+                        && has_exact_event(events, Event::GitHubDraftObservedExact)
+                        && !has_exact_event(events, Event::PublicReleaseObservedExact);
+                    let containment_request = identity.operation_class == Class::Containment
+                        && has_exact_event(events, Event::ContainmentSelected)
+                        && has_exact_event(events, Event::AuthorizationSelected)
+                        && has_exact_event(events, Event::LeaseAcquired)
+                        && !has_exact_event(events, Event::ContainmentObservedExact);
+                    if !(tag_request || draft_request || public_request || containment_request) {
+                        return Err("operation request start is out of order");
+                    }
+                }
+                Subject::Package(id) => {
+                    let subject = Subject::Package(id.clone());
+                    if identity.operation_class == Class::Containment
+                        || !has_exact_event(events, Event::TagObservedExact)
+                        || !events.iter().any(|event| {
+                            event.event_class == Event::PackageRowIntentDurable
+                                && event.subject == subject
+                                && event_is_exact_authority(event)
+                        })
+                        || events.iter().any(|event| {
+                            event.event_class == Event::PackageRowObservedExact
+                                && event.subject == subject
+                        })
+                    {
+                        return Err("package request requires one exact durable row intent");
+                    }
+                }
+                Subject::Asset(id) => {
+                    let subject = Subject::Asset(id.clone());
+                    if identity.operation_class == Class::Containment
+                        || !has_exact_event(events, Event::GitHubDraftObservedExact)
+                        || events.iter().any(|event| {
+                            event.event_class == Event::AssetObservedExact
+                                && event.subject == subject
+                        })
+                    {
+                        return Err("asset request requires exact GitHub draft and unobserved asset");
+                    }
                 }
             }
-            Subject::Asset(id) => {
-                let subject = Subject::Asset(id.clone());
-                if !has_exact_event(events, Event::GitHubDraftObservedExact)
-                    || events.iter().any(|event| {
-                        event.event_class == Event::AssetObservedExact && event.subject == subject
-                    })
-                {
-                    return Err("asset request requires exact GitHub draft and unobserved asset");
-                }
-            }
-        },
+        }
         Event::TagObservedExact => {
             let ready = match identity.operation_class {
                 Class::CleanFinalPublication => {
@@ -1218,13 +1261,26 @@ fn validate_event_transition(
                 return Err("package observation requires a package subject");
             };
             let subject = Subject::Package(id.clone());
-            if !events.iter().any(|event| {
+            let expected = expected_subject_artifact_digest(identity, &subject)
+                .ok_or("package denominator row is missing")?;
+            if init.artifact_digest.as_deref() != Some(expected) {
+                return Err("package observation bytes differ from the immutable denominator");
+            }
+            let upload_path = events.iter().any(|event| {
                 event.event_class == Event::PackageRowIntentDurable
                     && event.subject == subject
                     && event_is_exact_authority(event)
-            }) || !matching_irreversible_request(events, init)
-            {
-                return Err("package observation requires same row exact intent and request");
+            }) && matching_irreversible_request(events, init);
+            let read_only_recovery = identity.operation_class == Class::IncidentRecovery
+                && has_exact_event(events, Event::TagObservedExact)
+                && !events.iter().any(|event| {
+                    event.event_class == Event::PackageRowIntentDurable
+                        && event.subject == subject
+                });
+            if !(upload_path || read_only_recovery) {
+                return Err(
+                    "package observation requires its upload request or read-only recovery reconciliation",
+                );
             }
             if events.iter().any(|event| {
                 event.event_class == Event::PackageRowObservedExact && event.subject == init.subject
@@ -1233,15 +1289,30 @@ fn validate_event_transition(
             }
         }
         Event::GitHubDraftObservedExact => {
-            if !all_packages_exact(identity, events) || !matching_irreversible_request(events, init) {
-                return Err("GitHub draft observation requires every package exact and its request");
+            let mutation_path = matching_irreversible_request(events, init);
+            let read_only_recovery = identity.operation_class == Class::IncidentRecovery
+                && !unresolved_irreversible_request_exists(events);
+            if !all_packages_exact(identity, events) || !(mutation_path || read_only_recovery) {
+                return Err(
+                    "GitHub draft observation requires every package exact plus its request or read-only recovery reconciliation",
+                );
             }
         }
         Event::AssetObservedExact => {
+            let expected = expected_subject_artifact_digest(identity, &init.subject)
+                .ok_or("asset denominator row is missing")?;
+            if init.artifact_digest.as_deref() != Some(expected) {
+                return Err("asset observation bytes differ from the immutable denominator");
+            }
+            let mutation_path = matching_irreversible_request(events, init);
+            let read_only_recovery = identity.operation_class == Class::IncidentRecovery
+                && !unresolved_irreversible_request_exists(events);
             if !has_exact_event(events, Event::GitHubDraftObservedExact)
-                || !matching_irreversible_request(events, init)
+                || !(mutation_path || read_only_recovery)
             {
-                return Err("asset observation requires exact draft and matching request");
+                return Err(
+                    "asset observation requires exact draft plus its request or read-only recovery reconciliation",
+                );
             }
             if events.iter().any(|event| {
                 event.event_class == Event::AssetObservedExact && event.subject == init.subject
@@ -1250,18 +1321,34 @@ fn validate_event_transition(
             }
         }
         Event::PublicReleaseObservedExact => {
+            let mutation_path = matching_irreversible_request(events, init);
+            let read_only_recovery = identity.operation_class == Class::IncidentRecovery
+                && !unresolved_irreversible_request_exists(events);
             if !all_packages_exact(identity, events)
                 || !all_assets_exact(identity, events)
-                || !matching_irreversible_request(events, init)
+                || !(mutation_path || read_only_recovery)
             {
                 return Err(
-                    "public release observation requires every package/asset exact and its request",
+                    "public release observation requires the full denominator plus its request or read-only recovery reconciliation",
                 );
             }
         }
+        Event::ContainmentObservedExact => {
+            if identity.operation_class != Class::Containment
+                || !matching_irreversible_request(events, init)
+            {
+                return Err("containment observation requires the exact containment request");
+            }
+        }
         Event::RepositoryReconciled => {
-            if !has_exact_event(events, Event::PublicReleaseObservedExact) {
-                return Err("repository reconciliation follows exact public release observation");
+            let ready = match identity.operation_class {
+                Class::Containment => has_exact_event(events, Event::ContainmentObservedExact),
+                Class::CleanFinalPublication | Class::IncidentRecovery => {
+                    has_exact_event(events, Event::PublicReleaseObservedExact)
+                }
+            };
+            if !ready {
+                return Err("repository reconciliation is out of order");
             }
         }
         Event::IncidentRecorded => {
@@ -1271,17 +1358,22 @@ fn validate_event_transition(
         }
         Event::OperationSettled => match identity.operation_class {
             Class::Containment => {
-                if !has_exact_event(events, Event::ContainmentSelected)
+                if init.semantic_result != ResultClass::Exact
+                    || !has_exact_event(events, Event::ContainmentSelected)
                     || !has_exact_event(events, Event::AuthorizationSelected)
                     || !has_exact_event(events, Event::LeaseAcquired)
-                    || !has_event(events, Event::IncidentRecorded)
+                    || !has_exact_event(events, Event::ContainmentObservedExact)
+                    || !has_exact_event(events, Event::RepositoryReconciled)
                 {
                     return Err(
-                        "containment settlement requires selected authority, lease, and incident record",
+                        "containment settlement requires exact action observation and reconciliation",
                     );
                 }
             }
             Class::CleanFinalPublication | Class::IncidentRecovery => {
+                if init.semantic_result != ResultClass::Exact {
+                    return Err("operation settlement requires an exact terminal result");
+                }
                 if identity.operation_class == Class::IncidentRecovery
                     && !has_exact_event(events, Event::RecoverySelected)
                 {
@@ -1300,7 +1392,7 @@ fn validate_event_transition(
     Ok(())
 }
 
-pub fn append_release_operation_event_v1(pub fn append_release_operation_event_v1(
+pub fn append_release_operation_event_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     init: CargoAllowReleaseOperationEventInitV1,
@@ -1443,6 +1535,7 @@ fn response_unknown_is_resolved(
                 Event::TagObservedExact
                     | Event::GitHubDraftObservedExact
                     | Event::PublicReleaseObservedExact
+                    | Event::ContainmentObservedExact
             ),
             CargoAllowReleaseOperationEventSubjectV1::Package(_) => {
                 later.event_class == Event::PackageRowObservedExact
@@ -1455,6 +1548,7 @@ fn response_unknown_is_resolved(
             && event_is_exact_authority(later)
             && later.subject == event.subject
             && later.payload_schema_id == event.payload_schema_id
+            && later.payload_digest == event.payload_digest
             && later.request_boundary == event.request_boundary
             && later.artifact_digest.is_some()
             && later.artifact_digest == event.artifact_digest
@@ -1526,7 +1620,16 @@ fn evaluate_state(
         if has_exact_event(events, Event::OperationSettled) {
             return State::CompleteWithIncidentLineage;
         }
-        return State::RecoveryRequired;
+        if has_exact_event(events, Event::ContainmentObservedExact) {
+            return State::RepositoryReconciliationRequired;
+        }
+        if has_exact_event(events, Event::LeaseAcquired) {
+            return State::HeldPreIrreversible;
+        }
+        if has_exact_event(events, Event::AuthorizationSelected) {
+            return State::Authorized;
+        }
+        return State::Prepared;
     }
     if events.iter().any(|event| event.event_class == Event::IncidentRecorded) {
         return State::RecoveryRequired;
@@ -1611,7 +1714,7 @@ pub fn compile_release_operation_head_v1(
     })
 }
 
-pub fn evaluate_release_operation_v1(pub fn evaluate_release_operation_v1(
+pub fn evaluate_release_operation_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     events: &[CargoAllowReleaseOperationEventV1],
     evaluated_at_unix_seconds: u64,
