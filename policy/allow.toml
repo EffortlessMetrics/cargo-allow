@@ -13442,6 +13442,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11320"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-package-byte-authority.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Cross-producer package-byte authority proof: bare snapshots omit vcs info, worktrees carry the exact head."
+evidence = ["issue:4304", "test:package_byte_authority"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-package-byte-authority.py"
+target_fingerprint = "py"
+glob = "scripts/test-package-byte-authority.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11321"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4304-package-byte-authority.toml"
+owner = "core/release"
+classification = "package_byte_authority"
+reason = "Revision note covering the package-byte authority ledger admission; tracks configuration only, authorizes no release action."
+evidence = ["issue:4304", "test:package_byte_authority"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4304-package-byte-authority.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4304-package-byte-authority.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11157"
 kind = "non_rust_file"
 family = "python_tool"
