@@ -1398,6 +1398,11 @@ fn validate_event_transition(
             }
         }
         Event::AuthorizationSelected => {
+            if init.payload_digest != identity.authorization_digest {
+                return Err(
+                    "authorization selection payload does not match immutable authorization digest",
+                );
+            }
             let ready = match identity.operation_class {
                 Class::CleanFinalPublication => has_exact_event(events, Event::OperationSelected),
                 Class::IncidentRecovery => has_exact_event(events, Event::RecoverySelected),

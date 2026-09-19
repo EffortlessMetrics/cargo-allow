@@ -158,11 +158,16 @@ fn event_init(
             .map(|row| row.asset_digest.clone()),
         CargoAllowReleaseOperationEventSubjectV1::Operation => Some(digest(2_000 + ordinal)),
     };
+    let payload_digest = if class == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected {
+        identity.authorization_digest.clone()
+    } else {
+        digest(1_000 + ordinal)
+    };
     CargoAllowReleaseOperationEventInitV1 {
         event_class: class,
         subject,
         payload_schema_id: "cargo-allow.synthetic-release-payload.v1".to_string(),
-        payload_digest: digest(1_000 + ordinal),
+        payload_digest,
         producer: producer("100", 1),
         actor: "release-operator".to_string(),
         authority_class: identity.authority_kind,
@@ -606,6 +611,40 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated()
     use CargoAllowReleaseOperationStateV1 as State;
 
     let identity = identity()?;
+
+    let mut selected = Vec::new();
+    append(
+        &identity,
+        &mut selected,
+        Event::OperationSelected,
+        Operation,
+        1,
+    )?;
+    let mut foreign_authorization = event_init(
+        &identity,
+        Event::AuthorizationSelected,
+        Operation,
+        ResultClass::Exact,
+        2,
+    );
+    foreign_authorization.payload_digest = digest(9_998);
+    require(
+        append_release_operation_event_v1(&identity, &selected, foreign_authorization).is_err(),
+        "a foreign authorization digest must never become selected authority",
+    )?;
+    require(
+        event_init(
+            &identity,
+            Event::AuthorizationSelected,
+            Operation,
+            ResultClass::Exact,
+            2,
+        )
+        .payload_digest
+            == identity.authorization_digest,
+        "valid authorization fixtures must name the immutable authorization digest",
+    )?;
+
     for result in [
         ResultClass::Partial,
         ResultClass::Conflict,

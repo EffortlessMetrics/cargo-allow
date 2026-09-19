@@ -11,10 +11,11 @@ use allow_report::{
     RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
     append_release_operation_event_v1, build_release_operation_identity_v1,
     compile_release_operation_head_v1, evaluate_release_operation_v1,
-    render_release_operation_evaluation_v1, render_release_operation_event_v1,
-    render_release_operation_head_v1, render_release_operation_identity_v1,
-    validate_release_operation_evaluation_v1, validate_release_operation_head_v1,
-    validate_release_operation_history_v1, validate_release_operation_identity_v1,
+    release_operation_event_digest_v1, render_release_operation_evaluation_v1,
+    render_release_operation_event_v1, render_release_operation_head_v1,
+    render_release_operation_identity_v1, validate_release_operation_evaluation_v1,
+    validate_release_operation_head_v1, validate_release_operation_history_v1,
+    validate_release_operation_identity_v1,
 };
 
 const EVALUATED_AT_UNIX_SECONDS: u64 = 1_790_100_000;
@@ -110,11 +111,16 @@ fn event_init(
     class: CargoAllowReleaseOperationEventClassV1,
     sequence_hint: u64,
 ) -> CargoAllowReleaseOperationEventInitV1 {
+    let payload_digest = if class == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected {
+        identity.authorization_digest.clone()
+    } else {
+        digest(1000 + sequence_hint)
+    };
     CargoAllowReleaseOperationEventInitV1 {
         event_class: class,
         subject: CargoAllowReleaseOperationEventSubjectV1::Operation,
         payload_schema_id: "cargo-allow.synthetic-operation-payload.v1".to_string(),
-        payload_digest: digest(1000 + sequence_hint),
+        payload_digest,
         producer: producer(),
         actor: "release-operator".to_string(),
         authority_class: identity.authority_kind,
@@ -185,6 +191,17 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history()
     )?;
     validate_release_operation_history_v1(&loaded_identity, &loaded_events)
         .map_err(io::Error::other)?;
+
+    let mut foreign_authorization = loaded_events.clone();
+    let authorization = foreign_authorization
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("authorization event fixture should exist"))?;
+    authorization.payload_digest = digest(9_999);
+    authorization.event_digest = release_operation_event_digest_v1(authorization)?;
+    require(
+        validate_release_operation_history_v1(&loaded_identity, &foreign_authorization).is_err(),
+        "a recomputed event digest must not let a foreign authorization payload replay",
+    )?;
 
     let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
         .map_err(io::Error::other)?;
