@@ -1,15 +1,15 @@
-name: PR 4302 current-head repair v1
+name: PR 4302 current-head repair v2
 
 on:
   push:
     branches:
-      - automation/pr-4302-current-head-repair-v1
+      - automation/pr-4302-current-head-repair-v2
 
 permissions:
   contents: write
 
 concurrency:
-  group: pr-4302-current-head-repair-v1
+  group: pr-4302-current-head-repair-v2
   cancel-in-progress: false
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 75
     env:
       TARGET_HEAD: 9543340752816cdcbd7c00d10a0e0156e0b5c0bf
-      OUTPUT_BRANCH: automation/pr-4302-current-head-repair-output-v1
+      OUTPUT_BRANCH: automation/pr-4302-current-head-repair-output-v2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -30,7 +30,9 @@ jobs:
           set -euo pipefail
           cp .github/repair/pr-4302-current-head-repair-v1.py /tmp/pr-4302-current-head-repair-v1.py
           cp .github/repair/pr-4302-current-head-repair-v1-hotfix.py /tmp/pr-4302-current-head-repair-v1-hotfix.py
+          cp .github/repair/pr-4302-current-head-repair-v2-extra.py /tmp/pr-4302-current-head-repair-v2-extra.py
           python3 /tmp/pr-4302-current-head-repair-v1-hotfix.py
+          python3 /tmp/pr-4302-current-head-repair-v2-extra.py
           git checkout --detach "$TARGET_HEAD"
           test "$(git rev-parse HEAD)" = "$TARGET_HEAD"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -42,33 +44,33 @@ jobs:
 
       - uses: ./.github/actions/rust-cache
         with:
-          lane: pr-4302-current-head-repair-v1
+          lane: pr-4302-current-head-repair-v2
 
       - name: Run checkpoint, journal, schema, lint, and ledger proof
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p target/pr-4302-current-head-repair-v1
+          mkdir -p target/pr-4302-current-head-repair-v2
           cargo test -p cargo-allow --test publication_checkpoint --locked -- --nocapture \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/publication-checkpoint.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/publication-checkpoint.log
           cargo test -p cargo-allow --test publication_checkpoint_runner_loss --locked -- --nocapture \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/runner-loss.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/runner-loss.log
           cargo test -p cargo-allow --test publication_checkpoint_trust --locked -- --nocapture \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/trust.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/trust.log
           cargo test -p cargo-allow --test publication_journal --locked -- --nocapture \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/journal.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/journal.log
           cargo test -p cargo-allow --locked --bin cargo-allow artifact_schema_index \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/schema-index.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/schema-index.log
           cargo test -p allow-report --locked \
-            2>&1 | tee target/pr-4302-current-head-repair-v1/allow-report.log
+            2>&1 | tee target/pr-4302-current-head-repair-v2/allow-report.log
           cargo check -p allow-report --locked
           cargo clippy -p allow-report -p cargo-allow --all-targets -- -D warnings
           cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
-            --receipt target/pr-4302-current-head-repair-v1/check.receipt.json \
-            --output target/pr-4302-current-head-repair-v1/check.md
+            --receipt target/pr-4302-current-head-repair-v2/check.receipt.json \
+            --output target/pr-4302-current-head-repair-v2/check.md
           cargo run -p cargo-allow --locked -- diff --base origin/main \
             --format markdown --require-change-note \
-            --output target/pr-4302-current-head-repair-v1/diff.md
+            --output target/pr-4302-current-head-repair-v2/diff.md
           cargo fmt --all -- --check
           git diff --check
 
@@ -90,7 +92,7 @@ jobs:
             docs/release/publication-checkpoint-v1.md \
             docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json
           git commit -m 'fix(release): require independently witnessed checkpoint authority (#3922)' \
-            -m 'Repair the parse failure, separate immutable checkpoint identity from runtime readback authority, consume upload/dependant permissions on journal advancement, require exact canonical provider bytes, and align hostile tests, schema, operator documentation, and the change note.'
+            -m 'Repair the parse and fixture failures, require runtime-witnessed immutable predecessors and exact canonical provider bytes, consume upload/dependant permissions on journal advancement, and align hostile tests, schema, operator documentation, and the change note.'
           if git ls-remote --exit-code --heads origin "$OUTPUT_BRANCH" >/dev/null 2>&1; then
             echo "output branch already exists: $OUTPUT_BRANCH" >&2
             exit 1
@@ -102,6 +104,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: pr-4302-current-head-repair-v1
-          path: target/pr-4302-current-head-repair-v1/
+          name: pr-4302-current-head-repair-v2
+          path: target/pr-4302-current-head-repair-v2/
           if-no-files-found: warn
