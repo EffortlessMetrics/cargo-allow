@@ -21714,3 +21714,69 @@ glob = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.jso
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11320"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Published closed JSON Schema family for the canonical #3940 release operation identity, append-only event envelope, current head, and aggregate evaluation; structural validation performs no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11321"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-authority-v1.md"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Operator and migration contract for #3940 PR A: one canonical semantic release-operation authority with provider-specific children explicitly deferred to reviewed PR B/C cutover."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-authority-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-authority-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11322"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3940-release-operation-authority.toml"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Exact append-only revision note for the #3940 PR A schema and operator-contract ledger admissions; it authorizes no workflow, provider, tag, token, publication, or live-control action."
+evidence = ["issue:3940", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3940-release-operation-authority.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3940-release-operation-authority.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
