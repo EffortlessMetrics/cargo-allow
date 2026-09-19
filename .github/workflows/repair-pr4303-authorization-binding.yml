@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "57976f1451d92f144b5de38d4e6f1e9f2759e62a"
+          test "$(git rev-parse HEAD^)" = "80ad1f2248d4a86bf3ef5384f8ce1cba318118ca"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/repair-pr4303-authorization-binding.yml"
           python3 - <<'PY'
           from pathlib import Path
@@ -98,10 +98,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "57976f1451d92f144b5de38d4e6f1e9f2759e62a"
-          python3 - <<'PY'
-          import subprocess
-          expected = {\n              ".github/workflows/repair-pr4303-authorization-binding.yml",\n              "crates/allow-report/src/artifacts/release_operation_authority_v1.rs",\n              "crates/allow-report/tests/release_operation_authority_contract.rs",\n              "crates/cargo-allow/tests/release_operation_authority.rs",\n          }\n          actual = set(\n              subprocess.check_output(["git", "diff", "--name-only", "HEAD"], text=True)\n              .splitlines()\n          )\n          if actual != expected:\n              raise SystemExit(f"unexpected repair paths: {sorted(actual)}")\n          PY
+          test "$(git rev-parse HEAD^)" = "80ad1f2248d4a86bf3ef5384f8ce1cba318118ca"
+          mapfile -t changed < <(git diff --name-only HEAD | sort)
+          expected=(
+            .github/workflows/repair-pr4303-authorization-binding.yml
+            crates/allow-report/src/artifacts/release_operation_authority_v1.rs
+            crates/allow-report/tests/release_operation_authority_contract.rs
+            crates/cargo-allow/tests/release_operation_authority.rs
+          )
+          test "${#changed[@]}" -eq "${#expected[@]}"
+          for index in "${!expected[@]}"; do
+            test "${changed[$index]}" = "${expected[$index]}"
+          done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
