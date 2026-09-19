@@ -66,11 +66,13 @@ fn identity_init(
     let assets = RELEASE_OPERATION_ASSET_SELECTION
         .iter()
         .enumerate()
-        .map(|(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
-            asset_id: (*asset_id).to_string(),
-            asset_name: (*asset_name).to_string(),
-            asset_digest: digest(200 + index as u64),
-        })
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
         .collect();
     CargoAllowReleaseOperationIdentityInitV1 {
         nonce: "release-op-nonce-0001".to_string(),
@@ -196,8 +198,7 @@ fn append(
     ) {
         init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
         if let Some(request) = events.iter().rev().find(|event| {
-            event.event_class
-                == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+            event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
                 && event.subject == subject
         }) {
             init.payload_schema_id = request.payload_schema_id.clone();
@@ -206,7 +207,8 @@ fn append(
             init.artifact_digest = request.artifact_digest.clone();
         }
     }
-    let event = append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
+    let event =
+        append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
     events.push(event);
     Ok(())
 }
@@ -227,7 +229,8 @@ fn append_request(
     init.payload_schema_id = format!("cargo-allow.synthetic-request-{ordinal}.v1");
     init.request_boundary = format!("synthetic-request-{ordinal}");
     init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
-    let event = append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
+    let event =
+        append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
     events.push(event);
     Ok(())
 }
@@ -258,8 +261,7 @@ fn append_with_proof(
     ) {
         init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
         if let Some(request) = events.iter().rev().find(|event| {
-            event.event_class
-                == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+            event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
                 && event.subject == subject
         }) {
             init.payload_schema_id = request.payload_schema_id.clone();
@@ -291,9 +293,8 @@ fn append_request_with_proof(
     init.payload_schema_id = format!("cargo-allow.synthetic-request-{ordinal}.v1");
     init.request_boundary = format!("synthetic-request-{ordinal}");
     init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
-    let event =
-        append_release_operation_event_with_predecessor_v1(identity, events, init, proof)
-            .map_err(io::Error::other)?;
+    let event = append_release_operation_event_with_predecessor_v1(identity, events, init, proof)
+        .map_err(io::Error::other)?;
     events.push(event);
     Ok(())
 }
@@ -316,7 +317,10 @@ fn append_preamble(
 fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<dyn Error>> {
     let first = identity()?;
     let second = identity()?;
-    require(first == second, "equal semantic inputs must produce equal identity")?;
+    require(
+        first == second,
+        "equal semantic inputs must produce equal identity",
+    )?;
     require(
         release_operation_identity_digest_v1(&first)?
             == release_operation_identity_digest_v1(&second)?,
@@ -389,14 +393,27 @@ fn release_operation_identity_is_semantic_and_lineage_bound() -> Result<(), Box<
 }
 
 #[test]
-fn release_operation_event_chain_rejects_foreign_and_mutated_history() -> Result<(), Box<dyn Error>> {
+fn release_operation_event_chain_rejects_foreign_and_mutated_history() -> Result<(), Box<dyn Error>>
+{
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1::Operation;
 
     let identity = identity()?;
     let mut events = Vec::new();
-    append(&identity, &mut events, Event::OperationSelected, Operation, 1)?;
-    append(&identity, &mut events, Event::AuthorizationSelected, Operation, 2)?;
+    append(
+        &identity,
+        &mut events,
+        Event::OperationSelected,
+        Operation,
+        1,
+    )?;
+    append(
+        &identity,
+        &mut events,
+        Event::AuthorizationSelected,
+        Operation,
+        2,
+    )?;
     append(&identity, &mut events, Event::LeaseAcquired, Operation, 3)?;
 
     validate_release_operation_history_v1(&identity, &events).map_err(io::Error::other)?;
@@ -457,8 +474,8 @@ fn release_operation_event_chain_rejects_foreign_and_mutated_history() -> Result
 }
 
 #[test]
-fn release_operation_completion_requires_every_selected_package_and_asset(
-) -> Result<(), Box<dyn Error>> {
+fn release_operation_completion_requires_every_selected_package_and_asset()
+-> Result<(), Box<dyn Error>> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1::{Asset, Operation, Package};
     use CargoAllowReleaseOperationStateV1 as State;
@@ -493,12 +510,9 @@ fn release_operation_completion_requires_every_selected_package_and_asset(
         )?;
         ordinal += 1;
         if index == 0 {
-            let partial = evaluate_release_operation_v1(
-                &identity,
-                &events,
-                EVALUATED_AT_UNIX_SECONDS,
-            )
-            .map_err(io::Error::other)?;
+            let partial =
+                evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+                    .map_err(io::Error::other)?;
             require(
                 partial.state == State::PackagePublicationInProgress
                     && partial.missing_packages.len() == identity.packages.len() - 1,
@@ -539,12 +553,9 @@ fn release_operation_completion_requires_every_selected_package_and_asset(
         )?;
         asset_ordinal += 1;
         if index == 0 {
-            let one_asset = evaluate_release_operation_v1(
-                &identity,
-                &events,
-                EVALUATED_AT_UNIX_SECONDS,
-            )
-            .map_err(io::Error::other)?;
+            let one_asset =
+                evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+                    .map_err(io::Error::other)?;
             require(
                 one_asset.state == State::GitHubReleaseInProgress
                     && one_asset.missing_assets.len() == identity.assets.len() - 1,
@@ -575,12 +586,8 @@ fn release_operation_completion_requires_every_selected_package_and_asset(
         Operation,
         103,
     )?;
-    let complete = evaluate_release_operation_v1(
-        &identity,
-        &events,
-        EVALUATED_AT_UNIX_SECONDS,
-    )
-    .map_err(io::Error::other)?;
+    let complete = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
     require(
         complete.state == State::CompleteClean
             && complete.missing_packages.is_empty()
@@ -590,10 +597,9 @@ fn release_operation_completion_requires_every_selected_package_and_asset(
     )
 }
 
-
 #[test]
-fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
-) -> Result<(), Box<dyn Error>> {
+fn release_operation_transition_prerequisites_are_exact_current_and_correlated()
+-> Result<(), Box<dyn Error>> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1::Operation;
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
@@ -608,11 +614,23 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
         ResultClass::InstrumentFailure,
     ] {
         let mut events = Vec::new();
-        append(&identity, &mut events, Event::OperationSelected, Operation, 1)?;
+        append(
+            &identity,
+            &mut events,
+            Event::OperationSelected,
+            Operation,
+            1,
+        )?;
         let non_exact = append_release_operation_event_v1(
             &identity,
             &events,
-            event_init(&identity, Event::AuthorizationSelected, Operation, result, 2),
+            event_init(
+                &identity,
+                Event::AuthorizationSelected,
+                Operation,
+                result,
+                2,
+            ),
         )
         .map_err(io::Error::other)?;
         events.push(non_exact);
@@ -634,10 +652,28 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
     }
 
     let mut events = Vec::new();
-    append(&identity, &mut events, Event::OperationSelected, Operation, 10)?;
-    append(&identity, &mut events, Event::AuthorizationSelected, Operation, 11)?;
+    append(
+        &identity,
+        &mut events,
+        Event::OperationSelected,
+        Operation,
+        10,
+    )?;
+    append(
+        &identity,
+        &mut events,
+        Event::AuthorizationSelected,
+        Operation,
+        11,
+    )?;
     append(&identity, &mut events, Event::LeaseAcquired, Operation, 12)?;
-    append(&identity, &mut events, Event::TagIntentDurable, Operation, 13)?;
+    append(
+        &identity,
+        &mut events,
+        Event::TagIntentDurable,
+        Operation,
+        13,
+    )?;
     append_request(&identity, &mut events, Operation, 14)?;
     require(
         evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
@@ -646,7 +682,10 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
             == State::RecoveryRequired,
         "unresolved irreversible request must require recovery",
     )?;
-    let request = events.last().ok_or_else(|| io::Error::other("request absent"))?.clone();
+    let request = events
+        .last()
+        .ok_or_else(|| io::Error::other("request absent"))?
+        .clone();
     let mut unrelated = event_init(
         &identity,
         Event::TagObservedExact,
@@ -662,7 +701,13 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
         append_release_operation_event_v1(&identity, &events, unrelated).is_err(),
         "unrelated exact observation must not resolve another request",
     )?;
-    append(&identity, &mut events, Event::TagObservedExact, Operation, 16)?;
+    append(
+        &identity,
+        &mut events,
+        Event::TagObservedExact,
+        Operation,
+        16,
+    )?;
 
     let package_id = identity
         .packages
@@ -705,21 +750,17 @@ fn release_operation_transition_prerequisites_are_exact_current_and_correlated(
     )?;
 
     require(
-        evaluate_release_operation_v1(
-            &identity,
-            &events,
-            identity.expires_at_unix_seconds + 1,
-        )
-        .map_err(io::Error::other)?
-        .state
+        evaluate_release_operation_v1(&identity, &events, identity.expires_at_unix_seconds + 1)
+            .map_err(io::Error::other)?
+            .state
             == State::Stale,
         "expired operation cannot evaluate clean",
     )
 }
 
 #[test]
-fn release_operation_recovery_and_containment_require_validated_predecessor(
-) -> Result<(), Box<dyn Error>> {
+fn release_operation_recovery_and_containment_require_validated_predecessor()
+-> Result<(), Box<dyn Error>> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1::{Operation, Package};
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
@@ -1004,8 +1045,9 @@ fn release_operation_authority_renderings_validate_against_schema() -> Result<()
     let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
         root.join("docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"),
     )?)?;
-    let validator = jsonschema::validator_for(&schema)
-        .map_err(|error| io::Error::other(format!("operation authority schema compiles: {error}")))?;
+    let validator = jsonschema::validator_for(&schema).map_err(|error| {
+        io::Error::other(format!("operation authority schema compiles: {error}"))
+    })?;
 
     let identity = identity()?;
     let event = append_release_operation_event_v1(
@@ -1021,8 +1063,10 @@ fn release_operation_authority_renderings_validate_against_schema() -> Result<()
     )
     .map_err(io::Error::other)?;
     let events = vec![event.clone()];
-    let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
-    let evaluation = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
+    let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
+    let evaluation = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
 
     let rendered = [
         render_release_operation_identity_v1(&identity)?,
@@ -1033,14 +1077,17 @@ fn release_operation_authority_renderings_validate_against_schema() -> Result<()
     for document in rendered {
         let value: serde_json::Value = serde_json::from_str(&document)?;
         validator.validate(&value).map_err(|error| {
-            io::Error::other(format!("operation authority rendering violates schema: {error}"))
+            io::Error::other(format!(
+                "operation authority rendering violates schema: {error}"
+            ))
         })?;
     }
     Ok(())
 }
 
 #[test]
-fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Result<(), Box<dyn Error>> {
+fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Result<(), Box<dyn Error>>
+{
     use CargoAllowReleaseOperationEventClassV1 as Event;
     use CargoAllowReleaseOperationEventSubjectV1::Operation;
     use CargoAllowReleaseOperationSemanticResultV1 as ResultClass;
@@ -1049,8 +1096,15 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
     let identity = identity()?;
     let mut events = Vec::new();
     append_preamble(&identity, &mut events)?;
-    append(&identity, &mut events, Event::IncidentRecorded, Operation, 70)?;
-    let incident = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
+    append(
+        &identity,
+        &mut events,
+        Event::IncidentRecorded,
+        Operation,
+        70,
+    )?;
+    let incident = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
     require(
         incident.state == State::RecoveryRequired && incident.incident_lineage,
         "a clean incident must permanently require recovery",
@@ -1100,19 +1154,18 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
     .map_err(io::Error::other)?;
     unavailable_events.push(unavailable);
     let evaluation =
-        evaluate_release_operation_v1(&identity, &unavailable_events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
+        evaluate_release_operation_v1(&identity, &unavailable_events, EVALUATED_AT_UNIX_SECONDS)
+            .map_err(io::Error::other)?;
     require(
         evaluation.state == State::ProviderUnavailable,
         "provider unavailability must not become an authorized/clean state",
     )?;
 
-    let recovery = build_release_operation_identity_v1(identity_init(
-        CargoAllowReleaseOperationClassV1::IncidentRecovery,
-    ))
-    .map_err(io::Error::other)?;
     require(
-        recovery.incident_predecessor_operation_digest.is_some()
-            && recovery.authority_kind == CargoAllowReleaseOperationAuthorityKindV1::Recovery,
-        "recovery identity must retain distinct incident lineage and authority",
+        build_release_operation_identity_v1(identity_init(
+            CargoAllowReleaseOperationClassV1::IncidentRecovery,
+        ))
+        .is_err(),
+        "recovery identity must require the typed predecessor builder",
     )
 }

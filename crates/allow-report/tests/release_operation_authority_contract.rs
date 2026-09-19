@@ -48,14 +48,16 @@ fn identity() -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<
     let assets = RELEASE_OPERATION_ASSET_SELECTION
         .iter()
         .enumerate()
-        .map(|(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
-            asset_id: (*asset_id).to_string(),
-            asset_name: (*asset_name).to_string(),
-            asset_digest: digest(200 + index as u64),
-        })
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
         .collect();
-    Ok(build_release_operation_identity_v1(
-        CargoAllowReleaseOperationIdentityInitV1 {
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
             nonce: "contract-nonce-0001".to_string(),
             operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
             authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
@@ -83,9 +85,9 @@ fn identity() -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<
             incident_predecessor_head_digest: None,
             one_run_scope: true,
             expires_at_unix_seconds: 1_800_000_000,
-        },
+        })
+        .map_err(io::Error::other)?,
     )
-    .map_err(io::Error::other)?)
 }
 
 fn producer() -> CargoAllowReleaseOperationProducerV1 {
@@ -125,8 +127,8 @@ fn event_init(
 }
 
 #[test]
-fn release_operation_authority_round_trips_and_revalidates_loaded_history(
-) -> Result<(), Box<dyn Error>> {
+fn release_operation_authority_round_trips_and_revalidates_loaded_history()
+-> Result<(), Box<dyn Error>> {
     let identity = identity()?;
     validate_release_operation_identity_v1(&identity).map_err(io::Error::other)?;
 
@@ -184,7 +186,8 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
     validate_release_operation_history_v1(&loaded_identity, &loaded_events)
         .map_err(io::Error::other)?;
 
-    let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
+    let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
     let rendered_head = render_release_operation_head_v1(&head)?;
     let loaded_head: allow_report::CargoAllowReleaseOperationHeadV1 =
         serde_json::from_str(&rendered_head)?;
@@ -197,8 +200,8 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
     )
     .map_err(io::Error::other)?;
 
-    let evaluation =
-        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
+    let evaluation = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+        .map_err(io::Error::other)?;
     let rendered_evaluation = render_release_operation_evaluation_v1(&evaluation)?;
     let loaded_evaluation: allow_report::CargoAllowReleaseOperationEvaluationV1 =
         serde_json::from_str(&rendered_evaluation)?;

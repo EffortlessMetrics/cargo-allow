@@ -40,7 +40,10 @@ pub const RELEASE_OPERATION_ASSET_SELECTION: [(&str, &str); 7] = [
         "cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz.executable.sha256",
     ),
     ("linux-package-receipt", "release-binary.receipt.json"),
-    ("linux-install-receipt", "release-binary-install.receipt.json"),
+    (
+        "linux-install-receipt",
+        "release-binary-install.receipt.json",
+    ),
 ];
 
 const CLAIM_BOUNDARY: &str = "Canonical semantic identity, append-only event order, current head, and aggregate state for one exact cargo-allow final-release operation. This authority performs no provider call, credential access, tag mutation, package publication, GitHub Release mutation, recovery action, or live-control change.";
@@ -492,9 +495,7 @@ fn validate_authority_lineage(
             Some(operation_digest),
             Some(head_digest),
         ) if digest_shape(operation_digest) && digest_shape(head_digest) => Ok(()),
-        _ => Err(
-            "operation class, authority kind, and incident predecessor binding do not agree",
-        ),
+        _ => Err("operation class, authority kind, and incident predecessor binding do not agree"),
     }
 }
 
@@ -696,9 +697,8 @@ pub fn build_release_operation_identity_with_predecessor_v1(
     {
         return Err("non-clean operation requires an incident-bearing predecessor");
     }
-    let predecessor_operation_digest =
-        release_operation_identity_digest_v1(predecessor_identity)
-            .map_err(|_| "predecessor identity digest failed")?;
+    let predecessor_operation_digest = release_operation_identity_digest_v1(predecessor_identity)
+        .map_err(|_| "predecessor identity digest failed")?;
     let predecessor_head_digest = release_operation_head_digest_v1(&predecessor.head)
         .map_err(|_| "predecessor head digest failed")?;
     if init
@@ -944,14 +944,12 @@ fn validate_event_subject(
             | Event::PackageRowObservedExact
             | Event::IrreversibleRequestStarted,
             Subject::Package(id),
-        ) if package_subject_exists(identity, id) =>
+        ) if package_subject_exists(identity, id) => Ok(()),
+        (Event::AssetObservedExact | Event::IrreversibleRequestStarted, Subject::Asset(id))
+            if asset_subject_exists(identity, id) =>
         {
             Ok(())
         }
-        (
-            Event::AssetObservedExact | Event::IrreversibleRequestStarted,
-            Subject::Asset(id),
-        ) if asset_subject_exists(identity, id) => Ok(()),
         (
             Event::OperationSelected
             | Event::AuthorizationSelected
@@ -1050,7 +1048,9 @@ fn validate_event_envelope_fields(
                 || event.response_posture != Response::ResponseKnown
                 || event.artifact_digest.is_none()
             {
-                return Err("exact provider observation requires known response and artifact identity");
+                return Err(
+                    "exact provider observation requires known response and artifact identity",
+                );
             }
         }
         _ => {
@@ -1102,28 +1102,6 @@ fn is_singleton_event_class(class: CargoAllowReleaseOperationEventClassV1) -> bo
             | Event::ContainmentObservedExact
             | Event::OperationSettled
     )
-}
-
-fn init_resolves_unknown(
-    events: &[CargoAllowReleaseOperationEventV1],
-    init: &CargoAllowReleaseOperationEventInitV1,
-    origin_class: CargoAllowReleaseOperationEventClassV1,
-) -> bool {
-    events.iter().any(|event| {
-        event.event_class == origin_class
-            && (event.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Unknown
-                || event.response_posture
-                    == CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown)
-            && init.semantic_result == CargoAllowReleaseOperationSemanticResultV1::Exact
-            && init.response_posture
-                != CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown
-            && event.subject == init.subject
-            && event.payload_schema_id == init.payload_schema_id
-            && event.payload_digest == init.payload_digest
-            && event.request_boundary == init.request_boundary
-            && event.artifact_digest.is_some()
-            && event.artifact_digest == init.artifact_digest
-    })
 }
 
 fn exact_package_subjects(events: &[CargoAllowReleaseOperationEventV1]) -> BTreeSet<String> {
@@ -1237,7 +1215,10 @@ fn validate_event_transition(
         if init.observed_at_unix_seconds < last.observed_at_unix_seconds {
             return Err("operation event time must be monotonic");
         }
-        let first = &events[0].producer;
+        let first = &events
+            .first()
+            .ok_or("operation history unexpectedly lost its first event")?
+            .producer;
         if identity.one_run_scope
             && (init.producer.repository != first.repository
                 || init.producer.workflow != first.workflow
@@ -1356,10 +1337,10 @@ fn validate_event_transition(
             }
         }
         Event::IrreversibleRequestStarted => {
-            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject) {
-                if init.artifact_digest.as_deref() != Some(expected) {
-                    return Err("provider request bytes do not match the immutable denominator");
-                }
+            if let Some(expected) = expected_subject_artifact_digest(identity, &init.subject)
+                && init.artifact_digest.as_deref() != Some(expected)
+            {
+                return Err("provider request bytes do not match the immutable denominator");
             }
             match &init.subject {
                 Subject::Operation => {
@@ -1408,7 +1389,9 @@ fn validate_event_transition(
                                 && event.subject == subject
                         })
                     {
-                        return Err("asset request requires exact GitHub draft and unobserved asset");
+                        return Err(
+                            "asset request requires exact GitHub draft and unobserved asset",
+                        );
                     }
                 }
             }
@@ -1454,8 +1437,7 @@ fn validate_event_transition(
             let read_only_recovery = identity.operation_class == Class::IncidentRecovery
                 && has_exact_event(events, Event::TagObservedExact)
                 && !events.iter().any(|event| {
-                    event.event_class == Event::PackageRowIntentDurable
-                        && event.subject == subject
+                    event.event_class == Event::PackageRowIntentDurable && event.subject == subject
                 });
             if !(upload_path || read_only_recovery) {
                 return Err(
@@ -1847,7 +1829,10 @@ fn evaluate_state(
         }
         return State::Prepared;
     }
-    if events.iter().any(|event| event.event_class == Event::IncidentRecorded) {
+    if events
+        .iter()
+        .any(|event| event.event_class == Event::IncidentRecorded)
+    {
         return State::RecoveryRequired;
     }
     if events.is_empty()
@@ -1864,7 +1849,9 @@ fn evaluate_state(
         return State::HeldPreIrreversible;
     }
     if !all_packages_exact(identity, events) {
-        if has_event(events, Event::PackageRowIntentDurable) || !exact_package_subjects(events).is_empty() {
+        if has_event(events, Event::PackageRowIntentDurable)
+            || !exact_package_subjects(events).is_empty()
+        {
             return State::PackagePublicationInProgress;
         }
         return State::TagObservedPackagesPending;
@@ -1872,7 +1859,9 @@ fn evaluate_state(
     if !has_exact_event(events, Event::GitHubDraftObservedExact) {
         return State::PackagesPublishedExact;
     }
-    if !all_assets_exact(identity, events) || !has_exact_event(events, Event::PublicReleaseObservedExact) {
+    if !all_assets_exact(identity, events)
+        || !has_exact_event(events, Event::PublicReleaseObservedExact)
+    {
         return State::GitHubReleaseInProgress;
     }
     if !has_exact_event(events, Event::RepositoryReconciled) {
@@ -1891,7 +1880,9 @@ fn evaluate_state(
 fn first_irreversible_digest(events: &[CargoAllowReleaseOperationEventV1]) -> Option<String> {
     events
         .iter()
-        .find(|event| event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted)
+        .find(|event| {
+            event.event_class == CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted
+        })
         .map(|event| event.event_digest.clone())
 }
 
@@ -1902,7 +1893,9 @@ fn compile_release_operation_head_internal_v1(
 ) -> Result<CargoAllowReleaseOperationHeadV1, &'static str> {
     validate_release_operation_history_internal_v1(identity, events)?;
     if evaluated_at_unix_seconds == 0
-        || events.last().is_some_and(|event| evaluated_at_unix_seconds < event.observed_at_unix_seconds)
+        || events
+            .last()
+            .is_some_and(|event| evaluated_at_unix_seconds < event.observed_at_unix_seconds)
     {
         return Err("release operation head evaluation time is invalid for retained history");
     }
@@ -1923,7 +1916,10 @@ fn compile_release_operation_head_internal_v1(
         state: evaluate_state(identity, events, evaluated_at_unix_seconds),
         first_irreversible_event_digest: first_irreversible_digest(events),
         incident_lineage: identity.incident_predecessor_operation_digest.is_some()
-            || has_event(events, CargoAllowReleaseOperationEventClassV1::IncidentRecorded),
+            || has_event(
+                events,
+                CargoAllowReleaseOperationEventClassV1::IncidentRecorded,
+            ),
         packages_observed_exact,
         assets_observed_exact,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
@@ -1936,13 +1932,14 @@ fn evaluate_release_operation_internal_v1(
     evaluated_at_unix_seconds: u64,
 ) -> Result<CargoAllowReleaseOperationEvaluationV1, &'static str> {
     if evaluated_at_unix_seconds == 0
-        || events.last().is_some_and(|event| {
-            evaluated_at_unix_seconds < event.observed_at_unix_seconds
-        })
+        || events
+            .last()
+            .is_some_and(|event| evaluated_at_unix_seconds < event.observed_at_unix_seconds)
     {
         return Err("release operation evaluation time is invalid for retained history");
     }
-    let head = compile_release_operation_head_internal_v1(identity, events, evaluated_at_unix_seconds)?;
+    let head =
+        compile_release_operation_head_internal_v1(identity, events, evaluated_at_unix_seconds)?;
     let expired = evaluated_at_unix_seconds > identity.expires_at_unix_seconds;
     let exact_packages = exact_package_subjects(events);
     let exact_assets = exact_asset_subjects(events);
