@@ -40,4 +40,28 @@ if source.count(old_row) != 1:
     raise AssertionError("row authority transform target moved")
 source = source.replace(old_row, new_row, 1)
 
+lines = source.splitlines()
+windows_seen = position_seen = assignment_seen = 0
+for index, line in enumerate(lines):
+    if line.strip() == ".windows(4)":
+        lines[index] = line.replace(".windows(4)", ".windows(3)")
+        windows_seen += 1
+    if ".position(|window| window == b" in line:
+        indentation = line[: len(line) - len(line.lstrip())]
+        lines[index] = (
+            indentation
+            + ".position(|window| window == [10_u8, 32_u8, 32_u8].as_slice())"
+        )
+        position_seen += 1
+    if "semantically_same[indentation + 1] = b" in line:
+        indentation = line[: len(line) - len(line.lstrip())]
+        lines[index] = indentation + "semantically_same[indentation + 1] = 9;"
+        assignment_seen += 1
+if (windows_seen, position_seen, assignment_seen) != (1, 1, 1):
+    raise AssertionError(
+        "whitespace fixture transform moved: "
+        f"{windows_seen=}, {position_seen=}, {assignment_seen=}"
+    )
+source = "\n".join(lines) + "\n"
+
 script.write_text(source, encoding="utf-8", newline="\n")
