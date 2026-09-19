@@ -187,7 +187,8 @@
         "asset_denominator_digest": { "$ref": "#/$defs/digest" },
         "assets": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 7,
+          "maxItems": 7,
           "items": { "$ref": "#/$defs/asset_row" }
         },
         "workflow_digest": { "$ref": "#/$defs/digest" },
