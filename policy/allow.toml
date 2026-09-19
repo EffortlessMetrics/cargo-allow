@@ -334,6 +334,72 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11317"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Versioned remote publication checkpoint schema; shape validation neither uploads packages nor observes the registry."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11318"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/publication-checkpoint-v1.md"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Operator-side remote checkpoint protocol with retained substrate decision; durability modeling only, no upload authority."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/publication-checkpoint-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/publication-checkpoint-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11319"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3922-publication-checkpoint.toml"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Revision note covering the publication checkpoint ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3922-publication-checkpoint.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3922-publication-checkpoint.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11313"
 kind = "non_rust_file"
 family = "configuration"

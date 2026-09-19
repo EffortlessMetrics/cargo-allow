@@ -374,6 +374,22 @@ pub use artifacts::{
     record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
     tag_push_intent_digest_v1, tag_release_gate_open_v1,
 };
+// Root re-exports for the remote publication checkpoints (#3922).
+pub use artifacts::{
+    CargoAllowPublicationCheckpointV1, CheckpointProviderOutcomeV1,
+    PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID, PUBLICATION_CHECKPOINT_MAX_NOTE_LEN,
+    PUBLICATION_CHECKPOINT_MAX_RETENTION_DAYS, PUBLICATION_CHECKPOINT_MIN_RETENTION_DAYS,
+    PUBLICATION_CHECKPOINT_SCHEMA_ID, PUBLICATION_CHECKPOINT_SCHEMA_VERSION,
+    PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
+    PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
+    PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
+    PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, begin_publication_checkpoint_v1,
+    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_bytes_v1,
+    digest_publication_checkpoint_v1, record_checkpoint_readback_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    verify_checkpoint_against_journal_v1,
+};
 // Root re-exports for the append-only publication journal (#3921).
 pub use artifacts::{
     CargoAllowPublicationJournalEntryV1, CargoAllowPublicationJournalV1,

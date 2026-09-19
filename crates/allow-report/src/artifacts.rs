@@ -38,6 +38,7 @@ mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
+mod publication_checkpoint_v1;
 mod publication_journal_v1;
 mod rc_publication_incident_v1;
 mod reconciled_package_publication_v1;
@@ -346,6 +347,22 @@ pub use rc_publication_incident_v1::{
     ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
     ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
     RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
+};
+
+pub use publication_checkpoint_v1::{
+    CargoAllowPublicationCheckpointV1, CheckpointProviderOutcomeV1,
+    PUBLICATION_CHECKPOINT_JOURNAL_SCHEMA_ID, PUBLICATION_CHECKPOINT_MAX_NOTE_LEN,
+    PUBLICATION_CHECKPOINT_MAX_RETENTION_DAYS, PUBLICATION_CHECKPOINT_MIN_RETENTION_DAYS,
+    PUBLICATION_CHECKPOINT_SCHEMA_ID, PUBLICATION_CHECKPOINT_SCHEMA_VERSION,
+    PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
+    PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
+    PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
+    PublicationCheckpointRowStateV1, PublicationCheckpointRowV1, begin_publication_checkpoint_v1,
+    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_bytes_v1,
+    digest_publication_checkpoint_v1, record_checkpoint_readback_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    verify_checkpoint_against_journal_v1,
 };
 
 pub use publication_journal_v1::{
