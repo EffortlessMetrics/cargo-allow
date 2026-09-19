@@ -29,7 +29,7 @@ CargoAllowReleaseOperationIdentityV1 binds one exact semantic subject:
     exact ordered ten-package denominator
     exact required asset denominator
     workflow / action inventory / live-control digests
-    incident predecessor for recovery/containment
+    exact predecessor operation + predecessor-head digests for recovery/containment
 
 The operation ID is derived from a canonical semantic digest. A caller cannot
 choose it. Execution metadata does not alter the immutable subject, but the
@@ -58,9 +58,17 @@ as equivalent bytes.
 
 Clean operations have no incident predecessor. Recovery and containment are
 constructed only through the typed predecessor builder. It revalidates the
-predecessor identity and event history, recomputes its operation digest,
-requires incident lineage, and binds that exact digest into the new identity.
-A digest-shaped string alone is never sufficient release authority.
+original clean operation identity and incident-bearing history, requires the
+same frozen candidate/package/asset subject, and binds both the predecessor
+operation digest and exact current predecessor-head digest into the new
+identity.
+
+Non-clean append, head, and evaluation APIs additionally require a private
+predecessor-proof token derived from that retained identity/history pair.
+Deserializing or constructing a digest-shaped predecessor identity therefore
+does not grant transition authority. V1 deliberately accepts only the original
+clean operation as the predecessor root; recursive recovery-to-recovery lineage
+is unsupported here rather than inferred from a caller-provided digest.
 
 ## Event and chain law
 
@@ -95,7 +103,9 @@ current clean verdict.
 
 A package event names one selected package logical ID. An asset event names one
 required asset ID. Unknown subjects are rejected and a row cannot be reported
-exact twice.
+exact twice. Request-start and exact-observation events for package/asset rows
+must carry the exact immutable denominator digest; a same-ID observation over
+different bytes cannot satisfy the operation.
 
 A single PackageRowObservedExact can never mean all packages. The aggregate
 becomes PackagesPublishedExact only when all ten selected package rows are
@@ -116,16 +126,22 @@ A later successful child observation cannot delete incident history.
 
 Every external mutation is preceded by an explicit
 IrreversibleRequestStarted event. Its operation/package/asset subject, payload
-schema, request boundary, and exact artifact digest are the common correlation
-key; only a later exact known provider observation for that same key resolves
+schema, payload digest, request boundary, and exact artifact digest are the
+common correlation key; only a later exact known provider observation for that same key resolves
 the response-unknown state. This event also owns the first irreversible digest,
 so runner loss after the request cannot be mistaken for a pre-irreversible
 operation.
 
 Recovery requires an exact RecoverySelected event bound to the validated
-predecessor before authorization can continue. Containment uses a distinct
-ContainmentSelected path, cannot create tag/package/asset/public-release
-progress, and settles only with incident lineage.
+predecessor head before authorization can continue. Recovery may retain
+read-only exact observations for already-public provider state; any new
+mutation still requires its own irreversible-request event.
+
+Containment uses a distinct ContainmentSelected path and cannot create
+tag/package/asset/public-release progress. It cannot settle from a local
+incident marker alone: an external containment request must be recorded,
+observed exact, and followed by repository reconciliation before
+OperationSettled can become CompleteWithIncidentLineage.
 
 ## Consumers
 
@@ -148,7 +164,10 @@ rehearsal.
 The authority is pure source-controlled semantics. It does not read a
 credential, create/move a tag, publish/yank a package, contact crates.io,
 mutate a GitHub Release, change live repository controls, or perform recovery.
-Those external actions remain separately authorized and owned.
+Those external actions remain separately authorized and owned. The V1
+predecessor-proof API proves one incident-bearing original-clean predecessor
+root; recursive non-clean lineage is intentionally fail-closed and would
+require an explicit contract extension rather than silent acceptance.
 
 Focused proof:
 
