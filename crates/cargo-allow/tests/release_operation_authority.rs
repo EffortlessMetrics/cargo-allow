@@ -1038,10 +1038,28 @@ fn release_operation_recovery_and_containment_require_validated_predecessor()
 
 #[test]
 fn release_operation_authority_renderings_validate_against_schema() -> Result<(), Box<dyn Error>> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let is_repository_layout = manifest_dir
+        .parent()
+        .and_then(Path::file_name)
+        .is_some_and(|name| name == std::ffi::OsStr::new("crates"));
+    if !is_repository_layout {
+        // Published crate archives do not include the repository-owned docs tree.
+        // Source exports and shallow checkouts retain crates/cargo-allow and must
+        // therefore prove the schema without relying on a .git directory.
+        return Ok(());
+    }
     let root = repository_root()?;
-    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
-        root.join("docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"),
-    )?)?;
+    let schema_path =
+        root.join("docs/schemas/cargo-allow.release-operation-authority.v1.schema.json");
+    require(
+        schema_path.is_file(),
+        format!(
+            "repository source layout must retain the operation authority schema: {}",
+            schema_path.display()
+        ),
+    )?;
+    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(schema_path)?)?;
     let validator = jsonschema::validator_for(&schema).map_err(|error| {
         io::Error::other(format!("operation authority schema compiles: {error}"))
     })?;
@@ -1164,5 +1182,71 @@ fn release_operation_incident_and_unknown_states_never_reset_to_clean() -> Resul
         ))
         .is_err(),
         "recovery identity must require the typed predecessor builder",
+    )
+}
+
+#[test]
+fn release_operation_rejects_private_path_metadata() -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1::Operation;
+
+    let identity = identity()?;
+    let mut events = Vec::new();
+    append(
+        &identity,
+        &mut events,
+        Event::OperationSelected,
+        Operation,
+        1,
+    )?;
+    append(
+        &identity,
+        &mut events,
+        Event::AuthorizationSelected,
+        Operation,
+        2,
+    )?;
+    append(&identity, &mut events, Event::LeaseAcquired, Operation, 3)?;
+
+    let mut repository_url = event_init(
+        &identity,
+        Event::TagIntentDurable,
+        Operation,
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        4,
+    );
+    repository_url.request_boundary =
+        "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/1".to_string();
+    require(
+        append_release_operation_event_v1(&identity, &events, repository_url).is_ok(),
+        "bounded repository URLs must remain valid retained metadata",
+    )?;
+
+    let mut private_posix_path = event_init(
+        &identity,
+        Event::TagIntentDurable,
+        Operation,
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        5,
+    );
+    private_posix_path.request_boundary =
+        "github-event:/home/runner/work/_temp/event.json".to_string();
+    require(
+        append_release_operation_event_v1(&identity, &events, private_posix_path).is_err(),
+        "machine-private POSIX paths must never enter retained operation metadata",
+    )?;
+
+    let mut private_windows_path = event_init(
+        &identity,
+        Event::TagIntentDurable,
+        Operation,
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        6,
+    );
+    private_windows_path.producer.job =
+        r"C:\Users\runneradmin\AppData\Local\Temp\event.json".to_string();
+    require(
+        append_release_operation_event_v1(&identity, &events, private_windows_path).is_err(),
+        "machine-private Windows paths must never enter retained operation metadata",
     )
 }

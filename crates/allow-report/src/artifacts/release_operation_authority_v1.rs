@@ -413,11 +413,38 @@ fn contains_secret_marker(value: &str) -> bool {
         .any(|marker| lowercase.contains(&marker.to_ascii_lowercase()))
 }
 
+fn contains_private_path_marker(value: &str) -> bool {
+    let normalized = value.replace('\\', "/");
+    let lowercase = normalized.to_ascii_lowercase();
+    let private_roots = ["/home/", "/users/", "/tmp/", "/private/", "/var/folders/"];
+    if lowercase.starts_with('/')
+        || lowercase.starts_with("~/")
+        || lowercase.starts_with("file://")
+        || private_roots.iter().any(|root| {
+            lowercase.starts_with(root)
+                || lowercase.contains(&format!(":{root}"))
+                || lowercase.contains(&format!("={root}"))
+                || lowercase.contains(&format!(" {root}"))
+        })
+    {
+        return true;
+    }
+    normalized.as_bytes().windows(4).any(|window| {
+        window
+            .first()
+            .is_some_and(|byte| byte.is_ascii_alphabetic())
+            && window.get(1) == Some(&b':')
+            && window.get(2) == Some(&b'/')
+            && window.get(3) != Some(&b'/')
+    })
+}
+
 fn bounded_retained_text(value: &str) -> bool {
     !value.trim().is_empty()
         && value.len() <= 256
         && !value.chars().any(|ch| matches!(ch, '\n' | '\r' | '\0'))
         && !contains_secret_marker(value)
+        && !contains_private_path_marker(value)
 }
 
 fn denominator_digest<T: Serialize>(rows: &[T]) -> Result<String, serde_json::Error> {
