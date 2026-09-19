@@ -49,6 +49,7 @@ mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
+mod release_operation_authority_v1;
 mod release_operation_lease_v1;
 mod release_operation_v1;
 mod review_disposition_v1;
@@ -459,6 +460,35 @@ pub use release_manifest_v2::{
     render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
     validate_release_manifest_v2,
+};
+pub use release_operation_authority_v1::{
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEvaluationV1,
+    CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
+    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
+    CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    RELEASE_OPERATION_ASSET_SELECTION, RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
+    RELEASE_OPERATION_CHANNEL, RELEASE_OPERATION_EVALUATION_SCHEMA_ID,
+    RELEASE_OPERATION_EVENT_SCHEMA_ID, RELEASE_OPERATION_GENESIS_DIGEST,
+    RELEASE_OPERATION_HEAD_SCHEMA_ID, RELEASE_OPERATION_IDENTITY_SCHEMA_ID,
+    RELEASE_OPERATION_PRODUCT, RELEASE_OPERATION_REPOSITORY, RELEASE_OPERATION_TAG,
+    RELEASE_OPERATION_VERSION, append_release_operation_event_v1,
+    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
+    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
+    compile_release_operation_head_with_predecessor_v1, evaluate_release_operation_v1,
+    evaluate_release_operation_with_predecessor_v1, release_operation_event_digest_v1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    render_release_operation_evaluation_v1, render_release_operation_event_v1,
+    render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1,
+    validate_release_operation_evaluation_with_predecessor_v1, validate_release_operation_head_v1,
+    validate_release_operation_head_with_predecessor_v1, validate_release_operation_history_v1,
+    validate_release_operation_history_with_predecessor_v1, validate_release_operation_identity_v1,
+    validate_release_operation_predecessor_v1,
 };
 pub use release_operation_lease_v1::{
     CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
