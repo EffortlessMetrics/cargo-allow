@@ -1,0 +1,32 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4303,
+  "base_ref": "main",
+  "base_sha": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "head_ref": "release/3940-operation-authority-v1",
+  "head_sha": "c44cbec2f5029046c28702b42fe1b9611f8850a3",
+  "merge_base": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "reviewed_diff_digest": "sha256:v1:407f00d3b52f7ae5bfa0c3ca3a119d43589f7e1f982fc88cb3955b780741aea2",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5257020819; same-maintainer exact governed-source technical review; not independent-human approval",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PR 4303 GraphQL reviewThreads: all inline threads resolved at governed reviewed source head c44cbec2f5029046c28702b42fe1b9611f8850a3",
+    "Maintainer exact-source technical review 5257020819 found no blocking source-semantic or governance defect in the fourteen-file PR-A surface",
+    "Governed source tree 13d1a774471b0a8911b06915a325fda00bc297e4 excludes its own disposition and every temporary repair workflow",
+    "Focused proof run 35460153089 passed rustfmt, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene for terminal recovery and global-expiry coverage",
+    "Retained UB/model-review output is supporting telemetry only; unavailable or degraded sensors are not represented as independent-human approval"
+  ],
+  "required_ci": {
+    "owner": "backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4303",
+  "reviewed_at_utc": "2026-09-19T18:32:13Z"
+}
