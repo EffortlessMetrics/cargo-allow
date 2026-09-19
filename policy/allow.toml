@@ -268,6 +268,72 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11314"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Versioned append-only publication journal schema; shape validation neither uploads packages nor observes the registry."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11315"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/publication-journal-v1.md"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Operator-side append-only journal protocol with incident preservation; history modeling only, no upload authority."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/publication-journal-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/publication-journal-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11316"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3921-publication-journal.toml"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Revision note covering the publication journal ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3921-publication-journal.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3921-publication-journal.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11313"
 kind = "non_rust_file"
 family = "configuration"

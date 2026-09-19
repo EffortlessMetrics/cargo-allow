@@ -374,6 +374,18 @@ pub use artifacts::{
     record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
     tag_push_intent_digest_v1, tag_release_gate_open_v1,
 };
+// Root re-exports for the append-only publication journal (#3921).
+pub use artifacts::{
+    CargoAllowPublicationJournalEntryV1, CargoAllowPublicationJournalV1,
+    PUBLICATION_JOURNAL_GENESIS_DIGEST, PUBLICATION_JOURNAL_MAX_RESPONSE_DETAIL_LEN,
+    PUBLICATION_JOURNAL_MAX_UPLOAD_ATTEMPTS, PUBLICATION_JOURNAL_OPERATION,
+    PUBLICATION_JOURNAL_RECOVERY_OPERATION, PUBLICATION_JOURNAL_SCHEMA_ID,
+    PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
+    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
+    verify_publication_journal_v1,
+};
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,

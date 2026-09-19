@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.publication-journal.v1.schema.json",
+  "title": "CargoAllowPublicationJournalV1",
+  "description": "Append-only publication journal for one final release operation: durable pre-intent per row, observed or unknown responses, provider observation verdicts, and incident preservation. Structural validation does not upload packages, observe the registry, or authorize the operation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "journal_id",
+    "operation_id",
+    "operation_class",
+    "authorization_digest",
+    "custody_digest",
+    "freeze_digest",
+    "prior_journal_digest",
+    "created_at_unix_seconds",
+    "workflow",
+    "run",
+    "attempt",
+    "job",
+    "rows",
+    "entries",
+    "claim_boundary",
+    "limitations"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation_class": { "const": "incident_recovery" }
+        },
+        "required": ["operation_class"]
+      },
+      "then": {
+        "properties": {
+          "prior_journal_digest": { "$ref": "#/$defs/digest" }
+        }
+      },
+      "else": {
+        "properties": {
+          "prior_journal_digest": { "type": "null" }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.publication-journal.v1" },
+    "schema_version": { "const": 1 },
+    "journal_id": { "type": "string", "minLength": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation_class": {
+      "type": "string",
+      "enum": ["clean_final_publication", "incident_recovery"]
+    },
+    "authorization_digest": { "$ref": "#/$defs/digest" },
+    "custody_digest": { "$ref": "#/$defs/digest" },
+    "freeze_digest": { "$ref": "#/$defs/digest" },
+    "prior_journal_digest": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "workflow": { "type": "string", "minLength": 1 },
+    "run": { "type": "string", "minLength": 1 },
+    "attempt": { "type": "string", "minLength": 1 },
+    "job": { "type": "string", "minLength": 1 },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "version",
+        "row_order",
+        "candidate_archive_digest",
+        "depends_on"
+      ],
+      "properties": {
+        "package_name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "row_order": { "type": "integer", "minimum": 0 },
+        "candidate_archive_digest": { "$ref": "#/$defs/digest" },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "operation_selected",
+        "authorization_consumed",
+        "tag_observed_exact",
+        "row_preflight_complete",
+        "upload_intent_durable",
+        "upload_request_started",
+        "upload_response_observed",
+        "upload_response_unknown",
+        "registry_observation_started",
+        "registry_visible_exact",
+        "registry_visible_conflict",
+        "registry_observed_absent",
+        "registry_waiting",
+        "operation_incident",
+        "operation_complete"
+      ]
+    },
+    "response_class": {
+      "type": "string",
+      "enum": ["success", "transport_error", "nonzero_exit", "timeout", "unknown"]
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "previous_digest",
+        "entry_digest",
+        "kind",
+        "at_unix_seconds",
+        "reason",
+        "workflow",
+        "run",
+        "attempt",
+        "job"
+      ],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "previous_digest": { "$ref": "#/$defs/digest" },
+        "entry_digest": { "$ref": "#/$defs/digest" },
+        "kind": { "$ref": "#/$defs/event" },
+        "package_name": { "type": ["string", "null"], "minLength": 1 },
+        "row_order": { "type": ["integer", "null"], "minimum": 0 },
+        "candidate_archive_digest": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "at_unix_seconds": { "type": "integer", "minimum": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "response_class": {
+          "type": ["string", "null"],
+          "enum": ["success", "transport_error", "nonzero_exit", "timeout", "unknown", null]
+        },
+        "workflow": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

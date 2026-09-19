@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11314"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:da658cafb87b33eb4dec0f97e7173d0a28af61ddcef5bffabf6b63aadda25b43"
+reason = "receipt for docs/schemas/cargo-allow.publication-journal.v1.schema.json, the append-only journal contract schema (#3921)"
+
+[[records]]
+allow_ids = ["allow-11315"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5a9dd99ec26bee17658fca1f9cc8f1d71dc6bc08ec1a52137a38d1b79e29c267"
+reason = "receipt for docs/release/publication-journal-v1.md, the operator-side journal protocol (#3921)"
+
+[[records]]
+allow_ids = ["allow-11316"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d0fd48c5455c73ecdfb6e92921a79aaccf697ed99d414e2fb78cc5e9879efcf0"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

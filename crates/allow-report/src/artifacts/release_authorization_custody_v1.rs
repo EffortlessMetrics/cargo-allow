@@ -42,8 +42,9 @@ pub const AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS: [&str; 2] =
 
 /// Free-text markers that must never appear in custody records. Custody
 /// carries digests, locators, and policy names; secret values never travel in
-/// authorization documents.
-const SECRET_MARKERS: [&str; 12] = [
+/// authorization documents. Shared crate-internally with the publication
+/// journal (#3921), which retains caller-supplied reasons under the same law.
+pub(crate) const SECRET_MARKERS: [&str; 12] = [
     "BEGIN PRIVATE KEY",
     "BEGIN RSA PRIVATE KEY",
     "BEGIN EC PRIVATE KEY",
@@ -103,7 +104,7 @@ fn content_digest<T: Serialize + ?Sized>(value: &T) -> Result<String, serde_json
     Ok(allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1))
 }
 
-fn secret_marker(value: &str) -> Option<&'static str> {
+pub(crate) fn secret_marker(value: &str) -> Option<&'static str> {
     SECRET_MARKERS
         .into_iter()
         .find(|marker| value.contains(marker))
