@@ -11,11 +11,12 @@ use allow_report::{
     CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
     CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
     CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
-    CargoAllowReleaseOperationStateV1, RELEASE_AUTHORIZATION_SELECTION,
-    RELEASE_OPERATION_ASSET_SELECTION, append_release_operation_event_v1,
-    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
-    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
-    evaluate_release_operation_v1, evaluate_release_operation_with_predecessor_v1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
+    append_release_operation_event_v1, append_release_operation_event_with_predecessor_v1,
+    build_release_operation_identity_v1, build_release_operation_identity_with_predecessor_v1,
+    compile_release_operation_head_v1, evaluate_release_operation_v1,
+    evaluate_release_operation_with_predecessor_v1, release_operation_event_digest_v1,
     release_operation_identity_digest_v1, render_release_operation_evaluation_v1,
     render_release_operation_event_v1, render_release_operation_head_v1,
     render_release_operation_identity_v1, validate_release_operation_history_v1,
@@ -138,6 +139,23 @@ fn producer(run: &str, attempt: u32) -> CargoAllowReleaseOperationProducerV1 {
     }
 }
 
+fn timestamp_source(
+    class: CargoAllowReleaseOperationEventClassV1,
+) -> CargoAllowReleaseOperationTimestampSourceV1 {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationTimestampSourceV1 as Source;
+    match class {
+        Event::TagObservedExact
+        | Event::PackageRowObservedExact
+        | Event::GitHubDraftObservedExact
+        | Event::AssetObservedExact
+        | Event::PublicReleaseObservedExact
+        | Event::ContainmentObservedExact => Source::ProviderMetadata,
+        Event::RepositoryReconciled => Source::RepositoryMetadata,
+        _ => Source::WorkflowRuntime,
+    }
+}
+
 fn event_init(
     identity: &CargoAllowReleaseOperationIdentityV1,
     class: CargoAllowReleaseOperationEventClassV1,
@@ -175,6 +193,7 @@ fn event_init(
         response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
         semantic_result: result,
         artifact_digest,
+        timestamp_source: timestamp_source(class),
         observed_at_unix_seconds: 1_790_000_000 + ordinal,
     }
 }
@@ -489,6 +508,18 @@ fn release_operation_completion_requires_every_selected_package_and_asset()
     let mut events = Vec::new();
     append_preamble(&identity, &mut events)?;
 
+    let mut wrong_provider_timestamp = events.clone();
+    let provider_observation = wrong_provider_timestamp
+        .last_mut()
+        .ok_or_else(|| io::Error::other("tag observation fixture should exist"))?;
+    provider_observation.timestamp_source =
+        CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime;
+    provider_observation.event_digest = release_operation_event_digest_v1(provider_observation)?;
+    require(
+        validate_release_operation_history_v1(&identity, &wrong_provider_timestamp).is_err(),
+        "provider observations must retain provider timestamp provenance",
+    )?;
+
     let package_ids = identity
         .packages
         .iter()
@@ -577,12 +608,32 @@ fn release_operation_completion_requires_every_selected_package_and_asset()
         Operation,
         101,
     )?;
+    let mut wrong_repository_timestamp = event_init(
+        &identity,
+        Event::RepositoryReconciled,
+        Operation,
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        102,
+    );
+    wrong_repository_timestamp.timestamp_source =
+        CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime;
+    require(
+        append_release_operation_event_v1(&identity, &events, wrong_repository_timestamp).is_err(),
+        "repository reconciliation must retain repository timestamp provenance",
+    )?;
     append(
         &identity,
         &mut events,
         Event::RepositoryReconciled,
         Operation,
         102,
+    )?;
+    let settlement_pending =
+        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)
+            .map_err(io::Error::other)?;
+    require(
+        settlement_pending.state == State::SettlementRequired,
+        "reconciled provider state must require settlement, not reconciliation",
     )?;
     append(
         &identity,
@@ -1039,6 +1090,17 @@ fn release_operation_recovery_and_containment_require_validated_predecessor()
         Event::RepositoryReconciled,
         Operation,
         27,
+    )?;
+    let containment_pending = evaluate_release_operation_with_predecessor_v1(
+        &containment,
+        &containment_events,
+        EVALUATED_AT_UNIX_SECONDS,
+        &containment_proof,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        containment_pending.state == State::SettlementRequired,
+        "reconciled containment must require settlement",
     )?;
     append_with_proof(
         &containment,

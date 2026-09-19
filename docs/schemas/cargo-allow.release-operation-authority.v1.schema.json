@@ -20,6 +20,9 @@
     "authority_kind": {
       "enum": ["clean", "recovery", "containment"]
     },
+    "timestamp_source": {
+      "enum": ["workflow_runtime", "provider_metadata", "repository_metadata"]
+    },
     "event_class": {
       "enum": [
         "operation_selected",
@@ -63,6 +66,7 @@
         "git_hub_release_in_progress",
         "public_release_observed",
         "repository_reconciliation_required",
+        "settlement_required",
         "complete_clean",
         "complete_with_incident_lineage",
         "recovery_required",
@@ -217,7 +221,7 @@
         "previous_event_digest", "event_digest", "event_class", "subject",
         "payload_schema_id", "payload_digest", "producer", "actor", "authority_class",
         "request_boundary", "response_posture", "semantic_result", "artifact_digest",
-        "observed_at_unix_seconds", "claim_boundary"
+        "timestamp_source", "observed_at_unix_seconds", "claim_boundary"
       ],
       "properties": {
         "schema_id": { "const": "cargo-allow.release-operation-event.v1" },
@@ -241,6 +245,7 @@
         "artifact_digest": {
           "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
         },
+        "timestamp_source": { "$ref": "#/$defs/timestamp_source" },
         "observed_at_unix_seconds": { "type": "integer", "minimum": 1 },
         "claim_boundary": { "type": "string", "minLength": 1 }
       }

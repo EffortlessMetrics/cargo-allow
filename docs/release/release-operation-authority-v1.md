@@ -95,9 +95,14 @@ Retained digests and commit identities use canonical lowercase hex; retained
 producer/actor/request text is bounded and secret-marked text is rejected.
 
 Event time is monotonic and no event may be appended after operation expiry.
-Aggregate evaluation carries its own explicit evaluation timestamp; evaluation
-after expiry is Stale, so a historically complete chain cannot be reused as a
-current clean verdict.
+The authenticated envelope also retains one closed timestamp-source class:
+workflow runtime for local decisions and request starts, provider metadata for
+exact external observations, and repository metadata for reconciliation. A
+caller cannot relabel one class as another. PR B adapters remain responsible
+for proving the underlying provider or repository observation; PR A authenticates
+the source class in the event digest. Aggregate evaluation carries its own
+explicit evaluation timestamp; evaluation after expiry is Stale, so a
+historically complete chain cannot be reused as a current clean verdict.
 
 ## Denominator and aggregate law
 
@@ -114,7 +119,10 @@ present as exact observations.
 Likewise one asset cannot satisfy the release asset denominator. Public release
 observation requires all packages and all required assets exact.
 OperationSettled additionally requires public observation and repository
-reconciliation.
+reconciliation. Before reconciliation the aggregate is
+RepositoryReconciliationRequired; after reconciliation and before the terminal
+event it is SettlementRequired. The model therefore cannot report that
+reconciliation is still missing after it has already been retained.
 
 Partial, Conflict, Stale, ProviderUnavailable, and InstrumentFailure stop later
 publication progression. An unresolved Unknown/ResponseUnknown can continue

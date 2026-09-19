@@ -8,14 +8,14 @@ use allow_report::{
     CargoAllowReleaseOperationEventV1, CargoAllowReleaseOperationIdentityInitV1,
     CargoAllowReleaseOperationPackageRowV1, CargoAllowReleaseOperationProducerV1,
     CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
-    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
-    append_release_operation_event_v1, build_release_operation_identity_v1,
-    compile_release_operation_head_v1, evaluate_release_operation_v1,
-    release_operation_event_digest_v1, render_release_operation_evaluation_v1,
-    render_release_operation_event_v1, render_release_operation_head_v1,
-    render_release_operation_identity_v1, validate_release_operation_evaluation_v1,
-    validate_release_operation_head_v1, validate_release_operation_history_v1,
-    validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationTimestampSourceV1, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_OPERATION_ASSET_SELECTION, append_release_operation_event_v1,
+    build_release_operation_identity_v1, compile_release_operation_head_v1,
+    evaluate_release_operation_v1, release_operation_event_digest_v1,
+    render_release_operation_evaluation_v1, render_release_operation_event_v1,
+    render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1, validate_release_operation_head_v1,
+    validate_release_operation_history_v1, validate_release_operation_identity_v1,
 };
 
 const EVALUATED_AT_UNIX_SECONDS: u64 = 1_790_100_000;
@@ -106,6 +106,23 @@ fn producer() -> CargoAllowReleaseOperationProducerV1 {
     }
 }
 
+fn timestamp_source(
+    class: CargoAllowReleaseOperationEventClassV1,
+) -> CargoAllowReleaseOperationTimestampSourceV1 {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationTimestampSourceV1 as Source;
+    match class {
+        Event::TagObservedExact
+        | Event::PackageRowObservedExact
+        | Event::GitHubDraftObservedExact
+        | Event::AssetObservedExact
+        | Event::PublicReleaseObservedExact
+        | Event::ContainmentObservedExact => Source::ProviderMetadata,
+        Event::RepositoryReconciled => Source::RepositoryMetadata,
+        _ => Source::WorkflowRuntime,
+    }
+}
+
 fn event_init(
     identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
     class: CargoAllowReleaseOperationEventClassV1,
@@ -128,6 +145,7 @@ fn event_init(
         response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
         semantic_result: CargoAllowReleaseOperationSemanticResultV1::Exact,
         artifact_digest: Some(digest(2000 + sequence_hint)),
+        timestamp_source: timestamp_source(class),
         observed_at_unix_seconds: 1_790_000_000 + sequence_hint,
     }
 }
@@ -201,6 +219,17 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history()
     require(
         validate_release_operation_history_v1(&loaded_identity, &foreign_authorization).is_err(),
         "a recomputed event digest must not let a foreign authorization payload replay",
+    )?;
+
+    let mut foreign_timestamp = loaded_events.clone();
+    let authorization = foreign_timestamp
+        .get_mut(1)
+        .ok_or_else(|| io::Error::other("authorization event fixture should exist"))?;
+    authorization.timestamp_source = CargoAllowReleaseOperationTimestampSourceV1::ProviderMetadata;
+    authorization.event_digest = release_operation_event_digest_v1(authorization)?;
+    require(
+        validate_release_operation_history_v1(&loaded_identity, &foreign_timestamp).is_err(),
+        "a recomputed digest must not authenticate the wrong timestamp source",
     )?;
 
     let head = compile_release_operation_head_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS)

@@ -116,6 +116,14 @@ pub enum CargoAllowReleaseOperationResponsePostureV1 {
     ResponseUnknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CargoAllowReleaseOperationTimestampSourceV1 {
+    WorkflowRuntime,
+    ProviderMetadata,
+    RepositoryMetadata,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "id", rename_all = "snake_case")]
 pub enum CargoAllowReleaseOperationEventSubjectV1 {
@@ -238,6 +246,7 @@ pub struct CargoAllowReleaseOperationEventInitV1 {
     pub response_posture: CargoAllowReleaseOperationResponsePostureV1,
     pub semantic_result: CargoAllowReleaseOperationSemanticResultV1,
     pub artifact_digest: Option<String>,
+    pub timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,
     pub observed_at_unix_seconds: u64,
 }
 
@@ -261,6 +270,7 @@ pub struct CargoAllowReleaseOperationEventV1 {
     pub response_posture: CargoAllowReleaseOperationResponsePostureV1,
     pub semantic_result: CargoAllowReleaseOperationSemanticResultV1,
     pub artifact_digest: Option<String>,
+    pub timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,
     pub observed_at_unix_seconds: u64,
     pub claim_boundary: String,
 }
@@ -277,6 +287,7 @@ pub enum CargoAllowReleaseOperationStateV1 {
     GitHubReleaseInProgress,
     PublicReleaseObserved,
     RepositoryReconciliationRequired,
+    SettlementRequired,
     CompleteClean,
     CompleteWithIncidentLineage,
     RecoveryRequired,
@@ -377,6 +388,7 @@ struct EventDigestBodyV1<'a> {
     response_posture: CargoAllowReleaseOperationResponsePostureV1,
     semantic_result: CargoAllowReleaseOperationSemanticResultV1,
     artifact_digest: &'a Option<String>,
+    timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,
     observed_at_unix_seconds: u64,
     claim_boundary: &'a str,
 }
@@ -1016,6 +1028,7 @@ fn event_digest_body<'a>(event: &'a CargoAllowReleaseOperationEventV1) -> EventD
         response_posture: event.response_posture,
         semantic_result: event.semantic_result,
         artifact_digest: &event.artifact_digest,
+        timestamp_source: event.timestamp_source,
         observed_at_unix_seconds: event.observed_at_unix_seconds,
         claim_boundary: &event.claim_boundary,
     }
@@ -1025,6 +1038,23 @@ pub fn release_operation_event_digest_v1(
     event: &CargoAllowReleaseOperationEventV1,
 ) -> Result<String, serde_json::Error> {
     digest_json(&event_digest_body(event))
+}
+
+fn expected_timestamp_source(
+    event_class: CargoAllowReleaseOperationEventClassV1,
+) -> CargoAllowReleaseOperationTimestampSourceV1 {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationTimestampSourceV1 as Source;
+    match event_class {
+        Event::TagObservedExact
+        | Event::PackageRowObservedExact
+        | Event::GitHubDraftObservedExact
+        | Event::AssetObservedExact
+        | Event::PublicReleaseObservedExact
+        | Event::ContainmentObservedExact => Source::ProviderMetadata,
+        Event::RepositoryReconciled => Source::RepositoryMetadata,
+        _ => Source::WorkflowRuntime,
+    }
 }
 
 fn validate_event_envelope_fields(
@@ -1053,6 +1083,9 @@ fn validate_event_envelope_fields(
     }
     if event.authority_class != identity.authority_kind {
         return Err("operation event authority class does not match the immutable operation");
+    }
+    if event.timestamp_source != expected_timestamp_source(event.event_class) {
+        return Err("operation event timestamp source does not match its event class");
     }
     match event.event_class {
         Event::IrreversibleRequestStarted => {
@@ -1674,6 +1707,7 @@ fn append_release_operation_event_internal_v1(
         response_posture: init.response_posture,
         semantic_result: init.semantic_result,
         artifact_digest: init.artifact_digest.clone(),
+        timestamp_source: init.timestamp_source,
         observed_at_unix_seconds: init.observed_at_unix_seconds,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     };
@@ -1705,6 +1739,7 @@ fn append_release_operation_event_internal_v1(
         response_posture: init.response_posture,
         semantic_result: init.semantic_result,
         artifact_digest: init.artifact_digest,
+        timestamp_source: init.timestamp_source,
         observed_at_unix_seconds: init.observed_at_unix_seconds,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     };
@@ -1753,6 +1788,7 @@ fn validate_release_operation_history_internal_v1(
             response_posture: event.response_posture,
             semantic_result: event.semantic_result,
             artifact_digest: event.artifact_digest.clone(),
+            timestamp_source: event.timestamp_source,
             observed_at_unix_seconds: event.observed_at_unix_seconds,
         };
         validate_event_transition(identity, &accepted, &init)?;
@@ -1893,6 +1929,9 @@ fn evaluate_state(
         if has_exact_event(events, Event::OperationSettled) {
             return State::CompleteWithIncidentLineage;
         }
+        if has_exact_event(events, Event::RepositoryReconciled) {
+            return State::SettlementRequired;
+        }
         if has_exact_event(events, Event::ContainmentObservedExact) {
             return State::RepositoryReconciliationRequired;
         }
@@ -1943,7 +1982,7 @@ fn evaluate_state(
         return State::PublicReleaseObserved;
     }
     if !has_exact_event(events, Event::OperationSettled) {
-        return State::RepositoryReconciliationRequired;
+        return State::SettlementRequired;
     }
     if identity.operation_class == Class::CleanFinalPublication {
         State::CompleteClean
