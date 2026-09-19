@@ -32,8 +32,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "ba10e6e3e0b7e0f3652db7e125719000e755536e"
+          test "$(git rev-parse HEAD^)" = "79d442b1cdd1d227676043ed3aca8e898b6341db"
           test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/reconcile-pr4303-with-main.yml"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
           test "$(git rev-parse origin/main)" = "89d1376390726a34ae8b2cac14f69af7e684153d"
 
@@ -88,10 +90,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "ba10e6e3e0b7e0f3652db7e125719000e755536e"
+          test "$(git rev-parse HEAD)" = "79d442b1cdd1d227676043ed3aca8e898b6341db"
           test "$(git rev-parse MERGE_HEAD)" = "89d1376390726a34ae8b2cac14f69af7e684153d"
           test ! -e .github/workflows/reconcile-pr4303-with-main.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "merge(main): reconcile #4302 checkpoint with #3940 PR A"
           git push origin HEAD:release/3940-operation-authority-v1
