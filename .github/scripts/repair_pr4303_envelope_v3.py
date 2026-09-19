@@ -70,7 +70,7 @@ for struct_name in (
 
 sub_once(
     authority,
-    r"(?s)(struct EventDigestBody<'a> \{.*?\n\s+artifact_digest: &'a Option<String>,\n)"
+    r"(?s)(struct EventDigestBodyV1<'a> \{.*?\n\s+artifact_digest: &'a Option<String>,\n)"
     r'(\s+observed_at_unix_seconds: u64,)',
     r'\1    timestamp_source: CargoAllowReleaseOperationTimestampSourceV1,\n\2',
 )
