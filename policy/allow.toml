@@ -21855,7 +21855,7 @@ path = ".allow/review-dispositions/pr-4303.json"
 owner = "core/review"
 classification = "reviewed_exception"
 reason = "Exact-path receipt for the retained typed same-maintainer disposition of PR #4303; it records the reviewed source pair and explicit non-independent claim boundary, but carries no CI, merge, authorization, or release authority."
-evidence = ["issue:3940", "pull-request:4303", "review:5256615207"]
+evidence = ["issue:3940", "pull-request:4303", "review:5257051368"]
 created = "2026-09-19"
 review_after = "2027-03-19"
 
