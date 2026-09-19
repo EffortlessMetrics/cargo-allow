@@ -16,6 +16,8 @@ use allow_report::{
     validate_release_operation_history_v1, validate_release_operation_identity_v1,
 };
 
+const EVALUATED_AT_UNIX_SECONDS: u64 = 1_790_100_000;
+
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
 }
@@ -187,7 +189,7 @@ fn release_operation_authority_round_trips_and_revalidates_loaded_history(
     require(loaded_head == head, "head must round-trip exactly")?;
 
     let evaluation =
-        evaluate_release_operation_v1(&identity, &events).map_err(io::Error::other)?;
+        evaluate_release_operation_v1(&identity, &events, EVALUATED_AT_UNIX_SECONDS).map_err(io::Error::other)?;
     let rendered_evaluation = render_release_operation_evaluation_v1(&evaluation)?;
     let loaded_evaluation: allow_report::CargoAllowReleaseOperationEvaluationV1 =
         serde_json::from_str(&rendered_evaluation)?;
