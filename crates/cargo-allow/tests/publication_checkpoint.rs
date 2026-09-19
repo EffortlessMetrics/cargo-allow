@@ -20,14 +20,13 @@ use allow_report::{
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
-    PublicationCheckpointRowV1, PublicationJournalAppendV1,
-    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
-    UploadResponseClassV1, append_journal_event_v1, begin_publication_checkpoint_v1,
-    begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
-    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
-    verify_checkpoint_against_journal_v1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
+    append_journal_event_v1, begin_publication_checkpoint_v1, begin_publication_journal_v1,
+    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    digest_publication_checkpoint_body_v1, record_checkpoint_readback_with_witness_v1,
+    render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -343,31 +342,13 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     )?;
     let first_witness: PublicationCheckpointReadbackWitnessV1 =
         first_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
-    verify_checkpoint_against_journal_v1(
-        &first,
-        &first_witness,
-        &journal,
-        &expected_producer,
-        now,
-    )
-    .map_err(io::Error::other)?;
-    checkpoint_permits_upload_v1(
-        &first,
-        &first_witness,
-        &journal,
-        &expected_producer,
-        now,
-    )
-    .map_err(io::Error::other)?;
+    verify_checkpoint_against_journal_v1(&first, &first_witness, &journal, &expected_producer, now)
+        .map_err(io::Error::other)?;
+    checkpoint_permits_upload_v1(&first, &first_witness, &journal, &expected_producer, now)
+        .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_dependant_v1(
-            &first,
-            &first_witness,
-            &journal,
-            &expected_producer,
-            now,
-        )
-        .is_err(),
+        checkpoint_permits_dependant_v1(&first, &first_witness, &journal, &expected_producer, now)
+            .is_err(),
         "a pre-intent checkpoint must not unlock dependants",
     )?;
     // Advance the real journal through upload and exact registry visibility.
@@ -401,8 +382,8 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
         CREATED_AT + 160,
     )
     .map_err(io::Error::other)?;
-    let second_witness =
-        second_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    let second_witness = second_witness
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     checkpoint_permits_dependant_v1(
         &second,
         &second_witness,

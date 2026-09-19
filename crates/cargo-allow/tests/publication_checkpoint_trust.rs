@@ -17,13 +17,12 @@ use allow_report::{
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
-    PublicationCheckpointRowV1, PublicationJournalAppendV1,
-    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
-    begin_publication_journal_v1, checkpoint_permits_upload_v1,
-    digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
-    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
-    select_checkpoint_by_exact_identity_v1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    append_journal_event_v1, begin_publication_checkpoint_v1, begin_publication_journal_v1,
+    checkpoint_permits_upload_v1, digest_publication_checkpoint_body_v1,
+    record_checkpoint_readback_v1, record_checkpoint_readback_with_witness_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
     verify_checkpoint_against_journal_v1,
 };
 
@@ -220,8 +219,8 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         now,
     )
     .map_err(io::Error::other)?;
-    let trusted_witness: PublicationCheckpointReadbackWitnessV1 =
-        trusted_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    let trusted_witness: PublicationCheckpointReadbackWitnessV1 = trusted_witness
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     let mut fork_producer = producer();
     fork_producer.run = "7777".to_string();
     require(
@@ -348,7 +347,7 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     )?;
 
     // Hostile: serialized Complete fields alone cannot authorize progress.
-    let (mut self_edited_source, self_edited_bytes) = stored_first(&journal)?;
+    let (self_edited_source, self_edited_bytes) = stored_first(&journal)?;
     let mut self_edited: CargoAllowPublicationCheckpointV1 =
         serde_json::from_slice(&self_edited_bytes)?;
     self_edited.readback = PublicationCheckpointReadbackV1::Complete;
@@ -356,8 +355,7 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     let mut other_init = checkpoint_init(&journal, 1)?;
     other_init.checkpoint_id = "checkpoint-other-witness".to_string();
     other_init.provider.object_id = "artifact-other-witness".to_string();
-    let mut other =
-        begin_publication_checkpoint_v1(other_init, None).map_err(io::Error::other)?;
+    let mut other = begin_publication_checkpoint_v1(other_init, None).map_err(io::Error::other)?;
     let other_bytes = store_checkpoint(&mut other)?;
     let (_, other_witness) = record_checkpoint_readback_with_witness_v1(
         &mut other,
@@ -413,8 +411,8 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         now,
     )
     .map_err(io::Error::other)?;
-    let current_witness =
-        current_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    let current_witness = current_witness
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     let mut older = current.clone();
     older.checkpoint_sequence = 0;
     let older_rendered = serde_json::to_vec_pretty(&older)?;
@@ -447,8 +445,8 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         now,
     )
     .map_err(io::Error::other)?;
-    let broken_witness =
-        broken_witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    let broken_witness = broken_witness
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
     record_checkpoint_readback_v1(
         &mut broken,
         CheckpointProviderOutcomeV1::InstrumentFailure,
@@ -621,14 +619,8 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     )
     .map_err(io::Error::other)?;
     require(
-        checkpoint_permits_upload_v1(
-            &trusted,
-            &trusted_witness,
-            &moved,
-            &expected_producer,
-            now,
-        )
-        .is_err(),
+        checkpoint_permits_upload_v1(&trusted, &trusted_witness, &moved, &expected_producer, now)
+            .is_err(),
         "historical prefix authenticity must not replay consumed upload permission",
     )?;
     Ok(())

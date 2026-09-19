@@ -269,10 +269,7 @@ fn canonical_stored_checkpoint_v1(
 fn canonical_stored_checkpoint_bytes_v1(
     checkpoint: &CargoAllowPublicationCheckpointV1,
 ) -> Result<Vec<u8>, serde_json::Error> {
-    Ok(render_publication_checkpoint_v1(&canonical_stored_checkpoint_v1(
-        checkpoint,
-    ))?
-    .into_bytes())
+    Ok(render_publication_checkpoint_v1(&canonical_stored_checkpoint_v1(checkpoint))?.into_bytes())
 }
 
 /// Canonical digest of a checkpoint record, binding one sequence link to the

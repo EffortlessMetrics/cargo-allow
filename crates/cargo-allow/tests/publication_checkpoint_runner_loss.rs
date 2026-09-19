@@ -17,14 +17,13 @@ use allow_report::{
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
-    PublicationCheckpointRowV1, PublicationJournalAppendV1,
-    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, append_journal_event_v1, begin_publication_checkpoint_v1,
-    begin_publication_journal_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    PublicationCheckpointRowV1, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    append_journal_event_v1, begin_publication_checkpoint_v1, begin_publication_journal_v1,
+    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_v1,
     record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
-    select_checkpoint_by_exact_identity_v1,
-    verify_checkpoint_against_journal_v1,
+    select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
