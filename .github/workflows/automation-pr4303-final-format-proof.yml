@@ -27,7 +27,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "95f12e864745204c44f6239254d5fde781ae1a72"
+          test "$(git rev-parse HEAD^)" = "f5512802ac4666cf889a9954d0ddcf296032e656"
           python3 - <<'PY'
           from pathlib import Path
 
@@ -50,12 +50,27 @@ jobs:
               "pub fn evaluate_release_operation_v1(pub fn evaluate_release_operation_v1(",
               "pub fn evaluate_release_operation_v1(",
           )
+
           tests = "crates/cargo-allow/tests/release_operation_authority.rs"
           replace_once(
               tests,
               "#[test]\nfn release_operation_identity_is_semantic_and_lineage_bound()#[test]\n",
               "#[test]\n",
           )
+          replace_once(
+              tests,
+              "#[test]\nfn release_operation_authority_renderings_validate_against_schema()#[test]\nfn release_operation_authority_renderings_validate_against_schema()#[test]\n",
+              "#[test]\n",
+          )
+
+          for path in (authority, tests):
+              text = Path(path).read_text(encoding="utf-8")
+              if ")#[test]" in text:
+                  raise SystemExit(f"{path}: malformed adjacent test declaration remains")
+              if "pub fn append_release_operation_event_v1(pub fn" in text:
+                  raise SystemExit(f"{path}: duplicated append function signature remains")
+              if "pub fn evaluate_release_operation_v1(pub fn" in text:
+                  raise SystemExit(f"{path}: duplicated evaluation function signature remains")
           PY
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697
