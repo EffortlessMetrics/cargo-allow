@@ -243,6 +243,21 @@ jobs:
             echo "recovery=${recovery}"
             echo "authorization_digest=${authorization_digest}"
           } >> "${GITHUB_OUTPUT}"
+          # PR C: the authorize gate emits the single canonical operation
+          # identity artifact for this run. Downstream jobs consume it and
+          # verify agreement instead of reconstructing operation identity
+          # from their own checkout, ref, or inputs.
+          cat > target/cargo-allow/release-operation-identity.json <<EOF
+          {
+            "version": "${{ needs.preflight.outputs.version }}",
+            "tag": "${{ needs.preflight.outputs.tag }}",
+            "commit": "${{ needs.preflight.outputs.commit }}",
+            "tree": "${{ needs.preflight.outputs.tree }}",
+            "authorization_digest": "${authorization_digest}",
+            "recovery": ${{ needs.preflight.outputs.recovery }},
+            "workflow_run_id": ${{ github.run_id }}
+          }
+          EOF
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -250,6 +265,11 @@ jobs:
           path: |
             target/cargo-allow/authorization.compiled.receipt.json
             target/cargo-allow/authorization.selected.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: release-operation-identity
+          path: target/cargo-allow/release-operation-identity.json
 
   publish:
     needs: [preflight, authorize]
@@ -274,6 +294,13 @@ jobs:
           path: target/cargo-allow/recovery-receipt
           run-id: ${{ needs.preflight.outputs.recovery_receipt_run_id }}
           github-token: ${{ github.token }}
+      - name: Download canonical operation identity
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-operation-identity
+          path: target/cargo-allow/operation-identity
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
       - name: Release version and artifact preflight
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
@@ -282,8 +309,22 @@ jobs:
           RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
           RECOVERY: ${{ needs.preflight.outputs.recovery }}
           RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json
+          GATE_AUTHORIZATION_DIGEST: ${{ needs.authorize.outputs.authorization_digest }}
         run: |
           set -euo pipefail
+          # PR C: the publish job consumes the authorize gate's canonical
+          # operation identity artifact and verifies agreement instead of
+          # reconstructing operation identity from its own checkout.
+          identity="target/cargo-allow/operation-identity/release-operation-identity.json"
+          [ -f "${identity}" ] || { echo "::error::canonical operation identity artifact is absent; refusing to reconstruct it"; exit 1; }
+          identity_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "${identity}")"
+          identity_commit="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["commit"])' "${identity}")"
+          identity_tree="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["tree"])' "${identity}")"
+          identity_authorization="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["authorization_digest"])' "${identity}")"
+          [ "${identity_version}" = "${RELEASE_VERSION}" ] || { echo "::error::operation identity version differs from preflight"; exit 1; }
+          [ "${identity_commit}" = "${RELEASE_COMMIT}" ] || { echo "::error::operation identity commit differs from preflight"; exit 1; }
+          [ "${identity_tree}" = "${RELEASE_TREE}" ] || { echo "::error::operation identity tree differs from preflight"; exit 1; }
+          [ "${identity_authorization}" = "${GATE_AUTHORIZATION_DIGEST}" ] || { echo "::error::operation identity authorization differs from the gate digest"; exit 1; }
           version="${RELEASE_VERSION}"
           [ -n "${version}" ] || { echo "::error::preflight did not resolve a release version"; exit 1; }
           if [ "${RECOVERY}" = "true" ]; then
@@ -464,6 +505,20 @@ jobs:
         with:
           name: release-publish-receipt
           path: target/cargo-allow
+      - name: Verify publish receipt agrees with the publish outputs
+        env:
+          PUBLISH_VERSION: ${{ needs.publish.outputs.version }}
+          PUBLISH_AUTHORIZATION_DIGEST: ${{ needs.publish.outputs.authorization_digest }}
+        run: |
+          set -euo pipefail
+          # PR C: the GitHub Release job consumes the publish receipt and
+          # verifies agreement instead of trusting job outputs alone.
+          receipt="target/cargo-allow/release-publish.receipt.json"
+          [ -f "${receipt}" ] || { echo "::error::publish receipt is absent; refusing to reconstruct release identity"; exit 1; }
+          receipt_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "${receipt}")"
+          receipt_authorization="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["authorization_digest"])' "${receipt}")"
+          [ "${receipt_version}" = "${PUBLISH_VERSION}" ] || { echo "::error::publish receipt version differs from publish outputs"; exit 1; }
+          [ "${receipt_authorization}" = "${PUBLISH_AUTHORIZATION_DIGEST}" ] || { echo "::error::publish receipt authorization differs from publish outputs"; exit 1; }
       - name: Package crates for manifest checksums
         run: |
           python3 scripts/release-topology-publisher.py \
