@@ -1,0 +1,119 @@
+/// Begin a checkpoint bound to one canonical #3940 release operation and one
+/// recomputed canonical operation head. The operation identity is invariant
+/// across a checkpoint sequence. A later checkpoint may advance the head only
+/// when the supplied prior head validates against an exact prefix of the same
+/// append-only event history and the new head validates against the full
+/// history.
+pub fn begin_publication_checkpoint_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    head: &CargoAllowReleaseOperationHeadV1,
+    predecessor_proof: Option<&CargoAllowReleaseOperationPredecessorProofV1>,
+    init: PublicationCheckpointInitV1,
+    prior: Option<(
+        &CargoAllowPublicationCheckpointV1,
+        &CargoAllowReleaseOperationHeadV1,
+    )>,
+) -> Result<CargoAllowPublicationCheckpointV1, &'static str> {
+    validate_checkpoint_operation_head_v1(identity, events, head, predecessor_proof)?;
+    let expected_class = match identity.operation_class {
+        CargoAllowReleaseOperationClassV1::CleanFinalPublication => {
+            PublicationCheckpointClassV1::CleanFinalPublication
+        }
+        CargoAllowReleaseOperationClassV1::IncidentRecovery => {
+            PublicationCheckpointClassV1::IncidentRecovery
+        }
+        CargoAllowReleaseOperationClassV1::Containment => {
+            return Err("publication checkpoints cannot authorize containment operations");
+        }
+    };
+    if init.operation_class != expected_class {
+        return Err("checkpoint class must agree with the canonical operation class");
+    }
+    let identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    let head_digest = release_operation_head_digest_v1(head).map_err(|_| "head digest failed")?;
+    if head.operation_identity_digest != identity_digest {
+        return Err("checkpoint head does not belong to the checkpoint operation");
+    }
+    if init.operation_identity_digest != identity_digest
+        || init.operation_head_digest != head_digest
+        || init.authorization_digest != identity.authorization_digest
+        || init.custody_digest != identity.custody_digest
+        || init.freeze_digest != identity.freeze_digest
+    {
+        return Err("checkpoint authority fields must equal the canonical operation identity and head");
+    }
+
+    let prior_checkpoint = match prior {
+        None => None,
+        Some((previous_checkpoint, previous_head)) => {
+            if previous_head.operation_identity_digest != identity_digest {
+                return Err("prior checkpoint head does not belong to the checkpoint operation");
+            }
+            let previous_head_digest = release_operation_head_digest_v1(previous_head)
+                .map_err(|_| "prior head digest failed")?;
+            if previous_checkpoint.operation_identity_digest != identity_digest
+                || previous_checkpoint.operation_head_digest != previous_head_digest
+            {
+                return Err("prior checkpoint does not bind the supplied canonical prior head");
+            }
+            if previous_head.sequence > head.sequence
+                || previous_head.evaluated_at_unix_seconds > head.evaluated_at_unix_seconds
+            {
+                return Err("checkpoint operation heads never move backward");
+            }
+            if previous_head.sequence > events.len() as u64 {
+                return Err("prior checkpoint head exceeds the supplied operation history");
+            }
+            let previous_events = &events[..previous_head.sequence as usize];
+            validate_checkpoint_operation_head_v1(
+                identity,
+                previous_events,
+                previous_head,
+                predecessor_proof,
+            )?;
+            Some(previous_checkpoint)
+        }
+    };
+    begin_publication_checkpoint_internal_v1(init, prior_checkpoint, true)
+}
+
+"""
+source = source[:operation_start] + operation_block + source[record_start:]
+source_path.write_text(source, encoding="utf-8", newline="\n")
+
+test = test_path.read_text(encoding="utf-8")
+helper_start = test.index("fn canonical_head(")
+test_start = test.index(
+    "#[test]\nfn checkpoint_binds_canonical_operation_identity_and_head()",
+    helper_start,
+)
+if test_start <= helper_start:
+    raise SystemExit("canonical checkpoint test ordering changed")
+new_tail = r'''fn canonical_event_init(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+    class: CargoAllowReleaseOperationEventClassV1,
+    ordinal: u64,
+) -> CargoAllowReleaseOperationEventInitV1 {
+    let producer = allow_report::CargoAllowReleaseOperationProducerV1 {
+        tool: "cargo-allow".to_string(),
+        schema: "cargo-allow.release-operation-producer.v1".to_string(),
+        generation: 1,
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        workflow: "release".to_string(),
+        workflow_ref: "refs/heads/main".to_string(),
+        run: "4242".to_string(),
+        attempt: 1,
+        job: "checkpoint-binding".to_string(),
+        commit: "a".repeat(40),
+    };
+    let payload_digest =
+        if class == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected {
+            identity.authorization_digest.clone()
+        } else {
+            digest(1_000 + ordinal)
+        };
+    CargoAllowReleaseOperationEventInitV1 {
+        event_class: class,
+        subject: CargoAllowReleaseOperationEventSubjectV1::Operation,
