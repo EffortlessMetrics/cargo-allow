@@ -1,0 +1,169 @@
+        payload_schema_id: "cargo-allow.synthetic-release-payload.v1".to_string(),
+        payload_digest,
+        producer,
+        actor: "release-operator".to_string(),
+        authority_class: identity.authority_kind,
+        request_boundary: "synthetic-no-provider-call".to_string(),
+        response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+        semantic_result: CargoAllowReleaseOperationSemanticResultV1::Exact,
+        artifact_digest: Some(digest(2_000 + ordinal)),
+        observed_at_unix_seconds: 1_790_000_000 + ordinal,
+        timestamp_source: CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime,
+    }
+}
+
+fn canonical_history(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> Result<
+    (
+        Vec<allow_report::CargoAllowReleaseOperationEventV1>,
+        allow_report::CargoAllowReleaseOperationHeadV1,
+    ),
+    Box<dyn Error>,
+> {
+    let mut events = Vec::new();
+    for (class, ordinal) in [
+        (CargoAllowReleaseOperationEventClassV1::OperationSelected, 1),
+        (
+            CargoAllowReleaseOperationEventClassV1::AuthorizationSelected,
+            2,
+        ),
+        (CargoAllowReleaseOperationEventClassV1::LeaseAcquired, 3),
+    ] {
+        let event = append_release_operation_event_v1(
+            identity,
+            &events,
+            canonical_event_init(identity, class, ordinal),
+        )
+        .map_err(io::Error::other)?;
+        events.push(event);
+    }
+    let head = compile_release_operation_head_v1(identity, &events, 1_790_100_000)
+        .map_err(io::Error::other)?;
+    Ok((events, head))
+}
+
+fn operation_checkpoint_init(
+    journal: &CargoAllowPublicationJournalV1,
+    sequence: u64,
+    kind: PublicationCheckpointKindV1,
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+    head: &allow_report::CargoAllowReleaseOperationHeadV1,
+) -> Result<PublicationCheckpointInitV1, Box<dyn Error>> {
+    let mut init = checkpoint_init(journal, sequence, kind)?;
+    init.operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(io::Error::other)?;
+    init.operation_head_digest =
+        release_operation_head_digest_v1(head).map_err(io::Error::other)?;
+    init.authorization_digest = identity.authorization_digest.clone();
+    init.custody_digest = identity.custody_digest.clone();
+    init.freeze_digest = identity.freeze_digest.clone();
+    Ok(init)
+}
+
+#[test]
+fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("checkpoint-binding-0001")?;
+    let (events, head) = canonical_history(&identity)?;
+    let journal = settled_journal()?;
+    let init = operation_checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &identity,
+        &head,
+    )?;
+    let checkpoint = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &events,
+        &head,
+        None,
+        init,
+        None,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        checkpoint.operation_identity_digest
+            == release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?,
+        "checkpoint must name the canonical operation identity digest",
+    )?;
+    require(
+        checkpoint.operation_head_digest
+            == release_operation_head_digest_v1(&head).map_err(io::Error::other)?,
+        "checkpoint must name the recomputed canonical head digest",
+    )?;
+
+    let foreign_identity = canonical_operation_identity("checkpoint-binding-0002")?;
+    let (foreign_events, foreign_head) = canonical_history(&foreign_identity)?;
+    let foreign_init = operation_checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &foreign_identity,
+        &foreign_head,
+    )?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &foreign_events,
+            &foreign_head,
+            None,
+            foreign_init,
+            None,
+        )
+        .is_err(),
+        "a head from another operation must never bind this operation",
+    )?;
+
+    let mut forged_head = head.clone();
+    forged_head.event_digest = digest(999);
+    let forged_init = operation_checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &identity,
+        &forged_head,
+    )?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &forged_head,
+            None,
+            forged_init,
+            None,
+        )
+        .is_err(),
+        "a fabricated operation head must fail canonical recomputation",
+    )?;
+
+    let mut mismatched_authority = operation_checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &identity,
+        &head,
+    )?;
+    mismatched_authority.authorization_digest = digest(998);
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &head,
+            None,
+            mismatched_authority,
+            None,
+        )
+        .is_err(),
+        "foreign checkpoint authority fields must fail closed",
+    )?;
+
+    let mut first = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &events,
+        &head,
+        None,
+        operation_checkpoint_init(
+            &journal,
+            1,
+            PublicationCheckpointKindV1::PreIntentDurable,
