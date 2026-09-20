@@ -1,0 +1,90 @@
+            &identity,
+            &head,
+        )?,
+        None,
+    )
+    .map_err(io::Error::other)?;
+    let stored_first = store_checkpoint(&mut first)?;
+    let (_, first_witness) = record_checkpoint_readback_with_witness_v1(
+        &mut first,
+        CheckpointProviderOutcomeV1::Delivered(stored_first),
+        CREATED_AT + 60,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        first_witness.is_some(),
+        "an exact sequence-one readback must yield predecessor authority",
+    )?;
+
+    let mut advanced_events = events.clone();
+    let tag_intent = append_release_operation_event_v1(
+        &identity,
+        &advanced_events,
+        canonical_event_init(
+            &identity,
+            CargoAllowReleaseOperationEventClassV1::TagIntentDurable,
+            4,
+        ),
+    )
+    .map_err(io::Error::other)?;
+    advanced_events.push(tag_intent);
+    let advanced_head =
+        compile_release_operation_head_v1(&identity, &advanced_events, 1_790_100_100)
+            .map_err(io::Error::other)?;
+    let second_init = operation_checkpoint_init(
+        &journal,
+        2,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &identity,
+        &advanced_head,
+    )?;
+    let mut unchecked = second_init.clone();
+    let second = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &advanced_events,
+        &advanced_head,
+        None,
+        second_init,
+        Some((&first, &head)),
+    )
+    .map_err(io::Error::other)?;
+    require(
+        second.operation_identity_digest == first.operation_identity_digest
+            && second.operation_head_digest
+                == release_operation_head_digest_v1(&advanced_head)
+                    .map_err(io::Error::other)?
+            && second.operation_head_digest != first.operation_head_digest,
+        "linked checkpoints must preserve identity while advancing the canonical head",
+    )?;
+
+    unchecked.operation_identity_digest = first.operation_identity_digest.clone();
+    unchecked.authorization_digest = first.authorization_digest.clone();
+    unchecked.custody_digest = first.custody_digest.clone();
+    unchecked.freeze_digest = first.freeze_digest.clone();
+    require(
+        begin_publication_checkpoint_v1(unchecked, Some(&first)).is_err(),
+        "generic checkpoint linkage must reject an unvalidated head rewrite",
+    )?;
+
+    let mut forged_prior = head.clone();
+    forged_prior.event_digest = digest(997);
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &advanced_events,
+            &advanced_head,
+            None,
+            operation_checkpoint_init(
+                &journal,
+                2,
+                PublicationCheckpointKindV1::PreIntentDurable,
+                &identity,
+                &advanced_head,
+            )?,
+            Some((&first, &forged_prior)),
+        )
+        .is_err(),
+        "a fabricated prior head must not extend the checkpoint chain",
+    )?;
+
+    let body_before = allow_report
