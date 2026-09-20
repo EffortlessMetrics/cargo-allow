@@ -17,26 +17,32 @@ use allow_report::{
     CargoAllowPublicationJournalV1, CargoAllowReleaseOperationAssetRowV1,
     CargoAllowReleaseOperationAuthorityKindV1, CargoAllowReleaseOperationClassV1,
     CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
-    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
     CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
     CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
-    CargoAllowReleaseOperationTimestampSourceV1, CheckpointProviderOutcomeV1,
-    FINAL_TAG_REQUIRED_AUTHORIZATION_STATE, FINAL_TAG_REQUIRED_LEASE_STATE, FinalTagIdentityV1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    CheckpointProviderOutcomeV1, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE,
+    FINAL_TAG_REQUIRED_LEASE_STATE, FinalTagDurabilityV1, FinalTagIdentityV1,
     FinalTagRemoteObservationV1, FinalTagTransactionInitV1, OPERATION_LEASE_FINAL_OPERATION,
     OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OperationLeaseAcquireInitV1,
     OperationLeaseClassV1, OperationLeaseKeyV1, PublicationCheckpointKindV1,
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointRowStateV1, PublicationCheckpointRowV1,
     PublicationJournalAppendV1, PublicationJournalClassV1, PublicationJournalEventV1,
-    PublicationJournalInitV1, PublicationJournalRowV1, RELEASE_AUTHORIZATION_SELECTION,
-    RELEASE_OPERATION_ASSET_SELECTION, acquire_operation_lease_for_operation_v1,
-    append_journal_event_v1, append_release_operation_event_v1,
-    begin_publication_checkpoint_for_operation_v1, begin_publication_journal_for_operation_v1,
-    begin_tag_transaction_for_operation_v1, build_release_operation_identity_v1,
-    compile_release_operation_head_v1, digest_publication_checkpoint_body_v1,
-    record_checkpoint_readback_with_witness_v1, release_operation_head_digest_v1,
+    PublicationJournalInitV1, PublicationJournalRowV1, PublicationRegistryObservationV1,
+    PublicationUploadResponseV1, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_OPERATION_ASSET_SELECTION, UploadResponseClassV1,
+    acquire_operation_lease_for_operation_v1, append_journal_event_v1,
+    append_release_operation_event_v1, begin_publication_checkpoint_for_operation_v1,
+    begin_publication_journal_for_operation_v1, begin_tag_transaction_for_operation_v1,
+    build_release_operation_identity_v1, compile_release_operation_head_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_link_v1,
+    evaluate_release_operation_v1, note_lease_irreversible_start_v1,
+    record_checkpoint_readback_with_witness_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, release_operation_head_digest_v1,
     release_operation_identity_digest_v1, render_publication_checkpoint_v1,
-    render_publication_journal_v1, verify_checkpoint_against_journal_v1,
+    render_publication_journal_v1, tag_push_intent_digest_v1, verify_checkpoint_against_journal_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -601,5 +607,581 @@ fn composition_renderings_validate_against_schemas() -> Result<(), Box<dyn Error
             })?;
         }
     }
+    Ok(())
+}
+
+fn rehearsal_event_init(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    class: CargoAllowReleaseOperationEventClassV1,
+    subject: CargoAllowReleaseOperationEventSubjectV1,
+    result: CargoAllowReleaseOperationSemanticResultV1,
+    ordinal: u64,
+) -> CargoAllowReleaseOperationEventInitV1 {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    let (artifact_digest, payload_digest, response_posture) = match &subject {
+        CargoAllowReleaseOperationEventSubjectV1::Package(id) => (
+            identity
+                .packages
+                .iter()
+                .find(|row| row.logical_id == *id)
+                .map(|row| row.package_digest.clone()),
+            digest(1_000 + ordinal),
+            CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+        ),
+        CargoAllowReleaseOperationEventSubjectV1::Asset(id) => (
+            identity
+                .assets
+                .iter()
+                .find(|row| row.asset_id == *id)
+                .map(|row| row.asset_digest.clone()),
+            digest(1_000 + ordinal),
+            CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+        ),
+        CargoAllowReleaseOperationEventSubjectV1::Operation => (
+            Some(digest(2_000 + ordinal)),
+            if class == Event::AuthorizationSelected {
+                identity.authorization_digest.clone()
+            } else {
+                digest(1_000 + ordinal)
+            },
+            CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+        ),
+    };
+    let timestamp_source = match class {
+        Event::TagObservedExact
+        | Event::PackageRowObservedExact
+        | Event::GitHubDraftObservedExact
+        | Event::AssetObservedExact
+        | Event::PublicReleaseObservedExact
+        | Event::ContainmentObservedExact => {
+            CargoAllowReleaseOperationTimestampSourceV1::ProviderMetadata
+        }
+        Event::RepositoryReconciled => {
+            CargoAllowReleaseOperationTimestampSourceV1::RepositoryMetadata
+        }
+        _ => CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime,
+    };
+    CargoAllowReleaseOperationEventInitV1 {
+        event_class: class,
+        subject,
+        payload_schema_id: "cargo-allow.synthetic-release-payload.v1".to_string(),
+        payload_digest,
+        producer: allow_report::CargoAllowReleaseOperationProducerV1 {
+            tool: "cargo-allow".to_string(),
+            schema: "cargo-allow.release-operation-producer.v1".to_string(),
+            generation: 1,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            workflow: "release".to_string(),
+            workflow_ref: "refs/heads/main".to_string(),
+            run: "4242".to_string(),
+            attempt: 1,
+            job: "rehearsal".to_string(),
+            commit: "a".repeat(40),
+        },
+        actor: "release-operator".to_string(),
+        authority_class: identity.authority_kind,
+        request_boundary: "synthetic-no-provider-call".to_string(),
+        response_posture,
+        semantic_result: result,
+        artifact_digest,
+        observed_at_unix_seconds: 1_790_000_000 + ordinal,
+        timestamp_source,
+    }
+}
+
+fn rehearsal_append(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &mut Vec<CargoAllowReleaseOperationEventV1>,
+    class: CargoAllowReleaseOperationEventClassV1,
+    subject: CargoAllowReleaseOperationEventSubjectV1,
+    ordinal: u64,
+) -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    let mut init = rehearsal_event_init(
+        identity,
+        class,
+        subject.clone(),
+        CargoAllowReleaseOperationSemanticResultV1::Exact,
+        ordinal,
+    );
+    if matches!(
+        class,
+        Event::TagObservedExact
+            | Event::PackageRowObservedExact
+            | Event::GitHubDraftObservedExact
+            | Event::AssetObservedExact
+            | Event::PublicReleaseObservedExact
+            | Event::ContainmentObservedExact
+    ) {
+        init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseKnown;
+        if let Some(request) = events.iter().rev().find(|event| {
+            event.event_class == Event::IrreversibleRequestStarted && event.subject == subject
+        }) {
+            init.payload_schema_id = request.payload_schema_id.clone();
+            init.payload_digest = request.payload_digest.clone();
+            init.request_boundary = request.request_boundary.clone();
+            init.artifact_digest = request.artifact_digest.clone();
+        }
+    }
+    let event =
+        append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
+    events.push(event);
+    Ok(())
+}
+
+fn rehearsal_append_request(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &mut Vec<CargoAllowReleaseOperationEventV1>,
+    subject: CargoAllowReleaseOperationEventSubjectV1,
+    ordinal: u64,
+) -> Result<(), Box<dyn Error>> {
+    let mut init = rehearsal_event_init(
+        identity,
+        CargoAllowReleaseOperationEventClassV1::IrreversibleRequestStarted,
+        subject,
+        CargoAllowReleaseOperationSemanticResultV1::Unknown,
+        ordinal,
+    );
+    init.payload_schema_id = format!("cargo-allow.synthetic-request-{ordinal}.v1");
+    init.request_boundary = format!("synthetic-request-{ordinal}");
+    init.response_posture = CargoAllowReleaseOperationResponsePostureV1::ResponseUnknown;
+    let event =
+        append_release_operation_event_v1(identity, events, init).map_err(io::Error::other)?;
+    events.push(event);
+    Ok(())
+}
+
+fn rehearsal_journal(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+) -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
+    let mut journal = begin_publication_journal_for_operation_v1(
+        identity,
+        PublicationJournalInitV1 {
+            journal_id: "journal-0-2-0-001".to_string(),
+            operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+            operation_identity_digest: digest(0),
+            operation_class: PublicationJournalClassV1::CleanFinalPublication,
+            authorization_digest: identity.authorization_digest.clone(),
+            custody_digest: identity.custody_digest.clone(),
+            freeze_digest: identity.freeze_digest.clone(),
+            prior_journal_digest: None,
+            rows: vec![journal_row()],
+            created_at_unix_seconds: CREATED_AT,
+            workflow: "release".to_string(),
+            run: "4242".to_string(),
+            attempt: "1".to_string(),
+            job: "publish".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    let row = journal_row();
+    let mut at = CREATED_AT;
+    let mut append = |kind: PublicationJournalEventV1,
+                      row: Option<PublicationJournalRowV1>,
+                      with_response: bool,
+                      with_observation: bool| {
+        at += 10;
+        append_journal_event_v1(
+            &mut journal,
+            PublicationJournalAppendV1 {
+                kind,
+                row,
+                response: with_response.then(|| PublicationUploadResponseV1 {
+                    class: UploadResponseClassV1::Success,
+                    detail: "synthetic position".to_string(),
+                }),
+                observation: with_observation.then(|| PublicationRegistryObservationV1 {
+                    provider_reachable: true,
+                    row_visible: true,
+                    archive_digest_matches: true,
+                }),
+                at_unix_seconds: at,
+                reason: "synthetic".to_string(),
+            },
+        )
+        .map_err(io::Error::other)
+    };
+    append(
+        PublicationJournalEventV1::OperationSelected,
+        None,
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::AuthorizationConsumed,
+        None,
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::TagObservedExact,
+        None,
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::RowPreflightComplete,
+        Some(row.clone()),
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::UploadIntentDurable,
+        Some(row.clone()),
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::UploadRequestStarted,
+        Some(row.clone()),
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::UploadResponseObserved,
+        Some(row.clone()),
+        true,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::RegistryObservationStarted,
+        Some(row.clone()),
+        false,
+        false,
+    )?;
+    append(
+        PublicationJournalEventV1::RegistryVisibleExact,
+        Some(row.clone()),
+        false,
+        true,
+    )?;
+    append(
+        PublicationJournalEventV1::OperationComplete,
+        None,
+        false,
+        false,
+    )?;
+    Ok(journal)
+}
+
+/// Full zero-mutation rehearsal through the production state machine: one
+/// canonical identity/head composes every child from selection to terminal
+/// settlement. Every transition is a pure constructor: no upload, no tag
+/// creation, no provider call, no credential read, no live-control change.
+#[test]
+fn zero_mutation_rehearsal_reaches_terminal_settlement() -> Result<(), Box<dyn Error>> {
+    use CargoAllowReleaseOperationEventClassV1 as Event;
+    use CargoAllowReleaseOperationEventSubjectV1::{Asset, Operation, Package};
+
+    let identity = canonical_identity("rehearsal-0001")?;
+    let identity_digest =
+        release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+
+    // Canonical event chain, terminal CompleteClean, through SettlementRequired.
+    let mut events: Vec<CargoAllowReleaseOperationEventV1> = Vec::new();
+    let mut ordinal = 1;
+    let mut next = || {
+        ordinal += 1;
+        ordinal - 1
+    };
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::OperationSelected,
+        Operation,
+        next(),
+    )?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::AuthorizationSelected,
+        Operation,
+        next(),
+    )?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::LeaseAcquired,
+        Operation,
+        next(),
+    )?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::TagIntentDurable,
+        Operation,
+        next(),
+    )?;
+    rehearsal_append_request(&identity, &mut events, Operation, next())?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::TagObservedExact,
+        Operation,
+        next(),
+    )?;
+    for package in identity.packages.clone() {
+        rehearsal_append(
+            &identity,
+            &mut events,
+            Event::PackageRowIntentDurable,
+            Package(package.logical_id.clone()),
+            next(),
+        )?;
+        rehearsal_append_request(
+            &identity,
+            &mut events,
+            Package(package.logical_id.clone()),
+            next(),
+        )?;
+        rehearsal_append(
+            &identity,
+            &mut events,
+            Event::PackageRowObservedExact,
+            Package(package.logical_id),
+            next(),
+        )?;
+    }
+    rehearsal_append_request(&identity, &mut events, Operation, next())?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::GitHubDraftObservedExact,
+        Operation,
+        next(),
+    )?;
+    for asset in identity.assets.clone() {
+        rehearsal_append_request(
+            &identity,
+            &mut events,
+            Asset(asset.asset_id.clone()),
+            next(),
+        )?;
+        rehearsal_append(
+            &identity,
+            &mut events,
+            Event::AssetObservedExact,
+            Asset(asset.asset_id),
+            next(),
+        )?;
+    }
+    rehearsal_append_request(&identity, &mut events, Operation, next())?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::PublicReleaseObservedExact,
+        Operation,
+        next(),
+    )?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::RepositoryReconciled,
+        Operation,
+        next(),
+    )?;
+    let head_before_settle: CargoAllowReleaseOperationHeadV1 =
+        allow_report::compile_release_operation_head_v1(&identity, &events, EVALUATED_AT)
+            .map_err(io::Error::other)?;
+    require(
+        head_before_settle.state == CargoAllowReleaseOperationStateV1::SettlementRequired,
+        "rehearsal must pass through settlement-required before settlement",
+    )?;
+    rehearsal_append(
+        &identity,
+        &mut events,
+        Event::OperationSettled,
+        Operation,
+        next(),
+    )?;
+    let evaluation = evaluate_release_operation_v1(&identity, &events, EVALUATED_AT)
+        .map_err(io::Error::other)?;
+    require(
+        evaluation.state == CargoAllowReleaseOperationStateV1::CompleteClean,
+        "rehearsal must terminate CompleteClean with zero mutations",
+    )?;
+
+    // Journal runs its full row lifecycle to OperationComplete.
+    let journal = rehearsal_journal(&identity)?;
+    require(
+        journal
+            .entries
+            .iter()
+            .any(|entry| entry.kind == PublicationJournalEventV1::OperationComplete),
+        "rehearsal journal must complete its row lifecycle",
+    )?;
+    let journal_head = journal
+        .entries
+        .last()
+        .ok_or_else(|| io::Error::other("completed journal must have a head"))?;
+
+    // Checkpoint gates the completed prefix with independent readback.
+    let head = allow_report::compile_release_operation_head_v1(&identity, &events, EVALUATED_AT)
+        .map_err(io::Error::other)?;
+    let mut checkpoint = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &head,
+        allow_report::PublicationCheckpointInitV1 {
+            checkpoint_id: "checkpoint-0-2-0-001".to_string(),
+            operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+            operation_identity_digest: digest(0),
+            operation_head_digest: digest(0),
+            operation_class: allow_report::PublicationCheckpointClassV1::CleanFinalPublication,
+            authorization_digest: identity.authorization_digest.clone(),
+            custody_digest: identity.custody_digest.clone(),
+            freeze_digest: identity.freeze_digest.clone(),
+            journal_head_sequence: journal_head.sequence,
+            journal_head_digest: journal_head.entry_digest.clone(),
+            checkpoint_sequence: 1,
+            kind: PublicationCheckpointKindV1::PreIntentDurable,
+            row: PublicationCheckpointRowV1 {
+                package_name: "cargo-allow".to_string(),
+                row_order: 0,
+                state: PublicationCheckpointRowStateV1::IntentDurable,
+            },
+            first_irreversible_row: Some("cargo-allow".to_string()),
+            incident_recorded: false,
+            provider: PublicationCheckpointProviderObjectV1 {
+                provider: PublicationCheckpointProviderV1::GithubActionsArtifact,
+                object_id: "artifact-1".to_string(),
+                object_name: "publication-checkpoint".to_string(),
+                object_digest: digest(0),
+                object_size_bytes: 1,
+            },
+            producer: checkpoint_producer(),
+            retention_days: 30,
+            created_at_unix_seconds: CREATED_AT,
+            note: "synthetic".to_string(),
+        },
+        None,
+    )
+    .map_err(io::Error::other)?;
+    let stored = store_checkpoint(&mut checkpoint)?;
+    let (_, witness) = record_checkpoint_readback_with_witness_v1(
+        &mut checkpoint,
+        CheckpointProviderOutcomeV1::Delivered(stored),
+        NOW,
+    )
+    .map_err(io::Error::other)?;
+    let witness =
+        witness.ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+    verify_checkpoint_against_journal_v1(
+        &checkpoint,
+        &witness,
+        &journal,
+        &checkpoint_producer(),
+        NOW,
+    )
+    .map_err(io::Error::other)?;
+
+    // Lease acquires against the live heads and records the irreversible start.
+    let mut lease = acquire_operation_lease_for_operation_v1(
+        &identity,
+        OperationLeaseAcquireInitV1 {
+            lease_id: "lease-0-2-0-001".to_string(),
+            class: OperationLeaseClassV1::Clean,
+            key: OperationLeaseKeyV1 {
+                operation: OPERATION_LEASE_FINAL_OPERATION.to_string(),
+                operation_identity_digest: digest(0),
+                version: OPERATION_LEASE_FINAL_VERSION.to_string(),
+                tag: OPERATION_LEASE_FINAL_TAG.to_string(),
+                commit: "c".repeat(40),
+                tree: "d".repeat(40),
+                denominator_digest: digest(7),
+            },
+            holder_workflow: "release.yml".to_string(),
+            holder_run: "101".to_string(),
+            holder_attempt: "1".to_string(),
+            holder_job: "publish".to_string(),
+            journal_head_digest: journal_head.entry_digest.clone(),
+            checkpoint_head_digest: digest_publication_checkpoint_link_v1(&checkpoint)
+                .map_err(io::Error::other)?,
+            max_renewals: 3,
+            acquired_at_unix_seconds: CREATED_AT,
+            expires_at_unix_seconds: CREATED_AT + 3600,
+            storage_provider_available: true,
+        },
+        None,
+        NOW,
+    )
+    .map_err(io::Error::other)?;
+    note_lease_irreversible_start_v1(&mut lease, NOW + 10).map_err(io::Error::other)?;
+
+    // Tag commits to the identity plus the exact held lease key, then records
+    // intent, start, and the observed response without any push.
+    let mut tag = begin_tag_transaction_for_operation_v1(
+        &identity,
+        FinalTagTransactionInitV1 {
+            transaction_id: "tag-tx-0-2-0-001".to_string(),
+            operation_identity_digest: digest(0),
+            authorization_digest: identity.authorization_digest.clone(),
+            authorization_observed_state: FINAL_TAG_REQUIRED_AUTHORIZATION_STATE.to_string(),
+            lease_key_digest: allow_report::operation_lease_key_digest_v1(&lease.key)
+                .map_err(io::Error::other)?,
+            lease_observed_state: FINAL_TAG_REQUIRED_LEASE_STATE.to_string(),
+            lease_holder_generation: 1,
+            custody_commit: "a".repeat(40),
+            custody_tree: "b".repeat(40),
+            freeze_digest: identity.freeze_digest.clone(),
+            custody_digest: identity.custody_digest.clone(),
+            replay_digest: identity.replay_digest.clone(),
+            evidence_digest: digest(55),
+            tag: FinalTagIdentityV1 {
+                version: "0.2.0".to_string(),
+                tag: "v0.2.0".to_string(),
+                channel: "stable".to_string(),
+                github_prerelease: false,
+                commit: "a".repeat(40),
+                tree: "b".repeat(40),
+                tag_object_id: "c".repeat(40),
+                tagger_digest: digest(60),
+                message_digest: digest(61),
+            },
+            remote_repository: "EffortlessMetrics/cargo-allow".to_string(),
+            remote_ref: "refs/tags/v0.2.0".to_string(),
+            journal_prefix: "release-ops/0.2.0/tag".to_string(),
+            workflow: "release.yml".to_string(),
+            run: "101".to_string(),
+            attempt: "1".to_string(),
+            job: "tag".to_string(),
+            remote_preflight: FinalTagRemoteObservationV1 {
+                provider_reachable: true,
+                ref_exists: false,
+                remote_is_annotated: false,
+                remote_object_id: String::new(),
+                remote_peeled_commit: String::new(),
+                remote_peeled_tree: String::new(),
+            },
+            created_at_unix_seconds: CREATED_AT,
+        },
+    )
+    .map_err(io::Error::other)?;
+    let intent = tag_push_intent_digest_v1(
+        &tag.transaction_id,
+        &tag.tag.tag_object_id,
+        &journal_head.entry_digest,
+    )
+    .map_err(io::Error::other)?;
+    record_tag_push_intent_v1(
+        &mut tag,
+        FinalTagDurabilityV1 {
+            journal_head_digest: journal_head.entry_digest.clone(),
+            checkpoint_digest: digest_publication_checkpoint_link_v1(&checkpoint)
+                .map_err(io::Error::other)?,
+            checkpoint_bound_intent_digest: intent,
+        },
+        NOW + 20,
+    )
+    .map_err(io::Error::other)?;
+    record_tag_push_started_v1(&mut tag, NOW + 30).map_err(io::Error::other)?;
+    record_tag_push_response_v1(&mut tag, true, NOW + 40).map_err(io::Error::other)?;
+    require(
+        tag.operation_identity_digest == identity_digest
+            && matches!(
+                tag.state,
+                allow_report::TagTransactionStateV1::PushResponseObserved
+            ),
+        "rehearsal tag must observe its push response under the canonical identity",
+    )?;
     Ok(())
 }
