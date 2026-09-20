@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: release/3940-operation-migration-v1
+          ref: ${{ github.sha }}
           fetch-depth: 24
           persist-credentials: true
 
@@ -27,10 +27,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "f7a827a43c946e74753e76813301fb4e42ae42e3"
+          test "$(git rev-parse HEAD^)" = "79f41382852ae29d0afd9c0f364843b6da7e8053"
           git merge-base --is-ancestor "1613303c20bddc33d870451671514682409a5a20" HEAD
-          expected_carriers=$'.github/workflows/repair-pr4309-child-bindings-v4.yml\n.github/workflows/repair-pr4309-child-bindings-v5.yml'
-          test "$(git diff --name-only 1613303c20bddc33d870451671514682409a5a20 HEAD)" = "$expected_carriers"
+          test "$(git diff --name-only 1613303c20bddc33d870451671514682409a5a20 HEAD)" = ".github/workflows/repair-pr4309-child-bindings-v5.yml"
           git show 00f0431be9c9cf56c7178dc927cdaf420ba36346:.github/workflows/repair-pr4309-child-bindings.yml > /tmp/repair-pr4309-v1.yml
           git show 8e9361e2e2e5993b57f98230b90916bfe9afcdbf:.github/workflows/repair-pr4309-child-bindings-v2.yml > /tmp/repair-pr4309-v2.yml
           git show 1c573e7ad2f527897b63a9c098c59c25391e5e08:.github/workflows/repair-pr4309-child-bindings-v3.yml > /tmp/repair-pr4309-v3.yml
@@ -63,9 +62,7 @@ jobs:
           python3 /tmp/repair-pr4309-v1.py
           python3 /tmp/repair-pr4309-v2-2.py
           python3 /tmp/repair-pr4309-v3-2.py
-          git rm \
-            .github/workflows/repair-pr4309-child-bindings-v4.yml \
-            .github/workflows/repair-pr4309-child-bindings-v5.yml
+          git rm .github/workflows/repair-pr4309-child-bindings-v5.yml
           cargo fmt --all
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
@@ -101,7 +98,6 @@ jobs:
             docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json
           )
           expected_all=(
-            .github/workflows/repair-pr4309-child-bindings-v4.yml
             .github/workflows/repair-pr4309-child-bindings-v5.yml
             "${source_files[@]}"
           )
@@ -117,5 +113,5 @@ jobs:
           git add "${source_files[@]}"
           git commit -m "fix(release,#3940): bind child authority fields to operation identity"
           git add -u .github/workflows
-          git commit -m "chore: remove PR 4309 child-binding repair carriers"
+          git commit -m "chore: remove PR 4309 child-binding repair carrier"
           git push origin HEAD:release/3940-operation-migration-v1
