@@ -21,10 +21,14 @@ once the contract below holds.
 | Gists / external stores | Rejected | No workflow producer identity to bind trust to. |
 | Job summaries / checks | Rejected | Not independently readable bytes. |
 
-Discovery is by exact artifact ID plus producer and operation identity. The
-artifact name is a human label only: one name identifies many runs, so
-name-based cross-run discovery is forbidden and the selector takes no name
-input at all.
+Discovery is by exact artifact ID plus producer, operation name, and the
+canonical #3940 operation identity digest. The artifact name is a human label
+only: one name identifies many runs, so name-based cross-run discovery is
+forbidden and the selector takes no name input at all. Checkpoints never
+invent operation identity: every record carries the canonical identity digest
+and the canonical head digest at checkpoint time, linkage pins both across
+sequences, and fresh-runner discovery replays from the exact head instead of
+ambiguous naming.
 
 ## Checkpoint
 

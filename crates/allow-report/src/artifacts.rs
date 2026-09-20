@@ -50,6 +50,7 @@ mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
+mod release_operation_authority_v1;
 mod release_operation_lease_v1;
 mod release_operation_v1;
 mod review_disposition_v1;
@@ -221,9 +222,10 @@ pub use final_tag_transaction_v1::{
     FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
     FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
     FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
-    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
-    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
-    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+    begin_tag_transaction_for_operation_v1, begin_tag_transaction_v1,
+    reconcile_tag_push_unknown_v1, record_tag_push_intent_v1, record_tag_push_response_v1,
+    record_tag_push_started_v1, render_final_tag_transaction_v1, tag_push_intent_digest_v1,
+    tag_release_gate_open_v1,
 };
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
@@ -368,12 +370,13 @@ pub use publication_checkpoint_v1::{
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
-    PublicationCheckpointRowV1, begin_publication_checkpoint_v1, checkpoint_permits_dependant_v1,
-    checkpoint_permits_upload_v1, digest_publication_checkpoint_body_v1,
-    digest_publication_checkpoint_bytes_v1, digest_publication_checkpoint_link_v1,
-    digest_publication_checkpoint_v1, record_checkpoint_readback_v1,
-    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
-    select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
+    PublicationCheckpointRowV1, begin_publication_checkpoint_for_operation_v1,
+    begin_publication_checkpoint_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_bytes_v1,
+    digest_publication_checkpoint_link_v1, digest_publication_checkpoint_v1,
+    record_checkpoint_readback_v1, record_checkpoint_readback_with_witness_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    verify_checkpoint_against_journal_v1,
 };
 
 pub use publication_journal_v1::{
@@ -384,8 +387,8 @@ pub use publication_journal_v1::{
     PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
     PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
-    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
-    verify_publication_journal_v1,
+    append_journal_event_v1, begin_publication_journal_for_operation_v1,
+    begin_publication_journal_v1, render_publication_journal_v1, verify_publication_journal_v1,
 };
 
 pub use evaluation_artifact_set_v1::{
@@ -426,8 +429,9 @@ pub use release_authorization_custody_v1::{
     CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1, authorization_evidence_digest_v1,
     mint_authorization_custody_v1, note_custody_readback_v1, note_irreversible_start_v1,
     render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
-    revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
-    settle_authorization_consumption_v1, verify_custody_readback_v1,
+    revoke_authorization_custody_v1, select_authorization_for_operation_v1,
+    select_authorization_for_run_v1, selection_payload_v1, settle_authorization_consumption_v1,
+    verify_custody_readback_v1,
 };
 pub use release_authorization_v1::{
     CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
@@ -470,13 +474,42 @@ pub use release_manifest_v2::{
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
     validate_release_manifest_v2,
 };
+pub use release_operation_authority_v1::{
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEvaluationV1,
+    CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
+    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
+    CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    RELEASE_OPERATION_ASSET_SELECTION, RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
+    RELEASE_OPERATION_CHANNEL, RELEASE_OPERATION_EVALUATION_SCHEMA_ID,
+    RELEASE_OPERATION_EVENT_SCHEMA_ID, RELEASE_OPERATION_GENESIS_DIGEST,
+    RELEASE_OPERATION_HEAD_SCHEMA_ID, RELEASE_OPERATION_IDENTITY_SCHEMA_ID,
+    RELEASE_OPERATION_PRODUCT, RELEASE_OPERATION_REPOSITORY, RELEASE_OPERATION_TAG,
+    RELEASE_OPERATION_VERSION, append_release_operation_event_v1,
+    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
+    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
+    compile_release_operation_head_with_predecessor_v1, evaluate_release_operation_v1,
+    evaluate_release_operation_with_predecessor_v1, release_operation_event_digest_v1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    render_release_operation_evaluation_v1, render_release_operation_event_v1,
+    render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1,
+    validate_release_operation_evaluation_with_predecessor_v1, validate_release_operation_head_v1,
+    validate_release_operation_head_with_predecessor_v1, validate_release_operation_history_v1,
+    validate_release_operation_history_with_predecessor_v1, validate_release_operation_identity_v1,
+    validate_release_operation_predecessor_v1,
+};
 pub use release_operation_lease_v1::{
     CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
     OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
     OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
     OperationLeaseClassV1, OperationLeaseHolderV1, OperationLeaseKeyV1, OperationLeaseStateV1,
-    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_v1,
-    cancel_operation_lease_v1, note_lease_irreversible_start_v1,
+    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_for_operation_v1,
+    acquire_operation_lease_v1, cancel_operation_lease_v1, note_lease_irreversible_start_v1,
     observe_lease_provider_unavailable_v1, observe_runner_loss_v1, operation_lease_key_digest_v1,
     operation_lease_subject_digest_v1, release_operation_lease_v1,
     render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,

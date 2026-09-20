@@ -14,21 +14,26 @@ use ReleaseAuthorizationConsumptionV1 as Consumption;
 use allow_report::{
     AUTHORIZATION_CONSUMPTION_SCHEMA_ID, AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
     AUTHORIZATION_CUSTODY_SCHEMA_ID, AUTHORIZATION_CUSTODY_SCHEMA_VERSION,
-    AuthorizationCustodyMintInitV1, CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1,
-    RELEASE_AUTHORIZATION_AUTH_CLASS, RELEASE_AUTHORIZATION_FINAL_OPERATION,
-    RELEASE_AUTHORIZATION_FINAL_TAG, RELEASE_AUTHORIZATION_FINAL_VERSION,
-    RELEASE_AUTHORIZATION_RECOVERY_OPERATION, RELEASE_AUTHORIZATION_SCHEMA_ID,
-    RELEASE_AUTHORIZATION_SCHEMA_VERSION, RELEASE_AUTHORIZATION_SELECTION,
-    RELEASE_AUTHORIZATION_STABLE_CHANNEL, ReleaseAuthorizationAuthorityKindV1,
+    AuthorizationCustodyMintInitV1, CargoAllowReleaseAuthorizationCustodyV1,
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationPackageRowV1, CustodyReadbackV1, RELEASE_AUTHORIZATION_AUTH_CLASS,
+    RELEASE_AUTHORIZATION_FINAL_OPERATION, RELEASE_AUTHORIZATION_FINAL_TAG,
+    RELEASE_AUTHORIZATION_FINAL_VERSION, RELEASE_AUTHORIZATION_RECOVERY_OPERATION,
+    RELEASE_AUTHORIZATION_SCHEMA_ID, RELEASE_AUTHORIZATION_SCHEMA_VERSION,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_AUTHORIZATION_STABLE_CHANNEL,
+    RELEASE_OPERATION_ASSET_SELECTION, ReleaseAuthorizationAuthorityKindV1,
     ReleaseAuthorizationAuthorityV1, ReleaseAuthorizationConsumptionV1,
     ReleaseAuthorizationEvidenceV1, ReleaseAuthorizationFreezeV1, ReleaseAuthorizationInputV1,
     ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
     ReleaseAuthorizationSharedRowV1, ReleaseAuthorizationSourceKindV1,
-    ReleaseAuthorizationSourceV1, authorization_evidence_digest_v1, mint_authorization_custody_v1,
-    note_custody_readback_v1, note_irreversible_start_v1,
+    ReleaseAuthorizationSourceV1, authorization_evidence_digest_v1,
+    build_release_operation_identity_v1, mint_authorization_custody_v1, note_custody_readback_v1,
+    note_irreversible_start_v1, release_operation_identity_digest_v1,
     render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
-    revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
-    settle_authorization_consumption_v1, verify_custody_readback_v1,
+    revoke_authorization_custody_v1, select_authorization_for_operation_v1,
+    select_authorization_for_run_v1, selection_payload_v1, settle_authorization_consumption_v1,
+    verify_custody_readback_v1,
 };
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
@@ -183,8 +188,16 @@ fn selected() -> Result<CargoAllowReleaseAuthorizationCustodyV1, Box<dyn Error>>
         "synthetic readback must match",
     )?;
     let evidence = record.evidence_digest.clone();
-    select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true)
-        .map_err(io::Error::other)?;
+    let identity = canonical_operation_identity_for(&record, "custody-binding-0001")?;
+    select_authorization_for_operation_v1(
+        &identity,
+        &mut record,
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
     Ok(record)
 }
 
@@ -423,7 +436,15 @@ fn release_authorization_custody() -> Result<(), Box<dyn Error>> {
     )?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection after a failed readback observation must fail",
     )?;
     require(
@@ -462,7 +483,15 @@ fn release_authorization_custody_refusals() -> Result<(), Box<dyn Error>> {
     let mut record = minted()?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection without a verified readback must fail",
     )?;
     // Control: evidence identity is canonical lowercase hex; an uppercase
@@ -478,7 +507,15 @@ fn release_authorization_custody_refusals() -> Result<(), Box<dyn Error>> {
         record.evidence_digest["sha256:".len()..].to_uppercase()
     );
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true).is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection with an uppercase evidence digest must fail",
     )?;
     // Control: revocation ends selection; terminal history cannot be revoked.
@@ -496,8 +533,15 @@ fn release_authorization_custody_refusals() -> Result<(), Box<dyn Error>> {
     )?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT + 5, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT + 5,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection of a revoked authorization must fail",
     )?;
     require(
@@ -527,8 +571,17 @@ fn release_authorization_consumption() -> Result<(), Box<dyn Error>> {
         "selection must advance state, consume the nonce, and append one transition",
     )?;
     note_irreversible_start_v1(&mut record, SELECT_AT + 10).map_err(io::Error::other)?;
-    let observation = settle_authorization_consumption_v1(&mut record, true, SELECT_AT + 20)
-        .map_err(io::Error::other)?;
+    let selected_operation_digest = record
+        .selected_operation_identity_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("selected operation identity absent"))?;
+    let observation = settle_authorization_consumption_v1(
+        &mut record,
+        &selected_operation_digest,
+        true,
+        SELECT_AT + 20,
+    )
+    .map_err(io::Error::other)?;
     require(
         record.state == Consumption::ConsumedComplete
             && observation.from == Consumption::IrreversibleOperationStarted
@@ -547,22 +600,39 @@ fn release_authorization_consumption() -> Result<(), Box<dyn Error>> {
     )?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT + 30, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT + 30,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selecting a consumed authorization must fail",
     )?;
     // Control: the bounded workflow payload binds identity without secrets.
-    let payload = selection_payload_v1(&record);
+    let identity = canonical_operation_identity_for(&record, "custody-binding-0001")?;
+    let payload = selection_payload_v1(&identity, &record).map_err(io::Error::other)?;
     require(
         payload.operation_name == RELEASE_AUTHORIZATION_FINAL_OPERATION
             && payload.operation_version == "0.2.0"
             && payload.operation_tag == "v0.2.0"
             && payload.operation_channel == "stable"
             && payload.authorization_digest == record.authorization_digest
+            && payload.operation_identity_digest
+                == release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?
             && payload.denominator_digest == record.freeze.denominator_digest
             && payload.evidence_digest == record.evidence_digest
             && payload.nonce == NONCE,
         "selection payload must bind the exact selected operation",
+    )?;
+    // Control: a foreign authorization never yields this operation's payload.
+    let mut foreign_record = record.clone();
+    foreign_record.authorization_digest = digest(999);
+    require(
+        selection_payload_v1(&identity, &foreign_record).is_err(),
+        "a foreign authorization must never yield the operation payload",
     )?;
     let payload_json = serde_json::to_string(&payload)?;
     for marker in [
@@ -585,8 +655,15 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
     let mut record = selected()?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT + 5, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT + 5,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "the second selection of one authorization must fail",
     )?;
     // Control: wrong or empty nonces are refused.
@@ -598,50 +675,104 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
     )?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, "wrong-nonce", SELECT_AT, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            "wrong-nonce",
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection with the wrong nonce must fail",
     )?;
     require(
-        select_authorization_for_run_v1(&mut record, "", SELECT_AT, &evidence, true).is_err(),
+        select_authorization_for_run_v1(&mut record, &digest(77), "", SELECT_AT, &evidence, true)
+            .is_err(),
         "selection with an empty nonce must fail",
     )?;
     // Control: the validity window binds both ends.
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, VALID_FROM - 1, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            VALID_FROM - 1,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "selection before valid-from must fail",
     )?;
     // Control: changed workflow/control evidence invalidates selection.
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &digest(99), true).is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT,
+            &digest(99),
+            true,
+        )
+        .is_err(),
         "selection against changed evidence must fail",
     )?;
     // Control: unavailable storage cannot carry selection.
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, false).is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            false,
+        )
+        .is_err(),
         "selection against an unavailable provider must fail",
     )?;
     // Control: expiry ends selection and is observed on the record.
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, EXPIRES_AT + 1, &evidence, true)
-            .is_err()
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            EXPIRES_AT + 1,
+            &evidence,
+            true,
+        )
+        .is_err()
             && record.state == Consumption::Expired,
         "selection past expiry must fail and observe expiry",
     )?;
     // Control: a clean authorization is never reused after an incident.
     let mut record = selected()?;
     note_irreversible_start_v1(&mut record, SELECT_AT + 10).map_err(io::Error::other)?;
-    settle_authorization_consumption_v1(&mut record, false, SELECT_AT + 20)
-        .map_err(io::Error::other)?;
+    let selected_operation_digest = record
+        .selected_operation_identity_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("selected operation identity absent"))?;
+    settle_authorization_consumption_v1(
+        &mut record,
+        &selected_operation_digest,
+        false,
+        SELECT_AT + 20,
+    )
+    .map_err(io::Error::other)?;
     require(
         record.state == Consumption::ConsumedIncident,
         "incident settlement must be observed",
     )?;
     let evidence = record.evidence_digest.clone();
     require(
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT + 30, &evidence, true)
-            .is_err(),
+        select_authorization_for_run_v1(
+            &mut record,
+            &digest(77),
+            NONCE,
+            SELECT_AT + 30,
+            &evidence,
+            true,
+        )
+        .is_err(),
         "reuse after an incident must fail",
     )?;
     // Control: expiry is rechecked at the irreversible boundary.
@@ -661,8 +792,18 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
     // Control: work started while authority is live may settle after expiry.
     let mut record = selected()?;
     note_irreversible_start_v1(&mut record, EXPIRES_AT).map_err(io::Error::other)?;
+    let selected_operation_digest = record
+        .selected_operation_identity_digest
+        .clone()
+        .ok_or_else(|| io::Error::other("selected operation identity absent"))?;
     require(
-        settle_authorization_consumption_v1(&mut record, true, EXPIRES_AT + 10).is_ok()
+        settle_authorization_consumption_v1(
+            &mut record,
+            &selected_operation_digest,
+            true,
+            EXPIRES_AT + 10,
+        )
+        .is_ok()
             && record.state == Consumption::ConsumedComplete,
         "already-started irreversible work must remain settleable after expiry",
     )?;
@@ -673,7 +814,7 @@ fn release_authorization_consumption_refusals() -> Result<(), Box<dyn Error>> {
         "starting before selection must fail",
     )?;
     require(
-        settle_authorization_consumption_v1(&mut record, true, SELECT_AT).is_err(),
+        settle_authorization_consumption_v1(&mut record, &digest(77), true, SELECT_AT).is_err(),
         "settling before selection must fail",
     )
 }
@@ -694,9 +835,15 @@ fn rendered_consumption_validates_against_json_schema() -> Result<(), Box<dyn Er
         "synthetic readback must match before consumption rendering",
     )?;
     let evidence = record.evidence_digest.clone();
-    let observation =
-        select_authorization_for_run_v1(&mut record, NONCE, SELECT_AT, &evidence, true)
-            .map_err(io::Error::other)?;
+    let observation = select_authorization_for_run_v1(
+        &mut record,
+        &digest(77),
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
     require(
         observation.schema_id == AUTHORIZATION_CONSUMPTION_SCHEMA_ID
             && observation.schema_version == AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
@@ -753,5 +900,189 @@ fn rendered_custody_validates_against_json_schema() -> Result<(), Box<dyn Error>
     require(
         rendered.get("redacted") == Some(&serde_json::Value::Bool(true)),
         "rendered custody must stay redacted",
+    )
+}
+
+fn canonical_operation_identity_for(
+    record: &CargoAllowReleaseAuthorizationCustodyV1,
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: record.authorization_digest.clone(),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        })
+        .map_err(io::Error::other)?,
+    )
+}
+
+#[test]
+fn selection_binds_canonical_operation_authorization() -> Result<(), Box<dyn Error>> {
+    let mut record = minted()?;
+    let rendered = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    let identity = canonical_operation_identity_for(&record, "custody-binding-0001")?;
+    let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+    let evidence = record.evidence_digest.clone();
+    let observation = select_authorization_for_operation_v1(
+        &identity,
+        &mut record,
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        observation.operation_identity_digest == expected
+            && observation.authorization_digest == identity.authorization_digest,
+        "selection must bind the operation identity and its authorization",
+    )?;
+    let payload = selection_payload_v1(&identity, &record).map_err(io::Error::other)?;
+    require(
+        payload.operation_identity_digest == expected,
+        "selection payload must retain the selected operation identity",
+    )?;
+    let foreign_identity = canonical_operation_identity_for(&record, "custody-binding-0002")?;
+    require(
+        selection_payload_v1(&foreign_identity, &record).is_err(),
+        "a same-authorization foreign operation must not relabel the selected payload",
+    )?;
+
+    let unselected = minted()?;
+    let unselected_identity =
+        canonical_operation_identity_for(&unselected, "custody-binding-unselected")?;
+    require(
+        selection_payload_v1(&unselected_identity, &unselected).is_err(),
+        "an available authorization must not emit a selected-operation payload",
+    )?;
+
+    let mut foreign = minted()?;
+    let rendered = render_release_authorization_custody_v1(&foreign)?;
+    require(
+        note_custody_readback_v1(&mut foreign, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    foreign.authorization_digest = digest(999);
+    let evidence = foreign.evidence_digest.clone();
+    require(
+        select_authorization_for_operation_v1(
+            &identity,
+            &mut foreign,
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
+        "a foreign authorization must never select under this operation",
+    )?;
+
+    let mut record = minted()?;
+    let rendered = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    let identity = canonical_operation_identity_for(&record, "custody-binding-0001")?;
+    let evidence = record.evidence_digest.clone();
+    select_authorization_for_operation_v1(
+        &identity,
+        &mut record,
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
+    let transitions_before = record.transitions.len();
+    require(
+        settle_authorization_consumption_v1(&mut record, &digest(999), true, SELECT_AT + 20)
+            .is_err(),
+        "settlement with a different digest must fail",
+    )?;
+    require(
+        record.state == Consumption::SelectedForRun
+            && record.transitions.len() == transitions_before,
+        "failed settlement must leave the custody record unchanged",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn custody_schema_rejects_malformed_selected_operation_digest() -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+    let schema: serde_json::Value = serde_json::from_str(&fs::read_to_string(
+        root.join("docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"),
+    )?)?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| io::Error::other(format!("custody schema compiles: {error}")))?;
+    let mut rendered: serde_json::Value =
+        serde_json::from_str(&render_release_authorization_custody_v1(&minted()?)?)?;
+    rendered
+        .as_object_mut()
+        .ok_or_else(|| io::Error::other("custody JSON not an object"))?
+        .insert(
+            "selected_operation_identity_digest".to_string(),
+            serde_json::Value::String("not-a-digest".to_string()),
+        );
+    require(
+        validator.validate(&rendered).is_err(),
+        "schema must reject malformed selected operation identity digests",
     )
 }

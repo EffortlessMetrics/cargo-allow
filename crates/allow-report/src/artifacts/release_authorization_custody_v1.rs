@@ -28,6 +28,10 @@ use super::release_authorization_v1::{
 use super::release_authorization_v1::{
     ReleaseAuthorizationEvidenceV1, transition_authorization_consumption,
 };
+use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
+};
 
 pub const AUTHORIZATION_CUSTODY_SCHEMA_ID: &str = "cargo-allow.release-authorization-custody.v1";
 pub const AUTHORIZATION_CUSTODY_SCHEMA_VERSION: u32 = 1;
@@ -225,6 +229,10 @@ pub struct CargoAllowReleaseAuthorizationCustodyV1 {
     pub one_run_scope: bool,
     pub nonce: String,
     pub state: ReleaseAuthorizationConsumptionV1,
+    /// Canonical #3940 operation identity digest bound at selection time.
+    /// Settlement requires exact equality so observations from another
+    /// operation can never settle this selection.
+    pub selected_operation_identity_digest: Option<String>,
     pub consumed_nonces: Vec<String>,
     pub transitions: Vec<AuthorizationCustodyTransitionV1>,
     pub readback_verified: bool,
@@ -244,6 +252,10 @@ pub struct CargoAllowReleaseAuthorizationConsumptionV1 {
     pub schema_version: u32,
     pub authorization_id: String,
     pub authorization_digest: String,
+    /// Canonical #3940 operation identity digest the selection is bound to.
+    /// The operation's `AuthorizationSelected` event and the custody
+    /// selection name the same immutable authorization.
+    pub operation_identity_digest: String,
     pub nonce: String,
     pub from: ReleaseAuthorizationConsumptionV1,
     pub to: ReleaseAuthorizationConsumptionV1,
@@ -260,6 +272,7 @@ pub struct CargoAllowReleaseAuthorizationConsumptionV1 {
 pub struct AuthorizationSelectionPayloadV1 {
     pub authorization_id: String,
     pub authorization_digest: String,
+    pub operation_identity_digest: String,
     pub operation_name: String,
     pub operation_version: String,
     pub operation_tag: String,
@@ -448,6 +461,7 @@ pub fn mint_authorization_custody_v1(
         one_run_scope: true,
         nonce: init.decision.authority.nonce,
         state: ReleaseAuthorizationConsumptionV1::Available,
+        selected_operation_identity_digest: None,
         consumed_nonces: Vec::new(),
         transitions: Vec::new(),
         readback_verified: false,
@@ -556,12 +570,16 @@ fn advance_custody_state(
 /// second selection of the same authorization is refused.
 pub fn select_authorization_for_run_v1(
     record: &mut CargoAllowReleaseAuthorizationCustodyV1,
+    operation_identity_digest: &str,
     nonce: &str,
     now_unix_seconds: u64,
     current_evidence_digest: &str,
     storage_provider_available: bool,
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
+    if !digest_shape(operation_identity_digest) {
+        return Err("selection requires the canonical operation identity digest");
+    }
     match record.state {
         Consumption::Available => {
             if now_unix_seconds > record.expires_at_unix_seconds {
@@ -611,12 +629,14 @@ pub fn select_authorization_for_run_v1(
         now_unix_seconds,
         "selected",
     )?;
+    record.selected_operation_identity_digest = Some(operation_identity_digest.to_string());
     record.consumed_nonces.push(nonce.to_string());
     Ok(CargoAllowReleaseAuthorizationConsumptionV1 {
         schema_id: AUTHORIZATION_CONSUMPTION_SCHEMA_ID.to_string(),
         schema_version: AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
         authorization_id: record.authorization_id.clone(),
         authorization_digest: record.authorization_digest.clone(),
+        operation_identity_digest: operation_identity_digest.to_string(),
         nonce: nonce.to_string(),
         from: Consumption::Available,
         to: Consumption::SelectedForRun,
@@ -624,6 +644,38 @@ pub fn select_authorization_for_run_v1(
         evidence_digest: record.evidence_digest.clone(),
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     })
+}
+
+/// Select an authorization bound to one canonical #3940 release operation.
+/// The operation's authorization digest must equal the custody record's:
+/// the `AuthorizationSelected` event and this selection name the same
+/// immutable authorization, never a foreign one.
+pub fn select_authorization_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    record: &mut CargoAllowReleaseAuthorizationCustodyV1,
+    nonce: &str,
+    now_unix_seconds: u64,
+    current_evidence_digest: &str,
+    storage_provider_available: bool,
+) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "selection operation identity is not canonical")?;
+    if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("custody selection belongs only to the clean final operation");
+    }
+    if identity.authorization_digest != record.authorization_digest {
+        return Err("selection requires the operation authorization");
+    }
+    let identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    select_authorization_for_run_v1(
+        record,
+        &identity_digest,
+        nonce,
+        now_unix_seconds,
+        current_evidence_digest,
+        storage_provider_available,
+    )
 }
 
 /// Note the first irreversible action on a selected authorization. The
@@ -661,10 +713,16 @@ pub fn note_irreversible_start_v1(
 /// authorization can never be selected again after an incident.
 pub fn settle_authorization_consumption_v1(
     record: &mut CargoAllowReleaseAuthorizationCustodyV1,
+    operation_identity_digest: &str,
     complete: bool,
     now_unix_seconds: u64,
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
+    if !digest_shape(operation_identity_digest)
+        || record.selected_operation_identity_digest.as_deref() != Some(operation_identity_digest)
+    {
+        return Err("settlement requires the exact selected operation identity digest");
+    }
     let next = if complete {
         Consumption::ConsumedComplete
     } else {
@@ -686,6 +744,7 @@ pub fn settle_authorization_consumption_v1(
         schema_version: AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,
         authorization_id: record.authorization_id.clone(),
         authorization_digest: record.authorization_digest.clone(),
+        operation_identity_digest: operation_identity_digest.to_string(),
         nonce: record.nonce.clone(),
         from,
         to: next,
@@ -716,13 +775,40 @@ pub fn revoke_authorization_custody_v1(
 }
 
 /// Bounded selection payload for the #3790 workflow gate. Identity and
-/// digests only; the shape cannot carry secret material.
+/// digests only; the shape cannot carry secret material. The payload names
+/// the canonical #3940 operation identity the selection is bound to; a
+/// custody record for another authorization never yields this operation's
+/// payload.
 pub fn selection_payload_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
     record: &CargoAllowReleaseAuthorizationCustodyV1,
-) -> AuthorizationSelectionPayloadV1 {
-    AuthorizationSelectionPayloadV1 {
+) -> Result<AuthorizationSelectionPayloadV1, &'static str> {
+    use ReleaseAuthorizationConsumptionV1 as Consumption;
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "selection operation identity is not canonical")?;
+    if identity.authorization_digest != record.authorization_digest {
+        return Err("selection payload requires the operation authorization");
+    }
+    let operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    if record.selected_operation_identity_digest.as_deref()
+        != Some(operation_identity_digest.as_str())
+    {
+        return Err("selection payload requires the exact selected operation identity");
+    }
+    if !matches!(
+        record.state,
+        Consumption::SelectedForRun
+            | Consumption::IrreversibleOperationStarted
+            | Consumption::ConsumedComplete
+            | Consumption::ConsumedIncident
+    ) {
+        return Err("selection payload requires selected or retained consumed authority");
+    }
+    Ok(AuthorizationSelectionPayloadV1 {
         authorization_id: record.authorization_id.clone(),
         authorization_digest: record.authorization_digest.clone(),
+        operation_identity_digest,
         operation_name: record.operation.name.clone(),
         operation_version: record.operation.version.clone(),
         operation_tag: record.operation.tag.clone(),
@@ -735,7 +821,7 @@ pub fn selection_payload_v1(
         state: record.state,
         valid_from_unix_seconds: record.valid_from_unix_seconds,
         expires_at_unix_seconds: record.expires_at_unix_seconds,
-    }
+    })
 }
 
 /// Canonical JSON renderer for custody records.

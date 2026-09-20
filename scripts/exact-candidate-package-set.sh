@@ -25,18 +25,47 @@
 #   bash scripts/exact-candidate-package-set.sh
 #
 # Optional:
-#   PACKAGE_INPUT_DIR=<path>  prebuilt .crate input for SKIP_PACKAGE=1
-#   SKIP_PACKAGE=1            reuse PACKAGE_INPUT_DIR without re-packing
+#   PACKAGE_INPUT_DIR=<path>  snapshot-probe fixture input only
+#   SKIP_PACKAGE=1            snapshot-probe characterization only; never authority
 #   SKIP_NEGATIVES=1          skip negative controls (debug only)
 #   SKIP_LOCAL_REGISTRY=1     reuse OFFLINE_ROOT/local-registry if present (debug only)
 #   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
+
+# Archive-embedded VCS metadata is not independent authority over supplied
+# bytes. The exact candidate must always be packaged from its selected detached
+# worktree. Retained prebuilt staging exists only for the explicitly injected
+# snapshot-probe characterization, which exits before candidate production.
+if [[ "${SKIP_PACKAGE:-0}" == "1" ]] \
+  && { [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" != "1" ]] \
+    || [[ "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" != "1" ]]; }; then
+  printf '%s\n' \
+    'exact-candidate-package-set: error: SKIP_PACKAGE=1 is snapshot-probe-only; exact-subject authority packages from the selected worktree' >&2
+  exit 1
+fi
 
 # Child JSON helpers can emit CRLF line endings on Windows; a trailing CR
 # would corrupt every token and git-head comparison below.
 strip_cr() {
   printf '%s' "$1" | tr -d '\r'
 }
+
+# Git repository-location and object-store variables override `git -C` and
+# Cargo's repository discovery. Candidate packaging must be selected only by
+# the explicit repository/worktree arguments below.
+GIT_REPOSITORY_ENVIRONMENT_VARIABLES=(
+  GIT_DIR
+  GIT_WORK_TREE
+  GIT_COMMON_DIR
+  GIT_INDEX_FILE
+  GIT_OBJECT_DIRECTORY
+  GIT_ALTERNATE_OBJECT_DIRECTORIES
+  GIT_CEILING_DIRECTORIES
+  GIT_DISCOVERY_ACROSS_FILESYSTEM
+)
+for variable in "${GIT_REPOSITORY_ENVIRONMENT_VARIABLES[@]}"; do
+  unset "${variable}"
+done
 
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -56,7 +85,14 @@ if [[ "${1:-}" != "--internal" ]]; then
     )
   fi
   snapshot_root=""
+  worktree_root=""
+  worktree_token=""
   snapshot_cleanup() {
+    if [[ -n "${worktree_root}" ]]; then
+      python3 "${lifecycle}" worktree-remove --root "${temp_root}" --path "${worktree_root}" \
+        --purpose exact-candidate-package-worktree --token "${worktree_token}"
+      worktree_root=""
+    fi
     if [[ -n "${snapshot_root}" ]]; then
       python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
         --purpose exact-candidate-package-snapshot --token "${snapshot_token}"
@@ -81,6 +117,18 @@ if [[ "${1:-}" != "--internal" ]]; then
   snapshot_root="$(strip_cr "${snapshot_root}")"
   snapshot_token="$(strip_cr "${snapshot_token}")"
   snapshot_head="$(strip_cr "${snapshot_head}")"
+  # Packaging must observe the exact Git subject: a harness-owned detached
+  # worktree at the snapshot head, so `cargo package` embeds the true
+  # `.cargo_vcs_info.json` instead of omitting it as in a bare snapshot.
+  worktree_json="$(python3 "${lifecycle}" worktree --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose exact-candidate-package-worktree --head "${snapshot_head}")"
+  read -r worktree_root worktree_token worktree_head < <(
+    printf '%s' "${worktree_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
+  )
+  worktree_root="$(strip_cr "${worktree_root}")"
+  worktree_token="$(strip_cr "${worktree_token}")"
+  worktree_head="$(strip_cr "${worktree_head}")"
+  [[ "${worktree_head}" == "${snapshot_head}" ]] \
+    || { printf 'exact-candidate-package-set: error: worktree head %s drifted from snapshot head %s\n' "${worktree_head}" "${snapshot_head}" >&2; exit 1; }
   if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
     PACKAGE_INPUT_DIR="$(python3 - "${package_input_source}" "${snapshot_root}" "${snapshot_head}" <<'PY'
 import hashlib
@@ -127,6 +175,9 @@ PY
     export PACKAGE_INPUT_DIR
   fi
   CANDIDATE_HARNESS_TEST_ROOT="${temp_root}" \
+    CANDIDATE_HARNESS_WORKTREE_ROOT="${worktree_root}" \
+    CANDIDATE_HARNESS_WORKTREE_TOKEN="${worktree_token}" \
+    CANDIDATE_HARNESS_WORKTREE_HEAD="${worktree_head}" \
     bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
   exit $?
 fi
@@ -294,16 +345,25 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   log "SKIP_PACKAGE=1; restoring prebuilt packages"
   cp "${staged[@]}" "${packages_dir}/"
 else
-  log "packaging workspace crates with cargo package --workspace --locked"
+  # Git-backed packaging only: the bare snapshot has no `.git`, so cargo
+  # would omit `.cargo_vcs_info.json` and freeze different bytes than the
+  # publish path. The harness worktree observes the exact snapshot head.
+  package_root="${CANDIDATE_HARNESS_WORKTREE_ROOT:-}"
+  [[ -n "${package_root}" && -e "${package_root}/.git" ]] \
+    || fail "packaging requires the harness-owned git worktree at ${snapshot_head:-unknown head}"
+  package_head="$(git -C "${package_root}" rev-parse HEAD)"
+  [[ "${package_head}" == "${snapshot_head}" ]] \
+    || fail "packaging worktree head ${package_head} drifted from snapshot head ${snapshot_head}"
+  log "packaging workspace crates with cargo package --workspace --locked (worktree at ${package_head})"
   package_flags=(--workspace --locked)
   if [[ "${ALLOW_DIRTY:-0}" == "1" ]]; then
     package_flags+=(--allow-dirty)
     log "ALLOW_DIRTY=1; packaging with --allow-dirty"
   fi
-  cargo package "${package_flags[@]}"
+  ( cd "${package_root}" && cargo package "${package_flags[@]}" )
   for crate in "${crates[@]}"; do
     crate_version="$(read_crate_version "${crate}")"
-    src="target/package/${crate}-${crate_version}.crate"
+    src="${package_root}/target/package/${crate}-${crate_version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
     cp "${src}" "${packages_dir}/"
   done
@@ -345,6 +405,20 @@ for crate in "${crates[@]}"; do
   tar --force-local -xzf "${src}" -C "${extracted_dir}"
   [[ -d "${dest}" ]] || fail "extract missing ${dest}"
   assert_no_path_deps "${dest}" "${crate}"
+  # Package-byte authority: every frozen archive must carry the exact Git
+  # subject. A non-Git-backed `cargo package` omits `.cargo_vcs_info.json`
+  # and freezes different bytes than the publish path; fail closed here so
+  # neither a reverted producer nor prebuilt inputs can slip through.
+  # One authority validates fresh and restored archives against the
+  # exact frozen head. Cargo omits git.dirty when clean and emits true
+  # when dirty; a present non-boolean value also fails closed.
+  if ! python3 "${SCRIPT_ROOT}/scripts/test-package-byte-authority.py" verify-archive \
+    --archive "${src}" \
+    --prefix "${crate}-${crate_version}" \
+    --expected-head "${snapshot_head}" >/dev/null
+  then
+    fail "package-byte authority broken for ${crate_file}"
+  fi
   digest="$(sha256_file "${src}")"
   size="$(wc -c <"${src}" | tr -d ' \r')"
   crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${crate_version}")

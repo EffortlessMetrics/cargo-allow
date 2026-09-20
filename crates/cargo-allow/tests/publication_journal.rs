@@ -13,12 +13,17 @@ use std::path::{Path, PathBuf};
 
 use PublicationJournalEventV1 as Event;
 use allow_report::{
-    CargoAllowPublicationJournalV1, PUBLICATION_JOURNAL_OPERATION,
-    PUBLICATION_JOURNAL_RECOVERY_OPERATION, PUBLICATION_JOURNAL_SCHEMA_ID,
-    PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
-    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
-    PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
-    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
+    CargoAllowPublicationJournalV1, CargoAllowReleaseOperationAssetRowV1,
+    CargoAllowReleaseOperationAuthorityKindV1, CargoAllowReleaseOperationClassV1,
+    CargoAllowReleaseOperationIdentityInitV1, CargoAllowReleaseOperationPackageRowV1,
+    PUBLICATION_JOURNAL_OPERATION, PUBLICATION_JOURNAL_RECOVERY_OPERATION,
+    PUBLICATION_JOURNAL_SCHEMA_ID, PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1,
+    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
+    PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION, UploadResponseClassV1,
+    append_journal_event_v1, begin_publication_journal_for_operation_v1,
+    begin_publication_journal_v1, build_release_operation_identity_v1,
+    release_operation_identity_digest_v1, render_publication_journal_v1,
     verify_publication_journal_v1,
 };
 
@@ -51,6 +56,7 @@ fn begin_init_with(rows: Vec<PublicationJournalRowV1>) -> PublicationJournalInit
     PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -1110,5 +1116,134 @@ fn publication_journal_review_repairs() -> Result<(), Box<dyn Error>> {
             "missing prior_journal_digest must fail schema",
         )?;
     }
+    Ok(())
+}
+
+fn canonical_operation_identity(
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: digest(5),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        })
+        .map_err(io::Error::other)?,
+    )
+}
+
+fn journal_init_for_identity(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> PublicationJournalInitV1 {
+    let mut init = begin_init();
+    init.authorization_digest = identity.authorization_digest.clone();
+    init.custody_digest = identity.custody_digest.clone();
+    init.freeze_digest = identity.freeze_digest.clone();
+    init
+}
+
+#[test]
+fn journal_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("journal-binding-0001")?;
+    let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+    let journal =
+        begin_publication_journal_for_operation_v1(&identity, journal_init_for_identity(&identity))
+            .map_err(io::Error::other)?;
+    require(
+        journal.operation_identity_digest == expected,
+        "journal must name the canonical operation identity digest",
+    )?;
+
+    let mut malformed = begin_init();
+    malformed.operation_identity_digest = "not-a-digest".to_string();
+    require(
+        begin_publication_journal_v1(malformed).is_err(),
+        "a non-canonical operation digest must fail closed",
+    )?;
+
+    let foreign_identity = canonical_operation_identity("journal-binding-0002")?;
+    let foreign_journal = begin_publication_journal_for_operation_v1(
+        &foreign_identity,
+        journal_init_for_identity(&foreign_identity),
+    )
+    .map_err(io::Error::other)?;
+    require(
+        foreign_journal.operation_identity_digest != expected,
+        "same-name journals on different operations must carry different identity digests",
+    )?;
+
+    let mut wrong_authorization = journal_init_for_identity(&identity);
+    wrong_authorization.authorization_digest = digest(999);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_authorization).is_err(),
+        "journal authorization must agree with the canonical operation",
+    )?;
+    let mut wrong_custody = journal_init_for_identity(&identity);
+    wrong_custody.custody_digest = digest(998);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_custody).is_err(),
+        "journal custody must agree with the canonical operation",
+    )?;
+    let mut wrong_freeze = journal_init_for_identity(&identity);
+    wrong_freeze.freeze_digest = digest(997);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_freeze).is_err(),
+        "journal freeze must agree with the canonical operation",
+    )?;
+
+    let mut crossed_class = journal_init_for_identity(&identity);
+    crossed_class.operation_class = PublicationJournalClassV1::IncidentRecovery;
+    require(
+        begin_publication_journal_for_operation_v1(&identity, crossed_class).is_err(),
+        "journal class must agree with the canonical operation class",
+    )?;
     Ok(())
 }

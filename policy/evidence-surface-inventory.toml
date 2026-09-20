@@ -413,6 +413,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove compilation semantics; no live authorization, permission proof, or release execution is produced."
 
 [[surfaces]]
+id = "release-operation-authority-v1"
+owner_issue = 3940
+semantic_authority = "canonical exact release-operation identity, append-only event chain, current head, and aggregate evaluator"
+path = "crates/cargo-allow/tests/release_operation_authority.rs"
+subject = "CargoAllowReleaseOperationIdentityV1 / CargoAllowReleaseOperationEventV1 / CargoAllowReleaseOperationHeadV1 / CargoAllowReleaseOperationEvaluationV1"
+producer = "canonical allow-report operation authority with deterministic identity/event digests and hostile loaded-chain/denominator fixtures"
+consumer = "#3940 PR B child migration, PR C workflow cutover, #2502/#2509 execution evidence"
+claimed_acceptance_row = "exact subject identity, internally computed event chain, package/asset denominator byte binding, explicit irreversible-request correlation, predecessor-head proof for non-clean APIs, and externally observed containment-without-publication law"
+assertion_mechanism = "production pure model plus JSON Schema and round-trip validation over synthetic exact subjects"
+evidence_class = "TypedModelValidation"
+disposition = "canonical PR A contract; child migration and workflow cutover remain required"
+required_stronger_owner = "#3940 PR B/C + #2502/#2509"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "PR A proves shared source-controlled operation semantics only. It does not migrate every child, persist provider state, execute workflows, read credentials, create tags, publish packages, mutate a GitHub Release, or establish final release readiness."
+
+[[surfaces]]
 id = "release-operation-lease-v1"
 owner_issue = 3925
 semantic_authority = "durable one-operation lease serialization"
@@ -598,3 +615,20 @@ required_stronger_owner = "#3790/#3925"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove local custody and consumption semantics only; no external authorization is minted, no durable provider lease/readback is observed, and no tag, credential, or publication operation occurs."
+
+[[surfaces]]
+id = "release-operation-composition"
+owner_issue = 3940
+semantic_authority = "canonical release-operation identity shared across children"
+path = "crates/cargo-allow/tests/release_operation_composition.rs"
+subject = "CargoAllowReleaseOperationIdentityV1 across journal, checkpoint, lease, and tag"
+producer = "production child constructors with one synthetic canonical identity and head"
+consumer = "#3940 PR C workflow cutover and #2502 execution evidence"
+claimed_acceptance_row = "one canonical identity/head composes journal, checkpoint, lease, and tag bindings"
+assertion_mechanism = "cross-child digest equality plus foreign-operation rejection fixtures"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3940"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove local cross-child binding only; no workflow transport, provider readback, tag, credential, or publication operation occurs."

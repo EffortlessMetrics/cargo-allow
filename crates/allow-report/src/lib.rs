@@ -338,14 +338,45 @@ pub use artifacts::{
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
     transition_authorization_consumption,
 };
+// Canonical shared release-operation authority (#3940 PR A).
+pub use artifacts::{
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEvaluationV1,
+    CargoAllowReleaseOperationEventClassV1, CargoAllowReleaseOperationEventInitV1,
+    CargoAllowReleaseOperationEventSubjectV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPackageRowV1,
+    CargoAllowReleaseOperationPredecessorProofV1, CargoAllowReleaseOperationProducerV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationStateV1, CargoAllowReleaseOperationTimestampSourceV1,
+    RELEASE_OPERATION_ASSET_SELECTION, RELEASE_OPERATION_AUTHORITY_SCHEMA_VERSION,
+    RELEASE_OPERATION_CHANNEL, RELEASE_OPERATION_EVALUATION_SCHEMA_ID,
+    RELEASE_OPERATION_EVENT_SCHEMA_ID, RELEASE_OPERATION_GENESIS_DIGEST,
+    RELEASE_OPERATION_HEAD_SCHEMA_ID, RELEASE_OPERATION_IDENTITY_SCHEMA_ID,
+    RELEASE_OPERATION_PRODUCT, RELEASE_OPERATION_REPOSITORY, RELEASE_OPERATION_TAG,
+    RELEASE_OPERATION_VERSION, append_release_operation_event_v1,
+    append_release_operation_event_with_predecessor_v1, build_release_operation_identity_v1,
+    build_release_operation_identity_with_predecessor_v1, compile_release_operation_head_v1,
+    compile_release_operation_head_with_predecessor_v1, evaluate_release_operation_v1,
+    evaluate_release_operation_with_predecessor_v1, release_operation_event_digest_v1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    render_release_operation_evaluation_v1, render_release_operation_event_v1,
+    render_release_operation_head_v1, render_release_operation_identity_v1,
+    validate_release_operation_evaluation_v1,
+    validate_release_operation_evaluation_with_predecessor_v1, validate_release_operation_head_v1,
+    validate_release_operation_head_with_predecessor_v1, validate_release_operation_history_v1,
+    validate_release_operation_history_with_predecessor_v1, validate_release_operation_identity_v1,
+    validate_release_operation_predecessor_v1,
+};
+
 // Root re-exports for the durable operation lease (#3925).
 pub use artifacts::{
     CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
     OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
     OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
     OperationLeaseClassV1, OperationLeaseHolderV1, OperationLeaseKeyV1, OperationLeaseStateV1,
-    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_v1,
-    cancel_operation_lease_v1, note_lease_irreversible_start_v1,
+    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_for_operation_v1,
+    acquire_operation_lease_v1, cancel_operation_lease_v1, note_lease_irreversible_start_v1,
     observe_lease_provider_unavailable_v1, observe_runner_loss_v1, operation_lease_key_digest_v1,
     operation_lease_subject_digest_v1, release_operation_lease_v1,
     render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,
@@ -360,8 +391,9 @@ pub use artifacts::{
     CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1, authorization_evidence_digest_v1,
     mint_authorization_custody_v1, note_custody_readback_v1, note_irreversible_start_v1,
     render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
-    revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
-    settle_authorization_consumption_v1, verify_custody_readback_v1,
+    revoke_authorization_custody_v1, select_authorization_for_operation_v1,
+    select_authorization_for_run_v1, selection_payload_v1, settle_authorization_consumption_v1,
+    verify_custody_readback_v1,
 };
 // Root re-exports for the exactly-once tag transaction (#3930).
 pub use artifacts::{
@@ -370,9 +402,10 @@ pub use artifacts::{
     FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
     FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
     FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
-    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
-    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
-    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+    begin_tag_transaction_for_operation_v1, begin_tag_transaction_v1,
+    reconcile_tag_push_unknown_v1, record_tag_push_intent_v1, record_tag_push_response_v1,
+    record_tag_push_started_v1, render_final_tag_transaction_v1, tag_push_intent_digest_v1,
+    tag_release_gate_open_v1,
 };
 // Root re-exports for the remote publication checkpoints (#3922).
 pub use artifacts::{
@@ -384,12 +417,13 @@ pub use artifacts::{
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
     PublicationCheckpointProviderV1, PublicationCheckpointReadbackV1,
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
-    PublicationCheckpointRowV1, begin_publication_checkpoint_v1, checkpoint_permits_dependant_v1,
-    checkpoint_permits_upload_v1, digest_publication_checkpoint_body_v1,
-    digest_publication_checkpoint_bytes_v1, digest_publication_checkpoint_link_v1,
-    digest_publication_checkpoint_v1, record_checkpoint_readback_v1,
-    record_checkpoint_readback_with_witness_v1, render_publication_checkpoint_v1,
-    select_checkpoint_by_exact_identity_v1, verify_checkpoint_against_journal_v1,
+    PublicationCheckpointRowV1, begin_publication_checkpoint_for_operation_v1,
+    begin_publication_checkpoint_v1, checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    digest_publication_checkpoint_body_v1, digest_publication_checkpoint_bytes_v1,
+    digest_publication_checkpoint_link_v1, digest_publication_checkpoint_v1,
+    record_checkpoint_readback_v1, record_checkpoint_readback_with_witness_v1,
+    render_publication_checkpoint_v1, select_checkpoint_by_exact_identity_v1,
+    verify_checkpoint_against_journal_v1,
 };
 // Root re-exports for unknown-upload recovery (#3924).
 pub use artifacts::{
@@ -409,8 +443,8 @@ pub use artifacts::{
     PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
     PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
-    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
-    verify_publication_journal_v1,
+    append_journal_event_v1, begin_publication_journal_for_operation_v1,
+    begin_publication_journal_v1, render_publication_journal_v1, verify_publication_journal_v1,
 };
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{

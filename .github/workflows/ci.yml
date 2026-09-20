@@ -295,11 +295,9 @@ jobs:
           path: target/release-binary-contract/
           if-no-files-found: warn
       - name: Exact candidate package set (#2372)
-        run: |
-          mkdir -p target/exact-candidate-package-set/packages
-          cp target/package-candidate-smoke/packages/*.crate \
-            target/exact-candidate-package-set/packages/
-          SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+        run: bash scripts/exact-candidate-package-set.sh
+      - name: Package-byte authority proof (#4304)
+        run: python3 scripts/test-package-byte-authority.py
       - name: Exact topology-selected package candidate artifact (#2924)
         run: |
           python3 scripts/exact-candidate-package-candidate.py --mode verify-packaged \

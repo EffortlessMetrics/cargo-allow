@@ -238,6 +238,60 @@ fn test_ci_workflow_runs_the_full_cache_suite_on_every_platform() -> Result<(), 
     Ok(())
 }
 
+/// PR C: the authorize gate emits one canonical operation identity artifact
+/// and downstream jobs consume it with agreement checks instead of
+/// reconstructing operation identity from their own checkout or inputs.
+#[test]
+fn test_release_workflow_canonical_operation_identity_transport() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let release_wf_path = root.join(".github/workflows/release.yml");
+    if !release_wf_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(release_wf_path)?;
+
+    let authorize = job_block(&content, "authorize")
+        .ok_or_else(|| io::Error::other("release.yml must define the authorize gate job"))?;
+    require(
+        authorize.contains("release-operation-identity.json"),
+        "the authorize gate must emit the canonical operation identity artifact",
+    )?;
+    require(
+        authorize.contains("name: release-operation-identity"),
+        "the authorize gate must upload the operation identity artifact",
+    )?;
+
+    let publish = job_block(&content, "publish")
+        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+    for required in [
+        "name: release-operation-identity",
+        "canonical operation identity artifact is absent",
+        "operation identity version differs",
+        "operation identity commit differs",
+        "operation identity tree differs",
+        "operation identity authorization differs",
+    ] {
+        require(
+            publish.contains(required),
+            &format!("publish must verify canonical identity agreement: {required}"),
+        )?;
+    }
+
+    let release = job_block(&content, "github-release")
+        .ok_or_else(|| io::Error::other("release.yml must define the github-release job"))?;
+    for required in [
+        "publish receipt is absent",
+        "publish receipt version differs",
+        "publish receipt authorization differs",
+    ] {
+        require(
+            release.contains(required),
+            &format!("github-release must verify publish receipt agreement: {required}"),
+        )?;
+    }
+    Ok(())
+}
+
 /// Extract one job's block (its header line through the last line before the
 /// next same-indent job key) so assertions bind to that job only.
 fn test_core_platforms_job_block(content: &str) -> Option<String> {

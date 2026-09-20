@@ -10,6 +10,7 @@
     "schema_version",
     "transaction_id",
     "operation",
+    "operation_identity_digest",
     "authorization_digest",
     "authorization_observed_state",
     "lease_key_digest",
@@ -53,6 +54,7 @@
     "operation": {
       "const": "publish_cargo_allow_final_0_2_0"
     },
+    "operation_identity_digest": { "$ref": "#/$defs/digest" },
     "authorization_digest": { "$ref": "#/$defs/digest" },
     "authorization_observed_state": { "type": "string", "minLength": 1 },
     "lease_key_digest": { "$ref": "#/$defs/digest" },

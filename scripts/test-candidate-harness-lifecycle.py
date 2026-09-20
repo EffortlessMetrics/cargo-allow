@@ -20,9 +20,17 @@ LIFECYCLE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(LIFECYCLE)
 
 
-def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
+def run(
+    *args: str,
+    expect: int = 0,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
-        [sys.executable, str(TOOL), *args], capture_output=True, text=True, check=False
+        [sys.executable, str(TOOL), *args],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
     )
     if result.returncode != expect:
         raise SystemExit(
@@ -310,12 +318,26 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         run("remove", "--root", str(root), "--path", snap_path,
             "--purpose", "snapshot-auth", "--token", snapshot["token"])
 
+    poison_root = root / "poisoned-git-environment"
+    poison_root.mkdir()
+    poisoned_git_env = {
+        **os.environ,
+        "GIT_DIR": str(poison_root / "foreign.git"),
+        "GIT_WORK_TREE": str(poison_root / "foreign-worktree"),
+        "GIT_COMMON_DIR": str(poison_root / "foreign-common"),
+        "GIT_INDEX_FILE": str(poison_root / "foreign-index"),
+        "GIT_OBJECT_DIRECTORY": str(poison_root / "foreign-objects"),
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES": str(poison_root / "alternate-objects"),
+        "GIT_CEILING_DIRECTORIES": str(poison_root),
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM": "0",
+    }
+
     if __import__("shutil").rmtree.avoids_symlink_attacks:
         for script in ("exact-candidate-package-set.sh", "source-candidate-smoke.sh"):
             result = subprocess.run(
                 ["bash", str(ROOT / "scripts" / script)],
                 cwd=ROOT,
-                env={**os.environ, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged", "CANDIDATE_HARNESS_ROOT": str(ROOT), "CANDIDATE_HARNESS_OUTPUT_ROOT": str(ROOT), "CANDIDATE_HARNESS_GIT_HEAD": "forged"},
+                env={**poisoned_git_env, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged", "CANDIDATE_HARNESS_ROOT": str(ROOT), "CANDIDATE_HARNESS_OUTPUT_ROOT": str(ROOT), "CANDIDATE_HARNESS_GIT_HEAD": "forged"},
                 capture_output=True,
                 text=True,
                 check=False,
@@ -333,12 +355,114 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         result = subprocess.run(
             ["bash", str(ROOT / "scripts" / "exact-candidate-package-set.sh")],
             cwd=ROOT,
-            env={**os.environ, "SKIP_PACKAGE": "1", "PACKAGE_INPUT_DIR": str(package_input),
+            env={**poisoned_git_env, "SKIP_PACKAGE": "1", "PACKAGE_INPUT_DIR": str(package_input),
                  "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1",
                  "CANDIDATE_HARNESS_TEST_ROOT": str(root)},
             capture_output=True, text=True, check=False,
         )
         if result.returncode != 0 or "disposable snapshot ok" not in result.stdout:
             raise SystemExit(f"checkout-root package staging probe failed:\n{result.stdout}{result.stderr}")
+
+    work = json.loads(
+        run(
+            "worktree",
+            "--root",
+            str(root),
+            "--repository",
+            str(ROOT),
+            "--purpose",
+            "worktree-auth",
+            env=poisoned_git_env,
+        ).stdout
+    )
+    work_path = Path(work["path"])
+    observed = subprocess.run(
+        ["git", "-C", str(work_path), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=False,
+    )
+    if observed.returncode != 0 or observed.stdout.strip() != work["git_head"]:
+        raise SystemExit(f"worktree HEAD drifted from {work['git_head']}: {observed.stdout}{observed.stderr}")
+    reject("worktree", "--root", str(root), "--repository", str(ROOT),
+           "--purpose", "worktree-auth", "--head", "forged")
+    reject("worktree-remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", "wrong")
+    reject("remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", work["token"])
+    if not (work_path / ".candidate-harness-owner.json").is_file():
+        raise SystemExit("worktree lost its ownership marker")
+    run(
+        "worktree-remove",
+        "--root",
+        str(root),
+        "--path",
+        str(work_path),
+        "--purpose",
+        "worktree-auth",
+        "--token",
+        work["token"],
+        env=poisoned_git_env,
+    )
+    if work_path.exists():
+        raise SystemExit("worktree removal left its directory behind")
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "worktree", "list", "--porcelain"],
+        capture_output=True, text=True, check=False,
+    )
+    if listed.returncode != 0:
+        raise SystemExit(
+            f"git worktree list failed while checking cleanup:\n{listed.stdout}{listed.stderr}"
+        )
+    if str(work_path) in listed.stdout:
+        raise SystemExit("worktree removal left stale registration")
+    reject("worktree-remove", "--root", str(root), "--path", str(work_path),
+           "--purpose", "worktree-auth", "--token", work["token"])
+
+# A post-registration HEAD mismatch calls fail(), which raises SystemExit.
+# The harness must still remove the Git registration and directory before
+# propagating that terminal result.
+with tempfile.TemporaryDirectory(
+    prefix="cargo-allow-worktree-drift-cleanup."
+) as drift_temporary:
+    drift_root = Path(drift_temporary).resolve()
+    expected_head = "a" * 40
+    observed_head = "b" * 40
+    removed_worktrees: list[Path] = []
+    original_run_git = LIFECYCLE.run_git
+
+    def drifting_run_git(arguments: list[str], **kwargs):
+        command = arguments[2:]
+        if command[:3] == ["worktree", "add", "--detach"]:
+            directory = Path(command[3])
+            directory.mkdir()
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout="", stderr=""
+            )
+        if command == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout=observed_head + "\n", stderr=""
+            )
+        if command[:3] == ["worktree", "remove", "--force"]:
+            directory = Path(command[3])
+            __import__("shutil").rmtree(directory)
+            removed_worktrees.append(directory)
+            return subprocess.CompletedProcess(
+                ["git", *arguments], 0, stdout="", stderr=""
+            )
+        raise AssertionError(f"unexpected synthetic Git command: {arguments!r}")
+
+    LIFECYCLE.run_git = drifting_run_git
+    try:
+        try:
+            LIFECYCLE.worktree(
+                drift_root, ROOT, "worktree-drift-cleanup", expected_head
+            )
+        except SystemExit:
+            pass
+        else:
+            raise SystemExit("post-registration worktree drift unexpectedly succeeded")
+    finally:
+        LIFECYCLE.run_git = original_run_git
+    if len(removed_worktrees) != 1 or removed_worktrees[0].exists():
+        raise SystemExit("post-registration worktree drift did not clean up exactly once")
 
 print("ok candidate harness owned-directory containment")
