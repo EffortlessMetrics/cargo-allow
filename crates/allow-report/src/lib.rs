@@ -432,8 +432,8 @@ pub use artifacts::{
     PUBLICATION_JOURNAL_SCHEMA_VERSION, PublicationJournalAppendV1, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
     PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
-    append_journal_event_v1, begin_publication_journal_v1, render_publication_journal_v1,
-    verify_publication_journal_v1,
+    append_journal_event_v1, begin_publication_journal_for_operation_v1,
+    begin_publication_journal_v1, render_publication_journal_v1, verify_publication_journal_v1,
 };
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{

@@ -767,17 +767,21 @@ fn classify_delivered_v1(
 
 /// Select one checkpoint by exact identity. The provider object name never
 /// participates: a same-name object from another run or producer is never
-/// selected, no matter how recent it claims to be.
+/// selected, no matter how recent it claims to be. The canonical operation
+/// identity digest participates alongside the operation name so a same-name
+/// wrong-operation record can never satisfy discovery.
 pub fn select_checkpoint_by_exact_identity_v1<'a>(
     candidates: &'a [CargoAllowPublicationCheckpointV1],
     object_id: &str,
     expected_producer: &PublicationCheckpointProducerV1,
     operation_id: &str,
+    operation_identity_digest: &str,
 ) -> Result<Option<&'a CargoAllowPublicationCheckpointV1>, &'static str> {
     let mut matches = candidates.iter().filter(|candidate| {
         candidate.provider.object_id == object_id
             && candidate.producer == *expected_producer
             && candidate.operation_id == operation_id
+            && candidate.operation_identity_digest == operation_identity_digest
     });
     let selected = matches.next();
     if matches.next().is_some() {
@@ -897,6 +901,7 @@ pub fn verify_checkpoint_against_journal_v1(
     if checkpoint.authorization_digest != journal.authorization_digest
         || checkpoint.custody_digest != journal.custody_digest
         || checkpoint.freeze_digest != journal.freeze_digest
+        || checkpoint.operation_identity_digest != journal.operation_identity_digest
     {
         return Err("checkpoint operation identity must match the verified journal header");
     }

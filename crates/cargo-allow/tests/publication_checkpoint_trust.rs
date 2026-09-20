@@ -59,6 +59,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
     let mut journal = begin_publication_journal_v1(PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -231,10 +232,23 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
             "artifact-1",
             &fork_producer,
             "publish_cargo_allow_final_0_2_0",
+            &digest(77),
         )
         .map_err(io::Error::other)?
         .is_none(),
         "fork producers must never resolve a checkpoint",
+    )?;
+    require(
+        select_checkpoint_by_exact_identity_v1(
+            &[trusted.clone()],
+            "artifact-1",
+            &producer(),
+            "publish_cargo_allow_final_0_2_0",
+            &digest(999),
+        )
+        .map_err(io::Error::other)?
+        .is_none(),
+        "same name and producer on the wrong operation must never resolve",
     )?;
     require(
         verify_checkpoint_against_journal_v1(

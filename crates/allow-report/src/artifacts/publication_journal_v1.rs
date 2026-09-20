@@ -28,6 +28,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::release_authorization_custody_v1::secret_marker;
+use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
+    validate_release_operation_identity_v1,
+};
 
 pub const PUBLICATION_JOURNAL_SCHEMA_ID: &str = "cargo-allow.publication-journal.v1";
 pub const PUBLICATION_JOURNAL_SCHEMA_VERSION: u32 = 1;
@@ -151,6 +155,10 @@ pub struct CargoAllowPublicationJournalV1 {
     pub schema_version: u32,
     pub journal_id: String,
     pub operation_id: String,
+    /// Canonical #3940 operation identity digest. Journals never invent
+    /// operation identity: this must equal the digest of the canonical
+    /// release-operation identity the journal is bound to.
+    pub operation_identity_digest: String,
     pub operation_class: PublicationJournalClassV1,
     pub authorization_digest: String,
     pub custody_digest: String,
@@ -175,6 +183,7 @@ pub struct CargoAllowPublicationJournalV1 {
 pub struct PublicationJournalInitV1 {
     pub journal_id: String,
     pub operation_id: String,
+    pub operation_identity_digest: String,
     pub operation_class: PublicationJournalClassV1,
     pub authorization_digest: String,
     pub custody_digest: String,
@@ -228,16 +237,17 @@ fn entry_digest<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
 }
 
 /// Canonical digest input: every chained field, nothing ambient. The header
-/// identity (journal/operation/authorization/custody/freeze/recovery,
-/// construction time) and the bound row set travel in every entry digest,
-/// so header or denominator mutation breaks verification; the chain proves
-/// belonging, not just order.
+/// identity (journal/operation/canonical identity/authorization/custody/
+/// freeze/recovery, construction time) and the bound row set travel in every
+/// entry digest, so header or denominator mutation breaks verification; the
+/// chain proves belonging, not just order.
 #[derive(Serialize)]
 struct JournalEntryDigestInputV1<'a> {
     sequence: u64,
     previous_digest: &'a str,
     journal_id: &'a str,
     operation_id: &'a str,
+    operation_identity_digest: &'a str,
     operation_class: PublicationJournalClassV1,
     authorization_digest: &'a str,
     custody_digest: &'a str,
@@ -293,6 +303,7 @@ pub fn begin_publication_journal_v1(
         init.authorization_digest.as_str(),
         init.custody_digest.as_str(),
         init.freeze_digest.as_str(),
+        init.operation_identity_digest.as_str(),
     ] {
         if !digest_shape(value) {
             return Err("journal requires canonical operation identity digests");
@@ -349,6 +360,7 @@ pub fn begin_publication_journal_v1(
         schema_version: PUBLICATION_JOURNAL_SCHEMA_VERSION,
         journal_id: init.journal_id,
         operation_id: init.operation_id,
+        operation_identity_digest: init.operation_identity_digest,
         operation_class: init.operation_class,
         authorization_digest: init.authorization_digest,
         custody_digest: init.custody_digest,
@@ -368,6 +380,20 @@ pub fn begin_publication_journal_v1(
             "does_not_authorize_operation".to_string(),
         ],
     })
+}
+
+/// Begin a journal bound to one canonical #3940 release operation. The init
+/// digest must equal the canonical identity digest; the identity itself is
+/// revalidated so a digest-shaped foreign operation can never own a journal.
+pub fn begin_publication_journal_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    mut init: PublicationJournalInitV1,
+) -> Result<CargoAllowPublicationJournalV1, &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "journal operation identity is not canonical")?;
+    init.operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    begin_publication_journal_v1(init)
 }
 
 fn journal_has(journal: &CargoAllowPublicationJournalV1, kind: PublicationJournalEventV1) -> bool {
@@ -716,6 +742,7 @@ pub fn append_journal_event_v1(
         previous_digest: &previous_digest,
         journal_id: &journal.journal_id,
         operation_id: &journal.operation_id,
+        operation_identity_digest: &journal.operation_identity_digest,
         operation_class: journal.operation_class,
         authorization_digest: &journal.authorization_digest,
         custody_digest: &journal.custody_digest,
@@ -784,6 +811,7 @@ pub fn verify_publication_journal_v1(
             previous_digest: &entry.previous_digest,
             journal_id: &journal.journal_id,
             operation_id: &journal.operation_id,
+            operation_identity_digest: &journal.operation_identity_digest,
             operation_class: journal.operation_class,
             authorization_digest: &journal.authorization_digest,
             custody_digest: &journal.custody_digest,
