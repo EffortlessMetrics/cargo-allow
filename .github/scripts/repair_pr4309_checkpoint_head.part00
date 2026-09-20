@@ -1,0 +1,139 @@
+from pathlib import Path
+
+
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected one match, found {count}")
+    return text.replace(old, new)
+
+
+source_path = Path("crates/allow-report/src/artifacts/publication_checkpoint_v1.rs")
+test_path = Path("crates/cargo-allow/tests/publication_checkpoint.rs")
+docs_path = Path("docs/release/publication-checkpoint-v1.md")
+
+source = source_path.read_text(encoding="utf-8")
+source = replace_once(
+    source,
+    """use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationHeadV1,
+    CargoAllowReleaseOperationIdentityV1, release_operation_head_digest_v1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
+};
+""",
+    """use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationAuthorityKindV1, CargoAllowReleaseOperationClassV1,
+    CargoAllowReleaseOperationEventV1, CargoAllowReleaseOperationHeadV1,
+    CargoAllowReleaseOperationIdentityV1, CargoAllowReleaseOperationPredecessorProofV1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    validate_release_operation_head_v1, validate_release_operation_head_with_predecessor_v1,
+    validate_release_operation_identity_v1,
+};
+""",
+    "authority imports",
+)
+source = replace_once(
+    source,
+    """pub fn begin_publication_checkpoint_v1(
+    init: PublicationCheckpointInitV1,
+    prior: Option<&CargoAllowPublicationCheckpointV1>,
+) -> Result<CargoAllowPublicationCheckpointV1, &'static str> {
+""",
+    """fn begin_publication_checkpoint_internal_v1(
+    init: PublicationCheckpointInitV1,
+    prior: Option<&CargoAllowPublicationCheckpointV1>,
+    allow_operation_head_advance: bool,
+) -> Result<CargoAllowPublicationCheckpointV1, &'static str> {
+""",
+    "internal checkpoint constructor",
+)
+source = replace_once(
+    source,
+    """                (
+                    init.operation_head_digest.as_str(),
+                    previous.operation_head_digest.as_str(),
+                ),
+""",
+    "",
+    "remove fixed head equality",
+)
+source = replace_once(
+    source,
+    """            if init.operation_class != previous.operation_class {
+                return Err("checkpoint linkage never crosses operation classes");
+            }
+""",
+    """            if !allow_operation_head_advance
+                && init.operation_head_digest != previous.operation_head_digest
+            {
+                return Err(
+                    "checkpoint linkage cannot rewrite the operation head without canonical validation",
+                );
+            }
+            if init.operation_class != previous.operation_class {
+                return Err("checkpoint linkage never crosses operation classes");
+            }
+""",
+    "head-advance gate",
+)
+operation_marker = "/// Begin a checkpoint bound to one canonical #3940 release operation."
+operation_start = source.index(operation_marker)
+record_start = source.index("fn record_checkpoint_readback_internal_v1", operation_start)
+operation_block = """/// Begin a checkpoint bound to one operation and journal prefix. This
+/// compatibility surface keeps the operation head fixed across linked
+/// checkpoints; callers that need canonical head advancement must use
+/// `begin_publication_checkpoint_for_operation_v1`.
+pub fn begin_publication_checkpoint_v1(
+    init: PublicationCheckpointInitV1,
+    prior: Option<&CargoAllowPublicationCheckpointV1>,
+) -> Result<CargoAllowPublicationCheckpointV1, &'static str> {
+    begin_publication_checkpoint_internal_v1(init, prior, false)
+}
+
+fn validate_checkpoint_operation_head_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
+    head: &CargoAllowReleaseOperationHeadV1,
+    predecessor_proof: Option<&CargoAllowReleaseOperationPredecessorProofV1>,
+) -> Result<(), &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "checkpoint operation identity is not canonical")?;
+    match (
+        identity.operation_class,
+        identity.authority_kind,
+        predecessor_proof,
+    ) {
+        (
+            CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            None,
+        ) => validate_release_operation_head_v1(
+            identity,
+            events,
+            head.evaluated_at_unix_seconds,
+            head,
+        )
+        .map_err(|_| "checkpoint head is not canonical for the clean operation"),
+        (
+            CargoAllowReleaseOperationClassV1::IncidentRecovery,
+            CargoAllowReleaseOperationAuthorityKindV1::Recovery,
+            Some(proof),
+        ) => validate_release_operation_head_with_predecessor_v1(
+            identity,
+            events,
+            head.evaluated_at_unix_seconds,
+            head,
+            proof,
+        )
+        .map_err(|_| "checkpoint head is not canonical for the recovery operation"),
+        (CargoAllowReleaseOperationClassV1::Containment, _, _) => {
+            Err("publication checkpoints cannot authorize containment operations")
+        }
+        (CargoAllowReleaseOperationClassV1::CleanFinalPublication, _, _) => {
+            Err("clean checkpoints require clean authority without a predecessor proof")
+        }
+        (CargoAllowReleaseOperationClassV1::IncidentRecovery, _, _) => {
+            Err("recovery checkpoints require recovery authority and predecessor proof")
+        }
+    }
+}
