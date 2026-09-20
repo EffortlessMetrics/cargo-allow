@@ -19,6 +19,20 @@ event envelope, current head, and aggregate evaluation. It is pure semantic
 authority; provider-specific children compose it and no external action is
 performed by the model.
 
+The [GitHub Release journal](cargo-allow.github-release-journal.v1.schema.json)
+(`cargo-allow.github-release-journal.v1`) is the reusable closed schema
+family for the crash-consistent GitHub Release mutation history of one exact
+final-release operation: draft creation, exact asset uploads, actual-state
+reconciliation, and one-way public finalization. It is pure source-controlled
+semantics; no real GitHub Release is created, edited, published, or deleted
+by the model.
+
+The [GitHub Release checkpoint](cargo-allow.github-release-checkpoint.v1.schema.json)
+(`cargo-allow.github-release-checkpoint.v1`) is the reusable closed schema
+family for remotely durable, independently readable checkpoints per GitHub
+Release journal prefix. It proves durability across total runner loss; it
+performs no provider call and mutates no external state.
+
 The [release authorization](cargo-allow.release-authorization.v1.schema.json)
 (`cargo-allow.release-authorization.v1`) is produced by
 `allow_report::compile_release_authorization_v1` and its canonical renderer.
@@ -269,7 +283,15 @@ promote policy, authorize publication, or establish release readiness.
 - [cargo-allow.release-operation-lease.v1.schema.json](cargo-allow.release-operation-lease.v1.schema.json) durable one-operation lease contract (serialization-only; not an operation authorization)
 - [cargo-allow.final-tag-transaction.v1.schema.json](cargo-allow.final-tag-transaction.v1.schema.json) exactly-once annotated tag transaction contract (consistency-only; not a tag creation or push authority)
 - [cargo-allow.publication-journal.v1.schema.json](cargo-allow.publication-journal.v1.schema.json) append-only publication journal contract (history-only; not an upload or observation authority)
-- [cargo-allow.publication-checkpoint.v1.schema.json](cargo-allow.publication-checkpoint.v1.schema.json) remote publication checkpoint contract (durability-only; not an upload, observation, or publication authority)
+- [cargo-allow.publication-checkpoint.v1.schema.json](cargo-allow.publication-checkpoint.v1.schema.json) remote
+  publication checkpoint contract (durability-only; not an upload, observation,
+  or publication authority)
+- [cargo-allow.github-release-journal.v1.schema.json](cargo-allow.github-release-journal.v1.schema.json)
+  GitHub Release transaction journal contract (history-only; not a release
+  creation, mutation, or publication authority)
+- [cargo-allow.github-release-checkpoint.v1.schema.json](cargo-allow.github-release-checkpoint.v1.schema.json)
+  GitHub Release remote checkpoint contract (durability-only; not a release
+  mutation or observation authority)
 - [cargo-allow.publication-recovery.v1.schema.json](cargo-allow.publication-recovery.v1.schema.json) unknown-upload recovery disposition contract (decision-only; not an upload, observation, or recovery authorization)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas

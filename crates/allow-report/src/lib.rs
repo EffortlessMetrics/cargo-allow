@@ -446,6 +446,34 @@ pub use artifacts::{
     append_journal_event_v1, begin_publication_journal_for_operation_v1,
     begin_publication_journal_v1, render_publication_journal_v1, verify_publication_journal_v1,
 };
+// Root re-exports for the GitHub Release transaction journal (#3933).
+pub use artifacts::{
+    CargoAllowGitHubReleaseJournalEntryV1, CargoAllowGitHubReleaseJournalV1,
+    GITHUB_RELEASE_JOURNAL_GENESIS_DIGEST, GITHUB_RELEASE_JOURNAL_SCHEMA_ID,
+    GITHUB_RELEASE_JOURNAL_SCHEMA_VERSION, GitHubReleaseActualAssetV1,
+    GitHubReleaseExpectedAssetV1, GitHubReleaseJournalAppendV1, GitHubReleaseJournalClassV1,
+    GitHubReleaseJournalEventV1, GitHubReleaseJournalInitV1,
+    append_github_release_journal_event_v1, begin_github_release_journal_for_operation_v1,
+    begin_github_release_journal_v1, observe_github_release_identity_v1,
+    render_github_release_journal_v1, verify_github_release_journal_v1,
+};
+// Root re-exports for the GitHub Release remote checkpoints (#3933).
+pub use artifacts::{
+    CargoAllowGitHubReleaseCheckpointV1, GITHUB_RELEASE_CHECKPOINT_MAX_NOTE_LEN,
+    GITHUB_RELEASE_CHECKPOINT_MAX_RETENTION_DAYS, GITHUB_RELEASE_CHECKPOINT_MIN_RETENTION_DAYS,
+    GITHUB_RELEASE_CHECKPOINT_SCHEMA_ID, GITHUB_RELEASE_CHECKPOINT_SCHEMA_VERSION,
+    GitHubCheckpointProviderOutcomeV1, GitHubReleaseCheckpointClassV1,
+    GitHubReleaseCheckpointInitV1, GitHubReleaseCheckpointKindV1,
+    GitHubReleaseCheckpointProducerV1, GitHubReleaseCheckpointProviderObjectV1,
+    GitHubReleaseCheckpointProviderV1, GitHubReleaseCheckpointReadbackV1,
+    GitHubReleaseCheckpointReadbackWitnessV1, begin_github_release_checkpoint_for_operation_v1,
+    begin_github_release_checkpoint_v1, digest_github_release_checkpoint_body_v1,
+    digest_github_release_checkpoint_bytes_v1, digest_github_release_checkpoint_link_v1,
+    digest_github_release_checkpoint_v1, record_github_release_checkpoint_readback_v1,
+    record_github_release_checkpoint_readback_with_witness_v1, render_github_release_checkpoint_v1,
+    select_github_release_checkpoint_by_exact_identity_v1,
+    verify_github_release_checkpoint_against_journal_v1,
+};
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
