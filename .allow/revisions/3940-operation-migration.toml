@@ -1,0 +1,7 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11326"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f8cbdad817100f0aadd018ef4c759e189bb60610fab95efb444d9ef88a493ed1"
+reason = "receipt for docs/release/release-operation-child-inventory-v1.md, the #3940 PR B child operation-authority inventory"
