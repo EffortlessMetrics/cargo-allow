@@ -63,10 +63,9 @@ pub fn begin_publication_checkpoint_for_operation_v1(
             {
                 return Err("checkpoint operation heads never move backward");
             }
-            if previous_head.sequence > events.len() as u64 {
-                return Err("prior checkpoint head exceeds the supplied operation history");
-            }
-            let previous_events = &events[..previous_head.sequence as usize];
+            let previous_events = events
+                .get(..previous_head.sequence as usize)
+                .ok_or("prior checkpoint head exceeds the supplied operation history")?;
             validate_checkpoint_operation_head_v1(
                 identity,
                 previous_events,
