@@ -1,0 +1,91 @@
+::digest_publication_checkpoint_body_v1(&checkpoint)
+        .map_err(io::Error::other)?;
+    let mut tampered_head = checkpoint.clone();
+    tampered_head.operation_head_digest = digest(999);
+    require(
+        allow_report::digest_publication_checkpoint_body_v1(&tampered_head)
+            .map_err(io::Error::other)?
+            != body_before,
+        "body digest must bind the canonical head digest",
+    )?;
+    let mut tampered_identity = checkpoint.clone();
+    tampered_identity.operation_identity_digest = digest(998);
+    require(
+        allow_report::digest_publication_checkpoint_body_v1(&tampered_identity)
+            .map_err(io::Error::other)?
+            != body_before,
+        "body digest must bind the canonical identity digest",
+    )?;
+
+    let mut malformed = checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+    )?;
+    malformed.operation_identity_digest = "not-a-digest".to_string();
+    require(
+        begin_publication_checkpoint_v1(malformed, None).is_err(),
+        "a non-canonical operation digest must fail closed",
+    )?;
+
+    let mut crossed_class = operation_checkpoint_init(
+        &journal,
+        1,
+        PublicationCheckpointKindV1::PreIntentDurable,
+        &identity,
+        &head,
+    )?;
+    crossed_class.operation_class = PublicationCheckpointClassV1::IncidentRecovery;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &head,
+            None,
+            crossed_class,
+            None,
+        )
+        .is_err(),
+        "checkpoint class must agree with the canonical operation class",
+    )?;
+    Ok(())
+}
+'''
+test = test[:helper_start] + new_tail
+
+test_path.write_text(test, encoding="utf-8", newline="\n")
+
+docs = docs_path.read_text(encoding="utf-8")
+docs = replace_once(
+    docs,
+    """Checkpoints never
+invent operation identity: every record carries the canonical identity digest
+and the canonical head digest at checkpoint time, linkage pins both across
+sequences, and fresh-runner discovery replays from the exact head instead of
+ambiguous naming.
+""",
+    """Checkpoints never invent operation identity: every record carries the
+canonical identity digest, which remains fixed across the checkpoint sequence,
+and the recomputed canonical head digest at that checkpoint time. A later head
+is accepted only when the prior head validates against an exact prefix of the
+same append-only operation history and the new head validates against the full
+history. Fresh-runner discovery therefore resumes from an exact canonical
+replay point instead of ambiguous naming or a caller-shaped head.
+""",
+    "checkpoint discovery documentation",
+)
+docs = replace_once(
+    docs,
+    """- The next runner discovers the operation only through exact typed identity
+  (object ID + producer + operation), never \"latest artifact\" naming.
+""",
+    """- The next runner discovers the operation only through exact typed identity
+  (object ID + producer + operation), never \"latest artifact\" naming.
+- Operation-aware construction recomputes the current canonical head from the
+  exact event history. Linked checkpoints keep the operation identity fixed
+  while permitting the head to advance only through a validated prefix/successor
+  relation. The generic compatibility constructor cannot advance the head.
+""",
+    "checkpoint successor documentation",
+)
+docs_path.write_text(docs, encoding="utf-8", newline="\n")
