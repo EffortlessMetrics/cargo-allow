@@ -221,9 +221,10 @@ pub use final_tag_transaction_v1::{
     FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
     FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
     FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
-    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
-    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
-    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+    begin_tag_transaction_for_operation_v1, begin_tag_transaction_v1,
+    reconcile_tag_push_unknown_v1, record_tag_push_intent_v1, record_tag_push_response_v1,
+    record_tag_push_started_v1, render_final_tag_transaction_v1, tag_push_intent_digest_v1,
+    tag_release_gate_open_v1,
 };
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,

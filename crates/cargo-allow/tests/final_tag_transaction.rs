@@ -13,13 +13,17 @@ use std::path::{Path, PathBuf};
 
 use TagTransactionStateV1 as State;
 use allow_report::{
-    CargoAllowFinalTagTransactionV1, FINAL_TAG_OPERATION, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE,
-    FINAL_TAG_REQUIRED_LEASE_STATE, FINAL_TAG_TRANSACTION_SCHEMA_ID,
-    FINAL_TAG_TRANSACTION_SCHEMA_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1,
-    FinalTagRemoteObservationV1, FinalTagTransactionInitV1, TagTransactionStateV1,
-    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
-    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
-    tag_push_intent_digest_v1, tag_release_gate_open_v1,
+    CargoAllowFinalTagTransactionV1, CargoAllowReleaseOperationAssetRowV1,
+    CargoAllowReleaseOperationAuthorityKindV1, CargoAllowReleaseOperationClassV1,
+    CargoAllowReleaseOperationIdentityInitV1, CargoAllowReleaseOperationPackageRowV1,
+    FINAL_TAG_OPERATION, FINAL_TAG_REQUIRED_AUTHORIZATION_STATE, FINAL_TAG_REQUIRED_LEASE_STATE,
+    FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION, FinalTagDurabilityV1,
+    FinalTagIdentityV1, FinalTagRemoteObservationV1, FinalTagTransactionInitV1,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION, TagTransactionStateV1,
+    begin_tag_transaction_for_operation_v1, begin_tag_transaction_v1,
+    build_release_operation_identity_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, release_operation_identity_digest_v1,
+    render_final_tag_transaction_v1, tag_push_intent_digest_v1, tag_release_gate_open_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
@@ -66,6 +70,7 @@ fn absent_remote() -> FinalTagRemoteObservationV1 {
 fn begin_init() -> FinalTagTransactionInitV1 {
     FinalTagTransactionInitV1 {
         transaction_id: "tag-tx-0-2-0-001".to_string(),
+        operation_identity_digest: digest(77),
         authorization_digest: digest(50),
         authorization_observed_state: FINAL_TAG_REQUIRED_AUTHORIZATION_STATE.to_string(),
         lease_key_digest: digest(51),
@@ -406,5 +411,96 @@ fn release_tag_immutability() -> Result<(), Box<dyn Error>> {
             io::Error::other(format!("rendered tag transaction violates schema: {error}"))
         })?;
     }
+    Ok(())
+}
+
+fn canonical_operation_identity(
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: digest(5),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        })
+        .map_err(io::Error::other)?,
+    )
+}
+
+#[test]
+fn tag_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("tag-binding-0001")?;
+    let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+    let record = begin_tag_transaction_for_operation_v1(&identity, begin_init())
+        .map_err(io::Error::other)?;
+    require(
+        record.operation_identity_digest == expected,
+        "tag transaction must name the canonical operation identity digest",
+    )?;
+
+    // Same name, wrong operation: digests differ per operation.
+    let foreign_identity = canonical_operation_identity("tag-binding-0002")?;
+    let foreign = begin_tag_transaction_for_operation_v1(&foreign_identity, begin_init())
+        .map_err(io::Error::other)?;
+    require(
+        foreign.operation_identity_digest != expected,
+        "same-name transactions on different operations must carry different digests",
+    )?;
+
+    // Malformed digests fail closed without a canonical identity.
+    let mut malformed = begin_init();
+    malformed.operation_identity_digest = "not-a-digest".to_string();
+    require(
+        begin_tag_transaction_v1(malformed).is_err(),
+        "a non-canonical operation digest must fail closed",
+    )?;
     Ok(())
 }

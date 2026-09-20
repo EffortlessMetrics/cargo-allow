@@ -16,6 +16,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
+    validate_release_operation_identity_v1,
+};
+
 pub const FINAL_TAG_TRANSACTION_SCHEMA_ID: &str = "cargo-allow.final-tag-transaction.v1";
 pub const FINAL_TAG_TRANSACTION_SCHEMA_VERSION: u32 = 1;
 
@@ -102,6 +107,10 @@ pub struct CargoAllowFinalTagTransactionV1 {
     pub schema_version: u32,
     pub transaction_id: String,
     pub operation: String,
+    /// Canonical #3940 operation identity digest. The tag never invents
+    /// operation identity; this must equal the digest of the canonical
+    /// release-operation identity the transaction is bound to.
+    pub operation_identity_digest: String,
     pub authorization_digest: String,
     pub authorization_observed_state: String,
     pub lease_key_digest: String,
@@ -139,6 +148,7 @@ pub struct CargoAllowFinalTagTransactionV1 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FinalTagTransactionInitV1 {
     pub transaction_id: String,
+    pub operation_identity_digest: String,
     pub authorization_digest: String,
     pub authorization_observed_state: String,
     pub lease_key_digest: String,
@@ -262,6 +272,7 @@ pub fn begin_tag_transaction_v1(
         return Err("tag transaction requires a selected authorization");
     }
     for value in [
+        init.operation_identity_digest.as_str(),
         init.authorization_digest.as_str(),
         init.lease_key_digest.as_str(),
         init.freeze_digest.as_str(),
@@ -294,6 +305,7 @@ pub fn begin_tag_transaction_v1(
         schema_version: FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
         transaction_id: init.transaction_id,
         operation: FINAL_TAG_OPERATION.to_string(),
+        operation_identity_digest: init.operation_identity_digest,
         authorization_digest: init.authorization_digest,
         authorization_observed_state: init.authorization_observed_state,
         lease_key_digest: init.lease_key_digest,
@@ -329,6 +341,20 @@ pub fn begin_tag_transaction_v1(
             "does_not_authorize_package_publication".to_string(),
         ],
     })
+}
+
+/// Begin a tag transaction bound to one canonical #3940 release operation.
+/// The digest is derived from the revalidated canonical identity rather than
+/// caller bytes, so same-name wrong-operation transactions never validate.
+pub fn begin_tag_transaction_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    mut init: FinalTagTransactionInitV1,
+) -> Result<CargoAllowFinalTagTransactionV1, &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "tag operation identity is not canonical")?;
+    init.operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    begin_tag_transaction_v1(init)
 }
 
 fn advance_tag_state(
