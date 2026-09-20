@@ -1,0 +1,110 @@
+name: Repair PR 4309 child authority bindings v4
+
+on:
+  push:
+    branches:
+      - release/3940-operation-migration-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repair-pr-4309-child-bindings-v4
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: release/3940-operation-migration-v1
+          fetch-depth: 16
+          persist-credentials: true
+
+      - name: Guard and stage the exact source repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "1613303c20bddc33d870451671514682409a5a20" HEAD
+          test "$(git diff --name-only 1613303c20bddc33d870451671514682409a5a20 HEAD)" = ".github/workflows/repair-pr4309-child-bindings-v4.yml"
+          git show 00f0431be9c9cf56c7178dc927cdaf420ba36346:.github/workflows/repair-pr4309-child-bindings.yml > /tmp/repair-pr4309-v1.yml
+          git show 8e9361e2e2e5993b57f98230b90916bfe9afcdbf:.github/workflows/repair-pr4309-child-bindings-v2.yml > /tmp/repair-pr4309-v2.yml
+          git show 1c573e7ad2f527897b63a9c098c59c25391e5e08:.github/workflows/repair-pr4309-child-bindings-v3.yml > /tmp/repair-pr4309-v3.yml
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def extract_blocks(source: str, prefix: str) -> int:
+              lines = Path(source).read_text(encoding='utf-8').splitlines()
+              blocks = []
+              index = 0
+              while index < len(lines):
+                  if lines[index].strip() == "python3 - <<'PY'":
+                      start = index + 1
+                      end = next(i for i in range(start, len(lines)) if lines[i].strip() == 'PY')
+                      block = [line[10:] if line.startswith('          ') else line for line in lines[start:end]]
+                      blocks.append('\n'.join(block) + '\n')
+                      index = end
+                  index += 1
+              for number, block in enumerate(blocks, start=1):
+                  Path(f'/tmp/{prefix}-{number}.py').write_text(block, encoding='utf-8', newline='\n')
+              return len(blocks)
+
+          if extract_blocks('/tmp/repair-pr4309-v2.yml', 'repair-pr4309-v2') != 2:
+              raise SystemExit('expected two v2 Python blocks')
+          if extract_blocks('/tmp/repair-pr4309-v3.yml', 'repair-pr4309-v3') != 2:
+              raise SystemExit('expected two v3 Python blocks')
+          PY
+          python3 /tmp/repair-pr4309-v3-1.py
+          python3 /tmp/repair-pr4309-v2-1.py
+          python3 /tmp/repair-pr4309-v1.py
+          python3 /tmp/repair-pr4309-v2-2.py
+          python3 /tmp/repair-pr4309-v3-2.py
+          git rm .github/workflows/repair-pr4309-child-bindings-v4.yml
+          cargo fmt --all
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+        with:
+          components: rustfmt,clippy
+
+      - name: Prove the source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          cargo test -p cargo-allow --test publication_journal --locked -- --nocapture
+          cargo test -p cargo-allow --test final_tag_transaction --locked -- --nocapture
+          cargo test -p cargo-allow --test release_operation_lease --locked -- --nocapture
+          cargo test -p cargo-allow --test release_authorization_custody --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Commit the bounded source-only repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "1613303c20bddc33d870451671514682409a5a20" HEAD
+          mapfile -t changed < <(git diff --name-only HEAD | sort)
+          printf '%s\n' "${changed[@]}"
+          expected=(
+            crates/allow-report/src/artifacts/final_tag_transaction_v1.rs
+            crates/allow-report/src/artifacts/publication_journal_v1.rs
+            crates/allow-report/src/artifacts/release_authorization_custody_v1.rs
+            crates/allow-report/src/artifacts/release_operation_lease_v1.rs
+            crates/cargo-allow/tests/final_tag_transaction.rs
+            crates/cargo-allow/tests/publication_journal.rs
+            crates/cargo-allow/tests/release_authorization_custody.rs
+            crates/cargo-allow/tests/release_operation_lease.rs
+            docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json
+          )
+          test "${#changed[@]}" -eq "${#expected[@]}"
+          for index in "${!expected[@]}"; do
+            test "${changed[$index]}" = "${expected[$index]}"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${expected[@]}"
+          git commit -m "fix(release,#3940): bind child authority fields to operation identity"
+          git push origin HEAD:release/3940-operation-migration-v1
