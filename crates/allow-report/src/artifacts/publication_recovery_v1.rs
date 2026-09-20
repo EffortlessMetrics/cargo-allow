@@ -228,9 +228,12 @@ fn journal_head(journal: &CargoAllowPublicationJournalV1) -> (u64, String) {
 }
 
 /// A verified pre-intent position for this row's upload: the referenced
-/// journal head must still be present, so the intent proof cannot drift.
+/// journal entry must still be present, must be the row's durable upload
+/// intent, and must repeat the row's identity exactly, so the intent proof
+/// cannot drift to another row or a rewritten prefix.
 fn verified_pre_intent_position<'a>(
     journal: &CargoAllowPublicationJournalV1,
+    row: &PublicationJournalRowV1,
     checkpoints: &'a [RecoveryCheckpointPositionV1],
 ) -> Option<&'a RecoveryCheckpointPositionV1> {
     checkpoints.iter().find(|position| {
@@ -241,6 +244,11 @@ fn verified_pre_intent_position<'a>(
             && journal.entries.iter().any(|entry| {
                 entry.sequence == position.journal_head_sequence
                     && entry.entry_digest == position.journal_head_digest
+                    && entry.kind == PublicationJournalEventV1::UploadIntentDurable
+                    && entry.package_name.as_deref() == Some(row.package_name.as_str())
+                    && entry.row_order == Some(row.row_order)
+                    && entry.candidate_archive_digest.as_deref()
+                        == Some(row.candidate_archive_digest.as_str())
             })
     })
 }
@@ -313,6 +321,24 @@ pub fn decide_unknown_upload_recovery_v1(
             if !digest_shape(value) {
                 return Err("recovery authorization must carry canonical identity");
             }
+        }
+    }
+    if custody.custody_digest != journal.custody_digest
+        || custody.freeze_digest != journal.freeze_digest
+        || authorizations.clean_authorization_digest != journal.authorization_digest
+    {
+        return Err("recovery custody and authorization must agree with the journal header");
+    }
+    for surface in [
+        observations.api,
+        observations.index,
+        observations.download,
+        observations.resolver,
+    ] {
+        if (surface.visible && !surface.reachable)
+            || (surface.digest_matches.is_some() && !surface.visible)
+        {
+            return Err("recovery surfaces must be internally consistent");
         }
     }
     for position in checkpoints {
@@ -475,7 +501,7 @@ pub fn decide_unknown_upload_recovery_v1(
             true,
         ));
     }
-    if verified_pre_intent_position(journal, checkpoints).is_none() {
+    if verified_pre_intent_position(journal, row, checkpoints).is_none() {
         return Err("recovery uploads require a verified pre-intent checkpoint position");
     }
     Ok(finish(

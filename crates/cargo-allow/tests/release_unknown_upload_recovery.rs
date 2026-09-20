@@ -222,16 +222,19 @@ fn recovery_authorizations() -> RecoveryAuthorizationsV1 {
 fn pre_intent_position(
     journal: &CargoAllowPublicationJournalV1,
 ) -> Result<RecoveryCheckpointPositionV1, Box<dyn Error>> {
-    let head = match journal.entries.last() {
+    let intent = match journal.entries.iter().find(|entry| {
+        entry.kind == PublicationJournalEventV1::UploadIntentDurable
+            && entry.package_name.as_deref() == Some("cargo-allow")
+    }) {
         Some(entry) => entry,
-        None => return fail("recovery fixtures require a journal head"),
+        None => return fail("recovery fixtures require the row upload intent"),
     };
     Ok(RecoveryCheckpointPositionV1 {
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
         operation_identity_digest: digest(77),
         checkpoint_sequence: 1,
-        journal_head_sequence: head.sequence,
-        journal_head_digest: head.entry_digest.clone(),
+        journal_head_sequence: intent.sequence,
+        journal_head_digest: intent.entry_digest.clone(),
         kind: PublicationCheckpointKindV1::PreIntentDurable,
         readback_complete: true,
     })
@@ -551,13 +554,22 @@ fn recovery_decides_under_the_canonical_operation() -> Result<(), Box<dyn Error>
         },
     )
     .map_err(io::Error::other)?;
+    let canonical_custody = allow_report::RecoveryCustodyV1 {
+        candidate_archive_digest: digest(10),
+        custody_digest: identity.custody_digest.clone(),
+        freeze_digest: identity.freeze_digest.clone(),
+    };
+    let canonical_authorizations = allow_report::RecoveryAuthorizationsV1 {
+        clean_authorization_digest: identity.authorization_digest.clone(),
+        recovery: None,
+    };
     let disposition = decide_unknown_upload_recovery_for_operation_v1(
         &identity,
         &journal,
         &[],
         &journal_row(),
-        &custody(),
-        &authorizations(),
+        &canonical_custody,
+        &canonical_authorizations,
         &absent(0),
     )
     .map_err(io::Error::other)?;
@@ -565,12 +577,36 @@ fn recovery_decides_under_the_canonical_operation() -> Result<(), Box<dyn Error>
         disposition.operation_identity_digest == expected,
         "recovery must decide under the canonical operation digest",
     )?;
+    // Custody or authorization values from another header fail closed even
+    // when every digest is well-formed.
+    let mut foreign_custody = canonical_custody.clone();
+    foreign_custody.custody_digest = digest(999);
+    require(
+        decide_unknown_upload_recovery_for_operation_v1(
+            &identity,
+            &journal,
+            &[],
+            &journal_row(),
+            &foreign_custody,
+            &canonical_authorizations,
+            &absent(0),
+        )
+        .is_err(),
+        "custody values must agree with the decided journal header",
+    )?;
 
     // Positions from another operation never satisfy the decision: the
     // MayUpload path requires a verified pre-intent position for this
     // operation, so a foreign digest fails closed instead of uploading.
-    let mut foreign_position = pre_intent_position(&journal)?;
-    foreign_position.operation_identity_digest = digest(999);
+    let foreign_position = allow_report::RecoveryCheckpointPositionV1 {
+        operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(999),
+        checkpoint_sequence: 1,
+        journal_head_sequence: 1,
+        journal_head_digest: digest(1001),
+        kind: allow_report::PublicationCheckpointKindV1::PreIntentDurable,
+        readback_complete: true,
+    };
     let started = {
         let mut journal = begin_publication_journal_for_operation_v1(
             &identity,
@@ -639,8 +675,8 @@ fn recovery_decides_under_the_canonical_operation() -> Result<(), Box<dyn Error>
             &started,
             &[foreign_position],
             &journal_row(),
-            &custody(),
-            &authorizations(),
+            &canonical_custody,
+            &canonical_authorizations,
             &absent(5),
         )
         .is_err(),

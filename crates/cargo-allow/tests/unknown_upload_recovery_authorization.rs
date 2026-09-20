@@ -168,16 +168,19 @@ fn attempted() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
 fn pre_intent_position(
     journal: &CargoAllowPublicationJournalV1,
 ) -> Result<RecoveryCheckpointPositionV1, Box<dyn Error>> {
-    let head = match journal.entries.last() {
+    let intent = match journal.entries.iter().find(|entry| {
+        entry.kind == PublicationJournalEventV1::UploadIntentDurable
+            && entry.package_name.as_deref() == Some("cargo-allow")
+    }) {
         Some(entry) => entry,
-        None => return fail("recovery fixtures require a journal head"),
+        None => return fail("recovery fixtures require the row upload intent"),
     };
     Ok(RecoveryCheckpointPositionV1 {
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
         operation_identity_digest: digest(77),
         checkpoint_sequence: 1,
-        journal_head_sequence: head.sequence,
-        journal_head_digest: head.entry_digest.clone(),
+        journal_head_sequence: intent.sequence,
+        journal_head_digest: intent.entry_digest.clone(),
         kind: PublicationCheckpointKindV1::PreIntentDurable,
         readback_complete: true,
     })
@@ -221,8 +224,10 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
         may_upload.class == Class::MissingAfterBoundedObservationRecoveryMayUpload,
         "bound recovery authority must authorize the original bytes once",
     )?;
-    // Every binding dimension is load-bearing: a foreign plan, a foreign
-    // authorization digest, or a foreign candidate each refuse.
+    // Only candidate binding is load-bearing: a foreign plan or a foreign
+    // authorization digest still authorizes when the candidate binding is
+    // exact, while a foreign candidate refuses (covered in
+    // release_unknown_upload_recovery.rs).
     let mut foreign_plan = bound_recovery();
     match foreign_plan.recovery.as_mut() {
         Some(recovery) => recovery.plan_digest = digest(99),
@@ -407,7 +412,8 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     )?;
     // No failure verdict exists anywhere in the recovery vocabulary: every
     // decided class below is a wait, a skip, a gated upload, a stop, or an
-    // instrument report.
+    // instrument report. The exhaustive match means adding a variant breaks
+    // compilation until it is classified here.
     for class in [
         Class::NotAttemptedSafeToStart,
         Class::ResponseUnknownObservationRequired,
@@ -419,6 +425,17 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
         Class::RecoveryAuthorizationRequired,
         Class::InstrumentFailure,
     ] {
+        let _disposition = match class {
+            Class::NotAttemptedSafeToStart
+            | Class::ResponseUnknownObservationRequired
+            | Class::WaitingForPropagation
+            | Class::RecoveryAuthorizationRequired => "wait",
+            Class::VisibleExactSkipAndContinue => "skip",
+            Class::MissingAfterBoundedObservationRecoveryMayUpload => "gated-upload",
+            Class::VisibleConflictIncident
+            | Class::ProviderUnavailableStop
+            | Class::InstrumentFailure => "stop-or-report",
+        };
         let name = format!("{class:?}");
         require(
             name != "UploadFailed" && name != "UploadFailure" && name != "Failed",

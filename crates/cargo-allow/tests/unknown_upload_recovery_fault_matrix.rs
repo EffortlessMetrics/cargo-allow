@@ -12,18 +12,17 @@ use std::io;
 use PublicationJournalEventV1 as Event;
 use UnknownUploadRecoveryClassV1 as Class;
 use allow_report::{
-    CargoAllowPublicationJournalV1, PublicationCheckpointKindV1, PublicationJournalAppendV1,
-    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, PublicationRegistryObservationV1, PublicationUploadResponseV1,
-    RecoveryAuthorizationV1, RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1,
-    RecoveryCustodyV1, RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1,
-    UnknownUploadRecoveryClassV1, UploadResponseClassV1, append_journal_event_v1,
-    begin_publication_journal_v1, decide_unknown_upload_recovery_v1,
-    recovery_dependant_may_begin_v1,
+    CargoAllowPublicationJournalV1, PUBLICATION_RECOVERY_MAX_OBSERVATION_ROUNDS as MAX_ROUNDS,
+    PublicationCheckpointKindV1, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    PublicationRegistryObservationV1, PublicationUploadResponseV1, RecoveryAuthorizationV1,
+    RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1, RecoveryCustodyV1,
+    RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1,
+    UploadResponseClassV1, append_journal_event_v1, begin_publication_journal_v1,
+    decide_unknown_upload_recovery_v1, recovery_dependant_may_begin_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
-const MAX_ROUNDS: u32 = 5;
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
@@ -222,16 +221,19 @@ fn recovery_authorizations() -> RecoveryAuthorizationsV1 {
 fn pre_intent_position(
     journal: &CargoAllowPublicationJournalV1,
 ) -> Result<RecoveryCheckpointPositionV1, Box<dyn Error>> {
-    let head = match journal.entries.last() {
+    let intent = match journal.entries.iter().find(|entry| {
+        entry.kind == PublicationJournalEventV1::UploadIntentDurable
+            && entry.package_name.as_deref() == Some("cargo-allow")
+    }) {
         Some(entry) => entry,
-        None => return fail("recovery fixtures require a journal head"),
+        None => return fail("recovery fixtures require the row upload intent"),
     };
     Ok(RecoveryCheckpointPositionV1 {
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
         operation_identity_digest: digest(77),
         checkpoint_sequence: 1,
-        journal_head_sequence: head.sequence,
-        journal_head_digest: head.entry_digest.clone(),
+        journal_head_sequence: intent.sequence,
+        journal_head_digest: intent.entry_digest.clone(),
         kind: PublicationCheckpointKindV1::PreIntentDurable,
         readback_complete: true,
     })
@@ -241,12 +243,15 @@ fn pre_intent_position(
 fn unknown_upload_recovery_fault_matrix() -> Result<(), Box<dyn Error>> {
     let row = journal_row();
     // Windows 1-2: crash before remote pre-intent, and after pre-intent but
-    // before process start. Nothing was ever sent: safe to start fresh.
-    let clean = settled()?;
-    for (window, journal) in [(1, settled()?), (2, settled()?)] {
+    // before process start. Nothing was ever sent: safe to start fresh. One
+    // settled journal serves both windows; only the positions vary.
+    let settled_journal = settled()?;
+    let no_positions: Vec<RecoveryCheckpointPositionV1> = Vec::new();
+    let intent_position = pre_intent_position(&settled_journal)?;
+    for (window, positions) in [(1, no_positions.clone()), (2, vec![intent_position])] {
         let disposition = decide_unknown_upload_recovery_v1(
-            &journal,
-            &[],
+            &settled_journal,
+            &positions,
             &row,
             &custody(),
             &authorizations(),
@@ -258,7 +263,6 @@ fn unknown_upload_recovery_fault_matrix() -> Result<(), Box<dyn Error>> {
             format!("window {window}: never-attempted rows must start fresh"),
         )?;
     }
-    let _ = clean;
     // Window 3: crash after process start but before the request reaches the
     // provider. The journal holds a started request with no response.
     let mut started = settled()?;
