@@ -722,6 +722,27 @@ fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dy
         "checkpoint linkage must never cross canonical operations",
     )?;
 
+    // The provider-bound body digest binds both canonical digests: mutating
+    // either changes the digest a readback compares.
+    let body_before = allow_report::digest_publication_checkpoint_body_v1(&checkpoint)
+        .map_err(io::Error::other)?;
+    let mut tampered_head = checkpoint.clone();
+    tampered_head.operation_head_digest = digest(999);
+    require(
+        allow_report::digest_publication_checkpoint_body_v1(&tampered_head)
+            .map_err(io::Error::other)?
+            != body_before,
+        "body digest must bind the canonical head digest",
+    )?;
+    let mut tampered_identity = checkpoint.clone();
+    tampered_identity.operation_identity_digest = digest(998);
+    require(
+        allow_report::digest_publication_checkpoint_body_v1(&tampered_identity)
+            .map_err(io::Error::other)?
+            != body_before,
+        "body digest must bind the canonical identity digest",
+    )?;
+
     // Malformed digests fail closed without a canonical identity.
     let journal = settled_journal()?;
     let mut malformed =
