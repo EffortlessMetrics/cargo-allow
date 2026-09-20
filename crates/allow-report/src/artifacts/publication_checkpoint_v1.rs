@@ -726,6 +726,8 @@ fn same_checkpoint_subject_v1(
     expected.schema_id == observed.schema_id
         && expected.schema_version == observed.schema_version
         && expected.operation_id == observed.operation_id
+        && expected.operation_identity_digest == observed.operation_identity_digest
+        && expected.operation_head_digest == observed.operation_head_digest
         && expected.operation_class == observed.operation_class
         && expected.authorization_digest == observed.authorization_digest
         && expected.custody_digest == observed.custody_digest

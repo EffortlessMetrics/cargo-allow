@@ -442,6 +442,21 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
         verdict == PublicationCheckpointReadbackV1::Stale,
         "older same-operation bytes must read back Stale",
     )?;
+    // Hostile: same-name foreign-operation bytes are Mismatch, never Stale.
+    let mut foreign = current.clone();
+    foreign.operation_identity_digest = digest(999);
+    foreign.operation_head_digest = digest(998);
+    let foreign_rendered = serde_json::to_vec_pretty(&foreign)?;
+    let foreign_verdict = record_checkpoint_readback_v1(
+        &mut current,
+        CheckpointProviderOutcomeV1::Delivered(foreign_rendered),
+        now + 20,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        foreign_verdict == PublicationCheckpointReadbackV1::Mismatch,
+        "foreign-operation bytes must read back Mismatch, never Stale",
+    )?;
     require(
         checkpoint_permits_upload_v1(
             &current,
