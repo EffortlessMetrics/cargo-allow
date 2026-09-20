@@ -14,6 +14,11 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
+    validate_release_operation_identity_v1,
+};
+
 pub const OPERATION_LEASE_SCHEMA_ID: &str = "cargo-allow.release-operation-lease.v1";
 pub const OPERATION_LEASE_SCHEMA_VERSION: u32 = 1;
 
@@ -56,6 +61,10 @@ pub enum OperationLeaseStateV1 {
 #[serde(deny_unknown_fields)]
 pub struct OperationLeaseKeyV1 {
     pub operation: String,
+    /// Canonical #3940 operation identity digest. Leases never invent
+    /// operation identity: the key digest binds this alongside the name so
+    /// same-name wrong-operation keys never collide.
+    pub operation_identity_digest: String,
     pub version: String,
     pub tag: String,
     pub commit: String,
@@ -189,6 +198,7 @@ pub fn operation_lease_key_digest_v1(
 ) -> Result<String, serde_json::Error> {
     content_digest(&(
         key.operation.as_str(),
+        key.operation_identity_digest.as_str(),
         key.version.as_str(),
         key.tag.as_str(),
         key.commit.as_str(),
@@ -231,7 +241,7 @@ fn validate_lease_key(
     if !git_sha_shape(&key.commit) || !git_sha_shape(&key.tree) {
         return Err("lease key requires canonical commit and tree SHAs");
     }
-    if !digest_shape(&key.denominator_digest) {
+    if !digest_shape(&key.denominator_digest) || !digest_shape(&key.operation_identity_digest) {
         return Err("lease key requires a well-formed denominator digest");
     }
     Ok(())
@@ -401,6 +411,22 @@ fn advance_lease_state(
     });
     record.state = next;
     Ok(())
+}
+
+/// Acquire the durable lease bound to one canonical #3940 release operation.
+/// The key digest is derived from the revalidated canonical identity rather
+/// than caller bytes, so same-name wrong-operation keys never collide.
+pub fn acquire_operation_lease_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    mut init: OperationLeaseAcquireInitV1,
+    observed: Option<&CargoAllowReleaseOperationLeaseV1>,
+    now_unix_seconds: u64,
+) -> Result<CargoAllowReleaseOperationLeaseV1, &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "lease operation identity is not canonical")?;
+    init.key.operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    acquire_operation_lease_v1(init, observed, now_unix_seconds)
 }
 
 /// Verify independently read-back storage bytes against the acquired record.

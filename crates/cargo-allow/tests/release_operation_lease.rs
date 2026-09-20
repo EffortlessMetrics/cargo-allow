@@ -12,13 +12,18 @@ use std::path::{Path, PathBuf};
 
 use OperationLeaseStateV1 as State;
 use allow_report::{
-    CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
-    OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
-    OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
-    OperationLeaseClassV1, OperationLeaseKeyV1, OperationLeaseStateV1, RunnerLossEvidenceV1,
-    acquire_operation_lease_v1, cancel_operation_lease_v1, note_lease_irreversible_start_v1,
-    observe_lease_provider_unavailable_v1, observe_runner_loss_v1, operation_lease_key_digest_v1,
-    operation_lease_subject_digest_v1, release_operation_lease_v1,
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityInitV1,
+    CargoAllowReleaseOperationLeaseV1, CargoAllowReleaseOperationPackageRowV1, LeaseReadbackV1,
+    OPERATION_LEASE_FINAL_OPERATION, OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION,
+    OPERATION_LEASE_RECOVERY_OPERATION, OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION,
+    OperationLeaseAcquireInitV1, OperationLeaseClassV1, OperationLeaseKeyV1, OperationLeaseStateV1,
+    RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION, RunnerLossEvidenceV1,
+    acquire_operation_lease_for_operation_v1, acquire_operation_lease_v1,
+    build_release_operation_identity_v1, cancel_operation_lease_v1,
+    note_lease_irreversible_start_v1, observe_lease_provider_unavailable_v1,
+    observe_runner_loss_v1, operation_lease_key_digest_v1, operation_lease_subject_digest_v1,
+    release_operation_identity_digest_v1, release_operation_lease_v1,
     render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,
 };
 
@@ -41,6 +46,7 @@ fn require(ok: bool, message: impl Into<String>) -> Result<(), Box<dyn Error>> {
 fn key() -> OperationLeaseKeyV1 {
     OperationLeaseKeyV1 {
         operation: OPERATION_LEASE_FINAL_OPERATION.to_string(),
+        operation_identity_digest: digest(77),
         version: OPERATION_LEASE_FINAL_VERSION.to_string(),
         tag: OPERATION_LEASE_FINAL_TAG.to_string(),
         commit: "c".repeat(40),
@@ -451,4 +457,117 @@ fn rendered_lease_validates_against_json_schema() -> Result<(), Box<dyn Error>> 
         rendered.get("redacted") == Some(&serde_json::Value::Bool(true)),
         "rendered lease must stay redacted",
     )
+}
+
+fn canonical_operation_identity(
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: digest(5),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        })
+        .map_err(io::Error::other)?,
+    )
+}
+
+#[test]
+fn lease_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("lease-binding-0001")?;
+    let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+    let record =
+        acquire_operation_lease_for_operation_v1(&identity, acquire_init(key()), None, NOW)
+            .map_err(io::Error::other)?;
+    require(
+        record.key.operation_identity_digest == expected,
+        "lease key must name the canonical operation identity digest",
+    )?;
+
+    // Same name, wrong operation: the key digest differs, and the foreign
+    // run serializes against the held subject rather than acquiring over it.
+    let foreign_identity = canonical_operation_identity("lease-binding-0002")?;
+    let foreign_key_digest = operation_lease_key_digest_v1(
+        &acquire_operation_lease_for_operation_v1(
+            &foreign_identity,
+            acquire_init(key()),
+            None,
+            NOW,
+        )
+        .map_err(io::Error::other)?
+        .key,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        foreign_key_digest
+            != operation_lease_key_digest_v1(&record.key).map_err(io::Error::other)?,
+        "same-name wrong-operation keys must never share a key digest",
+    )?;
+    require(
+        acquire_operation_lease_for_operation_v1(
+            &foreign_identity,
+            acquire_init(key()),
+            Some(&record),
+            NOW,
+        )
+        .is_err(),
+        "a second operation must not acquire over the held subject",
+    )?;
+
+    // Malformed digests fail closed without a canonical identity.
+    let mut malformed = key();
+    malformed.operation_identity_digest = "not-a-digest".to_string();
+    require(
+        acquire_operation_lease_v1(acquire_init(malformed), None, NOW).is_err(),
+        "a non-canonical operation digest must fail closed",
+    )?;
+    Ok(())
 }
