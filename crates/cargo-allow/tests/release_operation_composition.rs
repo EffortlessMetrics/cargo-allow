@@ -475,6 +475,9 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
         .entries
         .last()
         .ok_or_else(|| io::Error::other("settled journal must have a head"))?;
+    // Isolate the operation-identity difference: custody, freeze, producer,
+    // and journal prefix all agree, so only the canonical identity (plus its
+    // authorization and head) distinguishes the foreign checkpoint.
     let mut foreign_checkpoint = begin_publication_checkpoint_for_operation_v1(
         &foreign,
         &foreign_head,
@@ -485,8 +488,8 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
             operation_head_digest: digest(0),
             operation_class: allow_report::PublicationCheckpointClassV1::CleanFinalPublication,
             authorization_digest: foreign.authorization_digest.clone(),
-            custody_digest: digest(71),
-            freeze_digest: digest(72),
+            custody_digest: journal.custody_digest.clone(),
+            freeze_digest: journal.freeze_digest.clone(),
             journal_head_sequence: journal_head.sequence,
             journal_head_digest: journal_head.entry_digest.clone(),
             checkpoint_sequence: 1,
@@ -530,8 +533,10 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
             &checkpoint_producer(),
             NOW,
         )
-        .is_err(),
-        "a foreign-operation checkpoint must never verify against this journal",
+        .is_err_and(|error| {
+            error == "checkpoint operation identity must match the verified journal header"
+        }),
+        "a foreign-operation checkpoint must fail on the identity mismatch",
     )?;
     Ok(())
 }
