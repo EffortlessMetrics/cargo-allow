@@ -194,7 +194,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     // authority instead.
     let waiting = decide_unknown_upload_recovery_v1(
         &journal,
-        &[position.clone()],
+        std::slice::from_ref(&position),
         &row,
         &custody(),
         &clean_only(),
@@ -210,7 +210,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     // exactly one re-upload of the original bytes.
     let may_upload = decide_unknown_upload_recovery_v1(
         &journal,
-        &[position.clone()],
+        std::slice::from_ref(&position),
         &row,
         &custody(),
         &bound_recovery(),
@@ -233,7 +233,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     // authorizes, because the candidate binding is the authority root.
     let plan_foreign = decide_unknown_upload_recovery_v1(
         &journal,
-        &[position.clone()],
+        std::slice::from_ref(&position),
         &row,
         &custody(),
         &foreign_plan,
@@ -251,7 +251,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     }
     let auth_foreign = decide_unknown_upload_recovery_v1(
         &journal,
-        &[position.clone()],
+        std::slice::from_ref(&position),
         &row,
         &custody(),
         &foreign_auth,
@@ -271,7 +271,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     require(
         decide_unknown_upload_recovery_v1(
             &journal,
-            &[position.clone()],
+            std::slice::from_ref(&position),
             &row,
             &custody(),
             &malformed,
