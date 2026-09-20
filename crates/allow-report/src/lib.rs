@@ -391,8 +391,9 @@ pub use artifacts::{
     CargoAllowReleaseAuthorizationCustodyV1, CustodyReadbackV1, authorization_evidence_digest_v1,
     mint_authorization_custody_v1, note_custody_readback_v1, note_irreversible_start_v1,
     render_release_authorization_consumption_v1, render_release_authorization_custody_v1,
-    revoke_authorization_custody_v1, select_authorization_for_run_v1, selection_payload_v1,
-    settle_authorization_consumption_v1, verify_custody_readback_v1,
+    revoke_authorization_custody_v1, select_authorization_for_operation_v1,
+    select_authorization_for_run_v1, selection_payload_v1, settle_authorization_consumption_v1,
+    verify_custody_readback_v1,
 };
 // Root re-exports for the exactly-once tag transaction (#3930).
 pub use artifacts::{

@@ -10,6 +10,7 @@
     "schema_version",
     "authorization_id",
     "authorization_digest",
+    "operation_identity_digest",
     "nonce",
     "from",
     "to",
@@ -29,6 +30,9 @@
       "minLength": 1
     },
     "authorization_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "operation_identity_digest": {
       "$ref": "#/$defs/digest"
     },
     "nonce": {
