@@ -15,17 +15,16 @@ use std::io;
 use PublicationJournalEventV1 as Event;
 use UnknownUploadRecoveryClassV1 as Class;
 use allow_report::{
-    CargoAllowPublicationJournalV1, PublicationCheckpointKindV1, PublicationJournalAppendV1,
-    PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, RecoveryAuthorizationV1, RecoveryAuthorizationsV1,
-    RecoveryCheckpointPositionV1, RecoveryCustodyV1, RecoveryRegistryObservationsV1,
-    RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1, append_journal_event_v1,
-    begin_publication_journal_v1, decide_unknown_upload_recovery_v1,
-    recovery_dependant_may_begin_v1,
+    CargoAllowPublicationJournalV1, PUBLICATION_RECOVERY_MAX_OBSERVATION_ROUNDS as MAX_ROUNDS,
+    PublicationCheckpointKindV1, PublicationJournalAppendV1, PublicationJournalClassV1,
+    PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
+    RecoveryAuthorizationV1, RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1,
+    RecoveryCustodyV1, RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1,
+    UnknownUploadRecoveryClassV1, append_journal_event_v1, begin_publication_journal_v1,
+    decide_unknown_upload_recovery_v1, recovery_dependant_may_begin_v1,
 };
 
 const CREATED_AT: u64 = 1_786_200_000;
-const MAX_ROUNDS: u32 = 5;
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
