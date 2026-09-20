@@ -14,7 +14,13 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use allow_report::{
-    CargoAllowPublicationCheckpointV1, CargoAllowPublicationJournalV1, CheckpointProviderOutcomeV1,
+    CargoAllowPublicationCheckpointV1, CargoAllowPublicationJournalV1,
+    CargoAllowReleaseOperationAssetRowV1, CargoAllowReleaseOperationAuthorityKindV1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEventClassV1,
+    CargoAllowReleaseOperationEventInitV1, CargoAllowReleaseOperationEventSubjectV1,
+    CargoAllowReleaseOperationIdentityInitV1, CargoAllowReleaseOperationPackageRowV1,
+    CargoAllowReleaseOperationResponsePostureV1, CargoAllowReleaseOperationSemanticResultV1,
+    CargoAllowReleaseOperationTimestampSourceV1, CheckpointProviderOutcomeV1,
     PUBLICATION_CHECKPOINT_SCHEMA_ID, PUBLICATION_CHECKPOINT_SCHEMA_VERSION,
     PublicationCheckpointClassV1, PublicationCheckpointInitV1, PublicationCheckpointKindV1,
     PublicationCheckpointProducerV1, PublicationCheckpointProviderObjectV1,
@@ -22,10 +28,14 @@ use allow_report::{
     PublicationCheckpointReadbackWitnessV1, PublicationCheckpointRowStateV1,
     PublicationCheckpointRowV1, PublicationJournalAppendV1, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalInitV1, PublicationJournalRowV1,
-    PublicationRegistryObservationV1, PublicationUploadResponseV1, UploadResponseClassV1,
-    append_journal_event_v1, begin_publication_checkpoint_v1, begin_publication_journal_v1,
-    checkpoint_permits_dependant_v1, checkpoint_permits_upload_v1,
+    PublicationRegistryObservationV1, PublicationUploadResponseV1, RELEASE_AUTHORIZATION_SELECTION,
+    RELEASE_OPERATION_ASSET_SELECTION, UploadResponseClassV1, append_journal_event_v1,
+    append_release_operation_event_v1, begin_publication_checkpoint_for_operation_v1,
+    begin_publication_checkpoint_v1, begin_publication_journal_v1,
+    build_release_operation_identity_v1, checkpoint_permits_dependant_v1,
+    checkpoint_permits_upload_v1, compile_release_operation_head_v1,
     digest_publication_checkpoint_body_v1, record_checkpoint_readback_with_witness_v1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
     render_publication_checkpoint_v1, verify_checkpoint_against_journal_v1,
 };
 
@@ -237,6 +247,8 @@ fn checkpoint_init(
     Ok(PublicationCheckpointInitV1 {
         checkpoint_id: format!("checkpoint-0-2-0-{sequence:03}"),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
+        operation_head_digest: digest(78),
         operation_class: PublicationCheckpointClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -538,6 +550,185 @@ fn publication_checkpoint() -> Result<(), Box<dyn Error>> {
     require(
         begin_publication_checkpoint_v1(skipped, Some(&first)).is_err(),
         "sequence gaps must fail",
+    )?;
+    Ok(())
+}
+
+fn canonical_operation_identity(
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(
+        build_release_operation_identity_v1(CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: digest(5),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        })
+        .map_err(io::Error::other)?,
+    )
+}
+
+fn canonical_head(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> Result<allow_report::CargoAllowReleaseOperationHeadV1, Box<dyn Error>> {
+    let producer = allow_report::CargoAllowReleaseOperationProducerV1 {
+        tool: "cargo-allow".to_string(),
+        schema: "cargo-allow.release-operation-producer.v1".to_string(),
+        generation: 1,
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        workflow: "release".to_string(),
+        workflow_ref: "refs/heads/main".to_string(),
+        run: "4242".to_string(),
+        attempt: 1,
+        job: "checkpoint-binding".to_string(),
+        commit: "a".repeat(40),
+    };
+    let init = |class: CargoAllowReleaseOperationEventClassV1, ordinal: u64| {
+        let payload_digest =
+            if class == CargoAllowReleaseOperationEventClassV1::AuthorizationSelected {
+                identity.authorization_digest.clone()
+            } else {
+                digest(1_000 + ordinal)
+            };
+        CargoAllowReleaseOperationEventInitV1 {
+            event_class: class,
+            subject: CargoAllowReleaseOperationEventSubjectV1::Operation,
+            payload_schema_id: "cargo-allow.synthetic-release-payload.v1".to_string(),
+            payload_digest,
+            producer: producer.clone(),
+            actor: "release-operator".to_string(),
+            authority_class: identity.authority_kind,
+            request_boundary: "synthetic-no-provider-call".to_string(),
+            response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+            semantic_result: CargoAllowReleaseOperationSemanticResultV1::Exact,
+            artifact_digest: Some(digest(2_000 + ordinal)),
+            observed_at_unix_seconds: 1_790_000_000 + ordinal,
+            timestamp_source: CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime,
+        }
+    };
+    let mut events = Vec::new();
+    for (class, ordinal) in [
+        (CargoAllowReleaseOperationEventClassV1::OperationSelected, 1),
+        (
+            CargoAllowReleaseOperationEventClassV1::AuthorizationSelected,
+            2,
+        ),
+        (CargoAllowReleaseOperationEventClassV1::LeaseAcquired, 3),
+    ] {
+        let event = append_release_operation_event_v1(identity, &events, init(class, ordinal))
+            .map_err(io::Error::other)?;
+        events.push(event);
+    }
+    Ok(
+        compile_release_operation_head_v1(identity, &events, 1_790_100_000)
+            .map_err(io::Error::other)?,
+    )
+}
+
+#[test]
+fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("checkpoint-binding-0001")?;
+    let head = canonical_head(&identity)?;
+    let journal = settled_journal()?;
+    let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    let checkpoint = begin_publication_checkpoint_for_operation_v1(&identity, &head, init, None)
+        .map_err(io::Error::other)?;
+    require(
+        checkpoint.operation_identity_digest
+            == release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?,
+        "checkpoint must name the canonical operation identity digest",
+    )?;
+    require(
+        checkpoint.operation_head_digest
+            == release_operation_head_digest_v1(&head).map_err(io::Error::other)?,
+        "checkpoint must name the canonical head digest for fresh-runner discovery",
+    )?;
+
+    // Same name, wrong operation: a head from another operation never binds.
+    let foreign_identity = canonical_operation_identity("checkpoint-binding-0002")?;
+    let foreign_head = canonical_head(&foreign_identity)?;
+    let journal = settled_journal()?;
+    let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(&identity, &foreign_head, init, None)
+            .is_err(),
+        "a head from another operation must never bind this operation",
+    )?;
+
+    // Later clean lineage cannot cross operations: linkage pins both digests.
+    let journal = settled_journal()?;
+    let first = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &head,
+        checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?,
+        None,
+    )
+    .map_err(io::Error::other)?;
+    let mut crossed = checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PreIntentDurable)?;
+    crossed.operation_identity_digest =
+        release_operation_identity_digest_v1(&foreign_identity).map_err(io::Error::other)?;
+    crossed.operation_head_digest =
+        release_operation_head_digest_v1(&foreign_head).map_err(io::Error::other)?;
+    require(
+        begin_publication_checkpoint_v1(crossed, Some(&first)).is_err(),
+        "checkpoint linkage must never cross canonical operations",
+    )?;
+
+    // Malformed digests fail closed without a canonical identity.
+    let journal = settled_journal()?;
+    let mut malformed =
+        checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    malformed.operation_identity_digest = "not-a-digest".to_string();
+    require(
+        begin_publication_checkpoint_v1(malformed, None).is_err(),
+        "a non-canonical operation digest must fail closed",
     )?;
     Ok(())
 }

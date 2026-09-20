@@ -144,6 +144,8 @@ fn checkpoint_init(
     Ok(PublicationCheckpointInitV1 {
         checkpoint_id: format!("checkpoint-0-2-0-{sequence:03}"),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
+        operation_head_digest: digest(78),
         operation_class: PublicationCheckpointClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
