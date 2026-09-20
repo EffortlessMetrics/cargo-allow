@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.publication-recovery.v1.schema.json",
+  "title": "CargoAllowUnknownUploadRecoveryV1",
+  "description": "Deterministic recovery disposition for one package row with an unknown upload outcome: exact operation and row identity, the decided journal head, consumed observation rounds, authorization posture, and preserved incident lineage. Structural validation does not upload packages, observe the registry, or authorize recovery.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "operation_id",
+    "operation_identity_digest",
+    "operation_class",
+    "package_name",
+    "row_order",
+    "class",
+    "decided_journal_head_sequence",
+    "decided_journal_head_digest",
+    "rounds_consumed",
+    "requires_recovery_authorization",
+    "preserved_incident",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.publication-recovery.v1" },
+    "schema_version": { "const": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation_identity_digest": { "$ref": "#/$defs/digest" },
+    "operation_class": {
+      "type": "string",
+      "enum": ["clean_final_publication", "incident_recovery"]
+    },
+    "package_name": { "type": "string", "minLength": 1 },
+    "row_order": { "type": "integer", "minimum": 0 },
+    "class": { "$ref": "#/$defs/class" },
+    "decided_journal_head_sequence": { "type": "integer", "minimum": 0 },
+    "decided_journal_head_digest": { "$ref": "#/$defs/digest" },
+    "rounds_consumed": { "type": "integer", "minimum": 0 },
+    "requires_recovery_authorization": { "type": "boolean" },
+    "preserved_incident": { "type": "boolean" },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "class": {
+      "type": "string",
+      "enum": [
+        "not_attempted_safe_to_start",
+        "response_unknown_observation_required",
+        "visible_exact_skip_and_continue",
+        "waiting_for_propagation",
+        "visible_conflict_incident",
+        "missing_after_bounded_observation_recovery_may_upload",
+        "provider_unavailable_stop",
+        "recovery_authorization_required",
+        "instrument_failure"
+      ]
+    }
+  }
+}

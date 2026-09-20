@@ -40,6 +40,7 @@ mod propose;
 mod prune;
 mod publication_checkpoint_v1;
 mod publication_journal_v1;
+mod publication_recovery_v1;
 mod rc_publication_incident_v1;
 mod reconciled_package_publication_v1;
 mod refresh;
@@ -343,6 +344,15 @@ pub use reconciled_package_publication_v1::{
     PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
     RECONCILED_PACKAGE_PUBLICATION_SCHEMA, ReconciledPackagePublicationV1,
     manifest_rows_from_reconciled,
+};
+
+pub use publication_recovery_v1::{
+    CargoAllowUnknownUploadRecoveryV1, PUBLICATION_RECOVERY_MAX_OBSERVATION_ROUNDS,
+    PUBLICATION_RECOVERY_SCHEMA_ID, PUBLICATION_RECOVERY_SCHEMA_VERSION, RecoveryAuthorizationV1,
+    RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1, RecoveryCustodyV1,
+    RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1,
+    decide_unknown_upload_recovery_for_operation_v1, decide_unknown_upload_recovery_v1,
+    recovery_dependant_may_begin_v1, render_unknown_upload_recovery_v1,
 };
 
 pub use rc_publication_incident_v1::{

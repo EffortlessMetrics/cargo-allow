@@ -498,6 +498,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove remote-durability semantics; no live uploads, provider calls, registry observations, or release execution are produced."
 
 [[surfaces]]
+id = "unknown-upload-recovery-v1"
+owner_issue = 3924
+semantic_authority = "deterministic unknown-upload recovery decision"
+path = "crates/cargo-allow/tests/release_unknown_upload_recovery.rs"
+subject = "CargoAllowUnknownUploadRecoveryV1"
+producer = "production recovery decision model with hostile crash-window, trust, and authorization fixtures"
+consumer = "#2502 publication loop and #2509 recovery evidence"
+claimed_acceptance_row = "one safe disposition per crash window with unknown outcomes"
+assertion_mechanism = "production recovery model over synthetic subjects with JSON Schema read-back"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove safe-transition semantics; no live uploads, provider calls, registry observations, or release execution are produced."
+
+[[surfaces]]
 id = "repository-release-controls"
 owner_issue = 3790
 semantic_authority = "release workflow token-gate controls"
