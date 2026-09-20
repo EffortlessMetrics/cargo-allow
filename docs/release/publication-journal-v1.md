@@ -47,7 +47,10 @@ OperationIncident (clean journal refuses further intent; recovery
   operation, not merely their order.
 - `operation_id` is bound to its class exactly: clean journals carry
   `publish_cargo_allow_final_0_2_0`, recovery journals carry
-  `recover_cargo_allow_final_publication`.
+  `recover_cargo_allow_final_publication`. Journals additionally carry the
+  canonical #3940 `operation_identity_digest`, derived from a revalidated
+  canonical identity rather than caller bytes, so journals never invent
+  operation identity.
 - Declared dependencies must name rows in the bound set: a `depends_on`
   entry outside the journal fails closed at construction instead of blocking
   preflight forever.

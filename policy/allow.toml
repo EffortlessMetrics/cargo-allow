@@ -21912,3 +21912,47 @@ glob = ".allow/revisions/4304-package-byte-authority.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11326"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-child-inventory-v1.md"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Owner inventory for #3940 PR B: bound children and duplicate-authority disposition for the canonical operation identity migration; documentation only, authorizes no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-20"
+review_after = "2027-03-20"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-child-inventory-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-child-inventory-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11327"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3940-operation-migration.toml"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Self-receipt for this #3940 PR B revision note; tracks configuration only, authorizes no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-20"
+review_after = "2027-03-20"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3940-operation-migration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3940-operation-migration.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

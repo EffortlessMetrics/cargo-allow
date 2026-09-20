@@ -89,7 +89,11 @@ required append-only complete/incident settlement.
 
 The `#3790` gate consumes only `selection_payload_v1`: authorization and
 denominator identity plus validity window. The payload type has no secret
-fields because the protocol has no secret fields.
+fields because the protocol has no secret fields. Selection and settlement
+observations additionally name the canonical #3940 operation identity digest,
+and the operation's `AuthorizationSelected` event and the custody selection
+must name the same immutable authorization: a foreign authorization never
+selects under another operation.
 
 ## Dry-run operator packet (synthetic only)
 

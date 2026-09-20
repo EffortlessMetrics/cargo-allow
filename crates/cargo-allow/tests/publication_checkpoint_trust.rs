@@ -59,6 +59,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
     let mut journal = begin_publication_journal_v1(PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -144,6 +145,8 @@ fn checkpoint_init(
     Ok(PublicationCheckpointInitV1 {
         checkpoint_id: format!("checkpoint-0-2-0-{sequence:03}"),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
+        operation_head_digest: digest(78),
         operation_class: PublicationCheckpointClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -229,10 +232,23 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
             "artifact-1",
             &fork_producer,
             "publish_cargo_allow_final_0_2_0",
+            &digest(77),
         )
         .map_err(io::Error::other)?
         .is_none(),
         "fork producers must never resolve a checkpoint",
+    )?;
+    require(
+        select_checkpoint_by_exact_identity_v1(
+            &[trusted.clone()],
+            "artifact-1",
+            &producer(),
+            "publish_cargo_allow_final_0_2_0",
+            &digest(999),
+        )
+        .map_err(io::Error::other)?
+        .is_none(),
+        "same name and producer on the wrong operation must never resolve",
     )?;
     require(
         verify_checkpoint_against_journal_v1(
@@ -425,6 +441,21 @@ fn publication_checkpoint_trust() -> Result<(), Box<dyn Error>> {
     require(
         verdict == PublicationCheckpointReadbackV1::Stale,
         "older same-operation bytes must read back Stale",
+    )?;
+    // Hostile: same-name foreign-operation bytes are Mismatch, never Stale.
+    let mut foreign = current.clone();
+    foreign.operation_identity_digest = digest(999);
+    foreign.operation_head_digest = digest(998);
+    let foreign_rendered = serde_json::to_vec_pretty(&foreign)?;
+    let foreign_verdict = record_checkpoint_readback_v1(
+        &mut current,
+        CheckpointProviderOutcomeV1::Delivered(foreign_rendered),
+        now + 20,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        foreign_verdict == PublicationCheckpointReadbackV1::Mismatch,
+        "foreign-operation bytes must read back Mismatch, never Stale",
     )?;
     require(
         checkpoint_permits_upload_v1(

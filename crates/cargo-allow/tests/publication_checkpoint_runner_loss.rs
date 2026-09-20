@@ -59,6 +59,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
     let mut journal = begin_publication_journal_v1(PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -145,6 +146,8 @@ fn checkpoint_init(
     Ok(PublicationCheckpointInitV1 {
         checkpoint_id: format!("checkpoint-0-2-0-{sequence:03}"),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
+        operation_head_digest: digest(78),
         operation_class: PublicationCheckpointClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -246,6 +249,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         "artifact-1",
         &expected_producer,
         "publish_cargo_allow_final_0_2_0",
+        &digest(77),
     )
     .map_err(io::Error::other)?
     {
@@ -295,6 +299,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
         "artifact-1",
         &expected_producer,
         "publish_cargo_allow_final_0_2_0",
+        &digest(77),
     )
     .map_err(io::Error::other)?
     {
@@ -311,6 +316,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             "artifact-9",
             &expected_producer,
             "publish_cargo_allow_final_0_2_0",
+            &digest(77),
         )
         .map_err(io::Error::other)?
         .is_none(),
@@ -322,6 +328,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             "publication-checkpoint",
             &expected_producer,
             "publish_cargo_allow_final_0_2_0",
+            &digest(77),
         )
         .map_err(io::Error::other)?
         .is_none(),
@@ -334,6 +341,7 @@ fn publication_checkpoint_runner_loss() -> Result<(), Box<dyn Error>> {
             "artifact-1",
             &expected_producer,
             "publish_cargo_allow_final_0_2_0",
+            &digest(77),
         )
         .is_err(),
         "duplicate exact provider identities must fail discovery as ambiguous",

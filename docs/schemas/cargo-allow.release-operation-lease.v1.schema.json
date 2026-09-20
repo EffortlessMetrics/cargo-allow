@@ -47,9 +47,10 @@
     "key": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["operation", "version", "tag", "commit", "tree", "denominator_digest"],
+      "required": ["operation", "operation_identity_digest", "version", "tag", "commit", "tree", "denominator_digest"],
       "properties": {
         "operation": { "enum": ["publish_cargo_allow_final_0_2_0", "publish_cargo_allow_recovery_0_2_0"] },
+        "operation_identity_digest": { "$ref": "#/$defs/digest" },
         "version": { "const": "0.2.0" },
         "tag": { "const": "v0.2.0" },
         "commit": { "$ref": "#/$defs/git_sha" },
