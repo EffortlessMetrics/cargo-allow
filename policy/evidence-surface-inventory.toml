@@ -598,3 +598,20 @@ required_stronger_owner = "#3790/#3925"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove local custody and consumption semantics only; no external authorization is minted, no durable provider lease/readback is observed, and no tag, credential, or publication operation occurs."
+
+[[surfaces]]
+id = "release-operation-composition"
+owner_issue = 3940
+semantic_authority = "canonical release-operation identity shared across children"
+path = "crates/cargo-allow/tests/release_operation_composition.rs"
+subject = "CargoAllowReleaseOperationIdentityV1 across journal, checkpoint, lease, and tag"
+producer = "production child constructors with one synthetic canonical identity and head"
+consumer = "#3940 PR C workflow cutover and #2502 execution evidence"
+claimed_acceptance_row = "one canonical identity/head composes journal, checkpoint, lease, and tag bindings"
+assertion_mechanism = "cross-child digest equality plus foreign-operation rejection fixtures"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3940"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove local cross-child binding only; no workflow transport, provider readback, tag, credential, or publication operation occurs."
