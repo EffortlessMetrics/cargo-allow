@@ -9,6 +9,7 @@
     "schema_id",
     "schema_version",
     "operation_id",
+    "operation_identity_digest",
     "operation_class",
     "package_name",
     "row_order",
@@ -25,6 +26,7 @@
     "schema_id": { "const": "cargo-allow.publication-recovery.v1" },
     "schema_version": { "const": 1 },
     "operation_id": { "type": "string", "minLength": 1 },
+    "operation_identity_digest": { "$ref": "#/$defs/digest" },
     "operation_class": {
       "type": "string",
       "enum": ["clean_final_publication", "incident_recovery"]

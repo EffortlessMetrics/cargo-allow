@@ -57,6 +57,7 @@ fn settled() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
     let mut journal = begin_publication_journal_v1(PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -173,6 +174,7 @@ fn pre_intent_position(
     };
     Ok(RecoveryCheckpointPositionV1 {
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         checkpoint_sequence: 1,
         journal_head_sequence: head.sequence,
         journal_head_digest: head.entry_digest.clone(),
@@ -344,6 +346,7 @@ fn unknown_upload_recovery_authorization() -> Result<(), Box<dyn Error>> {
     let mut chained = begin_publication_journal_v1(allow_report::PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-002".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),

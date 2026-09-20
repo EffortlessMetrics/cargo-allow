@@ -8,6 +8,11 @@ renderer decide the only safe next transition for one package row with an
 unknown upload outcome. They do not upload packages, observe the registry,
 authorize recovery, or rewrite history.
 
+Recovery never invents operation identity: checkpoint positions and
+dispositions carry the canonical #3940 `operation_identity_digest` taken from
+the bound journal, and positions from another operation never satisfy the
+decision.
+
 ## Decision
 
 ```text
@@ -42,9 +47,9 @@ silence everywhere, budget spent, attempted?
 - The disposition binds the decided journal head and preserves the
   incident bit. Later history supersedes by reference; deciding never
   mutates the journal or the checkpoint positions.
-- Dependants stay blocked until prerequisites reconcile exactly in the
+- Dependents stay blocked until prerequisites reconcile exactly in the
   journal, via `recovery_dependant_may_begin_v1`. A recovery disposition
-  alone never unlocks a dependant row.
+  alone never unlocks a dependent row.
 
 ## Crash windows
 
@@ -56,7 +61,7 @@ Each window below has one deterministic disposition, proven in
 3. crash after start, before the provider → observation required;
 4. provider acceptance, runner death → skip on exact visibility;
 5. observed response, failed journal append → stays unknown;
-6. append ok, checkpoint failed → observation required, dependants blocked;
+6. append ok, checkpoint failed → observation required, dependents blocked;
 7. API visible, index lagging → wait for propagation;
 8. absent everywhere after the budget → gated re-upload or authority wait;
 9. timeout/rate-limit/malformed → stop or keep observing;

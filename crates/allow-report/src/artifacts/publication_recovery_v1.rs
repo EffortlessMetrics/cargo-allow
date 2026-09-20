@@ -30,6 +30,10 @@ use super::publication_journal_v1::{
     CargoAllowPublicationJournalV1, PUBLICATION_JOURNAL_GENESIS_DIGEST, PublicationJournalClassV1,
     PublicationJournalEventV1, PublicationJournalRowV1,
 };
+use super::release_operation_authority_v1::{
+    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
+    validate_release_operation_identity_v1,
+};
 
 pub const PUBLICATION_RECOVERY_SCHEMA_ID: &str = "cargo-allow.publication-recovery.v1";
 pub const PUBLICATION_RECOVERY_SCHEMA_VERSION: u32 = 1;
@@ -121,6 +125,9 @@ pub struct RecoveryAuthorizationsV1 {
 #[serde(deny_unknown_fields)]
 pub struct RecoveryCheckpointPositionV1 {
     pub operation_id: String,
+    /// Canonical #3940 operation identity digest. Positions never invent
+    /// operation identity: this must equal the bound journal's digest.
+    pub operation_identity_digest: String,
     pub checkpoint_sequence: u64,
     pub journal_head_sequence: u64,
     pub journal_head_digest: String,
@@ -135,6 +142,9 @@ pub struct CargoAllowUnknownUploadRecoveryV1 {
     pub schema_id: String,
     pub schema_version: u32,
     pub operation_id: String,
+    /// Canonical #3940 operation identity digest the decision was taken
+    /// under, copied from the bound journal.
+    pub operation_identity_digest: String,
     pub operation_class: PublicationJournalClassV1,
     pub package_name: String,
     pub row_order: u32,
@@ -227,6 +237,7 @@ fn verified_pre_intent_position<'a>(
         position.kind == PublicationCheckpointKindV1::PreIntentDurable
             && position.readback_complete
             && position.operation_id == journal.operation_id
+            && position.operation_identity_digest == journal.operation_identity_digest
             && journal.entries.iter().any(|entry| {
                 entry.sequence == position.journal_head_sequence
                     && entry.entry_digest == position.journal_head_digest
@@ -246,6 +257,7 @@ fn finish(
         schema_id: PUBLICATION_RECOVERY_SCHEMA_ID.to_string(),
         schema_version: PUBLICATION_RECOVERY_SCHEMA_VERSION,
         operation_id: journal.operation_id.clone(),
+        operation_identity_digest: journal.operation_identity_digest.clone(),
         operation_class: journal.operation_class,
         package_name: row.package_name.clone(),
         row_order: row.row_order,
@@ -307,8 +319,13 @@ pub fn decide_unknown_upload_recovery_v1(
         if position.operation_id.trim().is_empty() {
             return Err("checkpoint positions must name their operation");
         }
-        if !digest_shape(&position.journal_head_digest) {
+        if !digest_shape(&position.journal_head_digest)
+            || !digest_shape(&position.operation_identity_digest)
+        {
             return Err("checkpoint positions must bind a canonical journal head");
+        }
+        if position.operation_identity_digest != journal.operation_identity_digest {
+            return Err("checkpoint positions must belong to the decided operation");
         }
     }
     if observations.instrument_failure {
@@ -468,6 +485,39 @@ pub fn decide_unknown_upload_recovery_v1(
         observations.rounds,
         true,
     ))
+}
+
+/// Decide the only safe next transition bound to one canonical #3940
+/// release operation. The journal must carry the canonical identity digest;
+/// positions for another operation never satisfy the decision.
+pub fn decide_unknown_upload_recovery_for_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    journal: &CargoAllowPublicationJournalV1,
+    checkpoints: &[RecoveryCheckpointPositionV1],
+    row: &PublicationJournalRowV1,
+    custody: &RecoveryCustodyV1,
+    authorizations: &RecoveryAuthorizationsV1,
+    observations: &RecoveryRegistryObservationsV1,
+) -> Result<CargoAllowUnknownUploadRecoveryV1, &'static str> {
+    validate_release_operation_identity_v1(identity)
+        .map_err(|_| "recovery operation identity is not canonical")?;
+    let identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    if journal.operation_identity_digest != identity_digest {
+        return Err("recovery decides under the canonical operation only");
+    }
+    let disposition = decide_unknown_upload_recovery_v1(
+        journal,
+        checkpoints,
+        row,
+        custody,
+        authorizations,
+        observations,
+    )?;
+    if disposition.operation_identity_digest != identity_digest {
+        return Err("recovery disposition must name the canonical operation");
+    }
+    Ok(disposition)
 }
 
 /// Dependants remain blocked until every prerequisite row is exactly

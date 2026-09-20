@@ -124,7 +124,7 @@ operations.
 ## Consumers and proof
 
 - #2502 uploads only from a verified `PreIntentDurable` readback and starts
-  dependants only from a verified `PostObservation` readback, and must treat
+  dependents only from a verified `PostObservation` readback, and must treat
   a refused gate as a stop signal.
 - #2509 consumes the same checkpoint contract for recovery continuation.
 - #3924 consumes the checkpoint readback vocabulary for the

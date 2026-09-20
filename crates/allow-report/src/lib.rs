@@ -431,8 +431,8 @@ pub use artifacts::{
     PUBLICATION_RECOVERY_SCHEMA_ID, PUBLICATION_RECOVERY_SCHEMA_VERSION, RecoveryAuthorizationV1,
     RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1, RecoveryCustodyV1,
     RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1,
-    decide_unknown_upload_recovery_v1, recovery_dependant_may_begin_v1,
-    render_unknown_upload_recovery_v1,
+    decide_unknown_upload_recovery_for_operation_v1, decide_unknown_upload_recovery_v1,
+    recovery_dependant_may_begin_v1, render_unknown_upload_recovery_v1,
 };
 // Root re-exports for the append-only publication journal (#3921).
 pub use artifacts::{

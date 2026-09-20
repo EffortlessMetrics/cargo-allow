@@ -17,14 +17,18 @@ use std::path::{Path, PathBuf};
 
 use UnknownUploadRecoveryClassV1 as Class;
 use allow_report::{
-    CargoAllowPublicationJournalV1, CargoAllowUnknownUploadRecoveryV1,
+    CargoAllowPublicationJournalV1, CargoAllowReleaseOperationAssetRowV1,
+    CargoAllowReleaseOperationPackageRowV1, CargoAllowUnknownUploadRecoveryV1,
     PUBLICATION_RECOVERY_MAX_OBSERVATION_ROUNDS, PUBLICATION_RECOVERY_SCHEMA_ID,
     PUBLICATION_RECOVERY_SCHEMA_VERSION, PublicationCheckpointKindV1, PublicationJournalAppendV1,
     PublicationJournalClassV1, PublicationJournalEventV1, PublicationJournalInitV1,
-    PublicationJournalRowV1, RecoveryAuthorizationV1, RecoveryAuthorizationsV1,
-    RecoveryCheckpointPositionV1, RecoveryCustodyV1, RecoveryRegistryObservationsV1,
-    RecoverySurfaceObservationV1, UnknownUploadRecoveryClassV1, append_journal_event_v1,
-    begin_publication_journal_v1, decide_unknown_upload_recovery_v1,
+    PublicationJournalRowV1, RELEASE_AUTHORIZATION_SELECTION, RELEASE_OPERATION_ASSET_SELECTION,
+    RecoveryAuthorizationV1, RecoveryAuthorizationsV1, RecoveryCheckpointPositionV1,
+    RecoveryCustodyV1, RecoveryRegistryObservationsV1, RecoverySurfaceObservationV1,
+    UnknownUploadRecoveryClassV1, append_journal_event_v1,
+    begin_publication_journal_for_operation_v1, begin_publication_journal_v1,
+    build_release_operation_identity_v1, decide_unknown_upload_recovery_for_operation_v1,
+    decide_unknown_upload_recovery_v1, release_operation_identity_digest_v1,
     render_unknown_upload_recovery_v1,
 };
 
@@ -71,6 +75,7 @@ fn settled_journal() -> Result<CargoAllowPublicationJournalV1, Box<dyn Error>> {
     let mut journal = begin_publication_journal_v1(PublicationJournalInitV1 {
         journal_id: "journal-0-2-0-001".to_string(),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         operation_class: PublicationJournalClassV1::CleanFinalPublication,
         authorization_digest: digest(70),
         custody_digest: digest(71),
@@ -223,6 +228,7 @@ fn pre_intent_position(
     };
     Ok(RecoveryCheckpointPositionV1 {
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+        operation_identity_digest: digest(77),
         checkpoint_sequence: 1,
         journal_head_sequence: head.sequence,
         journal_head_digest: head.entry_digest.clone(),
@@ -444,5 +450,201 @@ fn unknown_upload_recovery() -> Result<(), Box<dyn Error>> {
             "no failure verdict exists in the recovery vocabulary",
         )?;
     }
+    Ok(())
+}
+
+fn canonical_operation_identity(
+    nonce: &str,
+) -> Result<allow_report::CargoAllowReleaseOperationIdentityV1, Box<dyn Error>> {
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|(_, _, _, shared)| !*shared)
+        .enumerate()
+        .map(|(index, (logical_id, package_name, version, _))| {
+            CargoAllowReleaseOperationPackageRowV1 {
+                logical_id: (*logical_id).to_string(),
+                package_name: (*package_name).to_string(),
+                package_version: (*version).to_string(),
+                package_digest: digest(100 + index as u64),
+            }
+        })
+        .collect();
+    let assets = RELEASE_OPERATION_ASSET_SELECTION
+        .iter()
+        .enumerate()
+        .map(
+            |(index, (asset_id, asset_name))| CargoAllowReleaseOperationAssetRowV1 {
+                asset_id: (*asset_id).to_string(),
+                asset_name: (*asset_name).to_string(),
+                asset_digest: digest(200 + index as u64),
+            },
+        )
+        .collect();
+    Ok(build_release_operation_identity_v1(
+        allow_report::CargoAllowReleaseOperationIdentityInitV1 {
+            nonce: nonce.to_string(),
+            operation_class: allow_report::CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            authority_kind: allow_report::CargoAllowReleaseOperationAuthorityKindV1::Clean,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            product: "cargo-allow".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            freeze_digest: digest(1),
+            final_evidence_graph_digest: digest(2),
+            custody_digest: digest(3),
+            replay_digest: digest(4),
+            authorization_digest: digest(5),
+            cargo_lock_digest: digest(6),
+            topology_digest: digest(7),
+            support_digest: digest(8),
+            channel_digest: digest(9),
+            packages,
+            assets,
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            live_controls_digest: digest(12),
+            incident_predecessor_operation_digest: None,
+            incident_predecessor_head_digest: None,
+            one_run_scope: true,
+            expires_at_unix_seconds: 1_800_000_000,
+        },
+    )
+    .map_err(io::Error::other)?)
+}
+
+#[test]
+fn recovery_decides_under_the_canonical_operation() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("recovery-binding-0001")?;
+    let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
+    let journal = begin_publication_journal_for_operation_v1(
+        &identity,
+        allow_report::PublicationJournalInitV1 {
+            journal_id: "journal-0-2-0-001".to_string(),
+            operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+            operation_identity_digest: digest(0),
+            operation_class: allow_report::PublicationJournalClassV1::CleanFinalPublication,
+            authorization_digest: identity.authorization_digest.clone(),
+            custody_digest: identity.custody_digest.clone(),
+            freeze_digest: identity.freeze_digest.clone(),
+            prior_journal_digest: None,
+            rows: vec![journal_row()],
+            created_at_unix_seconds: CREATED_AT,
+            workflow: "release".to_string(),
+            run: "4242".to_string(),
+            attempt: "1".to_string(),
+            job: "publish".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    let mut journal = journal;
+    append_journal_event_v1(
+        &mut journal,
+        allow_report::PublicationJournalAppendV1 {
+            kind: allow_report::PublicationJournalEventV1::OperationSelected,
+            row: None,
+            response: None,
+            observation: None,
+            at_unix_seconds: CREATED_AT + 10,
+            reason: "synthetic".to_string(),
+        },
+    )
+    .map_err(io::Error::other)?;
+    let disposition = decide_unknown_upload_recovery_for_operation_v1(
+        &identity,
+        &journal,
+        &[],
+        &journal_row(),
+        &custody(),
+        &authorizations(),
+        &absent(0),
+    )
+    .map_err(io::Error::other)?;
+    require(
+        disposition.operation_identity_digest == expected,
+        "recovery must decide under the canonical operation digest",
+    )?;
+
+    // Positions from another operation never satisfy the decision: the
+    // MayUpload path requires a verified pre-intent position for this
+    // operation, so a foreign digest fails closed instead of uploading.
+    let mut foreign_position = pre_intent_position(&journal)?;
+    foreign_position.operation_identity_digest = digest(999);
+    let started = {
+        let mut journal = begin_publication_journal_for_operation_v1(
+            &identity,
+            allow_report::PublicationJournalInitV1 {
+                journal_id: "journal-0-2-0-002".to_string(),
+                operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
+                operation_identity_digest: digest(0),
+                operation_class: allow_report::PublicationJournalClassV1::CleanFinalPublication,
+                authorization_digest: identity.authorization_digest.clone(),
+                custody_digest: identity.custody_digest.clone(),
+                freeze_digest: identity.freeze_digest.clone(),
+                prior_journal_digest: None,
+                rows: vec![journal_row()],
+                created_at_unix_seconds: CREATED_AT,
+                workflow: "release".to_string(),
+                run: "4242".to_string(),
+                attempt: "1".to_string(),
+                job: "publish".to_string(),
+            },
+        )
+        .map_err(io::Error::other)?;
+        let mut at = CREATED_AT;
+        for kind in [
+            allow_report::PublicationJournalEventV1::OperationSelected,
+            allow_report::PublicationJournalEventV1::AuthorizationConsumed,
+            allow_report::PublicationJournalEventV1::TagObservedExact,
+        ] {
+            at += 10;
+            append_journal_event_v1(
+                &mut journal,
+                allow_report::PublicationJournalAppendV1 {
+                    kind,
+                    row: None,
+                    response: None,
+                    observation: None,
+                    at_unix_seconds: at,
+                    reason: "synthetic".to_string(),
+                },
+            )
+            .map_err(io::Error::other)?;
+        }
+        for kind in [
+            allow_report::PublicationJournalEventV1::RowPreflightComplete,
+            allow_report::PublicationJournalEventV1::UploadIntentDurable,
+        ] {
+            at += 10;
+            append_journal_event_v1(
+                &mut journal,
+                allow_report::PublicationJournalAppendV1 {
+                    kind,
+                    row: Some(journal_row()),
+                    response: None,
+                    observation: None,
+                    at_unix_seconds: at,
+                    reason: "synthetic".to_string(),
+                },
+            )
+            .map_err(io::Error::other)?;
+        }
+        append_started(&mut journal, at + 10)?;
+        journal
+    };
+    require(
+        decide_unknown_upload_recovery_for_operation_v1(
+            &identity,
+            &started,
+            &[foreign_position],
+            &journal_row(),
+            &custody(),
+            &authorizations(),
+            &absent(5),
+        )
+        .is_err(),
+        "a foreign-operation position must never satisfy recovery",
+    )?;
     Ok(())
 }
