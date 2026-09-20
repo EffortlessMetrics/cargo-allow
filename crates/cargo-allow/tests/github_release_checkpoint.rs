@@ -216,12 +216,12 @@ fn checkpoint_init(
     sequence: u64,
     object_id: &str,
     kind: GitHubReleaseCheckpointKindV1,
-) -> GitHubReleaseCheckpointInitV1 {
+) -> Result<GitHubReleaseCheckpointInitV1, Box<dyn Error>> {
     let head = journal
         .entries
         .last()
-        .expect("journal fixtures carry a prefix");
-    GitHubReleaseCheckpointInitV1 {
+        .ok_or_else(|| io::Error::other("journal fixtures carry a prefix"))?;
+    let init = GitHubReleaseCheckpointInitV1 {
         checkpoint_id: format!("github-checkpoint-{sequence:03}"),
         operation_id: "publish_cargo_allow_final_0_2_0".to_string(),
         operation_identity_digest: journal.operation_identity_digest.clone(),
@@ -248,7 +248,8 @@ fn checkpoint_init(
         retention_days: 30,
         created_at_unix_seconds: CREATED_AT + sequence.saturating_sub(1) * 100,
         note: "synthetic".to_string(),
-    }
+    };
+    Ok(init)
 }
 
 /// Mirror the real producer protocol: render, bind the body digest, measure,
@@ -302,7 +303,7 @@ fn github_release_checkpoint_lifecycle() -> Result<(), Box<dyn Error>> {
             1,
             "artifact-1",
             GitHubReleaseCheckpointKindV1::PreMutationDurable,
-        ),
+        )?,
     )
     .map_err(io::Error::other)?;
     require(
@@ -328,7 +329,7 @@ fn github_release_checkpoint_lifecycle() -> Result<(), Box<dyn Error>> {
         2,
         "artifact-2",
         GitHubReleaseCheckpointKindV1::PostObservation,
-    );
+    )?;
     second_init.created_at_unix_seconds = NOW + 10;
     let mut second =
         begin_github_release_checkpoint_v1(second_init, Some(&first)).map_err(io::Error::other)?;
@@ -376,7 +377,7 @@ fn github_release_checkpoint_discovery_and_faults() -> Result<(), Box<dyn Error>
             1,
             "artifact-1",
             GitHubReleaseCheckpointKindV1::PreMutationDurable,
-        ),
+        )?,
     )
     .map_err(io::Error::other)?;
     let stored = store_checkpoint(&mut first)?;
@@ -391,7 +392,7 @@ fn github_release_checkpoint_discovery_and_faults() -> Result<(), Box<dyn Error>
         1,
         "artifact-9",
         GitHubReleaseCheckpointKindV1::PreMutationDurable,
-    );
+    )?;
     foreign_init.producer.run = "9999".to_string();
     foreign_init.operation_identity_digest =
         release_operation_identity_digest_v1(&foreign_identity).map_err(io::Error::other)?;
