@@ -731,5 +731,17 @@ fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dy
         begin_publication_checkpoint_v1(malformed, None).is_err(),
         "a non-canonical operation digest must fail closed",
     )?;
+
+    // Class disagreement fails closed: a clean operation never owns a
+    // recovery checkpoint.
+    let journal = settled_journal()?;
+    let mut crossed_class =
+        checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    crossed_class.operation_class = allow_report::PublicationCheckpointClassV1::IncidentRecovery;
+    require(
+        begin_publication_checkpoint_for_operation_v1(&identity, &head, crossed_class, None)
+            .is_err(),
+        "checkpoint class must agree with the canonical operation class",
+    )?;
     Ok(())
 }

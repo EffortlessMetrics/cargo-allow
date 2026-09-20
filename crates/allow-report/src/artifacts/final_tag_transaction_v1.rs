@@ -17,8 +17,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
-    validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
 };
 
 pub const FINAL_TAG_TRANSACTION_SCHEMA_ID: &str = "cargo-allow.final-tag-transaction.v1";
@@ -352,6 +352,9 @@ pub fn begin_tag_transaction_for_operation_v1(
 ) -> Result<CargoAllowFinalTagTransactionV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "tag operation identity is not canonical")?;
+    if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("tag transactions belong only to the clean final operation");
+    }
     init.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     begin_tag_transaction_v1(init)

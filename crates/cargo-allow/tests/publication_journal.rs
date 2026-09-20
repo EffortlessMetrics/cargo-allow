@@ -1209,5 +1209,14 @@ fn journal_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
             != release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?,
         "same-name journals on different operations must carry different identity digests",
     )?;
+
+    // Class disagreement fails closed: a clean operation never owns a
+    // recovery journal.
+    let mut crossed_class = begin_init();
+    crossed_class.operation_class = allow_report::PublicationJournalClassV1::IncidentRecovery;
+    require(
+        begin_publication_journal_for_operation_v1(&identity, crossed_class).is_err(),
+        "journal class must agree with the canonical operation class",
+    )?;
     Ok(())
 }

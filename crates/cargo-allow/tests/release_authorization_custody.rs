@@ -977,5 +977,36 @@ fn selection_binds_canonical_operation_authorization() -> Result<(), Box<dyn Err
         .is_err(),
         "a foreign authorization must never select under this operation",
     )?;
+
+    // Settlement with a different digest fails and leaves the custody
+    // record unchanged: no transition is recorded, no state moves.
+    let mut record = minted()?;
+    let rendered = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    let identity = canonical_operation_identity_for(&record)?;
+    let evidence = record.evidence_digest.clone();
+    select_authorization_for_operation_v1(
+        &identity,
+        &mut record,
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
+    let transitions_before = record.transitions.len();
+    require(
+        settle_authorization_consumption_v1(&mut record, &digest(999), true, SELECT_AT + 20)
+            .is_err(),
+        "settlement with a different digest must fail",
+    )?;
+    require(
+        record.state == Consumption::SelectedForRun
+            && record.transitions.len() == transitions_before,
+        "failed settlement must leave the custody record unchanged",
+    )?;
     Ok(())
 }

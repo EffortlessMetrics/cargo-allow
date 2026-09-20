@@ -569,5 +569,15 @@ fn lease_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
         acquire_operation_lease_v1(acquire_init(malformed), None, NOW).is_err(),
         "a non-canonical operation digest must fail closed",
     )?;
+
+    // Class disagreement fails closed: a clean operation never holds a
+    // recovery lease.
+    let identity = canonical_operation_identity("lease-binding-0001")?;
+    let mut crossed_class = acquire_init(key());
+    crossed_class.class = allow_report::OperationLeaseClassV1::Recovery;
+    require(
+        acquire_operation_lease_for_operation_v1(&identity, crossed_class, None, NOW).is_err(),
+        "lease class must agree with the canonical operation class",
+    )?;
     Ok(())
 }

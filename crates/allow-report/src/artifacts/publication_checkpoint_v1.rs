@@ -34,9 +34,9 @@ use super::publication_journal_v1::{
 };
 use super::release_authorization_custody_v1::secret_marker;
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityV1,
-    release_operation_head_digest_v1, release_operation_identity_digest_v1,
-    validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationHeadV1,
+    CargoAllowReleaseOperationIdentityV1, release_operation_head_digest_v1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
 };
 
 pub const PUBLICATION_CHECKPOINT_SCHEMA_ID: &str = "cargo-allow.publication-checkpoint.v1";
@@ -608,6 +608,19 @@ pub fn begin_publication_checkpoint_for_operation_v1(
 ) -> Result<CargoAllowPublicationCheckpointV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "checkpoint operation identity is not canonical")?;
+    let class_agrees = matches!(
+        (&identity.operation_class, &init.operation_class,),
+        (
+            CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            PublicationCheckpointClassV1::CleanFinalPublication,
+        ) | (
+            CargoAllowReleaseOperationClassV1::IncidentRecovery,
+            PublicationCheckpointClassV1::IncidentRecovery,
+        )
+    );
+    if !class_agrees {
+        return Err("checkpoint class must agree with the canonical operation class");
+    }
     let identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     let head_digest = release_operation_head_digest_v1(head).map_err(|_| "head digest failed")?;

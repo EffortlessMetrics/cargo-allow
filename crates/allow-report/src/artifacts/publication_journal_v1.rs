@@ -29,8 +29,8 @@ use serde::{Deserialize, Serialize};
 
 use super::release_authorization_custody_v1::secret_marker;
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
-    validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
 };
 
 pub const PUBLICATION_JOURNAL_SCHEMA_ID: &str = "cargo-allow.publication-journal.v1";
@@ -391,6 +391,19 @@ pub fn begin_publication_journal_for_operation_v1(
 ) -> Result<CargoAllowPublicationJournalV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "journal operation identity is not canonical")?;
+    let class_agrees = matches!(
+        (&identity.operation_class, &init.operation_class,),
+        (
+            CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+            PublicationJournalClassV1::CleanFinalPublication,
+        ) | (
+            CargoAllowReleaseOperationClassV1::IncidentRecovery,
+            PublicationJournalClassV1::IncidentRecovery,
+        )
+    );
+    if !class_agrees {
+        return Err("journal class must agree with the canonical operation class");
+    }
     init.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     begin_publication_journal_v1(init)

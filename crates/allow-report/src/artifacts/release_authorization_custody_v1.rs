@@ -29,8 +29,8 @@ use super::release_authorization_v1::{
     ReleaseAuthorizationEvidenceV1, transition_authorization_consumption,
 };
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationIdentityV1, release_operation_identity_digest_v1,
-    validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
+    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
 };
 
 pub const AUTHORIZATION_CUSTODY_SCHEMA_ID: &str = "cargo-allow.release-authorization-custody.v1";
@@ -229,6 +229,10 @@ pub struct CargoAllowReleaseAuthorizationCustodyV1 {
     pub one_run_scope: bool,
     pub nonce: String,
     pub state: ReleaseAuthorizationConsumptionV1,
+    /// Canonical #3940 operation identity digest bound at selection time.
+    /// Settlement requires exact equality so observations from another
+    /// operation can never settle this selection.
+    pub selected_operation_identity_digest: Option<String>,
     pub consumed_nonces: Vec<String>,
     pub transitions: Vec<AuthorizationCustodyTransitionV1>,
     pub readback_verified: bool,
@@ -457,6 +461,7 @@ pub fn mint_authorization_custody_v1(
         one_run_scope: true,
         nonce: init.decision.authority.nonce,
         state: ReleaseAuthorizationConsumptionV1::Available,
+        selected_operation_identity_digest: None,
         consumed_nonces: Vec::new(),
         transitions: Vec::new(),
         readback_verified: false,
@@ -572,6 +577,9 @@ pub fn select_authorization_for_run_v1(
     storage_provider_available: bool,
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
+    if !digest_shape(operation_identity_digest) {
+        return Err("selection requires the canonical operation identity digest");
+    }
     match record.state {
         Consumption::Available => {
             if now_unix_seconds > record.expires_at_unix_seconds {
@@ -621,9 +629,7 @@ pub fn select_authorization_for_run_v1(
         now_unix_seconds,
         "selected",
     )?;
-    if !digest_shape(operation_identity_digest) {
-        return Err("selection requires the canonical operation identity digest");
-    }
+    record.selected_operation_identity_digest = Some(operation_identity_digest.to_string());
     record.consumed_nonces.push(nonce.to_string());
     Ok(CargoAllowReleaseAuthorizationConsumptionV1 {
         schema_id: AUTHORIZATION_CONSUMPTION_SCHEMA_ID.to_string(),
@@ -654,6 +660,9 @@ pub fn select_authorization_for_operation_v1(
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "selection operation identity is not canonical")?;
+    if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
+        return Err("custody selection belongs only to the clean final operation");
+    }
     if identity.authorization_digest != record.authorization_digest {
         return Err("selection requires the operation authorization");
     }
@@ -709,6 +718,11 @@ pub fn settle_authorization_consumption_v1(
     now_unix_seconds: u64,
 ) -> Result<CargoAllowReleaseAuthorizationConsumptionV1, &'static str> {
     use ReleaseAuthorizationConsumptionV1 as Consumption;
+    if !digest_shape(operation_identity_digest)
+        || record.selected_operation_identity_digest.as_deref() != Some(operation_identity_digest)
+    {
+        return Err("settlement requires the exact selected operation identity digest");
+    }
     let next = if complete {
         Consumption::ConsumedComplete
     } else {
@@ -725,9 +739,6 @@ pub fn settle_authorization_consumption_v1(
             "consumed-incident"
         },
     )?;
-    if !digest_shape(operation_identity_digest) {
-        return Err("settlement requires the canonical operation identity digest");
-    }
     Ok(CargoAllowReleaseAuthorizationConsumptionV1 {
         schema_id: AUTHORIZATION_CONSUMPTION_SCHEMA_ID.to_string(),
         schema_version: AUTHORIZATION_CONSUMPTION_SCHEMA_VERSION,

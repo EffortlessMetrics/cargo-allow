@@ -20,6 +20,7 @@
     "one_run_scope",
     "nonce",
     "state",
+    "selected_operation_identity_digest",
     "consumed_nonces",
     "transitions",
     "readback_verified",
@@ -149,6 +150,10 @@
     "one_run_scope": { "const": true },
     "nonce": { "type": "string", "minLength": 1 },
     "state": { "$ref": "#/$defs/consumption_state" },
+    "selected_operation_identity_digest": {
+      "type": ["string", "null"],
+      "description": "Canonical operation identity digest bound at selection; settlement requires exact equality."
+    },
     "consumed_nonces": {
       "type": "array",
       "items": { "type": "string" }
