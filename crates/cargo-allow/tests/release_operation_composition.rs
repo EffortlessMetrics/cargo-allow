@@ -786,11 +786,11 @@ fn rehearsal_journal(
             PublicationJournalAppendV1 {
                 kind,
                 row,
-                response: with_response.then(|| PublicationUploadResponseV1 {
+                response: with_response.then_some(PublicationUploadResponseV1 {
                     class: UploadResponseClassV1::Success,
                     detail: "synthetic position".to_string(),
                 }),
-                observation: with_observation.then(|| PublicationRegistryObservationV1 {
+                observation: with_observation.then_some(PublicationRegistryObservationV1 {
                     provider_reachable: true,
                     row_visible: true,
                     archive_digest_matches: true,
