@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Freeze Git-backed package bytes: the exact-candidate set now packages
+  inside a harness-owned git worktree at the exact snapshot head, every
+  frozen archive must carry `.cargo_vcs_info.json` for that frozen subject,
+  and the shared verifier rejects dirty or malformed package metadata. Exact
+  authority always packages from that worktree; self-attested prebuilt archives
+  are refused. Cargo's canonical clean encoding omits
+  `git.dirty`; `dirty: true` is proven and rejected by a real worktree control.
+  The producer also scrubs inherited Git repository and object-location
+  variables and removes registered worktrees when terminal head validation
+  fails (#4304).
