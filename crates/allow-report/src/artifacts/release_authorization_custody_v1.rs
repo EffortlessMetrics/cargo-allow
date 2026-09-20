@@ -783,16 +783,32 @@ pub fn selection_payload_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     record: &CargoAllowReleaseAuthorizationCustodyV1,
 ) -> Result<AuthorizationSelectionPayloadV1, &'static str> {
+    use ReleaseAuthorizationConsumptionV1 as Consumption;
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "selection operation identity is not canonical")?;
     if identity.authorization_digest != record.authorization_digest {
         return Err("selection payload requires the operation authorization");
     }
+    let operation_identity_digest =
+        release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
+    if record.selected_operation_identity_digest.as_deref()
+        != Some(operation_identity_digest.as_str())
+    {
+        return Err("selection payload requires the exact selected operation identity");
+    }
+    if !matches!(
+        record.state,
+        Consumption::SelectedForRun
+            | Consumption::IrreversibleOperationStarted
+            | Consumption::ConsumedComplete
+            | Consumption::ConsumedIncident
+    ) {
+        return Err("selection payload requires selected or retained consumed authority");
+    }
     Ok(AuthorizationSelectionPayloadV1 {
         authorization_id: record.authorization_id.clone(),
         authorization_digest: record.authorization_digest.clone(),
-        operation_identity_digest: release_operation_identity_digest_v1(identity)
-            .map_err(|_| "identity digest failed")?,
+        operation_identity_digest,
         operation_name: record.operation.name.clone(),
         operation_version: record.operation.version.clone(),
         operation_tag: record.operation.tag.clone(),

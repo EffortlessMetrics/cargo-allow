@@ -424,18 +424,21 @@ pub fn acquire_operation_lease_for_operation_v1(
 ) -> Result<CargoAllowReleaseOperationLeaseV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "lease operation identity is not canonical")?;
-    let class_agrees = matches!(
-        (&identity.operation_class, &init.class,),
-        (
-            CargoAllowReleaseOperationClassV1::CleanFinalPublication,
+    let (expected_class, expected_operation) = match identity.operation_class {
+        CargoAllowReleaseOperationClassV1::CleanFinalPublication => (
             OperationLeaseClassV1::Clean,
-        ) | (
-            CargoAllowReleaseOperationClassV1::IncidentRecovery,
+            OPERATION_LEASE_FINAL_OPERATION,
+        ),
+        CargoAllowReleaseOperationClassV1::IncidentRecovery => (
             OperationLeaseClassV1::Recovery,
-        )
-    );
-    if !class_agrees {
-        return Err("lease class must agree with the canonical operation class");
+            OPERATION_LEASE_RECOVERY_OPERATION,
+        ),
+        CargoAllowReleaseOperationClassV1::Containment => {
+            return Err("containment operations cannot acquire a publication lease");
+        }
+    };
+    if init.class != expected_class || init.key.operation != expected_operation {
+        return Err("lease class and operation must agree with the canonical operation");
     }
     init.key.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;

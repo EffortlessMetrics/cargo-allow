@@ -579,5 +579,11 @@ fn lease_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
         acquire_operation_lease_for_operation_v1(&identity, crossed_class, None, NOW).is_err(),
         "lease class must agree with the canonical operation class",
     )?;
+    let mut crossed_operation = acquire_init(key());
+    crossed_operation.key.operation = OPERATION_LEASE_RECOVERY_OPERATION.to_string();
+    require(
+        acquire_operation_lease_for_operation_v1(&identity, crossed_operation, None, NOW).is_err(),
+        "lease operation name must agree with the canonical operation class",
+    )?;
     Ok(())
 }

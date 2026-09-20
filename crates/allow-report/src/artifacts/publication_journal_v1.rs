@@ -391,18 +391,25 @@ pub fn begin_publication_journal_for_operation_v1(
 ) -> Result<CargoAllowPublicationJournalV1, &'static str> {
     validate_release_operation_identity_v1(identity)
         .map_err(|_| "journal operation identity is not canonical")?;
-    let class_agrees = matches!(
-        (&identity.operation_class, &init.operation_class,),
-        (
-            CargoAllowReleaseOperationClassV1::CleanFinalPublication,
-            PublicationJournalClassV1::CleanFinalPublication,
-        ) | (
-            CargoAllowReleaseOperationClassV1::IncidentRecovery,
-            PublicationJournalClassV1::IncidentRecovery,
-        )
-    );
-    if !class_agrees {
+    let expected_class = match identity.operation_class {
+        CargoAllowReleaseOperationClassV1::CleanFinalPublication => {
+            PublicationJournalClassV1::CleanFinalPublication
+        }
+        CargoAllowReleaseOperationClassV1::IncidentRecovery => {
+            PublicationJournalClassV1::IncidentRecovery
+        }
+        CargoAllowReleaseOperationClassV1::Containment => {
+            return Err("containment operations cannot own a publication journal");
+        }
+    };
+    if init.operation_class != expected_class {
         return Err("journal class must agree with the canonical operation class");
+    }
+    if init.authorization_digest != identity.authorization_digest
+        || init.custody_digest != identity.custody_digest
+        || init.freeze_digest != identity.freeze_digest
+    {
+        return Err("journal authority fields must agree with the canonical operation");
     }
     init.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;

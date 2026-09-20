@@ -355,6 +355,13 @@ pub fn begin_tag_transaction_for_operation_v1(
     if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
         return Err("tag transactions belong only to the clean final operation");
     }
+    if init.authorization_digest != identity.authorization_digest
+        || init.freeze_digest != identity.freeze_digest
+        || init.custody_digest != identity.custody_digest
+        || init.replay_digest != identity.replay_digest
+    {
+        return Err("tag authority fields must agree with the canonical operation");
+    }
     init.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     begin_tag_transaction_v1(init)

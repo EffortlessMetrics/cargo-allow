@@ -1180,40 +1180,67 @@ fn canonical_operation_identity(
     )
 }
 
+fn journal_init_for_identity(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> PublicationJournalInitV1 {
+    let mut init = begin_init();
+    init.authorization_digest = identity.authorization_digest.clone();
+    init.custody_digest = identity.custody_digest.clone();
+    init.freeze_digest = identity.freeze_digest.clone();
+    init
+}
+
 #[test]
 fn journal_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
     let identity = canonical_operation_identity("journal-binding-0001")?;
     let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
-    let journal = begin_publication_journal_for_operation_v1(&identity, begin_init())
-        .map_err(io::Error::other)?;
+    let journal =
+        begin_publication_journal_for_operation_v1(&identity, journal_init_for_identity(&identity))
+            .map_err(io::Error::other)?;
     require(
         journal.operation_identity_digest == expected,
         "journal must name the canonical operation identity digest",
     )?;
 
-    // A digest-shaped foreign value never owns a journal through the legacy
-    // path: the digest must be canonical shape and the canonical path
-    // derives it from a revalidated identity instead of trusting the caller.
     let mut malformed = begin_init();
     malformed.operation_identity_digest = "not-a-digest".to_string();
     require(
         begin_publication_journal_v1(malformed).is_err(),
         "a non-canonical operation digest must fail closed",
     )?;
+
     let foreign_identity = canonical_operation_identity("journal-binding-0002")?;
-    let foreign_journal =
-        begin_publication_journal_for_operation_v1(&foreign_identity, begin_init())
-            .map_err(io::Error::other)?;
+    let foreign_journal = begin_publication_journal_for_operation_v1(
+        &foreign_identity,
+        journal_init_for_identity(&foreign_identity),
+    )
+    .map_err(io::Error::other)?;
     require(
-        foreign_journal.operation_identity_digest
-            != release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?,
+        foreign_journal.operation_identity_digest != expected,
         "same-name journals on different operations must carry different identity digests",
     )?;
 
-    // Class disagreement fails closed: a clean operation never owns a
-    // recovery journal.
-    let mut crossed_class = begin_init();
-    crossed_class.operation_class = allow_report::PublicationJournalClassV1::IncidentRecovery;
+    let mut wrong_authorization = journal_init_for_identity(&identity);
+    wrong_authorization.authorization_digest = digest(999);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_authorization).is_err(),
+        "journal authorization must agree with the canonical operation",
+    )?;
+    let mut wrong_custody = journal_init_for_identity(&identity);
+    wrong_custody.custody_digest = digest(998);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_custody).is_err(),
+        "journal custody must agree with the canonical operation",
+    )?;
+    let mut wrong_freeze = journal_init_for_identity(&identity);
+    wrong_freeze.freeze_digest = digest(997);
+    require(
+        begin_publication_journal_for_operation_v1(&identity, wrong_freeze).is_err(),
+        "journal freeze must agree with the canonical operation",
+    )?;
+
+    let mut crossed_class = journal_init_for_identity(&identity);
+    crossed_class.operation_class = PublicationJournalClassV1::IncidentRecovery;
     require(
         begin_publication_journal_for_operation_v1(&identity, crossed_class).is_err(),
         "journal class must agree with the canonical operation class",

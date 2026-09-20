@@ -475,27 +475,59 @@ fn canonical_operation_identity(
     )
 }
 
+fn tag_init_for_identity(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> FinalTagTransactionInitV1 {
+    let mut init = begin_init();
+    init.authorization_digest = identity.authorization_digest.clone();
+    init.freeze_digest = identity.freeze_digest.clone();
+    init.custody_digest = identity.custody_digest.clone();
+    init.replay_digest = identity.replay_digest.clone();
+    init
+}
+
 #[test]
 fn tag_binds_canonical_operation_identity() -> Result<(), Box<dyn Error>> {
     let identity = canonical_operation_identity("tag-binding-0001")?;
     let expected = release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
-    let record = begin_tag_transaction_for_operation_v1(&identity, begin_init())
-        .map_err(io::Error::other)?;
+    let record =
+        begin_tag_transaction_for_operation_v1(&identity, tag_init_for_identity(&identity))
+            .map_err(io::Error::other)?;
     require(
         record.operation_identity_digest == expected,
         "tag transaction must name the canonical operation identity digest",
     )?;
 
-    // Same name, wrong operation: digests differ per operation.
     let foreign_identity = canonical_operation_identity("tag-binding-0002")?;
-    let foreign = begin_tag_transaction_for_operation_v1(&foreign_identity, begin_init())
-        .map_err(io::Error::other)?;
+    let foreign = begin_tag_transaction_for_operation_v1(
+        &foreign_identity,
+        tag_init_for_identity(&foreign_identity),
+    )
+    .map_err(io::Error::other)?;
     require(
         foreign.operation_identity_digest != expected,
         "same-name transactions on different operations must carry different digests",
     )?;
 
-    // Malformed digests fail closed without a canonical identity.
+    for (label, mut init) in [
+        ("authorization", tag_init_for_identity(&identity)),
+        ("freeze", tag_init_for_identity(&identity)),
+        ("custody", tag_init_for_identity(&identity)),
+        ("replay", tag_init_for_identity(&identity)),
+    ] {
+        match label {
+            "authorization" => init.authorization_digest = digest(999),
+            "freeze" => init.freeze_digest = digest(998),
+            "custody" => init.custody_digest = digest(997),
+            "replay" => init.replay_digest = digest(996),
+            _ => return Err(io::Error::other("unknown tag authority fixture").into()),
+        }
+        require(
+            begin_tag_transaction_for_operation_v1(&identity, init).is_err(),
+            format!("tag {label} authority must agree with the canonical operation"),
+        )?;
+    }
+
     let mut malformed = begin_init();
     malformed.operation_identity_digest = "not-a-digest".to_string();
     require(
