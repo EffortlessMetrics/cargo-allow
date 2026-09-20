@@ -5,3 +5,9 @@ allow_ids = ["allow-11326"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:f8cbdad817100f0aadd018ef4c759e189bb60610fab95efb444d9ef88a493ed1"
 reason = "receipt for docs/release/release-operation-child-inventory-v1.md, the #3940 PR B child operation-authority inventory"
+
+[[records]]
+allow_ids = ["allow-11327"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e560a957e96335e5293ac76d3559c043392b018f4aaca3d08640bc17fbbdad4c"
+reason = "self-receipt for this #3940 PR B revision note; no external release operation is authorized"
