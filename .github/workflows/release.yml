@@ -255,7 +255,6 @@ jobs:
             "tree": "${{ needs.preflight.outputs.tree }}",
             "authorization_digest": "${authorization_digest}",
             "recovery": ${{ needs.preflight.outputs.recovery }},
-            "github_prerelease": ${{ needs.preflight.outputs.github_prerelease }},
             "workflow_run_id": ${{ github.run_id }}
           }
           EOF
