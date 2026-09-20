@@ -1,0 +1,87 @@
+name: Prove PR 4309 checkpoint head repair
+
+on:
+  push:
+    branches:
+      - automation/pr-4309-checkpoint-head-v1
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prove-pr-4309-checkpoint-head-v1
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: automation/pr-4309-checkpoint-head-v1
+          fetch-depth: 32
+          persist-credentials: true
+
+      - name: Stage the bounded checkpoint-head repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "1c573e7ad2f527897b63a9c098c59c25391e5e08" HEAD
+          mapfile -t unexpected < <(
+            git diff --name-only 1c573e7ad2f527897b63a9c098c59c25391e5e08 HEAD |
+              grep -Ev '^\.github/(scripts/repair_pr4309_checkpoint_head(\.py|\.part[0-9][0-9])|workflows/prove-pr4309-checkpoint-head\.yml)$' || true
+          )
+          test "${#unexpected[@]}" -eq 0
+          cat .github/scripts/repair_pr4309_checkpoint_head.part{00..04} > /tmp/repair_pr4309_checkpoint_head.py
+          python3 -m py_compile /tmp/repair_pr4309_checkpoint_head.py
+          python3 /tmp/repair_pr4309_checkpoint_head.py
+
+      - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
+        with:
+          components: rustfmt,clippy
+
+      - name: Prove the checkpoint-head repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo test -p cargo-allow --test publication_checkpoint --locked -- --nocapture
+          cargo test -p cargo-allow --test publication_checkpoint_runner_loss --locked -- --nocapture
+          cargo test -p cargo-allow --test publication_checkpoint_trust --locked -- --nocapture
+          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+          git diff --check
+
+      - name: Publish source commit and clean carriers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only | sort)
+          printf '%s\n' "${changed[@]}"
+          expected=(
+            crates/allow-report/src/artifacts/publication_checkpoint_v1.rs
+            crates/cargo-allow/tests/publication_checkpoint.rs
+            docs/release/publication-checkpoint-v1.md
+          )
+          test "${#changed[@]}" -eq "${#expected[@]}"
+          for index in "${!expected[@]}"; do
+            test "${changed[$index]}" = "${expected[$index]}"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${expected[@]}"
+          git commit -m "fix(release,#3940): validate checkpoint head succession"
+          source_commit="$(git rev-parse HEAD)"
+          echo "source commit: ${source_commit}"
+          git rm \
+            .github/scripts/repair_pr4309_checkpoint_head.py \
+            .github/scripts/repair_pr4309_checkpoint_head.part00 \
+            .github/scripts/repair_pr4309_checkpoint_head.part01 \
+            .github/scripts/repair_pr4309_checkpoint_head.part02 \
+            .github/scripts/repair_pr4309_checkpoint_head.part03 \
+            .github/scripts/repair_pr4309_checkpoint_head.part04 \
+            .github/workflows/prove-pr4309-checkpoint-head.yml
+          git commit -m "chore: remove checkpoint-head repair carriers"
+          git push origin HEAD:automation/pr-4309-checkpoint-head-v1
