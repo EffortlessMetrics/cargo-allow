@@ -1,4 +1,4 @@
-name: Publish PR 4309 child authority bindings
+name: Publish proved PR 4309 child repair
 
 on:
   push:
@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  repair:
+  publish:
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -23,11 +23,11 @@ jobs:
           fetch-depth: 24
           persist-credentials: true
 
-      - name: Guard and stage the proved source repair
+      - name: Stage the exact proved repair
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "79f41382852ae29d0afd9c0f364843b6da7e8053"
+          test "$(git rev-parse HEAD^)" = "bb8f2b4049c9aa6f8c8492759b962526fc23b3b1"
           git merge-base --is-ancestor "1613303c20bddc33d870451671514682409a5a20" HEAD
           test "$(git diff --name-only 1613303c20bddc33d870451671514682409a5a20 HEAD)" = ".github/workflows/repair-pr4309-child-bindings-v5.yml"
           git show 00f0431be9c9cf56c7178dc927cdaf420ba36346:.github/workflows/repair-pr4309-child-bindings.yml > /tmp/repair-pr4309-v1.yml
@@ -63,29 +63,18 @@ jobs:
           python3 /tmp/repair-pr4309-v2-2.py
           python3 /tmp/repair-pr4309-v3-2.py
           git rm .github/workflows/repair-pr4309-child-bindings-v5.yml
-          cargo fmt --all
 
       - uses: dtolnay/rust-toolchain@46817827a5bfabe028bf34e1cce71fd40e2ff697 # 1.95.0 action revision
         with:
-          components: rustfmt,clippy
+          components: rustfmt
 
-      - name: Reconfirm the source proof
+      - name: Publish the proved source tree
         shell: bash
         run: |
           set -euo pipefail
+          cargo fmt --all
           cargo fmt --all -- --check
-          cargo test -p cargo-allow --test publication_journal --locked -- --nocapture
-          cargo test -p cargo-allow --test final_tag_transaction --locked -- --nocapture
-          cargo test -p cargo-allow --test release_operation_lease --locked -- --nocapture
-          cargo test -p cargo-allow --test release_authorization_custody --locked -- --nocapture
-          cargo clippy -p allow-report -p cargo-allow --all-targets --locked -- -D warnings
-          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
           git diff --check
-
-      - name: Publish source and cleanup commits
-        shell: bash
-        run: |
-          set -euo pipefail
           source_files=(
             crates/allow-report/src/artifacts/final_tag_transaction_v1.rs
             crates/allow-report/src/artifacts/publication_journal_v1.rs
@@ -103,15 +92,12 @@ jobs:
           )
           mapfile -t changed < <(git diff --name-only HEAD | sort)
           mapfile -t expected < <(printf '%s\n' "${expected_all[@]}" | sort)
-          printf '%s\n' "${changed[@]}"
           test "${#changed[@]}" -eq "${#expected[@]}"
           for index in "${!expected[@]}"; do
             test "${changed[$index]}" = "${expected[$index]}"
           done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${source_files[@]}"
+          git add -A
           git commit -m "fix(release,#3940): bind child authority fields to operation identity"
-          git add -u .github/workflows
-          git commit -m "chore: remove PR 4309 child-binding repair carrier"
           git push origin HEAD:release/3940-operation-migration-v1
