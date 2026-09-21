@@ -166,6 +166,19 @@ pub(super) fn render_why_text_styled(
     )
 }
 
+/// The human-report heading must tell the truth about the typed outcome.
+/// Only `New` findings are unreceipted and only `Matched` findings may claim
+/// a receipt; every other posture - expired, ambiguous, stale, review due,
+/// baseline debt, and any unknown future state from the `#[non_exhaustive]`
+/// enum - gets a neutral heading that asserts neither.
+fn why_heading(status: MatchStatus) -> &'static str {
+    match status {
+        MatchStatus::New => "# Why this finding is unreceipted",
+        MatchStatus::Matched => "# Why this finding is receipted",
+        _ => "# Why this finding has its current status",
+    }
+}
+
 pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     inventory: allow_report::InventoryContext<'_>,
     finding: &Finding,
@@ -182,7 +195,8 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
     let mut out = String::new();
-    out.push_str("# Why this finding is unreceipted\n\n");
+    out.push_str(why_heading(outcome.status));
+    out.push_str("\n\n");
     out.push_str("## Finding\n\n");
     let location = finding_location(finding);
     out.push_str(&format!("- location: {}\n", terminal_text(&location)));
