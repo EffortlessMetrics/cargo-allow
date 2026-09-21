@@ -441,6 +441,85 @@ fn prune_selection_unknown_id_preserves_policy_and_output() -> TestResult {
 }
 
 #[test]
+fn prune_selection_unknown_id_precedes_inventory_failure() -> TestResult {
+    // The executable_file family makes the world load run
+    // `git ls-files --stage` (allow_files::executable_findings_from_git)
+    // inside load_world_from_resolved_policy_with_options. The fixture
+    // root is not a git repository, so the world load fails
+    // deterministically after policy loading succeeds — no
+    // permission-dependent OS setup.
+    with_fixture(|fixture| {
+        let mut config = load_policy(&fixture.policy)?;
+        config.allow.push(AllowEntry {
+            id: "allow-exec-sensor".to_owned(),
+            kind: FindingKind::PolicyException,
+            family: Some("executable_file".to_owned()),
+            path: Some("docs/live.md".into()),
+            glob: None,
+            owner: "owner/allow-exec-sensor".to_owned(),
+            classification: "reviewed_exception".to_owned(),
+            reason: "deterministic inventory failure fixture".to_owned(),
+            evidence: Vec::new(),
+            links: Vec::new(),
+            occurrence_limit: Some(1),
+            lifecycle: Lifecycle {
+                review_after: Some("2027-01-01".to_owned()),
+                ..Lifecycle::empty()
+            },
+            selector: Selector {
+                ast_kind: Some("tracked_file".to_owned()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        });
+        fs::write(&fixture.policy, render_policy(&config))?;
+        let before = fs::read(&fixture.policy)?;
+
+        for write in [false, true] {
+            fs::write(&fixture.output, "preserve existing output")?;
+            let error = cmd_prune(&fixture.args(Some("allow-missing"), write))
+                .err()
+                .ok_or("unknown ID must fail before inventory")?;
+            require(
+                error.kind() == CargoAllowErrorKind::Usage
+                    && error.to_string().contains("allow-missing"),
+                "unknown ID must keep the typed Usage diagnostic despite the later inventory failure",
+            )?;
+            require(
+                fs::read(&fixture.policy)? == before,
+                "unknown selection changed policy",
+            )?;
+            require(
+                fs::read_to_string(&fixture.output)? == "preserve existing output",
+                "unknown selection replaced output",
+            )?;
+        }
+
+        let known = cmd_prune(&fixture.args(Some("allow-stale-a"), false))
+            .err()
+            .ok_or("known ID must still reach the failing inventory")?;
+        let bulk = cmd_prune(&fixture.args(None, false))
+            .err()
+            .ok_or("unselected prune must still reach the failing inventory")?;
+        require(
+            known.kind() != CargoAllowErrorKind::Usage
+                && bulk.kind() == known.kind()
+                && known.to_string() == bulk.to_string(),
+            "known ID must report the same inventory failure as unselected prune",
+        )?;
+        require(
+            known.to_string().contains("git ls-files --stage"),
+            "inventory failure must be the deterministic git fixture failure",
+        )?;
+        require(
+            fs::read(&fixture.policy)? == before,
+            "known selection changed policy",
+        )?;
+        Ok(())
+    })
+}
+
+#[test]
 fn prune_selection_default_bulk_and_second_no_op_remain_available() -> TestResult {
     with_fixture(|fixture| {
         let mut expected = load_policy(&fixture.policy)?;
