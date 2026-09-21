@@ -51,7 +51,6 @@ exported_private_dependencies = "deny"
 non_ascii_idents = "deny"
 
 [workspace.lints.clippy]
-warnings = "deny"
 
 [workspace.package]
 edition = "2024"
