@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Pin the UB Review action to the deferred-proof-accounting fix (#4271):
+  the gate summary now retains deferred required planner review proof
+  with named planner-required vs gate-required denominators, task and
+  request IDs, the verbatim deferral reason, the revision digest, and
+  receipt absence, while enforcement stays advisory.
