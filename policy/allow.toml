@@ -7590,6 +7590,48 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11331"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/relocated-package-docs.v1.schema.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "JSON Schema for CargoAllowRelocatedPackageDocsReceiptV1 (#3852)."
+evidence = ["test:example_relocated_package_docs_matches_schema_constants", "issue:3852"]
+created = "2026-09-22"
+review_after = "2026-12-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/fixtures/release/relocated-package-docs.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11332"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/relocated-package-docs-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example Complete relocated package-docs receipt for docs and offline characterization (#3852)."
+evidence = ["test:example_relocated_package_docs_matches_schema_constants", "issue:3852"]
+created = "2026-09-22"
+review_after = "2026-12-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/relocated-package-docs-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4754"
 kind = "non_rust_file"
 family = "shell_script"

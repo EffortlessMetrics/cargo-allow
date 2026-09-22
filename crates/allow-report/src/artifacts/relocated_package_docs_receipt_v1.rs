@@ -186,8 +186,9 @@ impl CargoAllowRelocatedPackageDocsReceiptV1 {
     }
 
     /// Validate receipt shape: schema id, ten expected rows, stable
-    /// versions (rc-line inputs rejected as final identity), and an
-    /// aggregate coherent with the rows.
+    /// versions (rc-line inputs rejected as final identity), declared
+    /// assets present on every Complete row, and an aggregate (counts and
+    /// result) coherent with the rows.
     pub fn validate(&self) -> Result<(), String> {
         if self.schema != RELOCATED_PACKAGE_DOCS_RECEIPT_SCHEMA_V1 {
             return Err(format!(
@@ -213,6 +214,20 @@ impl CargoAllowRelocatedPackageDocsReceiptV1 {
                     row.name, row.version
                 ));
             }
+            if row.result == RelocatedPackageDocsResultV1::Complete {
+                if !row.readme_present {
+                    return Err(format!(
+                        "row {} is Complete but its declared readme asset is absent",
+                        row.name
+                    ));
+                }
+                if !row.license_assets_present {
+                    return Err(format!(
+                        "row {} is Complete but its declared license asset is absent",
+                        row.name
+                    ));
+                }
+            }
         }
         let complete = self
             .rows
@@ -223,6 +238,14 @@ impl CargoAllowRelocatedPackageDocsReceiptV1 {
             || self.aggregate.incomplete != self.rows.len().saturating_sub(complete)
         {
             return Err("aggregate counts disagree with the rows".to_string());
+        }
+        let expected_aggregate = if complete == self.rows.len() {
+            RelocatedPackageDocsResultV1::Complete
+        } else {
+            RelocatedPackageDocsResultV1::Incomplete
+        };
+        if self.aggregate.result != expected_aggregate {
+            return Err("aggregate result disagrees with the rows".to_string());
         }
         Ok(())
     }

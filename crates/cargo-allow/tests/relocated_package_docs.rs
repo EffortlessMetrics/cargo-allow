@@ -42,6 +42,18 @@ fn example_relocated_package_docs_matches_schema_constants() {
         SCHEMA_DOC.contains(SCHEMA_ID),
         "schema fixture must pin {SCHEMA_ID}"
     );
+    // Schema constraints must not diverge from the typed model unnoticed:
+    // compile the committed schema fixture and validate the example.
+    let schema: serde_json::Value = serde_json::from_str(SCHEMA_DOC)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("schema fixture json: {err}")));
+    let validator = jsonschema::validator_for(&schema)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("schema fixture invalid: {err}")));
+    let example_value: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
+    assert!(
+        validator.validate(&example_value).is_ok(),
+        "example receipt must validate against the committed schema fixture"
+    );
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
         .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
     assert_eq!(
@@ -267,6 +279,33 @@ fn count_leading_token(text: &str, token: &str) -> u32 {
     text.lines().filter(|line| line.starts_with(token)).count() as u32
 }
 
+/// Unpack one exact `.crate` into `dest_dir`, always removing any prior
+/// extraction first: same-version/different-bytes archives must never run
+/// stale files while the receipt binds the new digest.
+fn fresh_unpack(crate_path: &std::path::Path, dest_dir: &std::path::Path, label: &str) {
+    if dest_dir.exists() {
+        std::fs::remove_dir_all(dest_dir).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("InstrumentFailure: unpack clear failed: {err}"))
+        });
+    }
+    std::fs::create_dir_all(dest_dir).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("InstrumentFailure: unpack mkdir: {err}"))
+    });
+    let status = std::process::Command::new("tar")
+        .args(["xzf"])
+        .arg(crate_path)
+        .args(["-C"])
+        .arg(dest_dir)
+        .status()
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("InstrumentFailure: tar missing: {err}"))
+        });
+    assert!(
+        status.success(),
+        "InstrumentFailure: tar unpack failed for {label}"
+    );
+}
+
 #[test]
 fn decisive_relocated_package_docs_from_final_crates() {
     let root = match std::env::var("CARGO_ALLOW_RELOCATED_PACKAGE_DOCS_ROOT") {
@@ -338,19 +377,38 @@ fn decisive_relocated_package_docs_from_final_crates() {
             })
             .as_slice(),
     );
-    let candidate_path = {
-        let receipt_dir = std::path::PathBuf::from(&surface_path);
-        receipt_dir
-            .parent()
-            .map(|parent| parent.join("exact-candidate-package-set.receipt.json"))
-    };
-    let candidate_digest = candidate_path.map_or_else(
-        || "unrecorded".to_string(),
-        |path| {
-            std::fs::read(&path)
-                .map_or_else(|_| "unrecorded".to_string(), |bytes| sha256_hex(&bytes))
-        },
+    // Fail closed: the ExactCandidatePackageSetV1 receipt must sit next to
+    // the consumed surface receipt, parse, and report Passed. No sentinel.
+    let candidate_path = std::path::PathBuf::from(&surface_path)
+        .parent()
+        .unwrap_or_else(|| {
+            std::panic::panic_any("InstrumentFailure: surface receipt path has no parent dir")
+        })
+        .join("exact-candidate-package-set.receipt.json");
+    let candidate_bytes = std::fs::read(&candidate_path).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "InstrumentFailure: candidate receipt unreadable: {err}"
+        ))
+    });
+    let candidate_receipt: serde_json::Value = serde_json::from_slice(&candidate_bytes)
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("InstrumentFailure: candidate receipt json: {err}"))
+        });
+    assert!(
+        candidate_receipt
+            .get("schema_id")
+            .and_then(serde_json::Value::as_str)
+            == Some("cargo-allow.exact-candidate-package-set.v1"),
+        "InstrumentFailure: candidate receipt is not ExactCandidatePackageSetV1"
     );
+    assert!(
+        candidate_receipt
+            .get("result")
+            .and_then(serde_json::Value::as_str)
+            == Some("Passed"),
+        "InstrumentFailure: candidate receipt did not Pass"
+    );
+    let candidate_digest = sha256_hex(&candidate_bytes);
     let git_head = surface
         .pointer("/candidate/git_head")
         .and_then(serde_json::Value::as_str)
@@ -436,21 +494,11 @@ fn decisive_relocated_package_docs_from_final_crates() {
         "InstrumentFailure: cargo-allow archive disagrees with the #3851 surface row"
     );
     let cli_unpack = relocated_dir.join(format!("cargo-allow-{cli_version}"));
-    if !cli_unpack.is_dir() {
-        std::fs::create_dir_all(&cli_unpack).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("InstrumentFailure: unpack mkdir: {err}"))
-        });
-        let status = std::process::Command::new("tar")
-            .args(["xzf"])
-            .arg(packages_dir.join(format!("cargo-allow-{cli_version}.crate")))
-            .args(["-C"])
-            .arg(&cli_unpack)
-            .status()
-            .unwrap_or_else(|err| {
-                std::panic::panic_any(format!("InstrumentFailure: tar missing: {err}"))
-            });
-        assert!(status.success(), "InstrumentFailure: tar unpack failed");
-    }
+    fresh_unpack(
+        &packages_dir.join(format!("cargo-allow-{cli_version}.crate")),
+        &cli_unpack,
+        "cargo-allow",
+    );
     let cli_manifest =
         std::fs::read_to_string(cli_unpack.join(format!("cargo-allow-{cli_version}/Cargo.toml")))
             .unwrap_or_else(|err| {
@@ -514,24 +562,7 @@ fn decisive_relocated_package_docs_from_final_crates() {
         // Unpack outside the repository: workspace-path-dependent success is
         // impossible by construction for everything below.
         let unpack_root = relocated_dir.join(format!("{name}-{version}"));
-        if !unpack_root.is_dir() {
-            std::fs::create_dir_all(&unpack_root).unwrap_or_else(|err| {
-                std::panic::panic_any(format!("InstrumentFailure: unpack mkdir: {err}"))
-            });
-            let status = std::process::Command::new("tar")
-                .args(["xzf"])
-                .arg(&crate_path)
-                .args(["-C"])
-                .arg(&unpack_root)
-                .status()
-                .unwrap_or_else(|err| {
-                    std::panic::panic_any(format!("InstrumentFailure: tar missing: {err}"))
-                });
-            assert!(
-                status.success(),
-                "InstrumentFailure: tar unpack failed for {name}"
-            );
-        }
+        fresh_unpack(&crate_path, &unpack_root, name);
         let pkg_root = unpack_root.join(format!("{name}-{version}"));
         assert!(
             pkg_root.join("Cargo.toml").is_file(),
@@ -541,9 +572,29 @@ fn decisive_relocated_package_docs_from_final_crates() {
             std::fs::read_to_string(pkg_root.join("Cargo.toml")).unwrap_or_else(|err| {
                 std::panic::panic_any(format!("InstrumentFailure: manifest read: {err}"))
             });
+        // Declared assets come from the consumed surface row, never from
+        // hardcoded filenames.
+        let readme_decl_path = surface_row
+            .pointer("/assets/readme/path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        let readme_decl_sha = surface_row
+            .pointer("/assets/readme/sha256")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        let license_decl_path = surface_row
+            .pointer("/assets/license/path")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        let license_decl_sha = surface_row
+            .pointer("/assets/license/sha256")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        let readme_bytes = std::fs::read(unpack_root.join(readme_decl_path)).unwrap_or_default();
+        let license_bytes = std::fs::read(unpack_root.join(license_decl_path)).unwrap_or_default();
+        let readme_text = String::from_utf8_lossy(&readme_bytes).to_string();
         let (marker_file, role_marker, limitation_marker) = expected_markers(name);
         let haystack = std::fs::read_to_string(pkg_root.join(marker_file)).unwrap_or_default();
-        let readme_text = std::fs::read_to_string(pkg_root.join("README.md")).unwrap_or_default();
         let role_ok = haystack.contains(role_marker);
         let limit_ok = haystack.contains(limitation_marker)
             || (marker_file == "README.md" && readme_text.contains(limitation_marker));
@@ -623,11 +674,30 @@ fn decisive_relocated_package_docs_from_final_crates() {
             None
         };
 
-        let readme_bytes = std::fs::read(pkg_root.join("README.md")).unwrap_or_default();
+        let readme_present =
+            !readme_decl_path.is_empty() && unpack_root.join(readme_decl_path).is_file();
+        let license_present =
+            !license_decl_path.is_empty() && unpack_root.join(license_decl_path).is_file();
         let external_repo_refs = external_refs(&readme_text, &channel_dir);
-        let license_ok =
-            pkg_root.join("LICENSE-MIT").is_file() && pkg_root.join("LICENSE-APACHE").is_file();
         let mut row_limitations: Vec<String> = Vec::new();
+        if !readme_present {
+            row_limitations.push(format!(
+                "declared readme asset {readme_decl_path:?} absent from unpacked root"
+            ));
+        } else if sha256_hex(&readme_bytes) != readme_decl_sha {
+            row_limitations.push(format!(
+                "declared readme asset {readme_decl_path:?} bytes disagree with surface digest {readme_decl_sha}"
+            ));
+        }
+        if !license_present {
+            row_limitations.push(format!(
+                "declared license asset {license_decl_path:?} absent from unpacked root"
+            ));
+        } else if sha256_hex(&license_bytes) != license_decl_sha {
+            row_limitations.push(format!(
+                "declared license asset {license_decl_path:?} bytes disagree with surface digest {license_decl_sha}"
+            ));
+        }
         if !role_ok {
             row_limitations.push("role marker absent in packaged docs".to_string());
         }
@@ -676,13 +746,13 @@ fn decisive_relocated_package_docs_from_final_crates() {
             crate_size_bytes: expected_size,
             manifest_digest: expected_manifest.to_string(),
             file_list_digest: expected_files.to_string(),
-            readme_present: !readme_bytes.is_empty(),
-            readme_sha256: if readme_bytes.is_empty() {
-                None
-            } else {
+            readme_present,
+            readme_sha256: if readme_present {
                 Some(sha256_hex(&readme_bytes))
+            } else {
+                None
             },
-            license_assets_present: license_ok,
+            license_assets_present: license_present,
             external_repo_refs,
             reference_projection: RelocatedPackageDocsReferenceProjectionV1 {
                 published_version: published,
