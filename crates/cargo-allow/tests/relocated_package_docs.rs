@@ -346,6 +346,11 @@ fn decisive_relocated_package_docs_from_final_crates() {
             std::path::PathBuf::from,
         );
 
+    if registry_dir.contains('\'') {
+        std::panic::panic_any(
+            "InstrumentFailure: CARGO_ALLOW_RELOCATED_REGISTRY must not contain a single quote (TOML literal string)",
+        );
+    }
     let packages_dir = std::path::PathBuf::from(packages_dir);
     let surface: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(&surface_path).unwrap_or_else(|err| {
@@ -460,7 +465,7 @@ fn decisive_relocated_package_docs_from_final_crates() {
         format!(
             "# Decisive relocated runs (#3852): crates.io served from the local registry.\n\
              [source.crates-io]\nreplace-with = \"candidate-local-registry\"\n\n\
-             [source.candidate-local-registry]\nlocal-registry = \"{}\"\n",
+             [source.candidate-local-registry]\nlocal-registry = '{}'\n",
             registry_dir.as_str(),
         ),
     )

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/relocated-package-docs.v1.schema.json",
   "title": "cargo-allow RelocatedPackageDocs v1",
-  "description": "Lane harness receipt proving the ten cargo-allow-family packages document, build docs, run doctests, compile-check examples, bind assets, and keep role/claim boundaries from the exact final .crate files relocated outside the repository. Not a cargo-allow CLI product artifact.",
+  "description": "Lane harness receipt proving the ten cargo-allow-family packages document, build docs, run doctests, compile-check examples, bind assets, and keep role/claim boundaries from the exact final .crate files relocated outside the repository. Not a cargo-allow CLI product artifact. This fixture validates the Complete (pass) receipt shape only; Incomplete, Stale, Mismatch, Unsupported, and InstrumentFailure emissions are typed-model records that this pass fixture intentionally does not admit.",
   "type": "object",
   "additionalProperties": false,
   "required": [
