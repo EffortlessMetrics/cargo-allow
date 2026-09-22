@@ -7632,6 +7632,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11333"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3852-relocated-package-docs-receipts.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-receipt for the #3852 revision note covering the relocated package-docs receipt entries, following the ledger_change_note precedent."
+evidence = ["issue:3852"]
+created = "2026-09-22"
+review_after = "2026-12-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3852-relocated-package-docs-receipts.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4754"
 kind = "non_rust_file"
 family = "shell_script"
