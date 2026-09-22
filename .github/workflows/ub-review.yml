@@ -139,7 +139,7 @@ jobs:
           EOF
       - name: Run ub-review
         if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@c74855501919aef682ab26ad45006eb799c27cb5
+        uses: EffortlessMetrics/ub-review@69b1c7de9891d66958baa308d1b3e3ab903921e3
         with:
           profile: gh-runner
           posting: review

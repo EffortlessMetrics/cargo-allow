@@ -4,4 +4,9 @@ body: >-
   the gate summary now retains deferred required planner review proof
   with named planner-required vs gate-required denominators, task and
   request IDs, the verbatim deferral reason, the revision digest, and
-  receipt absence, while enforcement stays advisory.
+  receipt absence, while enforcement stays advisory. The retained proof
+  is revision-scoped: only a current-revision receipt with a successful
+  result class and a non-head-only proof kind sharing the task's request
+  satisfies it, follow-up portfolio writes merge with rather than erase
+  earlier required decisions, and every copied planner field is
+  sanitized before the step summary renders it.
