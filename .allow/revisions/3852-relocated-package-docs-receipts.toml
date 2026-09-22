@@ -1,0 +1,22 @@
+schema_version = 1
+# Revision note for #3852: relocated package-docs receipt receipts.
+
+# This diff adds two source-exception entries in service of the relocated
+# package-docs receipt (#3852). allow-11331 receipts the JSON schema fixture
+# and allow-11332 the committed pass example receipt, mirroring the sibling
+# exact-candidate-package-set harness precedent. No existing exception is
+# weakened, no expiry is extended, and no scope is broadened: both records
+# are additions making the shipped-package-docs evidence more visible, not
+# less.
+
+[[records]]
+allow_ids = ["allow-11331"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c3407d91dec19f989957e4bc4eec7097d0d0e4bd6aee9f63bc4e08e281bf3a10"
+reason = "Receipts the JSON schema fixture for the relocated package-docs receipt contract, mirroring the exact-candidate-package-set schema precedent."
+
+[[records]]
+allow_ids = ["allow-11332"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:254e85b0c2d774f2898035421882ecd9e99423258f1aecee39cc6db9ba822357"
+reason = "Receipts the committed pass example receipt consumed by the relocated_package_docs characterization and conformance checks."
