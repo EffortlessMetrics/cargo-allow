@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/relocated-package-docs.v1.schema.json",
+  "title": "cargo-allow RelocatedPackageDocs v1",
+  "description": "Lane harness receipt proving the ten cargo-allow-family packages document, build docs, run doctests, compile-check examples, bind assets, and keep role/claim boundaries from the exact final .crate files relocated outside the repository. Not a cargo-allow CLI product artifact. This fixture validates the Complete (pass) receipt shape only; Incomplete, Stale, Mismatch, Unsupported, and InstrumentFailure emissions are typed-model records that this pass fixture intentionally does not admit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "basis",
+    "rows",
+    "aggregate",
+    "negative_controls",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "cargo-allow.relocated-package-docs.v1"
+    },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_candidate_receipt_digest",
+        "packaged_surface_digest",
+        "git_head",
+        "toolchain",
+        "network_posture",
+        "isolation"
+      ],
+      "properties": {
+        "exact_candidate_receipt_digest": { "type": "string" },
+        "packaged_surface_digest": { "type": "string" },
+        "git_head": { "type": "string" },
+        "toolchain": { "type": "string" },
+        "network_posture": { "const": "fetch_warm_may_use_crates_io" },
+        "isolation": { "const": "local_registry_offline" }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "version",
+          "crate_sha256",
+          "crate_size_bytes",
+          "manifest_digest",
+          "file_list_digest",
+          "readme_present",
+          "readme_sha256",
+          "license_assets_present",
+          "external_repo_refs",
+          "reference_projection",
+          "check_exit",
+          "check_warnings",
+          "doc_exit",
+          "doc_warnings",
+          "doc_posture",
+          "doctest_exit",
+          "doctests_passed",
+          "doctest_posture",
+          "examples_posture",
+          "examples_exit",
+          "features",
+          "features_posture",
+          "no_default_check_exit",
+          "role_marker",
+          "limitation_marker",
+          "sibling_products_separate",
+          "result",
+          "limitations"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "crate_sha256": { "type": "string" },
+          "crate_size_bytes": { "type": "integer", "minimum": 1 },
+          "manifest_digest": { "type": "string" },
+          "file_list_digest": { "type": "string" },
+          "readme_present": { "const": true },
+          "readme_sha256": { "type": ["string", "null"] },
+          "license_assets_present": { "const": true },
+          "external_repo_refs": { "type": "array", "items": { "type": "string" } },
+          "reference_projection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["published_version", "candidate_version", "channel_digest"],
+            "properties": {
+              "published_version": { "const": "0.1.11" },
+              "candidate_version": { "const": "0.2.0" },
+              "channel_digest": { "type": "string", "minLength": 1 }
+            }
+          },
+          "check_exit": { "const": 0 },
+          "check_warnings": { "const": 0 },
+          "doc_exit": { "const": 0 },
+          "doc_warnings": { "const": 0 },
+          "doc_posture": { "const": "clean" },
+          "doctest_exit": { "type": "integer" },
+          "doctests_passed": { "type": "integer", "minimum": 0 },
+          "doctest_posture": { "enum": ["has_doctests", "no_public_doctests"] },
+          "examples_posture": { "enum": ["examples_built", "NoExampleSelected"] },
+          "examples_exit": { "type": ["integer", "null"] },
+          "features": { "type": "array", "items": { "type": "string" } },
+          "features_posture": { "type": "string" },
+          "no_default_check_exit": { "type": ["integer", "null"] },
+          "role_marker": { "type": "string", "minLength": 1 },
+          "limitation_marker": { "type": "string", "minLength": 1 },
+          "sibling_products_separate": { "const": true },
+          "result": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "incomplete",
+              "stale",
+              "mismatch",
+              "unsupported",
+              "instrument_failure"
+            ]
+          },
+          "limitations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "complete", "incomplete"],
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "incomplete",
+            "stale",
+            "mismatch",
+            "unsupported",
+            "instrument_failure"
+          ]
+        },
+        "complete": { "type": "integer", "minimum": 0 },
+        "incomplete": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "negative_controls": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "result_class", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "result_class": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "claim_boundary": { "type": "string" },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  }
+}
