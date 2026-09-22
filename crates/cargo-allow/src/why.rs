@@ -208,7 +208,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     } = selected_context;
     let (finding_index, finding) =
         crate::add::select_add_finding(&findings, parsed_kind, &target_repo_path, args.line)?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let outcome = outcomes
         .into_iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))

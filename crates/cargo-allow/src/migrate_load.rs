@@ -243,6 +243,7 @@ mod tests {
             &migration.cfg,
             std::slice::from_ref(&finding),
             allow_match::CheckMode::NoNew,
+            allow_core::SimpleDate::today_utc_approx(),
         );
 
         let drift = outcomes

@@ -90,7 +90,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             None,
             true,
         )?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let (entry_index, finding_index, drift_message) =
         select_location_drift_refresh(&cfg, &outcomes, &findings, allow_id)?;
     let finding = selected_refresh_finding(&findings, finding_index)?;

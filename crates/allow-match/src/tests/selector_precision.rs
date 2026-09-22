@@ -101,7 +101,7 @@ fn assert_eval_matched(
     finding_index: usize,
     expected_id: &str,
 ) {
-    let outcomes = evaluate(cfg, findings, CheckMode::NoNew);
+    let outcomes = evaluate(cfg, findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let matched = outcomes
         .iter()
         .filter(|outcome| {

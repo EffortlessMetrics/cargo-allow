@@ -163,17 +163,23 @@ impl EvalState {
     }
 }
 
-pub fn evaluate(cfg: &AllowConfig, findings: &[Finding], mode: CheckMode) -> Vec<MatchOutcome> {
-    evaluate_detailed(cfg, findings, mode).outcomes
+pub fn evaluate(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    mode: CheckMode,
+    as_of: SimpleDate,
+) -> Vec<MatchOutcome> {
+    evaluate_detailed(cfg, findings, mode, as_of).outcomes
 }
 
 pub fn evaluate_detailed(
     cfg: &AllowConfig,
     findings: &[Finding],
     mode: CheckMode,
+    as_of: SimpleDate,
 ) -> MatchEvaluation {
     let mut state = EvalState::default();
-    let today = SimpleDate::today_utc_approx();
+    let today = as_of;
 
     for (finding_index, finding) in findings.iter().enumerate() {
         let ctx = FindingContext {

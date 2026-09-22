@@ -90,7 +90,7 @@ fn canonical_companion_findings_match_migrated_policy_entries() {
         canonical_companion_findings(&dir, &cfg, &inventory_files).unwrap_or_else(|err| {
             std::panic::panic_any(format!("canonical companion findings: {err}"))
         });
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
 
     assert_eq!(findings.len(), 6);
     assert!(

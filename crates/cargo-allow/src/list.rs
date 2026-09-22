@@ -64,7 +64,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let all_rows = list_rows_with_source_tree_files(

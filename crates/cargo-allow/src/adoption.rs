@@ -355,7 +355,7 @@ fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     }
 
     let report_cfg = report_config(&context.cfg, None)?;
-    let outcomes = evaluate(&report_cfg, &context.findings, CheckMode::Audit);
+    let outcomes = evaluate(&report_cfg, &context.findings, CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
     let evidence_files = crate::evidence_inventory::current_evidence_source_tree_files(
         &root,
         args.include_untracked,

@@ -12,7 +12,7 @@ fn baseline_debt_location_drift_is_mode_aware() -> Result<(), String> {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let no_new = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::NoNew);
+    let no_new = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
     let no_new_outcome = no_new
         .iter()
         .find(|outcome| outcome.finding_index == Some(0))
@@ -26,7 +26,7 @@ fn baseline_debt_location_drift_is_mode_aware() -> Result<(), String> {
     );
 
     for mode in [CheckMode::Strict, CheckMode::Release] {
-        let outcomes = evaluate(&cfg, std::slice::from_ref(&finding), mode);
+        let outcomes = evaluate(&cfg, std::slice::from_ref(&finding), mode, allow_core::SimpleDate::today_utc_approx());
         let outcome = outcomes
             .iter()
             .find(|outcome| outcome.finding_index == Some(0))
@@ -60,7 +60,7 @@ fn baseline_debt_location_drift_remains_per_finding() -> Result<(), String> {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[moved, anchored], CheckMode::Release);
+    let outcomes = evaluate(&cfg, &[moved, anchored], CheckMode::Release, allow_core::SimpleDate::today_utc_approx());
     let moved_outcome = outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(0))
