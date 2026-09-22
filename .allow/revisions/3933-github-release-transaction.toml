@@ -1,0 +1,25 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11331"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ecda8e70b25ec9c2754cbb206b380c55aea6566935fb006947df9729ff9db0a9"
+reason = "receipt for docs/release/github-release-transaction-v1.md, the GitHub Release transaction protocol (#3933)"
+
+[[records]]
+allow_ids = ["allow-11332"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9f4ee2f266cf444e68037d4102f78b49e374ddff36207897fad7003ccc273a25"
+reason = "receipt for docs/schemas/cargo-allow.github-release-journal.v1.schema.json, the GitHub Release journal contract schema (#3933)"
+
+[[records]]
+allow_ids = ["allow-11333"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6a0025567ba508bb45a6c23c99c5993447b8caed9004da1f1af28f8076d250fd"
+reason = "receipt for docs/schemas/cargo-allow.github-release-checkpoint.v1.schema.json, the GitHub Release checkpoint contract schema (#3933)"
+
+[[records]]
+allow_ids = ["allow-11334"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f829c7d5f56bdce93e9ee7ae1278139423989b73bc26ae670d1c95a8c67d1992"
+reason = "self-receipt for this #3933 revision note file; no external release operation is authorized"

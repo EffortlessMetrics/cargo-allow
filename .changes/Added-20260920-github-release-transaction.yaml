@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Crash-consistent GitHub Release transaction history: an append-only journal
+  for draft creation, exact asset uploads, actual-state reconciliation, and
+  one-way public finalization, plus independently readable remote checkpoints
+  per journal prefix. Every record carries the canonical #3940 operation
+  identity digest; unknown API responses reconcile by exact observation,
+  same-name wrong-byte assets are incidents, and no real GitHub Release is
+  created, edited, published, or deleted (#3933).

@@ -14,6 +14,8 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "cargo-allow.release-operation-authority.v1",
     "cargo-allow.publication-checkpoint.v1",
     "cargo-allow.publication-recovery.v1",
+    "cargo-allow.github-release-journal.v1",
+    "cargo-allow.github-release-checkpoint.v1",
     "cargo-allow.release-authorization.v1",
     "cargo-allow.release-operation-lease.v1",
     "cargo-allow.release-authorization-custody.v1",

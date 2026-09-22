@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.github-release-checkpoint.v1.schema.json",
+  "title": "CargoAllowGitHubReleaseCheckpointV1",
+  "description": "Remotely durable checkpoint for one GitHub Release journal prefix: exact operation and journal-prefix identity, monotonic sequence linkage, immutable provider object identity, producer trust, retention, and readback classification. Structural validation creates, edits, publishes, or deletes no real GitHub Release.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "checkpoint_id",
+    "operation_id",
+    "operation_identity_digest",
+    "operation_class",
+    "authorization_digest",
+    "custody_digest",
+    "freeze_digest",
+    "repository",
+    "tag",
+    "journal_head_sequence",
+    "journal_head_digest",
+    "checkpoint_sequence",
+    "prior_checkpoint_digest",
+    "kind",
+    "github_release_id",
+    "gated_mutation",
+    "provider",
+    "producer",
+    "retention_days",
+    "created_at_unix_seconds",
+    "expires_at_unix_seconds",
+    "note",
+    "readback",
+    "readback_at_unix_seconds",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.github-release-checkpoint.v1" },
+    "schema_version": { "const": 1 },
+    "checkpoint_id": { "type": "string", "minLength": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation_identity_digest": { "$ref": "#/$defs/digest" },
+    "operation_class": {
+      "type": "string",
+      "enum": ["clean_final_publication", "incident_recovery"]
+    },
+    "authorization_digest": { "$ref": "#/$defs/digest" },
+    "custody_digest": { "$ref": "#/$defs/digest" },
+    "freeze_digest": { "$ref": "#/$defs/digest" },
+    "repository": { "type": "string", "minLength": 1 },
+    "tag": { "type": "string", "minLength": 1 },
+    "journal_head_sequence": { "type": "integer", "minimum": 1 },
+    "journal_head_digest": { "$ref": "#/$defs/digest" },
+    "checkpoint_sequence": { "type": "integer", "minimum": 1 },
+    "prior_checkpoint_digest": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["pre_mutation_durable", "post_observation"]
+    },
+    "github_release_id": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "gated_mutation": { "type": "string", "minLength": 1 },
+    "provider": { "$ref": "#/$defs/provider_object" },
+    "producer": { "$ref": "#/$defs/producer" },
+    "retention_days": { "type": "integer", "minimum": 1, "maximum": 90 },
+    "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "expires_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "note": { "type": "string", "maxLength": 256 },
+    "readback": {
+      "type": "string",
+      "enum": ["complete", "missing", "stale", "mismatch", "provider_unavailable", "instrument_failure"]
+    },
+    "readback_at_unix_seconds": {
+      "oneOf": [{ "type": "null" }, { "type": "integer", "minimum": 1 }]
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "provider_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "object_id", "object_name", "object_digest", "object_size_bytes"],
+      "properties": {
+        "provider": { "const": "github_actions_artifact" },
+        "object_id": { "type": "string", "minLength": 1 },
+        "object_name": { "type": "string", "minLength": 1 },
+        "object_digest": { "$ref": "#/$defs/digest" },
+        "object_size_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow", "run", "attempt", "job", "git_ref", "commit"],
+      "properties": {
+        "workflow": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1 },
+        "git_ref": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
