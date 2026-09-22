@@ -53,6 +53,7 @@ mod release_manifest_v2;
 mod release_operation_authority_v1;
 mod release_operation_lease_v1;
 mod release_operation_v1;
+mod relocated_package_docs_receipt_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
@@ -517,6 +518,13 @@ pub use release_operation_lease_v1::{
 pub use release_operation_v1::{
     AggregateOperationStateV1, CargoAllowReleaseOperationV1, OperationClassV1,
     OperationEventKindV1, OperationEventV1,
+};
+pub use relocated_package_docs_receipt_v1::{
+    CargoAllowRelocatedPackageDocsReceiptV1, RELOCATED_PACKAGE_DOCS_CLAIM_BOUNDARY_V1,
+    RELOCATED_PACKAGE_DOCS_EXPECTED_ROWS_V1, RELOCATED_PACKAGE_DOCS_RECEIPT_SCHEMA_V1,
+    RelocatedPackageDocsAggregateV1, RelocatedPackageDocsBasisV1, RelocatedPackageDocsNegativeV1,
+    RelocatedPackageDocsReferenceProjectionV1, RelocatedPackageDocsResultV1,
+    RelocatedPackageDocsRowV1,
 };
 pub use why::{
     EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyProofPlan, WhyReport,
