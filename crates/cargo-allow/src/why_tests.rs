@@ -433,8 +433,59 @@ fn render_why_points_matched_findings_to_explain() {
         score: 200,
     };
     let text = render_why_text(&finding, &outcome, &[]);
+    assert!(
+        text.starts_with("# Why this finding is receipted\n"),
+        "matched findings must open with the receipted heading, got {}",
+        text.lines().next().unwrap_or_default()
+    );
     assert!(text.contains("Already receipted"));
     assert!(text.contains("cargo-allow explain allow-0007"));
+}
+
+#[test]
+fn render_why_heading_tracks_the_typed_outcome() {
+    let finding = sample_finding_at("src/lib.rs", 10);
+    let outcome_for = |status: MatchStatus, allow_id: Option<&str>| MatchOutcome {
+        status,
+        allow_id: allow_id.map(str::to_string),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "fixture".to_string(),
+        score: 0,
+    };
+
+    // Genuinely new findings keep the unreceipted heading.
+    let text = render_why_text(&finding, &outcome_for(MatchStatus::New, None), &[]);
+    assert!(text.starts_with("# Why this finding is unreceipted\n"));
+
+    // Matched findings must never claim unreceipted.
+    let text = render_why_text(
+        &finding,
+        &outcome_for(MatchStatus::Matched, Some("allow-0007")),
+        &[],
+    );
+    assert!(text.starts_with("# Why this finding is receipted\n"));
+
+    // Non-clean outcomes stay neutral: they claim neither an unreceipted gap
+    // nor a satisfied receipt.
+    for status in [
+        MatchStatus::Stale,
+        MatchStatus::Expired,
+        MatchStatus::ReviewDue,
+        MatchStatus::LocationDrift,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ] {
+        let text = render_why_text(&finding, &outcome_for(status, Some("allow-0007")), &[]);
+        assert!(
+            text.starts_with("# Why this finding has its current status\n"),
+            "status {status:?} should use the neutral heading, got {}",
+            text.lines().next().unwrap_or_default()
+        );
+    }
 }
 
 #[test]

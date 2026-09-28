@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  cargo-allow why no longer labels matched findings unreceipted in the human
+  report heading. The heading now follows the typed match outcome: new findings
+  keep the unreceipted heading, matched findings state they are receipted, and
+  non-clean postures use a neutral heading that claims neither.
+time: 2026-09-21T00:00:00Z

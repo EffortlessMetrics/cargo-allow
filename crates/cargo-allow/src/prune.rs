@@ -91,6 +91,17 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     };
     let _mutation_lock = mutation_lock;
     let (cfg, policy_digest) = load_selected_mutation_policy(&policy_path)?;
+    // Reject an unknown --allow-id immediately after the selected policy
+    // loads (#4199): a later world-loading failure must not mask the typed
+    // usage diagnostic, and an ID already known to be absent must not pay
+    // for inventory or scanning. The write lock above intentionally stays
+    // ahead of this check; moving the lock outside its read/write
+    // protection boundary is out of scope.
+    if let Some(selected) = args.allow_id.as_deref()
+        && !cfg.allow.iter().any(|entry| entry.id == selected)
+    {
+        return Err(missing_allow_entry_error(selected));
+    }
     let (root, cfg, findings, inventory_facts, _federation) =
         load_world_from_resolved_policy_with_options(
             &root,
@@ -104,14 +115,12 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
     // --allow-id selects one entry before any preview, receipt,
-    // summary, or write derives from the candidate set (#4176): an
-    // unknown id fails before any output; a known id that is not
-    // stale is a no-op with no unrelated candidate.
+    // summary, or write derives from the candidate set (#4176); the
+    // unknown-id case already failed with a typed Usage diagnostic
+    // before the world load (#4199). A known id that is not stale is
+    // a no-op with no unrelated candidate.
     let candidates = match args.allow_id.as_deref() {
         Some(selected) => {
-            if !cfg.allow.iter().any(|entry| entry.id == selected) {
-                return Err(missing_allow_entry_error(selected));
-            }
             let selected_candidates: Vec<_> = candidates
                 .into_iter()
                 .filter(|candidate| candidate.id == selected)

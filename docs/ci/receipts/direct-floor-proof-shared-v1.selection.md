@@ -7,18 +7,18 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: shared
 - Package roots: effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit, effortless-rust-source-index
 - Selected closure: effortless-repo-edit, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index
-- Starting source commit: d60511ad507beb50771f2a514c03a5630b83b3da
+- Starting source commit: c2131ec3fe8c0ec88c293ed438f603f4bbaf6c15
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
-- Projected manifest digest: sha256:v1:25016f5576d535f68b5f6020e6ff67d4fedff41db19239efc8a55b0701f8bdfc
+- Projected manifest digest: sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
-- Executed floor commit: 2a133fdec1269b48e880a2e3c191615070d547ad
-- Executed floor tree: b3d358b70641c702046a9d1b024083ba4fc88edd
+- Executed floor commit: 796feea32fb11e3d430e06ed80e997e22591d0de
+- Executed floor tree: 719322a961c97f79fa5ee8ef861cff23100a2b20
 - Receipt: direct-floor-proof-shared-v1.json
-- Receipt SHA-256: sha256:v1:8ca452bfccf692a312c90de5f68f704b072fbb7bba054849c79f3b5eccbd64b8
-- Manifest-set digest: 2bac8c4a8f2c583948dc365a5c77cb6f694e47f75a9ece6fd24980417ec2474f
+- Receipt SHA-256: sha256:v1:b9bfbfd0b9c3ba3c7925948e895fbb1267737769f55017366e6056e447ee8c1a
+- Manifest-set digest: 0ca4f9eb8992041fde83c1c720bbc1aa51895f603382ca68c5f18255ce52a328
 - Starting lock digest: c6730d656e7686213bf37e4fa4474bbe61824039b31fdfb02d25bcee92e98775
-- Executed floor-lock digest: sha256:v1:c625be28de5b84cf28d5bb5c1e57b06dad6e81c40f1281a38a77a6d15dfadf41
+- Executed floor-lock digest: sha256:v1:7b24bc6772437884f9c7d729a73f647d7d7ed8bf20f167d421f873628bccc05d
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
 | --- | --- | --- | --- | --- | --- |
