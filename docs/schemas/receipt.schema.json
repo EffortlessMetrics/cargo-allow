@@ -117,6 +117,11 @@
         "enum": ["advisory", "shadow", "blocking"]
       }
     },
+    "lifecycle_posture": {
+      "type": "string",
+      "enum": ["candidate-mode", "calendar-expiry-blocking"],
+      "description": "Which lifecycle law governed this run's no-new evaluation (#4238): candidate-mode (default) or the legacy calendar-expiry-blocking opt-out."
+    },
     "git_sha": {
       "type": ["string", "null"],
       "description": "Git commit SHA at scan time, for receipt provenance binding."

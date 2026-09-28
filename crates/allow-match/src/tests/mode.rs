@@ -14,7 +14,12 @@ fn check_mode_failure_policy_matches_enforcement_levels() {
     assert!(!CheckMode::Audit.fails(MatchStatus::New));
     assert!(CheckMode::NoNew.fails(MatchStatus::New));
     assert!(!CheckMode::NoNew.fails(MatchStatus::Stale));
-    assert!(CheckMode::NoNew.fails(MatchStatus::Expired));
+    // #4238: Expired is annotation-only in no-new (candidate-mode lifecycle
+    // law); Strict/Release keep failing it so the calendar never silently
+    // downgrades a hard gate.
+    assert!(!CheckMode::NoNew.fails(MatchStatus::Expired));
+    assert!(CheckMode::Strict.fails(MatchStatus::Expired));
+    assert!(CheckMode::Release.fails(MatchStatus::Expired));
     assert!(CheckMode::Strict.fails(MatchStatus::Stale));
     assert!(CheckMode::Release.fails(MatchStatus::BaselineDebt));
     assert!(!CheckMode::Strict.fails(MatchStatus::Matched));

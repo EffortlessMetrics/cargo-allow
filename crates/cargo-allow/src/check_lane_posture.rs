@@ -18,6 +18,14 @@ pub(crate) fn check_outcome_fails(
     if status == MatchStatus::Stale && cfg.requirements.stale_entries_fail {
         return true;
     }
+    // Legacy calendar-expiry posture (#4238): `calendar_expiry_blocks_no_new
+    // = true` restores the pre-candidate-mode law where any Expired outcome
+    // fails no-new regardless of match tier. The projected read-model status
+    // is checked so an entry whose dates have passed blocks even when its
+    // outcome row was evaluated before the boundary.
+    if status == MatchStatus::Expired && cfg.requirements.calendar_expiry_blocks_no_new {
+        return true;
+    }
     mode.fails(status)
 }
 
@@ -34,11 +42,10 @@ pub(crate) fn check_failed_for_outcomes(
     );
 
     outcomes.iter().any(|outcome| {
-        let status = outcome
-            .allow_id
-            .as_deref()
-            .and_then(|allow_id| projected_statuses.get(allow_id).copied())
-            .unwrap_or(outcome.status);
+        // A finding-level `New` (e.g. the broad-expiry re-raise) must not be
+        // downgraded to the date-first entry-level `Expired` annotation, or
+        // the no-new gate silently passes what `diff --base` blocks (#4238).
+        let status = allow_report::ledger_outcome_status(&projected_statuses, outcome);
         check_outcome_fails(outcome, status, findings, cfg, mode)
     })
 }

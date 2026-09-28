@@ -114,6 +114,12 @@ fn requirement_fields(base: &Requirements, head: &Requirements) -> Vec<Requireme
             true,
         ),
         field(
+            RequirementChangeField::CalendarExpiryBlocksNoNew,
+            base.calendar_expiry_blocks_no_new,
+            head.calendar_expiry_blocks_no_new,
+            true,
+        ),
+        field(
             RequirementChangeField::UnsafeEvidenceRequired,
             base.unsafe_evidence_required,
             head.unsafe_evidence_required,

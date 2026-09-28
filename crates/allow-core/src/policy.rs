@@ -176,6 +176,15 @@ pub struct Requirements {
     pub allow_bare_allow_attributes: bool,
     pub lint_policy_id_required: bool,
     pub stale_entries_fail: bool,
+    /// Legacy posture switch (#4238). When `true`, any `Expired` match
+    /// outcome fails the no-new gate regardless of match tier — the
+    /// pre-candidate-mode behavior where calendar expiry alone blocks.
+    /// Default `false`: no-new candidate evaluation treats expired exact,
+    /// structural, or occurrence-bounded matches as authorized (annotation
+    /// only), while expired broad matchers lose authority and re-raise their
+    /// findings as new. Strict and Release always treat `Expired` as a
+    /// failure. Default: false (candidate-mode lifecycle law, #4236/#4238).
+    pub calendar_expiry_blocks_no_new: bool,
     pub unsafe_evidence_required: bool,
     pub unsafe_safety_comment_required: bool,
     /// Require at least one verified local-file evidence reference for unsafe
@@ -202,6 +211,7 @@ impl Default for Requirements {
             allow_bare_allow_attributes: false,
             lint_policy_id_required: false,
             stale_entries_fail: false,
+            calendar_expiry_blocks_no_new: false,
             unsafe_evidence_required: true,
             unsafe_safety_comment_required: false,
             unsafe_verified_evidence_required: false,
@@ -489,10 +499,19 @@ impl MatchStatus {
     }
 
     pub fn is_failure_in_no_new(self) -> bool {
+        // Expired is annotation-only in no-new (#4236/#4238): lifecycle
+        // cadence is not candidate authority, so a date passing must not turn
+        // an unchanged, otherwise-authorized match into policy debt. Exact,
+        // structural, and occurrence-bounded matches stay authorized when
+        // expired; expired broad matchers lose authority and re-raise their
+        // findings as `New`, which still fails here. Repositories that need
+        // the pre-#4238 posture set
+        // `requirements.calendar_expiry_blocks_no_new = true`, which re-blocks
+        // `Expired` at the gate layer (strict/release keep failing on
+        // `Expired` unconditionally).
         matches!(
             self,
             Self::New
-                | Self::Expired
                 | Self::Ambiguous
                 | Self::InvalidSelector
                 | Self::MissingRequiredField

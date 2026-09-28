@@ -1,6 +1,13 @@
 use allow_core::{AllowEntry, MatchStatus, SimpleDate};
 
 pub(crate) fn unused_entry_status(entry: &AllowEntry, today: SimpleDate) -> MatchStatus {
+    // A malformed lifecycle date is a policy defect, not a maintenance
+    // posture: fail closed even when no finding currently matches (#1804,
+    // #4238). Collapsing into `Expired` would silently become advisory once
+    // expiry lost candidate authority.
+    if malformed_lifecycle_reason(entry).is_some() {
+        return MatchStatus::MissingRequiredField;
+    }
     if entry_is_expired(entry, today) {
         return MatchStatus::Expired;
     }
@@ -10,11 +17,40 @@ pub(crate) fn unused_entry_status(entry: &AllowEntry, today: SimpleDate) -> Matc
     MatchStatus::Stale
 }
 
+/// Human-readable reason an entry's lifecycle dates are malformed, when they
+/// are. `expires = "never"` is the documented immortal form and never
+/// malformed.
+///
+/// The caller must treat `Some` as fail-closed: an unparseable date must never
+/// silently become advisory or silently authorize (#1804).
+pub(crate) fn malformed_lifecycle_reason(entry: &AllowEntry) -> Option<String> {
+    if let Some(expires) = entry.lifecycle.expires.as_deref()
+        && expires != "never"
+        && SimpleDate::parse(expires).is_none()
+    {
+        return Some(format!(
+            "{} has malformed lifecycle date: expires `{expires}` is not a parseable YYYY-MM-DD date; failing closed (#1804)",
+            entry.id
+        ));
+    }
+    if let Some(review_after) = entry.lifecycle.review_after.as_deref()
+        && SimpleDate::parse(review_after).is_none()
+    {
+        return Some(format!(
+            "{} has malformed lifecycle date: review_after `{review_after}` is not a parseable YYYY-MM-DD date; failing closed (#1804)",
+            entry.id
+        ));
+    }
+    None
+}
+
 /// Returns true if the entry's `expires` date has passed.
 ///
 /// Fail-safe: if `expires` is `Some` but unparseable (e.g. `"2026-13-40"`),
 /// the entry is treated as expired. A malformed expiry must never silently
-/// make an entry immortal (#1804).
+/// make an entry immortal (#1804). Classification funnels malformed dates
+/// through [`malformed_lifecycle_reason`] to a blocking status before this
+/// predicate is consulted, so the fail-safe here only guards direct callers.
 pub(crate) fn entry_is_expired(entry: &AllowEntry, today: SimpleDate) -> bool {
     match entry.lifecycle.expires.as_deref() {
         Some("never") => false,

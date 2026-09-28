@@ -1080,6 +1080,7 @@ fn explain_facts() -> ExplainSummaryFactsV1 {
         attention_status: None,
         matching_finding_count: 2,
         suggested_actions: Vec::new(),
+        calendar_expiry_blocks_no_new: false,
         claim_boundary: ClaimBoundaryV1::new("one ledger entry only"),
     }
 }
@@ -1105,6 +1106,7 @@ fn why_facts() -> WhySummaryFactsV1 {
         near_miss_candidate_count: 0,
         suggested_actions: Vec::new(),
         plan_path: None,
+        calendar_expiry_blocks_no_new: false,
         claim_boundary: ClaimBoundaryV1::new("one finding only"),
     }
 }
@@ -1120,6 +1122,7 @@ fn worklist_facts() -> WorklistSummaryFactsV1 {
         coverage_limitation: None,
         items: Vec::new(),
         filtered: false,
+        calendar_expiry_blocks_no_new: false,
         claim_boundary: ClaimBoundaryV1::new("queued maintenance work only"),
     }
 }

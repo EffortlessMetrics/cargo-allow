@@ -70,6 +70,30 @@ pub fn ledger_read_statuses<'a>(
         .collect()
 }
 
+/// The effective read status for ONE outcome row against the entry-level
+/// projection from [`ledger_read_statuses`] (#4238).
+///
+/// A finding-level `New` is authoritative and must never be downgraded to the
+/// entry-level lifecycle annotation: the matcher re-raises findings under
+/// expired broad (identity-free, unbounded) entries as `New`, and replacing
+/// that row status with the date-first `Expired` projection masked a no-new
+/// failure at the check gate while `diff --base` still counted it. Every
+/// other row keeps the entry projection, so plain `Matched` rows stay
+/// annotated as `Expired`/`ReviewDue` for visibility (the L1/L6 surface).
+pub fn ledger_outcome_status(
+    projected_statuses: &BTreeMap<&str, MatchStatus>,
+    outcome: &MatchOutcome,
+) -> MatchStatus {
+    if outcome.status == MatchStatus::New {
+        return MatchStatus::New;
+    }
+    outcome
+        .allow_id
+        .as_deref()
+        .and_then(|allow_id| projected_statuses.get(allow_id).copied())
+        .unwrap_or(outcome.status)
+}
+
 pub fn ledger_project_outcomes(
     cfg: &AllowConfig,
     outcomes: &[MatchOutcome],
@@ -224,6 +248,47 @@ mod tests {
         let projected = ledger_project_outcomes(&cfg, &[matched], today);
 
         assert_eq!(projected[0].status, MatchStatus::Matched);
+    }
+
+    #[test]
+    fn outcome_status_keeps_reraised_new_over_entry_expiry_annotation() {
+        // #4238 gate-masking repair: under one expired entry, the re-raised
+        // broad-expiry finding row must read as `New` (no-new blocking) while
+        // the sibling plain `Matched` row keeps the date-first `Expired`
+        // annotation surface.
+        let mut entry = test_entry(None);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let mut reraised = test_outcome(MatchStatus::New);
+        reraised.finding_index = Some(0);
+        let matched = test_outcome(MatchStatus::Matched);
+        let today = SimpleDate {
+            year: 2026,
+            month: 7,
+            day: 14,
+        };
+
+        let statuses = ledger_read_statuses(&cfg, &[reraised.clone(), matched], today);
+        assert_eq!(
+            statuses.get("allow-test"),
+            Some(&MatchStatus::Expired),
+            "the entry-level projection stays date-first"
+        );
+        assert_eq!(
+            ledger_outcome_status(&statuses, &reraised),
+            MatchStatus::New,
+            "the re-raised finding row must not be downgraded"
+        );
+
+        let plain_matched = test_outcome(MatchStatus::Matched);
+        let matched_statuses =
+            ledger_read_statuses(&cfg, std::slice::from_ref(&plain_matched), today);
+        assert_eq!(
+            ledger_outcome_status(&matched_statuses, &plain_matched),
+            MatchStatus::Expired,
+            "a plain Matched row keeps the entry expiry annotation"
+        );
     }
 
     fn test_entry(occurrence_limit: Option<u32>) -> AllowEntry {

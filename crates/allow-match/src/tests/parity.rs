@@ -192,7 +192,11 @@ fn baseline_debt_strict_and_release_have_parity() {
 }
 
 #[test]
-fn expired_case_has_parity_and_stays_non_live() {
+fn expired_exact_case_has_parity_and_consumes_as_authorized() {
+    // #4238 candidate-mode law: an expired exact match is authorized
+    // survival — it consumes the entry as live (no stale projection) while
+    // keeping the `Expired` annotation. Parity must hold: a weaker
+    // non-live neighbor must not change the strong entry's outcome.
     let mut entry = strong_entry();
     entry.lifecycle.expires = Some("2020-01-01".to_string());
     let mut single = AllowConfig::empty();
@@ -216,9 +220,8 @@ fn expired_case_has_parity_and_stays_non_live() {
     assert_eq!(single_view, paired_view);
     let view = single_view;
     assert_eq!(view.winner_statuses, vec![MatchStatus::Expired]);
-    // Expired is non-live: it must still emit the stale projection even with a
-    // weaker neighbor present (the core #2336 regression).
-    assert_eq!(view.projection_status, Some(MatchStatus::Stale));
+    // Authorized-survival Expired consumes the entry: no stale projection.
+    assert_eq!(view.projection_status, None);
 }
 
 #[test]
@@ -301,12 +304,12 @@ fn occurrence_limit_exceeded_has_parity() -> Result<(), String> {
 }
 
 #[test]
-fn expired_unique_strongest_does_not_consume_live_occurrence_headroom() {
-    // The named minimum acceptance case (#2336): an expired unique-strongest
-    // candidate with a limit of 1, hit by two findings, must classify both as
-    // Expired and must NOT spend a live occurrence slot on the first (which
-    // would spuriously trip occurrence_limit-exceeded on the second). This is
-    // exactly the divergence the old duplicated branch introduced.
+fn expired_bounded_entry_spends_headroom_as_bounded_denominator() {
+    // #4238 fixture (e): an expired bounded entry (limit 1) authorizes its
+    // exact matches and spends live headroom while consumed count < limit;
+    // the (limit+1)-th finding is a blocking `New` occurrence-limit-exceeded.
+    // Calendar expiry neither expands the bound nor erases it. Parity holds
+    // with a weaker neighbor present.
     let mut entry = strong_entry();
     entry.lifecycle.expires = Some("2020-01-01".to_string());
     entry.occurrence_limit = Some(1);
@@ -331,17 +334,22 @@ fn expired_unique_strongest_does_not_consume_live_occurrence_headroom() {
     ));
     assert_eq!(single_view, paired_view);
     let view = single_view;
-    // Both findings classify as Expired; neither becomes an occurrence-exceeded
-    // New outcome, because a non-live status consumes no live headroom.
+    // First finding: authorized-survival Expired, consumes the slot.
+    // Second finding: over the bound — blocking New.
     assert_eq!(
         view.winner_statuses,
-        vec![MatchStatus::Expired, MatchStatus::Expired]
+        vec![MatchStatus::Expired, MatchStatus::New]
     );
-    assert_eq!(view.projection_status, Some(MatchStatus::Stale));
-    assert!(
-        !view.winner_statuses.contains(&MatchStatus::New),
-        "expired unique-strongest candidate must not trip occurrence_limit exceeded"
-    );
+    // The entry was consumed by the first authorized match: no stale
+    // projection for the strong entry.
+    assert_eq!(view.projection_status, None);
+    let Some(accounting) = view.accounting else {
+        std::panic::panic_any("expired bounded entry must report occurrence accounting")
+    };
+    assert_eq!(accounting.observed_count, 2);
+    assert_eq!(accounting.occurrence_limit, 1);
+    assert_eq!(accounting.headroom, 0);
+    assert_eq!(accounting.exceeded_count, 1);
 }
 
 #[test]
