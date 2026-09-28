@@ -1,0 +1,428 @@
+{
+  "schema": "cargo-allow.relocated-package-docs.v1",
+  "basis": {
+    "exact_candidate_receipt_digest": "298c1882d1baf1baed56f031cae546b05fe66e4ba732f7b7e91c47b4cd944d91",
+    "packaged_surface_digest": "b6059a9fa890656a045f6510e0ab8c41c944f9c96e73b093402ab98dbca8918b",
+    "git_head": "0264310fc8d41216b4ae2882bbdb736e33ce76bd",
+    "toolchain": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "network_posture": "fetch_warm_may_use_crates_io",
+    "isolation": "local_registry_offline"
+  },
+  "rows": [
+    {
+      "name": "allow-core",
+      "version": "0.2.0",
+      "crate_sha256": "c08fc976f3433e9f22568d519205003be34ca7b45cf6b9a07fbe80a53c426bf4",
+      "crate_size_bytes": 52151,
+      "manifest_digest": "ee47df24ffe4e5e0127ea196e7d8d28a74a578f9a06ce3b15098b636905f72ee",
+      "file_list_digest": "1c8ff0c343bd8072c83dac8515583c766a9163def6662cb5a2effb0240a59bdb",
+      "readme_present": true,
+      "readme_sha256": "ea7fdcf09bceff67ed6ae111e25037c5224e7904e4f29372da190600f0ab1478",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Core data model",
+      "limitation_marker": "It does not scan source files",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-policy",
+      "version": "0.2.0",
+      "crate_sha256": "92076a2763cd39ba79834033e59c355c0706dcca2f5f414a87d2db772bb0a775",
+      "crate_size_bytes": 205787,
+      "manifest_digest": "b90f98f67e7309bd4926fa64a7c6fb8f8c9360084e261a43ef5243c1582a1749",
+      "file_list_digest": "d463d5d246b979d8f7a94baccfe8b1e31dd8463976a256e9497ae3263a5fe82b",
+      "readme_present": true,
+      "readme_sha256": "a2adfd8e4a7851b89f56ccaa1dccea85c8c96172c651ed11be46941bde42cd36",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Canonical policy loading",
+      "limitation_marker": "without executing linked",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-inventory",
+      "version": "0.2.0",
+      "crate_sha256": "cc04dec8082df1bbff0a7b2b09ec23f89725b5edb926b8c7793833aafb41e0d5",
+      "crate_size_bytes": 77997,
+      "manifest_digest": "3e1dd3d822ef41a82d805c688cab970c6538e0066c555842a9fae2f890458528",
+      "file_list_digest": "1efdb61f9a70a802d7845180350cf452003aeee9fe6e5f3408fbbd2e6a8cd370",
+      "readme_present": true,
+      "readme_sha256": "d1aca38ef4bd654a52985525dd8054659f2b6705dfc6e0e5ca6a5fffda404f5f",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Source-tree root discovery and file inventory",
+      "limitation_marker": "does not call `cargo metadata`",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-files",
+      "version": "0.2.0",
+      "crate_sha256": "7a657fe1f6e1819668bd27fdae174a254ebc3cfc989b23f3673beb4376de9f75",
+      "crate_size_bytes": 69592,
+      "manifest_digest": "6e184064f768165bde06dc4459e82e710ee7678ca14df6405a06891c793d0ec7",
+      "file_list_digest": "d0ba60ee62517d6f9ddc12c9c38228f732cde849563adfac7274766d180958ec",
+      "readme_present": true,
+      "readme_sha256": "ef77da5cd70dce1c0c46ba9031fe7a94919db0cfe41af56758b48492226e9766",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md",
+        "docs/how-to/run-changie-sensor.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [
+        "changie"
+      ],
+      "features_posture": "documented_optional_changie",
+      "no_default_check_exit": 0,
+      "role_marker": "File-surface scanners",
+      "limitation_marker": "rather than required build metadata",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-rust",
+      "version": "0.2.0",
+      "crate_sha256": "ada16e34bf272b32127f076f33602e1c3aa3b17fa31d8c74ce60b01e1888573e",
+      "crate_size_bytes": 98089,
+      "manifest_digest": "737a71edbfb1fb9066462eb66dbd15132aa3421b4158fc27c2a0847891290f97",
+      "file_list_digest": "c2aa9420c4a3cc67331225da5d945ec6c423c8782793d0a41122a059249e445b",
+      "readme_present": true,
+      "readme_sha256": "a63935d1faa0141509513f9eca49273a1e7faddaaa3fd3a32a0df29ca8702dde",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 2,
+      "doctest_posture": "has_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [
+        "default",
+        "syntax"
+      ],
+      "features_posture": "default_features_only",
+      "no_default_check_exit": null,
+      "role_marker": "Source-syntax Rust scanners",
+      "limitation_marker": "It parses source directly without invoking Cargo",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-match",
+      "version": "0.2.0",
+      "crate_sha256": "4a628c262d01248b23acabbefdb48fb3b71b15a09b3139e4161f3ff16d35fd00",
+      "crate_size_bytes": 38845,
+      "manifest_digest": "ee64ef99c48c9d6e410c6692ade170637b662d2cb8d2da97dbbe5e2dc495f2a4",
+      "file_list_digest": "f0c226cbcdc3b12f26b3639ab454d4088e5e208d0327a3aff36c5e75d23d2431",
+      "readme_present": true,
+      "readme_sha256": "614f54c6d2541fb2bc10dc8b9256c73761455c17c3aa89c7a28f00e7cabb835b",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Structural finding-to-policy matching",
+      "limitation_marker": "It only reasons over source-syntax findings",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-report",
+      "version": "0.2.0",
+      "crate_sha256": "d695fb6e59f542067612c537eca68c5f0074bf9b612f543fb03e9ea2b3100da3",
+      "crate_size_bytes": 474775,
+      "manifest_digest": "039f940a15d46cfd502a73107a648764d9bbeeb19223d753e5fcd04ad8d44365",
+      "file_list_digest": "d1357ba90c16bc21d404cdda6b8c0c4213b0654a3183d40688f4702f4f0c885b",
+      "readme_present": true,
+      "readme_sha256": "97c024c667fdddcf80b75e18aed344fd50fd871f19f1752642a14cf070ca2eb1",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "examples_built",
+      "examples_exit": 0,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Human and machine artifact rendering",
+      "limitation_marker": "they do not perform scanning or validation",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-policy-legacy",
+      "version": "0.2.0",
+      "crate_sha256": "32eeb166b5be75ed4e2d8bbf892200ebf3b570bbabd4b884b26755ac540adddc",
+      "crate_size_bytes": 94687,
+      "manifest_digest": "a1bf78c1b304064ad97dd81a31f110b24ea5ce68fc944979ca60d26994307f1a",
+      "file_list_digest": "d069ab49a1084f9bd5b40c63e6662e007216b05e6aac3056660c37f372df3482",
+      "readme_present": true,
+      "readme_sha256": "dca5134f6e7379c10eade9338622040beda0096097b73ca3542776e3696fb529",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "Legacy policy adapters for cargo-allow migrations",
+      "limitation_marker": "it does not execute legacy xtasks",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "allow-diff",
+      "version": "0.2.0",
+      "crate_sha256": "6eddfc4e233604f4a308f132283037552477fea1d48cbb04d47e7fef1d991af2",
+      "crate_size_bytes": 90624,
+      "manifest_digest": "26ea538f55e242f75a38f20eccbf35708c6232862c0af086e27bb6b7468e6a72",
+      "file_list_digest": "625821d814d1411663f42c49dd3b1e2dc3c62b792f95e2cca45868002e4fcaca",
+      "readme_present": true,
+      "readme_sha256": "69702c84d4db400f53609aa1247d6886ba16c1bf840db40cce23dca6d5acc417",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 0,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "PR-posture and policy-diff helpers",
+      "limitation_marker": "it does not invoke Cargo metadata",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    },
+    {
+      "name": "cargo-allow",
+      "version": "0.2.0",
+      "crate_sha256": "cb3a49df20e01aa607a9b6a04bcf63f95ed4dea3d75b5491a7da45768d7970d4",
+      "crate_size_bytes": 1094922,
+      "manifest_digest": "fe850339483a06c61157449b970db612abae4f7289d5288ce5f92bc731e9e94c",
+      "file_list_digest": "7997fdd07250f6eeb8d3543c4bb42049673c7a31b08a92f98483a79e2c918135",
+      "readme_present": true,
+      "readme_sha256": "5e1baec8d055546b3b229d37a24ec8b10ec5a831537962ead4e5198dd4e52319",
+      "license_assets_present": true,
+      "external_repo_refs": [
+        "docs/claim-boundaries.md"
+      ],
+      "reference_projection": {
+        "published_version": "0.1.11",
+        "candidate_version": "0.2.0",
+        "channel_digest": "cb737ba63d2eed51113e8d4f056611a5fa50e1f5f68cf22475e94c4caef5e99a"
+      },
+      "check_exit": 0,
+      "check_warnings": 0,
+      "doc_exit": 0,
+      "doc_warnings": 0,
+      "doc_posture": "clean",
+      "doctest_exit": 101,
+      "doctests_passed": 0,
+      "doctest_posture": "no_public_doctests",
+      "examples_posture": "NoExampleSelected",
+      "examples_exit": null,
+      "features": [],
+      "features_posture": "no_features",
+      "no_default_check_exit": null,
+      "role_marker": "This package builds the `cargo-allow` command-line interface",
+      "limitation_marker": "without executing project code",
+      "sibling_products_separate": true,
+      "result": "complete",
+      "limitations": []
+    }
+  ],
+  "aggregate": {
+    "result": "complete",
+    "complete": 10,
+    "incomplete": 0
+  },
+  "negative_controls": [
+    {
+      "id": "stale_consumed_digest_rejected",
+      "result_class": "Stale",
+      "detail": "a receipt whose consumed input digests no longer match the current bytes is Stale, never current; rows reconcile archive sha256 against the #3851 surface row and record Mismatch on drift"
+    },
+    {
+      "id": "missing_declared_asset_incomplete",
+      "result_class": "Incomplete",
+      "detail": "a missing declared README or license asset makes the row Incomplete with the exact reason in limitations"
+    },
+    {
+      "id": "rc_line_inputs_rejected_as_final",
+      "result_class": "Mismatch",
+      "detail": "any row version containing a prerelease '-' segment is rejected as final identity, mirroring the rc-exclusion law of scripts/final-package-docs.py"
+    },
+    {
+      "id": "workspace_path_success_impossible_by_construction",
+      "result_class": "CheckoutIsolated",
+      "detail": "every run executes from an unpacked .crate root outside the repository with crates.io replaced by the local registry; no workspace path is reachable"
+    },
+    {
+      "id": "no_example_selected_explicit",
+      "result_class": "Complete",
+      "detail": "packages shipping no examples/ record the explicit NoExampleSelected posture, never a silent pass"
+    }
+  ],
+  "claim_boundary": "Relocated proof that the exact final .crate files document, build docs, run doctests, compile-check examples, bind README/license assets, and keep role/claim boundaries outside the repository against a local registry. It proves shipped package documentation works relocated; it does not prove public docs.rs rendering, install-channel availability, authorization, or release publication.",
+  "limitations": [
+    "fetch_warm_may_use_crates_io",
+    "relocated docs.rs rendering is not executed; rustdoc builds relocated instead",
+    "install-channel wording stays governed by the getting-started contract tests",
+    "deeper sibling-product mentions in spec/test modules (allow-policy support_tiers.rs, allow-inventory inventory tests) frame cargo-intent/cargo-proof as separate experimental products; user-facing docs were marker-checked"
+  ]
+}
