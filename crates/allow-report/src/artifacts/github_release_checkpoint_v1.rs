@@ -128,7 +128,8 @@ pub struct CargoAllowGitHubReleaseCheckpointV1 {
     /// GitHub Release ID observed at checkpoint time, when known.
     pub github_release_id: Option<String>,
     /// The mutation this checkpoint gates, as a bounded label (draft-create,
-    /// asset-upload:<name>, finalize). Labels route; they never authorize.
+    /// `asset-upload:` plus the asset name, finalize). Labels route; they
+    /// never authorize.
     pub gated_mutation: String,
     pub provider: GitHubReleaseCheckpointProviderObjectV1,
     pub producer: GitHubReleaseCheckpointProducerV1,
