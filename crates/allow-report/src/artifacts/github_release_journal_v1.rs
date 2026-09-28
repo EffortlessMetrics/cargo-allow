@@ -603,9 +603,6 @@ pub fn append_github_release_journal_event_v1(
             }
         }
     }
-    if append.kind == Event::PublicReleaseObservedExact {
-        journal.is_public = true;
-    }
     let sequence = journal.entries.len() as u64 + 1;
     let previous_digest = journal
         .entries
@@ -679,6 +676,34 @@ pub fn observe_github_release_identity_v1(
     Ok(())
 }
 
+/// Replay one retained entry onto the rebuilt journal and confirm the
+/// recomputed chain binding: sequence, previous link, and canonical digest.
+fn replay_journal_entry_v1(
+    rebuilt: &mut CargoAllowGitHubReleaseJournalV1,
+    entry: &CargoAllowGitHubReleaseJournalEntryV1,
+) -> Result<(), &'static str> {
+    let append = GitHubReleaseJournalAppendV1 {
+        kind: entry.kind,
+        asset_name: entry.asset_name.clone(),
+        actual_asset: entry.actual_asset.clone(),
+        provider_reachable: entry.provider_reachable,
+        at_unix_seconds: entry.at_unix_seconds,
+        reason: entry.reason.clone(),
+    };
+    append_github_release_journal_event_v1(rebuilt, append)?;
+    let replayed = rebuilt
+        .entries
+        .last()
+        .ok_or("journal replay lost its entry")?;
+    if replayed.entry_digest != entry.entry_digest
+        || replayed.sequence != entry.sequence
+        || replayed.previous_digest != entry.previous_digest
+    {
+        return Err("journal entry digest does not match its canonical chain");
+    }
+    Ok(())
+}
+
 /// Revalidate a loaded journal: identity, chain, digests, and transition law.
 pub fn verify_github_release_journal_v1(
     journal: &CargoAllowGitHubReleaseJournalV1,
@@ -729,41 +754,34 @@ pub fn verify_github_release_journal_v1(
         claim_boundary: journal.claim_boundary.clone(),
         limitations: journal.limitations.clone(),
     };
-    // Identity observations replay in entry order: entries that require the
-    // observed release ID must see the same observation the original did.
-    // The rebuilt journal adopts each observed identity exactly when the
-    // original entry sequence first required it.
-    let mut adopted_release_id: Option<String> = None;
-    let mut adopted_is_draft = false;
+    // Identity observations replay exactly where the original bound them:
+    // `observe_github_release_identity_v1` may legally run before any entry
+    // (crash recovery observes the existing draft or release first), so an
+    // entry's digest may already bind the retained identity. The replay
+    // therefore adopts the retained observation at the first entry that
+    // conflicts with the unobserved state, and a journal whose entries were
+    // all built without observation never adopts one: its retained identity
+    // must then match the unobserved replay or the journal is rejected.
+    let mut adopted = false;
     for entry in &journal.entries {
-        if entry.kind == GitHubReleaseJournalEventV1::DraftObservedExact
-            && adopted_release_id.is_none()
-        {
-            adopted_release_id = journal.github_release_id.clone();
-            adopted_is_draft = journal.is_draft;
+        let prefix_len = rebuilt.entries.len();
+        let replayed = replay_journal_entry_v1(&mut rebuilt, entry);
+        if replayed.is_ok() {
+            continue;
         }
-        rebuilt.github_release_id = adopted_release_id.clone();
-        rebuilt.is_draft = adopted_is_draft;
-        let expected_kind = entry.kind;
-        let append = GitHubReleaseJournalAppendV1 {
-            kind: expected_kind,
-            asset_name: entry.asset_name.clone(),
-            actual_asset: entry.actual_asset.clone(),
-            provider_reachable: entry.provider_reachable,
-            at_unix_seconds: entry.at_unix_seconds,
-            reason: entry.reason.clone(),
-        };
-        append_github_release_journal_event_v1(&mut rebuilt, append)?;
-        let rebuilt_entry = rebuilt
-            .entries
-            .last()
-            .ok_or("journal replay lost its entry")?;
-        if rebuilt_entry.entry_digest != entry.entry_digest
-            || rebuilt_entry.sequence != entry.sequence
-            || rebuilt_entry.previous_digest != entry.previous_digest
-        {
-            return Err("journal entry digest does not match its canonical chain");
+        if adopted || journal.github_release_id.is_none() {
+            return replayed;
         }
+        // The original bound its observation before this entry. Recover any
+        // partially appended entry, adopt the retained observation, and
+        // replay the entry once under the observed identity.
+        if rebuilt.entries.len() > prefix_len {
+            rebuilt.entries.pop();
+        }
+        rebuilt.github_release_id = journal.github_release_id.clone();
+        rebuilt.is_draft = journal.is_draft;
+        adopted = true;
+        replay_journal_entry_v1(&mut rebuilt, entry)?;
     }
     // The terminal observed identity must equal the retained one.
     if rebuilt.github_release_id != journal.github_release_id

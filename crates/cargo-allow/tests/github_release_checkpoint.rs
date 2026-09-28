@@ -139,6 +139,16 @@ fn expected_asset() -> GitHubReleaseExpectedAssetV1 {
 fn journal_with_intent(
     identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
 ) -> Result<CargoAllowGitHubReleaseJournalV1, Box<dyn Error>> {
+    journal_with_intent_cadence(identity, 10)
+}
+
+/// The same lifecycle with a different observation cadence: identical
+/// operation, producer, and execution identity with different entry
+/// digests, the exact shape of a rewritten journal prefix.
+fn journal_with_intent_cadence(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+    step: u64,
+) -> Result<CargoAllowGitHubReleaseJournalV1, Box<dyn Error>> {
     let mut journal = begin_github_release_journal_for_operation_v1(
         identity,
         GitHubReleaseJournalInitV1 {
@@ -168,36 +178,39 @@ fn journal_with_intent(
         GitHubReleaseJournalEventV1::DraftCreateStarted,
         GitHubReleaseJournalEventV1::DraftCreateResponseObserved,
     ] {
-        at += 10;
-        append_github_release_journal_event_v1(
-            &mut journal,
-            GitHubReleaseJournalAppendV1 {
-                kind,
-                asset_name: None,
-                actual_asset: None,
-                provider_reachable: true,
-                at_unix_seconds: at,
-                reason: "synthetic".to_string(),
-            },
-        )
-        .map_err(io::Error::other)?;
+        at += step;
+        append_event(&mut journal, kind, None, at)?;
     }
     observe_github_release_identity_v1(&mut journal, "release-id-1", true)
         .map_err(io::Error::other)?;
-    at += 10;
-    append_github_release_journal_event_v1(
+    at += step;
+    append_event(
         &mut journal,
+        GitHubReleaseJournalEventV1::DraftObservedExact,
+        None,
+        at,
+    )?;
+    Ok(journal)
+}
+
+fn append_event(
+    journal: &mut CargoAllowGitHubReleaseJournalV1,
+    kind: GitHubReleaseJournalEventV1,
+    asset_name: Option<&str>,
+    at: u64,
+) -> Result<(), Box<dyn Error>> {
+    Ok(append_github_release_journal_event_v1(
+        journal,
         GitHubReleaseJournalAppendV1 {
-            kind: GitHubReleaseJournalEventV1::DraftObservedExact,
-            asset_name: None,
+            kind,
+            asset_name: asset_name.map(str::to_string),
             actual_asset: None,
             provider_reachable: true,
             at_unix_seconds: at,
             reason: "synthetic".to_string(),
         },
     )
-    .map_err(io::Error::other)?;
-    Ok(journal)
+    .map_err(io::Error::other)?)
 }
 
 fn producer() -> GitHubReleaseCheckpointProducerV1 {
@@ -491,6 +504,212 @@ fn github_release_checkpoint_discovery_and_faults() -> Result<(), Box<dyn Error>
         )
         .is_err(),
         "expired checkpoints must never authorize progress",
+    )?;
+    Ok(())
+}
+
+/// Assert a constructor/linkage rejection by its exact stable message.
+fn expect_begin_rejection(
+    rejection: Result<CargoAllowGitHubReleaseCheckpointV1, &'static str>,
+    expected: &str,
+) -> Result<(), Box<dyn Error>> {
+    let error = rejection
+        .err()
+        .ok_or_else(|| io::Error::other(format!("expected the linkage rejection: {expected}")))?;
+    require(
+        error == expected,
+        format!("expected rejection {expected:?}, observed {error:?}"),
+    )
+}
+
+#[test]
+fn github_release_checkpoint_rejects_disagreeing_journal_prefix() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_identity("github-checkpoint-0004")?;
+    let journal = journal_with_intent(&identity)?;
+    let mut checkpoint = begin_github_release_checkpoint_for_operation_v1(
+        &identity,
+        checkpoint_init(
+            &journal,
+            1,
+            "artifact-1",
+            GitHubReleaseCheckpointKindV1::PreMutationDurable,
+        )?,
+    )
+    .map_err(io::Error::other)?;
+    let stored = store_checkpoint(&mut checkpoint)?;
+    let witness = read_back(&mut checkpoint, stored, NOW)?
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+
+    // Positive control: extending the live journal past the checkpointed
+    // prefix never disagrees — the prefix stays contained in the journal.
+    let mut extended = journal.clone();
+    append_event(
+        &mut extended,
+        GitHubReleaseJournalEventV1::AssetUploadIntentDurable,
+        Some("cargo-allow.tar.gz"),
+        CREATED_AT + 100,
+    )?;
+    verify_github_release_checkpoint_against_journal_v1(
+        &checkpoint,
+        &witness,
+        &extended,
+        &producer(),
+        NOW,
+    )
+    .map_err(io::Error::other)?;
+
+    // Negative: a rewritten journal with the same operation, producer, and
+    // execution identity but different entry digests disagrees with the
+    // checkpointed prefix and is rejected exactly.
+    let rewritten = journal_with_intent_cadence(&identity, 15)?;
+    let error = verify_github_release_checkpoint_against_journal_v1(
+        &checkpoint,
+        &witness,
+        &rewritten,
+        &producer(),
+        NOW,
+    )
+    .err()
+    .ok_or_else(|| io::Error::other("a rewritten journal must fail checkpoint verification"))?;
+    require(
+        error == "checkpoint journal prefix does not match the live journal",
+        "a disagreeing journal prefix must be rejected exactly",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn github_release_checkpoint_rejects_broken_linkage() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_identity("github-checkpoint-0005")?;
+    let journal = journal_with_intent(&identity)?;
+    let mut first = begin_github_release_checkpoint_for_operation_v1(
+        &identity,
+        checkpoint_init(
+            &journal,
+            1,
+            "artifact-1",
+            GitHubReleaseCheckpointKindV1::PreMutationDurable,
+        )?,
+    )
+    .map_err(io::Error::other)?;
+    let stored = store_checkpoint(&mut first)?;
+    read_back(&mut first, stored, NOW)?;
+
+    // Negative: the first checkpoint of an operation starts at sequence one.
+    let skip_first = checkpoint_init(
+        &journal,
+        2,
+        "artifact-2",
+        GitHubReleaseCheckpointKindV1::PreMutationDurable,
+    )?;
+    expect_begin_rejection(
+        begin_github_release_checkpoint_v1(skip_first, None),
+        "the first checkpoint of an operation starts at sequence one",
+    )?;
+
+    // Negative: sequence advances by exactly one, never by a jump.
+    let mut jumped = checkpoint_init(
+        &journal,
+        3,
+        "artifact-3",
+        GitHubReleaseCheckpointKindV1::PreMutationDurable,
+    )?;
+    jumped.created_at_unix_seconds = NOW + 10;
+    expect_begin_rejection(
+        begin_github_release_checkpoint_v1(jumped, Some(&first)),
+        "checkpoint sequence must advance by exactly one",
+    )?;
+
+    // Negative: linkage never crosses operations.
+    let mut crossing = checkpoint_init(
+        &journal,
+        2,
+        "artifact-4",
+        GitHubReleaseCheckpointKindV1::PreMutationDurable,
+    )?;
+    crossing.created_at_unix_seconds = NOW + 10;
+    crossing.operation_id = "publish_cargo_allow_final_0_2_1".to_string();
+    expect_begin_rejection(
+        begin_github_release_checkpoint_v1(crossing, Some(&first)),
+        "checkpoint linkage never crosses operations",
+    )?;
+
+    // Negative: a same-sequence journal prefix is never rewritten.
+    let mut rewritten = checkpoint_init(
+        &journal,
+        2,
+        "artifact-5",
+        GitHubReleaseCheckpointKindV1::PostObservation,
+    )?;
+    rewritten.created_at_unix_seconds = NOW + 10;
+    rewritten.journal_head_digest = digest(888);
+    expect_begin_rejection(
+        begin_github_release_checkpoint_v1(rewritten, Some(&first)),
+        "checkpoint journal prefixes are never rewritten",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn github_release_checkpoint_requires_complete_readback_for_progress() -> Result<(), Box<dyn Error>>
+{
+    let identity = canonical_identity("github-checkpoint-0006")?;
+    let journal = journal_with_intent(&identity)?;
+    let mut checkpoint = begin_github_release_checkpoint_for_operation_v1(
+        &identity,
+        checkpoint_init(
+            &journal,
+            1,
+            "artifact-1",
+            GitHubReleaseCheckpointKindV1::PreMutationDurable,
+        )?,
+    )
+    .map_err(io::Error::other)?;
+    let stored = store_checkpoint(&mut checkpoint)?;
+    let witness = read_back(&mut checkpoint, stored, NOW)?
+        .ok_or_else(|| io::Error::other("Complete readback must return a witness"))?;
+
+    // The recorded readback is itself progress authority: a checkpoint whose
+    // readback was reset to Missing keeps the witness bound, but the stored
+    // provider write still never authorizes progress on its own.
+    let mut missing = checkpoint.clone();
+    missing.readback = GitHubReleaseCheckpointReadbackV1::Missing;
+    let error = verify_github_release_checkpoint_against_journal_v1(
+        &missing,
+        &witness,
+        &journal,
+        &producer(),
+        NOW,
+    )
+    .err()
+    .ok_or_else(|| io::Error::other("a Missing readback must fail checkpoint verification"))?;
+    require(
+        error == "provider success without readback is never clean",
+        "provider success with a Missing readback must be rejected exactly",
+    )?;
+
+    // An outage reported after the stored write is likewise never clean.
+    let mut outage = checkpoint.clone();
+    record_github_release_checkpoint_readback_v1(
+        &mut outage,
+        GitHubCheckpointProviderOutcomeV1::Unavailable,
+        NOW,
+    )
+    .map_err(io::Error::other)?;
+    let error = verify_github_release_checkpoint_against_journal_v1(
+        &outage,
+        &witness,
+        &journal,
+        &producer(),
+        NOW,
+    )
+    .err()
+    .ok_or_else(|| {
+        io::Error::other("a ProviderUnavailable readback must fail checkpoint verification")
+    })?;
+    require(
+        error == "provider success without readback is never clean",
+        "provider success with an outage readback must be rejected exactly",
     )?;
     Ok(())
 }

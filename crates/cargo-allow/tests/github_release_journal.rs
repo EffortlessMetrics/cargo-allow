@@ -167,14 +167,14 @@ fn begin_init_prerelease(
     }
 }
 
-fn append(
+fn append_raw(
     journal: &mut CargoAllowGitHubReleaseJournalV1,
     kind: GitHubReleaseJournalEventV1,
     asset_name: Option<&str>,
     actual: Option<GitHubReleaseActualAssetV1>,
     at: u64,
-) -> Result<(), Box<dyn Error>> {
-    Ok(append_github_release_journal_event_v1(
+) -> Result<(), &'static str> {
+    append_github_release_journal_event_v1(
         journal,
         GitHubReleaseJournalAppendV1 {
             kind,
@@ -185,7 +185,30 @@ fn append(
             reason: "synthetic".to_string(),
         },
     )
-    .map_err(io::Error::other)?)
+}
+
+fn append(
+    journal: &mut CargoAllowGitHubReleaseJournalV1,
+    kind: GitHubReleaseJournalEventV1,
+    asset_name: Option<&str>,
+    actual: Option<GitHubReleaseActualAssetV1>,
+    at: u64,
+) -> Result<(), Box<dyn Error>> {
+    Ok(append_raw(journal, kind, asset_name, actual, at).map_err(io::Error::other)?)
+}
+
+/// Assert a transition-law rejection by its exact stable message.
+fn expect_rejection(
+    rejection: Result<(), &'static str>,
+    expected: &str,
+) -> Result<(), Box<dyn Error>> {
+    let error = rejection
+        .err()
+        .ok_or_else(|| io::Error::other(format!("expected the law rejection: {expected}")))?;
+    require(
+        error == expected,
+        format!("expected rejection {expected:?}, observed {error:?}"),
+    )
 }
 
 fn full_lifecycle(
@@ -523,5 +546,226 @@ fn github_release_journal_rejects_wrong_extra_and_premature_steps() -> Result<()
         full_lifecycle_prerelease(&prerelease_identity, true).is_err(),
         "a prerelease journal must never complete a stable public release",
     )?;
+    Ok(())
+}
+
+#[test]
+fn github_release_journal_replays_early_observation() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_identity("github-journal-0005")?;
+    // Crash recovery may observe the existing draft or release FIRST, before
+    // any entry exists: the retained identity must bind the replayed chain
+    // from that first entry, not only from the exact draft observation.
+    let mut journal =
+        begin_github_release_journal_for_operation_v1(&identity, begin_init(&identity))
+            .map_err(io::Error::other)?;
+    observe_github_release_identity_v1(&mut journal, "release-id-early", true)
+        .map_err(io::Error::other)?;
+    let mut at = CREATED_AT;
+    let mut next = || {
+        at += 10;
+        at
+    };
+    append(
+        &mut journal,
+        Event::DraftCreateIntentDurable,
+        None,
+        None,
+        next(),
+    )?;
+    append(&mut journal, Event::DraftCreateStarted, None, None, next())?;
+    append(
+        &mut journal,
+        Event::DraftCreateResponseObserved,
+        None,
+        None,
+        next(),
+    )?;
+    append(&mut journal, Event::DraftObservedExact, None, None, next())?;
+    verify_github_release_journal_v1(&journal).map_err(io::Error::other)?;
+
+    // The same early observation survives a crash that lands before the
+    // exact draft observation entry is ever recorded.
+    let mut truncated = journal.clone();
+    require(
+        truncated
+            .entries
+            .pop()
+            .is_some_and(|entry| entry.kind == Event::DraftObservedExact),
+        "the truncated recovery journal must drop the exact draft observation",
+    )?;
+    verify_github_release_journal_v1(&truncated).map_err(io::Error::other)?;
+
+    // Negative: a retained identity that was never observed never verifies.
+    let mut unobserved =
+        begin_github_release_journal_for_operation_v1(&identity, begin_init(&identity))
+            .map_err(io::Error::other)?;
+    append(
+        &mut unobserved,
+        Event::DraftCreateIntentDurable,
+        None,
+        None,
+        next(),
+    )?;
+    append(
+        &mut unobserved,
+        Event::DraftCreateStarted,
+        None,
+        None,
+        next(),
+    )?;
+    append(
+        &mut unobserved,
+        Event::DraftCreateResponseObserved,
+        None,
+        None,
+        next(),
+    )?;
+    unobserved.github_release_id = Some("release-id-forged".to_string());
+    unobserved.is_draft = true;
+    let error = verify_github_release_journal_v1(&unobserved)
+        .err()
+        .ok_or_else(|| {
+            io::Error::other("a retained identity that was never observed must fail verification")
+        })?;
+    require(
+        error == "journal identity observations do not match the retained record",
+        "a retained identity that was never observed must fail verification exactly",
+    )?;
+
+    // Negative: an identity observed differently from the retained record
+    // never verifies either.
+    let mut mismatched = journal.clone();
+    mismatched.github_release_id = Some("release-id-other".to_string());
+    let error = verify_github_release_journal_v1(&mismatched)
+        .err()
+        .ok_or_else(|| {
+            io::Error::other("a differently observed identity must fail verification")
+        })?;
+    require(
+        error == "journal entry digest does not match its canonical chain",
+        "a differently observed identity must fail chain verification exactly",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn github_release_journal_requires_started_finalization_for_public_observation()
+-> Result<(), Box<dyn Error>> {
+    let identity = canonical_identity("github-journal-0006")?;
+    let mut journal =
+        begin_github_release_journal_for_operation_v1(&identity, begin_init(&identity))
+            .map_err(io::Error::other)?;
+    let mut at = CREATED_AT;
+    let mut next = || {
+        at += 10;
+        at
+    };
+    append(
+        &mut journal,
+        Event::DraftCreateIntentDurable,
+        None,
+        None,
+        next(),
+    )?;
+    append(&mut journal, Event::DraftCreateStarted, None, None, next())?;
+    append(
+        &mut journal,
+        Event::DraftCreateResponseObserved,
+        None,
+        None,
+        next(),
+    )?;
+    observe_github_release_identity_v1(&mut journal, "release-id-1", true)
+        .map_err(io::Error::other)?;
+    append(&mut journal, Event::DraftObservedExact, None, None, next())?;
+    append(
+        &mut journal,
+        Event::AssetUploadIntentDurable,
+        Some("cargo-allow.tar.gz"),
+        None,
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::AssetUploadStarted,
+        Some("cargo-allow.tar.gz"),
+        None,
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::AssetUploadResponseObserved,
+        Some("cargo-allow.tar.gz"),
+        None,
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::AssetObservedExact,
+        Some("cargo-allow.tar.gz"),
+        Some(actual_asset("cargo-allow.tar.gz", 1)),
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::ActualAssetSetReconciled,
+        None,
+        None,
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::CloseoutReceiptComplete,
+        None,
+        None,
+        next(),
+    )?;
+
+    // Public observation without started finalization is premature, even
+    // past a complete closeout.
+    expect_rejection(
+        append_raw(
+            &mut journal,
+            Event::PublicReleaseObservedExact,
+            None,
+            None,
+            next(),
+        ),
+        "public observation requires started finalization",
+    )?;
+    // Finalization cannot start without its durable intent.
+    expect_rejection(
+        append_raw(&mut journal, Event::FinalizeStarted, None, None, next()),
+        "finalization start requires one durable intent",
+    )?;
+    // Positive control: durable intent, started finalization, then the
+    // public observation is accepted and the journal still replays exactly.
+    append(
+        &mut journal,
+        Event::FinalizeIntentDurable,
+        None,
+        None,
+        next(),
+    )?;
+    append(&mut journal, Event::FinalizeStarted, None, None, next())?;
+    append(
+        &mut journal,
+        Event::FinalizeResponseObserved,
+        None,
+        None,
+        next(),
+    )?;
+    append(
+        &mut journal,
+        Event::PublicReleaseObservedExact,
+        None,
+        None,
+        next(),
+    )?;
+    require(
+        journal.is_public,
+        "the accepted public observation must mark the journal public",
+    )?;
+    verify_github_release_journal_v1(&journal).map_err(io::Error::other)?;
     Ok(())
 }
