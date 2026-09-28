@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Prove relocated rustdoc, doctests, examples, assets, and role/claim
+  boundaries for the ten cargo-allow-family packages from the exact final
+  .crate files through the CargoAllowRelocatedPackageDocsReceiptV1 receipt
+  and its env-gated relocated_package_docs integration test (#3852).
