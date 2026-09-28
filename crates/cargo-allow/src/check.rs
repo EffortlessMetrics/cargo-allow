@@ -223,8 +223,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     );
     let as_of = allow_core::SimpleDate::today_utc_approx();
     let outcomes = evaluate(&report_cfg, &findings, mode, as_of);
-    let projected_outcomes =
-        allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
+    let projected_outcomes = allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
@@ -467,8 +466,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     let as_of = allow_core::SimpleDate::today_utc_approx();
     let outcomes = evaluate(&report_cfg, &staged.findings, mode, as_of);
-    let projected_outcomes =
-        allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
+    let projected_outcomes = allow_report::ledger_project_outcomes(&report_cfg, &outcomes, as_of);
     let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
         &staged.root,
         &report_cfg,

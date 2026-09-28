@@ -58,7 +58,7 @@ fn clippy_compat_preserves_matched_new_and_stale_drift() {
             Some("clippy-unwrap-policy"),
         )],
         allow_match::CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         matched
@@ -75,7 +75,7 @@ fn clippy_compat_preserves_matched_new_and_stale_drift() {
             None,
         )],
         allow_match::CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -83,7 +83,12 @@ fn clippy_compat_preserves_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
+    let stale_allow = allow_match::evaluate(
+        &cfg,
+        &[],
+        allow_match::CheckMode::Audit,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     assert!(
         stale_allow
             .iter()
@@ -278,7 +283,12 @@ fn unsafe_allowlist_compat_preserves_matched_new_and_stale_drift() {
         line: 7,
         column: 12,
     });
-    let matched = allow_match::evaluate(&cfg, &[finding], allow_match::CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let matched = allow_match::evaluate(
+        &cfg,
+        &[finding],
+        allow_match::CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     assert!(
         matched
             .iter()
@@ -289,7 +299,7 @@ fn unsafe_allowlist_compat_preserves_matched_new_and_stale_drift() {
         &cfg,
         &[unsafe_finding("src/lib.rs", "unsafe_impl", None)],
         allow_match::CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     );
     assert!(
         missing_allow
@@ -297,7 +307,12 @@ fn unsafe_allowlist_compat_preserves_matched_new_and_stale_drift() {
             .any(|outcome| outcome.status == allow_core::MatchStatus::New)
     );
 
-    let stale_allow = allow_match::evaluate(&cfg, &[], allow_match::CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
+    let stale_allow = allow_match::evaluate(
+        &cfg,
+        &[],
+        allow_match::CheckMode::Audit,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     assert!(
         stale_allow
             .iter()

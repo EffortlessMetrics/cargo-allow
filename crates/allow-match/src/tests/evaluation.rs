@@ -7,7 +7,12 @@ fn unsafe_safety_comment_requirement_fails_without_metadata() {
     cfg.requirements.unsafe_safety_comment_required = true;
     cfg.allow.push(entry_with_hash("fnv1a64:actual"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::EvidenceMissing
@@ -23,7 +28,12 @@ fn unsafe_safety_comment_requirement_passes_with_metadata() {
     cfg.requirements.unsafe_safety_comment_required = true;
     cfg.allow.push(entry_with_hash("fnv1a64:actual"));
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(
         outcomes
@@ -43,7 +53,12 @@ fn evaluate_fails_closed_on_ambiguous_structural_matches() {
     cfg.allow.push(first);
     cfg.allow.push(second);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(
         outcomes
@@ -76,7 +91,12 @@ fn occurrence_limit_caps_matched_findings() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding.clone(), finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding.clone(), finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 2);
     assert!(matches!(
@@ -101,7 +121,7 @@ fn detailed_evaluation_exposes_occurrence_headroom_and_excess() -> Result<(), St
         &cfg,
         &[finding.clone(), finding.clone(), finding],
         CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     );
 
     assert_eq!(evaluation.occurrence_accounting.len(), 1);
@@ -129,7 +149,12 @@ fn detailed_evaluation_reports_headroom_without_rederivation() -> Result<(), Str
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let evaluation = evaluate_detailed(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let evaluation = evaluate_detailed(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     let accounting = evaluation
         .occurrence_accounting
         .first()
@@ -139,7 +164,12 @@ fn detailed_evaluation_reports_headroom_without_rederivation() -> Result<(), Str
     assert_eq!(accounting.headroom, 2);
     assert_eq!(accounting.exceeded_count, 0);
 
-    let empty_evaluation = evaluate_detailed(&cfg, &[], CheckMode::Audit, allow_core::SimpleDate::today_utc_approx());
+    let empty_evaluation = evaluate_detailed(
+        &cfg,
+        &[],
+        CheckMode::Audit,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
     let empty_accounting = empty_evaluation
         .occurrence_accounting
         .first()
@@ -156,7 +186,12 @@ fn unlimited_entry_matches_repeated_findings() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry_with_hash("fnv1a64:actual"));
 
-    let outcomes = evaluate(&cfg, &[finding.clone(), finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding.clone(), finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 2);
     assert!(
@@ -183,7 +218,12 @@ fn anchored_last_seen_suppresses_drift_for_other_occurrences() {
     cfg.allow.push(entry);
 
     // Anchor discovered after the drifting occurrence: order must not matter.
-    let outcomes = evaluate(&cfg, &[other, anchored], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[other, anchored],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 2);
     assert!(
@@ -216,7 +256,12 @@ fn drift_is_still_reported_when_no_occurrence_anchors_last_seen() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[first, second], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[first, second],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(
         outcomes
@@ -233,7 +278,12 @@ fn unmatched_finding_is_reported_as_new_with_location() {
     let finding = finding_with_hash("fnv1a64:actual");
     let cfg = AllowConfig::empty();
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 1);
     let outcome = outcomes
@@ -251,7 +301,12 @@ fn unmatched_allow_entry_is_reported_as_stale_with_scope() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry_with_hash("fnv1a64:actual"));
 
-    let outcomes = evaluate(&cfg, &[], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 1);
     let outcome = outcomes
@@ -309,15 +364,24 @@ fn explicit_as_of_controls_lifecycle_classification() {
         month: 9,
         day: 18,
     };
-    let before_outcomes = evaluate(&cfg, &[finding.clone()], CheckMode::NoNew, before);
+    let before_outcomes = evaluate(
+        &cfg,
+        std::slice::from_ref(&finding),
+        CheckMode::NoNew,
+        before,
+    );
     let due_outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, due);
 
-    assert!(before_outcomes
-        .iter()
-        .any(|outcome| outcome.status == MatchStatus::Matched));
-    assert!(due_outcomes
-        .iter()
-        .any(|outcome| outcome.status == MatchStatus::ReviewDue));
+    assert!(
+        before_outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::Matched)
+    );
+    assert!(
+        due_outcomes
+            .iter()
+            .any(|outcome| outcome.status == MatchStatus::ReviewDue)
+    );
 }
 
 #[test]
@@ -328,7 +392,12 @@ fn expired_entry_reports_expired_even_when_structure_matches() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(outcomes.len(), 2);
     assert!(outcomes.iter().any(|outcome| {
@@ -359,7 +428,12 @@ fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
     cfg.allow.push(precise);
     cfg.allow.push(broad);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::Matched
@@ -395,7 +469,12 @@ fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() -> Result
     cfg.allow.push(precise);
     cfg.allow.push(broad);
 
-    let evaluation = evaluate_detailed(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let evaluation = evaluate_detailed(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(evaluation.outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::New
@@ -441,7 +520,12 @@ fn live_broad_entry_covers_finding_when_precise_entry_lacks_evidence() {
     cfg.allow.push(precise);
     cfg.allow.push(broad);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::Matched
@@ -467,7 +551,12 @@ fn never_expiring_entry_can_match() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(
         outcomes
@@ -485,7 +574,12 @@ fn unsafe_evidence_requirement_fails_without_entry_evidence() {
     cfg.requirements.unsafe_evidence_required = true;
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::EvidenceMissing
@@ -501,9 +595,24 @@ fn baseline_debt_fails_in_strict_and_release_mode() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let no_new = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
-    let strict = evaluate(&cfg, std::slice::from_ref(&finding), CheckMode::Strict, allow_core::SimpleDate::today_utc_approx());
-    let release = evaluate(&cfg, &[finding], CheckMode::Release, allow_core::SimpleDate::today_utc_approx());
+    let no_new = evaluate(
+        &cfg,
+        std::slice::from_ref(&finding),
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+    let strict = evaluate(
+        &cfg,
+        std::slice::from_ref(&finding),
+        CheckMode::Strict,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+    let release = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::Release,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     // no-new: baseline debt is allowed (debt exists, just not new debt)
     assert!(
@@ -533,7 +642,12 @@ fn unparseable_expires_date_is_treated_as_expired_fail_safe() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(
         outcomes
@@ -551,7 +665,12 @@ fn unparseable_review_after_is_treated_as_due_fail_safe() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert!(
         outcomes
@@ -584,7 +703,12 @@ fn ambiguity_tiebreak_picks_unique_top_scorer() {
     cfg.allow.push(entry_a);
     cfg.allow.push(entry_b);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     // The finding should be Matched (not Ambiguous) — the unique top scorer wins.
     assert!(
@@ -617,7 +741,12 @@ fn genuine_tie_reports_ambiguous_without_demoting_to_stale() -> Result<(), Strin
     cfg.allow.push(entry_a);
     cfg.allow.push(entry_b);
 
-    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     // The finding should be Ambiguous (genuine tie).
     assert!(
@@ -644,7 +773,6 @@ fn genuine_tie_reports_ambiguous_without_demoting_to_stale() -> Result<(), Strin
     );
     Ok(())
 }
-
 
 #[test]
 fn evaluator_source_has_no_hidden_system_clock() {

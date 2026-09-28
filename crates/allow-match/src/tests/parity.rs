@@ -103,8 +103,18 @@ fn assert_parity(
     paired.allow.push(strong.clone());
     paired.allow.push(weaker_neighbor(&strong));
 
-    let single_view = strong_view(&evaluate_detailed(&single, findings, mode, allow_core::SimpleDate::today_utc_approx()));
-    let paired_view = strong_view(&evaluate_detailed(&paired, findings, mode, allow_core::SimpleDate::today_utc_approx()));
+    let single_view = strong_view(&evaluate_detailed(
+        &single,
+        findings,
+        mode,
+        allow_core::SimpleDate::today_utc_approx(),
+    ));
+    let paired_view = strong_view(&evaluate_detailed(
+        &paired,
+        findings,
+        mode,
+        allow_core::SimpleDate::today_utc_approx(),
+    ));
 
     assert_eq!(
         single_view, paired_view,
@@ -195,13 +205,13 @@ fn expired_case_has_parity_and_stays_non_live() {
         &single,
         &[strong_finding()],
         CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     ));
     let paired_view = strong_view(&evaluate_detailed(
         &paired,
         &[strong_finding()],
         CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     ));
     assert_eq!(single_view, paired_view);
     let view = single_view;
@@ -311,13 +321,13 @@ fn expired_unique_strongest_does_not_consume_live_occurrence_headroom() {
         &single,
         &[finding.clone(), finding.clone()],
         CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     ));
     let paired_view = strong_view(&evaluate_detailed(
         &paired,
         &[finding.clone(), finding],
         CheckMode::NoNew,
-    allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate::today_utc_approx(),
     ));
     assert_eq!(single_view, paired_view);
     let view = single_view;

@@ -59,7 +59,12 @@ fn load() {}
         load_compat_world(Some(&dir), None, Some("lint-exception"), false).unwrap_or_else(|err| {
             std::panic::panic_any(format!("clippy compat world loads: {err}"))
         });
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &findings,
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
     assert!(inventory_facts.files_scanned.is_some());
@@ -121,7 +126,12 @@ container = "read"
         load_compat_world(Some(&dir), None, Some("unsafe"), false).unwrap_or_else(|err| {
             std::panic::panic_any(format!("unsafe compat world loads: {err}"))
         });
-    let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, allow_core::SimpleDate::today_utc_approx());
+    let outcomes = evaluate(
+        &cfg,
+        &findings,
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
 
     assert_eq!(inventory_facts.source, InventorySource::FilesystemFallback);
     assert!(inventory_facts.files_scanned.is_some());
