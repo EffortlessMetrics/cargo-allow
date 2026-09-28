@@ -1,0 +1,4 @@
+kind: Added
+body: >-
+  Model the durable one-operation lease serializing clean and recovery
+  release runs with bounded renewal and runner-loss semantics (#3925).

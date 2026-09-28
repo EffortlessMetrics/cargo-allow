@@ -105,6 +105,70 @@ fn test_release_workflow_authorize_gate_precedes_token_access() -> Result<(), Bo
     Ok(())
 }
 
+/// #3790 repair: the authorize gate reads the annotated tag object itself,
+/// never the peeled commit message. Lightweight tags carry no authorization
+/// references and are rejected before any bundle download.
+#[test]
+fn test_release_workflow_tag_object_authority() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let release_wf_path = root.join(".github/workflows/release.yml");
+    if !release_wf_path.exists() {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(release_wf_path)?;
+    let authorize = job_block(&content, "authorize")
+        .ok_or_else(|| io::Error::other("release.yml must define the authorize gate job"))?;
+    require(
+        authorize.contains("^{tag}") && authorize.contains("cat-file"),
+        "the authorize gate must read the annotated tag object",
+    )?;
+    require(
+        authorize.contains("lightweight tags never authorize"),
+        "the authorize gate must reject lightweight tags",
+    )?;
+    require(
+        !authorize.contains("git log -1 --format=%B \"refs/tags/"),
+        "the authorize gate must not read the peeled commit message as authority",
+    )?;
+    Ok(())
+}
+
+/// #3790 repair: a pushed tag name is evidence, never authority. Preflight
+/// must not mint an authorization reference from the ref name; the publish
+/// job selects the compiled gate digest (or the incident-owned recovery
+/// reference) and refuses an empty authorization before any upload.
+#[test]
+fn test_release_workflow_publisher_authorization_binding() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let release_wf_path = root.join(".github/workflows/release.yml");
+    if !release_wf_path.exists() {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(release_wf_path)?;
+    require(
+        !content.contains("authorization=\"${GITHUB_REF_NAME}\""),
+        "preflight must not mint authorization from the pushed tag name",
+    )?;
+    let publish = job_block(&content, "publish")
+        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+    require(
+        publish.contains("GATE_AUTHORIZATION_DIGEST")
+            && publish.contains("needs.authorize.outputs.authorization_digest"),
+        "the publish job must select the compiled gate digest",
+    )?;
+    require(
+        publish.contains("no compiled authorization for publication"),
+        "the publish job must refuse an empty authorization before upload",
+    )?;
+    require(
+        !publish.contains("--authorization \"${{ needs.preflight.outputs.authorization }}\""),
+        "the publisher must not receive tag-name authority on the clean path",
+    )?;
+    Ok(())
+}
+
 /// Extract one top-level job block from a workflow document.
 fn job_block(content: &str, job: &str) -> Option<String> {
     let header = format!("  {job}:");
@@ -171,6 +235,60 @@ fn test_ci_workflow_runs_the_full_cache_suite_on_every_platform() -> Result<(), 
         "ci-lanes.toml must not re-describe the cache suite as bounded",
     )?;
 
+    Ok(())
+}
+
+/// PR C: the authorize gate emits one canonical operation identity artifact
+/// and downstream jobs consume it with agreement checks instead of
+/// reconstructing operation identity from their own checkout or inputs.
+#[test]
+fn test_release_workflow_canonical_operation_identity_transport() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let release_wf_path = root.join(".github/workflows/release.yml");
+    if !release_wf_path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(release_wf_path)?;
+
+    let authorize = job_block(&content, "authorize")
+        .ok_or_else(|| io::Error::other("release.yml must define the authorize gate job"))?;
+    require(
+        authorize.contains("release-operation-identity.json"),
+        "the authorize gate must emit the canonical operation identity artifact",
+    )?;
+    require(
+        authorize.contains("name: release-operation-identity"),
+        "the authorize gate must upload the operation identity artifact",
+    )?;
+
+    let publish = job_block(&content, "publish")
+        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+    for required in [
+        "name: release-operation-identity",
+        "canonical operation identity artifact is absent",
+        "operation identity version differs",
+        "operation identity commit differs",
+        "operation identity tree differs",
+        "operation identity authorization differs",
+    ] {
+        require(
+            publish.contains(required),
+            &format!("publish must verify canonical identity agreement: {required}"),
+        )?;
+    }
+
+    let release = job_block(&content, "github-release")
+        .ok_or_else(|| io::Error::other("release.yml must define the github-release job"))?;
+    for required in [
+        "publish receipt is absent",
+        "publish receipt version differs",
+        "publish receipt authorization differs",
+    ] {
+        require(
+            release.contains(required),
+            &format!("github-release must verify publish receipt agreement: {required}"),
+        )?;
+    }
     Ok(())
 }
 

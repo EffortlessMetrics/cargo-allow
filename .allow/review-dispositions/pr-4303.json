@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4303,
+  "base_ref": "main",
+  "base_sha": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "head_ref": "release/3940-operation-authority-v1",
+  "head_sha": "d6773c62ef123b9a09d2feb78080c70ffc11c045",
+  "merge_base": "89d1376390726a34ae8b2cac14f69af7e684153d",
+  "reviewed_diff_digest": "sha256:v1:bcb4f7809e5744a6e25be237418c4c54c515957fe064af5562ca741d157fad0a",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven / ChatGPT GitHub review 5257479440; same-maintainer exact-head technical review; not independent-human approval",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PR 4303 reviewThreads: every inline thread resolved at exact reviewed head d6773c62ef123b9a09d2feb78080c70ffc11c045",
+    "Same-maintainer exact-head technical review 5257479440 inspected the complete fifteen-file PR-A surface and found no remaining source-semantic blocker",
+    "Focused source-only run 35466302755 passed formatting, workflow syntax, evidence inventory, both authority suites, Clippy with warnings denied, enforcing no-new, and diff hygiene",
+    "The final source delta makes incident-bearing recovery observation-only after a new incident while preserving exact correlated readback and repository reconciliation",
+    "The hostile recovery fixture proves RecoveryRequired is retained, a second package mutation is rejected, and settlement under the same recovery authority is rejected",
+    "Pull-request workflows at the bot-authored reviewed head were action_required with no jobs and are explicitly not counted as CI evidence",
+    "PR B remains responsible for independently validated child authorization/custody/lease/journal/checkpoint/tag/release composition; PR C remains responsible for workflow/evidence cutover and rehearsal"
+  ],
+  "required_ci": {
+    "owner": "backlog coordinator: require terminal acceptable ordinary CI, inspect the retained UB Review artifact, run Ready-triggered qualification, and reconcile the exact resulting head before normal merge",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4303",
+  "reviewed_at_utc": "2026-09-19T20:17:24Z"
+}

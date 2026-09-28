@@ -1,0 +1,25 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11304"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a555aa9e13261079cf9c63c0bfb4148fb8063531695730f31563fcb782f27a0a"
+reason = "receipt for docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json, the operator-side custody contract schema (#3927)"
+
+[[records]]
+allow_ids = ["allow-11305"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5dab95e8115c9f7ea68b3e60472d97494312abfa3b6481e338c96ea587aed8b7"
+reason = "receipt for docs/release/release-authorization-custody-v1.md, the operator-side custody protocol (#3927)"
+
+[[records]]
+allow_ids = ["allow-11306"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b49d4074aff825022615762322e4f2f882a3c793b607fc836aa6995e722c0038"
+reason = "receipt for docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json, the authorization consumption contract schema (#3927)"
+
+[[records]]
+allow_ids = ["allow-11311"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6cd70dc7610817dea71d2073ac123c79c748b1f7cc4514f5a9303468817311e5"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

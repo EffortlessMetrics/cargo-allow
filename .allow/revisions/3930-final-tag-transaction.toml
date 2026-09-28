@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11308"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ad8a85c542e60673e3e722e249a90f570caa8f77459bf1540aec4f71448e40d6"
+reason = "receipt for docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json, the exactly-once tag transaction contract schema (#3930)"
+
+[[records]]
+allow_ids = ["allow-11309"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:32602aeccdb61714c52cd9877b057304f42303dee9ae2149e1b63214e9bc0c5d"
+reason = "receipt for docs/release/final-tag-transaction-v1.md, the operator-side tag transaction protocol (#3930)"
+
+[[records]]
+allow_ids = ["allow-11310"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0be2d1d7fdca3edd97e6ec902b3e4a502820e253bede797a9b1fc9085f6c1bc7"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

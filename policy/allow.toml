@@ -224,6 +224,310 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11312"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Versioned durable one-operation lease schema; shape validation neither authorizes the operation nor proves provider success."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-operation-lease.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11308"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json"
+owner = "core/release"
+classification = "final_tag_transaction"
+reason = "Versioned exactly-once annotated tag transaction schema; shape validation neither creates nor pushes tags."
+evidence = ["issue:3930", "test:final_tag_transaction"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.final-tag-transaction.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11314"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Versioned append-only publication journal schema; shape validation neither uploads packages nor observes the registry."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.publication-journal.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11315"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/publication-journal-v1.md"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Operator-side append-only journal protocol with incident preservation; history modeling only, no upload authority."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/publication-journal-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/publication-journal-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11316"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3921-publication-journal.toml"
+owner = "core/release"
+classification = "publication_journal"
+reason = "Revision note covering the publication journal ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3921", "test:publication_journal"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3921-publication-journal.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3921-publication-journal.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11317"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Versioned remote publication checkpoint schema; shape validation neither uploads packages nor observes the registry."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.publication-checkpoint.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11318"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/publication-checkpoint-v1.md"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Operator-side remote checkpoint protocol with retained substrate decision; durability modeling only, no upload authority."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/publication-checkpoint-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/publication-checkpoint-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11319"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3922-publication-checkpoint.toml"
+owner = "core/release"
+classification = "publication_checkpoint"
+reason = "Revision note covering the publication checkpoint ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3922", "test:publication_checkpoint"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3922-publication-checkpoint.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3922-publication-checkpoint.toml"
+
+[[allow]]
+id = "allow-11328"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.publication-recovery.v1.schema.json"
+owner = "core/release"
+classification = "publication_recovery"
+reason = "Versioned unknown-upload recovery disposition schema; shape validation neither uploads packages nor authorizes recovery."
+evidence = ["issue:3924", "test:unknown_upload_recovery"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.publication-recovery.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.publication-recovery.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11329"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/publication-recovery-v1.md"
+owner = "core/release"
+classification = "publication_recovery"
+reason = "Operator-side unknown-upload recovery decision protocol with crash-window dispositions; decision modeling only, no upload authority."
+evidence = ["issue:3924", "test:unknown_upload_recovery"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/publication-recovery-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/publication-recovery-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11330"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3924-unknown-upload-recovery.toml"
+owner = "core/release"
+classification = "publication_recovery"
+reason = "Revision note covering the unknown-upload recovery ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3924", "test:unknown_upload_recovery"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3924-unknown-upload-recovery.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3924-unknown-upload-recovery.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11313"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3925-release-operation-lease.toml"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Revision note covering the operation lease ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3925-release-operation-lease.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3925-release-operation-lease.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11304"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"
+owner = "core/release"
+classification = "release_authorization_contract"
+reason = "Versioned operator-side authorization custody and consumption schema; shape validation neither mints authority nor executes publication."
+evidence = ["issue:3927", "test:release_authorization_custody"]
+created = "2026-09-17"
+review_after = "2027-03-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11311"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3927-release-authorization-custody.toml"
+owner = "core/release"
+classification = "release_authorization_contract"
+reason = "Revision note covering the authorization custody ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3927", "test:release_authorization_custody"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3927-release-authorization-custody.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3927-release-authorization-custody.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11299"
 kind = "non_rust_file"
 family = "documentation"
@@ -246,6 +550,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11305"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-authorization-custody-v1.md"
+owner = "core/release"
+classification = "release_authorization_contract"
+reason = "Operator-side minting, custody, one-use selection, and consumption protocol for one exact final-release authorization; modeling only, no execution authority."
+evidence = ["issue:3927", "test:release_authorization_custody"]
+created = "2026-09-17"
+review_after = "2027-03-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-authorization-custody-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-authorization-custody-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11302"
 kind = "non_rust_file"
 family = "documentation"
@@ -262,6 +588,71 @@ ast_kind = "tracked_file"
 symbol = "docs/release/release-experience-v1.md"
 target_fingerprint = "md"
 glob = "docs/release/release-experience-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11307"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-lease-v1.md"
+owner = "core/release"
+classification = "release_operation_lease"
+reason = "Operator-side durable lease protocol serializing clean and recovery runs; modeling only, no operation authority."
+evidence = ["issue:3925", "test:release_operation_lease"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-lease-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-lease-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11309"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/final-tag-transaction-v1.md"
+owner = "core/release"
+classification = "final_tag_transaction"
+reason = "Operator-side exactly-once tag transaction protocol with unknown-response reconciliation; consistency modeling only, no tag creation."
+evidence = ["issue:3930", "test:final_tag_transaction"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/final-tag-transaction-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/final-tag-transaction-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-11310"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3930-final-tag-transaction.toml"
+owner = "core/release"
+classification = "final_tag_transaction"
+reason = "Revision note covering the exactly-once tag transaction ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:3930", "test:final_tag_transaction"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3930-final-tag-transaction.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3930-final-tag-transaction.toml"
 
 [allow.last_seen]
 line = 1
@@ -21425,6 +21816,204 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4283-workspace-contract-admission.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4283-workspace-contract-admission.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11306"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+owner = "core/release"
+classification = "release_authorization_contract"
+reason = "Published closed JSON Schema for append-only authorization selection and consumption observations; structural validation neither grants authority nor executes publication."
+evidence = ["issue:3927", "test:release_authorization_custody"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-authorization-consumption.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11320"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Published closed JSON Schema family for the canonical #3940 release operation identity, append-only event envelope, current head, and aggregate evaluation; structural validation performs no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.release-operation-authority.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11321"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-authority-v1.md"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Operator and migration contract for #3940 PR A: one canonical semantic release-operation authority with provider-specific children explicitly deferred to reviewed PR B/C cutover."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-authority-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-authority-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11322"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3940-release-operation-authority.toml"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Exact append-only revision note for the #3940 PR A schema and operator-contract ledger admissions; it authorizes no workflow, provider, tag, token, publication, or live-control action."
+evidence = ["issue:3940", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-18"
+review_after = "2027-03-18"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3940-release-operation-authority.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3940-release-operation-authority.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11323"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4303.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact-path receipt for the retained typed same-maintainer disposition of PR #4303; it records the reviewed source pair and explicit non-independent claim boundary, but carries no CI, merge, authorization, or release authority."
+evidence = ["issue:3940", "pull-request:4303", "review:5257051368"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4303.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4303.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11324"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-package-byte-authority.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Cross-producer package-byte authority proof: bare snapshots omit vcs info, worktrees carry the exact head."
+evidence = ["issue:4304", "test:package_byte_authority"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-package-byte-authority.py"
+target_fingerprint = "py"
+glob = "scripts/test-package-byte-authority.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11325"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4304-package-byte-authority.toml"
+owner = "core/release"
+classification = "package_byte_authority"
+reason = "Revision note covering the package-byte authority ledger admission; tracks configuration only, authorizes no release action."
+evidence = ["issue:4304", "test:package_byte_authority"]
+created = "2026-09-19"
+review_after = "2027-03-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4304-package-byte-authority.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4304-package-byte-authority.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11326"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/release-operation-child-inventory-v1.md"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Owner inventory for #3940 PR B: bound children and duplicate-authority disposition for the canonical operation identity migration; documentation only, authorizes no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-20"
+review_after = "2027-03-20"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/release-operation-child-inventory-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/release-operation-child-inventory-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11327"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3940-operation-migration.toml"
+owner = "core/release"
+classification = "release_operation_authority"
+reason = "Self-receipt for this #3940 PR B revision note; tracks configuration only, authorizes no release action."
+evidence = ["issue:3940", "test:release_operation_authority"]
+created = "2026-09-20"
+review_after = "2027-03-20"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3940-operation-migration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3940-operation-migration.toml"
 
 [allow.last_seen]
 line = 1

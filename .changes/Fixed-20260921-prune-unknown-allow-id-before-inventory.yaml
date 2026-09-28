@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  prune --allow-id now rejects an unknown id immediately after the
+  selected policy loads, before source-tree inventory and scanning.
+  A later world-loading failure can no longer mask the typed usage
+  diagnostic, and an id already known to be absent no longer pays for
+  inventory or scanning. Known-id selection, retained-evidence checks,
+  output-collision diagnostics, and atomic writes are unchanged.

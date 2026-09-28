@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Repair the release authorization gate to read the annotated tag object
+  instead of the peeled commit message, reject lightweight tags, stop
+  minting authority from pushed tag names, and bind the publisher to the
+  compiled gate digest (#3790).

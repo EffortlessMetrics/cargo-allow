@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Model remotely durable publication checkpoints with exact operation and
+  journal-prefix identity, monotonic sequence linkage, immutable provider
+  bytes, opaque exact-readback witnesses, single-use upload/dependant gates,
+  producer trust, retention, and independent readback classification so
+  publication progress survives total runner loss (#3922).

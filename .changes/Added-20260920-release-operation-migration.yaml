@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Bind release children to the canonical operation identity: authorization
+  selection, publication journal, remote checkpoints, lease keys, and tag
+  transactions now carry the canonical #3940 operation identity digest
+  (checkpoints also the head digest), derived from a revalidated identity
+  with class agreement. Same-name wrong-operation records fail discovery,
+  linkage, and selection; validation precedes state mutation (#3940).

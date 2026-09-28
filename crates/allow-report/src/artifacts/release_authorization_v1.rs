@@ -14,6 +14,7 @@ use crate::FinalRegistryPreflightResultV1 as PreflightResultV1;
 mod evaluate;
 #[cfg(test)]
 mod tests;
+pub(crate) use evaluate::authorization_statement_digest;
 pub use evaluate::{
     compile_release_authorization_v1, release_authorization_denominator_binding_v1,
     transition_authorization_consumption,

@@ -1,4 +1,9 @@
-//! Production release operation identity and append-only state authority.
+//! Legacy release-operation characterization retained only for #3940 PR B
+//! migration compatibility.
+//!
+//! The canonical production authority is `release_operation_authority_v1`.
+//! New release-domain consumers must compose that identity/event/head model
+//! instead of adding semantics to this legacy container.
 
 use serde::{Deserialize, Serialize};
 

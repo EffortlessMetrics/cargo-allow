@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Model the operator-side one-use authorization custody, stable readback,
+  consumption, expiry-at-irreversible-boundary, and monotonic lifecycle
+  protocol with closed custody/consumption schemas and synthetic fixtures
+  (#3927).
