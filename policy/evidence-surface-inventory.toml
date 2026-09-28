@@ -617,6 +617,40 @@ last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove local custody and consumption semantics only; no external authorization is minted, no durable provider lease/readback is observed, and no tag, credential, or publication operation occurs."
 
 [[surfaces]]
+id = "github-release-journal-v1"
+owner_issue = 3933
+semantic_authority = "crash-consistent GitHub Release mutation history"
+path = "crates/cargo-allow/tests/github_release_journal.rs"
+subject = "CargoAllowGitHubReleaseJournalV1"
+producer = "production journal model with hostile draft/asset/finalization fixtures"
+consumer = "#2502 publication loop and GitHub Release evidence"
+claimed_acceptance_row = "append-only draft, exact asset, reconciliation, and finalization law"
+assertion_mechanism = "production journal model over synthetic subjects with JSON Schema read-back"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove mutation-history semantics; no live release creation, mutation, publication, or deletion occurs."
+
+[[surfaces]]
+id = "github-release-checkpoint-v1"
+owner_issue = 3933
+semantic_authority = "remotely durable GitHub Release checkpoints"
+path = "crates/cargo-allow/tests/github_release_checkpoint.rs"
+subject = "CargoAllowGitHubReleaseCheckpointV1"
+producer = "production checkpoint model with hostile discovery, readback, and trust fixtures"
+consumer = "#2502 publication loop and runner-loss recovery evidence"
+claimed_acceptance_row = "remotely durable pre-mutation and post-observation checkpoints with independent readback"
+assertion_mechanism = "production checkpoint model over synthetic subjects with JSON Schema read-back"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Fixtures prove remote-durability semantics; no live uploads, provider calls, or release execution are produced."
+
+[[surfaces]]
 id = "release-operation-composition"
 owner_issue = 3940
 semantic_authority = "canonical release-operation identity shared across children"

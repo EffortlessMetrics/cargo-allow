@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.github-release-journal.v1.schema.json",
+  "title": "CargoAllowGitHubReleaseJournalV1",
+  "description": "Append-only GitHub Release transaction journal for one exact final-release operation: draft creation, exact asset uploads, actual-state reconciliation, and one-way public finalization. Structural validation creates, edits, publishes, or deletes no real GitHub Release.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "journal_id",
+    "operation_id",
+    "operation_identity_digest",
+    "operation_class",
+    "authorization_digest",
+    "custody_digest",
+    "freeze_digest",
+    "repository",
+    "tag",
+    "channel",
+    "github_prerelease",
+    "github_release_id",
+    "is_draft",
+    "is_public",
+    "expected_assets",
+    "created_at_unix_seconds",
+    "workflow",
+    "run",
+    "attempt",
+    "job",
+    "entries",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.github-release-journal.v1" },
+    "schema_version": { "const": 1 },
+    "journal_id": { "type": "string", "minLength": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation_identity_digest": { "$ref": "#/$defs/digest" },
+    "operation_class": {
+      "type": "string",
+      "enum": ["clean_final_publication", "incident_recovery"]
+    },
+    "authorization_digest": { "$ref": "#/$defs/digest" },
+    "custody_digest": { "$ref": "#/$defs/digest" },
+    "freeze_digest": { "$ref": "#/$defs/digest" },
+    "repository": { "type": "string", "minLength": 1 },
+    "tag": { "type": "string", "minLength": 1 },
+    "channel": { "type": "string", "minLength": 1 },
+    "github_prerelease": { "type": "boolean" },
+    "github_release_id": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+    },
+    "is_draft": { "type": "boolean" },
+    "is_public": { "type": "boolean" },
+    "expected_assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/expected_asset" }
+    },
+    "created_at_unix_seconds": { "type": "integer", "minimum": 1 },
+    "workflow": { "type": "string", "minLength": 1 },
+    "run": { "type": "string", "minLength": 1 },
+    "attempt": { "type": "string", "minLength": 1 },
+    "job": { "type": "string", "minLength": 1 },
+    "entries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "expected_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_role",
+        "asset_name",
+        "size_bytes",
+        "sha256_digest",
+        "producer_identity",
+        "attestation_identity"
+      ],
+      "properties": {
+        "asset_role": { "type": "string", "minLength": 1 },
+        "asset_name": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "sha256_digest": { "$ref": "#/$defs/digest" },
+        "producer_identity": { "type": "string", "minLength": 1 },
+        "attestation_identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "actual_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_id", "asset_name", "size_bytes", "observed_sha256_digest"],
+      "properties": {
+        "asset_id": { "type": "string", "minLength": 1 },
+        "asset_name": { "type": "string", "minLength": 1 },
+        "size_bytes": { "type": "integer", "minimum": 1 },
+        "observed_sha256_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "previous_digest",
+        "entry_digest",
+        "kind",
+        "asset_name",
+        "actual_asset",
+        "provider_reachable",
+        "at_unix_seconds",
+        "reason",
+        "workflow",
+        "run",
+        "attempt",
+        "job"
+      ],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "previous_digest": { "$ref": "#/$defs/digest" },
+        "entry_digest": { "$ref": "#/$defs/digest" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "draft_create_intent_durable",
+            "draft_create_started",
+            "draft_create_response_observed",
+            "draft_create_response_unknown",
+            "draft_observed_exact",
+            "asset_upload_intent_durable",
+            "asset_upload_started",
+            "asset_upload_response_observed",
+            "asset_upload_response_unknown",
+            "asset_observed_exact",
+            "extra_asset_observed",
+            "actual_asset_set_reconciled",
+            "closeout_receipt_complete",
+            "finalize_intent_durable",
+            "finalize_started",
+            "finalize_response_observed",
+            "finalize_response_unknown",
+            "public_release_observed_exact",
+            "release_incident",
+            "operation_complete"
+          ]
+        },
+        "asset_name": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "minLength": 1 }]
+        },
+        "actual_asset": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/actual_asset" }]
+        },
+        "provider_reachable": { "type": "boolean" },
+        "at_unix_seconds": { "type": "integer", "minimum": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "run": { "type": "string", "minLength": 1 },
+        "attempt": { "type": "string", "minLength": 1 },
+        "job": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
