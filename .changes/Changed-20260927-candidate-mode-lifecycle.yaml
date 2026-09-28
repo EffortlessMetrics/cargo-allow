@@ -1,0 +1,10 @@
+kind: Changed
+body: >-
+  Make no-new candidate evaluation deterministic across lifecycle dates
+  (#4238): expired exact, structural, and occurrence-bounded matches keep
+  authorizing with a visible `expired` annotation while expired broad matchers
+  re-raise their findings as new, malformed lifecycle dates fail closed, and
+  the new `requirements.calendar_expiry_blocks_no_new` flag restores the
+  pre-#4238 blocking posture with a `lifecycle_posture` marker in the check
+  receipt.
+time: 2026-09-27T00:00:00-04:00

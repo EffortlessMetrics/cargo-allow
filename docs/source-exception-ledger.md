@@ -456,6 +456,33 @@ contain no structural identity or selector glob.
 Diff mode reports expiry or review-date extensions/removals as review-required
 lifecycle changes, and added or earlier lifecycle dates as policy improvements.
 
+### Candidate-mode lifecycle law
+
+In ordinary no-new candidate evaluation, calendar cadence is not candidate
+authority: the same evaluator, subject, policy bytes, and findings produce the
+same verdict before, on, and after a `review_after` or `expires` date. An
+expired entry still authorizes a finding it matches exactly (pinned
+occurrence hash or typed structural selector), and an entry with
+`occurrence_limit` keeps its bounded headroom authoritative — expiry neither
+expands nor erases the bound. The outcome stays `expired` in list, worklist,
+and report rows, so renewal pressure remains visible without failing the gate.
+An expired entry that matches only by broad kind/family/path scope loses
+authority at expiry: its finding is raised as new (blocking), and the entry
+shows in the stale projection until it is renewed or removed. Strict and
+release modes keep failing on `expired` regardless of tier. A malformed
+`expires` or `review_after` value always fails closed — it never becomes
+silent authority or silent advisory posture.
+
+Repositories that need the pre-candidate-mode posture can set
+`requirements.calendar_expiry_blocks_no_new = true` in the policy. With the
+flag, any `expired` outcome fails the no-new gate regardless of match tier,
+the diff gate counts expired rows as current failures, and the check receipt
+records `lifecycle_posture: "calendar-expiry-blocking"` instead of
+`"candidate-mode"`. The flag is independent of `stale_entries_fail`, which
+governs whether unmatched stale entries fail; turning one on or off never
+changes the other. Loosening either flag in a diff is a policy weakening that
+review must authorize.
+
 ## Baseline Debt
 
 `cargo-allow propose` may generate temporary adoption entries. Those entries
