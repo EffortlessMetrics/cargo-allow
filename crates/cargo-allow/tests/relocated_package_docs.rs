@@ -346,9 +346,13 @@ fn decisive_relocated_package_docs_from_final_crates() {
             std::path::PathBuf::from,
         );
 
-    if registry_dir.contains('\'') {
+    if registry_dir.contains('\'')
+        || registry_dir
+            .chars()
+            .any(|ch| (ch <= '\u{1f}' && ch != '\t') || ch == '\u{7f}')
+    {
         std::panic::panic_any(
-            "InstrumentFailure: CARGO_ALLOW_RELOCATED_REGISTRY must not contain a single quote (TOML literal string)",
+            "InstrumentFailure: CARGO_ALLOW_RELOCATED_REGISTRY must not contain a single quote or TOML-invalid control character (TOML literal string)",
         );
     }
     let packages_dir = std::path::PathBuf::from(packages_dir);
