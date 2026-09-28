@@ -273,6 +273,50 @@ fn stale_outcome_is_advisory_in_audit_by_default() {
     ));
 }
 
+#[test]
+fn expired_broad_entry_reraised_new_fails_no_new_gate() {
+    // #4238 gate-masking repair: the matcher re-raises a finding under an
+    // expired broad (identity-free, unbounded) entry as `New`, but the
+    // date-first entry projection used to downgrade that row to `Expired`,
+    // so `check --mode no-new` exited 0 while `diff --base` counted the New.
+    // The finding-level `New` must stay blocking, with and without the legacy
+    // calendar-expiry flag.
+    let entry = lifecycle_entry("allow-broad-expired", Some("2020-01-01"), None);
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry.clone());
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: Some(entry.id),
+        candidate_ids: vec!["allow-broad-expired".to_string()],
+        finding_index: Some(0),
+        message: "allow-broad-expired matched but expired on 2020-01-01; broad-matcher authority ends at expiry — new finding"
+            .to_string(),
+        score: 100,
+    }];
+
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::NoNew
+    ));
+
+    let mut legacy_cfg = AllowConfig::empty();
+    legacy_cfg.requirements.calendar_expiry_blocks_no_new = true;
+    legacy_cfg.allow.push(lifecycle_entry(
+        "allow-broad-expired",
+        Some("2020-01-01"),
+        None,
+    ));
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &legacy_cfg,
+        CheckMode::NoNew
+    ));
+}
+
 fn lifecycle_entry(id: &str, expires: Option<&str>, review_after: Option<&str>) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),

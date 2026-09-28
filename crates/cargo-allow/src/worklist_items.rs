@@ -21,11 +21,10 @@ pub(super) fn work_items_from_outcomes(
     outcomes
         .iter()
         .filter_map(|outcome| {
-            let status = outcome
-                .allow_id
-                .as_deref()
-                .and_then(|id| projected_statuses.get(id).copied())
-                .unwrap_or(outcome.status);
+            // Finding-level `New` (the broad-expiry re-raise) stays `new` in
+            // the queue instead of collapsing into the entry-level `expired`
+            // annotation, so dispositions rank it as blocking (#4238).
+            let status = allow_report::ledger_outcome_status(&projected_statuses, outcome);
             let actionable = outcome.status != MatchStatus::Matched
                 || matches!(status, MatchStatus::Expired | MatchStatus::ReviewDue);
             actionable.then_some((status, outcome))
@@ -301,5 +300,49 @@ mod tests {
             }
             items => assert_eq!(items.len(), 1),
         }
+    }
+
+    #[test]
+    fn expired_broad_entry_reraise_stays_new_in_worklist() {
+        // #4238 gate-masking repair: the re-raised broad-expiry finding keeps
+        // its finding-level `New` status (and its own message) in the queue —
+        // the entry-level `expired` annotation must not swallow it, so the
+        // disposition stays blocking.
+        let mut cfg = AllowConfig::empty();
+        let mut entry = test_entry("allow-broad-expired", FindingKind::Panic);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        cfg.allow.push(entry);
+        let outcome = test_outcome(
+            MatchStatus::New,
+            Some("allow-broad-expired"),
+            Some(0),
+            "allow-broad-expired matched but expired on 2020-01-01; broad-matcher authority ends at expiry — new finding",
+        );
+
+        let items = super::super::work_items_from_outcomes(
+            &cfg,
+            &[test_finding(
+                FindingKind::Panic,
+                Some("unwrap"),
+                "tracked.file",
+                "unwrap",
+            )],
+            &[outcome],
+        );
+
+        let reraised = items
+            .iter()
+            .find(|item| item.status == MatchStatus::New)
+            .unwrap_or_else(|| {
+                std::panic::panic_any("the re-raised finding must stay in the queue as new")
+            });
+        assert_eq!(reraised.allow_id.as_deref(), Some("allow-broad-expired"));
+        assert!(
+            reraised
+                .message
+                .contains("broad-matcher authority ends at expiry"),
+            "the re-raised item keeps its own message: {}",
+            reraised.message
+        );
     }
 }

@@ -562,8 +562,8 @@ pub use prune::{
     render_prune_json,
 };
 pub use read_model::{
-    LedgerReadState, ledger_project_outcomes, ledger_read_state, ledger_read_state_for_outcomes,
-    ledger_read_statuses,
+    LedgerReadState, ledger_outcome_status, ledger_project_outcomes, ledger_read_state,
+    ledger_read_state_for_outcomes, ledger_read_statuses,
 };
 pub use receipt::{
     render_error_receipt, render_receipt, render_receipt_with_context,

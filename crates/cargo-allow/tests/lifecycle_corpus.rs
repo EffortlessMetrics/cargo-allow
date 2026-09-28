@@ -12,6 +12,7 @@ use support::{
 };
 
 const EXPIRED_ID: &str = "allow-expired";
+const BROAD_EXPIRED_ID: &str = "allow-broad-expired";
 const REVIEW_DUE_ID: &str = "allow-review";
 const STALE_ID: &str = "allow-stale";
 const DRIFT_ID: &str = "allow-drift";
@@ -949,6 +950,232 @@ after_fingerprint = "{after_fingerprint}"
     assert_status("expiry extension with note", &with_note, true);
 
     remove_temp_root(root);
+}
+
+#[test]
+fn expired_broad_glob_entry_blocks_no_new_and_gates_agree() {
+    // Review-demanded gate-level fixture (#4238): an expired glob-only entry
+    // (no structural identity, no occurrence_limit) re-raises its matched
+    // finding as `New`. The real binary must fail `check --mode no-new` with
+    // default requirements, agree with `diff --base`, queue the finding as
+    // `new` with a blocking worklist posture, and keep failing under the
+    // legacy `calendar_expiry_blocks_no_new` flag. Expired exact/structural
+    // entries stay advisory (see
+    // `expired_exact_entry_passes_no_new_and_receipt_marks_lifecycle_posture`).
+    let root = temp_root("expired-broad-no-new");
+    fs::create_dir_all(root.join("generated"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create generated directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(root.join("generated/data.txt"), "generated payload\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write broad fixture: {err}")));
+    fs::write(root.join("policy/allow.toml"), expired_broad_policy(false))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write broad policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "expired broad fixture"],
+    );
+
+    // Default candidate-mode requirements: the re-raised `New` blocks no-new.
+    let output = root.join("target/cargo-allow/check.json");
+    let receipt = root.join("target/cargo-allow/check.receipt.json");
+    let check = run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &output, &receipt);
+    assert_status("expired broad no-new", &check, false);
+    assert_quiet("expired broad no-new", &check);
+    let report = assert_saved_json_artifact(
+        &output,
+        "expired broad no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        report.pointer("/failed").and_then(Value::as_bool),
+        Some(true),
+        "the re-raised broad-expiry finding must fail the no-new gate"
+    );
+    assert_outcome_row(
+        &report,
+        BROAD_EXPIRED_ID,
+        "new",
+        "broad-matcher authority ends at expiry",
+    );
+    let receipt_value = assert_saved_json_artifact(
+        &receipt,
+        "expired broad receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        receipt_value
+            .pointer("/lifecycle_posture")
+            .and_then(Value::as_str),
+        Some("candidate-mode"),
+        "default policy must record the candidate-mode lifecycle posture"
+    );
+
+    // The diff gate counts the same re-raised `New`: the gates agree.
+    let diff_output = root.join("target/cargo-allow/diff.json");
+    let diff = run_diff(&root, &diff_output, false);
+    assert_status("expired broad diff", &diff, false);
+    let diff_report = assert_saved_json_artifact(
+        &diff_output,
+        "expired broad diff",
+        "cargo-allow.report.v1",
+        "diff",
+    );
+    assert_eq!(
+        diff_report.pointer("/failed").and_then(Value::as_bool),
+        Some(true),
+        "diff --base must agree with the blocking no-new check"
+    );
+    assert_outcome_row(
+        &diff_report,
+        BROAD_EXPIRED_ID,
+        "new",
+        "broad-matcher authority ends at expiry",
+    );
+
+    // The worklist queues the finding as `new` and the summary posture is
+    // blocking, not advisory.
+    let (worklist_path, worklist_summary_path, worklist_result) =
+        run_report_with_common_summary(&root, "broad-worklist", &["worklist"]);
+    assert_status("expired broad worklist", &worklist_result, true);
+    assert_quiet("expired broad worklist", &worklist_result);
+    let worklist = assert_saved_json_artifact(
+        &worklist_path,
+        "expired broad worklist",
+        "cargo-allow.worklist.v1",
+        "worklist",
+    );
+    let reraised_item = worklist
+        .pointer("/work_items")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/work_items should be an array"))
+        .iter()
+        .find(|item| {
+            item.get("allow_id").and_then(Value::as_str) == Some(BROAD_EXPIRED_ID)
+                && item.get("status").and_then(Value::as_str) == Some("new")
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "the re-raised broad-expiry finding must be queued with status `new`",
+            )
+        })
+        .clone();
+    assert!(
+        reraised_item
+            .get("message")
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains("broad-matcher authority ends at expiry")),
+        "the queued item keeps the broad-expiry message: {reraised_item}"
+    );
+    let worklist_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&worklist_summary_path)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read worklist summary: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse worklist summary: {err}")));
+    assert_eq!(
+        worklist_summary.pointer("/posture").and_then(Value::as_str),
+        Some("blocking"),
+        "the worklist summary must treat the re-raised finding as blocking"
+    );
+
+    // The legacy flag restores the pre-#4238 posture and still blocks.
+    fs::write(root.join("policy/allow.toml"), expired_broad_policy(true))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy broad policy: {err}")));
+    let legacy_output = root.join("target/cargo-allow/check-legacy.json");
+    let legacy_receipt = root.join("target/cargo-allow/check-legacy.receipt.json");
+    let legacy =
+        run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &legacy_output, &legacy_receipt);
+    assert_status("expired broad legacy no-new", &legacy, false);
+    let legacy_report = assert_saved_json_artifact(
+        &legacy_output,
+        "expired broad legacy no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        legacy_report.pointer("/failed").and_then(Value::as_bool),
+        Some(true),
+        "the legacy flag must keep the broad-expiry re-raise blocking"
+    );
+    let legacy_receipt_value = assert_saved_json_artifact(
+        &legacy_receipt,
+        "expired broad legacy receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        legacy_receipt_value
+            .pointer("/lifecycle_posture")
+            .and_then(Value::as_str),
+        Some("calendar-expiry-blocking"),
+        "the legacy flag must record the calendar-expiry-blocking posture"
+    );
+
+    remove_temp_root(root);
+}
+
+fn assert_outcome_row(value: &Value, allow_id: &str, status: &str, message_fragment: &str) {
+    let outcomes = value
+        .pointer("/outcomes")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("/outcomes should be an array"));
+    let row = outcomes
+        .iter()
+        .find(|row| {
+            row.get("allow_id").and_then(Value::as_str) == Some(allow_id)
+                && row.get("status").and_then(Value::as_str) == Some(status)
+        })
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "no {status} outcome row for {allow_id}: {outcomes:?}"
+            ))
+        });
+    assert!(
+        row.get("message")
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains(message_fragment)),
+        "{allow_id} {status} row should contain {message_fragment:?}: {row}"
+    );
+}
+
+fn expired_broad_policy(calendar_expiry_blocks_no_new: bool) -> String {
+    let flag = if calendar_expiry_blocks_no_new {
+        "\ncalendar_expiry_blocks_no_new = true\n"
+    } else {
+        ""
+    };
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "target/**"]
+
+[requirements]{flag}
+
+[[allow]]
+id = "{BROAD_EXPIRED_ID}"
+kind = "generated_code"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture pins broad-matcher expiry authority for a glob-only entry."
+evidence = ["test:lifecycle_corpus"]
+created = "2019-01-01"
+expires = "2020-01-01"
+
+[allow.selector]
+glob = "generated/**"
+"#
+    )
 }
 
 fn expired_exact_policy(calendar_expiry_blocks_no_new: bool) -> String {

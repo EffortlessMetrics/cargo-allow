@@ -42,11 +42,10 @@ pub(crate) fn check_failed_for_outcomes(
     );
 
     outcomes.iter().any(|outcome| {
-        let status = outcome
-            .allow_id
-            .as_deref()
-            .and_then(|allow_id| projected_statuses.get(allow_id).copied())
-            .unwrap_or(outcome.status);
+        // A finding-level `New` (e.g. the broad-expiry re-raise) must not be
+        // downgraded to the date-first entry-level `Expired` annotation, or
+        // the no-new gate silently passes what `diff --base` blocks (#4238).
+        let status = allow_report::ledger_outcome_status(&projected_statuses, outcome);
         check_outcome_fails(outcome, status, findings, cfg, mode)
     })
 }
