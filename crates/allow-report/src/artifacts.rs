@@ -28,6 +28,8 @@ mod final_tag_transaction_v1;
 mod frozen_candidate_custody_v1;
 mod frozen_subject_lock_v1;
 mod github_pr_check_v1;
+mod github_release_checkpoint_v1;
+mod github_release_journal_v1;
 mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
@@ -53,6 +55,7 @@ mod release_manifest_v2;
 mod release_operation_authority_v1;
 mod release_operation_lease_v1;
 mod release_operation_v1;
+mod relocated_package_docs_receipt_v1;
 mod review_disposition_v1;
 mod review_readiness_check_v1;
 mod why;
@@ -340,6 +343,34 @@ pub use github_pr_check_v1::{
     GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
 };
 
+pub use github_release_checkpoint_v1::{
+    CargoAllowGitHubReleaseCheckpointV1, GITHUB_RELEASE_CHECKPOINT_MAX_NOTE_LEN,
+    GITHUB_RELEASE_CHECKPOINT_MAX_RETENTION_DAYS, GITHUB_RELEASE_CHECKPOINT_MIN_RETENTION_DAYS,
+    GITHUB_RELEASE_CHECKPOINT_SCHEMA_ID, GITHUB_RELEASE_CHECKPOINT_SCHEMA_VERSION,
+    GitHubCheckpointProviderOutcomeV1, GitHubReleaseCheckpointClassV1,
+    GitHubReleaseCheckpointInitV1, GitHubReleaseCheckpointKindV1,
+    GitHubReleaseCheckpointProducerV1, GitHubReleaseCheckpointProviderObjectV1,
+    GitHubReleaseCheckpointProviderV1, GitHubReleaseCheckpointReadbackV1,
+    GitHubReleaseCheckpointReadbackWitnessV1, begin_github_release_checkpoint_for_operation_v1,
+    begin_github_release_checkpoint_v1, digest_github_release_checkpoint_body_v1,
+    digest_github_release_checkpoint_bytes_v1, digest_github_release_checkpoint_link_v1,
+    digest_github_release_checkpoint_v1, record_github_release_checkpoint_readback_v1,
+    record_github_release_checkpoint_readback_with_witness_v1, render_github_release_checkpoint_v1,
+    select_github_release_checkpoint_by_exact_identity_v1,
+    verify_github_release_checkpoint_against_journal_v1,
+};
+
+pub use github_release_journal_v1::{
+    CargoAllowGitHubReleaseJournalEntryV1, CargoAllowGitHubReleaseJournalV1,
+    GITHUB_RELEASE_JOURNAL_GENESIS_DIGEST, GITHUB_RELEASE_JOURNAL_SCHEMA_ID,
+    GITHUB_RELEASE_JOURNAL_SCHEMA_VERSION, GitHubReleaseActualAssetV1,
+    GitHubReleaseExpectedAssetV1, GitHubReleaseJournalAppendV1, GitHubReleaseJournalClassV1,
+    GitHubReleaseJournalEventV1, GitHubReleaseJournalInitV1,
+    append_github_release_journal_event_v1, begin_github_release_journal_for_operation_v1,
+    begin_github_release_journal_v1, observe_github_release_identity_v1,
+    render_github_release_journal_v1, verify_github_release_journal_v1,
+};
+
 pub use reconciled_package_publication_v1::{
     PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
     RECONCILED_PACKAGE_PUBLICATION_SCHEMA, ReconciledPackagePublicationV1,
@@ -517,6 +548,13 @@ pub use release_operation_lease_v1::{
 pub use release_operation_v1::{
     AggregateOperationStateV1, CargoAllowReleaseOperationV1, OperationClassV1,
     OperationEventKindV1, OperationEventV1,
+};
+pub use relocated_package_docs_receipt_v1::{
+    CargoAllowRelocatedPackageDocsReceiptV1, RELOCATED_PACKAGE_DOCS_CLAIM_BOUNDARY_V1,
+    RELOCATED_PACKAGE_DOCS_EXPECTED_ROWS_V1, RELOCATED_PACKAGE_DOCS_RECEIPT_SCHEMA_V1,
+    RelocatedPackageDocsAggregateV1, RelocatedPackageDocsBasisV1, RelocatedPackageDocsNegativeV1,
+    RelocatedPackageDocsReferenceProjectionV1, RelocatedPackageDocsResultV1,
+    RelocatedPackageDocsRowV1,
 };
 pub use why::{
     EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyProofPlan, WhyReport,
