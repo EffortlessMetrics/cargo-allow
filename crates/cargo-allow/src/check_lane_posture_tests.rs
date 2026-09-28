@@ -60,24 +60,69 @@ fn blocking_lane_still_fails_no_new_on_new_findings() {
 }
 
 #[test]
-fn expired_matched_policy_fails_no_new() {
+fn expired_matched_policy_is_advisory_in_no_new_by_default() {
+    // #4238 candidate-mode law: an Expired outcome is annotation-only in
+    // no-new. Date passage must not make an unchanged PR the author of
+    // repository-wide policy debt.
     let entry = lifecycle_entry("allow-expired", Some("2020-01-01"), None);
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry.clone());
     let findings = vec![panic_finding()];
     let outcomes = vec![MatchOutcome {
-        status: MatchStatus::Matched,
+        status: MatchStatus::Expired,
         allow_id: Some(entry.id),
         candidate_ids: Vec::new(),
         finding_index: Some(0),
-        message: "matched expired entry".to_string(),
-        score: 100,
+        message: "allow-expired matched but expired on 2020-01-01".to_string(),
+        score: 300,
+    }];
+
+    assert!(!check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::NoNew
+    ));
+    // Strict/Release keep Expired blocking.
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::Strict
+    ));
+}
+
+#[test]
+fn legacy_calendar_expiry_flag_restores_blocking_no_new() {
+    // #4238 fixture (f): `calendar_expiry_blocks_no_new = true` restores the
+    // pre-candidate-mode posture — any Expired outcome fails no-new
+    // regardless of tier — and the same policy without the flag passes.
+    let entry = lifecycle_entry("allow-expired", Some("2020-01-01"), None);
+    let mut legacy_cfg = AllowConfig::empty();
+    legacy_cfg.requirements.calendar_expiry_blocks_no_new = true;
+    legacy_cfg.allow.push(entry.clone());
+    let mut default_cfg = AllowConfig::empty();
+    default_cfg.allow.push(entry.clone());
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Expired,
+        allow_id: Some(entry.id),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "allow-expired matched but expired on 2020-01-01".to_string(),
+        score: 300,
     }];
 
     assert!(check_failed_for_outcomes(
         &outcomes,
         &findings,
-        &cfg,
+        &legacy_cfg,
+        CheckMode::NoNew
+    ));
+    assert!(!check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &default_cfg,
         CheckMode::NoNew
     ));
 }

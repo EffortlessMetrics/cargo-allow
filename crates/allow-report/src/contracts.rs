@@ -55,6 +55,13 @@ pub const RECEIPT_STATUSES: &[&str] = &[
 ];
 pub const RECEIPT_ENFORCEMENT_ADVISORY: &str = "advisory";
 pub const RECEIPT_ENFORCEMENT_ENFORCING: &str = "enforcing";
+/// Lifecycle posture markers (#4238). `candidate-mode` is the default
+/// no-new law: expired exact/structural/bounded matches authorize directly
+/// and calendar dates never change a candidate verdict. `calendar-expiry-
+/// blocking` is the legacy `calendar_expiry_blocks_no_new = true` posture
+/// where any Expired outcome fails no-new regardless of tier.
+pub const RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE: &str = "candidate-mode";
+pub const RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING: &str = "calendar-expiry-blocking";
 
 pub const REPORT_COMMAND_AUDIT: &str = "audit";
 pub const REPORT_COMMAND_CHECK: &str = "check";
@@ -568,6 +575,11 @@ pub struct ReportContext<'a> {
     pub rust_files_skipped: usize,
     pub rust_files_considered: usize,
     pub rust_files_with_parse_errors: usize,
+    /// Which lifecycle law governed this run's no-new evaluation (#4238):
+    /// `RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE` or
+    /// `RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING`. Absent in error
+    /// receipts emitted before a policy was successfully loaded.
+    pub lifecycle_posture: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -638,6 +650,7 @@ impl<'a> ReportContext<'a> {
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
+            lifecycle_posture: None,
         }
     }
 

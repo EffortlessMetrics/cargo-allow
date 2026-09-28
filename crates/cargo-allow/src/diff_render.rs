@@ -266,7 +266,10 @@ mod tests {
             .map(test_outcome)
             .collect::<Vec<_>>();
 
-        assert_eq!(current_no_new_failures(&outcomes), 6);
+        // #4238: Expired dropped out of the no-new failure set, so the
+        // 11-status sweep now yields 5 failures (New, Ambiguous,
+        // InvalidSelector, MissingRequiredField, EvidenceMissing).
+        assert_eq!(current_no_new_failures(&outcomes), 5);
     }
 
     #[test]

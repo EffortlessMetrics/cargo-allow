@@ -108,6 +108,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
             matching_finding_count: matching_findings.len(),
             suggested_actions,
             inventory_facts,
+            calendar_expiry_blocks_no_new: cfg.requirements.calendar_expiry_blocks_no_new,
         },
     )?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
@@ -134,6 +135,8 @@ struct ExplainEntryFacts<'a> {
     matching_finding_count: usize,
     suggested_actions: Vec<String>,
     inventory_facts: crate::InventoryFacts,
+    /// Legacy calendar-expiry posture of the loaded policy (#4238).
+    calendar_expiry_blocks_no_new: bool,
 }
 
 /// Build the common operator summary from the entry state explain already holds.
@@ -184,6 +187,7 @@ fn explain_summary(
             attention_status: facts.attention_status,
             matching_finding_count: facts.matching_finding_count,
             suggested_actions: facts.suggested_actions,
+            calendar_expiry_blocks_no_new: facts.calendar_expiry_blocks_no_new,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow explained one source-exception ledger entry against current source-tree syntax only",
             )

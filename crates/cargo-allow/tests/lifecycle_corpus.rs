@@ -727,6 +727,313 @@ fn baseline_debt_is_advisory_in_no_new_and_blocking_in_strict() {
 }
 
 #[test]
+fn expired_exact_entry_passes_no_new_and_receipt_marks_lifecycle_posture() {
+    // #4238 fixtures (a)/(f) end to end: an expired structural entry no
+    // longer blocks no-new (candidate mode), the row stays visible as
+    // expired, the receipt names the `candidate-mode` lifecycle posture, and
+    // the legacy `calendar_expiry_blocks_no_new` flag restores the
+    // pre-#4238 blocking posture with a `calendar-expiry-blocking` marker.
+    let root = temp_root("expired-exact-no-new");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write expired source: {err}")));
+    fs::write(root.join("policy/allow.toml"), expired_exact_policy(false))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write expired policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "expired exact fixture"],
+    );
+
+    let output = root.join("target/cargo-allow/check.json");
+    let receipt = root.join("target/cargo-allow/check.receipt.json");
+    let check = run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &output, &receipt);
+    assert_status("expired exact no-new", &check, true);
+    assert_quiet("expired exact no-new", &check);
+    let report = assert_saved_json_artifact(
+        &output,
+        "expired exact no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        report.pointer("/failed").and_then(Value::as_bool),
+        Some(false),
+        "an expired exact entry must not block no-new in candidate mode"
+    );
+    assert_entry_status(&report, "/outcomes", EXPIRED_ID, "expired");
+    let receipt_value = assert_saved_json_artifact(
+        &receipt,
+        "expired exact receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        receipt_value
+            .pointer("/lifecycle_posture")
+            .and_then(Value::as_str),
+        Some("candidate-mode"),
+        "default policy must record the candidate-mode lifecycle posture"
+    );
+
+    // The legacy flag restores the pre-#4238 posture and flips the marker.
+    fs::write(root.join("policy/allow.toml"), expired_exact_policy(true))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy policy: {err}")));
+    let legacy_output = root.join("target/cargo-allow/check-legacy.json");
+    let legacy_receipt = root.join("target/cargo-allow/check-legacy.receipt.json");
+    let legacy =
+        run_command_with_receipt(&root, CHECK_NO_NEW_ARGS, &legacy_output, &legacy_receipt);
+    assert_status("expired exact legacy no-new", &legacy, false);
+    let legacy_receipt_value = assert_saved_json_artifact(
+        &legacy_receipt,
+        "expired exact legacy receipt",
+        allow_report::RECEIPT_SCHEMA_ID,
+        "check",
+    );
+    assert_eq!(
+        legacy_receipt_value
+            .pointer("/lifecycle_posture")
+            .and_then(Value::as_str),
+        Some("calendar-expiry-blocking"),
+        "the legacy flag must record the calendar-expiry-blocking posture"
+    );
+    let legacy_report = assert_saved_json_artifact(
+        &legacy_output,
+        "expired exact legacy no-new",
+        "cargo-allow.report.v1",
+        "check",
+    );
+    assert_eq!(
+        legacy_report.pointer("/failed").and_then(Value::as_bool),
+        Some(true),
+        "the legacy flag must restore blocking behavior for expired outcomes"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn malformed_lifecycle_date_fails_closed_at_load() {
+    // #4238 fixture (b) at the repository boundary: the loader rejects
+    // malformed dates before evaluation, so a malformed `expires` can never
+    // ride the advisory Expired annotation to a silent pass (#1804).
+    let root = temp_root("malformed-lifecycle-date");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write malformed source: {err}")));
+    let malformed_policy =
+        expired_exact_policy(false).replace("expires = \"2020-01-01\"", "expires = \"2026-13-40\"");
+    fs::write(root.join("policy/allow.toml"), malformed_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write malformed policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &[
+            "commit",
+            "--no-gpg-sign",
+            "-m",
+            "malformed lifecycle fixture",
+        ],
+    );
+
+    let output = root.join("target/cargo-allow/check.json");
+    let check = run_command(&root, CHECK_NO_NEW_ARGS, &output);
+    assert_status("malformed lifecycle date no-new", &check, false);
+    let stderr = String::from_utf8_lossy(&check.stderr);
+    assert!(
+        stderr.contains("invalid expires date"),
+        "malformed expires must fail the run with a visible reason: {stderr}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn expiry_extension_requires_change_note_through_diff_gate() {
+    // #4238 fixture (g): a date-only renewal (expires extension) stays a
+    // review-severity ExpiryExtended policy change; the diff gate requires a
+    // revision note for it before the renewal is authorized.
+    let root = temp_root("expiry-extension-diff");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write expiry source: {err}")));
+    fs::write(root.join("policy/allow.toml"), expiry_policy("2090-01-01"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write expiry base policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(
+        &root,
+        &["commit", "--no-gpg-sign", "-m", "expiry extension base"],
+    );
+
+    // Extend expiry with no revision note: the diff gate blocks and names
+    // the expiry_extended transition.
+    fs::write(root.join("policy/allow.toml"), expiry_policy("2099-01-01"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write expiry head policy: {err}")));
+    let missing_output = root.join("target/cargo-allow/expiry-missing-note.json");
+    let missing = run_diff_with_note_requirement(&root, "", "", &missing_output);
+    assert_status("expiry extension without note", &missing, false);
+    let missing_changes = policy_changes(&missing_output);
+    assert_eq!(
+        missing_changes.len(),
+        1,
+        "unexpected expiry rows: {missing_changes:?}"
+    );
+    assert_policy_change_fields(
+        &missing_output,
+        "expiry_extended",
+        "allow-expiry",
+        "review",
+        "retained",
+        "review_required",
+    );
+    let rendered = run_diff_rendered(&root, "human", true);
+    assert_status("expiry extension without note (human)", &rendered, false);
+    let stderr = String::from_utf8_lossy(&rendered.stderr);
+    assert!(
+        stderr.contains("change note required: allow-expiry expiry_extended"),
+        "missing-note diagnostic should identify the expiry transition: {stderr}"
+    );
+
+    // Writing the revision note authorizes the bounded weakening.
+    let (before_fingerprint, after_fingerprint) = expiry_fingerprints();
+    let note = format!(
+        r#"[[records]]
+allow_ids = ["allow-expiry"]
+change_kinds = ["expiry_extended"]
+before_fingerprint = "{before_fingerprint}"
+after_fingerprint = "{after_fingerprint}"
+"#
+    );
+    fs::create_dir_all(root.join(".allow/revisions"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create revisions dir: {err}")));
+    fs::write(root.join(".allow/revisions/expiry.toml"), note)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write expiry revision note: {err}")));
+    let with_note_output = root.join("target/cargo-allow/expiry-with-note.json");
+    let with_note = run_diff_with_note_requirement(&root, "", "", &with_note_output);
+    assert_status("expiry extension with note", &with_note, true);
+
+    remove_temp_root(root);
+}
+
+fn expired_exact_policy(calendar_expiry_blocks_no_new: bool) -> String {
+    let flag = if calendar_expiry_blocks_no_new {
+        "\ncalendar_expiry_blocks_no_new = true\n"
+    } else {
+        ""
+    };
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "target/**"]
+
+[requirements]{flag}
+
+[[allow]]
+id = "allow-expired"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture pins candidate-mode lifecycle authority for an expired structural entry."
+evidence = ["test:lifecycle_corpus"]
+created = "2019-01-01"
+expires = "2020-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn expiry_policy(expires: &str) -> String {
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = ["policy/**", "target/**"]
+
+[[allow]]
+id = "allow-expiry"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "The fixture pins the change-note law for date-only renewals."
+evidence = ["test:lifecycle_corpus"]
+created = "2019-01-01"
+expires = "{expires}"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+"#
+    )
+}
+
+fn expiry_fingerprints() -> (String, String) {
+    let base = allow_policy::parse_policy(&expiry_policy("2090-01-01"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse expiry base policy: {err}")));
+    let head = allow_policy::parse_policy(&expiry_policy("2099-01-01"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse expiry head policy: {err}")));
+    let base_entry = base
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expiry base policy has no entry"));
+    let head_entry = head
+        .allow
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expiry head policy has no entry"));
+    (
+        allow_entry_content_fingerprint(base_entry),
+        allow_entry_content_fingerprint(head_entry),
+    )
+}
+
+#[test]
 fn mirror_divergence_projects_across_check_worklist_and_doctor() {
     let root = create_mirror_divergence_fixture();
     let check_output = root.join("target/cargo-allow/check.json");

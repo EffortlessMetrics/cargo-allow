@@ -141,6 +141,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &items,
         filters.any_active(),
         inventory_facts,
+        report_cfg.requirements.calendar_expiry_blocks_no_new,
     )?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
 
@@ -172,6 +173,7 @@ fn worklist_summary(
     items: &[WorkItem],
     filtered: bool,
     inventory_facts: crate::InventoryFacts,
+    calendar_expiry_blocks_no_new: bool,
 ) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
     let semantic_identity =
         crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
@@ -197,6 +199,7 @@ fn worklist_summary(
             coverage_limitation,
             items: items.iter().map(summary_item).collect(),
             filtered,
+            calendar_expiry_blocks_no_new,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow queued source-exception maintenance work from current source-tree syntax and ledger posture only",
             )

@@ -1404,6 +1404,7 @@
         "allow_bare_allow_attributes",
         "lint_policy_id_required",
         "stale_entries_fail",
+        "calendar_expiry_blocks_no_new",
         "unsafe.evidence_required",
         "unsafe.verified_evidence_required",
         "unsafe.safety_comment_required"

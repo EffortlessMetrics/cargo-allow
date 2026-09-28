@@ -1,10 +1,12 @@
 use allow_core::{
-    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, effective_lane_posture_for_findings,
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+    effective_lane_posture_for_findings,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
-    RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
-    render_error_receipt, render_receipt_with_context_and_inventory,
+    RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING,
+    RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING, RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE,
+    ReportContext, Summary, render_error_receipt, render_receipt_with_context_and_inventory,
 };
 use std::path::{Path, PathBuf};
 use std::process;
@@ -346,6 +348,8 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 &provenance.run_id,
                 &bindings,
             );
+            receipt_context.lifecycle_posture =
+                Some(lifecycle_posture_for_requirements(&report_cfg));
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
             render_receipt_with_context_and_inventory(
@@ -554,6 +558,8 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 &provenance.run_id,
                 &bindings,
             );
+            receipt_context.lifecycle_posture =
+                Some(lifecycle_posture_for_requirements(&report_cfg));
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
             render_receipt_with_context_and_inventory(
@@ -678,6 +684,17 @@ fn apply_receipt_run_metadata<'a>(
     // source bytes.
     context.git_sha = bindings.git_sha.as_deref();
     context.policy_digest = bindings.policy_digest.as_deref();
+}
+
+/// Which lifecycle law governed this run's no-new evaluation (#4238). The
+/// receipt states it so candidate-mode transitions are externally auditable.
+/// Error receipts that fire before a policy loads leave the marker absent.
+fn lifecycle_posture_for_requirements(cfg: &AllowConfig) -> &'static str {
+    if cfg.requirements.calendar_expiry_blocks_no_new {
+        RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING
+    } else {
+        RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE
+    }
 }
 
 /// Best-effort receipt integrity binding (#1850/#1781).

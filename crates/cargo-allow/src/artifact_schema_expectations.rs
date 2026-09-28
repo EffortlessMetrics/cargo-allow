@@ -340,6 +340,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "git_sha",
                 "inventory",
                 "lane_posture",
+                "lifecycle_posture",
                 "mode",
                 "policy_config",
                 "policy_digest",

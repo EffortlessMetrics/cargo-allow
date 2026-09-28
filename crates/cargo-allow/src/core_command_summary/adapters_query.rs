@@ -41,6 +41,9 @@ pub struct ExplainSummaryFactsV1 {
     pub matching_finding_count: usize,
     /// Ordered next steps from `explain_steps::explain_next_steps`, unmodified.
     pub suggested_actions: Vec<String>,
+    /// Legacy calendar-expiry posture in effect for the explained entry's
+    /// policy (#4238): `true` re-blocks Expired summaries.
+    pub calendar_expiry_blocks_no_new: bool,
     pub claim_boundary: ClaimBoundaryV1,
 }
 
@@ -63,6 +66,9 @@ pub struct WhySummaryFactsV1 {
     /// Source-tree-relative path of the add-finding plan this run wrote, when
     /// `--plan` was requested.
     pub plan_path: Option<String>,
+    /// Legacy calendar-expiry posture in effect for the queried policy
+    /// (#4238): `true` re-blocks Expired summaries.
+    pub calendar_expiry_blocks_no_new: bool,
     pub claim_boundary: ClaimBoundaryV1,
 }
 
@@ -90,6 +96,9 @@ pub struct WorklistSummaryFactsV1 {
     /// True when any queue filter narrowed the listing, so an empty queue does
     /// not prove the repository has no work.
     pub filtered: bool,
+    /// Legacy calendar-expiry posture in effect for the queued policy
+    /// (#4238): `true` re-blocks Expired items in the queue disposition.
+    pub calendar_expiry_blocks_no_new: bool,
     pub claim_boundary: ClaimBoundaryV1,
 }
 
@@ -110,6 +119,7 @@ pub fn core_command_summary_from_explain(
         attention_status,
         matching_finding_count,
         suggested_actions,
+        calendar_expiry_blocks_no_new,
         claim_boundary,
     } = facts;
     if let Some(limitation) = coverage_limitation {
@@ -130,7 +140,7 @@ pub fn core_command_summary_from_explain(
     } else if let Some(status) = attention_status {
         (
             ResultClassV1::Findings,
-            status_posture(status),
+            status_posture(status, calendar_expiry_blocks_no_new),
             CoreCommandReasonV1 {
                 code: format!("explain.{}", status.as_str()),
                 message: format!(
@@ -226,6 +236,7 @@ pub fn core_command_summary_from_why(
         near_miss_candidate_count,
         suggested_actions,
         plan_path,
+        calendar_expiry_blocks_no_new,
         claim_boundary,
     } = facts;
     if let Some(limitation) = coverage_limitation {
@@ -238,6 +249,7 @@ pub fn core_command_summary_from_why(
         matched_allow_id.as_deref(),
         near_miss_candidate_count,
         &location,
+        calendar_expiry_blocks_no_new,
     );
 
     // A satisfied query has nothing for the operator to decide. Everything else
@@ -324,6 +336,7 @@ fn why_disposition(
     matched_allow_id: Option<&str>,
     near_miss_candidate_count: usize,
     location: &str,
+    calendar_expiry_blocks_no_new: bool,
 ) -> (ResultClassV1, CoreCommandPostureV1, CoreCommandReasonV1) {
     if completeness != CompletenessV1::Complete {
         return (
@@ -388,7 +401,7 @@ fn why_disposition(
     };
     (
         ResultClassV1::Findings,
-        status_posture(status),
+        status_posture(status, calendar_expiry_blocks_no_new),
         CoreCommandReasonV1 {
             code: format!("why.{}", status.as_str()),
             message,
@@ -412,6 +425,7 @@ pub fn core_command_summary_from_worklist(
         coverage_limitation,
         items,
         filtered,
+        calendar_expiry_blocks_no_new,
         claim_boundary,
     } = facts;
     if let Some(limitation) = coverage_limitation {
@@ -424,8 +438,12 @@ pub fn core_command_summary_from_worklist(
         );
     }
 
-    let (result_class, posture, reason, primary_action) =
-        worklist_disposition(completeness, filtered, &items);
+    let (result_class, posture, reason, primary_action) = worklist_disposition(
+        completeness,
+        filtered,
+        &items,
+        calendar_expiry_blocks_no_new,
+    );
     // Every queue item beyond the promoted one stays retrievable in the
     // command's own artifact rather than being re-ranked here.
     let remaining = items
@@ -470,6 +488,7 @@ fn worklist_disposition(
     completeness: CompletenessV1,
     filtered: bool,
     items: &[WorklistSummaryItemV1],
+    calendar_expiry_blocks_no_new: bool,
 ) -> (
     ResultClassV1,
     CoreCommandPostureV1,
@@ -532,7 +551,10 @@ fn worklist_disposition(
 
     // Severity comes from the gate's own ranking over every queued item, not
     // from the position of the first one.
-    let blocking = items.iter().any(|item| item.status.is_failure_in_no_new());
+    let blocking = items.iter().any(|item| {
+        item.status.is_failure_in_no_new()
+            || (item.status == MatchStatus::Expired && calendar_expiry_blocks_no_new)
+    });
     let posture = if blocking {
         CoreCommandPostureV1::Blocking
     } else {
@@ -572,7 +594,17 @@ fn worklist_disposition(
 /// same ranking the enforcing gate applies, so no second severity ontology is
 /// introduced. An ambiguous outcome is escalated to a repository decision:
 /// several allow entries compete and choosing between them is judgment.
-fn status_posture(status: MatchStatus) -> CoreCommandPostureV1 {
+/// The legacy `calendar_expiry_blocks_no_new` posture (#4238) re-blocks
+/// `Expired` so repositories that opted into the pre-#4238 law see identical
+/// blocking summaries; the flag lives in the policy requirements, never in
+/// `MatchStatus` itself.
+fn status_posture(
+    status: MatchStatus,
+    calendar_expiry_blocks_no_new: bool,
+) -> CoreCommandPostureV1 {
+    if status == MatchStatus::Expired && calendar_expiry_blocks_no_new {
+        return CoreCommandPostureV1::Blocking;
+    }
     match status {
         MatchStatus::Ambiguous => CoreCommandPostureV1::DecisionRequired,
         status if status.is_failure_in_no_new() => CoreCommandPostureV1::Blocking,

@@ -283,6 +283,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             queried_line: args.line,
             plan_path: written_plan_path,
             inventory_facts,
+            calendar_expiry_blocks_no_new: cfg.requirements.calendar_expiry_blocks_no_new,
         },
     )?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
@@ -320,6 +321,8 @@ struct WhyFindingFacts<'a> {
     /// Source-tree-relative path of the add-finding plan this run wrote.
     plan_path: Option<String>,
     inventory_facts: crate::InventoryFacts,
+    /// Legacy calendar-expiry posture of the loaded policy (#4238).
+    calendar_expiry_blocks_no_new: bool,
 }
 
 /// Build the common operator summary from the evaluation `why` already holds.
@@ -382,6 +385,7 @@ fn why_summary(
             near_miss_candidate_count: facts.candidates.len(),
             suggested_actions: next.suggested_actions,
             plan_path: facts.plan_path,
+            calendar_expiry_blocks_no_new: facts.calendar_expiry_blocks_no_new,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow explained one source-tree finding against current source-exception ledger posture only",
             )
@@ -450,6 +454,7 @@ fn why_target_summary(
             near_miss_candidate_count: 0,
             suggested_actions,
             plan_path: None,
+            calendar_expiry_blocks_no_new: false,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow could not fully scan the selected source target, so no finding or add-finding plan was produced",
             )

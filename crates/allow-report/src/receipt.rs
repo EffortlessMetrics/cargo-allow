@@ -196,6 +196,10 @@ fn insert_run_metadata(artifact: &mut Map<String, Value>, context: ReportContext
     insert_optional_string(artifact, "enforcement", context.enforcement);
     insert_optional_string(artifact, "policy_config", context.policy_config);
     insert_optional_string(artifact, "tool_version", context.tool_version);
+    // Lifecycle posture (#4238): records which calendar-expiry law governed
+    // the run's no-new evaluation so receipts are self-describing across the
+    // candidate-mode transition.
+    insert_optional_string(artifact, "lifecycle_posture", context.lifecycle_posture);
 
     if let Some(lane_posture) = context.lane_posture {
         let mut posture = Map::new();

@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, MatchOutcome,
-    normalize_path, read_text_file_capped, source_tree_path_is_ignored,
+    MatchStatus, normalize_path, read_text_file_capped, source_tree_path_is_ignored,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
@@ -210,10 +210,21 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &report_cfg,
         &outcomes,
     );
+    // The diff gate hardwires the no-new law (#4238): expired outcomes are
+    // annotation-only unless the evaluated (head) policy opts back into the
+    // legacy calendar-expiry-blocking posture via
+    // `requirements.calendar_expiry_blocks_no_new`.
     let current_failures = projected_outcomes
         .iter()
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
+        + projected_outcomes
+            .iter()
+            .filter(|outcome| {
+                outcome.status == MatchStatus::Expired
+                    && report_cfg.requirements.calendar_expiry_blocks_no_new
+            })
+            .count()
         + evidence.broken_evidence_links;
     let current_failures =
         current_failures + usize::from(result_class.is_blocking() && current_failures == 0);

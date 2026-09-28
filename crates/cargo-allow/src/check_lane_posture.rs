@@ -18,6 +18,14 @@ pub(crate) fn check_outcome_fails(
     if status == MatchStatus::Stale && cfg.requirements.stale_entries_fail {
         return true;
     }
+    // Legacy calendar-expiry posture (#4238): `calendar_expiry_blocks_no_new
+    // = true` restores the pre-candidate-mode law where any Expired outcome
+    // fails no-new regardless of match tier. The projected read-model status
+    // is checked so an entry whose dates have passed blocks even when its
+    // outcome row was evaluated before the boundary.
+    if status == MatchStatus::Expired && cfg.requirements.calendar_expiry_blocks_no_new {
+        return true;
+    }
     mode.fails(status)
 }
 
