@@ -5,7 +5,7 @@ use crate::classification::classify_matched;
 use crate::lifecycle::unused_entry_status;
 use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
-use crate::scoring::classify_match;
+use crate::scoring::{MatchStrength, classify_match};
 
 /// Per-entry occurrence accounting produced by [`evaluate_detailed`].
 ///
@@ -75,7 +75,7 @@ impl EvalState {
         cfg: &AllowConfig,
         ctx: &FindingContext<'_>,
         entry_index: usize,
-        score: u32,
+        strength: MatchStrength,
         candidate_ids: Vec<String>,
     ) -> Option<MatchStatus> {
         let FindingContext {
@@ -85,6 +85,7 @@ impl EvalState {
             mode,
         } = *ctx;
         let entry = cfg.allow.get(entry_index)?;
+        let score = strength.as_priority();
 
         // Record the structural observation. `observed_count` counts every
         // occurrence, including ones past the limit, and stays distinct from
@@ -117,12 +118,17 @@ impl EvalState {
             return Some(MatchStatus::New);
         }
 
-        let (status, message) = classify_matched(entry, finding, score, today, cfg, mode);
-        // Only live statuses mark the entry used and consume occurrence
-        // headroom. Non-live statuses (Expired, EvidenceMissing,
-        // InvalidSelector) are recorded so the later unused-entry projection
-        // still emits the stale/non-live posture — regardless of whether a
-        // weaker neighboring candidate was also present.
+        let (status, message) = classify_matched(entry, finding, strength, today, cfg, mode);
+        // Live statuses mark the entry used and consume occurrence headroom.
+        // Since #4238 this includes `Expired`: classification only produces
+        // `Expired` for authorized-survival matches (exact, structural, or
+        // occurrence-bounded), so the expired entry authorizes its accepted
+        // identity and consumes its bounded headroom like a live entry while
+        // the expired annotation stays visible. Truly non-live statuses
+        // (EvidenceMissing, InvalidSelector, the broad-expiry `New`) are
+        // recorded so the later unused-entry projection still emits the
+        // stale/non-live posture — regardless of whether a weaker
+        // neighboring candidate was also present.
         if status_consumes_entry(status) {
             self.used_entries.insert(entry_index);
             self.entry_occurrences
@@ -191,7 +197,7 @@ pub fn evaluate_detailed(
         let mut candidates = Vec::new();
         for (entry_index, entry) in cfg.allow.iter().enumerate() {
             if let Some(strength) = classify_match(entry, finding) {
-                candidates.push((entry_index, strength.as_priority()));
+                candidates.push((entry_index, strength));
             }
         }
         match candidates.as_slice() {
@@ -208,7 +214,7 @@ pub fn evaluate_detailed(
                 ),
                 score: 0,
             }),
-            [(entry_index, score)] => {
+            [(entry_index, strength)] => {
                 let entry_index = *entry_index;
                 let Some(entry) = cfg.allow.get(entry_index) else {
                     continue;
@@ -217,19 +223,25 @@ pub fn evaluate_detailed(
                     cfg,
                     &ctx,
                     entry_index,
-                    *score,
+                    *strength,
                     vec![entry.id.clone()],
                 );
             }
             many => {
                 // Find the unique top-scoring candidate. If one entry strictly
                 // outscores all others, take it as the match (deterministic
-                // tiebreak: highest score wins). Only return Ambiguous when
-                // two or more candidates share the max score (#1802).
-                let max_score = many.iter().map(|(_, score)| *score).fold(0, u32::max);
+                // tiebreak: highest match strength wins). Only return Ambiguous
+                // when two or more candidates share the max strength (#1802).
+                let max_strength = many
+                    .iter()
+                    .map(|(_, strength)| *strength)
+                    .max_by(|left, right| left.as_priority().cmp(&right.as_priority()));
+                let Some(max_strength) = max_strength else {
+                    continue;
+                };
                 let top_candidates: Vec<_> = many
                     .iter()
-                    .filter(|(_, score)| *score == max_score)
+                    .filter(|(_, strength)| *strength == max_strength)
                     .collect();
 
                 if top_candidates.len() == 1 {
@@ -237,7 +249,7 @@ pub fn evaluate_detailed(
                     // selected-candidate path as the single-candidate case so
                     // lifecycle and occurrence accounting stay identical
                     // (#2336). The full candidate set is preserved as context.
-                    let Some((entry_index, score)) =
+                    let Some((entry_index, strength)) =
                         top_candidates.first().map(|candidate| **candidate)
                     else {
                         continue;
@@ -247,16 +259,16 @@ pub fn evaluate_detailed(
                         .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
                         .collect();
                     let fallback =
-                        fallback_candidate(cfg, finding, many, entry_index, score, today, mode);
+                        fallback_candidate(cfg, finding, many, entry_index, strength, today, mode);
                     let winner_status = state.evaluate_selected_candidate(
                         cfg,
                         &ctx,
                         entry_index,
-                        score,
+                        strength,
                         candidate_ids.clone(),
                     );
                     if winner_status.is_some_and(fallback_allowed_status)
-                        && let Some((fallback_index, fallback_score)) = fallback
+                        && let Some((fallback_index, fallback_strength)) = fallback
                     {
                         // MatchOutcome has one finding-level row, so project
                         // coverage through the weaker live candidate while
@@ -268,7 +280,7 @@ pub fn evaluate_detailed(
                             cfg,
                             &ctx,
                             fallback_index,
-                            fallback_score,
+                            fallback_strength,
                             candidate_ids,
                         );
                     }
@@ -298,7 +310,7 @@ pub fn evaluate_detailed(
                             "finding at {} matched multiple allow entries with equal score: {ids}",
                             finding_location(finding)
                         ),
-                        score: max_score,
+                        score: max_strength.as_priority(),
                     });
                 }
             }
@@ -371,6 +383,10 @@ pub fn evaluate_detailed(
                 entry.id,
                 entry.path_or_glob()
             ),
+            MatchStatus::MissingRequiredField => format!(
+                "{} has a malformed lifecycle date; the entry fails closed until its expires/review_after values parse (#1804)",
+                entry.id
+            ),
             other => format!("{} has unexpected unused-entry status {other:?}", entry.id),
         };
         state.outcomes.push(MatchOutcome {
@@ -411,57 +427,72 @@ pub fn evaluate_detailed(
 }
 
 fn status_consumes_entry(status: MatchStatus) -> bool {
+    // `Expired` consumes since #4238: classification only returns it for
+    // authorized-survival matches (exact, structural, or occurrence-bounded),
+    // so the expired entry authorizes the accepted identity and spends its
+    // bounded occurrence headroom exactly like a live entry. ReviewDue was
+    // already conformant (#4236) and stays consuming.
     matches!(
         status,
         MatchStatus::Matched
             | MatchStatus::LocationDrift
             | MatchStatus::ReviewDue
+            | MatchStatus::Expired
             | MatchStatus::BaselineDebt
     )
 }
 
 /// Find a strictly weaker live candidate when the unique strongest candidate
-/// cannot currently authorize coverage because its lifecycle or evidence is
-/// unhealthy. The stronger entry is still evaluated first so its maintenance
+/// cannot currently authorize coverage because its evidence is unhealthy. The
+/// stronger entry is still evaluated first so its maintenance
 /// posture remains visible through the unused-entry projection.
 ///
-/// This is intentionally narrower than a general candidate-health model: only
-/// expired and evidence-missing winners may use this compatibility fallback.
-/// Invalid selectors and other policy failures remain fail-closed.
+/// Since #4238 expired winners no longer fall back: an expired exact,
+/// structural, or occurrence-bounded match authorizes directly, and an
+/// expired broad match re-raises the finding as `New` instead of hiding
+/// behind a weaker live neighbor. This is intentionally narrower than a
+/// general candidate-health model: only evidence-missing winners may use this
+/// compatibility fallback. Invalid selectors and other policy failures remain
+/// fail-closed.
 fn fallback_candidate(
     cfg: &AllowConfig,
     finding: &Finding,
-    candidates: &[(usize, u32)],
+    candidates: &[(usize, MatchStrength)],
     winner_index: usize,
-    winner_score: u32,
+    winner_strength: MatchStrength,
     today: SimpleDate,
     mode: CheckMode,
-) -> Option<(usize, u32)> {
+) -> Option<(usize, MatchStrength)> {
     let winner = cfg.allow.get(winner_index)?;
-    let (winner_status, _) = classify_matched(winner, finding, winner_score, today, cfg, mode);
+    let (winner_status, _) = classify_matched(winner, finding, winner_strength, today, cfg, mode);
     if !fallback_allowed_status(winner_status) {
         return None;
     }
 
     let mut live = candidates
         .iter()
-        .filter(|(entry_index, score)| *entry_index != winner_index && *score < winner_score)
-        .filter_map(|(entry_index, score)| {
+        .filter(|(entry_index, strength)| {
+            *entry_index != winner_index && *strength < winner_strength
+        })
+        .filter_map(|(entry_index, strength)| {
             let entry = cfg.allow.get(*entry_index)?;
-            let (status, _) = classify_matched(entry, finding, *score, today, cfg, mode);
+            let (status, _) = classify_matched(entry, finding, *strength, today, cfg, mode);
             if matches!(
                 status,
                 MatchStatus::Matched | MatchStatus::LocationDrift | MatchStatus::ReviewDue
             ) {
-                Some((*entry_index, *score))
+                Some((*entry_index, *strength))
             } else {
                 None
             }
         })
         .collect::<Vec<_>>();
 
-    let max_score = live.iter().map(|(_, score)| *score).max()?;
-    live.retain(|(_, score)| *score == max_score);
+    let max_strength = live
+        .iter()
+        .map(|(_, strength)| *strength)
+        .max_by(|left, right| left.as_priority().cmp(&right.as_priority()))?;
+    live.retain(|(_, strength)| *strength == max_strength);
     if live.len() == 1 {
         live.into_iter().next()
     } else {
@@ -470,5 +501,5 @@ fn fallback_candidate(
 }
 
 fn fallback_allowed_status(status: MatchStatus) -> bool {
-    matches!(status, MatchStatus::Expired | MatchStatus::EvidenceMissing)
+    matches!(status, MatchStatus::EvidenceMissing)
 }

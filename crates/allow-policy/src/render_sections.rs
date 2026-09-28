@@ -89,6 +89,11 @@ pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements)
         requirements.lint_policy_id_required,
     );
     render_bool_field(out, "stale_entries_fail", requirements.stale_entries_fail);
+    render_bool_field(
+        out,
+        "calendar_expiry_blocks_no_new",
+        requirements.calendar_expiry_blocks_no_new,
+    );
     out.push('\n');
     out.push_str("[requirements.unsafe]\n");
     render_bool_field(

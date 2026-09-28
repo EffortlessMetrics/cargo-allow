@@ -22,6 +22,8 @@ pub(crate) struct RequirementsToml {
     lint_policy_id_required: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
     stale_entries_fail: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
+    calendar_expiry_blocks_no_new: Option<bool>,
     #[serde(default, rename = "unsafe")]
     unsafe_requirements: UnsafeRequirementsToml,
 }
@@ -63,6 +65,9 @@ impl RequirementsToml {
             stale_entries_fail: self
                 .stale_entries_fail
                 .unwrap_or(default.stale_entries_fail),
+            calendar_expiry_blocks_no_new: self
+                .calendar_expiry_blocks_no_new
+                .unwrap_or(default.calendar_expiry_blocks_no_new),
             unsafe_evidence_required: self
                 .unsafe_requirements
                 .evidence_required
@@ -105,6 +110,7 @@ mod tests {
             allow_bare_allow_attributes: Some(true),
             lint_policy_id_required: Some(true),
             stale_entries_fail: Some(true),
+            calendar_expiry_blocks_no_new: Some(true),
             unsafe_requirements: UnsafeRequirementsToml {
                 evidence_required: Some(false),
                 verified_evidence_required: Some(true),
@@ -125,6 +131,7 @@ mod tests {
                 allow_bare_allow_attributes: true,
                 lint_policy_id_required: true,
                 stale_entries_fail: true,
+                calendar_expiry_blocks_no_new: true,
                 unsafe_evidence_required: false,
                 unsafe_safety_comment_required: true,
                 unsafe_verified_evidence_required: true,

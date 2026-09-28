@@ -31,6 +31,21 @@ impl CheckMode {
         matches!(self, Self::Audit)
     }
 
+    /// Mode law for one match outcome.
+    ///
+    /// - Audit never fails.
+    /// - Strict/Release fail on everything except a clean match or a
+    ///   location-drift annotation.
+    /// - No-new fails on new, ambiguous, invalid-selector,
+    ///   missing-required-field, and evidence-missing outcomes. Since
+    ///   #4238, `Expired` is annotation-only here: fixed evaluator + fixed
+    ///   subject + fixed policy + fixed findings produce the same verdict
+    ///   before, on, and after lifecycle dates. Exact, structural, and
+    ///   occurrence-bounded matches stay authorized when expired; expired
+    ///   broad matchers re-raise their findings as `New`, which still fails.
+    ///   A repository can restore the pre-#4238 posture with
+    ///   `requirements.calendar_expiry_blocks_no_new = true`, enforced at the
+    ///   gate layer (see `allow_core::Requirements`), not in this law table.
     pub fn fails(self, status: MatchStatus) -> bool {
         match self {
             Self::Audit => false,

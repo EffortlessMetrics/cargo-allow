@@ -385,7 +385,11 @@ fn explicit_as_of_controls_lifecycle_classification() {
 }
 
 #[test]
-fn expired_entry_reports_expired_even_when_structure_matches() {
+fn expired_exact_entry_authorizes_directly_and_stays_visible() {
+    // #4238 candidate-mode law: an expired exact match keeps authority, the
+    // outcome stays `Expired` (annotation-only in no-new), and the entry is
+    // consumed as live — so no stale "not currently authorizing" projection
+    // fires for it anymore.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.lifecycle.expires = Some("2020-01-01".to_string());
@@ -399,21 +403,77 @@ fn expired_entry_reports_expired_even_when_structure_matches() {
         allow_core::SimpleDate::today_utc_approx(),
     );
 
-    assert_eq!(outcomes.len(), 2);
+    assert_eq!(outcomes.len(), 1);
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::Expired
             && outcome.finding_index == Some(0)
             && outcome.message.contains("expired on 2020-01-01")
     }));
-    assert!(outcomes.iter().any(|outcome| {
-        outcome.status == MatchStatus::Stale
-            && outcome.finding_index.is_none()
-            && outcome.message.contains("allow-1 is stale")
+    assert!(!outcomes.iter().any(|outcome| {
+        outcome.finding_index.is_none() && outcome.status == MatchStatus::Stale
     }));
 }
 
 #[test]
-fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
+fn expired_broad_entry_loses_authority_and_raises_new_finding() {
+    // #4238 law 2: an expired ScopedFamily-only matcher (no structural
+    // identity, no occurrence_limit) does not authorize. The finding becomes
+    // a blocking `New` naming the expired broad entry, and the entry still
+    // lands in the stale projection so it is never silently hidden.
+    let mut broad = entry_with_hash("fnv1a64:actual");
+    broad.id = "allow-broad-expired".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.selector.ast_kind = None;
+    broad.selector.container = None;
+    // GeneratedCode findings carry no structural-identity requirement, so a
+    // kind+path-only entry genuinely matches at the ScopedFamily tier.
+    broad.kind = FindingKind::GeneratedCode;
+    broad.family = None;
+    broad.lifecycle.expires = Some("2020-01-01".to_string());
+    let mut finding_broad = finding_with_hash("fnv1a64:actual");
+    finding_broad.kind = FindingKind::GeneratedCode;
+    finding_broad.family = None;
+    finding_broad.identity = StructuralIdentity::new("rust", "generated_code");
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(broad);
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding_broad],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    let new_outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(0))
+        .unwrap_or_else(|| std::panic::panic_any("expected a finding-level outcome"));
+    assert_eq!(new_outcome.status, MatchStatus::New);
+    assert!(
+        new_outcome
+            .message
+            .contains("allow-broad-expired matched but expired on 2020-01-01")
+    );
+    assert!(
+        new_outcome
+            .message
+            .contains("broad-matcher authority ends at expiry")
+    );
+    // The entry must stay visible in the stale projection (advisory).
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && outcome.allow_id.as_deref() == Some("allow-broad-expired")
+            && outcome
+                .message
+                .contains("broad-matcher authority ends at expiry")
+    }));
+}
+
+#[test]
+fn expired_exact_entry_authorizes_over_live_broad_neighbor() {
+    // #4238 fixture (d): the EXPIRED EXACT entry authorizes directly — the
+    // fallback pop must not fire — while the live broad neighbor stays
+    // unused and only appears in the advisory stale projection.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut precise = entry_with_hash("fnv1a64:actual");
     precise.id = "allow-precise-expired".to_string();
@@ -436,18 +496,46 @@ fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
     );
 
     assert!(outcomes.iter().any(|outcome| {
-        outcome.status == MatchStatus::Matched
-            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+        outcome.status == MatchStatus::Expired
+            && outcome.allow_id.as_deref() == Some("allow-precise-expired")
             && outcome.finding_index == Some(0)
     }));
     assert!(!outcomes.iter().any(|outcome| {
-        outcome.status == MatchStatus::Expired && outcome.finding_index == Some(0)
+        outcome.status == MatchStatus::Matched && outcome.finding_index == Some(0)
     }));
     assert!(outcomes.iter().any(|outcome| {
         outcome.status == MatchStatus::Stale
-            && outcome.allow_id.as_deref() == Some("allow-precise-expired")
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
             && outcome.finding_index.is_none()
-            && outcome.message.contains("expired on 2020-01-01")
+            && outcome.message.contains("no current finding matched")
+    }));
+}
+
+#[test]
+fn live_broad_entry_covers_finding_when_no_precise_entry_exists() {
+    // Negative-control companion to the expired-exact fixture above: with no
+    // precise candidate at all, a live broad entry still authorizes the
+    // finding. Broad authority is only demoted by expiry, not by existence.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut broad = entry_with_hash("fnv1a64:actual");
+    broad.id = "allow-broad-live".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.lifecycle.expires = Some("2999-12-31".to_string());
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(broad);
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Matched
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+            && outcome.finding_index == Some(0)
     }));
 }
 
@@ -633,9 +721,11 @@ fn baseline_debt_fails_in_strict_and_release_mode() {
 }
 
 #[test]
-fn unparseable_expires_date_is_treated_as_expired_fail_safe() {
-    // Regression for #1804: an unparseable expires date must NOT silently
-    // make the entry immortal. Fail-safe: treat as expired.
+fn unparseable_expires_date_fails_closed_in_no_new() {
+    // Regression for #1804, updated by #4238: an unparseable expires date
+    // must NOT silently make the entry immortal, and since #4238 it must not
+    // collapse into the advisory Expired annotation either — it fails the
+    // no-new gate with a visible malformed-date reason.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.lifecycle.expires = Some("2026-13-40".to_string()); // invalid month/day
@@ -649,16 +739,22 @@ fn unparseable_expires_date_is_treated_as_expired_fail_safe() {
         allow_core::SimpleDate::today_utc_approx(),
     );
 
-    assert!(
-        outcomes
-            .iter()
-            .any(|outcome| outcome.status == MatchStatus::Expired),
-        "unparseable expires must be treated as expired (fail-safe), not immortal"
-    );
+    let outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(0))
+        .unwrap_or_else(|| std::panic::panic_any("expected a finding-level outcome"));
+    assert_eq!(outcome.status, MatchStatus::MissingRequiredField);
+    assert!(outcome.message.contains("malformed lifecycle date"));
+    assert!(outcome.message.contains("expires"));
+    assert!(outcome.message.contains("failing closed"));
+    assert!(CheckMode::NoNew.fails(outcome.status));
+    assert!(CheckMode::Strict.fails(outcome.status));
 }
 
 #[test]
-fn unparseable_review_after_is_treated_as_due_fail_safe() {
+fn unparseable_review_after_fails_closed_in_no_new() {
+    // Same fail-closed law for review_after (#1804 via #4238): never
+    // silently advisory, never silently authorizing.
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
     entry.lifecycle.review_after = Some("not-a-date".to_string());
@@ -672,12 +768,118 @@ fn unparseable_review_after_is_treated_as_due_fail_safe() {
         allow_core::SimpleDate::today_utc_approx(),
     );
 
-    assert!(
-        outcomes
-            .iter()
-            .any(|outcome| outcome.status == MatchStatus::ReviewDue),
-        "unparseable review_after must be treated as review-due (fail-safe)"
+    let outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(0))
+        .unwrap_or_else(|| std::panic::panic_any("expected a finding-level outcome"));
+    assert_eq!(outcome.status, MatchStatus::MissingRequiredField);
+    assert!(outcome.message.contains("malformed lifecycle date"));
+    assert!(outcome.message.contains("review_after"));
+    assert!(CheckMode::NoNew.fails(outcome.status));
+}
+
+#[test]
+fn malformed_lifecycle_date_fails_closed_even_without_matching_findings() {
+    // The unused-entry projection also fails closed: a broken lifecycle date
+    // is a policy defect whether or not a finding currently matches.
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.expires = Some("garbage".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(
+        &cfg,
+        &[],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
     );
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && outcome.status == MatchStatus::MissingRequiredField
+            && outcome.message.contains("malformed lifecycle date")
+    }));
+    assert!(CheckMode::NoNew.fails(MatchStatus::MissingRequiredField));
+}
+
+#[test]
+fn lifecycle_cadence_does_not_change_no_new_verdict_for_exact_matches() {
+    // #4238 fixture (a): the deterministic candidate-mode invariant. The
+    // same evaluator + subject + policy + findings evaluated at explicit
+    // as-of dates before, on, and after both a review_after and an expires
+    // date must produce the same PASSING no-new verdict for an exact entry,
+    // with the row status visibly progressing (Matched -> ReviewDue ->
+    // Expired). No system clock anywhere in the loop.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.review_after = Some("2026-06-20".to_string());
+    entry.lifecycle.expires = Some("2026-06-27".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    for (as_of, expected_status) in [
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 1,
+            },
+            MatchStatus::Matched,
+        ),
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 19,
+            },
+            MatchStatus::Matched,
+        ),
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 20,
+            },
+            MatchStatus::ReviewDue,
+        ),
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 26,
+            },
+            MatchStatus::ReviewDue,
+        ),
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 28,
+            },
+            MatchStatus::Expired,
+        ),
+    ] {
+        let outcomes = evaluate(
+            &cfg,
+            std::slice::from_ref(&finding),
+            CheckMode::NoNew,
+            as_of,
+        );
+        let finding_outcome = outcomes
+            .iter()
+            .find(|outcome| outcome.finding_index == Some(0))
+            .unwrap_or_else(|| {
+                std::panic::panic_any("exact entry must produce a finding-level outcome")
+            });
+        assert_eq!(
+            finding_outcome.status, expected_status,
+            "as_of {as_of}: row status should progress with lifecycle dates"
+        );
+        assert!(
+            !CheckMode::NoNew.fails(finding_outcome.status),
+            "as_of {as_of}: date passage must not change the no-new verdict"
+        );
+    }
 }
 
 #[test]

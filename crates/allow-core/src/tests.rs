@@ -201,7 +201,9 @@ fn match_status_strings_and_failure_modes_cover_all_statuses() {
             MatchStatus::Matched => ("matched", false, false),
             MatchStatus::New => ("new", true, true),
             MatchStatus::Stale => ("stale", true, false),
-            MatchStatus::Expired => ("expired", true, true),
+            // Expired is annotation-only in no-new since #4238: lifecycle
+            // cadence is not candidate authority. Strict still fails it.
+            MatchStatus::Expired => ("expired", true, false),
             MatchStatus::ReviewDue => ("review_due", true, false),
             MatchStatus::LocationDrift => ("location_drift", false, false),
             MatchStatus::Ambiguous => ("ambiguous", true, true),

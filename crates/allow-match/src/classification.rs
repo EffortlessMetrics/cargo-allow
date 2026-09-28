@@ -1,20 +1,49 @@
 use allow_core::{AllowConfig, AllowEntry, Finding, FindingKind, MatchStatus, SimpleDate};
 
 use crate::CheckMode;
-use crate::lifecycle::{entry_is_expired, entry_review_is_due};
+use crate::lifecycle::{entry_is_expired, entry_review_is_due, malformed_lifecycle_reason};
 use crate::location_drift::last_seen_drift_message;
+use crate::scoring::MatchStrength;
 
 pub(crate) fn classify_matched(
     entry: &AllowEntry,
     finding: &Finding,
-    score: u32,
+    strength: MatchStrength,
     today: SimpleDate,
     cfg: &AllowConfig,
     mode: CheckMode,
 ) -> (MatchStatus, String) {
+    let score = strength.as_priority();
+    // Malformed lifecycle dates fail closed before any authority decision
+    // (#1804): an unparseable expires/review_after must never become silent
+    // advisory posture or silent authorization in any mode (#4238).
+    if let Some(reason) = malformed_lifecycle_reason(entry) {
+        return (MatchStatus::MissingRequiredField, reason);
+    }
+    // Authorized survival (#4236/#4238): calendar cadence is not candidate
+    // authority for matches that carry an exact accepted identity or a
+    // bounded denominator. Exact-occurrence and structural matches pin the
+    // accepted finding identity; an occurrence_limit bounds how many
+    // occurrences the entry can absorb. Only a broad scoped-family match
+    // (kind + family + path/glob, no identity fields, no bound) loses
+    // authority at expiry — its renewal must be forced, not silently
+    // absorbed.
+    let authorized_survival = match strength {
+        MatchStrength::ExactOccurrence | MatchStrength::Structural => true,
+        MatchStrength::ScopedFamily => entry.occurrence_limit.is_some(),
+    };
     if entry_is_expired(entry, today)
         && let Some(expires) = &entry.lifecycle.expires
     {
+        if !authorized_survival {
+            return (
+                MatchStatus::New,
+                format!(
+                    "{} matched but expired on {expires}; broad-matcher authority ends at expiry — new finding",
+                    entry.id
+                ),
+            );
+        }
         return (
             MatchStatus::Expired,
             format!("{} matched but expired on {expires}", entry.id),
@@ -119,7 +148,7 @@ pub(crate) fn classify_matched(
 #[cfg(test)]
 mod tests {
     use super::classify_matched;
-    use crate::CheckMode;
+    use crate::{CheckMode, scoring::MatchStrength};
     use allow_core::{
         AllowConfig, AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchStatus, Selector,
         SimpleDate, Span, StructuralIdentity,
@@ -178,8 +207,14 @@ mod tests {
         let finding = test_finding(FindingKind::Panic);
         let mut review_due = entry(FindingKind::Panic);
         review_due.lifecycle.review_after = Some("2020-01-01".to_string());
-        let (status, message) =
-            classify_matched(&review_due, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &review_due,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::ReviewDue);
         assert!(message.contains("review is due after 2020-01-01"));
     }
@@ -190,8 +225,45 @@ mod tests {
         let finding = test_finding(FindingKind::Unsafe);
         let mut expired = entry(FindingKind::Unsafe);
         expired.lifecycle.expires = Some("2020-01-01".to_string());
-        let (status, message) =
-            classify_matched(&expired, &finding, 98, today(), &cfg, CheckMode::NoNew);
+        // Expired broad matcher (no structural identity, no bound) loses
+        // authority at expiry (#4238): the finding is re-raised as new.
+        let (status, message) = classify_matched(
+            &expired,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::New);
+        assert!(message.contains("expired on 2020-01-01"));
+        assert!(message.contains("broad-matcher authority ends at expiry"));
+
+        // The same expired entry keeps authorized survival when the match
+        // carries a structural identity: status stays Expired for visibility.
+        let (status, message) = classify_matched(
+            &expired,
+            &finding,
+            MatchStrength::Structural,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::Expired);
+        assert!(message.contains("expired on 2020-01-01"));
+
+        // A bounded broad matcher (occurrence_limit) also survives expiry.
+        let mut expired_bounded = entry(FindingKind::Unsafe);
+        expired_bounded.lifecycle.expires = Some("2020-01-01".to_string());
+        expired_bounded.occurrence_limit = Some(1);
+        let (status, message) = classify_matched(
+            &expired_bounded,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::Expired);
         assert!(message.contains("expired on 2020-01-01"));
 
@@ -200,7 +272,7 @@ mod tests {
         let (status, message) = classify_matched(
             &missing_evidence,
             &finding,
-            98,
+            MatchStrength::ScopedFamily,
             today(),
             &cfg,
             CheckMode::NoNew,
@@ -213,7 +285,7 @@ mod tests {
         let (status, message) = classify_matched(
             &entry(FindingKind::Unsafe),
             &finding,
-            98,
+            MatchStrength::ScopedFamily,
             today(),
             &safety_cfg,
             CheckMode::NoNew,
@@ -226,13 +298,13 @@ mod tests {
         let (status, message) = classify_matched(
             &entry(FindingKind::Unsafe),
             &safe_finding,
-            98,
+            MatchStrength::ScopedFamily,
             today(),
             &safety_cfg,
             CheckMode::NoNew,
         );
         assert_eq!(status, MatchStatus::Matched);
-        assert!(message.contains("matched with structural score 98"));
+        assert!(message.contains("matched with structural score 100"));
     }
 
     #[test]
@@ -244,28 +316,52 @@ mod tests {
         let mut finding = test_finding(FindingKind::LintException);
         finding.family = Some("allow_attribute".to_string());
 
-        let (status, message) =
-            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &entry,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::InvalidSelector);
         assert!(message.contains("allow_bare_allow_attributes=false"));
 
         finding.family = Some("expect_attribute".to_string());
-        let (status, message) =
-            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &entry,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::InvalidSelector);
         assert!(message.contains("without required policy:<allow-id> reference"));
 
         finding.identity.target_fingerprint = Some("policy:allow-other".to_string());
-        let (status, message) =
-            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &entry,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::InvalidSelector);
         assert!(message.contains("policy:allow-other"));
 
         finding.identity.target_fingerprint = Some("policy:allow-1".to_string());
-        let (status, message) =
-            classify_matched(&entry, &finding, 87, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &entry,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::Matched);
-        assert!(message.contains("matched with structural score 87"));
+        assert!(message.contains("matched with structural score 100"));
     }
 
     #[test]
@@ -277,8 +373,14 @@ mod tests {
             line: 7,
             column: 12,
         });
-        let (status, message) =
-            classify_matched(&drift_entry, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &drift_entry,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::LocationDrift);
         assert!(message.contains("last_seen changed from 7:12 to 50:12"));
         assert!(!CheckMode::NoNew.fails(status));
@@ -295,8 +397,14 @@ mod tests {
             column: 12,
         });
 
-        let (status, message) =
-            classify_matched(&baseline, &finding, 91, today(), &cfg, CheckMode::Release);
+        let (status, message) = classify_matched(
+            &baseline,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::Release,
+        );
 
         assert_eq!(status, MatchStatus::BaselineDebt);
         assert!(message.contains("cannot pass release mode"));
@@ -309,16 +417,84 @@ mod tests {
         let finding = test_finding(FindingKind::Panic);
         let mut baseline = entry(FindingKind::Panic);
         baseline.classification = "baseline_debt".to_string();
-        let (status, message) =
-            classify_matched(&baseline, &finding, 91, today(), &cfg, CheckMode::Release);
+        let (status, message) = classify_matched(
+            &baseline,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::Release,
+        );
         assert_eq!(status, MatchStatus::BaselineDebt);
         assert!(message.contains("cannot pass release mode"));
 
         let mut never = entry(FindingKind::Panic);
         never.lifecycle.expires = Some("never".to_string());
-        let (status, message) =
-            classify_matched(&never, &finding, 91, today(), &cfg, CheckMode::NoNew);
+        let (status, message) = classify_matched(
+            &never,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
         assert_eq!(status, MatchStatus::Matched);
-        assert!(message.contains("matched with structural score 91"));
+        assert!(message.contains("matched with structural score 100"));
+    }
+
+    #[test]
+    fn classify_matched_fails_closed_on_malformed_lifecycle_dates() {
+        // #1804 fail-safe must remain a blocking failure under the #4238
+        // candidate-mode law: an unparseable date must never collapse into
+        // the now-advisory Expired annotation or into silent authority.
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Panic);
+        for (field, value) in [
+            ("expires", "2026-13-40"),
+            ("expires", "not-a-date"),
+            ("review_after", "not-a-date"),
+        ] {
+            let mut malformed = entry(FindingKind::Panic);
+            if field == "expires" {
+                malformed.lifecycle.expires = Some(value.to_string());
+            } else {
+                malformed.lifecycle.review_after = Some(value.to_string());
+            }
+            for strength in [
+                MatchStrength::ScopedFamily,
+                MatchStrength::Structural,
+                MatchStrength::ExactOccurrence,
+            ] {
+                let (status, message) = classify_matched(
+                    &malformed,
+                    &finding,
+                    strength,
+                    today(),
+                    &cfg,
+                    CheckMode::NoNew,
+                );
+                assert_eq!(status, MatchStatus::MissingRequiredField, "{field}={value}");
+                assert!(
+                    message.contains("malformed lifecycle date"),
+                    "{field}={value}: {message}"
+                );
+                assert!(message.contains("failing closed"), "{message}");
+                assert!(CheckMode::NoNew.fails(status));
+                assert!(CheckMode::Strict.fails(status));
+            }
+        }
+
+        // `expires = "never"` stays the documented immortal form.
+        let mut immortal = entry(FindingKind::Panic);
+        immortal.lifecycle.expires = Some("never".to_string());
+        let (status, _) = classify_matched(
+            &immortal,
+            &finding,
+            MatchStrength::ScopedFamily,
+            today(),
+            &cfg,
+            CheckMode::NoNew,
+        );
+        assert_eq!(status, MatchStatus::Matched);
     }
 }

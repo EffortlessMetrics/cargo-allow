@@ -89,6 +89,7 @@ fn render_requirements_call_presence_observer() {
     cfg.requirements.allow_bare_allow_attributes = true;
     cfg.requirements.lint_policy_id_required = true;
     cfg.requirements.stale_entries_fail = true;
+    cfg.requirements.calendar_expiry_blocks_no_new = true;
     cfg.requirements.unsafe_evidence_required = true;
     cfg.requirements.unsafe_verified_evidence_required = true;
     cfg.requirements.unsafe_safety_comment_required = true;
@@ -106,7 +107,8 @@ evidence_required = true\n\
 expires_or_review_after_required = true\n\
 allow_bare_allow_attributes = true\n\
 lint_policy_id_required = true\n\
-stale_entries_fail = true\n\n\
+stale_entries_fail = true\n\
+calendar_expiry_blocks_no_new = true\n\n\
 [requirements.unsafe]\n\
 evidence_required = true\n\
 verified_evidence_required = true\n\
@@ -166,6 +168,7 @@ fn every_requirement_survives_a_render_parse_round_trip() {
         allow_bare_allow_attributes: !defaults.allow_bare_allow_attributes,
         lint_policy_id_required: !defaults.lint_policy_id_required,
         stale_entries_fail: !defaults.stale_entries_fail,
+        calendar_expiry_blocks_no_new: !defaults.calendar_expiry_blocks_no_new,
         unsafe_evidence_required: !defaults.unsafe_evidence_required,
         unsafe_safety_comment_required: !defaults.unsafe_safety_comment_required,
         unsafe_verified_evidence_required: !defaults.unsafe_verified_evidence_required,
