@@ -493,6 +493,24 @@ fn github_release_checkpoint_discovery_and_faults() -> Result<(), Box<dyn Error>
         "provider outage must report as outage, never absence",
     )?;
 
+    // Untrusted producer: a verified checkpoint never authorizes progress
+    // for a producer other than the expected release producer.
+    let mut impostor = producer();
+    impostor.run = "9999".to_string();
+    let error = verify_github_release_checkpoint_against_journal_v1(
+        &first,
+        &first_witness,
+        &journal,
+        &impostor,
+        NOW,
+    )
+    .err()
+    .ok_or_else(|| io::Error::other("an unexpected producer must fail checkpoint verification"))?;
+    require(
+        error == "checkpoint producer must match the expected release producer",
+        "an untrusted producer must be rejected exactly",
+    )?;
+
     // Expired state: a checkpoint past retention never authorizes progress.
     require(
         verify_github_release_checkpoint_against_journal_v1(
