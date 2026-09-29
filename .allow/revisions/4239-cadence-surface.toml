@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11339"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7e94b5efed10e93635bbb013e1eeeb50d5061162f16160177a477206e6bc79d0"
+reason = "receipt for docs/schemas/cadence.schema.json, the stable v1 lifecycle cadence contract schema emitted by cargo-allow (#4239)"
+
+[[records]]
+allow_ids = ["allow-11340"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:66d7424d7fb0d0ce4878c22ef766a123490241685a6b85c122eb107ed43ec52a"
+reason = "receipt for docs/agents/cargo-allow-cadence.md, bounded agent guidance for cadence lifecycle scheduling outputs (#4239)"
+
+[[records]]
+allow_ids = ["allow-11341"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:048ae0c2aab81750efb42c51f3206ebf189f7da045e69f9cf399412176fb907a"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

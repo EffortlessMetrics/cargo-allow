@@ -22211,3 +22211,25 @@ glob = "docs/agents/cargo-allow-cadence.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11341"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4239-cadence-surface.toml"
+owner = "core/policy"
+classification = "cadence_surface_change_note"
+reason = "Revision note covering the cadence docs surface ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:4239"]
+created = "2026-09-28"
+review_after = "2027-03-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4239-cadence-surface.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4239-cadence-surface.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
