@@ -24,11 +24,17 @@ cargo-allow audit --format json --output target/cargo-allow/audit.json
 cargo-allow check --mode no-new --format markdown \
   --receipt target/cargo-allow/check.receipt.json \
   --output target/cargo-allow/check.md
-cargo-allow list --status new --format json
+cargo-allow worklist --status new --format json
+cargo-allow list --format json
 cargo-allow explain <allow-id> --format json
 cargo-allow why --kind <kind> --path <path> --line <line> --format json
 cargo-allow worklist --format json
 ```
+
+`list` projects retained allow entries only: a new finding with no allow entry
+never appears there, even while `check` reports it. Use `worklist --status new`
+to discover unreceipted findings and `list`/`explain` for entries already in
+the ledger.
 
 Confirm the exact allow ID or finding location, source path, selector, current
 status, evidence references, owner, and review date. Use `explain` for a
