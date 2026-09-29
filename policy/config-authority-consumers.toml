@@ -66,3 +66,10 @@ path = "crates/cargo-allow/src/add_from_plan.rs"
 role = "selected mutation-policy loading"
 allowed_markers = ["load_policy_at_path_with_digest("]
 claim_boundary = "Loads the policy selected by the shared mutation seam and validates the plan binding."
+
+[[consumers]]
+id = "cadence"
+path = "crates/cargo-allow/src/cadence.rs"
+role = "read-only lifecycle cadence classification"
+allowed_markers = ["evaluate_source_exception_policy(", "load_policy_at_path_with_digest("]
+claim_boundary = "Reads the canonical selected policy for lifecycle classification only; never writes policy and never feeds check or diff verdicts."

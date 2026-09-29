@@ -1,7 +1,8 @@
 #[cfg(test)]
 pub(crate) use crate::cli::{CargoAllowCli, CargoAllowCommand, normalized_args};
 pub(crate) use crate::cli_types::{
-    HumanJsonFormat, InventoryFacts, OutputFormat, ProfileArg, RootArgs, parse_match_status_arg,
+    CadenceFormat, HumanJsonFormat, InventoryFacts, OutputFormat, ProfileArg, RootArgs,
+    parse_match_status_arg,
 };
 pub(crate) use crate::companion::{canonical_companion_findings, extend_unique_findings};
 pub(crate) use crate::compat::load_compat_world;

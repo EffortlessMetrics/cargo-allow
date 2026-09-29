@@ -7,7 +7,7 @@
 
 mod classification;
 mod evaluation;
-mod lifecycle;
+pub mod lifecycle;
 mod locality;
 mod location_drift;
 mod messages;

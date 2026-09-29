@@ -16,6 +16,7 @@ mod add;
 mod adoption;
 mod artifact_emit;
 mod audit;
+mod cadence;
 mod capabilities;
 mod check;
 mod cli;

@@ -62,7 +62,7 @@ const GOVERNANCE_AUTHORITY_MODULES: &[&str] = &[
 
 /// Modules that are `pub mod` but do NOT carry governance authority. These are
 /// allowed to exist without being governance canonical types/validators.
-const NON_GOVERNANCE_MODULES: &[&str] = &["federation", "import_roots"];
+const NON_GOVERNANCE_MODULES: &[&str] = &["federation", "import_roots", "lifecycle"];
 
 #[test]
 fn governance_authority_modules_match_allow_list() -> Result<(), String> {

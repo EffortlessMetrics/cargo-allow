@@ -30,7 +30,12 @@ pub(crate) fn validate_lifecycle_requirements(
     Ok(())
 }
 
-pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
+/// The shared lifecycle entry law: every lifecycle date parses, no date
+/// descends, and `baseline_debt` expiries stay inside the maximum day range.
+/// Entry validation calls this at parse; the #4239 cadence classifier reuses
+/// it as the exact definition of an `invalid` lifecycle row, so the typed
+/// surface can never disagree with the loader.
+pub fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
     let created = parse_lifecycle_date(&entry.id, "created", entry.lifecycle.created.as_deref())?;
     let review_after = parse_lifecycle_date(
         &entry.id,

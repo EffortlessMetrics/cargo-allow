@@ -117,7 +117,7 @@ pub(crate) fn lifecycle_change_fields() -> Vec<&'static str> {
         .collect()
 }
 
-pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 15]
+pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 16]
 {
     [
         (
@@ -133,6 +133,24 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "schema_id",
                 "schema_version",
                 "selected_finding",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "cadence",
+            &[
+                "as_of",
+                "as_of_source",
+                "claim_boundary",
+                "command",
+                "horizons",
+                "inventory",
+                "policy_path",
+                "rows",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "summary",
                 "tool",
             ],
@@ -425,7 +443,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
     ]
 }
 
-pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 15]
+pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 16]
 {
     [
         (
@@ -441,6 +459,24 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
                 "schema_id",
                 "schema_version",
                 "selected_finding",
+                "summary",
+                "tool",
+            ],
+        ),
+        (
+            "cadence",
+            &[
+                "as_of",
+                "as_of_source",
+                "claim_boundary",
+                "command",
+                "horizons",
+                "inventory",
+                "policy_path",
+                "rows",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "summary",
                 "tool",
             ],

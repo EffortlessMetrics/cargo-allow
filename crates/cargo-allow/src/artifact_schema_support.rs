@@ -40,7 +40,7 @@ pub(crate) struct SchemaContract {
     pub(crate) fixed_command: Option<&'static str>,
 }
 
-pub(crate) fn schema_contracts() -> [SchemaContract; 16] {
+pub(crate) fn schema_contracts() -> [SchemaContract; 17] {
     [
         schema_contract(
             "add",
@@ -53,6 +53,10 @@ pub(crate) fn schema_contracts() -> [SchemaContract; 16] {
         schema_contract(
             "add-plan-application",
             ::std::include_str!("../../../docs/schemas/add-plan-application.schema.json"),
+        ),
+        schema_contract(
+            "cadence",
+            ::std::include_str!("../../../docs/schemas/cadence.schema.json"),
         ),
         schema_contract(
             "core-adoption-plan",

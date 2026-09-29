@@ -1,6 +1,6 @@
 use crate::{
-    add, adoption, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, why,
-    worklist,
+    add, adoption, cadence, diff, doctor, explain, list, migrate, propose, prune, refresh,
+    spec_system, why, worklist,
 };
 
 pub(crate) struct ArtifactSample {
@@ -29,6 +29,27 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "schema_id",
                 "schema_version",
                 "selected_finding",
+                "summary",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "cadence",
+            schema_name: "cadence",
+            json: cadence::sample_cadence_json_for_contract_test(),
+            expected_command: "cadence",
+            expected_top_level_keys: &[
+                "as_of",
+                "as_of_source",
+                "claim_boundary",
+                "command",
+                "horizons",
+                "inventory",
+                "policy_path",
+                "rows",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
                 "summary",
                 "tool",
             ],

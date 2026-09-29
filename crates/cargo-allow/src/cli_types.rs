@@ -220,6 +220,19 @@ pub(crate) enum HumanJsonFormat {
     Json,
 }
 
+/// Human/Json/Markdown format enum for the cadence surface (#4239): all
+/// three renderings derive from the one typed
+/// `LifecycleCadenceReportV1` result, so they cannot disagree. Cadence has
+/// no HTML or SARIF rendering, so the full [OutputFormat] set would
+/// advertise formats the command must reject.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum CadenceFormat {
+    Human,
+    Json,
+    #[value(alias = "md")]
+    Markdown,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ProfileArg {
     #[value(name = "spec-system")]

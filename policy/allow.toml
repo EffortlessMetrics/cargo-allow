@@ -22169,3 +22169,67 @@ glob = ".allow/revisions/3933-github-release-transaction.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11339"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cadence.schema.json"
+owner = "core/policy"
+classification = "cadence_contract_schema"
+reason = "Defines the stable v1 JSON lifecycle cadence contract emitted by cargo-allow (#4239); scheduling surface, never a gate."
+evidence = ["issue:4239", "doc:docs/schemas/README.md", "test:cadence_classifies_loadable_classes_and_is_byte_stable"]
+created = "2026-09-28"
+review_after = "2027-03-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/schemas/cadence.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11340"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/agents/cargo-allow-cadence.md"
+owner = "core/policy"
+classification = "agent_guidance"
+reason = "Documents bounded agent use of cargo-allow cadence lifecycle scheduling outputs (#4239)."
+evidence = ["issue:4239", "doc:docs/agents/cargo-allow-worklist.md", "doc:docs/source-exception-ledger.md"]
+created = "2026-09-28"
+review_after = "2027-03-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/agents/cargo-allow-cadence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11341"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4239-cadence-surface.toml"
+owner = "core/policy"
+classification = "cadence_surface_change_note"
+reason = "Revision note covering the cadence docs surface ledger admissions; tracks configuration only, authorizes no release action."
+evidence = ["issue:4239"]
+created = "2026-09-28"
+review_after = "2027-03-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4239-cadence-surface.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4239-cadence-surface.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

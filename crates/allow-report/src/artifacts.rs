@@ -31,6 +31,7 @@ mod github_pr_check_v1;
 mod github_release_checkpoint_v1;
 mod github_release_journal_v1;
 mod isolated_install_receipt_v2;
+mod lifecycle_cadence;
 mod list;
 mod migrate;
 mod minimum_direct_version_v1;
@@ -240,6 +241,15 @@ pub use frozen_subject_lock_v1::{
     FrozenSubjectLockInputV1, FrozenSubjectPathClassV1, FrozenSubjectPathKindV1,
     FrozenSubjectReceiptIdentityV1, FrozenSubjectStateV1, FrozenSubjectVerdictV1,
     classify_frozen_subject_path, evaluate_frozen_subject_lock,
+};
+pub use lifecycle_cadence::{
+    CADENCE_CLAIM_BOUNDARY, EXPIRING_SOON_DAYS, LifecycleCadenceAsOfSourceV1,
+    LifecycleCadenceClassV1, LifecycleCadenceDrivingDateV1, LifecycleCadenceHorizonsV1,
+    LifecycleCadenceInventoryV1, LifecycleCadenceReportV1, LifecycleCadenceRowV1,
+    LifecycleCadenceSummaryV1, REVIEW_DUE_SOON_DAYS, lifecycle_cadence_report,
+    lifecycle_cadence_row, lifecycle_cadence_summary, render_lifecycle_cadence_report_human,
+    render_lifecycle_cadence_report_markdown, render_lifecycle_cadence_report_v1,
+    sort_lifecycle_cadence_rows,
 };
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};

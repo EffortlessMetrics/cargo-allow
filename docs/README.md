@@ -190,7 +190,10 @@ governance profile model around it.
 - [Crate namespace](crate-namespace.md): first-party crate naming policy.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
+- [Agent cadence prompt](agents/cargo-allow-cadence.md): scheduled lifecycle
+  review work via `cargo-allow cadence --as-of <date>`.
 - [Schemas](schemas/README.md): the current JSON artifact-contract catalog,
   including source reports, receipts, `refresh` and other mutation summaries,
-  the `spec-system` graph report, and worklists. The catalog also documents
-  federation and movement/posture fields carried by existing v1 artifacts.
+  the `spec-system` graph report, worklists, and the lifecycle cadence
+  surface. The catalog also documents federation and movement/posture fields
+  carried by existing v1 artifacts.

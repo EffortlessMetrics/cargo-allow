@@ -50,6 +50,7 @@ first_run_subcommands = [
 candidate_only_subcommands = [
   "capabilities",
   "adopt",
+  "cadence",
 ]
 
 # Root/shared flags taught on the Published path (docs may use these).

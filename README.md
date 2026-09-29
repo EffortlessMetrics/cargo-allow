@@ -121,13 +121,16 @@ cargo-allow worklist --format json    # actionable work items
 The source-candidate-only `adopt` command projects one current next step; it
 is not part of the published `0.1.11` command surface yet.
 
-Lifecycle commands for policy maintenance:
+Lifecycle commands for policy maintenance. The `cadence` lifecycle review
+queue is also source-candidate-only; it is not part of the published `0.1.11`
+command surface yet:
 
 ```bash
 cargo-allow propose                   # generate temporary baseline_debt entries
 cargo-allow refresh --allow-id <id> --write  # update drifted last_seen location
 cargo-allow prune --stale             # preview or remove stale allow entries
 cargo-allow migrate --from <file>     # convert legacy policy files
+cargo-allow cadence --as-of 2026-10-19 --format markdown  # lifecycle review queue at one as-of date
 ```
 
 ## What cargo-allow Does Not Claim
