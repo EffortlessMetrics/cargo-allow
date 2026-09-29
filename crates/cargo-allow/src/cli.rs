@@ -5,8 +5,8 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use crate::{
-    add, adoption, audit, capabilities, changie, check, completions, diff, doctor, explain,
-    extraction_parity_command, hooks, init, list, migrate, precommit_tool, propose, prune,
+    add, adoption, audit, cadence, capabilities, changie, check, completions, diff, doctor,
+    explain, extraction_parity_command, hooks, init, list, migrate, precommit_tool, propose, prune,
     reference, refresh, vocabulary, why, worklist,
 };
 
@@ -105,6 +105,8 @@ pub(crate) enum CargoAllowCommand {
     Propose(propose::ProposeArgs),
     /// Emit actionable work items for humans or agents.
     Worklist(worklist::WorklistArgs),
+    /// Classify policy lifecycle cadence at an explicit as-of date.
+    Cadence(cadence::CadenceArgs),
     /// Convert compatible legacy policy files and xtask/ripr bespoke ledgers.
     Migrate(migrate::MigrateArgs),
     /// Record operator-approved advisory drift refresh for one allow entry.
@@ -256,6 +258,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Add(args) => add::cmd_add(&args),
         CargoAllowCommand::Propose(args) => propose::cmd_propose(&args),
         CargoAllowCommand::Worklist(args) => worklist::cmd_worklist(&args),
+        CargoAllowCommand::Cadence(args) => cadence::cmd_cadence(&args),
         CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(&args),
         CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(&args),
         CargoAllowCommand::Prune(args) => prune::cmd_prune(&args),
@@ -495,6 +498,7 @@ impl CargoAllowCommand {
         "add",
         "propose",
         "worklist",
+        "cadence",
         "migrate",
         "refresh",
         "prune",

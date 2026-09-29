@@ -9,8 +9,16 @@ pub(crate) fn sample_string_matches_supported_pattern(value: &str, pattern: &str
             !status.is_empty() && !status.contains('\n') && !status.contains('\r')
         }),
         "^work-[a-z0-9-]+-[0-9]{4}$" => sample_string_matches_work_item_id(value),
+        "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" => sample_string_matches_iso_date(value),
         _ => std::panic::panic_any(format!("unsupported schema pattern {pattern:?}")),
     }
+}
+
+/// Samples carrying the cadence as-of date pattern must be REAL calendar
+/// dates, not just digit-shaped strings: the shared `SimpleDate` grammar is
+/// the authority, so a sample like `2026-13-40` fails sample validation.
+fn sample_string_matches_iso_date(value: &str) -> bool {
+    allow_core::SimpleDate::parse(value).is_some()
 }
 
 fn sample_string_matches_work_item_id(value: &str) -> bool {
@@ -44,6 +52,7 @@ pub(crate) fn supported_schema_patterns() -> BTreeSet<String> {
         "^sha256:v1:[0-9a-f]{64}$",
         "^unexpected:.+$",
         "^work-[a-z0-9-]+-[0-9]{4}$",
+        "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
     ]
     .into_iter()
     .map(std::string::ToString::to_string)
@@ -141,5 +150,13 @@ mod tests {
         assert!(!sample_string_matches_sha256_v1(
             "sha256:v1:000000000000000000000000000000000000000000000000000000000000000G"
         ));
+    }
+
+    #[test]
+    fn iso_date_samples_require_real_calendar_dates() {
+        assert!(sample_string_matches_iso_date("2026-10-01"));
+        assert!(!sample_string_matches_iso_date("2026-13-40"));
+        assert!(!sample_string_matches_iso_date("20261001"));
+        assert!(!sample_string_matches_iso_date("2026-02-30"));
     }
 }

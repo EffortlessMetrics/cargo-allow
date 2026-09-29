@@ -83,6 +83,7 @@ partial; #3876 owns single-resolution command consumption.
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
+| Lifecycle cadence | `cargo-allow.cadence.v1` | `cargo-allow cadence --format json` |
 | Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... explain <id>`, `... why`, `... worklist` |
 
 ## Common command summary
@@ -275,6 +276,7 @@ promote policy, authorize publication, or establish release readiness.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [cadence.schema.json](cadence.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1 historical compatibility schema; [operator-latency.v2.schema.json](operator-latency.v2.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)

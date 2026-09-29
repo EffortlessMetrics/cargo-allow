@@ -416,6 +416,13 @@ adoption](how-to/rollback-cargo-allow-adoption.md).
   date reaches `review_after`, the entry is `review_due`; after an `expires`
   date passes, it is `expired`. These statuses surface in `list` / `worklist` /
   check summaries; they do not auto-extend or mutate the policy.
+  The candidate/unreleased `cargo-allow cadence --as-of <YYYY-MM-DD>` surface
+  is the read-only lifecycle counterpart of `worklist`: it classifies every
+  entry into exactly one of `current`, `review_due_soon`, `review_overdue`,
+  `expiring`, `expired`, or `invalid` at that one date (default: the ambient
+  UTC day), reusing the same match-engine boundaries, and states the required
+  disposition per row. It schedules owner work; it never gates `check`/`diff`
+  and never mutates policy.
 - **stale vs location drift**: unused or unmatched receipts versus matched
   findings whose `last_seen` location moved.
 - **evidence reference**: `doc:`, `test:`, `issue:`, … pointers checked for
@@ -466,6 +473,9 @@ reported without running tools or contacting services.
 
 - Review a pull request: `cargo-allow diff --base origin/main`
 - Generate agent work: `cargo-allow worklist --format json`
+- Schedule lifecycle review work (source-candidate-only, not in `0.1.11`):
+  `cargo-allow cadence --as-of <YYYY-MM-DD> --format json`
+  ([agent cadence prompt](agents/cargo-allow-cadence.md))
 - Read claim boundaries: [claim-boundaries.md](claim-boundaries.md)
 - Read the ledger model: [source-exception-ledger.md](source-exception-ledger.md)
 - Channel synchronization follow-up: keep

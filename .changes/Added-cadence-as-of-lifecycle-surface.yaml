@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Add the read-only `cargo-allow cadence` lifecycle surface (#4239): at one
+  explicit `--as-of <YYYY-MM-DD>` (default: the documented approximate ambient
+  UTC day), it classifies every policy entry into exactly one of `current`,
+  `review_due_soon`, `review_overdue`, `expiring`, `expired`, or `invalid`,
+  reusing the match-engine lifecycle predicates verbatim (`entry_is_expired`
+  strict `<`, `entry_review_is_due` inclusive `<=`, preserving the #2008
+  boundary asymmetry) and the policy loader's own `validate_lifecycle` for the
+  fail-closed `invalid` class. Rows retain owner, policy classification,
+  source path/glob identity, selector summary, evidence references, raw
+  lifecycle dates, the signed `days_remaining` (negative means overdue), the
+  driving date, and a required disposition; the 14-day due-soon/expiring
+  horizons are named constants echoed in the artifact. Human, JSON
+  (`cargo-allow.cadence.v1` schema), and markdown renderings all derive from
+  the one typed `LifecycleCadenceReportV1` result, and the classification is a
+  deterministic pure function of (policy, as-of). The command never feeds
+  check/diff verdicts, never gates candidates, and never mutates policy,
+  receipts, or candidate evaluation state.
