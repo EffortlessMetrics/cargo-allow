@@ -26,7 +26,7 @@ pub mod federation;
 pub mod import_roots;
 mod lane_validation;
 mod ledger_self_receipt;
-mod lifecycle;
+pub mod lifecycle;
 mod policy_header;
 pub mod product_crates;
 pub mod product_move;

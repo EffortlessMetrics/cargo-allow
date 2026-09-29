@@ -22,6 +22,15 @@ mod allow_entry_json;
 mod allow_entry_json_tests;
 mod artifacts;
 pub use artifacts::{
+    CADENCE_CLAIM_BOUNDARY, EXPIRING_SOON_DAYS, LifecycleCadenceAsOfSourceV1,
+    LifecycleCadenceClassV1, LifecycleCadenceDrivingDateV1, LifecycleCadenceHorizonsV1,
+    LifecycleCadenceInventoryV1, LifecycleCadenceReportV1, LifecycleCadenceRowV1,
+    LifecycleCadenceSummaryV1, REVIEW_DUE_SOON_DAYS, lifecycle_cadence_report,
+    lifecycle_cadence_row, lifecycle_cadence_summary, render_lifecycle_cadence_report_human,
+    render_lifecycle_cadence_report_markdown, render_lifecycle_cadence_report_v1,
+    sort_lifecycle_cadence_rows,
+};
+pub use artifacts::{
     CargoAllowFinalRegistryPreflightV1, FINAL_REGISTRY_PREFLIGHT_SCHEMA_ID,
     FINAL_REGISTRY_PREFLIGHT_SCHEMA_VERSION, FinalRegistryContextV1, FinalRegistryExpectedRowV1,
     FinalRegistryNextActionV1, FinalRegistryObservationOriginV1, FinalRegistryObservationV1,
@@ -74,6 +83,8 @@ mod json;
 #[cfg(test)]
 mod json_tests;
 mod ledger_posture;
+#[cfg(test)]
+mod lifecycle_cadence_tests;
 mod list;
 #[cfg(test)]
 mod list_tests;
@@ -493,10 +504,10 @@ pub use contracts::{
     ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,
     ADD_PLAN_APPLICATION_SCHEMA_VERSION, ADD_SCHEMA_ID, ADD_SCHEMA_VERSION, ARTIFACT_CONTRACTS,
     ARTIFACT_STATUS_ERROR, ARTIFACT_STATUS_FAILED, ARTIFACT_STATUS_PASSED, ARTIFACT_STATUSES,
-    ArtifactContract, CLAIM_BOUNDARY, CLAIM_BOUNDARY_TEXT, CORE_ADOPTION_PLAN_SCHEMA_ID,
-    CORE_ADOPTION_PLAN_SCHEMA_VERSION, DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION,
-    DiffAnalysisContext, EXPLAIN_SCHEMA_ID, EXPLAIN_SCHEMA_VERSION,
-    INVENTORY_SCANNER_POLICY_MIGRATION, INVENTORY_SCANNER_SOURCE_SYNTAX,
+    ArtifactContract, CADENCE_SCHEMA_ID, CADENCE_SCHEMA_VERSION, CLAIM_BOUNDARY,
+    CLAIM_BOUNDARY_TEXT, CORE_ADOPTION_PLAN_SCHEMA_ID, CORE_ADOPTION_PLAN_SCHEMA_VERSION,
+    DOCTOR_SCHEMA_ID, DOCTOR_SCHEMA_VERSION, DiffAnalysisContext, EXPLAIN_SCHEMA_ID,
+    EXPLAIN_SCHEMA_VERSION, INVENTORY_SCANNER_POLICY_MIGRATION, INVENTORY_SCANNER_SOURCE_SYNTAX,
     INVENTORY_SCANNER_SOURCE_TREE_GRAPH, INVENTORY_SCOPE_SOURCE_TREE, INVENTORY_SOURCE_UNKNOWN,
     InventoryContext, LIST_SCHEMA_ID, LIST_SCHEMA_VERSION, MIGRATE_SCHEMA_ID,
     MIGRATE_SCHEMA_VERSION, PROPOSE_SCHEMA_ID, PROPOSE_SCHEMA_VERSION, PRUNE_SCHEMA_ID,
