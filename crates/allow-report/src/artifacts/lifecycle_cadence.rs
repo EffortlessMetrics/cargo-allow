@@ -512,8 +512,8 @@ pub fn render_lifecycle_cadence_report_human(report: &LifecycleCadenceReportV1) 
 
 /// Render the markdown cadence view from the same typed result the JSON
 /// artifact and the human view render, so all three renderings cannot
-/// disagree. Policy-derived text passes through [`markdown_cell`] so table
-/// structure survives owner, path, and evidence content.
+/// disagree. Policy-derived text passes through the private markdown-cell
+/// escaper so table structure survives owner, path, and evidence content.
 #[must_use]
 pub fn render_lifecycle_cadence_report_markdown(report: &LifecycleCadenceReportV1) -> String {
     let mut out = String::new();
