@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Add the #3883 default sensor burden audit: a read-only, replayable harness
+  (`scripts/audit-default-sensor-burden.sh`) that measures the current default
+  sensor and policy burden on a pristine clean fixture, an ordinary brownfield
+  fixture, and the self-hosted repository, emitting a
+  `cargo-allow.default-sensor-burden-audit.v1` receipt with per-family counts,
+  propose-generated row denominators, scenario posture, and explicit
+  not-proven boundaries, plus the measured report
+  (`docs/audits/default-sensor-burden-2026-09.md`) feeding the #3884
+  default-profile decision. The audit mutates no live policy and no external
+  repository; synthetic fixtures are runtime-generated and labeled synthetic.
