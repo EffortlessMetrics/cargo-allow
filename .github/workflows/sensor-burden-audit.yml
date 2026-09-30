@@ -1,0 +1,49 @@
+name: Sensor burden audit
+
+# #3883 follow-up: weekly scheduled run of the #4325 default sensor and
+# policy burden audit harness (scripts/audit-default-sensor-burden.sh).
+# The harness is read-only, generates labeled synthetic fixtures at
+# runtime, and emits
+# target/sensor-burden/default-sensor-burden.receipt.json
+# (cargo-allow.default-sensor-burden-audit.v1). Running it in CI keeps
+# docs/audits/default-sensor-burden-2026-09.md measurable instead of
+# silently rotting. The harness exits non-zero when a recorded invariant
+# fails; that failure IS the signal, so the job is advisory in spirit but
+# allowed to fail. Read-only: no secrets, no PR-head code execution,
+# read-only permissions.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sensor-burden-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sensor-burden-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: sensor-burden-audit
+      - name: Build cargo-allow
+        run: cargo build -p cargo-allow --locked
+      - name: Run default sensor burden audit (#3883)
+        run: bash scripts/audit-default-sensor-burden.sh
+      - name: Upload audit receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: default-sensor-burden-receipt
+          path: target/sensor-burden/default-sensor-burden.receipt.json
+          if-no-files-found: warn

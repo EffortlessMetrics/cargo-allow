@@ -22289,3 +22289,47 @@ glob = ".allow/revisions/3883-default-sensor-burden-audit.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1045"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/sensor-burden-audit.yml"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Scheduled weekly CI lane runs the #3883 default sensor burden audit harness so the measured report stays replayable in CI"
+evidence = ["issue:3883"]
+created = "2026-09-30"
+review_after = "2026-12-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/sensor-burden-audit.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/sensor-burden-audit.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1046"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-receipt for this revision note file, matching the #3792 precedent"
+evidence = ["issue:3883"]
+created = "2026-09-30"
+review_after = "2026-12-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
