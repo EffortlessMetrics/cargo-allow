@@ -163,9 +163,12 @@ as accepted policy (per-row review, not per-finding).
 
 ## Follow-ups observed during measurement
 
-- Propose emitted 3 `configuration` rows against 2 `configuration` findings on
-  the brownfield fixture — root-cause the extra row before relying on
-  propose-row counts (harness receipt retains the exact candidate).
+- Dispositioned: the extra `configuration` row is the #3032 ledger
+  self-receipt that `propose --write` appends for the write target itself
+  (`crates/cargo-allow/src/propose.rs:183-193`), verified against the retained
+  receipt and an independent minimal-fixture repro — not a counting bug.
+  Reading note: `propose --write` row counts are `findings + 1` (the
+  self-receipt); the presence-family share conclusion is unaffected.
 - Presence-family posture and profile selection need the #3884/#3885 surface
   before scenarios 2–4 become measurable.
 
