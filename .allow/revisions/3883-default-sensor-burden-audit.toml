@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1042"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:269cea993c55b1b5764e680f8b8cde7c077b120b6e5d6ad0a5dd6e8d032c9dbe"
+reason = "receipt for docs/audits/default-sensor-burden-2026-09.md, the measured #3883 default sensor burden audit report feeding the #3884 default-profile decision"
+
+[[records]]
+allow_ids = ["allow-1043"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5bae4f18826e60c23522639dbd29b8956e83c2f7861c15b0f0b8a3632ae73c24"
+reason = "receipt for scripts/audit-default-sensor-burden.sh, the read-only replay harness that emits the cargo-allow.default-sensor-burden-audit.v1 receipt for #3883"
+
+[[records]]
+allow_ids = ["allow-1044"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ef20695992756bafff17c604d23e520b3da398110b52fa7622783c56c8236311"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

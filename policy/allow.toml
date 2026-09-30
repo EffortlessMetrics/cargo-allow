@@ -19,6 +19,7 @@ expires_or_review_after_required = true
 allow_bare_allow_attributes = false
 lint_policy_id_required = true
 stale_entries_fail = false
+calendar_expiry_blocks_no_new = false
 
 [requirements.unsafe]
 evidence_required = true
@@ -636,6 +637,7 @@ glob = "docs/release/final-tag-transaction-v1.md"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11310"
 kind = "non_rust_file"
@@ -701,7 +703,6 @@ glob = ".allow/revisions/3151-release-experience-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-0038"
@@ -21618,12 +21619,7 @@ path = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
 owner = "proof/provider"
 classification = "provider_contract_schema"
 reason = "Published closed JSON Schema for the discovery-only cargo-allow provider descriptor introduced by PR #4131; it does not define or authorize request execution or analysis receipts."
-evidence = [
-    "issue:2567",
-    "issue:4144",
-    "doc:docs/schemas/README.md",
-    "test:provider_descriptor_stdout_conforms_without_repository_or_policy",
-]
+evidence = ["issue:2567", "issue:4144", "doc:docs/schemas/README.md", "test:provider_descriptor_stdout_conforms_without_repository_or_policy"]
 created = "2026-09-06"
 review_after = "2027-03-06"
 
@@ -21645,11 +21641,7 @@ path = ".allow/revisions/4131-provider-contract-schema.toml"
 owner = "core/policy"
 classification = "ledger_change_note"
 reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
-evidence = [
-    "pr:4131",
-    "issue:2567",
-    "doc:docs/how-to/manage-an-exception.md",
-]
+evidence = ["pr:4131", "issue:2567", "doc:docs/how-to/manage-an-exception.md"]
 created = "2026-09-06"
 review_after = "2027-03-06"
 
@@ -21729,7 +21721,6 @@ glob = ".allow/revisions/4277-floor-pin-settlement.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11296"
 kind = "non_rust_file"
@@ -21773,7 +21764,6 @@ glob = "scripts/test_floor_product_workspace.py"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-4283-direct-floor-product-revision"
@@ -22229,6 +22219,72 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4239-cadence-surface.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4239-cadence-surface.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1042"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/audits/default-sensor-burden-2026-09.md"
+owner = "core"
+classification = "reviewed_exception"
+reason = "measured #3883 default sensor burden audit report"
+evidence = ["issue:3883"]
+created = "2026-09-29"
+review_after = "2026-12-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/audits/default-sensor-burden-2026-09.md"
+target_fingerprint = "md"
+glob = "docs/audits/default-sensor-burden-2026-09.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1043"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/audit-default-sensor-burden.sh"
+owner = "core"
+classification = "reviewed_exception"
+reason = "replay harness for the #3883 default sensor burden audit"
+evidence = ["issue:3883"]
+created = "2026-09-30"
+review_after = "2026-12-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/audit-default-sensor-burden.sh"
+target_fingerprint = "sh"
+glob = "scripts/audit-default-sensor-burden.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1044"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3883-default-sensor-burden-audit.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "self-receipt for the #3883 revision note, matching the #3792 precedent"
+evidence = ["issue:3883", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-09-30"
+review_after = "2026-12-29"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3883-default-sensor-burden-audit.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3883-default-sensor-burden-audit.toml"
 
 [allow.last_seen]
 line = 1

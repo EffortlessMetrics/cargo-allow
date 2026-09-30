@@ -60,6 +60,9 @@ governance profile model around it.
   contract for structural finding-to-entry matching.
 - [Roadmap](roadmap.md): the PR-sized path from source-tree ledger to mature
   product.
+- [Default sensor burden audit](audits/default-sensor-burden-2026-09.md):
+  measured #3883 audit of the default sensor and policy burden feeding the
+  #3884 default-profile decision.
 
 ## Adopt cargo-allow
 
