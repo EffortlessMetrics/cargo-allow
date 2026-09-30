@@ -1,0 +1,13 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1045"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f921407de60721c360a7bdeffc02548627f8c304aad96e2a9eac0814f4aeeef2"
+reason = "receipt for .github/workflows/sensor-burden-audit.yml, the weekly scheduled CI lane (#3883 follow-up) that runs scripts/audit-default-sensor-burden.sh and uploads the default-sensor-burden-audit.v1 receipt so the measured audit report stays replayable"
+
+[[records]]
+allow_ids = ["allow-1046"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:13f9805f57bcde84e9962a42c90e9ea2767384c84284a4b3c0c96468597f9c97"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

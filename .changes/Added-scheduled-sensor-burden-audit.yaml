@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Run the #3883 default sensor burden audit harness on a weekly schedule
+  (`.github/workflows/sensor-burden-audit.yml`, Mondays 09:00 UTC, plus
+  `workflow_dispatch`): build `cargo-allow` with a locked dependency graph,
+  run the read-only `scripts/audit-default-sensor-burden.sh` harness, and
+  upload `target/sensor-burden/default-sensor-burden.receipt.json` as an
+  artifact with `if: always()`. The harness exits non-zero when a recorded
+  invariant fails, and that failure is the signal, so the scheduled job fails
+  rather than silently rotting
+  `docs/audits/default-sensor-burden-2026-09.md`. The workflow runs with
+  read-only permissions and no secrets access.
