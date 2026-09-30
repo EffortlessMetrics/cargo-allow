@@ -50,7 +50,7 @@ fn workflow_construction_inventory_covers_the_live_denominator() {
         .iter()
         .filter(|p| p.starts_with(".github/workflows/"))
         .collect();
-    assert_eq!(workflows.len(), 9, "nine current workflows: {workflows:?}");
+    assert_eq!(workflows.len(), 10, "ten current workflows: {workflows:?}");
     for expected in [
         ".github/workflows/ci.yml",
         ".github/workflows/release.yml",
@@ -61,6 +61,7 @@ fn workflow_construction_inventory_covers_the_live_denominator() {
         ".github/workflows/frozen-subject-lock.yml",
         ".github/workflows/campaign-issue-closeout.yml",
         ".github/workflows/feature-configuration-qualification.yml",
+        ".github/workflows/sensor-burden-audit.yml",
     ] {
         assert!(paths.contains(&expected), "{expected} is inventoried");
     }
