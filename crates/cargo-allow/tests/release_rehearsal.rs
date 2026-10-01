@@ -517,7 +517,7 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
     let topology_text =
         std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))?;
     let topology: toml::Value = toml::from_str(&topology_text)?;
-    let mut members: Vec<(String, String)> = Vec::new();
+    let mut members: Vec<(String, String, i64, bool)> = Vec::new();
     for row in topology
         .get("package")
         .and_then(|value| value.as_array())
@@ -546,7 +546,11 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
             .and_then(|v| v.as_str())
             .ok_or("a selected topology row must carry its version")?
             .to_string();
-        members.push((name, version));
+        let order = row
+            .get("release_order")
+            .and_then(|v| v.as_integer())
+            .ok_or("a selected topology row must carry its release order")?;
+        members.push((name, version, order, family != "shared"));
     }
     if members.len() != 13 {
         return Err(format!(
@@ -556,9 +560,25 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
         .into());
     }
 
+    // The lowest-order cargo-allow candidate becomes every other
+    // candidate's dependency, so the publisher's dependency-closure and
+    // release-order laws are exercised end-to-end by the fixture, not
+    // only by its own contract suite.
+    let minimum_order = members
+        .iter()
+        .filter(|(_, _, _, candidate)| *candidate)
+        .map(|(_, _, order, _)| *order)
+        .min()
+        .ok_or("the topology selected at least one candidate row")?;
+    let dependency_root = members
+        .iter()
+        .find(|(_, _, order, candidate)| *candidate && *order == minimum_order)
+        .map(|(name, _, _, _)| name.clone())
+        .ok_or("the topology selected at least one candidate row")?;
+
     let member_list: String = members
         .iter()
-        .map(|(name, _)| format!("\"crates/{name}\",\n"))
+        .map(|(name, _, _, _)| format!("\"crates/{name}\",\n"))
         .collect();
     std::fs::write(
         root.join("Cargo.toml"),
@@ -566,22 +586,26 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
             "[workspace]\nresolver = \"2\"\nmembers = [\n{member_list}]\n\n[workspace.package]\nversion = \"0.2.0\"\n"
         ),
     )?;
-    for (name, version) in &members {
+    for (name, version, order, candidate) in &members {
         let crate_root = root.join("crates").join(name);
         std::fs::create_dir_all(crate_root.join("src"))?;
         // Shared rows keep their explicit registry version; candidate
-        // rows inherit the workspace identity version.
+        // rows inherit the workspace identity version and depend on the
+        // release-order root.
         let version_line = if version == "0.2.0" {
             "version.workspace = true".to_string()
         } else {
             format!("version = \"{version}\"")
         };
-        std::fs::write(
-            crate_root.join("Cargo.toml"),
-            format!(
-                "[package]\nname = \"{name}\"\n{version_line}\nedition = \"2021\"\npublish = true\n"
-            ),
-        )?;
+        let mut manifest = format!(
+            "[package]\nname = \"{name}\"\n{version_line}\nedition = \"2021\"\npublish = true\n"
+        );
+        if *candidate && *order != minimum_order {
+            manifest.push_str(&format!(
+                "\n[dependencies]\n{dependency_root} = {{ version = \"0.2.0\", path = \"../{dependency_root}\" }}\n"
+            ));
+        }
+        std::fs::write(crate_root.join("Cargo.toml"), manifest)?;
         std::fs::write(
             crate_root.join("src/lib.rs"),
             b"pub fn fixture() -> u32 {\n    1\n}\n",
