@@ -465,3 +465,67 @@ fn dependency_graph_delta_compiler_unions_member_features_with_inherited() {
         receipt.rows
     );
 }
+
+#[test]
+fn compare_versions_prerelease_polarity_matches_issue_4245() {
+    // The exact polarity table verified against the shipped function
+    // in #4245. `1.0.0-rc.1` vs `1.0.0` used to return Greater because
+    // the `0-rc` core segment failed the u64 parse and was dropped,
+    // shifting every later segment; the rc->final upgrade was
+    // classified PackageDowngraded and `1.0.0-rc.1` vs `1.0.1` was
+    // invisible.
+    use crate::artifacts::compare_versions;
+    use std::cmp::Ordering::{self, Equal, Greater, Less};
+
+    assert_eq!(compare_versions("1.0.0-rc.1", "1.0.0-rc.2"), Less);
+    assert_eq!(compare_versions("1.0.0-rc.1", "1.0.0"), Less);
+    assert_eq!(compare_versions("1.0.0-rc.1", "1.0.1"), Less);
+    assert_eq!(compare_versions("1.0", "1.0.0"), Equal);
+
+    // Semver prerelease identifier precedence: numeric below
+    // alphanumeric, alphanumeric ASCII-lexical, longer list wins.
+    assert_eq!(compare_versions("1.0.0-alpha", "1.0.0-beta"), Less);
+    assert_eq!(compare_versions("1.0.0-1", "1.0.0-alpha"), Less);
+    assert_eq!(compare_versions("1.0.0-rc", "1.0.0-rc.1"), Less);
+    assert_eq!(compare_versions("1.0.0-rc.2", "1.0.0-rc.1"), Greater);
+
+    // Build metadata is ignored; the core comparison is unchanged.
+    assert_eq!(compare_versions("1.0.0+build.7", "1.0.0"), Equal);
+    assert_eq!(compare_versions("1.0.200", "1.0.228"), Less);
+
+    // Ordering<*> type anchor so the import is used even if the
+    // literals above are reordered.
+    let _: fn(&str, &str) -> Ordering = compare_versions;
+}
+
+#[test]
+fn dependency_graph_delta_compiler_detects_prerelease_to_final_upgrade() {
+    // #4245: an rc -> final release movement is an upgrade, not a
+    // downgrade, and a prerelease-to-later-release movement must not
+    // vanish.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\nserde = \"1\"\n",
+        "[dependencies]\nserde = \"1\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0-rc.1\"\nsource = \"registry\"\nchecksum = \"old\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"new\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                && row.package_name == "serde"
+        ),
+        "the rc -> final upgrade is detected: {:?}",
+        receipt.rows
+    );
+    assert!(
+        !receipt
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageDowngraded),
+        "the rc -> final movement is never a downgrade: {:?}",
+        receipt.rows
+    );
+}

@@ -524,14 +524,42 @@ pub fn compile_dependency_graph_delta_with_workspace(
 }
 
 /// Compare two semver-like version strings for ordering.
+///
+/// Cargo.lock versions are usually plain `x.y.z`, but prerelease
+/// resolutions (`1.0.0-rc.1`, `-alpha`, build metadata after `+`) are
+/// real lockfile content (#4245). Comparison follows semver
+/// precedence: build metadata is ignored, the numeric dot segments of
+/// the core version compare first, a version with a prerelease
+/// identifier is less than the same core version without one, and two
+/// prerelease identifier lists compare identifier by identifier —
+/// numeric identifiers numerically, numeric below alphanumeric, the
+/// rest ASCII-lexically — with the longer list greater when the shared
+/// prefix is equal. A core segment that is not a plain integer cannot
+/// be ordered and is ignored for the numeric comparison, preserving
+/// the previous lenient behavior for the resolved-version surface
+/// (requirements, unlike resolved versions, fail closed in
+/// `classify_requirement_movement`).
 pub(crate) fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
-    let parse = |v: &str| -> Vec<u64> {
-        v.split('.')
-            .filter_map(|part| part.parse::<u64>().ok())
-            .collect()
-    };
-    let a_parts = parse(a);
-    let b_parts = parse(b);
+    fn parse(v: &str) -> (Vec<u64>, Option<&str>) {
+        let no_build = v.split('+').next().unwrap_or(v);
+        match no_build.split_once('-') {
+            Some((core, pre)) => (
+                core.split('.')
+                    .filter_map(|part| part.parse::<u64>().ok())
+                    .collect(),
+                Some(pre),
+            ),
+            None => (
+                no_build
+                    .split('.')
+                    .filter_map(|part| part.parse::<u64>().ok())
+                    .collect(),
+                None,
+            ),
+        }
+    }
+    let (a_parts, a_pre) = parse(a);
+    let (b_parts, b_pre) = parse(b);
     for i in 0..a_parts.len().max(b_parts.len()) {
         let a_val = a_parts.get(i).copied().unwrap_or(0);
         let b_val = b_parts.get(i).copied().unwrap_or(0);
@@ -540,7 +568,34 @@ pub(crate) fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
             other => return other,
         }
     }
-    std::cmp::Ordering::Equal
+    match (a_pre, b_pre) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(a_pre), Some(b_pre)) => compare_prerelease_identifiers(a_pre, b_pre),
+    }
+}
+
+/// Compare two non-empty prerelease identifier lists (`rc.1`, `alpha`)
+/// per semver precedence: numeric identifiers compare numerically and
+/// rank below alphanumeric identifiers, alphanumeric identifiers
+/// compare ASCII-lexically, and the longer list wins when the shared
+/// prefix is equal.
+fn compare_prerelease_identifiers(a: &str, b: &str) -> std::cmp::Ordering {
+    let a_ids: Vec<&str> = a.split('.').collect();
+    let b_ids: Vec<&str> = b.split('.').collect();
+    for (&a_id, &b_id) in a_ids.iter().zip(b_ids.iter()) {
+        let ordering = match (a_id.parse::<u64>().ok(), b_id.parse::<u64>().ok()) {
+            (Some(a_num), Some(b_num)) => a_num.cmp(&b_num),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a_id.cmp(b_id),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    a_ids.len().cmp(&b_ids.len())
 }
 
 fn is_version_up(base: &str, head: &str) -> bool {
