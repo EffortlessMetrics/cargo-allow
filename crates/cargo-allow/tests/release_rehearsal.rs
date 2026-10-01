@@ -167,7 +167,7 @@ fn rehearsal_candidate_selection_controls() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
-    let root = repo_root()?;
+    let root = rehearsal_fixture()?;
     let script = root.join("scripts/release-rehearsal.py");
     require(script.is_file(), "release rehearsal script is missing")?;
     let candidate = Path::new(env!("CARGO_BIN_EXE_cargo-allow")).canonicalize()?;
@@ -431,5 +431,308 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         )?;
     }
 
+    let _ = std::fs::remove_dir_all(&root);
+    Ok(())
+}
+
+/// One committed fixture-repository rehearsal run. Returns the parsed
+/// receipt, the stderr text, and the exit code.
+fn run_rehearsal_in_fixture(
+    root: &Path,
+) -> Result<(ReleaseRehearsalReceiptV1, String, Option<i32>), Box<dyn Error>> {
+    let script = root.join("scripts/release-rehearsal.py");
+    let candidate = Path::new(env!("CARGO_BIN_EXE_cargo-allow")).canonicalize()?;
+    let digest: String = Sha256::digest(std::fs::read(&candidate)?)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let candidate_digest = format!("sha256:v1:{digest}");
+    let output = Command::new("python")
+        .arg(&script)
+        .arg("--commit")
+        .arg("HEAD")
+        .arg("--candidate-executable")
+        .arg(&candidate)
+        .arg("--candidate-sha256")
+        .arg(&candidate_digest)
+        .current_dir(root)
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let receipt: ReleaseRehearsalReceiptV1 = serde_json::from_slice(&output.stdout)?;
+    Ok((receipt, stderr, output.status.code()))
+}
+
+/// Build a committed miniature release-governance repository: the real
+/// rehearsal script and its governed surfaces, copied verbatim, over a
+/// synthesized workspace that satisfies the verbatim V2 topology. The
+/// caller's worktree state cannot reach the result because the fixture
+/// is a separate committed git repository (#4246).
+fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static FIXTURE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    let repo = repo_root()?;
+    let unique = FIXTURE_COUNTER.fetch_add(1, Ordering::SeqCst);
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-rehearsal-fixture-{}-{unique}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root)?;
+
+    let copied = [
+        "scripts/release-rehearsal.py",
+        "scripts/release-topology-publisher.py",
+        "scripts/test-release-topology-publisher.py",
+        "scripts/final-packaged-surface.py",
+        "scripts/exact_candidate_package_identity.py",
+        "scripts/test-final-packaged-surface.py",
+        "scripts/generate-changie-history.py",
+        ".github/workflows/release.yml",
+        ".github/workflows/release-authorized.yml",
+        "docs/schemas/topology-publish-receipt.schema.json",
+        "docs/schemas/shared-package-candidate.v1.schema.json",
+        "docs/release/0.2.0.md",
+        "docs/release/github/v0.2.0.md",
+        "docs/support-matrix.toml",
+        "docs/getting-started.md",
+        "release/authorize-v0.2.0.json",
+        "CHANGELOG.md",
+        "policy/product-package-topology-v2.toml",
+    ];
+    for relative in copied {
+        let source = repo.join(relative);
+        let destination = root.join(relative);
+        let parent = destination
+            .parent()
+            .ok_or("every copied fixture path has a parent")?;
+        std::fs::create_dir_all(parent)?;
+        std::fs::copy(&source, &destination)?;
+    }
+    copy_directory(&repo.join(".changes"), &root.join(".changes"))?;
+
+    // The verbatim topology is the workspace authority: select its
+    // cargo-allow-mode rows exactly as the publisher does and synthesize
+    // one member per selected row, with the row's own version.
+    let topology_text =
+        std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))?;
+    let topology: toml::Value = toml::from_str(&topology_text)?;
+    let mut members: Vec<(String, String)> = Vec::new();
+    for row in topology
+        .get("package")
+        .and_then(|value| value.as_array())
+        .ok_or("the topology must carry a package array")?
+    {
+        let family = row
+            .get("product_family")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        if family != "shared" && family != "cargo-allow" {
+            continue;
+        }
+        if row.get("publish").and_then(|v| v.as_bool()) != Some(true) {
+            continue;
+        }
+        if row.get("candidate_inclusion").and_then(|v| v.as_bool()) != Some(true) {
+            continue;
+        }
+        let name = row
+            .get("cargo_package_name")
+            .and_then(|v| v.as_str())
+            .ok_or("a selected topology row must name its package")?
+            .to_string();
+        let version = row
+            .get("package_version")
+            .and_then(|v| v.as_str())
+            .ok_or("a selected topology row must carry its version")?
+            .to_string();
+        members.push((name, version));
+    }
+    if members.len() != 13 {
+        return Err(format!(
+            "the fixture workspace expected the topology's thirteen selected rows, found {}: {members:?}",
+            members.len()
+        )
+        .into());
+    }
+
+    let member_list: String = members
+        .iter()
+        .map(|(name, _)| format!("\"crates/{name}\",\n"))
+        .collect();
+    std::fs::write(
+        root.join("Cargo.toml"),
+        format!(
+            "[workspace]\nresolver = \"2\"\nmembers = [\n{member_list}]\n\n[workspace.package]\nversion = \"0.2.0\"\n"
+        ),
+    )?;
+    for (name, version) in &members {
+        let crate_root = root.join("crates").join(name);
+        std::fs::create_dir_all(crate_root.join("src"))?;
+        // Shared rows keep their explicit registry version; candidate
+        // rows inherit the workspace identity version.
+        let version_line = if version == "0.2.0" {
+            "version.workspace = true".to_string()
+        } else {
+            format!("version = \"{version}\"")
+        };
+        std::fs::write(
+            crate_root.join("Cargo.toml"),
+            format!(
+                "[package]\nname = \"{name}\"\n{version_line}\nedition = \"2021\"\npublish = true\n"
+            ),
+        )?;
+        std::fs::write(
+            crate_root.join("src/lib.rs"),
+            b"pub fn fixture() -> u32 {\n    1\n}\n",
+        )?;
+    }
+
+    std::fs::write(root.join(".gitignore"), b"/target/\n__pycache__/\n")?;
+    std::fs::write(root.join(".gitattributes"), b"* text eol=lf\n")?;
+
+    // The publisher and the rehearsal run --locked: commit a generated,
+    // manifest-consistent lock as part of the committed subject.
+    let lockfile = Command::new("cargo")
+        .args(["generate-lockfile", "--offline"])
+        .current_dir(&root)
+        .output()?;
+    require(
+        lockfile.status.success(),
+        &format!(
+            "fixture lock generation failed: {}",
+            String::from_utf8_lossy(&lockfile.stderr)
+        ),
+    )?;
+    require(
+        root.join("Cargo.lock").is_file(),
+        "fixture lock generation must write Cargo.lock",
+    )?;
+
+    git_in(&root, &["init"])?;
+    for (key, value) in [
+        ("user.email", "rehearsal-fixture@example.invalid"),
+        ("user.name", "rehearsal fixture"),
+        ("core.autocrlf", "false"),
+        ("core.eol", "lf"),
+        ("core.safecrlf", "false"),
+    ] {
+        git_in(&root, &[&format!("config"), key, value])?;
+    }
+    git_in(&root, &["add", "-A"])?;
+    git_in(&root, &["commit", "-m", "rehearsal fixture subject"])?;
+    Ok(root)
+}
+
+fn copy_directory(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
+    std::fs::create_dir_all(destination)?;
+    for entry in std::fs::read_dir(source)? {
+        let entry = entry?;
+        let entry_type = entry.file_type()?;
+        let target = destination.join(entry.file_name());
+        if entry_type.is_dir() {
+            copy_directory(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
+}
+
+fn git_in(root: &Path, args: &[&str]) -> Result<(), Box<dyn Error>> {
+    let output = Command::new("git").args(args).current_dir(root).output()?;
+    require(
+        output.status.success(),
+        &format!(
+            "fixture git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_admission_rejects_a_dirty_fixture() -> Result<(), Box<dyn Error>> {
+    // Negative control for the fixture isolation itself: the rehearsal's
+    // clean-checkout admission law must keep failing closed when the
+    // FIXTURE's worktree is dirty, with the printed reason — never a
+    // bare failure and never a silent pass (#4246).
+    let root = rehearsal_fixture()?;
+    std::fs::write(
+        root.join("crates/allow-core/src/dirty.rs"),
+        b"pub fn x() {}\n",
+    )?;
+    let script = root.join("scripts/release-rehearsal.py");
+    let candidate = Path::new(env!("CARGO_BIN_EXE_cargo-allow")).canonicalize()?;
+    let digest: String = Sha256::digest(std::fs::read(&candidate)?)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let output = Command::new("python")
+        .arg(&script)
+        .arg("--commit")
+        .arg("HEAD")
+        .arg("--candidate-executable")
+        .arg(&candidate)
+        .arg("--candidate-sha256")
+        .arg(&format!("sha256:v1:{digest}"))
+        .current_dir(&root)
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    require(
+        output.status.code().is_some_and(|code| code != 0),
+        &format!(
+            "a dirty fixture must fail, got {:?}: {stderr}",
+            output.status.code()
+        ),
+    )?;
+    require(
+        stderr.contains("clean checkout"),
+        "dirty-fixture admission must name the clean-checkout law",
+    )?;
+    let _ = std::fs::remove_dir_all(&root);
+    Ok(())
+}
+
+#[test]
+fn rehearsal_packaging_law_fails_on_a_corrupted_candidate_row() -> Result<(), Box<dyn Error>> {
+    // Negative control required by #4246: the test must still fail when
+    // the packaging/candidate law regresses. Corrupting one committed
+    // fixture topology row breaks topology-versus-metadata agreement,
+    // so the candidate_package_set phase must report Mismatch instead
+    // of Complete.
+    let root = rehearsal_fixture()?;
+    let topology_path = root.join("policy/product-package-topology-v2.toml");
+    let corrupted = std::fs::read_to_string(&topology_path)?.replacen(
+        "package_version = \"0.2.0\"",
+        "package_version = \"9.9.9\"",
+        1,
+    );
+    std::fs::write(&topology_path, corrupted)?;
+    git_in(&root, &["add", "-A"])?;
+    git_in(&root, &["commit", "-m", "corrupt one candidate row"])?;
+
+    let (receipt, stderr, code) = run_rehearsal_in_fixture(&root)?;
+    require(
+        code == Some(1),
+        &format!("a corrupted candidate row must exit one, got {code:?}: {stderr}"),
+    )?;
+    require(
+        receipt.aggregate_status != "Complete",
+        "a corrupted candidate row must never report Complete",
+    )?;
+    require(
+        receipt
+            .phases
+            .get("candidate_package_set")
+            .map(String::as_str)
+            == Some("Mismatch"),
+        &format!(
+            "the packaging phase must mismatch on the corrupted row: {:?} {stderr}",
+            receipt.phases.get("candidate_package_set")
+        ),
+    )?;
+    let _ = std::fs::remove_dir_all(&root);
     Ok(())
 }
