@@ -641,7 +641,7 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
         ("core.eol", "lf"),
         ("core.safecrlf", "false"),
     ] {
-        git_in(&root, &[&format!("config"), key, value])?;
+        git_in(&root, &["config", key, value])?;
     }
     git_in(&root, &["add", "-A"])?;
     git_in(&root, &["commit", "-m", "rehearsal fixture subject"])?;
@@ -700,7 +700,7 @@ fn rehearsal_admission_rejects_a_dirty_fixture() -> Result<(), Box<dyn Error>> {
         .arg("--candidate-executable")
         .arg(&candidate)
         .arg("--candidate-sha256")
-        .arg(&format!("sha256:v1:{digest}"))
+        .arg(format!("sha256:v1:{digest}"))
         .current_dir(&root)
         .output()?;
     let stderr = String::from_utf8_lossy(&output.stderr);
