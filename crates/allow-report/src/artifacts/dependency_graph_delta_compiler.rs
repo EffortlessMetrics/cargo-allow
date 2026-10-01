@@ -366,124 +366,125 @@ pub fn compile_dependency_graph_delta_with_workspace(
         }
     }
 
-    // Parse both lockfiles for resolved package movement.
+    // Parse both lockfiles for resolved package movement. Rows are
+    // grouped per name and keyed by full Cargo identity (version,
+    // source) so that legitimate duplicate-version lock entries stay
+    // distinct (#4243): a name-keyed map silently kept only the last
+    // occurrence, hiding movement of the shadowed version.
     let base_packages = parse_lock_packages(base_lock);
     let head_packages = parse_lock_packages(head_lock);
-    let base_map: std::collections::BTreeMap<&str, &LockPackage> = base_packages
-        .iter()
-        .map(|package| (package.name.as_str(), package))
-        .collect();
-    let head_map: std::collections::BTreeMap<&str, &LockPackage> = head_packages
-        .iter()
-        .map(|package| (package.name.as_str(), package))
-        .collect();
+    let mut base_by_name: std::collections::BTreeMap<&str, Vec<&LockPackage>> =
+        std::collections::BTreeMap::new();
+    for package in &base_packages {
+        base_by_name
+            .entry(package.name.as_str())
+            .or_default()
+            .push(package);
+    }
+    let mut head_by_name: std::collections::BTreeMap<&str, Vec<&LockPackage>> =
+        std::collections::BTreeMap::new();
+    for package in &head_packages {
+        head_by_name
+            .entry(package.name.as_str())
+            .or_default()
+            .push(package);
+    }
 
-    let mut all_lock_names: std::collections::BTreeSet<&str> = std::collections::BTreeSet::new();
-    for name in base_map.keys() {
-        all_lock_names.insert(name);
-    }
-    for name in head_map.keys() {
-        all_lock_names.insert(name);
-    }
+    let all_lock_names: std::collections::BTreeSet<&str> = base_by_name
+        .keys()
+        .chain(head_by_name.keys())
+        .copied()
+        .collect();
 
     for name in &all_lock_names {
-        let base_package = base_map.get(name);
-        let head_package = head_map.get(name);
-        match (base_package, head_package) {
-            (None, Some(head)) => {
+        let empty: Vec<&LockPackage> = Vec::new();
+        let base_rows = base_by_name.get(name).unwrap_or(&empty);
+        let head_rows = head_by_name.get(name).unwrap_or(&empty);
+
+        let requirement_unchanged = match (base_req_map.get(*name), head_req_map.get(*name)) {
+            (Some(base), Some(head)) => base == head,
+            (None, None) => true,
+            _ => false,
+        };
+
+        // Exact identity matches (same version and source): only a
+        // checksum change is reportable, on that exact identity pair.
+        // The remaining identities pair deterministically — both sides
+        // sorted by version precedence — so a moved duplicate version
+        // surfaces as the upgrade/downgrade row for its exact identity
+        // pair, and a count change surfaces as DuplicateVersionMovement
+        // with PackageAdded/PackageRemoved rows for the surplus
+        // identities. Movement is never silent and never misattributed
+        // to the unshadowed pair (#4243).
+        let mut unmatched_base: Vec<&LockPackage> = base_rows.to_vec();
+        let mut unmatched_head: Vec<&LockPackage> = head_rows.to_vec();
+        for base in base_rows {
+            let Some(position) = unmatched_head
+                .iter()
+                .position(|head| head.version == base.version && head.source == base.source)
+            else {
+                continue;
+            };
+            let head = unmatched_head.remove(position);
+            unmatched_base.retain(|candidate| {
+                candidate.version != base.version || candidate.source != base.source
+            });
+            let checksum_changed = !base.checksum.is_empty()
+                && !head.checksum.is_empty()
+                && base.checksum != head.checksum;
+            if checksum_changed {
                 rows.push(DependencyGraphDeltaRowV1 {
-                    kind: DependencyGraphDeltaKindV1::PackageAdded,
-                    class: DependencyClassV1::Normal,
-                    package_name: name.to_string(),
-                    base_version: String::new(),
-                    head_version: head.version.clone(),
-                    base_requirement: String::new(),
-                    head_requirement: String::new(),
-                    base_source: String::new(),
-                    head_source: head.source.clone(),
-                    base_checksum: String::new(),
-                    head_checksum: head.checksum.clone(),
-                });
-            }
-            (Some(base), None) => {
-                rows.push(DependencyGraphDeltaRowV1 {
-                    kind: DependencyGraphDeltaKindV1::PackageRemoved,
+                    kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
                     class: DependencyClassV1::Normal,
                     package_name: name.to_string(),
                     base_version: base.version.clone(),
-                    head_version: String::new(),
+                    head_version: head.version.clone(),
                     base_requirement: String::new(),
                     head_requirement: String::new(),
                     base_source: base.source.clone(),
-                    head_source: String::new(),
+                    head_source: head.source.clone(),
                     base_checksum: base.checksum.clone(),
-                    head_checksum: String::new(),
+                    head_checksum: head.checksum.clone(),
                 });
             }
-            (Some(base), Some(head)) => {
-                let source_changed = base.source != head.source;
-                let checksum_changed = !base.checksum.is_empty()
-                    && !head.checksum.is_empty()
-                    && base.checksum != head.checksum;
-                let version_up = is_version_up(&base.version, &head.version);
-                let version_down = is_version_down(&base.version, &head.version);
-                // The direct requirement is unchanged when both manifests
-                // name the package with the same parseable requirement;
-                // packages absent from both manifests (transitive) also
-                // carry no requirement movement.
-                let requirement_unchanged = match (base_req_map.get(*name), head_req_map.get(*name))
-                {
-                    (Some(b), Some(h)) => b == h,
-                    (None, None) => true,
-                    _ => false,
+        }
+
+        unmatched_base
+            .sort_by(|a, b| compare_versions(&a.version, &b.version).then(a.source.cmp(&b.source)));
+        unmatched_head
+            .sort_by(|a, b| compare_versions(&a.version, &b.version).then(a.source.cmp(&b.source)));
+        let pair_count = unmatched_base.len().min(unmatched_head.len());
+        for (base, head) in unmatched_base.iter().zip(unmatched_head.iter()) {
+            let version_up = is_version_up(&base.version, &head.version);
+            let version_down = is_version_down(&base.version, &head.version);
+            if version_up || version_down {
+                // Version movement is its own row (an upgrade or a
+                // downgrade, never a "compatible update"), and when the
+                // manifest requirement did not move, an additional row
+                // marks the movement as lock-only resolution. A version
+                // bump legitimately rotates the checksum, so it is not
+                // classified as a source/checksum identity change.
+                let movement_kind = if version_up {
+                    DependencyGraphDeltaKindV1::PackageUpgraded
+                } else {
+                    DependencyGraphDeltaKindV1::PackageDowngraded
                 };
-                if version_up || version_down {
-                    // Version movement is its own row (an upgrade or a
-                    // downgrade, never a "compatible update"), and when
-                    // the manifest requirement did not move, an
-                    // additional row marks the movement as lock-only
-                    // resolution. A version bump legitimately rotates
-                    // the checksum, so it is not classified as a
-                    // source/checksum identity change.
-                    let movement_kind = if version_up {
-                        DependencyGraphDeltaKindV1::PackageUpgraded
-                    } else {
-                        DependencyGraphDeltaKindV1::PackageDowngraded
-                    };
+                rows.push(DependencyGraphDeltaRowV1 {
+                    kind: movement_kind,
+                    class: DependencyClassV1::Normal,
+                    package_name: name.to_string(),
+                    base_version: base.version.clone(),
+                    head_version: head.version.clone(),
+                    base_requirement: String::new(),
+                    head_requirement: String::new(),
+                    base_source: base.source.clone(),
+                    head_source: head.source.clone(),
+                    base_checksum: base.checksum.clone(),
+                    head_checksum: head.checksum.clone(),
+                });
+                if requirement_unchanged {
                     rows.push(DependencyGraphDeltaRowV1 {
-                        kind: movement_kind,
-                        class: DependencyClassV1::Normal,
-                        package_name: name.to_string(),
-                        base_version: base.version.clone(),
-                        head_version: head.version.clone(),
-                        base_requirement: String::new(),
-                        head_requirement: String::new(),
-                        base_source: base.source.clone(),
-                        head_source: head.source.clone(),
-                        base_checksum: base.checksum.clone(),
-                        head_checksum: head.checksum.clone(),
-                    });
-                    if requirement_unchanged {
-                        rows.push(DependencyGraphDeltaRowV1 {
-                            kind: DependencyGraphDeltaKindV1::LockOnlyResolutionChanged,
-                            class: DependencyClassV1::Normal,
-                            package_name: name.to_string(),
-                            base_version: base.version.clone(),
-                            head_version: head.version.clone(),
-                            base_requirement: String::new(),
-                            head_requirement: String::new(),
-                            base_source: base.source.clone(),
-                            head_source: head.source.clone(),
-                            base_checksum: base.checksum.clone(),
-                            head_checksum: head.checksum.clone(),
-                        });
-                    }
-                } else if source_changed || checksum_changed {
-                    // Same resolved version but a different origin or
-                    // content identity: count parity does not establish
-                    // graph identity.
-                    rows.push(DependencyGraphDeltaRowV1 {
-                        kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
+                        kind: DependencyGraphDeltaKindV1::LockOnlyResolutionChanged,
                         class: DependencyClassV1::Normal,
                         package_name: name.to_string(),
                         base_version: base.version.clone(),
@@ -496,8 +497,80 @@ pub fn compile_dependency_graph_delta_with_workspace(
                         head_checksum: head.checksum.clone(),
                     });
                 }
+            } else if base.source != head.source || base.checksum != head.checksum {
+                // Same resolved version but a different origin or
+                // content identity: count parity does not establish
+                // graph identity.
+                rows.push(DependencyGraphDeltaRowV1 {
+                    kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
+                    class: DependencyClassV1::Normal,
+                    package_name: name.to_string(),
+                    base_version: base.version.clone(),
+                    head_version: head.version.clone(),
+                    base_requirement: String::new(),
+                    head_requirement: String::new(),
+                    base_source: base.source.clone(),
+                    head_source: head.source.clone(),
+                    base_checksum: base.checksum.clone(),
+                    head_checksum: head.checksum.clone(),
+                });
             }
-            (None, None) => {}
+        }
+        for surplus_base in unmatched_base.iter().skip(pair_count) {
+            rows.push(DependencyGraphDeltaRowV1 {
+                kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
+                class: DependencyClassV1::Normal,
+                package_name: name.to_string(),
+                base_version: surplus_base.version.clone(),
+                head_version: String::new(),
+                base_requirement: String::new(),
+                head_requirement: String::new(),
+                base_source: surplus_base.source.clone(),
+                head_source: String::new(),
+                base_checksum: surplus_base.checksum.clone(),
+                head_checksum: String::new(),
+            });
+            rows.push(DependencyGraphDeltaRowV1 {
+                kind: DependencyGraphDeltaKindV1::PackageRemoved,
+                class: DependencyClassV1::Normal,
+                package_name: name.to_string(),
+                base_version: surplus_base.version.clone(),
+                head_version: String::new(),
+                base_requirement: String::new(),
+                head_requirement: String::new(),
+                base_source: surplus_base.source.clone(),
+                head_source: String::new(),
+                base_checksum: surplus_base.checksum.clone(),
+                head_checksum: String::new(),
+            });
+        }
+        for surplus_head in unmatched_head.iter().skip(pair_count) {
+            rows.push(DependencyGraphDeltaRowV1 {
+                kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
+                class: DependencyClassV1::Normal,
+                package_name: name.to_string(),
+                base_version: String::new(),
+                head_version: surplus_head.version.clone(),
+                base_requirement: String::new(),
+                head_requirement: String::new(),
+                base_source: String::new(),
+                head_source: surplus_head.source.clone(),
+                base_checksum: String::new(),
+                head_checksum: surplus_head.checksum.clone(),
+            });
+            rows.push(DependencyGraphDeltaRowV1 {
+                kind: DependencyGraphDeltaKindV1::PackageAdded,
+                class: DependencyClassV1::Normal,
+                package_name: name.to_string(),
+                base_version: String::new(),
+                head_version: surplus_head.version.clone(),
+                base_requirement: String::new(),
+                head_requirement: String::new(),
+                base_source: String::new(),
+                head_source: surplus_head.source.clone(),
+                base_checksum: String::new(),
+                head_checksum: surplus_head.checksum.clone(),
+            });
         }
     }
 
@@ -518,6 +591,7 @@ pub fn compile_dependency_graph_delta_with_workspace(
         complete,
         limitations: vec![
             "the delta covers lockfile-resolved package movement and manifest direct requirement changes; Cargo metadata (features, targets, dev/build deps) requires PR B's bounded metadata observations".to_string(),
+            "duplicate-version rows are distinguished by (version, source) identity, but the dependency edge that pulled a specific resolved row is not expressible in the row model; edge provenance remains a separate member-provenance follow-up (#4244)".to_string(),
         ],
         claim_boundary: "Typed dependency graph delta for one exact base/head pair: every row preserves the native Cargo identity (package name, version, source, checksum) and the delta kind. Count parity does not establish graph identity. A downgrade is never described as a compatible update. Missing, malformed, or partial analyses are instrument failures, not NoSemanticGraphChange.".to_string(),
     })
