@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Isolate the hooks live-guard no-new probe from the caller's worktree and
+  make the missing-binary posture loud (#4247): the probe now builds a
+  committed minimal governed fixture (finding-free source tree plus an
+  initialized policy) and steers the verified `check --mode no-new` child
+  through the documented `CARGO_ALLOW_ROOT` environment surface, so the
+  verdict depends only on fixture bytes; a finding-bearing fixture negative
+  control proves the probe still fails through the normal exit contract.
+  All three silent `built_binary()` passes now print a named skip reason
+  instead of passing silently.

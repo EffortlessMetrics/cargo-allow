@@ -1639,6 +1639,9 @@ mod tests {
     #[test]
     fn run_rejects_digest_mismatch_before_execution() -> Result<(), String> {
         let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
             return Ok(());
         };
         let args = HookRunArgs {
@@ -1661,24 +1664,166 @@ mod tests {
         Ok(())
     }
 
+    /// Build a committed minimal governed fixture: a finding-free source
+    /// tree with an initialized policy. The probe verdict then depends
+    /// only on fixture bytes, never on the caller's worktree state
+    /// (#4247).
+    fn hook_probe_fixture(binary: &Path) -> Result<PathBuf, String> {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let unique = COUNTER.fetch_add(1, Ordering::SeqCst);
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-hook-probe-{}-{unique}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+        std::fs::write(
+            root.join("src/lib.rs"),
+            b"pub fn one() -> u32 {
+    1
+}
+",
+        )
+        .map_err(|error| error.to_string())?;
+        let init = std::process::Command::new(binary)
+            .arg("init")
+            .current_dir(&root)
+            .output()
+            .map_err(|error| error.to_string())?;
+        if !init.status.success() {
+            return Err(format!(
+                "fixture init failed: {}",
+                String::from_utf8_lossy(&init.stderr)
+            ));
+        }
+        let git = |args: &[&str]| -> Result<(), String> {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&root)
+                .output()
+                .map_err(|error| error.to_string())?;
+            if output.status.success() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "fixture git {:?} failed: {}",
+                    args,
+                    String::from_utf8_lossy(&output.stderr)
+                ))
+            }
+        };
+        git(&["init", "-q"])?;
+        git(&["config", "user.email", "hook-probe@example.invalid"])?;
+        git(&["config", "user.name", "hook probe"])?;
+        git(&["add", "-A"])?;
+        git(&["commit", "-m", "hook probe fixture"])?;
+        Ok(root)
+    }
+
     #[test]
     fn run_executes_the_verified_closed_command() -> Result<(), String> {
         let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
             return Ok(());
         };
+        let fixture = hook_probe_fixture(&binary)?;
         let digest = binary_digest(&binary)?;
-        let args = HookRunArgs {
-            binary,
-            digest,
-            mode: ToolSelectionMode::ExplicitToolUnderTest,
-            expected_build_source_commit: None,
-            command: vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-            ],
+        // The closed hook command contract admits exactly `check --mode
+        // no-new`, so the scan root is steered through the documented
+        // CARGO_ALLOW_ROOT environment surface (#3230) on the child
+        // process: the verdict depends only on fixture bytes, never on
+        // the caller's worktree state (#4247). The probe drives
+        // `run_verified_command` — the same runner `cmd_run` composes —
+        // with the real verifier and a root-carrying executor; the
+        // closed-command and selection layers around it keep their own
+        // dedicated tests.
+        let command = vec![
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new".to_string(),
+        ];
+        let outcome = run_verified_command(
+            &binary,
+            &command,
+            &digest,
+            verify_hook_binary,
+            |binary, command| {
+                Command::new(binary)
+                    .args(command)
+                    .env("CARGO_ALLOW_ROOT", &fixture)
+                    .status()
+                    .map_err(|error| {
+                        CargoAllowError::with_kind(
+                            CargoAllowErrorKind::InstrumentFailure,
+                            error.to_string(),
+                        )
+                    })
+            },
+        )
+        .map_err(|error| error.to_string());
+        let _ = std::fs::remove_dir_all(&fixture);
+        outcome
+    }
+
+    #[test]
+    fn run_hook_probe_fails_closed_on_a_fixture_finding() -> Result<(), String> {
+        // Negative control: a finding-bearing fixture must fail the
+        // verified hook command through its normal exit contract, so a
+        // fixture-isolated probe still tests enforcement, not just
+        // green-path plumbing (#4247).
+        let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
+            return Ok(());
         };
-        cmd_run(&args).map_err(|error| error.to_string())
+        let fixture = hook_probe_fixture(&binary)?;
+        std::fs::write(
+            fixture.join("src/lib.rs"),
+            b"pub fn two() -> u32 {
+    let v: Vec<u8> = Vec::new();
+    v[0]
+}
+",
+        )
+        .map_err(|error| error.to_string())?;
+        let digest = binary_digest(&binary)?;
+        let command = vec![
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new".to_string(),
+        ];
+        let result = run_verified_command(
+            &binary,
+            &command,
+            &digest,
+            verify_hook_binary,
+            |binary, command| {
+                Command::new(binary)
+                    .args(command)
+                    .env("CARGO_ALLOW_ROOT", &fixture)
+                    .status()
+                    .map_err(|error| {
+                        CargoAllowError::with_kind(
+                            CargoAllowErrorKind::InstrumentFailure,
+                            error.to_string(),
+                        )
+                    })
+            },
+        );
+        let _ = std::fs::remove_dir_all(&fixture);
+        let error = result
+            .err()
+            .ok_or("a fixture finding must fail the verified hook command".to_string())?;
+        if !error.to_string().contains("exited with") {
+            return Err(format!(
+                "the fixture finding did not fail through the exit contract: {error}"
+            ));
+        }
+        Ok(())
     }
 
     fn status_with_exit_code(code: i32) -> Result<std::process::ExitStatus, String> {
@@ -1954,6 +2099,9 @@ mod tests {
     #[test]
     fn rejected_verified_tools_have_unsupported_kind() -> Result<(), String> {
         let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
             return Ok(());
         };
         let runtime = HookRuntimeV1 {
