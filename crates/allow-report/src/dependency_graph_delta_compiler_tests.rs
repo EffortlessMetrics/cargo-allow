@@ -529,3 +529,109 @@ fn dependency_graph_delta_compiler_detects_prerelease_to_final_upgrade() {
         receipt.rows
     );
 }
+
+#[test]
+fn dependency_graph_delta_compiler_exposes_a_shadowed_version_movement() {
+    // #4243 acceptance 1: with two versions of one crate in the lock,
+    // changing only the shadowed version produces the exact identity
+    // pair's upgrade row; the unshadowed pair is absent, and the
+    // movement is never silent.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\ngetrandom = \"0.4\"\n",
+        "[dependencies]\ngetrandom = \"0.4\"\n",
+        "[[package]]\nname = \"getrandom\"\nversion = \"0.3.4\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aaa\"\n\n[[package]]\nname = \"getrandom\"\nversion = \"0.4.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bbb\"\n",
+        "[[package]]\nname = \"getrandom\"\nversion = \"0.3.5\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ccc\"\n\n[[package]]\nname = \"getrandom\"\nversion = \"0.4.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bbb\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                && row.package_name == "getrandom"
+                && row.base_version == "0.3.4"
+                && row.head_version == "0.3.5"
+        ),
+        "the shadowed version's upgrade is visible: {:?}",
+        receipt.rows
+    );
+    assert!(
+        !receipt
+            .rows
+            .iter()
+            .any(|row| row.package_name == "getrandom"
+                && (row.base_version == "0.4.3" || row.head_version == "0.4.3")
+                && row.kind != DependencyGraphDeltaKindV1::DuplicateVersionMovement),
+        "the unshadowed pair produces no movement row: {:?}",
+        receipt.rows
+    );
+    assert!(
+        !receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageDowngraded
+                && row.package_name == "getrandom"
+        ),
+        "the shadowed upgrade is never a downgrade: {:?}",
+        receipt.rows
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_never_silently_drops_a_duplicate_count_change() {
+    // #4243 acceptance 2: a duplicate version appearing or disappearing
+    // under one name produces DuplicateVersionMovement plus
+    // PackageAdded/PackageRemoved rows — never silence.
+    let identity = default_identity();
+    let base_lock = "[[package]]\nname = \"syn\"\nversion = \"2.0.119\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ddd\"\n";
+    let head_lock = "[[package]]\nname = \"syn\"\nversion = \"2.0.119\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ddd\"\n\n[[package]]\nname = \"syn\"\nversion = \"3.0.3\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"eee\"\n";
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\n",
+        "[dependencies]\n",
+        base_lock,
+        head_lock,
+    )
+    .expect("compilation succeeds");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::DuplicateVersionMovement
+            && row.package_name == "syn"),
+        "the appearing duplicate version is a DuplicateVersionMovement row: {:?}",
+        receipt.rows
+    );
+    assert!(
+        receipt
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageAdded
+                && row.package_name == "syn"
+                && row.head_version == "3.0.3"),
+        "the appearing identity also records PackageAdded: {:?}",
+        receipt.rows
+    );
+
+    let removal = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\n",
+        "[dependencies]\n",
+        head_lock,
+        base_lock,
+    )
+    .expect("compilation succeeds");
+    assert!(
+        removal.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::DuplicateVersionMovement
+            && row.package_name == "syn"),
+        "the disappearing duplicate version is a DuplicateVersionMovement row: {:?}",
+        removal.rows
+    );
+    assert!(
+        removal
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageRemoved
+                && row.package_name == "syn"
+                && row.base_version == "3.0.3"),
+        "the disappearing identity also records PackageRemoved: {:?}",
+        removal.rows
+    );
+}
