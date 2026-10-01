@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Isolate the release-rehearsal characterization from the caller's worktree
+  state (#4246): the test now builds a committed miniature release-governance
+  fixture repository (the real rehearsal script and its governed surfaces,
+  copied verbatim, over a synthesized thirteen-member workspace matching the
+  verbatim V2 topology) and drives the script against that fixture, so
+  staged, unstaged, and untracked caller changes can no longer turn
+  `cargo test --workspace` red. The clean-checkout admission law stays
+  exercised by a dirty-fixture negative control that must fail with the
+  printed reason, and a corrupted-candidate-row negative control keeps the
+  packaging law's fail-closed behavior under test.
