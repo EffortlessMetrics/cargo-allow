@@ -20995,7 +20995,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 23
+occurrence_limit = 24
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -22329,6 +22329,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1047"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4245-prerelease-version-polarity.toml"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "self-receipt for the #4245 revision note, matching the #3792 precedent"
+evidence = ["issue:4245"]
+created = "2026-10-01"
+review_after = "2026-12-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4245-prerelease-version-polarity.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4245-prerelease-version-polarity.toml"
 
 [allow.last_seen]
 line = 1
