@@ -221,7 +221,16 @@ fn prune_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> 
         .allow
         .retain(|entry| entry.id != "allow-stale");
     validate_policy(&expected_config)?;
-    let expected = render_policy(&expected_config);
+    // The direct writer receives the same byte-preserving prune contract as
+    // the compatibility command. Keep byte parity strict; canonicalizing here
+    // would hide or manufacture unrelated ledger edits.
+    let expected = allow_policy::prune_policy_entries(&initial, &["allow-stale"])?;
+    if render_policy(&parse_policy(&expected)?) != render_policy(&expected_config) {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "prune parity source splice changed surviving policy semantics",
+        ));
+    }
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &new_root,
         target: &new_policy,
@@ -253,7 +262,10 @@ fn parity_prune_policy() -> String {
     config
         .allow
         .push(parity_prune_entry("allow-stale", "docs/stale.md"));
-    render_policy(&config)
+    format!(
+        "\u{feff}# retained parity history\r\n{}# retained EOF comment",
+        render_policy(&config).replace('\n', "\r\n")
+    )
 }
 
 fn parity_prune_entry(id: &str, path: &str) -> AllowEntry {
