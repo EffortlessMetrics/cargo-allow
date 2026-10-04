@@ -54,6 +54,9 @@
         { "type": "null" }
       ]
     },
+    "line_targeting": {
+      "$ref": "#/$defs/line_targeting"
+    },
     "outcome": {
       "anyOf": [
         { "$ref": "#/$defs/match_outcome" },
@@ -427,6 +430,26 @@
           }
         }
       ]
+    },
+    "line_targeting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_line",
+        "matched_line"
+      ],
+      "properties": {
+        "requested_line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The --line value the operator requested. Present only when it did not exactly select the reported finding."
+        },
+        "matched_line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The one-based line of the finding that was actually selected near the requested line."
+        }
+      }
     },
     "current_finding": {
       "type": "object",

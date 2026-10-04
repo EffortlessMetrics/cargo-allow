@@ -111,9 +111,13 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
     error.with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
 }
 
-/// Append a plan-regeneration hint to an add --from-plan rejection error. This
-/// prevents the operator from being stuck: they know exactly how to regenerate
-/// the plan with `cargo-allow why --plan`.
+/// Append a plan-regeneration hint to a stale add --from-plan rejection. The
+/// hint names a fresh plan path because the recorded one already exists and
+/// add-finding plans are never overwritten (#4334 Break 3, #4364). Call sites
+/// whose rejection leaves regeneration impossible (an already-receipted
+/// finding, a finding that can no longer be located at the plan's coordinates)
+/// must not attach this hint — the regeneration command would fail verbatim
+/// and strand the operator in an error loop.
 fn enrich_with_regen_hint(
     error: CargoAllowError,
     plan_path: &Path,
@@ -121,14 +125,21 @@ fn enrich_with_regen_hint(
 ) -> CargoAllowError {
     let kind = &plan.finding.kind;
     let path = &plan.finding.path;
-    let hint = match plan.finding.line {
-        Some(line) => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line}",
-            plan_path.display()
+    let recorded = plan_path.display();
+    let hint = match (plan.finding.line, fresh_plan_hint_path(plan_path)) {
+        (Some(line), Some(fresh)) => format!(
+            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line} \
+             ({recorded} already exists and add-finding plans are never overwritten)",
+            fresh.display()
         ),
-        None => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path}",
-            plan_path.display()
+        (None, Some(fresh)) => format!(
+            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} \
+             ({recorded} already exists and add-finding plans are never overwritten)",
+            fresh.display()
+        ),
+        (_, None) => format!(
+            "; regenerate with cargo-allow why --plan <fresh-path> --kind {kind} --path {path} \
+             ({recorded} already exists and add-finding plans are never overwritten)"
         ),
     };
     let message = error.to_string();
@@ -137,6 +148,17 @@ fn enrich_with_regen_hint(
     } else {
         error
     }
+}
+
+/// Name a plan path that does not exist yet, beside the recorded plan, so a
+/// regeneration hint is executable as printed. Bounded probe; `None` when no
+/// free candidate name could be found.
+fn fresh_plan_hint_path(plan_path: &Path) -> Option<PathBuf> {
+    let stem = plan_path.file_stem()?.to_string_lossy().into_owned();
+    (1..=99).find_map(|attempt| {
+        let candidate = plan_path.with_file_name(format!("{stem}.retry-{attempt}.json"));
+        (!candidate.exists()).then_some(candidate)
+    })
 }
 
 pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowResult<()> {
@@ -182,13 +204,11 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let finding_line = plan
         .finding
         .line
-        .ok_or_else(|| stale("plan finding has no source line to locate"))
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
+        .ok_or_else(|| stale("plan finding has no source line to locate"))?;
     let finding_path = PathBuf::from(&plan.finding.path);
     let (finding_index, finding) =
         select_add_finding(&findings, kind_filter, &finding_path, finding_line as u32)
-            .map_err(|error| stale(error.to_string()))
-            .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
+            .map_err(|error| stale(error.to_string()))?;
 
     // The finding must still be uniquely `New`; a receipted, blocked, or
     // otherwise non-New posture (including replay after a prior successful
@@ -198,11 +218,11 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let selected = outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
-        .ok_or_else(|| stale("selected finding produced no evaluation outcome"))
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
-    ensure_addable_outcome(selected.status)
-        .map_err(|error| stale(error.to_string()))
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
+        .ok_or_else(|| stale("selected finding produced no evaluation outcome"))?;
+    // No regeneration hint here: for a non-New posture the suggested `why
+    // --plan` regen can never succeed (#4364). The message below already
+    // directs the operator to `list` / `explain`, which do run.
+    ensure_addable_outcome(selected.status).map_err(|error| stale(error.to_string()))?;
 
     // Recompute every binding from the live scan and require an exact match.
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);

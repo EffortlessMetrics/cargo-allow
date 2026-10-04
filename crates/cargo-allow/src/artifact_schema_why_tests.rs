@@ -32,6 +32,19 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() -> Result<(), Stri
             .is_some_and(|required| required.iter().any(|field| field == "evaluation")),
         "why v1 keeps the additive evaluation metadata optional for old artifacts"
     );
+    assert!(
+        !schema
+            .pointer("/required")
+            .and_then(Value::as_array)
+            .is_some_and(|required| required.iter().any(|field| field == "line_targeting")),
+        "why v1 keeps the requested-vs-matched line signal optional (additive, #4364)"
+    );
+    let line_targeting = required_schema_pointer("why", &schema, "/$defs/line_targeting");
+    assert_required_fields(
+        "why line_targeting",
+        line_targeting,
+        &["requested_line", "matched_line"],
+    );
     assert_eq!(
         schema
             .pointer("/properties/evaluation/$ref")

@@ -105,12 +105,23 @@ pub struct WhyProofPlan<'a> {
     pub args: &'a [String],
 }
 
+/// Typed requested-vs-matched line signal (#4364). `why` re-targets a finding
+/// near the requested `--line` when no finding sits exactly there; this record
+/// is emitted only when the two differ so a typo'd line is visible to agents
+/// instead of silently planning the wrong occurrence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WhyLineTargeting {
+    pub requested: u32,
+    pub matched: u32,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WhyReport<'a> {
     pub inventory: InventoryContext<'a>,
     pub evaluation: EvaluationContext<'a>,
     pub finding: &'a Finding,
     pub outcome: &'a MatchOutcome,
+    pub line_targeting: Option<WhyLineTargeting>,
     pub candidate_entries: &'a [WhyCandidateEntry<'a>],
     pub suggested_actions: &'a [String],
     pub proof_commands: &'a [String],

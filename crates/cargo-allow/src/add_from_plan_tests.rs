@@ -354,6 +354,16 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
         message.contains("--kind panic --path src/lib.rs --line 1"),
         "enriched error should include plan finding coordinates: {message}"
     );
+    // The recorded plan path already exists, so the advice must name a fresh
+    // path instead of the doomed one (#4364).
+    assert!(
+        message.contains(".retry-1.json"),
+        "regeneration hint should propose a fresh plan path: {message}"
+    );
+    assert!(
+        message.contains("already exists and add-finding plans are never overwritten"),
+        "regeneration hint should state why a fresh path is required: {message}"
+    );
 }
 
 #[test]
@@ -372,4 +382,190 @@ fn enrich_with_regen_hint_is_idempotent() {
         hint_count, 1,
         "enrich should not duplicate the hint on re-application"
     );
+}
+
+#[test]
+fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded() {
+    let dir = std::env::temp_dir().join(format!(
+        "cargo-allow-from-plan-fresh-hint-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create hint fixture: {err}")));
+    let plan_path = dir.join("add-finding-plan.json");
+    let first = fresh_plan_hint_path(&plan_path)
+        .expect("a free candidate name should exist beside the recorded plan");
+    assert_eq!(
+        first.file_name().and_then(std::ffi::OsStr::to_str),
+        Some("add-finding-plan.retry-1.json"),
+        "the first free candidate should be retry-1: {}",
+        first.display()
+    );
+    std::fs::write(&first, "taken")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("take candidate: {err}")));
+    let second =
+        fresh_plan_hint_path(&plan_path).expect("the probe should skip taken candidate names");
+    assert_eq!(
+        second.file_name().and_then(std::ffi::OsStr::to_str),
+        Some("add-finding-plan.retry-2.json"),
+        "taken candidate names must be skipped: {}",
+        second.display()
+    );
+    std::fs::remove_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove hint fixture: {err}")));
+}
+
+static FROM_PLAN_FIXTURE_COUNTER: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+fn from_plan_fixture_dir() -> std::path::PathBuf {
+    let count = FROM_PLAN_FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let dir = std::env::temp_dir().join(format!(
+        "cargo-allow-from-plan-replay-{}-{count}-{stamp}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create replay fixture: {err}")));
+    dir
+}
+
+fn git(root: &std::path::Path, args: &[&str]) {
+    let mut cmd = std::process::Command::new("git");
+    cmd.arg("-C").arg(root);
+    if args == ["init"] {
+        cmd.args(["init", "--template="]);
+    } else {
+        cmd.args(args);
+    }
+    let output = cmd
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+}
+
+fn write_from_plan_git_fixture(root: &std::path::Path) {
+    std::fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    std::fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    std::fs::write(
+        root.join("policy/allow.toml"),
+        "policy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    std::fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    git(root, &["init"]);
+    git(
+        root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(root, &["config", "user.name", "cargo-allow from-plan test"]);
+    git(root, &["add", "policy/allow.toml", "src/lib.rs"]);
+    git(root, &["commit", "-m", "base policy"]);
+}
+
+fn from_plan_replay_args(root: &std::path::Path, plan_path: std::path::PathBuf) -> AddArgs {
+    AddArgs {
+        root: crate::RootArgs {
+            root: Some(root.to_path_buf()),
+        },
+        config: None,
+        kind: None,
+        path: None,
+        line: None,
+        glob: None,
+        family: None,
+        callee: None,
+        owner: "core".to_string(),
+        reason: "from-plan replay fixture".to_string(),
+        classification: "reviewed_exception".to_string(),
+        review_after: None,
+        expires: None,
+        evidence: Vec::new(),
+        id: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        dry_run: false,
+        update: true,
+        from_plan: Some(plan_path),
+        summary_format: crate::HumanJsonFormat::Human,
+        summary_output: None,
+    }
+}
+
+#[test]
+fn replayed_from_plan_rejection_does_not_advise_a_doomed_regen() {
+    // The #4364 loop: plan -> apply -> replay the same `add --from-plan`. The
+    // replay is rejected because the finding is already receipted, and the
+    // rejection must not suggest a `why --plan` regeneration that can never
+    // succeed from this state (why refuses plans for matched findings and the
+    // recorded plan path is never overwritten).
+    let root = from_plan_fixture_dir();
+    write_from_plan_git_fixture(&root);
+    let plan_path = root.join("target/add-finding-plan.json");
+
+    // WhyArgs fields are module-private; parse the CLI surface the way an
+    // operator would invoke it.
+    use clap::Parser;
+    let why_args = crate::why::WhyArgs::try_parse_from([
+        "cargo-allow".to_string(),
+        "--kind".to_string(),
+        "panic".to_string(),
+        "--path".to_string(),
+        "src/lib.rs".to_string(),
+        "--line".to_string(),
+        "1".to_string(),
+        "--format".to_string(),
+        "json".to_string(),
+        "--plan".to_string(),
+        plan_path.to_string_lossy().into_owned(),
+        "--root".to_string(),
+        root.to_string_lossy().into_owned(),
+    ])
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse why argv: {err}")));
+    crate::why::cmd_why(&why_args)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("why --plan should succeed: {err}")));
+    assert!(
+        plan_path.exists(),
+        "why should have written the add-finding plan"
+    );
+
+    let args = from_plan_replay_args(&root, plan_path);
+    crate::add::cmd_add(&args).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("first add --from-plan should apply: {err}"))
+    });
+
+    let replay =
+        crate::add::cmd_add(&args).expect_err("replaying a satisfied plan must be rejected");
+    assert_eq!(replay.kind(), allow_core::CargoAllowErrorKind::Usage);
+    let message = replay.to_string();
+    assert!(
+        message.contains("already receipted or blocked with status `matched`"),
+        "replay rejection should name the receipted posture: {message}"
+    );
+    assert!(
+        message.contains("use list or explain before editing policy"),
+        "replay rejection should keep its executable guidance: {message}"
+    );
+    assert!(
+        !message.contains("regenerate with"),
+        "an already-receipted rejection must not advise a regeneration that cannot succeed: {message}"
+    );
+    std::fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove replay fixture: {err}")));
 }
