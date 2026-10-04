@@ -11,3 +11,9 @@ allow_ids = ["allow-1051"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ed3f5242aa36ee78b0bc3a0cccd22b40b8609bf8adab6f60b3aafed8087b3421"
 reason = "self-receipt for this revision note file, matching the #3792 precedent"
+
+[[records]]
+allow_ids = ["allow-1052"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:edab2680e6991713b049700617fd561be54b5cf798ae8a3dbb33f97a0ce4fca7"
+reason = "self-receipt for the #4360 characterization guard script, matching the #3792 precedent"
