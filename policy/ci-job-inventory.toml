@@ -224,3 +224,9 @@ name = "collect-performance-fixtures"
 purpose = "StaticPreGate"
 routing_owner = "core/ci"
 blocking = false
+
+[[jobs]]
+name = "sensor-burden-audit"
+purpose = "IntegratedDogfood"
+routing_owner = "core/ci"
+blocking = false

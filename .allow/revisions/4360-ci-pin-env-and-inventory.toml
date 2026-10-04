@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1050"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:204e04f0920e3aff9e884a46c7a4fd4189a085c5397d4dc762c093a6ed0313bf"
+reason = "characterization guard for the CI-used default sensor burden audit harness: the new tracked shell script proves the harness fails closed on a missing cargo-allow binary and on a failing cargo-allow invocation before the scheduled receipt is produced"
+
+[[records]]
+allow_ids = ["allow-1051"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ed3f5242aa36ee78b0bc3a0cccd22b40b8609bf8adab6f60b3aafed8087b3421"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
+
+[[records]]
+allow_ids = ["allow-1052"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:edab2680e6991713b049700617fd561be54b5cf798ae8a3dbb33f97a0ce4fca7"
+reason = "self-receipt for the #4360 characterization guard script, matching the #3792 precedent"

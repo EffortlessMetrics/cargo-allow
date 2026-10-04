@@ -958,6 +958,13 @@ jobs:
         with:
           lane: coverage
       - name: Generate coverage report
+        # Same precedence law the msrv job documents above: rust-toolchain.toml
+        # ranks above `rustup default` (the only thing the dtolnay action
+        # changes), so this env is what actually pins the compiler for the
+        # install and tarpaulin runs. Removing it floats the coverage proof
+        # on the runner's stable and can bring the profraw failure back.
+        env:
+          RUSTUP_TOOLCHAIN: "1.95.0"
         run: |
           coverage_temp="$RUNNER_TEMP/cargo-allow-coverage"
           mkdir -p "$coverage_temp"

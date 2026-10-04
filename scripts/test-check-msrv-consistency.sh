@@ -293,9 +293,11 @@ pin = f'RUSTUP_TOOLCHAIN: "{msrv}.0"'
 if pin not in text:
     sys.exit(f"fixture setup failed: {pin!r} not present in {src_path}")
 
-# Strip the msrv job's env block, then graft the same pin onto another job so
-# the string still exists in the file but not where it counts.
-text = text.replace(f"    env:\n      {pin}\n", "", 1)
+# Strip every RUSTUP_TOOLCHAIN pin line (the msrv job's and any other job's,
+# such as the coverage step's own legitimate pin), then graft the pin onto
+# another job so the string still exists in the file but not where it
+# counts: the msrv job block.
+text = "".join(line for line in text.splitlines(keepends=True) if pin not in line)
 if pin in text:
     sys.exit("fixture setup failed: msrv pin was not removed")
 
@@ -338,7 +340,10 @@ with open(src_path, encoding="utf-8") as handle:
 pin = f'RUSTUP_TOOLCHAIN: "{msrv}.0"'
 if pin not in text:
     sys.exit(f"fixture setup failed: {pin!r} not present in {src_path}")
-text = text.replace(f"    env:\n      {pin}\n", "", 1)
+# Drop every pin line (see the relocated-pin case: other jobs may pin
+# RUSTUP_TOOLCHAIN legitimately); the msrv job must still be the one that
+# carries it for the guard to accept.
+text = "".join(line for line in text.splitlines(keepends=True) if pin not in line)
 if pin in text:
     sys.exit("fixture setup failed: msrv pin was not removed")
 
