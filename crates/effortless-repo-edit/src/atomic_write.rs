@@ -288,3 +288,17 @@ fn sync_parent_directory_accepts_a_bare_relative_filename() -> Result<(), Box<dy
     // parent, so no temporary directory is needed.
     sync_parent_directory(Path::new("plan.json")).map_err(|error| error.into())
 }
+
+#[cfg(unix)]
+#[test]
+fn sync_parent_directory_accepts_a_real_parent_directory() -> Result<(), Box<dyn std::error::Error>>
+{
+    // The non-empty-parent arm: a path with a real directory parent
+    // opens that directory directly.
+    let temp = std::env::temp_dir().join(format!("repo-edit-parent-sync-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&temp);
+    std::fs::create_dir_all(temp.join("nested"))?;
+    let result = sync_parent_directory(&temp.join("nested").join("plan.json"));
+    let _ = std::fs::remove_dir_all(&temp);
+    result.map_err(|error| error.into())
+}
