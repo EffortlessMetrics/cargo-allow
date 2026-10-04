@@ -187,5 +187,5 @@ echo "----------------------------------"
 # the owning policy to calibrate consequences against.
 echo "check-dependency-graph-delta: bounded-denominator limitations:" >&2
 echo "  - member requirement specs collapse by dependency name; per-member manifest edits that do not move the workspace-wide union or the lockfile are outside this lane" >&2
-echo "  - duplicate lockfile versions are keyed by package name; movement in a shadowed duplicate version needs the follow-up keyed-by-full-identity compiler" >&2
+echo "  - duplicate lockfile versions are distinguished by (version, source) identity (#4243); what remains unexpressed is only the dependency edge that pulled a specific resolved row (edge provenance, #4244)" >&2
 echo "check-dependency-graph-delta: delta and evidence artifacts retained (advisory)"
