@@ -746,6 +746,13 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         ));
     }
     let root = source_tree_root()?;
+    apply_resolved(args, &root)
+}
+
+/// The apply body after repo resolution; split out so tests can drive it
+/// against a fixture root in-process instead of only through spawned
+/// subprocesses.
+fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
     let plan = read_plan(&args.plan)?;
     validate_plan(&plan)?;
     let hook_path = hook_path(&root, stage_from_str(&plan.stage)?)?;
@@ -753,7 +760,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.apply.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &receipt_path)
+    assert_path_within_root(root, &receipt_path)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let disposition = hook_disposition(&hook_path, &plan)?;
@@ -830,6 +837,13 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     }
 
     let root = source_tree_root()?;
+    remove_resolved(args, &root)
+}
+
+/// The remove body after repo resolution; split out so tests can drive it
+/// against a fixture root in-process instead of only through spawned
+/// subprocesses.
+fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
     let receipt = read_apply_receipt(&args.receipt)?;
     let stage = stage_from_str(&receipt.stage)?;
     let plan = if let Some(plan_path) = &args.plan {
@@ -865,7 +879,7 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.remove.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &result_receipt)
+    assert_path_within_root(root, &result_receipt)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let metadata = match fs::symlink_metadata(&hook_path) {
@@ -2873,5 +2887,93 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.path);
         }
+    }
+
+    #[test]
+    fn apply_and_remove_resolved_drive_the_fixture_repo_in_process() -> Result<(), String> {
+        // In-process coverage for the apply/remove bodies (tarpaulin cannot
+        // see spawned subprocesses): the same plan/apply/status/remove
+        // flow the subprocess tests drive, against a fixture root.
+        let root = HookFixture::new("composed-cmd-coverage")?;
+        init_git_fixture(&root.path)?;
+        // Emit the plan through the same CLI command the adopting repo
+        // runs, so the file content matches what read_plan consumes.
+        let plan_path = root.path.join("plan.json");
+        cmd_hooks(&HooksArgs {
+            command: HooksCommand::Plan(HookPlanArgs {
+                stage: HookStage::PreCommit,
+                format: HookPlanFormat::Json,
+                output: Some(plan_path.clone()),
+                binary: None,
+                digest: None,
+                mode: ToolSelectionMode::InstalledPinned,
+                expected_build_source_commit: None,
+            }),
+        })
+        .map_err(|error| error.to_string())?;
+        let apply_receipt = root.path.join("apply-receipt.json");
+
+        apply_resolved(
+            &HookApplyArgs {
+                plan: plan_path.clone(),
+                accept: true,
+                receipt: Some(apply_receipt.clone()),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        let hook_path = root.path.join(".git").join("hooks").join("pre-commit");
+        if !hook_path.is_file() {
+            return Err("apply_resolved did not create the managed hook".to_string());
+        }
+
+        // Compose user bytes around the managed identity, then remove and
+        // confirm the unrelated bytes survive (#4361).
+        let user = "#!/bin/sh
+echo unrelated pre-work
+";
+        let managed = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        fs::write(&hook_path, format!("{user}{managed}")).map_err(|error| error.to_string())?;
+        let remove_receipt = root.path.join("remove-receipt.json");
+        // Verify the disposition the same way the adopting flow does
+        // before removal.
+        let disposition = hook_disposition(&hook_path, &build_plan(HookStage::PreCommit))
+            .map_err(|error| error.to_string())?;
+        if disposition != "Composed" {
+            return Err(format!(
+                "composed hook was not reported as Composed before removal: {disposition}"
+            ));
+        }
+        remove_resolved(
+            &HookRemoveArgs {
+                receipt: apply_receipt.clone(),
+                plan: None,
+                accept: true,
+                result_receipt: Some(remove_receipt.clone()),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        let retained = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        if retained != user {
+            return Err(format!(
+                "composed removal did not leave exactly the unrelated bytes: {retained:?}"
+            ));
+        }
+
+        // A second remove after the managed hook file is gone reports
+        // Missing without mutating anything.
+        fs::remove_file(&hook_path).map_err(|error| error.to_string())?;
+        remove_resolved(
+            &HookRemoveArgs {
+                receipt: apply_receipt,
+                plan: None,
+                accept: true,
+                result_receipt: Some(remove_receipt),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        Ok(())
     }
 }
