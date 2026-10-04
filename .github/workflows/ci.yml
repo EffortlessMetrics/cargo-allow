@@ -949,9 +949,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        # Pinned like every other lane: a floating stable toolchain ships
-        # a new LLVM whose profraw format tarpaulin 0.37.0's parser cannot
-        # read, deterministically failing the report merge (#4356).
+        # Pinned to the repo toolchain like every other lane here; a
+        # floating stable toolchain ships a new LLVM whose profraw
+        # format tarpaulin 0.37.0's parser cannot read, deterministically
+        # failing the report merge (#4356).
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
         with:
