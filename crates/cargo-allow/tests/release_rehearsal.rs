@@ -625,11 +625,17 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
     );
     let mut sorted_members = members.clone();
     sorted_members.sort_by(|a, b| a.0.cmp(&b.0));
-    for (name, version, _, candidate) in &sorted_members {
+    for (name, version, order, candidate) in &sorted_members {
         lock.push_str(&format!(
             "\n[[package]]\nname = \"{name}\"\nversion = \"{version}\"\n"
         ));
-        if *candidate && name != &dependency_root {
+        // The lock must mirror the manifest dependency rule exactly
+        // (edges only for candidates above the minimum release order):
+        // a lock entry for a member whose manifest carries no edge
+        // diverges from the manifests and fails the publisher's
+        // --locked packaging law when candidate rows tie on
+        // release_order (#4348).
+        if *candidate && *order != minimum_order {
             lock.push_str(&format!("dependencies = [\n \"{dependency_root}\",\n]\n"));
         }
     }
