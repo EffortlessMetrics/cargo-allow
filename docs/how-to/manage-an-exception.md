@@ -121,6 +121,9 @@ Why this route rather than a single mutating command:
   the append without rewriting (such as a root `allow = []`) is rejected with
   the policy unchanged; there is no whole-ledger normalization fallback. Entry
   paths that cannot be represented as UTF-8 are rejected before rendering.
+  The complete appended policy must fit the existing 8 MiB loader limit. An
+  oversized result refuses before replacement, leaving the original policy
+  readable and unchanged; a result exactly at that byte limit is accepted.
 
 - the third command is a **targeted recheck**: it proves the selected finding
   now reports `status: matched` with its new `allow_id`. It is not a
