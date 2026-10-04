@@ -1350,10 +1350,14 @@ fn render_managed_hook(plan: &LocalHookPlanV1) -> String {
 /// Byte offset where the managed identity begins: the managed block plus,
 /// when they immediately precede the BEGIN marker, the managed shebang and
 /// header lines that `render_managed_hook` writes outside the block (#4361).
+/// The comparison tolerates CRLF line endings, matching the block locator's
+/// own `\r`-stripping, so a CRLF composed hook loses its prelude too.
 fn managed_prelude_start(contents: &str, block_start: usize) -> usize {
     let prelude = format!("{MANAGED_SHEBANG}\n{MANAGED_HEADER}\n");
+    let prelude_crlf = format!("{MANAGED_SHEBANG}\r\n{MANAGED_HEADER}\r\n");
     match contents.get(..block_start) {
         Some(prefix) if prefix.ends_with(&prelude) => block_start - prelude.len(),
+        Some(prefix) if prefix.ends_with(&prelude_crlf) => block_start - prelude_crlf.len(),
         _ => block_start,
     }
 }
@@ -2434,6 +2438,30 @@ mod tests {
         if retained.as_deref() != Some(user) {
             return Err(format!(
                 "composed removal did not leave exactly the unrelated bytes: {retained:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_removal_strips_a_crlf_managed_prelude() -> Result<(), String> {
+        // A CRLF composed hook must lose its managed prelude too: the
+        // block locator strips \r, so the prelude comparison has to
+        // match the CRLF form or the removal leaves an orphan shebang
+        // and header behind (#4371 review).
+        let plan = build_plan(HookStage::PreCommit);
+        let user = "#!/bin/sh\r\necho unrelated pre-work\r\n";
+        let composed = format!("{user}{}", render_managed_hook(&plan).replace('\n', "\r\n"));
+        let ManagedBlockPosture::Exact { start, end } = locate_managed_block(&composed, &plan)
+        else {
+            return Err("composed CRLF hook did not locate an exact managed block".to_string());
+        };
+        let retained =
+            strip_managed_identity(&composed, managed_prelude_start(&composed, start), end)
+                .map_err(|error| error.to_string())?;
+        if retained.as_deref() != Some(user) {
+            return Err(format!(
+                "CRLF composed removal did not leave exactly the unrelated bytes: {retained:?}"
             ));
         }
         Ok(())

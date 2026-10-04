@@ -283,11 +283,8 @@ pub(crate) fn sibling_tmp_path(path: &Path) -> PathBuf {
 #[test]
 fn sync_parent_directory_accepts_a_bare_relative_filename() -> Result<(), Box<dyn std::error::Error>>
 {
-    let temp = std::env::temp_dir().join("repo-edit-bare-filename-sync-test");
-    let _ = std::fs::remove_dir_all(&temp);
-    std::fs::create_dir_all(&temp)?;
-    let target = temp.join("plan.json");
-    let result = sync_parent_directory(&target);
-    let _ = std::fs::remove_dir_all(&temp);
-    result.map_err(|error| error.into())
+    // A bare filename has parent Some(""): the exact branch the
+    // normalization exists for (#4371). The helper only opens the
+    // parent, so no temporary directory is needed.
+    sync_parent_directory(Path::new("plan.json")).map_err(|error| error.into())
 }
