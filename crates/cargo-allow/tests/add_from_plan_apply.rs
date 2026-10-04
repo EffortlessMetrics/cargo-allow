@@ -71,8 +71,16 @@ fn is_sha256_v1(value: Option<&str>) -> bool {
 fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = init_fixture("add-from-plan-apply");
-    let plan_path = generate_plan(&root);
     let policy_path = root.join("policy/allow.toml");
+    let initial_policy = fs::read_to_string(&policy_path)?;
+    let preserved_policy = format!(
+        "\u{feff}# Historical CRLF header\r\n{}\n# Recent LF comment with 'literal' quoting\n",
+        initial_policy.replace('\n', "\r\n")
+    );
+    fs::write(&policy_path, &preserved_policy)?;
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-q", "-m", "mixed policy envelope"]);
+    let plan_path = generate_plan(&root);
     let policy_before = fs::read_to_string(&policy_path)
         .unwrap_or_else(|error| std::panic::panic_any(format!("read policy: {error}")));
 
@@ -205,6 +213,24 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
     let policy_after = fs::read_to_string(&policy_path)
         .unwrap_or_else(|error| std::panic::panic_any(format!("reread policy: {error}")));
     assert_ne!(policy_before, policy_after, "policy should have changed");
+    assert!(
+        policy_after
+            .as_bytes()
+            .starts_with(policy_before.as_bytes()),
+        "adding one receipt must preserve every existing policy byte"
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_before_digest")
+            .and_then(Value::as_str),
+        Some(allow_core::sha256_v1_bytes(policy_before.as_bytes()).as_str())
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_after_digest")
+            .and_then(Value::as_str),
+        Some(allow_core::sha256_v1_bytes(policy_after.as_bytes()).as_str())
+    );
     assert!(
         policy_after.contains("fixture"),
         "policy should record the operator-supplied owner"
