@@ -29,6 +29,8 @@ fn init_fixture(label: &str) -> PathBuf {
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "fixture@example.com"]);
     git(&root, &["config", "user.name", "fixture"]);
+    // The fixture's raw bytes are the oracle, independent of host Git defaults.
+    git(&root, &["config", "core.autocrlf", "false"]);
     let init = cargo_allow_command()
         .args(["init", "--root"])
         .arg(&root)
@@ -71,10 +73,47 @@ fn is_sha256_v1(value: Option<&str>) -> bool {
 fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = init_fixture("add-from-plan-apply");
-    let plan_path = generate_plan(&root);
     let policy_path = root.join("policy/allow.toml");
+    let initial_policy = fs::read_to_string(&policy_path)?;
+    let preserved_policy = format!(
+        "\u{feff}# Historical CRLF header\r\n{}\n# Recent LF comment with 'literal' quoting\n",
+        initial_policy.replace('\n', "\r\n")
+    );
+    fs::write(&policy_path, &preserved_policy)?;
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-q", "-m", "mixed policy envelope"]);
+    let plan_path = generate_plan(&root);
     let policy_before = fs::read_to_string(&policy_path)
         .unwrap_or_else(|error| std::panic::panic_any(format!("read policy: {error}")));
+
+    let repeated_plan = root.join("repeated-plan.json");
+    let repeat = cargo_allow_command()
+        .args(["why", "--root"])
+        .arg(&root)
+        .args(["--kind", "panic", "--path", "src/lib.rs", "--line", "1"])
+        .arg("--plan")
+        .arg(&repeated_plan)
+        .output()?;
+    assert_status("repeated why plan", &repeat, true);
+    assert_eq!(fs::read(&plan_path)?, fs::read(&repeated_plan)?);
+    assert_eq!(fs::read(&policy_path)?, policy_before.as_bytes());
+
+    // Rebase two empty commits while the scanned source and policy stay exact.
+    // HEAD movement alone must not stale a source-bound add plan.
+    git(&root, &["branch", "integration-base"]);
+    git(&root, &["switch", "-c", "candidate"]);
+    git(
+        &root,
+        &["commit", "--allow-empty", "-q", "-m", "candidate no-op"],
+    );
+    git(&root, &["switch", "integration-base"]);
+    git(
+        &root,
+        &["commit", "--allow-empty", "-q", "-m", "base no-op"],
+    );
+    git(&root, &["switch", "candidate"]);
+    git(&root, &["rebase", "integration-base"]);
+    assert_eq!(fs::read(&policy_path)?, policy_before.as_bytes());
 
     let receipt_path = root.join("receipt.json");
     let common_summary_path = root.join("common-summary.json");
@@ -205,6 +244,35 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
     let policy_after = fs::read_to_string(&policy_path)
         .unwrap_or_else(|error| std::panic::panic_any(format!("reread policy: {error}")));
     assert_ne!(policy_before, policy_after, "policy should have changed");
+    assert!(
+        policy_after
+            .as_bytes()
+            .starts_with(policy_before.as_bytes()),
+        "adding one receipt must preserve every existing policy byte"
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_before_digest")
+            .and_then(Value::as_str),
+        Some(allow_core::sha256_v1_bytes(policy_before.as_bytes()).as_str())
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_after_digest")
+            .and_then(Value::as_str),
+        Some(allow_core::sha256_v1_bytes(policy_after.as_bytes()).as_str())
+    );
+    let numstat = Command::new("git")
+        .arg("-C")
+        .arg(&root)
+        .args(["diff", "--numstat", "--", "policy/allow.toml"])
+        .output()?;
+    assert_status("policy numstat", &numstat, true);
+    assert_eq!(
+        String::from_utf8(numstat.stdout)?.split('\t').nth(1),
+        Some("0"),
+        "receipt append must contain no deleted policy lines"
+    );
     assert!(
         policy_after.contains("fixture"),
         "policy should record the operator-supplied owner"

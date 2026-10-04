@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_policy};
+use allow_policy::validate_policy;
 use allow_report::{
     ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION, AddPlanApplicationV1,
     render_add_plan_application_json,
@@ -236,7 +236,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         expires: args.expires.clone(),
     });
     let added_allow_id = entry.id.clone();
-    cfg.allow.push(entry);
+    cfg.allow.push(entry.clone());
 
     // Validate the complete policy, then atomically replace the discovered
     // ledger. This is the single mutation point in the whole command.
@@ -244,7 +244,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
-    let rendered = render_policy(&cfg);
+    let rendered =
+        super::add_policy::append_to_bound_policy(&policy_path, &policy_before_digest, &entry)?;
     let policy_target =
         crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
     apply_single_target_with_target_and_expected_digest(

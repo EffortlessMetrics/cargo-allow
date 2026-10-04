@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  add --update and add --from-plan --update now preserve every existing ledger
+  byte when appending a reviewed entry, including comments, BOM and mixed line
+  endings. Incompatible TOML shapes and non-UTF-8 entry paths refuse without
+  rewriting the ledger. Full validation, plan freshness checks and atomic
+  replacement remain required.

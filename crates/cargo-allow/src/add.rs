@@ -11,6 +11,8 @@ mod add_args;
 mod add_entry;
 #[path = "add_from_plan.rs"]
 mod add_from_plan;
+#[path = "add_policy.rs"]
+mod add_policy;
 #[path = "add_render.rs"]
 mod add_render;
 #[path = "add_types.rs"]
@@ -367,7 +369,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
-    let rendered = render_policy(&cfg);
+    let rendered = if args.update {
+        add_policy::append_to_bound_policy(&selected_policy_path, &selected_policy_digest, &entry)?
+    } else {
+        render_policy(&cfg)
+    };
     let live_policy_target = args.update.then_some(selected_policy_path.clone());
     let common_write_path = live_policy_target
         .as_deref()

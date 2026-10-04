@@ -1,7 +1,98 @@
 use allow_core::{AllowConfig, AllowEntry, FindingKind, LastSeen, Lifecycle, Selector};
 use std::path::PathBuf;
 
-use crate::{parse_policy, render_policy};
+use crate::{append_policy_entry, parse_policy, render_policy};
+
+fn appended_entry() -> Result<AllowEntry, Box<dyn std::error::Error>> {
+    let cfg = parse_policy(
+        "policy = 'cargo-allow'\n\n[[allow]]\n\
+         id = 'allow-appended'\nkind = 'panic'\nfamily = 'unwrap'\n\
+         path = 'src/new.rs'\nowner = 'parser'\nclassification = 'reviewed_exception'\n\
+         reason = 'Retain one reviewed finding.'\nreview_after = '2027-01-01'\n\
+         [allow.selector]\nast_kind = 'method_call'\ncallee = 'unwrap'\n",
+    )?;
+    cfg.allow
+        .into_iter()
+        .next()
+        .ok_or("fixture entry missing".into())
+}
+
+#[test]
+fn append_policy_entry_preserves_bytes_and_is_deterministic()
+-> Result<(), Box<dyn std::error::Error>> {
+    let entry = appended_entry()?;
+    let historical = "\u{feff}# historical\r\npolicy = 'cargo-allow'\r\n\
+        [[allow]]\r\nid = 'allow-existing'\r\nkind = 'panic'\r\n\
+        path = 'src/old.rs'\r\nowner = 'owner'\r\nclassification = 'reviewed_exception'\r\n\
+        reason = '''Quoted historical text'''\r\nreview_after = '2027-01-01'\r\n\
+        [allow.selector]\r\nast_kind = 'method_call'\r\ncallee = 'unwrap'\r\n";
+    for ending in ["", "\n", "\r\n", "\n\n", "\n# trailing comment"] {
+        let input = format!("{historical}{ending}");
+        let result = append_policy_entry(&input, &entry)?;
+        assert!(result.as_bytes().starts_with(input.as_bytes()));
+        assert_eq!(result, append_policy_entry(&input, &entry)?);
+        let before = parse_policy(&input)?;
+        let after = parse_policy(&result)?;
+        assert_eq!(after.allow.first(), before.allow.first());
+        assert_eq!(after.allow.last(), Some(&entry));
+        assert_eq!(after.allow.len(), before.allow.len() + 1);
+        assert!(
+            append_policy_entry(&result, &entry).is_err(),
+            "duplicate ID must fail"
+        );
+    }
+    Ok(())
+}
+
+#[cfg(any(unix, windows))]
+#[test]
+fn append_policy_entry_refuses_non_utf8_paths() -> Result<(), Box<dyn std::error::Error>> {
+    use std::ffi::OsString;
+    #[cfg(unix)]
+    use std::os::unix::ffi::OsStringExt;
+    #[cfg(windows)]
+    use std::os::windows::ffi::OsStringExt;
+
+    let input = "policy = 'cargo-allow'\n";
+    let mut entry = appended_entry()?;
+    entry.path = Some(PathBuf::from("src/日本語.rs"));
+    let unicode = parse_policy(&append_policy_entry(input, &entry)?)?;
+    assert_eq!(
+        unicode.allow.first().map(|entry| &entry.path),
+        Some(&entry.path)
+    );
+
+    let mut path = OsString::from("src/");
+    #[cfg(unix)]
+    path.push(OsString::from_vec(vec![0xff]));
+    #[cfg(windows)]
+    path.push(OsString::from_wide(&[0xd800]));
+    path.push(".rs");
+    entry.path = Some(PathBuf::from(path));
+    let error = append_policy_entry(input, &entry)
+        .err()
+        .ok_or("a non-UTF-8 path must reject the append")?;
+    assert!(
+        error
+            .to_string()
+            .contains("allow-appended path must be valid UTF-8")
+    );
+    Ok(())
+}
+
+#[test]
+fn append_policy_entry_refuses_incompatible_or_malformed_documents()
+-> Result<(), Box<dyn std::error::Error>> {
+    let entry = appended_entry()?;
+    let explicit_array = "policy = 'cargo-allow'\nallow = []\n";
+    assert!(parse_policy(explicit_array).is_ok());
+    let error = append_policy_entry(explicit_array, &entry)
+        .err()
+        .ok_or("explicit allow array must reject the append")?;
+    assert!(error.to_string().contains("without rewriting policy"));
+    assert!(append_policy_entry("policy = 'unterminated", &entry).is_err());
+    Ok(())
+}
 
 #[test]
 fn renders_and_parses_occurrence_limit() {
