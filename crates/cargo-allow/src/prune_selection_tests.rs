@@ -353,14 +353,14 @@ fn prune_selection_write_preserves_unrelated_policy_bytes() -> TestResult {
         let canonical = fs::read_to_string(&fixture.policy)?;
         let mut blocks = canonical.split("\n[[allow]]\n");
         let prefix = format!(
-            "\u{feff}# Historical CRLF header\r\n{}",
+            "\u{feff}# Historical CRLF header\r\n{}\n",
             blocks
                 .next()
                 .ok_or("missing policy header")?
                 .replace('\n', "\r\n")
         );
         let selected = format!(
-            "\n[[allow]]\r\n{}",
+            "[[allow]]\r\n{}",
             blocks
                 .next()
                 .ok_or("missing selected entry")?
