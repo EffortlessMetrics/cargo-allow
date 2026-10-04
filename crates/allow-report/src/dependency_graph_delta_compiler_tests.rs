@@ -637,6 +637,125 @@ fn dependency_graph_delta_compiler_never_silently_drops_a_duplicate_count_change
 }
 
 #[test]
+fn dependency_graph_delta_compiler_detects_build_metadata_only_version_change() {
+    // A version-string change that differs only in build metadata has
+    // equal semver precedence but changes the lock identity: it emits
+    // a SourceOrChecksumChanged row, never silence.
+    let identity = default_identity();
+    let receipt = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\nserde = \"1\"\n",
+        "[dependencies]\nserde = \"1\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0+abc\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::SourceOrChecksumChanged
+            && row.package_name == "serde"
+            && row.base_version == "1.0.0"
+            && row.head_version == "1.0.0+abc"),
+        "the build-metadata-only change is visible: {:?}",
+        receipt.rows
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_pure_add_or_remove_is_not_duplicate_movement() {
+    // A name first entering the lock is only PackageAdded, and a name
+    // leaving it is only PackageRemoved. DuplicateVersionMovement is
+    // the duplicate-count story: the opposite side still carries the
+    // name while the count changes.
+    let identity = default_identity();
+    let added = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\n",
+        "[dependencies]\n",
+        "",
+        "[[package]]\nname = \"fresh\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        added
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageAdded
+                && row.package_name == "fresh"
+                && row.head_version == "1.0.0"),
+        "the first-version add is a PackageAdded row: {:?}",
+        added.rows
+    );
+    assert!(
+        !added
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::DuplicateVersionMovement),
+        "a pure add carries no duplicate-count story: {:?}",
+        added.rows
+    );
+
+    let removed = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\n",
+        "[dependencies]\n",
+        "[[package]]\nname = \"ghost\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+        "",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        removed
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::PackageRemoved
+                && row.package_name == "ghost"
+                && row.base_version == "1.0.0"),
+        "the final-version removal is a PackageRemoved row: {:?}",
+        removed.rows
+    );
+    assert!(
+        !removed
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::DuplicateVersionMovement),
+        "a pure removal carries no duplicate-count story: {:?}",
+        removed.rows
+    );
+}
+
+#[test]
+fn dependency_graph_delta_compiler_fails_closed_on_empty_prerelease_identifiers() {
+    // Semver 2.0.0 forbids empty prerelease identifiers (`1.0.0-` or
+    // `1.0.0-rc..1`): such a pair is non-orderable and fails closed
+    // instead of being compared leniently with guessed polarity.
+    let identity = default_identity();
+    for (base_version, head_version) in [("1.0.0-", "1.0.0"), ("1.0.0-rc..1", "1.0.0")] {
+        let receipt = compile_dependency_graph_delta(
+            &identity,
+            "[dependencies]\nserde = \"1\"\n",
+            "[dependencies]\nserde = \"1\"\n",
+            &format!("[[package]]\nname = \"serde\"\nversion = \"{base_version}\"\nsource = \"registry\"\nchecksum = \"old\"\n"),
+            &format!("[[package]]\nname = \"serde\"\nversion = \"{head_version}\"\nsource = \"registry\"\nchecksum = \"new\"\n"),
+        )
+        .expect("compilation succeeds");
+        assert!(
+            receipt.rows.iter().any(|row| row.kind
+                == DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
+                && row.package_name == "serde"),
+            "the empty-identifier pair {base_version} -> {head_version} fails closed: {:?}",
+            receipt.rows
+        );
+        assert!(
+            !receipt.rows.iter().any(|row| row.package_name == "serde"
+                && (row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                    || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded)),
+            "no polarity is guessed for {base_version} -> {head_version}: {:?}",
+            receipt.rows
+        );
+    }
+}
+
+#[test]
 fn dependency_graph_delta_compiler_fails_closed_on_u64_overflow_versions() {
     // #4347: segments that overflow u64 must not be silently dropped.
     // The shipped function previously classified 1.5.0 ->

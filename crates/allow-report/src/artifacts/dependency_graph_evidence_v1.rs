@@ -286,13 +286,19 @@ pub fn attach_dependency_graph_evidence(
 
     let mut rows = Vec::with_capacity(delta.rows.len());
     for delta_row in &delta.rows {
-        let removed = delta_row.kind == DependencyGraphDeltaKindV1::PackageRemoved;
-        let binding_version = if removed {
+        // A row whose identity lives on the base side (a removed
+        // package, or a surplus duplicate whose head fields are empty)
+        // binds by the base (version, source); other rows bind by
+        // head. Rows with no version on either side bind by name and
+        // source alone.
+        let base_bound = delta_row.kind == DependencyGraphDeltaKindV1::PackageRemoved
+            || (delta_row.head_version.is_empty() && !delta_row.base_version.is_empty());
+        let binding_version = if base_bound {
             delta_row.base_version.as_str()
         } else {
             delta_row.head_version.as_str()
         };
-        let binding_source = if removed {
+        let binding_source = if base_bound {
             delta_row.base_source.as_str()
         } else {
             delta_row.head_source.as_str()
