@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Live add updates now refuse an append that would exceed the existing policy
+  loader byte limit, leaving the readable ledger and its historical bytes
+  unchanged. Exact-limit results remain accepted; the loader limit is unchanged.

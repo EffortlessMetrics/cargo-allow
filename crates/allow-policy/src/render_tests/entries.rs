@@ -95,6 +95,32 @@ fn append_policy_entry_refuses_incompatible_or_malformed_documents()
 }
 
 #[test]
+fn append_policy_entry_obeys_policy_read_limit() -> Result<(), Box<dyn std::error::Error>> {
+    let mut entry = appended_entry()?;
+    entry.path = Some(PathBuf::from("src/日本語.rs"));
+    let prefix = "\u{feff}# Historical\r\npolicy = 'cargo-allow'\r\n# ";
+    let small = append_policy_entry(prefix, &entry)?;
+    let delta = small.len() - prefix.len();
+    let limit = usize::try_from(allow_core::SOURCE_FILE_READ_MAX_BYTES)?;
+    let mut input = prefix.to_string();
+    input.push_str(&"x".repeat(limit - delta - input.len()));
+    let result = append_policy_entry(&input, &entry)?;
+    assert_eq!(result.len(), limit, "the exact limit is still accepted");
+    assert!(result.as_bytes().starts_with(input.as_bytes()));
+    assert_eq!(parse_policy(&result)?.allow.last(), Some(&entry));
+
+    // One extra ASCII byte crosses the byte cap even though the Japanese path
+    // makes the result's character count smaller than that cap.
+    input.push('x');
+    let error = append_policy_entry(&input, &entry)
+        .err()
+        .ok_or("one byte over the normal loader limit must refuse")?;
+    assert!(error.to_string().contains("8388609 bytes"));
+    assert!(error.to_string().contains("8388608-byte read limit"));
+    Ok(())
+}
+
+#[test]
 fn renders_and_parses_occurrence_limit() {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(AllowEntry {

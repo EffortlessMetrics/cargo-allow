@@ -1,4 +1,7 @@
-use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_core::{
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+    SOURCE_FILE_READ_MAX_BYTES,
+};
 
 use crate::render_entry::render_allow_entry;
 use crate::render_sections::{
@@ -23,6 +26,7 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
 /// that cannot accept an array-table append (for example, `allow = []`) fail
 /// explicitly; this never falls back to reformatting the existing document.
 /// Entry paths must be representable as UTF-8 without replacement characters.
+/// The complete result must remain within the normal policy loader's byte limit.
 pub fn append_policy_entry(input: &str, entry: &AllowEntry) -> CargoAllowResult<String> {
     let mut expected = crate::parse_policy(input)?;
     if entry
@@ -46,6 +50,16 @@ pub fn append_policy_entry(input: &str, entry: &AllowEntry) -> CargoAllowResult<
     // remain untouched; only the appended block uses canonical LF formatting.
     let mut out = input.to_string();
     render_allow_entry(&mut out, entry);
+    if out.len() as u64 > SOURCE_FILE_READ_MAX_BYTES {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "appended policy would be {} bytes, exceeding the {}-byte read limit (policy unchanged)",
+                out.len(),
+                SOURCE_FILE_READ_MAX_BYTES,
+            ),
+        ));
+    }
     let reparsed = crate::parse_policy(&out).map_err(|error| {
         error.with_message_prefix("cannot append an allow entry without rewriting policy: ")
     })?;
