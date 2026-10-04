@@ -755,7 +755,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
 fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
     let plan = read_plan(&args.plan)?;
     validate_plan(&plan)?;
-    let hook_path = hook_path(&root, stage_from_str(&plan.stage)?)?;
+    let hook_path = hook_path(root, stage_from_str(&plan.stage)?)?;
     let receipt_path = args.receipt.clone().unwrap_or_else(|| {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.apply.receipt.json", plan.stage))
@@ -771,7 +771,7 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
                 stage: plan.stage.clone(),
                 plan_identity: plan.plan_identity.clone(),
-                hook_path: portable_path(&root, &hook_path),
+                hook_path: portable_path(root, &hook_path),
                 disposition,
                 operation: "none",
                 applied: false,
@@ -787,7 +787,7 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
                 stage: plan.stage.clone(),
                 plan_identity: plan.plan_identity.clone(),
-                hook_path: portable_path(&root, &hook_path),
+                hook_path: portable_path(root, &hook_path),
                 disposition,
                 operation: "none",
                 applied: false,
@@ -810,7 +810,7 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
         schema: HOOK_APPLY_RECEIPT_SCHEMA,
         stage: plan.stage.clone(),
         plan_identity: plan.plan_identity.clone(),
-        hook_path: portable_path(&root, &hook_path),
+        hook_path: portable_path(root, &hook_path),
         disposition: "Missing",
         operation: "create",
         applied: true,
@@ -863,8 +863,8 @@ fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
         build_plan(stage)
     };
     validate_apply_receipt(&receipt, &plan)?;
-    let hook_path = hook_path(&root, stage)?;
-    let expected_hook_path = portable_path(&root, &hook_path);
+    let hook_path = hook_path(root, stage)?;
+    let expected_hook_path = portable_path(root, &hook_path);
     if receipt.hook_path != expected_hook_path {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
