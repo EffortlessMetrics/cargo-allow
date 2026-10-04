@@ -22,8 +22,22 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
 /// Both the preimage and complete result are parsed and validated. TOML shapes
 /// that cannot accept an array-table append (for example, `allow = []`) fail
 /// explicitly; this never falls back to reformatting the existing document.
+/// Entry paths must be representable as UTF-8 without replacement characters.
 pub fn append_policy_entry(input: &str, entry: &AllowEntry) -> CargoAllowResult<String> {
     let mut expected = crate::parse_policy(input)?;
+    if entry
+        .path
+        .as_ref()
+        .is_some_and(|path| path.to_str().is_none())
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "{} path must be valid UTF-8 to append without loss",
+                entry.id
+            ),
+        ));
+    }
     expected.allow.push(entry.clone());
     crate::validate_policy(&expected)?;
 

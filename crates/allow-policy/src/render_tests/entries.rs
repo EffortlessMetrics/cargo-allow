@@ -44,6 +44,42 @@ fn append_policy_entry_preserves_bytes_and_is_deterministic()
     Ok(())
 }
 
+#[cfg(any(unix, windows))]
+#[test]
+fn append_policy_entry_refuses_non_utf8_paths() -> Result<(), Box<dyn std::error::Error>> {
+    use std::ffi::OsString;
+    #[cfg(unix)]
+    use std::os::unix::ffi::OsStringExt;
+    #[cfg(windows)]
+    use std::os::windows::ffi::OsStringExt;
+
+    let input = "policy = 'cargo-allow'\n";
+    let mut entry = appended_entry()?;
+    entry.path = Some(PathBuf::from("src/日本語.rs"));
+    let unicode = parse_policy(&append_policy_entry(input, &entry)?)?;
+    assert_eq!(
+        unicode.allow.first().map(|entry| &entry.path),
+        Some(&entry.path)
+    );
+
+    let mut path = OsString::from("src/");
+    #[cfg(unix)]
+    path.push(OsString::from_vec(vec![0xff]));
+    #[cfg(windows)]
+    path.push(OsString::from_wide(&[0xd800]));
+    path.push(".rs");
+    entry.path = Some(PathBuf::from(path));
+    let error = append_policy_entry(input, &entry)
+        .err()
+        .ok_or("a non-UTF-8 path must reject the append")?;
+    assert!(
+        error
+            .to_string()
+            .contains("allow-appended path must be valid UTF-8")
+    );
+    Ok(())
+}
+
 #[test]
 fn append_policy_entry_refuses_incompatible_or_malformed_documents()
 -> Result<(), Box<dyn std::error::Error>> {
