@@ -500,6 +500,62 @@ fn dependency_graph_evidence_removed_rows_bind_the_base_identity() {
 }
 
 #[test]
+fn dependency_graph_evidence_removed_duplicate_rows_bind_the_base_identity() {
+    // A surplus-base DuplicateVersionMovement row carries only base
+    // identity (head fields empty): its evidence binds by the base
+    // (version, source), never by name alone — a record minted for
+    // another version of the same package does not bind it.
+    let delta = receipt(vec![DependencyGraphDeltaRowV1 {
+        kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
+        class: crate::DependencyClassV1::Normal,
+        package_name: "syn".to_string(),
+        base_version: "3.0.3".to_string(),
+        head_version: String::new(),
+        base_requirement: String::new(),
+        head_requirement: String::new(),
+        base_source: "registry".to_string(),
+        head_source: String::new(),
+        base_checksum: String::new(),
+        head_checksum: String::new(),
+    }]);
+    let other_version = bundle(vec![record(
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        "syn",
+        "2.0.119",
+        false,
+        false,
+    )]);
+    let enriched =
+        attach_dependency_graph_evidence(&delta, &other_version).expect("enrichment succeeds");
+    assert!(
+        !enriched.rows[0]
+            .attachments
+            .iter()
+            .any(|attachment| attachment.disposition
+                == DependencyEvidenceDispositionV1::EvidenceCurrent),
+        "a record for another version never binds the removed duplicate: {:?}",
+        enriched.rows[0].attachments
+    );
+    let exact = bundle(vec![record(
+        DependencyEvidenceAuthorityV1::CargoDeny,
+        "syn",
+        "3.0.3",
+        false,
+        false,
+    )]);
+    let enriched = attach_dependency_graph_evidence(&delta, &exact).expect("enrichment succeeds");
+    assert!(
+        enriched.rows[0]
+            .attachments
+            .iter()
+            .any(|attachment| attachment.disposition
+                == DependencyEvidenceDispositionV1::EvidenceCurrent),
+        "the base-identity record binds the removed duplicate: {:?}",
+        enriched.rows[0].attachments
+    );
+}
+
+#[test]
 fn dependency_graph_evidence_unmoved_rows_stay_observed_without_authority() {
     // A no-semantic-change row with no authority record remains an
     // observed (textual) movement, never a fabricated clean state.

@@ -253,5 +253,23 @@ pub fn dependency_graph_delta_fixtures() -> Vec<DependencyGraphDeltaFixtureV1> {
             base_manifest: "",
             head_manifest: "",
         },
+        DependencyGraphDeltaFixtureV1 {
+            id: "dep-prerelease-identifier-overflow-fails-closed",
+            description: "An all-digit prerelease identifier that overflows u64 (e.g. 1.0.0-zz to 1.0.0-99999999999999999999) cannot be ordered from syntax alone: the delta must show UnsupportedOrInstrumentFailure, never a guessed polarity.",
+            expected_kind: DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure,
+            base_lock: "[[package]]\nname = \"edge\"\nversion = \"1.0.0-zz\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aaa\"\n",
+            head_lock: "[[package]]\nname = \"edge\"\nversion = \"1.0.0-99999999999999999999\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bbb\"\n",
+            base_manifest: "[dependencies]\nedge = \"1\"",
+            head_manifest: "[dependencies]\nedge = \"1\"",
+        },
+        DependencyGraphDeltaFixtureV1 {
+            id: "dep-crossing-duplicate-movements",
+            description: "Two duplicate versions of one name move in opposite directions (1.0.0 -> 0.5.0 down, 3.0.0 -> 4.0.0 up). The intended bound: rows associate by sorted version order — lowest base with lowest head — so the pinned pairs are (1.0.0, 0.5.0) and (3.0.0, 4.0.0), and both polarity rows must appear; the delta never reconstructs a semantically different crossing.",
+            expected_kind: DependencyGraphDeltaKindV1::PackageUpgraded,
+            base_lock: "[[package]]\nname = \"wide\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aaa\"\n\n[[package]]\nname = \"wide\"\nversion = \"3.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ccc\"\n",
+            head_lock: "[[package]]\nname = \"wide\"\nversion = \"0.5.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bbb\"\n\n[[package]]\nname = \"wide\"\nversion = \"4.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ddd\"\n",
+            base_manifest: "",
+            head_manifest: "",
+        },
     ]
 }

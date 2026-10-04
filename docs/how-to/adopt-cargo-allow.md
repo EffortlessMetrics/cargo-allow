@@ -222,13 +222,35 @@ cargo-allow hooks remove \
 
 Removal is fail-closed: it recomputes the current stage, plan identity, and Git
 common hook path from the receipt. An exact standalone hook is removed as a
-file; a `Composed` hook removes only its exact managed block and preserves
-unrelated bytes. Changed, malformed, unmanaged, or symbolic-link content is
+file; a `Composed` hook removes only its exact managed identity — the managed
+`#!/bin/sh` and managed-hook header lines plus the BEGIN..END block — and
+preserves unrelated bytes. When nothing user-authored remains, the hook file is
+removed so a later `hooks apply` can recreate the managed hook cleanly.
+Changed, malformed, unmanaged, or symbolic-link content is
 refused. It writes a separate
 `cargo-allow.local-hook-remove-receipt.v1`; the receipt records the exact
 recreate route through `hooks plan` and `hooks apply`. Existing hook
 composition remains supported; exact staged-index support for this direct
 managed-hook planner remains a separate follow-up capability.
+
+### Root resolution and fixture testing
+
+Repo-scoped hooks commands (`hooks plan`, `hooks status`, `hooks apply`,
+`hooks remove`) resolve the Git root from the current directory only. They
+take no `--root` flag and do not honor the `CARGO_ALLOW_ROOT` environment
+variable (#3230); run them from the repository that owns the hook. When they
+cannot resolve a hook path, the error names this current-directory rule.
+
+`hooks run` is the exception: its child `check --mode no-new` inherits the
+ambient environment, so setting `CARGO_ALLOW_ROOT=<fixture-root>` is the
+supported way to exercise an installed hook against a fixture root without
+touching the host repository:
+
+```bash
+CARGO_ALLOW_ROOT=/tmp/hook-fixture cargo-allow hooks run \
+  --binary /abs/path/cargo-allow --digest sha256:v1:... \
+  --mode explicit-tool-under-test -- check --mode no-new
+```
 
 ## Optional reusable GitHub Action
 
