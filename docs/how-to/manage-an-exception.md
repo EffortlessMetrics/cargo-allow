@@ -115,6 +115,12 @@ Why this route rather than a single mutating command:
   generated (policy unchanged); regenerate with cargo-allow why --plan …
   ```
 
+- Both `add --from-plan --update` and the expert `add --update` shortcut append
+  only the new canonical entry. Existing policy bytes, comments, quoting, order,
+  BOM and mixed line endings are preserved. A policy shape that cannot accept
+  the append without rewriting (such as a root `allow = []`) is rejected with
+  the policy unchanged; there is no whole-ledger normalization fallback.
+
 - the third command is a **targeted recheck**: it proves the selected finding
   now reports `status: matched` with its new `allow_id`. It is not a
   repository proof.

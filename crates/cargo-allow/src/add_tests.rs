@@ -739,13 +739,21 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
 }
 
 #[test]
-fn cmd_add_update_writes_entry_into_live_policy() {
+fn cmd_add_update_writes_entry_into_live_policy() -> Result<(), Box<dyn std::error::Error>> {
     let root = add_fixture_dir();
     write_add_fixture_with_new_panic_finding(&root);
     let policy_path = root.join("policy/allow.toml");
-    // Snapshot the existing entry so we can prove it survives the update.
+    // Preserve a historical entry's exact spelling and line endings, not only
+    // its parsed meaning (the previous line-membership check missed rewrites).
     let before = fs::read_to_string(&policy_path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read before: {err}")));
+    let before = format!(
+        "# Historical header\r\n{}\n# Recent comment without final newline",
+        before
+            .replace("owner = \"core\"", "owner = 'core'")
+            .replace('\n', "\r\n")
+    );
+    fs::write(&policy_path, &before)?;
 
     cmd_add(&AddArgs {
         root: RootArgs {
@@ -787,11 +795,12 @@ fn cmd_add_update_writes_entry_into_live_policy() {
     );
     // Existing entry preserved (allow-0001 block intact).
     assert!(
-        before.lines().all(|line| after.contains(line)),
-        "update must preserve every existing line"
+        after.as_bytes().starts_with(before.as_bytes()),
+        "update must preserve every existing byte"
     );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    Ok(())
 }
 
 #[test]

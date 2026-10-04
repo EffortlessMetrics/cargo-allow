@@ -1,4 +1,4 @@
-use allow_core::AllowConfig;
+use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 
 use crate::render_entry::render_allow_entry;
 use crate::render_sections::{
@@ -15,4 +15,33 @@ pub fn render_policy(cfg: &AllowConfig) -> String {
         render_allow_entry(&mut out, entry);
     }
     out
+}
+
+/// Append one canonical entry without changing any byte of an existing ledger.
+///
+/// Both the preimage and complete result are parsed and validated. TOML shapes
+/// that cannot accept an array-table append (for example, `allow = []`) fail
+/// explicitly; this never falls back to reformatting the existing document.
+pub fn append_policy_entry(input: &str, entry: &AllowEntry) -> CargoAllowResult<String> {
+    let mut expected = crate::parse_policy(input)?;
+    expected.allow.push(entry.clone());
+    crate::validate_policy(&expected)?;
+
+    // render_allow_entry starts with a newline, including when input ends in a
+    // comment without a newline. Existing BOM, CRLF/LF, quotes and comments
+    // remain untouched; only the appended block uses canonical LF formatting.
+    let mut out = input.to_string();
+    render_allow_entry(&mut out, entry);
+    let reparsed = crate::parse_policy(&out).map_err(|error| {
+        error.with_message_prefix("cannot append an allow entry without rewriting policy: ")
+    })?;
+    // Compare the canonical projection because the existing renderer/parser
+    // deliberately discard legacy selector.line_hint (it is not authority).
+    if render_policy(&reparsed) != render_policy(&expected) {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            "appended policy does not preserve the expected policy semantics",
+        ));
+    }
+    Ok(out)
 }
