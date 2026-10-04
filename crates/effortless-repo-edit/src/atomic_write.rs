@@ -240,7 +240,13 @@ fn create_unique_temp(path: &Path) -> RepoEditResult<(PathBuf, std::fs::File)> {
 
 #[cfg(unix)]
 fn sync_parent_directory(path: &Path) -> RepoEditResult<()> {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    // A bare filename ("plan.json") has parent Some(""), which is not
+    // an openable directory on Unix; normalize the empty parent to the
+    // current directory.
+    let parent = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent,
+        _ => Path::new("."),
+    };
     let directory = OpenOptions::new()
         .read(true)
         .open(parent)
@@ -271,4 +277,17 @@ pub(crate) fn sibling_tmp_path(path: &Path) -> PathBuf {
         .unwrap_or_default();
     name.push(".tmp");
     path.with_file_name(name)
+}
+
+#[cfg(unix)]
+#[test]
+fn sync_parent_directory_accepts_a_bare_relative_filename() -> Result<(), Box<dyn std::error::Error>>
+{
+    let temp = std::env::temp_dir().join("repo-edit-bare-filename-sync-test");
+    let _ = std::fs::remove_dir_all(&temp);
+    std::fs::create_dir_all(&temp)?;
+    let target = temp.join("plan.json");
+    let result = sync_parent_directory(&target);
+    let _ = std::fs::remove_dir_all(&temp);
+    result.map_err(|error| error.into())
 }
