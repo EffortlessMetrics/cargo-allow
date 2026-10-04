@@ -20995,7 +20995,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 28
+occurrence_limit = 31
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -22373,6 +22373,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4243-duplicate-version-identity-rows.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4243-duplicate-version-identity-rows.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1049"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "self-receipt for the #4347 revision note, matching the #3792 precedent"
+evidence = ["issue:4347"]
+created = "2026-10-04"
+review_after = "2027-01-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
 
 [allow.last_seen]
 line = 1

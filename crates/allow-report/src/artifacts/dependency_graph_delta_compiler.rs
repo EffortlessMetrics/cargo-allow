@@ -455,8 +455,28 @@ pub fn compile_dependency_graph_delta_with_workspace(
             .sort_by(|a, b| compare_versions(&a.version, &b.version).then(a.source.cmp(&b.source)));
         let pair_count = unmatched_base.len().min(unmatched_head.len());
         for (base, head) in unmatched_base.iter().zip(unmatched_head.iter()) {
-            let version_up = is_version_up(&base.version, &head.version);
-            let version_down = is_version_down(&base.version, &head.version);
+            // A pair whose versions cannot be ordered from syntax alone
+            // (non-numeric or u64-overflowing segments) fails closed as
+            // unsupported instead of guessing a polarity that could
+            // invert an upgrade or hide the movement entirely (#4347).
+            let Some(ordering) = try_compare_versions(&base.version, &head.version) else {
+                rows.push(DependencyGraphDeltaRowV1 {
+                    kind: DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure,
+                    class: DependencyClassV1::Normal,
+                    package_name: name.to_string(),
+                    base_version: base.version.clone(),
+                    head_version: head.version.clone(),
+                    base_requirement: String::new(),
+                    head_requirement: String::new(),
+                    base_source: base.source.clone(),
+                    head_source: head.source.clone(),
+                    base_checksum: base.checksum.clone(),
+                    head_checksum: head.checksum.clone(),
+                });
+                continue;
+            };
+            let version_up = ordering == std::cmp::Ordering::Less;
+            let version_down = ordering == std::cmp::Ordering::Greater;
             if version_up || version_down {
                 // Version movement is its own row (an upgrade or a
                 // downgrade, never a "compatible update"), and when the
@@ -672,12 +692,41 @@ fn compare_prerelease_identifiers(a: &str, b: &str) -> std::cmp::Ordering {
     a_ids.len().cmp(&b_ids.len())
 }
 
-fn is_version_up(base: &str, head: &str) -> bool {
-    compare_versions(base, head) == std::cmp::Ordering::Less
+/// Strict orderability: every core segment must parse as u64 (so an
+/// all-digit segment that overflows u64, like
+/// `99999999999999999999`, is non-orderable rather than silently
+/// dropped), and every all-digit prerelease identifier must parse as
+/// u64 (#4347).
+fn version_orderable(version: &str) -> bool {
+    let no_build = version.split('+').next().unwrap_or(version);
+    let (core, pre) = match no_build.split_once('-') {
+        Some((core, pre)) => (core, Some(pre)),
+        None => (no_build, None),
+    };
+    if core.split('.').any(|part| part.parse::<u64>().is_err()) {
+        return false;
+    }
+    if let Some(pre) = pre {
+        for identifier in pre.split('.') {
+            let all_digits =
+                !identifier.is_empty() && identifier.bytes().all(|b| b.is_ascii_digit());
+            if all_digits && identifier.parse::<u64>().is_err() {
+                return false;
+            }
+        }
+    }
+    true
 }
 
-fn is_version_down(base: &str, head: &str) -> bool {
-    compare_versions(base, head) == std::cmp::Ordering::Greater
+/// Order two versions when both are strictly orderable; `None` marks a
+/// pair whose polarity must not be guessed (#4347). The lenient
+/// `compare_versions` remains the pairing sort's total order.
+fn try_compare_versions(a: &str, b: &str) -> Option<std::cmp::Ordering> {
+    if version_orderable(a) && version_orderable(b) {
+        Some(compare_versions(a, b))
+    } else {
+        None
+    }
 }
 
 /// Classify one direct requirement movement between two non-empty,
@@ -708,16 +757,13 @@ fn classify_requirement_movement(base: &str, head: &str) -> DependencyGraphDelta
     match segments(head).cmp(&segments(base)) {
         std::cmp::Ordering::Greater => DependencyGraphDeltaKindV1::RequirementRangeNarrowed,
         std::cmp::Ordering::Less => DependencyGraphDeltaKindV1::RequirementRangeBroadened,
-        std::cmp::Ordering::Equal => {
-            if is_version_up(base, head) {
-                DependencyGraphDeltaKindV1::DirectRequirementRaised
-            } else if is_version_down(base, head) {
+        std::cmp::Ordering::Equal => match try_compare_versions(base, head) {
+            None => DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure,
+            Some(std::cmp::Ordering::Less) => DependencyGraphDeltaKindV1::DirectRequirementRaised,
+            Some(std::cmp::Ordering::Greater) => {
                 DependencyGraphDeltaKindV1::DirectRequirementLowered
-            } else {
-                // Textually different but numerically identical floors:
-                // no requirement boundary moved.
-                DependencyGraphDeltaKindV1::NoSemanticGraphChange
             }
-        }
+            Some(_) => DependencyGraphDeltaKindV1::NoSemanticGraphChange,
+        },
     }
 }
