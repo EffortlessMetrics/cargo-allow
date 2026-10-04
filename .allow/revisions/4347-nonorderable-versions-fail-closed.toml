@@ -1,0 +1,14 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11278"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:138668613318c99b72c3c8744bdad44eb7052ece1ecc3f92840c6ef3348587b4"
+after_fingerprint = "sha256:v1:3d5c98d12cff322c98bccd658635a08ed1d617a40f9c8ed986b6c031187f7b2b"
+reason = "three more invariant-guarded expects in the dependency graph delta compiler tests: the #4347 non-orderable-version acceptance fixtures compile base/head lockfile and requirement fixtures whose success is the property under test, matching the #3920 PR B ratchet's stated scope"
+
+[[records]]
+allow_ids = ["allow-1049"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f3b4bc1d283773f62a11b8ce721290652f8ee0a9f16964b9b41dc84ead1284ed"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

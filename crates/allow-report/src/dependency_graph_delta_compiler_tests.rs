@@ -635,3 +635,71 @@ fn dependency_graph_delta_compiler_never_silently_drops_a_duplicate_count_change
         removal.rows
     );
 }
+
+#[test]
+fn dependency_graph_delta_compiler_fails_closed_on_u64_overflow_versions() {
+    // #4347: segments that overflow u64 must not be silently dropped.
+    // The shipped function previously classified 1.5.0 ->
+    // 1.99999999999999999999.0 as PackageDowngraded (inverted) and
+    // 1.0.0 -> 1.99999999999999999999.0 as silence; both pairs are now
+    // UnsupportedOrInstrumentFailure — never a guessed polarity, never
+    // silence.
+    let identity = default_identity();
+    let base_manifest = "[dependencies]\nserde = \"1\"\n";
+    let head_manifest = "[dependencies]\nserde = \"1\"\n";
+
+    let inverted = compile_dependency_graph_delta(
+        &identity,
+        base_manifest,
+        head_manifest,
+        "[[package]]\nname = \"serde\"\nversion = \"1.5.0\"\nsource = \"registry\"\nchecksum = \"old\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.99999999999999999999.0\"\nsource = \"registry\"\nchecksum = \"new\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        inverted.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
+            && row.package_name == "serde"),
+        "the overflow pair fails closed: {:?}",
+        inverted.rows
+    );
+    assert!(
+        !inverted.rows.iter().any(|row| row.package_name == "serde"
+            && (row.kind == DependencyGraphDeltaKindV1::PackageDowngraded
+                || row.kind == DependencyGraphDeltaKindV1::PackageUpgraded)),
+        "the overflow pair is never a guessed polarity: {:?}",
+        inverted.rows
+    );
+
+    let silent = compile_dependency_graph_delta(
+        &identity,
+        base_manifest,
+        head_manifest,
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"old\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.99999999999999999999.0\"\nsource = \"registry\"\nchecksum = \"new\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        silent.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
+            && row.package_name == "serde"),
+        "the overflow movement is never silent: {:?}",
+        silent.rows
+    );
+
+    let requirement = compile_dependency_graph_delta(
+        &identity,
+        "[dependencies]\nserde = \"1.0.0\"\n",
+        "[dependencies]\nserde = \"1.0.99999999999999999999\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        requirement.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
+            && row.package_name == "serde"),
+        "an overflowing requirement floor fails closed: {:?}",
+        requirement.rows
+    );
+}
