@@ -69,6 +69,93 @@ fn is_sha256_v1(value: Option<&str>) -> bool {
     value.is_some_and(|value| value.starts_with("sha256:v1:") && value.len() == 74)
 }
 
+fn append_past_read_limit_refuses_without_mutation(
+    from_plan: bool,
+    label: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = init_fixture(label);
+    let policy_path = root.join("policy/allow.toml");
+    let initial = fs::read_to_string(&policy_path)?;
+    let limit = usize::try_from(allow_core::SOURCE_FILE_READ_MAX_BYTES)?;
+    let mut before = format!(
+        "\u{feff}# Historical comment\r\n{}\n# ",
+        initial.replace('\n', "\r\n")
+    );
+    before.push_str(&"x".repeat(limit - 64 - before.len()));
+    assert_eq!(before.len(), limit - 64);
+    fs::write(&policy_path, &before)?;
+    assert!(allow_policy::load_policy(&policy_path).is_ok());
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-q", "-m", "near-limit history"]);
+
+    let plan = from_plan.then(|| generate_plan(&root));
+    let receipt = root.join("overflow-receipt.json");
+    let mut command = cargo_allow_command();
+    command.args(["add", "--root"]).arg(&root);
+    if let Some(plan) = &plan {
+        command.arg("--from-plan").arg(plan);
+    } else {
+        command.args(["--kind", "panic", "--path", "src/lib.rs", "--line", "1"]);
+    }
+    let output = command
+        .args([
+            "--owner",
+            "fixture",
+            "--reason",
+            "reviewed boundary finding",
+            "--update",
+        ])
+        .arg("--summary-output")
+        .arg(&receipt)
+        .output()?;
+    let after = fs::read(&policy_path)?;
+    let readable = allow_policy::load_policy(&policy_path).is_ok();
+    assert!(
+        !output.status.success(),
+        "append must refuse before mutation: from_plan={from_plan}, before={}, after={}, limit={limit}, prefix={}, readable={readable}",
+        before.len(),
+        after.len(),
+        after.starts_with(before.as_bytes()),
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("8388608") && stderr.contains("appended policy"),
+        "{stderr}"
+    );
+    assert_eq!(after.len(), before.len());
+    assert!(
+        after.as_slice() == before.as_bytes(),
+        "refusal must preserve every policy byte"
+    );
+    assert!(readable, "refusal must leave the policy readable");
+    assert!(
+        !receipt.exists(),
+        "refusal must not claim an application receipt"
+    );
+    let diff = Command::new("git")
+        .arg("-C")
+        .arg(&root)
+        .args(["diff", "--numstat", "--", "policy/allow.toml"])
+        .output()?;
+    assert_status("refused policy diff", &diff, true);
+    assert!(
+        diff.stdout.is_empty(),
+        "refusal must produce no policy diff"
+    );
+    remove_temp_root(&root);
+    Ok(())
+}
+
+#[test]
+fn add_update_refuses_policy_growth_past_read_limit() -> Result<(), Box<dyn std::error::Error>> {
+    append_past_read_limit_refuses_without_mutation(false, "add-update-read-limit")
+}
+
+#[test]
+fn add_from_plan_refuses_policy_growth_past_read_limit() -> Result<(), Box<dyn std::error::Error>> {
+    append_past_read_limit_refuses_without_mutation(true, "add-plan-read-limit")
+}
+
 #[test]
 fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
 -> Result<(), Box<dyn std::error::Error>> {
