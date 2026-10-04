@@ -126,10 +126,13 @@ class TestReceiptOutput(unittest.TestCase):
         target = self.sandbox / "junction-target"
         link = self.sandbox / "junction"
         target.mkdir()
+        # -Command <string> rather than -Command - with piped stdin:
+        # stdin mode never observes EOF on Windows (host and hosted
+        # runners alike, #4346) and hangs the 15-second timeout.
         result = self.real_run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", "-"],
-            input=("New-Item -ItemType Junction -Path $env:REHEARSAL_TEST_LINK "
-                   "-Target $env:REHEARSAL_TEST_TARGET -ErrorAction Stop | Out-Null\n"),
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "New-Item -ItemType Junction -Path $env:REHEARSAL_TEST_LINK "
+             "-Target $env:REHEARSAL_TEST_TARGET -ErrorAction Stop | Out-Null"],
             env={**os.environ, "REHEARSAL_TEST_LINK": str(link),
                  "REHEARSAL_TEST_TARGET": str(target)},
             capture_output=True, text=True, timeout=15, check=False,
