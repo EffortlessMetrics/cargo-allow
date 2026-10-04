@@ -348,6 +348,70 @@ fn prune_summary_apply_preserves_untracked_inventory() -> TestResult {
 }
 
 #[test]
+fn prune_selection_write_preserves_unrelated_policy_bytes() -> TestResult {
+    with_fixture(|fixture| {
+        let canonical = fs::read_to_string(&fixture.policy)?;
+        let mut blocks = canonical.split("\n[[allow]]\n");
+        let prefix = format!(
+            "\u{feff}# Historical CRLF header\r\n{}",
+            blocks
+                .next()
+                .ok_or("missing policy header")?
+                .replace('\n', "\r\n")
+        );
+        let selected = format!(
+            "\n[[allow]]\r\n{}",
+            blocks
+                .next()
+                .ok_or("missing selected entry")?
+                .replace('\n', "\r\n")
+        );
+        let retained = blocks.next().ok_or("missing unselected stale entry")?;
+        let live = blocks.next().ok_or("missing unselected live entry")?;
+        require(blocks.next().is_none(), "unexpected extra fixture entry")?;
+        let suffix = format!(
+            "\n# Recent LF comment with 日本語\n[[allow]]\n{}\n[[allow]]\r\n{}# Preserve EOF comment without newline",
+            retained.replace(
+                "owner = \"owner/allow-stale-b\"",
+                "owner = 'owner/allow-stale-b'"
+            ),
+            live.replace('\n', "\r\n"),
+        );
+        let before = format!("{prefix}{selected}{suffix}");
+        fs::write(&fixture.policy, &before)?;
+        let mut expected = load_policy(&fixture.policy)?;
+        expected.allow.retain(|entry| entry.id != "allow-stale-a");
+        cmd_prune(&fixture.args(Some("allow-stale-a"), true))?;
+        let after = fs::read(&fixture.policy)?;
+        require(
+            after == format!("{prefix}{suffix}").as_bytes(),
+            "selected prune must preserve every byte outside the removed entry",
+        )?;
+        require(
+            load_policy(&fixture.policy)? == expected,
+            "prune semantics differ",
+        )?;
+        require_candidates(&fixture.artifact()?, &["allow-stale-a"])?;
+        let receipt = fixture.artifact()?;
+        let error = cmd_prune(&fixture.args(Some("allow-stale-a"), true))
+            .err()
+            .ok_or("repeated selected prune must refuse")?;
+        require(
+            error.kind() == CargoAllowErrorKind::Usage,
+            "replay must be a usage error",
+        )?;
+        require(
+            fs::read(&fixture.policy)? == after,
+            "replay changed policy bytes",
+        )?;
+        require(
+            fixture.artifact()? == receipt,
+            "replay replaced the application receipt",
+        )
+    })
+}
+
+#[test]
 fn prune_selection_write_preserves_every_unselected_entry() -> TestResult {
     with_fixture(|fixture| {
         let mut expected = load_policy(&fixture.policy)?;
