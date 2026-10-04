@@ -517,10 +517,16 @@ pub fn compile_dependency_graph_delta_with_workspace(
                         head_checksum: head.checksum.clone(),
                     });
                 }
-            } else if base.source != head.source || base.checksum != head.checksum {
-                // Same resolved version but a different origin or
-                // content identity: count parity does not establish
-                // graph identity.
+            } else if base.source != head.source
+                || base.checksum != head.checksum
+                || base.version != head.version
+            {
+                // Same semver precedence but a different origin,
+                // content identity, or version string (equal
+                // precedence with differing strings means a
+                // build-metadata-only lock change): count parity does
+                // not establish graph identity, and the lockfile
+                // version string is part of package identity.
                 rows.push(DependencyGraphDeltaRowV1 {
                     kind: DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
                     class: DependencyClassV1::Normal,
@@ -536,20 +542,27 @@ pub fn compile_dependency_graph_delta_with_workspace(
                 });
             }
         }
+        // A surplus identity's DuplicateVersionMovement row is a
+        // duplicate-count story only when the opposite side still
+        // carries the name: a name first entering the lock is just
+        // PackageAdded, and a final version leaving it is just
+        // PackageRemoved.
         for surplus_base in unmatched_base.iter().skip(pair_count) {
-            rows.push(DependencyGraphDeltaRowV1 {
-                kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
-                class: DependencyClassV1::Normal,
-                package_name: name.to_string(),
-                base_version: surplus_base.version.clone(),
-                head_version: String::new(),
-                base_requirement: String::new(),
-                head_requirement: String::new(),
-                base_source: surplus_base.source.clone(),
-                head_source: String::new(),
-                base_checksum: surplus_base.checksum.clone(),
-                head_checksum: String::new(),
-            });
+            if !head_rows.is_empty() {
+                rows.push(DependencyGraphDeltaRowV1 {
+                    kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
+                    class: DependencyClassV1::Normal,
+                    package_name: name.to_string(),
+                    base_version: surplus_base.version.clone(),
+                    head_version: String::new(),
+                    base_requirement: String::new(),
+                    head_requirement: String::new(),
+                    base_source: surplus_base.source.clone(),
+                    head_source: String::new(),
+                    base_checksum: surplus_base.checksum.clone(),
+                    head_checksum: String::new(),
+                });
+            }
             rows.push(DependencyGraphDeltaRowV1 {
                 kind: DependencyGraphDeltaKindV1::PackageRemoved,
                 class: DependencyClassV1::Normal,
@@ -565,19 +578,21 @@ pub fn compile_dependency_graph_delta_with_workspace(
             });
         }
         for surplus_head in unmatched_head.iter().skip(pair_count) {
-            rows.push(DependencyGraphDeltaRowV1 {
-                kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
-                class: DependencyClassV1::Normal,
-                package_name: name.to_string(),
-                base_version: String::new(),
-                head_version: surplus_head.version.clone(),
-                base_requirement: String::new(),
-                head_requirement: String::new(),
-                base_source: String::new(),
-                head_source: surplus_head.source.clone(),
-                base_checksum: String::new(),
-                head_checksum: surplus_head.checksum.clone(),
-            });
+            if !base_rows.is_empty() {
+                rows.push(DependencyGraphDeltaRowV1 {
+                    kind: DependencyGraphDeltaKindV1::DuplicateVersionMovement,
+                    class: DependencyClassV1::Normal,
+                    package_name: name.to_string(),
+                    base_version: String::new(),
+                    head_version: surplus_head.version.clone(),
+                    base_requirement: String::new(),
+                    head_requirement: String::new(),
+                    base_source: String::new(),
+                    head_source: surplus_head.source.clone(),
+                    base_checksum: String::new(),
+                    head_checksum: surplus_head.checksum.clone(),
+                });
+            }
             rows.push(DependencyGraphDeltaRowV1 {
                 kind: DependencyGraphDeltaKindV1::PackageAdded,
                 class: DependencyClassV1::Normal,
@@ -695,8 +710,9 @@ fn compare_prerelease_identifiers(a: &str, b: &str) -> std::cmp::Ordering {
 /// Strict orderability: every core segment must parse as u64 (so an
 /// all-digit segment that overflows u64, like
 /// `99999999999999999999`, is non-orderable rather than silently
-/// dropped), and every all-digit prerelease identifier must parse as
-/// u64 (#4347).
+/// dropped), and every prerelease identifier must be non-empty (semver
+/// 2.0.0 forbids empty identifiers, as in `1.0.0-` or `1.0.0-rc..1`)
+/// and parse as u64 when all-digit (#4347).
 fn version_orderable(version: &str) -> bool {
     let no_build = version.split('+').next().unwrap_or(version);
     let (core, pre) = match no_build.split_once('-') {
@@ -708,9 +724,11 @@ fn version_orderable(version: &str) -> bool {
     }
     if let Some(pre) = pre {
         for identifier in pre.split('.') {
-            let all_digits =
-                !identifier.is_empty() && identifier.bytes().all(|b| b.is_ascii_digit());
-            if all_digits && identifier.parse::<u64>().is_err() {
+            if identifier.is_empty() {
+                return false;
+            }
+            if identifier.bytes().all(|b| b.is_ascii_digit()) && identifier.parse::<u64>().is_err()
+            {
                 return false;
             }
         }
