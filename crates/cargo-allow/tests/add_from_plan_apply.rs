@@ -142,7 +142,7 @@ fn append_past_read_limit_refuses_without_mutation(
         diff.stdout.is_empty(),
         "refusal must produce no policy diff"
     );
-    remove_temp_root(&root);
+    remove_temp_root(root);
     Ok(())
 }
 
