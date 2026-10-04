@@ -1,0 +1,21 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11278"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:3d5c98d12cff322c98bccd658635a08ed1d617a40f9c8ed986b6c031187f7b2b"
+after_fingerprint = "sha256:v1:d52d270d143ff785efe685b7d4655a9dcf3429653dca95f5fffa0dc02ced4fb4"
+reason = "three more invariant-guarded expects in the dependency graph delta compiler tests: the #4359 hardening bundle adds build-metadata, pure add/remove, and empty-prerelease-identifier acceptance tests whose compilations must succeed for the property under test, matching the #3920 PR B ratchet's stated scope"
+
+[[records]]
+allow_ids = ["allow-11281"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:f1c545e917531dc19c27cefda35474f1e8fed57b7667d0f9e447cfe1d980b09e"
+after_fingerprint = "sha256:v1:90b116391374dd459d8f5ff8fb08e74c37b6178ef11a78a28723c6b18139025d"
+reason = "two more invariant-guarded expects in the dependency graph evidence law tests: the #4359 removed-duplicate binding test enriches one delta twice and each enrichment's success is the property under test, matching the #3920 PR C ratchet's stated scope"
+
+[[records]]
+allow_ids = ["allow-1050"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:44c4aa7507bc0a6cb679471d509cd9dbf524a159aeef2616641f5f52ce5cb493"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

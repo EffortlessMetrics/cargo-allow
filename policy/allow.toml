@@ -20995,7 +20995,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 31
+occurrence_limit = 34
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -21048,7 +21048,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph evidence law tests (#3920 PR C); every expect guards an enrichment whose success or failure is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 19
+occurrence_limit = 21
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -22403,42 +22403,20 @@ column = 1
 [[allow]]
 id = "allow-1050"
 kind = "non_rust_file"
-family = "shell_script"
-path = "scripts/test-audit-default-sensor-burden.sh"
-owner = "core"
-classification = "reviewed_exception"
-reason = "characterization guard for the CI-used default sensor burden audit harness: proves fail-closed on a missing binary and on a failing cargo-allow invocation before the scheduled receipt is produced"
-evidence = ["issue:4360"]
-created = "2026-10-04"
-review_after = "2027-01-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "scripts/test-audit-default-sensor-burden.sh"
-target_fingerprint = "sh"
-glob = "scripts/test-audit-default-sensor-burden.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1051"
-kind = "non_rust_file"
 family = "configuration"
-path = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
+path = ".allow/revisions/4359-delta-hardening-bundle.toml"
 owner = "core/governance"
 classification = "reviewed_exception"
-reason = "self-receipt for the #4360 revision note, matching the #3792 precedent"
-evidence = ["issue:4360"]
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
+evidence = ["issue:4359"]
 created = "2026-10-04"
 review_after = "2027-01-02"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
+symbol = ".allow/revisions/4359-delta-hardening-bundle.toml"
 target_fingerprint = "toml"
-glob = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
+glob = ".allow/revisions/4359-delta-hardening-bundle.toml"
 
 [allow.last_seen]
 line = 1

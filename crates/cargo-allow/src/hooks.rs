@@ -34,16 +34,32 @@ pub(crate) struct HooksArgs {
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum HooksCommand {
     /// Preview the checked worktree-advisory hook plan.
+    ///
+    /// Resolves the Git root from the current directory only; the
+    /// `CARGO_ALLOW_ROOT` environment variable (#3230) is not honored (#4362).
     Plan(HookPlanArgs),
     /// Report the managed Git-hook disposition without changing the repository.
+    ///
+    /// Resolves the Git root from the current directory only; the
+    /// `CARGO_ALLOW_ROOT` environment variable (#3230) is not honored (#4362).
     Status(HookStatusArgs),
     /// Apply a plan only when the Git hook is absent or already managed.
+    ///
+    /// Resolves the Git root from the current directory only; the
+    /// `CARGO_ALLOW_ROOT` environment variable (#3230) is not honored (#4362).
     Apply(HookApplyArgs),
     /// Remove only the exact managed hook created by an apply receipt.
+    ///
+    /// Resolves the Git root from the current directory only; the
+    /// `CARGO_ALLOW_ROOT` environment variable (#3230) is not honored (#4362).
     Remove(HookRemoveArgs),
     /// Verify an explicitly selected cargo-allow executable offline.
     Verify(HookVerifyArgs),
     /// Execute the closed worktree check through an explicitly verified executable.
+    ///
+    /// The child scan inherits the ambient environment, so `CARGO_ALLOW_ROOT`
+    /// (#3230) can steer the child scan root for fixture testing; the
+    /// repo-scoped subcommands ignore it (#4362).
     Run(HookRunArgs),
 }
 
@@ -677,6 +693,8 @@ const HOOK_APPLY_RECEIPT_SCHEMA: &str = "cargo-allow.local-hook-apply-receipt.v1
 const HOOK_REMOVE_RECEIPT_SCHEMA: &str = "cargo-allow.local-hook-remove-receipt.v1";
 const MANAGED_BEGIN: &str = "# BEGIN cargo-allow managed hook: ";
 const MANAGED_END: &str = "# END cargo-allow managed hook";
+const MANAGED_SHEBANG: &str = "#!/bin/sh";
+const MANAGED_HEADER: &str = "# cargo-allow managed hook; source subject: tracked_worktree";
 
 fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
     let root = source_tree_root()?;
@@ -728,14 +746,21 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         ));
     }
     let root = source_tree_root()?;
+    apply_resolved(args, &root)
+}
+
+/// The apply body after repo resolution; split out so tests can drive it
+/// against a fixture root in-process instead of only through spawned
+/// subprocesses.
+fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
     let plan = read_plan(&args.plan)?;
     validate_plan(&plan)?;
-    let hook_path = hook_path(&root, stage_from_str(&plan.stage)?)?;
+    let hook_path = hook_path(root, stage_from_str(&plan.stage)?)?;
     let receipt_path = args.receipt.clone().unwrap_or_else(|| {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.apply.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &receipt_path)
+    assert_path_within_root(root, &receipt_path)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let disposition = hook_disposition(&hook_path, &plan)?;
@@ -746,7 +771,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
                 stage: plan.stage.clone(),
                 plan_identity: plan.plan_identity.clone(),
-                hook_path: portable_path(&root, &hook_path),
+                hook_path: portable_path(root, &hook_path),
                 disposition,
                 operation: "none",
                 applied: false,
@@ -762,7 +787,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
                 stage: plan.stage.clone(),
                 plan_identity: plan.plan_identity.clone(),
-                hook_path: portable_path(&root, &hook_path),
+                hook_path: portable_path(root, &hook_path),
                 disposition,
                 operation: "none",
                 applied: false,
@@ -785,7 +810,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         schema: HOOK_APPLY_RECEIPT_SCHEMA,
         stage: plan.stage.clone(),
         plan_identity: plan.plan_identity.clone(),
-        hook_path: portable_path(&root, &hook_path),
+        hook_path: portable_path(root, &hook_path),
         disposition: "Missing",
         operation: "create",
         applied: true,
@@ -812,6 +837,13 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     }
 
     let root = source_tree_root()?;
+    remove_resolved(args, &root)
+}
+
+/// The remove body after repo resolution; split out so tests can drive it
+/// against a fixture root in-process instead of only through spawned
+/// subprocesses.
+fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
     let receipt = read_apply_receipt(&args.receipt)?;
     let stage = stage_from_str(&receipt.stage)?;
     let plan = if let Some(plan_path) = &args.plan {
@@ -831,8 +863,8 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         build_plan(stage)
     };
     validate_apply_receipt(&receipt, &plan)?;
-    let hook_path = hook_path(&root, stage)?;
-    let expected_hook_path = portable_path(&root, &hook_path);
+    let hook_path = hook_path(root, stage)?;
+    let expected_hook_path = portable_path(root, &hook_path);
     if receipt.hook_path != expected_hook_path {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
@@ -847,7 +879,7 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.remove.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &result_receipt)
+    assert_path_within_root(root, &result_receipt)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let metadata = match fs::symlink_metadata(&hook_path) {
@@ -917,34 +949,50 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
 
     match locate_managed_block(&contents, &plan) {
         ManagedBlockPosture::Exact { start, end } => {
-            let mut retained = String::with_capacity(contents.len() - (end - start));
-            let prefix = contents.get(..start).ok_or_else(|| {
-                CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Scan,
-                    "managed hook block boundary was not valid UTF-8",
-                )
-            })?;
-            let suffix = contents.get(end..).ok_or_else(|| {
-                CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Scan,
-                    "managed hook block boundary was not valid UTF-8",
-                )
-            })?;
-            retained.push_str(prefix);
-            retained.push_str(suffix);
-            write_file(&hook_path, &retained)
-                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-            let receipt = HookRemoveReceiptV1 {
-                schema: HOOK_REMOVE_RECEIPT_SCHEMA,
-                stage: plan.stage,
-                plan_identity: plan.plan_identity,
-                hook_path: expected_hook_path,
-                disposition: "Composed",
-                operation: "remove_block",
-                removed: true,
-                rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed block",
-            };
-            write_json_receipt(&result_receipt, &receipt)
+            let start = managed_prelude_start(&contents, start);
+            match strip_managed_identity(&contents, start, end)? {
+                Some(retained) => {
+                    write_file(&hook_path, &retained)
+                        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+                    let receipt = HookRemoveReceiptV1 {
+                        schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+                        stage: plan.stage,
+                        plan_identity: plan.plan_identity,
+                        hook_path: expected_hook_path,
+                        disposition: "Composed",
+                        operation: "remove_block",
+                        removed: true,
+                        rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed block",
+                    };
+                    write_json_receipt(&result_receipt, &receipt)
+                }
+                None => {
+                    // Nothing user-authored remains around the managed
+                    // identity, so remove the file entirely instead of
+                    // leaving an orphan shebang or managed header that
+                    // would block a later `hooks apply` (#4361).
+                    fs::remove_file(&hook_path).map_err(|error| {
+                        CargoAllowError::with_kind(
+                            CargoAllowErrorKind::Artifact,
+                            format!(
+                                "failed to remove exact managed hook {}: {error}",
+                                hook_path.display()
+                            ),
+                        )
+                    })?;
+                    let receipt = HookRemoveReceiptV1 {
+                        schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+                        stage: plan.stage,
+                        plan_identity: plan.plan_identity,
+                        hook_path: expected_hook_path,
+                        disposition: "Composed",
+                        operation: "remove",
+                        removed: true,
+                        rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
+                    };
+                    write_json_receipt(&result_receipt, &receipt)
+                }
+            }
         }
         ManagedBlockPosture::Missing => remove_conflict_receipt(
             &result_receipt,
@@ -1175,7 +1223,9 @@ fn git_path(root: &Path, argument: &str) -> CargoAllowResult<PathBuf> {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Inventory,
             format!(
-                "git could not resolve hook path: {}",
+                "git could not resolve hook path from the current directory; \
+                 repo-scoped hooks commands resolve the Git root from the \
+                 current directory and do not honor CARGO_ALLOW_ROOT (#3230): {}",
                 String::from_utf8_lossy(&output.stderr).trim()
             ),
         ));
@@ -1306,9 +1356,53 @@ fn managed_block(plan: &LocalHookPlanV1) -> String {
 
 fn render_managed_hook(plan: &LocalHookPlanV1) -> String {
     format!(
-        "#!/bin/sh\n# cargo-allow managed hook; source subject: tracked_worktree\n{}\n",
+        "{MANAGED_SHEBANG}\n{MANAGED_HEADER}\n{}\n",
         managed_block(plan)
     )
+}
+
+/// Byte offset where the managed identity begins: the managed block plus,
+/// when they immediately precede the BEGIN marker, the managed shebang and
+/// header lines that `render_managed_hook` writes outside the block (#4361).
+/// The comparison tolerates CRLF line endings, matching the block locator's
+/// own `\r`-stripping, so a CRLF composed hook loses its prelude too.
+fn managed_prelude_start(contents: &str, block_start: usize) -> usize {
+    let prelude = format!("{MANAGED_SHEBANG}\n{MANAGED_HEADER}\n");
+    let prelude_crlf = format!("{MANAGED_SHEBANG}\r\n{MANAGED_HEADER}\r\n");
+    match contents.get(..block_start) {
+        Some(prefix) if prefix.ends_with(&prelude) => block_start - prelude.len(),
+        Some(prefix) if prefix.ends_with(&prelude_crlf) => block_start - prelude_crlf.len(),
+        _ => block_start,
+    }
+}
+
+/// Retain the unrelated bytes around the managed identity. Returns `None`
+/// when nothing user-authored remains, so the caller can remove the file
+/// entirely instead of leaving an orphan shebang and managed header (#4361).
+fn strip_managed_identity(
+    contents: &str,
+    start: usize,
+    end: usize,
+) -> CargoAllowResult<Option<String>> {
+    let prefix = contents.get(..start).ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            "managed hook block boundary was not valid UTF-8",
+        )
+    })?;
+    let suffix = contents.get(end..).ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            "managed hook block boundary was not valid UTF-8",
+        )
+    })?;
+    let mut retained = String::with_capacity(contents.len() - (end - start));
+    retained.push_str(prefix);
+    retained.push_str(suffix);
+    if retained.chars().all(char::is_whitespace) {
+        return Ok(None);
+    }
+    Ok(Some(retained))
 }
 
 fn normalize_hook_text(text: &str) -> String {
@@ -2342,6 +2436,437 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn composed_removal_strips_the_managed_prelude_and_keeps_unrelated_bytes() -> Result<(), String>
+    {
+        let plan = build_plan(HookStage::PreCommit);
+        let user = "#!/bin/sh\necho unrelated pre-work\n";
+        let composed = format!("{user}{}", render_managed_hook(&plan));
+        let ManagedBlockPosture::Exact { start, end } = locate_managed_block(&composed, &plan)
+        else {
+            return Err("composed hook did not locate an exact managed block".to_string());
+        };
+        let retained =
+            strip_managed_identity(&composed, managed_prelude_start(&composed, start), end)
+                .map_err(|error| error.to_string())?;
+        if retained.as_deref() != Some(user) {
+            return Err(format!(
+                "composed removal did not leave exactly the unrelated bytes: {retained:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_removal_strips_a_crlf_managed_prelude() -> Result<(), String> {
+        // A CRLF composed hook must lose its managed prelude too: the
+        // block locator strips \r, so the prelude comparison has to
+        // match the CRLF form or the removal leaves an orphan shebang
+        // and header behind (#4371 review).
+        let plan = build_plan(HookStage::PreCommit);
+        let user = "#!/bin/sh\r\necho unrelated pre-work\r\n";
+        let composed = format!("{user}{}", render_managed_hook(&plan).replace('\n', "\r\n"));
+        let ManagedBlockPosture::Exact { start, end } = locate_managed_block(&composed, &plan)
+        else {
+            return Err("composed CRLF hook did not locate an exact managed block".to_string());
+        };
+        let retained =
+            strip_managed_identity(&composed, managed_prelude_start(&composed, start), end)
+                .map_err(|error| error.to_string())?;
+        if retained.as_deref() != Some(user) {
+            return Err(format!(
+                "CRLF composed removal did not leave exactly the unrelated bytes: {retained:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_removal_keeps_a_prelude_that_is_not_immediately_before_the_block()
+    -> Result<(), String> {
+        let plan = build_plan(HookStage::PreCommit);
+        let prelude = format!("{MANAGED_SHEBANG}\n{MANAGED_HEADER}\n");
+        let user_head = "#!/bin/sh\necho user\n";
+        let between = "echo between\n";
+        let composed = format!("{user_head}{prelude}{between}{}", managed_block(&plan));
+        let ManagedBlockPosture::Exact { start, end } = locate_managed_block(&composed, &plan)
+        else {
+            return Err("composed hook did not locate an exact managed block".to_string());
+        };
+        if managed_prelude_start(&composed, start) != start {
+            return Err("a non-adjacent prelude was consumed with the block".to_string());
+        }
+        let retained =
+            strip_managed_identity(&composed, start, end).map_err(|error| error.to_string())?;
+        if retained.as_deref() != Some(&format!("{user_head}{prelude}{between}")) {
+            return Err("unrelated bytes were dropped during composed removal".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_removal_drops_the_file_when_nothing_user_authored_remains() -> Result<(), String> {
+        let plan = build_plan(HookStage::PreCommit);
+        // A composed file whose only non-managed byte is a trailing newline:
+        // the residue is whitespace only, so removal must drop the file
+        // instead of leaving an orphan shebang and managed header (#4361).
+        let contents = format!("{}\n", render_managed_hook(&plan));
+        let ManagedBlockPosture::Exact { start, end } = locate_managed_block(&contents, &plan)
+        else {
+            return Err("composed hook did not locate an exact managed block".to_string());
+        };
+        let retained =
+            strip_managed_identity(&contents, managed_prelude_start(&contents, start), end)
+                .map_err(|error| error.to_string())?;
+        if retained.is_some() {
+            return Err("whitespace-only residue was written back as a hook file".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_hook_removal_leaves_exactly_the_unrelated_bytes() -> Result<(), String> {
+        let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
+            return Ok(());
+        };
+        let root = HookFixture::new("composed-remove")?;
+        init_git_fixture(&root.path)?;
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "plan",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+                "--output",
+                "plan.json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks plan failed: {output}"));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "apply",
+                "--plan",
+                "plan.json",
+                "--receipt",
+                "apply-receipt.json",
+                "--accept",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks apply failed: {output}"));
+        }
+        let hook_path = root.path.join(".git").join("hooks").join("pre-commit");
+        let managed = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        let user = "#!/bin/sh\necho unrelated pre-work\n";
+        fs::write(&hook_path, format!("{user}{managed}")).map_err(|error| error.to_string())?;
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"Composed\"") {
+            return Err(format!(
+                "composed hook was not reported as Composed: {output}"
+            ));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "remove",
+                "--receipt",
+                "apply-receipt.json",
+                "--accept",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks remove failed: {output}"));
+        }
+        let retained = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        if retained != user {
+            return Err(format!(
+                "composed removal left orphan managed residue: {retained:?}"
+            ));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"ManualMerge\"") {
+            return Err(format!(
+                "leftover unmanaged hook was not reported: {output}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn composed_hook_removal_without_user_bytes_allows_a_clean_reapply() -> Result<(), String> {
+        let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
+            return Ok(());
+        };
+        let root = HookFixture::new("composed-remove-reapply")?;
+        init_git_fixture(&root.path)?;
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "plan",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+                "--output",
+                "plan.json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks plan failed: {output}"));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "apply",
+                "--plan",
+                "plan.json",
+                "--receipt",
+                "apply-receipt.json",
+                "--accept",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks apply failed: {output}"));
+        }
+        let hook_path = root.path.join(".git").join("hooks").join("pre-commit");
+        let managed = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        // Compose the managed identity back with only a trailing newline:
+        // nothing user-authored surrounds it (#4361).
+        fs::write(&hook_path, format!("{managed}\n")).map_err(|error| error.to_string())?;
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"Composed\"") {
+            return Err(format!(
+                "composed hook was not reported as Composed: {output}"
+            ));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "remove",
+                "--receipt",
+                "apply-receipt.json",
+                "--accept",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks remove failed: {output}"));
+        }
+        if hook_path.exists() {
+            return Err("removal left a hook file with no user-authored bytes".to_string());
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"Missing\"") {
+            return Err(format!(
+                "removed hook was not reported as Missing: {output}"
+            ));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &["hooks", "apply", "--plan", "plan.json", "--accept"],
+            &root.path,
+            None,
+        )?;
+        if !ok {
+            return Err(format!("hooks apply could not recreate the hook: {output}"));
+        }
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &root.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"AlreadyPresent\"") {
+            return Err(format!(
+                "recreated hook was not reported as AlreadyPresent: {output}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn repo_scoped_hooks_commands_ignore_cargo_allow_root() -> Result<(), String> {
+        let Some(binary) = built_binary()? else {
+            eprintln!(
+                "skipped: the built cargo-allow binary is absent, so this live probe cannot run"
+            );
+            return Ok(());
+        };
+        let repo = HookFixture::new("hook-root-repo")?;
+        init_git_fixture(&repo.path)?;
+        let outside = HookFixture::new("hook-root-outside")?;
+        // Positive control: from the repository itself the status resolves.
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &repo.path,
+            None,
+        )?;
+        if !ok || !output.contains("\"disposition\": \"Missing\"") {
+            return Err(format!(
+                "hooks status failed inside the repository: {output}"
+            ));
+        }
+        // The CARGO_ALLOW_ROOT surface (#3230) must not steer repo-scoped
+        // hooks commands (#4362): from a non-repository directory with the
+        // environment variable set, status must fail and name the
+        // current-directory rule.
+        let (ok, output) = run_hook_command(
+            &binary,
+            &[
+                "hooks",
+                "status",
+                "--stage",
+                "pre-commit",
+                "--format",
+                "json",
+            ],
+            &outside.path,
+            Some(&repo.path),
+        )?;
+        if ok {
+            return Err("hooks status honored CARGO_ALLOW_ROOT outside a repository".to_string());
+        }
+        if !output.contains("do not honor CARGO_ALLOW_ROOT") {
+            return Err(format!(
+                "hooks status did not name the current-directory rule: {output}"
+            ));
+        }
+        Ok(())
+    }
+
+    fn init_git_fixture(root: &Path) -> Result<(), String> {
+        let git = |args: &[&str]| -> Result<(), String> {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(root)
+                .output()
+                .map_err(|error| error.to_string())?;
+            if output.status.success() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "fixture git {:?} failed: {}",
+                    args,
+                    String::from_utf8_lossy(&output.stderr)
+                ))
+            }
+        };
+        git(&["init", "-q"])
+    }
+
+    fn run_hook_command(
+        binary: &Path,
+        args: &[&str],
+        cwd: &Path,
+        allow_root: Option<&Path>,
+    ) -> Result<(bool, String), String> {
+        let mut command = std::process::Command::new(binary);
+        command.args(args).current_dir(cwd);
+        if let Some(root) = allow_root {
+            command.env("CARGO_ALLOW_ROOT", root);
+        }
+        let output = command.output().map_err(|error| error.to_string())?;
+        Ok((
+            output.status.success(),
+            format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+        ))
+    }
+
     struct HookFixture {
         path: PathBuf,
     }
@@ -2362,5 +2887,93 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.path);
         }
+    }
+
+    #[test]
+    fn apply_and_remove_resolved_drive_the_fixture_repo_in_process() -> Result<(), String> {
+        // In-process coverage for the apply/remove bodies (tarpaulin cannot
+        // see spawned subprocesses): the same plan/apply/status/remove
+        // flow the subprocess tests drive, against a fixture root.
+        let root = HookFixture::new("composed-cmd-coverage")?;
+        init_git_fixture(&root.path)?;
+        // Emit the plan through the same CLI command the adopting repo
+        // runs, so the file content matches what read_plan consumes.
+        let plan_path = root.path.join("plan.json");
+        cmd_hooks(&HooksArgs {
+            command: HooksCommand::Plan(HookPlanArgs {
+                stage: HookStage::PreCommit,
+                format: HookPlanFormat::Json,
+                output: Some(plan_path.clone()),
+                binary: None,
+                digest: None,
+                mode: ToolSelectionMode::InstalledPinned,
+                expected_build_source_commit: None,
+            }),
+        })
+        .map_err(|error| error.to_string())?;
+        let apply_receipt = root.path.join("apply-receipt.json");
+
+        apply_resolved(
+            &HookApplyArgs {
+                plan: plan_path.clone(),
+                accept: true,
+                receipt: Some(apply_receipt.clone()),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        let hook_path = root.path.join(".git").join("hooks").join("pre-commit");
+        if !hook_path.is_file() {
+            return Err("apply_resolved did not create the managed hook".to_string());
+        }
+
+        // Compose user bytes around the managed identity, then remove and
+        // confirm the unrelated bytes survive (#4361).
+        let user = "#!/bin/sh
+echo unrelated pre-work
+";
+        let managed = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        fs::write(&hook_path, format!("{user}{managed}")).map_err(|error| error.to_string())?;
+        let remove_receipt = root.path.join("remove-receipt.json");
+        // Verify the disposition the same way the adopting flow does
+        // before removal.
+        let disposition = hook_disposition(&hook_path, &build_plan(HookStage::PreCommit))
+            .map_err(|error| error.to_string())?;
+        if disposition != "Composed" {
+            return Err(format!(
+                "composed hook was not reported as Composed before removal: {disposition}"
+            ));
+        }
+        remove_resolved(
+            &HookRemoveArgs {
+                receipt: apply_receipt.clone(),
+                plan: None,
+                accept: true,
+                result_receipt: Some(remove_receipt.clone()),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        let retained = fs::read_to_string(&hook_path).map_err(|error| error.to_string())?;
+        if retained != user {
+            return Err(format!(
+                "composed removal did not leave exactly the unrelated bytes: {retained:?}"
+            ));
+        }
+
+        // A second remove after the managed hook file is gone reports
+        // Missing without mutating anything.
+        fs::remove_file(&hook_path).map_err(|error| error.to_string())?;
+        remove_resolved(
+            &HookRemoveArgs {
+                receipt: apply_receipt,
+                plan: None,
+                accept: true,
+                result_receipt: Some(remove_receipt),
+            },
+            &root.path,
+        )
+        .map_err(|error| error.to_string())?;
+        Ok(())
     }
 }
