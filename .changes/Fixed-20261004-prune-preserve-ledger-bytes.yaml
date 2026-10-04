@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  prune --write now removes selected stale array-table entries without rendering
+  unrelated policy bytes. Parser-owned spans and semantic verification preserve
+  surviving entries, comments, BOM and mixed line endings. Unsupported interleaved
+  or inline layouts and surviving implicit-ID renumbering refuse unchanged;
+  remaining-evidence checks, bounded reads, preimage binding and atomic writes
+  remain required.

@@ -19,6 +19,8 @@ use effortless_repo_edit::{
 
 #[path = "prune_args.rs"]
 mod prune_args;
+#[path = "prune_policy.rs"]
+mod prune_policy;
 #[path = "prune_render.rs"]
 mod prune_render;
 #[path = "prune_stale.rs"]
@@ -199,7 +201,11 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         )?;
         let policy_target =
             crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
-        let rendered = render_policy(&pruned);
+        let ids = candidates
+            .iter()
+            .map(|candidate| candidate.id.as_str())
+            .collect::<Vec<_>>();
+        let rendered = prune_policy::prune_bound_policy(&policy_path, &policy_digest, &ids)?;
         apply_single_target_with_target_and_expected_digest(
             SingleTargetApplyRequest {
                 repository_root: &root,

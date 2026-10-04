@@ -172,6 +172,32 @@ fn require_candidates(artifact: &Value, ids: &[&str]) -> TestResult {
 }
 
 #[test]
+fn prune_byte_splice_rejects_changed_preimage_without_touching_policy() -> TestResult {
+    with_fixture(|fixture| {
+        let before = fs::read(&fixture.policy)?;
+        let digest = allow_core::sha256_v1_bytes(&before);
+        let mut edited = b"# concurrent ledger edit\r\n".to_vec();
+        edited.extend_from_slice(&before);
+        fs::write(&fixture.policy, &edited)?;
+        let error =
+            super::prune_policy::prune_bound_policy(&fixture.policy, &digest, &["allow-stale-a"])
+                .expect_err("changed preimage must refuse");
+        require(
+            error.kind() == CargoAllowErrorKind::Usage,
+            "wrong error kind",
+        )?;
+        require(
+            fs::read(&fixture.policy)? == edited,
+            "preimage refusal changed policy",
+        )?;
+        require(
+            !fixture.output.exists(),
+            "preimage refusal emitted a receipt",
+        )
+    })
+}
+
+#[test]
 fn prune_selection_preview_limits_json_human_and_receipt() -> TestResult {
     with_fixture(|fixture| {
         let before = fs::read(&fixture.policy)?;
