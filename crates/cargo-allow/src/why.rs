@@ -160,6 +160,35 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         args.line,
     )?
     .1;
+    // `select_add_finding` re-targets the nearest finding when the requested
+    // --line has no exact hit, which used to let a typo'd line plan (and then
+    // receipt) a different occurrence with full confidence markers (#4364).
+    // Surface the requested-vs-matched mismatch and refuse to write a plan
+    // from one.
+    let line_targeting = scoped_finding
+        .span
+        .as_ref()
+        .map(|span| span.line)
+        .filter(|matched| *matched != args.line)
+        .map(|matched| allow_report::WhyLineTargeting {
+            requested: args.line,
+            matched,
+        });
+    if args.plan.is_some()
+        && let Some(targeting) = line_targeting
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "add-finding plan refused: requested --line {} did not exactly match \
+                 the selected finding at {}:{}; re-run why with --line {} to plan that occurrence",
+                targeting.requested,
+                normalize_path(&target_repo_path),
+                targeting.matched,
+                targeting.matched
+            ),
+        ));
+    }
     let selected_policy_digest = scoped_world.0.inventory_facts.policy_digest_text();
     let selected_policy_path = if args.plan.is_some() {
         Some(scoped_world.2.clone().ok_or_else(|| {
@@ -268,6 +297,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         &outcome,
         &candidates,
         scanner_completeness,
+        line_targeting,
     );
     // Common operator grammar (#3149). The detailed why artifact remains
     // authoritative; this projection is additive and derived from the same
@@ -302,6 +332,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
                     style,
                     evaluation,
                     scanner_completeness,
+                    line_targeting,
                 ),
             );
             rendered

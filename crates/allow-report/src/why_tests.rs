@@ -73,6 +73,7 @@ fn render_why_json_emits_schema_id_and_candidates() {
         },
         finding: &finding,
         outcome: &outcome,
+        line_targeting: None,
         candidate_entries: &candidates,
         suggested_actions: &actions,
         proof_commands: &proofs,
@@ -188,6 +189,7 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
         },
         finding: &finding,
         outcome: &outcome,
+        line_targeting: None,
         candidate_entries: &candidates,
         suggested_actions: &actions,
         proof_commands: &proofs,
@@ -224,6 +226,7 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
         },
         finding: &finding,
         outcome: &outcome,
+        line_targeting: None,
         candidate_entries: &candidates,
         suggested_actions: &actions,
         proof_commands: &proofs,
@@ -401,5 +404,85 @@ fn scoped_result_class_uses_target_scanner_evidence_over_repository_inventory() 
     assert_eq!(
         evaluation.result_class_with_scanner_completeness(complete_inventory, Some("partial")),
         Some("target_scanner_partial")
+    );
+}
+
+#[test]
+fn line_targeting_is_emitted_only_when_the_requested_line_differs() {
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.callee = Some("unwrap".to_string());
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: PathBuf::from("src/lib.rs"),
+        span: Some(Span {
+            line: 15,
+            column: 6,
+        }),
+        identity,
+        message: "unwrap call".to_string(),
+        ledger: None,
+    };
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:15:6".to_string(),
+        score: 0,
+    };
+    let evaluation = EvaluationContext {
+        scope: "scoped",
+        locality: "proven",
+        reasons: &[],
+    };
+    let actions: Vec<String> = Vec::new();
+    let proofs: Vec<String> = Vec::new();
+    let candidates: Vec<WhyCandidateEntry> = Vec::new();
+    let plans: Vec<WhyProofPlan> = Vec::new();
+
+    let mismatched = render_why_json(WhyReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, None)
+            .with_completeness("complete"),
+        evaluation,
+        finding: &finding,
+        outcome: &outcome,
+        line_targeting: Some(WhyLineTargeting {
+            requested: 999,
+            matched: 15,
+        }),
+        candidate_entries: &candidates,
+        suggested_actions: &actions,
+        proof_commands: &proofs,
+        proof_plans: &plans,
+    });
+    let value: serde_json::Value = serde_json::from_str(&mismatched)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("why JSON should parse: {err}")));
+    assert_eq!(
+        value.pointer("/line_targeting/requested_line"),
+        Some(&serde_json::json!(999))
+    );
+    assert_eq!(
+        value.pointer("/line_targeting/matched_line"),
+        Some(&serde_json::json!(15))
+    );
+
+    let exact = render_why_json(WhyReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, None)
+            .with_completeness("complete"),
+        evaluation,
+        finding: &finding,
+        outcome: &outcome,
+        line_targeting: None,
+        candidate_entries: &candidates,
+        suggested_actions: &actions,
+        proof_commands: &proofs,
+        proof_plans: &plans,
+    });
+    let value: serde_json::Value = serde_json::from_str(&exact)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("why JSON should parse: {err}")));
+    assert!(
+        value.get("line_targeting").is_none(),
+        "an exact-line why result must not grow a line_targeting field: {exact}"
     );
 }

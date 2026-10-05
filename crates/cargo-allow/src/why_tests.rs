@@ -691,3 +691,191 @@ fn preflight_args(plan: Option<PathBuf>, output: Option<PathBuf>) -> WhyArgs {
         plan,
     }
 }
+
+static WHY_LINE_FIXTURE_COUNTER: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+/// A minimal git fixture whose single panic finding sits on line 1 of
+/// src/lib.rs, for requested-vs-matched line behavior (#4364).
+fn why_line_fixture() -> PathBuf {
+    let count = WHY_LINE_FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-line-{}-{count}-{stamp}",
+        std::process::id()
+    ));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "policy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+    for args in [
+        vec!["init", "--template="],
+        vec!["config", "user.email", "cargo-allow@example.invalid"],
+        vec!["config", "user.name", "cargo-allow why line test"],
+        vec!["add", "policy/allow.toml", "src/lib.rs"],
+        vec!["commit", "-m", "why line fixture"],
+    ] {
+        let status = std::process::Command::new("git")
+            .args(&args)
+            .current_dir(&root)
+            .status()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        if !status.success() {
+            std::panic::panic_any(format!("git command failed: {args:?}"));
+        }
+    }
+    root
+}
+
+fn why_line_args(root: &std::path::Path, line: u32) -> WhyArgs {
+    WhyArgs {
+        root: RootArgs {
+            root: Some(root.to_path_buf()),
+        },
+        config: None,
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line,
+        include_untracked: false,
+        format: HumanJsonFormat::Json,
+        output: None,
+        plan: None,
+    }
+}
+
+#[test]
+fn why_refuses_to_plan_a_typoed_line_and_signals_the_mismatch() {
+    let root = why_line_fixture();
+    let plan_path = root.join("target/add-finding-plan.json");
+    let mut args = why_line_args(&root, 999);
+    args.plan = Some(plan_path.clone());
+
+    let err = cmd_why(&args).expect_err("a mismatched requested line must not produce a plan");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    let message = err.to_string();
+    assert!(
+        message.contains("did not exactly match"),
+        "the refusal should name the mismatch: {message}"
+    );
+    assert!(
+        message.contains("src/lib.rs:1"),
+        "the refusal should name the actually selected finding: {message}"
+    );
+    assert!(
+        message.contains("--line 1"),
+        "the refusal should carry the executable correction: {message}"
+    );
+    assert!(
+        !plan_path.exists(),
+        "no plan artifact may be written for a mismatched line"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn why_json_echoes_requested_vs_matched_line() {
+    let root = why_line_fixture();
+
+    let mismatched_output = root.join("why-999.json");
+    let mut args = why_line_args(&root, 999);
+    args.output = Some(mismatched_output.clone());
+    cmd_why(&args).unwrap_or_else(|err| std::panic::panic_any(format!("why 999: {err}")));
+    let value = parse_why_json(
+        &fs::read_to_string(&mismatched_output)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read why 999: {err}"))),
+    );
+    assert_eq!(
+        value.pointer("/line_targeting/requested_line").cloned(),
+        Some(serde_json::json!(999)),
+        "the requested line must be echoed on mismatch: {value}"
+    );
+    assert_eq!(
+        value.pointer("/line_targeting/matched_line").cloned(),
+        Some(serde_json::json!(1)),
+        "the matched finding's line must be echoed on mismatch: {value}"
+    );
+
+    let exact_output = root.join("why-1.json");
+    let mut args = why_line_args(&root, 1);
+    args.output = Some(exact_output.clone());
+    cmd_why(&args).unwrap_or_else(|err| std::panic::panic_any(format!("why 1: {err}")));
+    let value = parse_why_json(
+        &fs::read_to_string(&exact_output)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read why 1: {err}"))),
+    );
+    assert!(
+        value.get("line_targeting").is_none(),
+        "an exact-line why result must not grow a line_targeting field: {value}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn why_human_text_names_the_requested_line_on_mismatch() {
+    let finding = sample_finding_at("src/lib.rs", 15);
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:15:1".to_string(),
+        score: 0,
+    };
+    let evaluation = EvaluationContext {
+        scope: "scoped",
+        locality: "proven",
+        reasons: &[],
+    };
+
+    let mismatched = render_why_text_styled_with_evaluation_and_scanner_completeness(
+        allow_report::InventoryContext::source_syntax("git_tracked", None, None)
+            .with_completeness("complete"),
+        &finding,
+        &outcome,
+        &[],
+        allow_report::Style::PLAIN,
+        evaluation,
+        Some("complete"),
+        Some(allow_report::WhyLineTargeting {
+            requested: 999,
+            matched: 15,
+        }),
+    );
+    assert!(
+        mismatched.contains("requested_line: 999"),
+        "human output should echo the requested line: {mismatched}"
+    );
+    assert!(
+        mismatched.contains("the selected finding is at line 15"),
+        "human output should name the matched line: {mismatched}"
+    );
+
+    let exact = render_why_text_styled_with_evaluation_and_scanner_completeness(
+        allow_report::InventoryContext::source_syntax("git_tracked", None, None)
+            .with_completeness("complete"),
+        &finding,
+        &outcome,
+        &[],
+        allow_report::Style::PLAIN,
+        evaluation,
+        Some("complete"),
+        None,
+    );
+    assert!(
+        !exact.contains("requested_line"),
+        "an exact-line report must not grow a requested_line entry: {exact}"
+    );
+}

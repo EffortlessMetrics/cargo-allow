@@ -163,6 +163,7 @@ pub(super) fn render_why_text_styled(
             reasons: &[],
         },
         None,
+        None,
     )
 }
 
@@ -187,6 +188,7 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     style: allow_report::Style,
     evaluation: EvaluationContext<'_>,
     scanner_completeness: Option<&str>,
+    line_targeting: Option<allow_report::WhyLineTargeting>,
 ) -> String {
     fn terminal_text(text: &str) -> String {
         allow_report::sanitize_terminal_text(text)
@@ -200,6 +202,12 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     out.push_str("## Finding\n\n");
     let location = finding_location(finding);
     out.push_str(&format!("- location: {}\n", terminal_text(&location)));
+    if let Some(targeting) = line_targeting {
+        out.push_str(&format!(
+            "- requested_line: {} (did not exactly match; the selected finding is at line {})\n",
+            targeting.requested, targeting.matched
+        ));
+    }
     out.push_str(&format!(
         "- kind: {}\n",
         terminal_text(finding.kind.as_str())
@@ -421,6 +429,7 @@ pub(super) fn render_why_json(
         outcome,
         candidates,
         None,
+        None,
     )
 }
 
@@ -431,6 +440,7 @@ pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
     scanner_completeness: Option<&str>,
+    line_targeting: Option<allow_report::WhyLineTargeting>,
 ) -> String {
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
@@ -467,6 +477,7 @@ pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
             evaluation,
             finding,
             outcome,
+            line_targeting,
             candidate_entries: &candidate_entries,
             suggested_actions: &next.suggested_actions,
             proof_commands: &proof_commands,

@@ -51,6 +51,14 @@ pub fn render_why_json_with_result_class(
         render_explain_finding_json(report.finding, report.outcome.status.as_str(), "");
     out.push_str(finding_json.trim_start());
     out.push_str(",\n");
+    // Additive requested-vs-matched signal (#4364): present only when the
+    // requested --line did not exactly select the reported finding.
+    if let Some(targeting) = report.line_targeting {
+        out.push_str(&format!(
+            "  \"line_targeting\": {{\n    \"requested_line\": {},\n    \"matched_line\": {}\n  }},\n",
+            targeting.requested, targeting.matched
+        ));
+    }
     out.push_str("  \"outcome\": ");
     let outcome_json = render_match_outcome_json(report.outcome, "");
     out.push_str(outcome_json.trim_start());
