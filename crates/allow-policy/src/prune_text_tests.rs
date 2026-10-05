@@ -2,6 +2,14 @@ use super::prune_policy_entries;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+fn require_invalid_policy(input: &str, ids: &[&str]) -> TestResult {
+    let Err(error) = prune_policy_entries(input, ids) else {
+        return Err("policy refusal unexpectedly succeeded".into());
+    };
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+    Ok(())
+}
+
 fn entry(id: &str) -> String {
     format!(
         "[[allow]]\nid = '{id}'\nkind = 'panic'\npath = 'src/lib.rs'\nowner = 'core'\nclassification = 'reviewed'\nreason = 'fixture'\nexpires = '2027-01-01'\n[allow.selector]\nast_kind = 'method_call'\ncallee = 'unwrap'\n"
@@ -27,7 +35,7 @@ fn quoted_headers_multiline_strings_and_nested_values_preserve_survivors() -> Te
     let result = prune_policy_entries(&input, &["allow-selected"])?;
     assert_eq!(result, format!("{prefix}{suffix}"));
     assert_eq!(prune_policy_entries(&result, &[])?, result);
-    assert!(prune_policy_entries(&result, &["allow-selected"]).is_err());
+    require_invalid_policy(&result, &["allow-selected"])?;
     Ok(())
 }
 
@@ -55,7 +63,7 @@ fn unrelated_interleaved_empty_table_refuses_instead_of_disappearing() -> TestRe
         entry("allow-selected").replace("[allow.selector]", "[workspace]\n[allow.selector]");
     let input = format!("policy = 'cargo-allow'\n{selected}");
     crate::parse_policy(&input)?;
-    assert!(prune_policy_entries(&input, &["allow-selected"]).is_err());
+    require_invalid_policy(&input, &["allow-selected"])?;
     Ok(())
 }
 
@@ -63,12 +71,12 @@ fn unrelated_interleaved_empty_table_refuses_instead_of_disappearing() -> TestRe
 fn inline_arrays_duplicate_unknown_and_oversized_input_refuse() -> TestResult {
     let inline = "policy = 'cargo-allow'\nallow = [{id='allow-one', kind='panic', path='src/lib.rs', owner='core', classification='reviewed', reason='fixture', expires='2027-01-01', selector={ast_kind='method_call', callee='unwrap'}}]\n";
     crate::parse_policy(inline)?;
-    assert!(prune_policy_entries(inline, &["allow-one"]).is_err());
+    require_invalid_policy(inline, &["allow-one"])?;
     let input = format!("policy = 'cargo-allow'\n{}", entry("allow-one"));
-    assert!(prune_policy_entries(&input, &["allow-one", "allow-one"]).is_err());
-    assert!(prune_policy_entries(&input, &["allow-missing"]).is_err());
+    require_invalid_policy(&input, &["allow-one", "allow-one"])?;
+    require_invalid_policy(&input, &["allow-missing"])?;
     let oversized = " ".repeat(allow_core::SOURCE_FILE_READ_MAX_BYTES as usize + 1);
-    assert!(prune_policy_entries(&oversized, &[]).is_err());
+    require_invalid_policy(&oversized, &[])?;
     Ok(())
 }
 
@@ -77,7 +85,7 @@ fn implicit_ids_refuse_survivor_identity_drift() -> TestResult {
     let implicit = entry("unused").replace("id = 'unused'\n", "");
     let prefix = "policy = 'cargo-allow'\n";
     let input = format!("{prefix}{implicit}{implicit}");
-    assert!(prune_policy_entries(&input, &["allow-0001"]).is_err());
+    require_invalid_policy(&input, &["allow-0001"])?;
     assert_eq!(
         prune_policy_entries(&input, &["allow-0002"])?,
         format!("{prefix}{implicit}")
