@@ -567,7 +567,7 @@ pub use relocated_package_docs_receipt_v1::{
     RelocatedPackageDocsRowV1,
 };
 pub use why::{
-    EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyProofPlan, WhyReport,
-    WhyTargetScan, WhyTargetScanReport,
+    EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyLineTargeting, WhyProofPlan,
+    WhyReport, WhyTargetScan, WhyTargetScanReport,
 };
 pub use worklist::{WorklistFilters, WorklistItem};

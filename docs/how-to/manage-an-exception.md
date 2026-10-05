@@ -108,11 +108,14 @@ Why this route rather than a single mutating command:
 - `add --from-plan --update` re-scans and revalidates repository, inventory,
   policy, source, finding, and selector identity. If anything moved between
   the two commands it refuses and names the regeneration command rather than
-  writing against a stale plan:
+  writing against a stale plan. Because the recorded plan path already exists
+  (plans are never overwritten), the advice names a fresh plan path:
 
   ```text
   error: add --from-plan rejected: source inventory changed since the plan was
-  generated (policy unchanged); regenerate with cargo-allow why --plan …
+  generated (policy unchanged); regenerate with cargo-allow why --plan
+  target/cargo-allow/add-finding-plan.retry-1.json … (the recorded plan already
+  exists and add-finding plans are never overwritten)
   ```
 
 - Both `add --from-plan --update` and the expert `add --update` shortcut append
@@ -124,6 +127,9 @@ Why this route rather than a single mutating command:
   The complete appended policy must fit the existing 8 MiB loader limit. An
   oversized result refuses before replacement, leaving the original policy
   readable and unchanged; a result exactly at that byte limit is accepted.
+  When the finding is already receipted (for example after replaying a
+  satisfied plan), the rejection carries no regeneration clause at all —
+  regenerating could never succeed; use `list` or `explain` instead.
 
 - the third command is a **targeted recheck**: it proves the selected finding
   now reports `status: matched` with its new `allow_id`. It is not a
