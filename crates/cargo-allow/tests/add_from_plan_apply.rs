@@ -610,7 +610,10 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     assert_eq!(tokens.get(1).copied(), Some("why"));
     let retry_argument = tokens
         .windows(2)
-        .find_map(|pair| (pair[0] == "--plan").then_some(pair[1]))
+        .find_map(|pair| match pair {
+            ["--plan", argument] => Some(*argument),
+            _ => None,
+        })
         .ok_or("printed regeneration command lacked --plan")?;
     assert!(Path::new(retry_argument).is_relative());
     assert_eq!(
@@ -629,7 +632,7 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     // argv token after cargo-allow is passed unchanged; no format flag is added.
     let hinted = cargo_allow_command()
         .current_dir(&root)
-        .args(&tokens[1..])
+        .args(tokens.iter().skip(1))
         .output()?;
     let hinted_stderr = String::from_utf8(hinted.stderr.clone())?;
     assert_eq!(fs::read(&policy_path)?, policy_before);
