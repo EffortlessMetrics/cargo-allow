@@ -30,6 +30,7 @@ pub mod lifecycle;
 mod policy_header;
 pub mod product_crates;
 pub mod product_move;
+mod prune_text;
 mod render;
 mod render_entry;
 mod render_last_seen;
@@ -74,6 +75,7 @@ pub use ledger_self_receipt::{
     receipts_ledger_at,
 };
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
+pub use prune_text::prune_policy_entries;
 pub use render::{append_policy_entry, render_policy};
 pub use resolved_config::{
     ConfigCandidateDispositionV1, ConfigCandidateObservationV1, ConfigCandidateSourceV1,

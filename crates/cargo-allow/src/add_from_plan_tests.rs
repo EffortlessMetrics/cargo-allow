@@ -394,9 +394,8 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
     std::fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create hint fixture: {err}")));
     let plan_path = dir.join("add-finding-plan.json");
-    let first = fresh_plan_hint_path(&plan_path).map_err(|error| {
-        format!("a free candidate name should exist beside the recorded plan: {error}")
-    })?;
+    let first = fresh_plan_hint_path(&plan_path)
+        .ok_or("a free candidate name should exist beside the recorded plan")?;
     assert_eq!(
         first.file_name().and_then(std::ffi::OsStr::to_str),
         Some("add-finding-plan.retry-1.json"),
@@ -405,8 +404,8 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
     );
     std::fs::write(&first, "taken")
         .unwrap_or_else(|err| std::panic::panic_any(format!("take candidate: {err}")));
-    let second = fresh_plan_hint_path(&plan_path)
-        .map_err(|error| format!("the probe should skip taken candidate names: {error}"))?;
+    let second =
+        fresh_plan_hint_path(&plan_path).ok_or("the probe should skip taken candidate names")?;
     assert_eq!(
         second.file_name().and_then(std::ffi::OsStr::to_str),
         Some("add-finding-plan.retry-2.json"),
@@ -415,6 +414,7 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
     );
     std::fs::remove_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove hint fixture: {err}")));
+    Ok(())
 }
 
 static FROM_PLAN_FIXTURE_COUNTER: std::sync::atomic::AtomicU64 =

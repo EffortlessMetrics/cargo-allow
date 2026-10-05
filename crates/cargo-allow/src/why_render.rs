@@ -9,6 +9,13 @@ pub(super) struct WhyCandidate<'a> {
     pub reasons: Vec<String>,
 }
 
+/// Optional scan and targeting metadata for the human Why report.
+#[derive(Default)]
+pub(super) struct WhyRenderMetadata<'a> {
+    pub scanner_completeness: Option<&'a str>,
+    pub line_targeting: Option<allow_report::WhyLineTargeting>,
+}
+
 pub(super) struct WhyNextSteps {
     pub suggested_actions: Vec<String>,
     pub proof_plans: Vec<ProofPlan>,
@@ -162,8 +169,7 @@ pub(super) fn render_why_text_styled(
             locality: "proven",
             reasons: &[],
         },
-        None,
-        None,
+        WhyRenderMetadata::default(),
     )
 }
 
@@ -187,13 +193,16 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     candidates: &[WhyCandidate<'_>],
     style: allow_report::Style,
     evaluation: EvaluationContext<'_>,
-    scanner_completeness: Option<&str>,
-    line_targeting: Option<allow_report::WhyLineTargeting>,
+    metadata: WhyRenderMetadata<'_>,
 ) -> String {
     fn terminal_text(text: &str) -> String {
         allow_report::sanitize_terminal_text(text)
     }
 
+    let WhyRenderMetadata {
+        scanner_completeness,
+        line_targeting,
+    } = metadata;
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
     let mut out = String::new();
