@@ -344,7 +344,7 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
     assert!(verify_bindings(&plan, &bindings, "/repo").is_err());
     let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
     let error = stale("finding location changed since the plan was generated");
-    let enriched = enrich_with_regen_hint(error, plan_path, &bindings);
+    let enriched = enrich_with_regen_hint(error, plan_path, &plan.finding, &bindings);
 
     let message = enriched.to_string();
     assert_eq!(enriched.kind(), allow_core::CargoAllowErrorKind::Usage);
@@ -370,11 +370,11 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
 
 #[test]
 fn enrich_with_regen_hint_is_idempotent() {
-    let (_, bindings) = matching_plan_and_bindings();
+    let (plan, bindings) = matching_plan_and_bindings();
     let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
     let error = stale("finding path changed since the plan was generated");
-    let enriched_once = enrich_with_regen_hint(error, plan_path, &bindings);
-    let enriched_twice = enrich_with_regen_hint(enriched_once, plan_path, &bindings);
+    let enriched_once = enrich_with_regen_hint(error, plan_path, &plan.finding, &bindings);
+    let enriched_twice = enrich_with_regen_hint(enriched_once, plan_path, &plan.finding, &bindings);
 
     let hint_count = enriched_twice
         .to_string()
@@ -383,6 +383,109 @@ fn enrich_with_regen_hint_is_idempotent() {
     assert_eq!(
         hint_count, 1,
         "enrich should not duplicate the hint on re-application"
+    );
+}
+
+#[test]
+fn recovery_hint_ignores_location_and_source_drift_only_for_advice() {
+    let (mut plan, mut bindings) = matching_plan_and_bindings();
+    plan.finding.identity.insert("line_hint".into(), json!(1));
+    plan.finding
+        .identity
+        .insert("column_hint".into(), json!(20));
+    plan.finding.selector.insert("line_hint".into(), json!(1));
+    bindings
+        .finding_identity
+        .insert("line_hint".into(), json!(3));
+    bindings
+        .finding_identity
+        .insert("column_hint".into(), json!(22));
+    bindings.finding_line = Some(3);
+    bindings.finding_column = Some(22);
+    bindings.source_file_digest = DIGEST_A.into();
+    bindings.inventory_basis_identity = DIGEST_B.into();
+    bindings.repository_identity = DIGEST_B.into();
+
+    assert!(same_semantic_finding(&plan.finding, &bindings));
+    let error = verify_bindings(&plan, &bindings, "/repo")
+        .expect_err("a moved finding's stale plan must still refuse application");
+    let enriched = enrich_with_regen_hint(error, Path::new("plan.json"), &plan.finding, &bindings);
+    assert!(enriched.to_string().contains("--line 3"));
+}
+
+#[test]
+fn recovery_hint_refuses_each_semantic_binding_drift() {
+    let mutations: [(&str, PlanMutation); 4] = [
+        ("kind", |p| p.finding.kind = "unsafe".into()),
+        ("family", |p| p.finding.family = None),
+        ("path", |p| p.finding.path = "src/other.rs".into()),
+        ("digest", |p| p.finding.digest = DIGEST_B.into()),
+    ];
+    for (label, mutate) in mutations {
+        let (mut plan, bindings) = matching_plan_and_bindings();
+        mutate(&mut plan);
+        let error = stale("source inventory changed since the plan was generated");
+        let before = error.to_string();
+        let enriched =
+            enrich_with_regen_hint(error, Path::new("plan.json"), &plan.finding, &bindings);
+        assert_eq!(enriched.to_string(), before, "{label} must not get advice");
+    }
+}
+
+#[test]
+fn recovery_hint_compares_complete_semantic_maps_in_both_directions() {
+    for selector in [false, true] {
+        for key in [
+            "language",
+            "crate_name",
+            "module",
+            "container",
+            "ast_kind",
+            "symbol",
+            "callee",
+            "macro_name",
+            "lint",
+            "receiver_fingerprint",
+            "target_fingerprint",
+            "normalized_snippet_hash",
+            "glob",
+            "future_identity_field",
+        ] {
+            for recorded_only in [false, true] {
+                let (mut plan, mut bindings) = matching_plan_and_bindings();
+                let (recorded, live) = if selector {
+                    (&mut plan.finding.selector, &mut bindings.selector)
+                } else {
+                    (&mut plan.finding.identity, &mut bindings.finding_identity)
+                };
+                recorded.insert(key.into(), json!("original"));
+                live.insert(key.into(), json!("replacement"));
+                assert!(
+                    !same_semantic_finding(&plan.finding, &bindings),
+                    "changed {key}, selector={selector}"
+                );
+                let (recorded, live) = if selector {
+                    (&mut plan.finding.selector, &mut bindings.selector)
+                } else {
+                    (&mut plan.finding.identity, &mut bindings.finding_identity)
+                };
+                if recorded_only {
+                    live.remove(key);
+                } else {
+                    recorded.remove(key);
+                }
+                assert!(
+                    !same_semantic_finding(&plan.finding, &bindings),
+                    "missing {key}, selector={selector}, recorded_only={recorded_only}"
+                );
+            }
+        }
+    }
+    let (plan, mut bindings) = matching_plan_and_bindings();
+    bindings.selector.insert("column_hint".into(), json!(20));
+    assert!(
+        !same_semantic_finding(&plan.finding, &bindings),
+        "an unknown selector field must not be ignored as a location hint"
     );
 }
 

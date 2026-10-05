@@ -115,7 +115,8 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
 /// hint names a fresh plan path because the recorded one already exists and
 /// add-finding plans are never overwritten (#4334 Break 3, #4364). Coordinates
 /// come from the already-selected live New finding's bindings so a moved finding
-/// is planned at its current line, rather than the stale recorded line.
+/// is planned at its current line, rather than the stale recorded line. A nearby
+/// replacement must not be presented as recovery of the recorded finding.
 /// Call sites whose rejection leaves regeneration impossible (an already-receipted
 /// finding, a finding that can no longer be located at the plan's coordinates)
 /// must not attach this hint — the regeneration command would fail verbatim
@@ -123,8 +124,12 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
 fn enrich_with_regen_hint(
     error: CargoAllowError,
     plan_path: &Path,
+    recorded_finding: &LoadedFinding,
     bindings: &PlanFindingBindings,
 ) -> CargoAllowError {
+    if !same_semantic_finding(recorded_finding, bindings) {
+        return error;
+    }
     let kind = &bindings.finding_kind;
     let path = &bindings.finding_path;
     let recorded = plan_path.display();
@@ -150,6 +155,32 @@ fn enrich_with_regen_hint(
     } else {
         error
     }
+}
+
+/// Advice may follow a location-only move, but never a different target. Keep
+/// every semantic identity and selector field, including unknown fields, bound.
+/// This diagnostic comparison does not relax the exact application checks.
+fn same_semantic_finding(recorded: &LoadedFinding, live: &PlanFindingBindings) -> bool {
+    recorded.kind == live.finding_kind
+        && recorded.family == live.finding_family
+        && recorded.path == live.finding_path
+        && recorded.digest == live.finding_digest
+        && recorded
+            .identity
+            .iter()
+            .filter(|(key, _)| !matches!(key.as_str(), "line_hint" | "column_hint"))
+            .eq(live
+                .finding_identity
+                .iter()
+                .filter(|(key, _)| !matches!(key.as_str(), "line_hint" | "column_hint")))
+        && recorded
+            .selector
+            .iter()
+            .filter(|(key, _)| key.as_str() != "line_hint")
+            .eq(live
+                .selector
+                .iter()
+                .filter(|(key, _)| key.as_str() != "line_hint"))
 }
 
 /// Name a plan path that does not exist yet, beside the recorded plan, so a
@@ -238,7 +269,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         finding,
     )?;
     verify_bindings(&plan, &bindings, source_context.source_tree_root())
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &bindings))?;
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan.finding, &bindings))?;
 
     // Construct the entry canonically from the live finding plus operator
     // judgment. Approval metadata is never read from the plan.

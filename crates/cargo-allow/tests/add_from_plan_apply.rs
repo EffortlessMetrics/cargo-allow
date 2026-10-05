@@ -795,3 +795,192 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     remove_temp_root(root);
     Ok(())
 }
+
+fn replacement_finding_must_not_receive_recovery_hint(
+    label: &str,
+    replacement: &str,
+    callee: &str,
+    same_family: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let root = init_fixture(label);
+    let policy_path = root.join("policy/allow.toml");
+    let plan_path = generate_plan(&root);
+    let policy_before = fs::read(&policy_path)?;
+    let plan_before = fs::read(&plan_path)?;
+    let original: Value = serde_json::from_slice(&plan_before)?;
+    assert_eq!(
+        original
+            .pointer("/finding/identity/callee")
+            .and_then(Value::as_str),
+        Some("unwrap")
+    );
+    let head_before = Command::new("git")
+        .current_dir(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()?;
+    assert_status("initial replacement fixture HEAD", &head_before, true);
+
+    // Delete the recorded semantic target; the only remaining finding is a
+    // different New target at line 3. Keep HEAD and tracked paths unchanged.
+    fs::write(
+        root.join("src/lib.rs"),
+        format!("// replacement\n\n{replacement}"),
+    )?;
+    git(&root, &["add", "src/lib.rs"]);
+    let control = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "3",
+            "--plan",
+            "replacement-control.json",
+        ])
+        .output()?;
+    assert_status("independent replacement plan control", &control, true);
+    let control_path = root.join("replacement-control.json");
+    let control_before = fs::read(&control_path)?;
+    let replacement_plan: Value = serde_json::from_slice(&control_before)?;
+    assert_eq!(
+        replacement_plan
+            .pointer("/finding/line")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        replacement_plan
+            .pointer("/outcome/status")
+            .and_then(Value::as_str),
+        Some("new")
+    );
+    assert_eq!(
+        replacement_plan
+            .pointer("/finding/identity/callee")
+            .and_then(Value::as_str),
+        Some(callee)
+    );
+    assert_ne!(
+        original.pointer("/finding/digest"),
+        replacement_plan.pointer("/finding/digest")
+    );
+    assert_eq!(
+        original.pointer("/finding/family") == replacement_plan.pointer("/finding/family"),
+        same_family
+    );
+
+    let receipt_path = root.join("rejected-receipt.json");
+    assert!(!receipt_path.exists());
+    let refused = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--from-plan",
+            "add-plan.json",
+            "--owner",
+            "fixture",
+            "--reason",
+            "replacement-finding recovery regression",
+            "--update",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "rejected-receipt.json",
+        ])
+        .output()?;
+    assert_status("stale replaced finding add", &refused, false);
+    let rejection = String::from_utf8(refused.stderr)?;
+    assert!(
+        rejection.contains("source inventory changed since the plan was generated"),
+        "{rejection}"
+    );
+    assert!(rejection.contains("(policy unchanged)"), "{rejection}");
+    assert_eq!(fs::read(&policy_path)?, policy_before);
+    assert_eq!(fs::read(&plan_path)?, plan_before);
+    assert_eq!(fs::read(&control_path)?, control_before);
+    assert!(!receipt_path.exists(), "refusal must not claim application");
+
+    // Before the repair, execute the ACTUAL advertised command unchanged and
+    // inspect its plan. This proves retargeting, rather than mere bad wording.
+    if let Some((_, tail)) = rejection.split_once("; regenerate with ") {
+        let (printed, _) = tail
+            .split_once(" (")
+            .ok_or("hint explanation boundary missing")?;
+        let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
+        assert_eq!(tokens.first().copied(), Some("cargo-allow"));
+        assert_eq!(tokens.get(1).copied(), Some("why"));
+        let retry_name = tokens
+            .windows(2)
+            .find_map(|pair| match pair {
+                ["--plan", value] => Some(*value),
+                _ => None,
+            })
+            .ok_or("hint plan argument missing")?;
+        assert_eq!(
+            Path::new(retry_name)
+                .file_name()
+                .and_then(std::ffi::OsStr::to_str),
+            Some(retry_name)
+        );
+        let retry_path = root.join(retry_name);
+        assert!(!retry_path.exists());
+        let hinted = cargo_allow_command()
+            .current_dir(&root)
+            .args(tokens.iter().skip(1))
+            .output()?;
+        assert_status("advertised different-target regeneration", &hinted, true);
+        let hinted_plan: Value = serde_json::from_slice(&fs::read(&retry_path)?)?;
+        assert_eq!(
+            hinted_plan.pointer("/finding/digest"),
+            replacement_plan.pointer("/finding/digest")
+        );
+        assert_ne!(
+            hinted_plan.pointer("/finding/digest"),
+            original.pointer("/finding/digest")
+        );
+        assert_eq!(fs::read(&policy_path)?, policy_before);
+        assert_eq!(fs::read(&plan_path)?, plan_before);
+        assert_eq!(fs::read(&control_path)?, control_before);
+        assert!(!receipt_path.exists());
+        eprintln!(
+            "Replacement {label}: stale add refused and preserved policy/plan/output; printed argv {printed:?} succeeded but generated the different {callee} target, not the original unwrap"
+        );
+    }
+    let head_after = Command::new("git")
+        .current_dir(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()?;
+    assert_status("unchanged replacement fixture HEAD", &head_after, true);
+    assert_eq!(head_before.stdout, head_after.stdout);
+    assert!(
+        !rejection.contains("regenerate with"),
+        "a different semantic target must not be advertised as relocation: {rejection}"
+    );
+    remove_temp_root(root);
+    Ok(())
+}
+
+#[test]
+fn add_from_plan_replaced_callee_does_not_advertise_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    replacement_finding_must_not_receive_recovery_hint(
+        "add-from-plan-replaced-callee",
+        "pub fn load() -> usize { Some(1).expect(\"checked\") }\n",
+        "expect",
+        false,
+    )
+}
+
+#[test]
+fn add_from_plan_replaced_same_family_does_not_advertise_recovery()
+-> Result<(), Box<dyn std::error::Error>> {
+    replacement_finding_must_not_receive_recovery_hint(
+        "add-from-plan-replaced-container",
+        "pub fn replacement() -> usize { Some(1).unwrap() }\n",
+        "unwrap",
+        true,
+    )
+}

@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Stale add-finding plan recovery advice now requires the selected live finding
+  to retain the recorded semantic identity and selector. A nearby replacement
+  no longer receives a misleading regeneration command. Location-only moves
+  still use the current line; exact application bindings and refusal behavior
+  remain unchanged.
