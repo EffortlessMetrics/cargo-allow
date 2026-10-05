@@ -119,12 +119,17 @@ def receipt_payload(
 ) -> dict[str, Any]:
     rows = []
     for row in candidate_rows:
+        # Cargo's registry index stores raw hex; the V2 receipt owns a
+        # sha256-prefixed portable identity for those same checksum bytes.
+        index_checksum = row.get("index_checksum")
+        if not isinstance(index_checksum, str) or re.fullmatch(r"[0-9a-f]{64}", index_checksum) is None:
+            raise ValueError("registry index checksum must be exactly 64 lowercase hex digits")
         rows.append(
             {
                 "package_name": row["cargo_package_name"],
                 "package_version": row["cargo_package_version"],
                 "crate_digest": row["crate_digest"],
-                "index_checksum": row["index_checksum"],
+                "index_checksum": "sha256:" + index_checksum,
                 "resolved_version": row["cargo_package_version"],
             }
         )
