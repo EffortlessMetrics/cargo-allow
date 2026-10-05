@@ -339,10 +339,12 @@ fn full_check_argv_carries_root_config_and_optional_untracked() {
 
 #[test]
 fn enrich_with_regen_hint_appends_plan_regeneration_command() {
-    let (plan, _) = matching_plan_and_bindings();
+    let (plan, mut bindings) = matching_plan_and_bindings();
+    bindings.finding_line = Some(3);
+    assert!(verify_bindings(&plan, &bindings, "/repo").is_err());
     let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
-    let error = stale("policy changed since the plan was generated");
-    let enriched = enrich_with_regen_hint(error, plan_path, &plan);
+    let error = stale("finding location changed since the plan was generated");
+    let enriched = enrich_with_regen_hint(error, plan_path, &bindings);
 
     let message = enriched.to_string();
     assert_eq!(enriched.kind(), allow_core::CargoAllowErrorKind::Usage);
@@ -351,8 +353,8 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
         "enriched error should include regeneration hint: {message}"
     );
     assert!(
-        message.contains("--kind panic --path src/lib.rs --line 1"),
-        "enriched error should include plan finding coordinates: {message}"
+        message.contains("--kind panic --path src/lib.rs --line 3"),
+        "enriched error should include live finding coordinates: {message}"
     );
     // The recorded plan path already exists, so the advice must name a fresh
     // path instead of the doomed one (#4364).
@@ -368,11 +370,11 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
 
 #[test]
 fn enrich_with_regen_hint_is_idempotent() {
-    let (plan, _) = matching_plan_and_bindings();
+    let (_, bindings) = matching_plan_and_bindings();
     let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
     let error = stale("finding path changed since the plan was generated");
-    let enriched_once = enrich_with_regen_hint(error, plan_path, &plan);
-    let enriched_twice = enrich_with_regen_hint(enriched_once, plan_path, &plan);
+    let enriched_once = enrich_with_regen_hint(error, plan_path, &bindings);
+    let enriched_twice = enrich_with_regen_hint(enriched_once, plan_path, &bindings);
 
     let hint_count = enriched_twice
         .to_string()

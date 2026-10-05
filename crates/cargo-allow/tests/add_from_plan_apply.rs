@@ -490,3 +490,308 @@ fn add_from_plan_requires_update_and_conflicts_with_write() {
 
     remove_temp_root(root);
 }
+
+#[test]
+fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn std::error::Error>>
+{
+    let root = init_fixture("add-from-plan-moved-line-recovery");
+    let policy_path = root.join("policy/allow.toml");
+    let plan_path = generate_plan(&root);
+    let policy_before = fs::read(&policy_path)?;
+    let old_plan_before = fs::read(&plan_path)?;
+    let old_plan: Value = serde_json::from_slice(&old_plan_before)?;
+    assert_eq!(
+        old_plan.pointer("/finding/line").and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        old_plan.pointer("/outcome/status").and_then(Value::as_str),
+        Some("new")
+    );
+
+    let initial_head = Command::new("git")
+        .current_dir(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()?;
+    assert_status("initial fixture HEAD", &initial_head, true);
+
+    // Move the only finding, without changing its expression or receipting it.
+    // Tracked filenames and HEAD remain fixed. Generated JSON stays untracked.
+    let source_path = root.join("src/lib.rs");
+    let original_source = fs::read_to_string(&source_path)?;
+    fs::write(
+        &source_path,
+        format!("// moved without receipting\n\n{original_source}"),
+    )?;
+    git(&root, &["add", "src/lib.rs"]);
+
+    let moved_why = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--format",
+            "json",
+            "--output",
+            "moved-why.json",
+        ])
+        .output()?;
+    assert_status("live moved finding", &moved_why, true);
+    let moved_report: Value = serde_json::from_slice(&fs::read(root.join("moved-why.json"))?)?;
+    assert_eq!(
+        moved_report
+            .pointer("/finding/line")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        moved_report
+            .pointer("/outcome/status")
+            .and_then(Value::as_str),
+        Some("new"),
+        "the moved target must remain New before recovery"
+    );
+    assert_eq!(
+        moved_report
+            .pointer("/line_targeting/requested_line")
+            .and_then(Value::as_u64),
+        Some(1)
+    );
+    assert_eq!(
+        moved_report
+            .pointer("/line_targeting/matched_line")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(fs::read(&policy_path)?, policy_before);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+
+    // Relative ASCII argv and per-command fixture cwd isolate the recorded-line
+    // lead from separate root/config/quoting recovery questions.
+    let rejected = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--from-plan",
+            "add-plan.json",
+            "--owner",
+            "fixture",
+            "--reason",
+            "moved-line recovery fixture",
+            "--update",
+        ])
+        .output()?;
+    assert_status("stale moved-line add", &rejected, false);
+    let rejection_text = String::from_utf8(rejected.stderr.clone())?;
+    assert!(
+        rejection_text.contains("source inventory changed since the plan was generated")
+            || rejection_text.contains("finding location changed since the plan was generated"),
+        "the refusal must be source-binding drift: {rejection_text}"
+    );
+    assert!(rejection_text.contains("(policy unchanged)"));
+    assert_eq!(fs::read(&policy_path)?, policy_before);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+
+    // Parse the actual advertised command; do not rebuild or correct its line.
+    // This fixture uses no spaces, quoting, absolute paths, or shell syntax.
+    let (_, tail) = rejection_text
+        .split_once("; regenerate with ")
+        .ok_or("stale binding rejection lacked regeneration advice")?;
+    let (printed, _) = tail
+        .split_once(" (")
+        .ok_or("regeneration advice lacked its explanation boundary")?;
+    let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
+    assert_eq!(tokens.first().copied(), Some("cargo-allow"));
+    assert_eq!(tokens.get(1).copied(), Some("why"));
+    let retry_argument = tokens
+        .windows(2)
+        .find_map(|pair| match pair {
+            ["--plan", argument] => Some(*argument),
+            _ => None,
+        })
+        .ok_or("printed regeneration command lacked --plan")?;
+    assert!(Path::new(retry_argument).is_relative());
+    assert_eq!(
+        Path::new(retry_argument)
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str),
+        Some(retry_argument),
+        "this fixture's hint must use a relative sibling filename"
+    );
+    assert_ne!(retry_argument, "add-plan.json");
+    assert_ne!(retry_argument, "control-plan.json");
+    let retry_path = root.join(retry_argument);
+    assert!(!retry_path.exists(), "hint output must initially be fresh");
+
+    // The binary comes from the existing CARGO_BIN_EXE helper. Every printed
+    // argv token after cargo-allow is passed unchanged; no format flag is added.
+    let hinted = cargo_allow_command()
+        .current_dir(&root)
+        .args(tokens.iter().skip(1))
+        .output()?;
+    let hinted_stderr = String::from_utf8(hinted.stderr.clone())?;
+    assert_eq!(fs::read(&policy_path)?, policy_before);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+    if !hinted.status.success() {
+        assert!(
+            hinted_stderr.contains("add-finding plan refused")
+                && hinted_stderr.contains("did not exactly match")
+                && hinted_stderr.contains("src/lib.rs:3"),
+            "the failing hint must expose the recorded/live line mismatch: {hinted_stderr}"
+        );
+        assert!(!retry_path.exists(), "refused hint must not write a plan");
+    }
+
+    // Run a separate fresh-path positive control BEFORE the expected-red
+    // success assertion, even if the printed hint failed. This proves the same
+    // New finding can be planned at its exact live line in the same environment.
+    let control_path = root.join("control-plan.json");
+    assert!(!control_path.exists());
+    let control = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "3",
+            "--plan",
+            "control-plan.json",
+        ])
+        .output()?;
+    assert_status("explicit live-line plan control", &control, true);
+    let control_plan: Value = serde_json::from_slice(&fs::read(&control_path)?)?;
+    assert_eq!(
+        control_plan
+            .pointer("/finding/line")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        control_plan
+            .pointer("/outcome/status")
+            .and_then(Value::as_str),
+        Some("new")
+    );
+    assert_eq!(fs::read(&policy_path)?, policy_before);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+    let control_head = Command::new("git")
+        .current_dir(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()?;
+    assert_status("unchanged fixture HEAD", &control_head, true);
+    assert_eq!(control_head.stdout, initial_head.stdout);
+    eprintln!(
+        "New line 3 and explicit-line-3 plan verified; original plan/policy bytes and HEAD unchanged; printed recovery={printed:?}; hint status={}; hint stderr={hinted_stderr:?}",
+        hinted.status
+    );
+
+    // Expected RED before the repair: the printed command retains --line 1 and
+    // refuses while the independent line-3 control above succeeds. A repaired
+    // head must pass this contract and all subsequent normal recovery steps.
+    assert_status("verbatim moved-line recovery hint", &hinted, true);
+    let retry_before = fs::read(&retry_path)?;
+    let retry_plan: Value = serde_json::from_slice(&retry_before)?;
+    assert_eq!(
+        retry_plan.pointer("/finding/line").and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        retry_plan
+            .pointer("/outcome/status")
+            .and_then(Value::as_str),
+        Some("new")
+    );
+
+    let apply = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--from-plan",
+            retry_argument,
+            "--owner",
+            "fixture",
+            "--reason",
+            "moved-line recovery fixture",
+            "--update",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "moved-add-receipt.json",
+        ])
+        .output()?;
+    assert_status("apply regenerated moved-line plan", &apply, true);
+    let policy_after_apply = fs::read(&policy_path)?;
+    assert_ne!(policy_after_apply, policy_before);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+    assert_eq!(fs::read(&retry_path)?, retry_before);
+
+    let matched_why = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "3",
+            "--format",
+            "json",
+            "--output",
+            "matched-why.json",
+        ])
+        .output()?;
+    assert_status("matched moved-line finding", &matched_why, true);
+    let matched_report: Value = serde_json::from_slice(&fs::read(root.join("matched-why.json"))?)?;
+    assert_eq!(
+        matched_report
+            .pointer("/finding/line")
+            .and_then(Value::as_u64),
+        Some(3)
+    );
+    assert_eq!(
+        matched_report
+            .pointer("/outcome/status")
+            .and_then(Value::as_str),
+        Some("matched")
+    );
+
+    let replay = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--from-plan",
+            retry_argument,
+            "--owner",
+            "fixture",
+            "--reason",
+            "moved-line recovery fixture",
+            "--update",
+        ])
+        .output()?;
+    assert_status("replay regenerated moved-line plan", &replay, false);
+    let replay_text = String::from_utf8(replay.stderr)?;
+    assert!(replay_text.contains("status `matched`"));
+    assert!(replay_text.contains("(policy unchanged)"));
+    assert!(
+        !replay_text.contains("regenerate with"),
+        "matched replay must not advertise New-only regeneration: {replay_text}"
+    );
+    assert_eq!(fs::read(&policy_path)?, policy_after_apply);
+    assert_eq!(fs::read(&plan_path)?, old_plan_before);
+    assert_eq!(fs::read(&retry_path)?, retry_before);
+    eprintln!(
+        "Regenerated plan applied; line 3 matched; replay refused without mutation or impossible regeneration advice"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
