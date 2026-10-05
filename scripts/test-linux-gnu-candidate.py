@@ -37,15 +37,20 @@ def predecessors():
     package = {**common, "schema_id": "cargo-allow.package-candidate.v2", "root_package_version": "0.2.0",
                "cargo_lock_digest": "sha256:" + "a" * 64}
     install = {**common, "schema_id": "cargo-allow.isolated-install.v2",
-               "candidate_artifact_digest": "candidate-digest", "installed_executable_digest": "binary-digest",
+               "candidate_artifact_digest": "sha256:" + "d" * 64, "installed_executable_digest": "sha256:" + "f" * 64,
                "installed_version_output": "cargo-allow 0.2.0", "platform": candidate.TARGET,
                "source_checkout_denied": True, "graph_comparison": {"expected_packages": 13, "matched_packages": 13},
                "cargo_lock_digest": "sha256:" + "b" * 64}
     qualification = {**common, "schema_id": "cargo-allow.exact-candidate.v2",
-                     "candidate_artifact_digest": "candidate-digest", "isolated_install_receipt_digest": "install-digest",
-                     "installed_executable_digest": "binary-digest", "installed_version_output": "cargo-allow 0.2.0",
+                     "candidate_artifact_digest": "sha256:" + "d" * 64, "isolated_install_receipt_digest": "sha256:" + "e" * 64,
+                     "installed_executable_digest": "sha256:" + "f" * 64, "installed_version_output": "cargo-allow 0.2.0",
                      "platform": candidate.TARGET, "journey_steps": [{"id": "finding-to-green", "exit_code": 0}],
-                     "scanner_completeness": "complete", "cargo_lock_digest": "sha256:" + "c" * 64}
+                     "scanner_completeness": "complete", "cargo_lock_digest": "sha256:" + "c" * 64,
+                     "toolchain": "1.95.0", "support_matrix_generation": "current", "diff_base_identity": "baseline",
+                     "claim_boundary": "unpublished candidate only", "limitations": [], "not_included": [],
+                     "artifact_schema_results": ["cargo-allow.report.v1: ok"],
+                     "package_rows": [{"logical_id": "cargo-allow", "package_name": "cargo-allow",
+                                       "package_version": "0.2.0", "crate_digest": "sha256:" + "a" * 64}]}
     return [package, install, qualification]
 
 
@@ -116,8 +121,8 @@ class AbiTests(unittest.TestCase):
 
 class BindingTests(unittest.TestCase):
     def validate(self, payloads):
-        return candidate.validate_predecessors(payloads, ["candidate-digest", "install-digest", "qualification-digest"],
-                                               "1" * 40, "2" * 40, "binary-digest")
+        return candidate.validate_predecessors(payloads, ["sha256:" + item * 64 for item in "de0"],
+                                               "1" * 40, "2" * 40, "sha256:" + "f" * 64)
 
     def test_bound_predecessors_preserve_distinct_lock_digest_meanings(self):
         self.assertEqual(self.validate(predecessors()), "0.2.0")
@@ -137,6 +142,37 @@ class BindingTests(unittest.TestCase):
             data[index][field] = "wrong"
             with self.subTest(index=index, field=field), self.assertRaises(ValueError):
                 self.validate(data)
+
+    def test_qualification_structural_gaps_refuse(self):
+        mutations = [("artifact_schema_results", ["cargo-allow.check-receipt.v2: failed"]),
+                     ("package_rows", []), ("cargo_lock_digest", ""),
+                     ("cargo_lock_digest", "sha256:" + "z" * 64),
+                     ("toolchain", " "), ("support_matrix_generation", ""),
+                     ("diff_base_identity", ""), ("claim_boundary", ""),
+                     ("journey_steps", [{"id": " ", "exit_code": 0}])]
+        for field, value in mutations:
+            data = predecessors()
+            data[2][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.validate(data)
+
+    def test_qualification_package_identity_and_portable_fields_refuse(self):
+        for field, value in (("logical_id", ""), ("package_name", " "), ("crate_digest", "short")):
+            data = predecessors()
+            data[2]["package_rows"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.validate(data)
+        data = predecessors()
+        data[2]["package_rows"] *= 2
+        with self.assertRaises(ValueError):
+            self.validate(data)
+        for path in ("/home/runner/secret", "/Users/local", "C:\\work", "/runner/work/project",
+                     "/cargo-allow/crates/private"):
+            for field in ("claim_boundary", "artifact_schema_results", "not_included"):
+                data = predecessors()
+                data[2][field] = path if field == "claim_boundary" else [path + ": ok"]
+                with self.subTest(field=field, path=path), self.assertRaises(ValueError):
+                    self.validate(data)
 
     def test_non_complete_predecessors_refuse(self):
         mutations = [(1, "source_checkout_denied", False),

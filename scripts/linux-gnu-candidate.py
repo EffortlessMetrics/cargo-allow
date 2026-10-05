@@ -77,6 +77,54 @@ def inspect_abi(binary: Path, maximum: str) -> dict:
             "required_glibc": requirements, "executable_sha256": binary_digest}
 
 
+def validate_qualification(payload: dict) -> None:
+    # Mirror the Complete structural law owned by
+    # allow-report/src/artifacts/exact_candidate_receipt_v2.rs. That validator
+    # has no CLI entry point; this preflight must not trust the producer alone.
+    fields = ("candidate_artifact_digest", "isolated_install_receipt_digest",
+              "repository_commit", "repository_tree", "cargo_lock_digest",
+              "installed_executable_digest", "installed_version_output", "platform",
+              "toolchain", "support_matrix_generation", "diff_base_identity",
+              "scanner_completeness", "claim_boundary")
+    require(all(isinstance(payload.get(key), str) and payload[key].strip() for key in fields),
+            "qualification identity is missing")
+    for key in ("candidate_artifact_digest", "isolated_install_receipt_digest",
+                "cargo_lock_digest", "installed_executable_digest"):
+        require(re.fullmatch(r"sha256:[0-9a-fA-F]{64}", payload[key]) is not None,
+                f"qualification {key} is not a sha256 digest")
+    rows = payload.get("package_rows")
+    require(isinstance(rows, list) and bool(rows), "qualification package rows are empty")
+    names = set()
+    for row in rows:
+        require(isinstance(row, dict)
+                and all(isinstance(row.get(key), str) for key in
+                        ("logical_id", "package_name", "package_version", "crate_digest")),
+                "qualification package row is malformed")
+        require(bool(row["logical_id"].strip()) and bool(row["package_name"].strip())
+                and row["package_name"] not in names
+                and re.fullmatch(r"sha256:[0-9a-fA-F]{64}", row["crate_digest"]) is not None,
+                "qualification package identity is incomplete or duplicated")
+        names.add(row["package_name"])
+    steps = payload.get("journey_steps")
+    require(isinstance(steps, list) and bool(steps)
+            and all(isinstance(step, dict) and isinstance(step.get("id"), str) and step["id"].strip()
+                    and type(step.get("exit_code")) is int and step["exit_code"] == 0
+                    and (step.get("artifact_schema_id") is None or isinstance(step["artifact_schema_id"], str))
+                    for step in steps), "qualified journey is not Complete")
+    for key in ("artifact_schema_results", "limitations", "not_included"):
+        values = payload.get(key, [] if key == "not_included" else None)
+        require(isinstance(values, list) and all(isinstance(item, str) for item in values),
+                f"qualification {key} is malformed")
+    require(all(": ok" in result for result in payload["artifact_schema_results"]),
+            "qualification artifact schema validation is not ok")
+    portable = [payload["installed_version_output"], payload["claim_boundary"],
+                *payload["artifact_schema_results"], *payload.get("not_included", [])]
+    require(not any(marker in value.lower() for value in portable
+                    for marker in ("/home/", "/users/", "c:\\", "/runner/work/", "/cargo-allow/crates/")),
+            "qualification carries private absolute path data")
+    require(payload["scanner_completeness"] == "complete", "qualified scanner is not Complete")
+
+
 def validate_predecessors(payloads: list[dict], digests: list[str],
                           commit: str, tree: str, binary_digest: str) -> str:
     candidate, install, qualification = payloads
@@ -102,10 +150,7 @@ def validate_predecessors(payloads: list[dict], digests: list[str],
             and not any(graph.get(key) for key in
                         ("unexpected_packages", "missing_packages", "version_mismatches", "path_sources")),
             "isolated installation graph is not Complete")
-    steps = qualification.get("journey_steps") or []
-    require(bool(steps) and all(type(step.get("exit_code")) is int and step["exit_code"] == 0 for step in steps)
-            and qualification.get("scanner_completeness") == "complete",
-            "qualified journey is not Complete")
+    validate_qualification(qualification)
     # Lock digests intentionally retain their owners' different input meanings:
     # normalized workspace, packaged root lock, and raw workspace respectively.
     return candidate["root_package_version"]
