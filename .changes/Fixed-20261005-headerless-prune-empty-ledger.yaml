@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Pruning the final entry from a headerless ledger now leaves a minimal explicit
+  policy header when the retained text would otherwise be blank. Whitespace and
+  BOM bytes remain unchanged, empty-input rejection and semantic validation stay
+  required, and repeated no-op pruning does not replace the policy.

@@ -140,6 +140,7 @@ fn saved_prune_sole_headerless_entry_is_valid_empty_ledger()
         Some(1)
     );
     assert_eq!(fs::read(&policy)?, input.as_bytes());
+    let preview_bytes = fs::read(&preview)?;
 
     let output_path = artifacts.join("write.json");
     let sentinel = b"existing operator output\n";
@@ -202,6 +203,12 @@ fn saved_prune_sole_headerless_entry_is_valid_empty_ledger()
             .is_some()
     );
 
+    // A fixed old timestamp makes an identical-byte rewrite detectable even
+    // when repeated commands finish within the filesystem's clock precision.
+    fs::File::options().write(true).open(&policy)?.set_times(
+        fs::FileTimes::new()
+            .set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_600_000_000)),
+    )?;
     let modified = fs::metadata(&policy)?.modified()?;
     for name in ["noop-first.json", "noop-second.json"] {
         let noop = artifacts.join(name);
@@ -235,6 +242,11 @@ fn saved_prune_sole_headerless_entry_is_valid_empty_ledger()
             fs::metadata(&policy)?.modified()?,
             modified,
             "no-op must not replace policy"
+        );
+        assert_eq!(
+            fs::read(&preview)?,
+            preview_bytes,
+            "saved preview stays unchanged"
         );
     }
     Ok(())

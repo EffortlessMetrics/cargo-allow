@@ -68,6 +68,12 @@ BOM, quotes, and line endings are preserved. The removal includes each selected
 entry's nested tables and its final statement's trailing comment and newline;
 comments and blank lines after that statement remain.
 
+If removing the final entry from a headerless ledger leaves only whitespace
+or a BOM, prune appends the minimal `policy = "cargo-allow"` header to those
+retained bytes. The result is an explicit, readable empty ledger that can
+receive a later entry. Existing comments or headers need no added scaffolding.
+Empty and whitespace-only policy input still refuses.
+
 Inline allow arrays and entries interleaved with unrelated tables refuse when
 they cannot be removed without changing other policy data. Implicit generated
 IDs also refuse when removal would renumber surviving entries; assign explicit

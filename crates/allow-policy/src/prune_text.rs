@@ -1,7 +1,7 @@
 //! Remove selected array-table entries without rendering unrelated policy text.
 
 use allow_core::{
-    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, SOURCE_FILE_READ_MAX_BYTES,
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, POLICY_NAME, SOURCE_FILE_READ_MAX_BYTES,
 };
 use std::collections::BTreeSet;
 use toml::de::{DeTable, DeValue};
@@ -11,6 +11,8 @@ use toml::de::{DeTable, DeValue};
 /// Parser-owned header and value spans bound each removal. Inline allow arrays
 /// and entries interleaved with unrelated tables refuse explicitly; this never
 /// falls back to canonical rendering. The input must fit the normal loader cap.
+/// A blank remainder receives only an explicit policy header, preserving its
+/// whitespace and BOM while leaving a readable empty ledger.
 pub fn prune_policy_entries(input: &str, ids: &[&str]) -> CargoAllowResult<String> {
     if input.len() as u64 > SOURCE_FILE_READ_MAX_BYTES {
         return Err(invalid("policy exceeds the normal loader byte limit"));
@@ -92,18 +94,6 @@ pub fn prune_policy_entries(input: &str, ids: &[&str]) -> CargoAllowResult<Strin
             .get(cursor..)
             .ok_or_else(|| invalid("allow removal tail is invalid"))?,
     );
-    let actual_cfg = crate::parse_policy(&out).map_err(|error| {
-        error.with_message_prefix("cannot prune selected entries without rewriting policy: ")
-    })?;
-    let mut expected_cfg = cfg.clone();
-    expected_cfg
-        .allow
-        .retain(|entry| !requested.contains(entry.id.as_str()));
-    if crate::render_policy(&actual_cfg) != crate::render_policy(&expected_cfg) {
-        return Err(invalid(
-            "pruning would change surviving entry identities; assign explicit IDs before retrying",
-        ));
-    }
     let mut expected: toml::Value =
         toml::from_str(source).map_err(|error| invalid(error.to_string()))?;
     let root = expected
@@ -124,6 +114,34 @@ pub fn prune_policy_entries(input: &str, ids: &[&str]) -> CargoAllowResult<Strin
     });
     if allow.is_empty() {
         root.remove("allow");
+    }
+    // Materialize only the already validated default policy identity when
+    // removing entries would leave blank text. Requiring an independently
+    // empty raw root prevents scaffolding from hiding swallowed unrelated data.
+    if root.is_empty()
+        && out
+            .strip_prefix('\u{feff}')
+            .unwrap_or(&out)
+            .trim()
+            .is_empty()
+    {
+        out.push_str(&format!("policy = \"{POLICY_NAME}\"\n"));
+        root.insert(
+            "policy".to_owned(),
+            toml::Value::String(POLICY_NAME.to_owned()),
+        );
+    }
+    let actual_cfg = crate::parse_policy(&out).map_err(|error| {
+        error.with_message_prefix("cannot prune selected entries without rewriting policy: ")
+    })?;
+    let mut expected_cfg = cfg.clone();
+    expected_cfg
+        .allow
+        .retain(|entry| !requested.contains(entry.id.as_str()));
+    if crate::render_policy(&actual_cfg) != crate::render_policy(&expected_cfg) {
+        return Err(invalid(
+            "pruning would change surviving entry identities; assign explicit IDs before retrying",
+        ));
     }
     let actual: toml::Value = toml::from_str(out.strip_prefix('\u{feff}').unwrap_or(&out))
         .map_err(|error| invalid(error.to_string()))?;
