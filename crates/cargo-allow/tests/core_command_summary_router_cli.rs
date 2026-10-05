@@ -884,9 +884,10 @@ callee = "unwrap"
     remove_temp_root(root)
 }
 
-/// `why` writes `--plan` relative to the working directory, so resolving the
-/// summary conflict list only under `--root` let a relative `--root` hide a
-/// real collision: the sidecar then overwrote the plan it was meant to spare.
+/// `why` writes `--plan` relative to the working directory, so a collision is
+/// a property of the resolved files, not of the requested spellings: an
+/// absolute sidecar path and a working-directory-relative plan path that land
+/// on one file must still be refused, and the plan must survive the refusal.
 #[test]
 fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), String> {
     let root = temp_root("summary-why-plan-base")?;
@@ -903,10 +904,11 @@ fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), S
         .ok_or_else(|| "temp root needs a name".to_string())?
         .to_string_lossy()
         .to_string();
-    // From `parent`, both artifacts name the same file: the plan resolves
-    // against the working directory, the sidecar against `--root`.
+    // From `parent`, both artifacts resolve to `<root>/collision.json`: the
+    // plan spells it relative to the working directory, the sidecar absolute.
+    let sidecar_arg = root.join("collision.json").to_string_lossy().to_string();
     let plan_arg = format!("{name}/collision.json");
-    let mut argv = vec!["--command-summary-output", "collision.json"];
+    let mut argv = vec!["--command-summary-output", &sidecar_arg];
     argv.extend(WHY_ARGV.iter().copied());
     argv.push("--plan");
     argv.push(&plan_arg);
@@ -948,9 +950,10 @@ fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), S
     remove_temp_root(root)
 }
 
-/// The mirror of the case above: `adopt` resolves `--output` under the root, so
-/// a root-relative output that merely *looks* like the sidecar path under the
-/// working-directory base targets a different file and must still be allowed.
+/// The mirror of the case above: `adopt` resolves `--output` under the root
+/// while the sidecar resolves against the working directory, so one relative
+/// spelling can land on two different files. Identical argv for both flags
+/// must therefore be allowed when the resolved files differ.
 #[test]
 fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Result<(), String> {
     let root = temp_root("summary-adopt-base")?;
@@ -967,14 +970,15 @@ fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Re
         .ok_or_else(|| "temp root needs a name".to_string())?
         .to_string_lossy()
         .to_string();
-    // `adopt --output <name>/plan.json` resolves under the root, so it lands on
-    // `<root>/<name>/plan.json` — not the sidecar's `<root>/plan.json`. Only the
-    // working-directory base would make these two collide.
-    let output_arg = format!("{name}/plan.json");
+    // The same `<name>/plan.json` spelling resolves differently per flag: the
+    // sidecar lands on `<root>/plan.json` (working directory), adopt's output
+    // on `<root>/<name>/plan.json` (source-tree root). Distinct files, so the
+    // run must succeed and the sidecar must be written to the accepted path.
+    let path_arg = format!("{name}/plan.json");
     let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
         .current_dir(&parent)
-        .args(["--command-summary-output", "plan.json", "adopt"])
-        .args(["--output", &output_arg])
+        .args(["--command-summary-output", &path_arg, "adopt"])
+        .args(["--output", &path_arg])
         .arg("--root")
         .arg(&name)
         .output()
@@ -1002,6 +1006,114 @@ fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Re
     )?;
 
     remove_temp_root(root)
+}
+
+/// #4363: a relative `--command-summary-output` resolves against the working
+/// directory — the same base as `--output` — and a resolved path outside the
+/// source-tree root fails closed with the same `E0002_INVALID_CONFIG` surface
+/// `doctor` already emits. A sidecar requested from a scratch directory must
+/// therefore never be silently relocated into the scanned tree, on any
+/// command that accepts the flag: they all share one validation funnel.
+#[test]
+fn a_relative_summary_path_from_outside_the_root_never_writes_into_the_repo() -> Result<(), String>
+{
+    let root = temp_root("summary-cwd-base")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    let parent = root
+        .parent()
+        .ok_or_else(|| "temp root needs a parent".to_string())?
+        .to_path_buf();
+    let name = root
+        .file_name()
+        .ok_or_else(|| "temp root needs a name".to_string())?
+        .to_string_lossy()
+        .to_string();
+
+    // `init` goes first: its own policy write precedes the summary stage, so
+    // the refusal must leave the policy in place while the sidecar lands
+    // nowhere. The commit it enables is what lets `diff --base HEAD` below
+    // reach its own summary stage.
+    let init_output = run_summary_from_outside(&parent, &name, "init", &["init"])?;
+    require(
+        root.join("policy/allow.toml").is_file(),
+        format!(
+            "init's own policy write must survive the sidecar refusal, got {:?} / {}",
+            init_output.status,
+            String::from_utf8_lossy(&init_output.stderr)
+        ),
+    )?;
+    require_summary_refused("init", &init_output, &root, &parent)?;
+    git_commit_fixture(&root)?;
+
+    let commands: [(&str, &[&str]); 8] = [
+        ("adopt", &["adopt"]),
+        ("doctor", &["doctor"]),
+        ("audit", &["audit"]),
+        ("check", CHECK_ARGV),
+        ("explain", EXPLAIN_ARGV),
+        ("why", WHY_ARGV),
+        ("diff", &["diff", "--base", "HEAD"]),
+        ("worklist", WORKLIST_ARGV),
+    ];
+    for (label, argv) in commands {
+        let output = run_summary_from_outside(&parent, &name, label, argv)?;
+        require_summary_refused(label, &output, &root, &parent)?;
+    }
+
+    remove_temp_root(root)
+}
+
+/// Run one command from `parent` — outside the scanned `<parent>/<name>` —
+/// with a relative `--command-summary-output`.
+fn run_summary_from_outside(
+    parent: &Path,
+    name: &str,
+    label: &str,
+    argv: &[&str],
+) -> Result<Output, String> {
+    let sidecar = format!("{label}-sidecar.json");
+    let mut args: Vec<&str> = vec!["--command-summary-output", &sidecar];
+    args.extend(argv.iter().copied());
+    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(parent)
+        .args(&args)
+        .arg("--root")
+        .arg(name)
+        .output()
+        .map_err(|error| format!("run {args:?}: {error}"))
+}
+
+/// The fail-closed contract: non-zero exit naming the containment error, and
+/// the sidecar present nowhere — not beside the scanned tree, and never
+/// relocated into it.
+fn require_summary_refused(
+    label: &str,
+    output: &Output,
+    root: &Path,
+    parent: &Path,
+) -> Result<(), String> {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    require(
+        !output.status.success(),
+        format!(
+            "{label} must refuse a sidecar that resolves outside the root, got {:?} / {stderr}",
+            output.status
+        ),
+    )?;
+    require(
+        stderr.contains("E0002_INVALID_CONFIG") && stderr.contains("outside the source-tree root"),
+        format!("{label} refusal lost the containment surface: {stderr}"),
+    )?;
+    let sidecar = format!("{label}-sidecar.json");
+    require(
+        !parent.join(&sidecar).exists(),
+        format!("{label} wrote the sidecar beside the scanned tree after all"),
+    )?;
+    require(
+        !root.join(&sidecar).exists(),
+        format!("{label} silently relocated the sidecar into the scanned tree"),
+    )?;
+    Ok(())
 }
 
 #[test]

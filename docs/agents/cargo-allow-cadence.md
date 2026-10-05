@@ -16,8 +16,11 @@ cargo-allow cadence --format json --output target/cargo-allow/cadence.json
 Add `--as-of <YYYY-MM-DD>` to classify at one explicit date; omitting it uses
 the ambient UTC day, which is documented as approximate and is not
 deterministic across days. Every allow entry lands in exactly one class:
-`current`, `review_due_soon`, `review_overdue`, `expiring`, `expired`, or
-`invalid`. The classification reuses the match-engine lifecycle law exactly:
+`current`, `review_due_soon`, `review_overdue`, `expiring`, or `expired`.
+A sixth class, `invalid`, is a loader-level posture, not a row a cadence
+report can render: malformed lifecycle dates fail closed at load with
+`error[E0003_INVALID_POLICY]` and never reach classification. The
+classification reuses the match-engine lifecycle law exactly:
 `expires` flips to `expired` only strictly after the expires day (the expires
 day itself is `expiring` with zero days remaining), while `review_after` is
 overdue on the deadline day itself (the pre-existing #2008 `<` versus `<=`
@@ -28,7 +31,9 @@ Work the rows by `required_disposition`:
 - `review_overdue`: review now or narrow the entry.
 - `expiring` (within 14 days): renew, narrow, or plan removal.
 - `expired`: renew via a reviewed commit or remove the entry.
-- `invalid`: fix the malformed lifecycle date; the loader fails closed on it.
+- `invalid`: never rendered; the loader fails closed on a malformed
+  lifecycle date with `error[E0003_INVALID_POLICY]`, so fix the flagged
+  date in policy and rerun.
 - `current`: nothing required.
 Each row retains the durable identity an owner needs: `allow_id`, owner,
 policy classification (including `baseline_debt`), source path or glob,
@@ -67,7 +72,7 @@ these:
 - renewed or reviewed an entry through a reviewed policy commit.
 - narrowed a broad entry instead of extending its expiry.
 - removed an entry whose exception is genuinely obsolete.
-- fixed a malformed lifecycle date the loader (or an `invalid` row) flagged.
+- fixed a malformed lifecycle date the loader flagged with E0003.
 
 And that it did none of these:
 

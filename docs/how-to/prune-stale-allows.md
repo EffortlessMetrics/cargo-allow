@@ -62,6 +62,26 @@ Then verify:
 cargo-allow check --mode no-new
 ```
 
+Current source builds remove the selected `[[allow]]` blocks from the original
+ledger bytes. Surviving entries, header text, comments outside those blocks,
+BOM, quotes, and line endings are preserved. The removal includes each selected
+entry's nested tables and its final statement's trailing comment and newline;
+comments and blank lines after that statement remain.
+
+If removing the final entry from a headerless ledger leaves only whitespace
+or a BOM, prune appends the minimal `policy = "cargo-allow"` header to those
+retained bytes. The result is an explicit, readable empty ledger that can
+receive a later entry. Existing comments or headers need no added scaffolding.
+Empty and whitespace-only policy input still refuses.
+
+Inline allow arrays and entries interleaved with unrelated tables refuse when
+they cannot be removed without changing other policy data. Implicit generated
+IDs also refuse when removal would renumber surviving entries; assign explicit
+IDs before retrying. A refusal leaves the policy unchanged. The normal byte
+limit, validation, remaining-evidence checks, lock, preimage digest, and atomic
+replacement still apply. `removed_toml_blocks` remains a canonical preview,
+so use the resulting Git diff to inspect the exact source-byte removal.
+
 ## Claim Boundary
 
 Prune only edits policy. It does not edit source files, compile code, execute

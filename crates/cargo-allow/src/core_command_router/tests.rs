@@ -313,6 +313,67 @@ fn an_absolute_working_directory_conflict_is_caught_independently_of_the_cwd() -
     fs::remove_dir_all(root).map_err(|error| error.to_string())
 }
 
+/// A relative `--command-summary-output` resolves against the working
+/// directory (#4363), the same base as `--output`, never against the
+/// source-tree root.
+#[test]
+fn relative_summary_requests_resolve_against_the_working_directory() -> Result<(), String> {
+    let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+    let resolved = resolve_summary_output_request(Path::new("sidecar.json"))
+        .map_err(|error| error.to_string())?;
+    require(
+        resolved == cwd.join("sidecar.json"),
+        format!(
+            "relative summary request ignored the working-directory base: {resolved:?} != {:?}",
+            cwd.join("sidecar.json")
+        ),
+    )
+}
+
+/// This test process's working directory (the crate dir) sits outside the
+/// fixture root, so a cwd-relative sidecar request must fail closed with the
+/// containment error instead of silently relocating the sidecar under the
+/// scanned root (#4363).
+#[test]
+fn a_relative_summary_request_from_outside_the_root_fails_closed() -> Result<(), String> {
+    let root = temp_root("relative-sidecar").map_err(|error| error.to_string())?;
+    let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
+    require(
+        !cwd.starts_with(&root),
+        "fixture requires the test cwd to sit outside the scanned root",
+    )?;
+    let config = SummaryOutputConfig::new(PathBuf::from("sidecar.json"), Vec::new());
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            None,
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&config),
+    )
+    .err()
+    .ok_or_else(|| "a cwd-relative sidecar outside the root must fail".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::InvalidConfig,
+        format!(
+            "outside-root sidecar used the wrong error kind: {}",
+            error.code()
+        ),
+    )?;
+    require(
+        !root.join("sidecar.json").exists(),
+        "the rejected sidecar must not be relocated into the scanned root",
+    )?;
+    require(
+        !cwd.join("sidecar.json").exists(),
+        "the rejected sidecar must not be written to the working directory either",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
 #[test]
 fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
     let root = temp_root("partial").map_err(|error| error.to_string())?;

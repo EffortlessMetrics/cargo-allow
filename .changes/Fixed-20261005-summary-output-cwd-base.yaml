@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  The agent-facing --command-summary-output sidecar now resolves relative paths
+  against the process working directory, matching --output, and a resolved path
+  outside the source-tree root is rejected with E0002_INVALID_CONFIG on every
+  command that accepts the flag instead of silently relocating the file into
+  the scanned tree.

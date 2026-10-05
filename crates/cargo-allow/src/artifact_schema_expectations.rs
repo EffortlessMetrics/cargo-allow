@@ -245,6 +245,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "evaluation",
                 "finding",
                 "inventory",
+                "line_targeting",
                 "next",
                 "outcome",
                 "scanner_limitations",

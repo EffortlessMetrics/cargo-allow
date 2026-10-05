@@ -107,15 +107,20 @@ Why this route rather than a single mutating command:
 - `why --plan` is read-only and `New`-only. It does not touch policy.
 - `add --from-plan --update` re-scans and revalidates repository, inventory,
   policy, source, finding, and selector identity. If anything moved between
-  the two commands it refuses and names the regeneration command rather than
-  writing against a stale plan. Because the recorded plan path already exists
-  (plans are never overwritten), the advice names a fresh plan path:
+  the two commands it refuses to write against the stale plan. Regeneration
+  advice is offered only when the uniquely selected `New` finding retains the
+  recorded semantic identity and selector. A nearby replacement receives no
+  recovery command; inspect current findings before planning a different target.
+  Because the recorded plan path already exists (plans are never overwritten),
+  the advice names a fresh plan path. If the same finding moved, the command
+  uses its current line:
 
   ```text
   error: add --from-plan rejected: source inventory changed since the plan was
   generated (policy unchanged); regenerate with cargo-allow why --plan
-  target/cargo-allow/add-finding-plan.retry-1.json … (the recorded plan already
-  exists and add-finding plans are never overwritten)
+  target/cargo-allow/add-plan.retry-1.json --kind panic --path src/lib.rs --line 44
+  (target/cargo-allow/add-plan.json already exists and add-finding plans are never
+  overwritten)
   ```
 
 - Both `add --from-plan --update` and the expert `add --update` shortcut append
