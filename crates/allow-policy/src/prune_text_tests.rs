@@ -92,3 +92,65 @@ fn implicit_ids_refuse_survivor_identity_drift() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn sole_headerless_entry_leaves_explicit_empty_ledger() -> TestResult {
+    for (prefix, suffix, final_newline) in [
+        ("", "", true),
+        ("", "", false),
+        ("\r\n \t", "\r\n \t", true),
+        ("\u{feff}", "", true),
+        ("\u{feff}\r\n\t", "\n \r\n", true),
+    ] {
+        let selected = entry("allow-only");
+        let selected = if final_newline {
+            selected.as_str()
+        } else {
+            selected.trim_end()
+        };
+        let input = format!("{prefix}{selected}{suffix}");
+        let mut expected = crate::parse_policy(&input)?;
+        let removed = expected
+            .allow
+            .first()
+            .ok_or("fixture entry is missing")?
+            .clone();
+        expected.allow.clear();
+        let result = prune_policy_entries(&input, &["allow-only"])?;
+        assert_eq!(
+            result,
+            format!("{prefix}{suffix}policy = \"cargo-allow\"\n")
+        );
+        assert_eq!(
+            crate::render_policy(&crate::parse_policy(&result)?),
+            crate::render_policy(&expected)
+        );
+        assert_eq!(prune_policy_entries(&result, &[])?, result);
+        let appended = crate::append_policy_entry(&result, &removed)?;
+        assert!(appended.starts_with(&result));
+        assert_eq!(crate::parse_policy(&appended)?.allow.len(), 1);
+    }
+    // Deliberately empty or truncated input must still refuse.
+    assert!(crate::parse_policy("").is_err());
+    assert!(crate::parse_policy(" \r\n\t").is_err());
+    Ok(())
+}
+
+#[test]
+fn sole_headerless_entry_preserves_retained_comment_without_scaffolding() -> TestResult {
+    let prefix = "\u{feff}# retained\r\n";
+    let suffix = "\n# EOF";
+    let input = format!("{prefix}{}{suffix}", entry("allow-only"));
+    assert_eq!(
+        prune_policy_entries(&input, &["allow-only"])?,
+        format!("{prefix}{suffix}")
+    );
+    Ok(())
+}
+
+#[test]
+fn headerless_interleaved_table_still_refuses() -> TestResult {
+    let input = entry("allow-only").replace("[allow.selector]", "[workspace]\n[allow.selector]");
+    crate::parse_policy(&input)?;
+    require_invalid_policy(&input, &["allow-only"])
+}
