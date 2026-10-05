@@ -40,6 +40,29 @@ fail() {
   exit 1
 }
 
+# Same Python fallback pattern as scripts/audit-default-sensor-burden.sh:
+# prefer python3, accept any Python >= 3 interpreter named python.
+py="${PYTHON3:-python3}"
+if ! command -v "${py}" >/dev/null 2>&1; then
+  if command -v python >/dev/null 2>&1 && python -c 'import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)' >/dev/null 2>&1; then
+    py=python
+  else
+    printf 'operator-latency: a Python 3 interpreter is required to write the JSON receipt\n' >&2
+    exit 1
+  fi
+fi
+
+# Windows-native Python cannot open POSIX-form paths handed over by this
+# shell; convert to the mixed form when the bridge exists (CI Linux is a
+# no-op). Same approach as scripts/audit-default-sensor-burden.sh.
+py_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
 sha256_file() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | cut -d ' ' -f 1
@@ -56,12 +79,12 @@ now_ms() {
   if value="$(date +%s%N 2>/dev/null)" && [[ "${value}" =~ ^[0-9]+$ ]]; then
     printf '%s' "$(( value / 1000000 ))"
   else
-    python3 -c 'import time; print(time.time_ns() // 1_000_000)'
+    "${py}" -c 'import time; print(time.time_ns() // 1_000_000)'
   fi
 }
 
 encode_argv() {
-  python3 - "$@" <<'PY'
+  "${py}" - "$@" <<'PY'
 import json
 import sys
 
@@ -71,7 +94,7 @@ PY
 
 normalize_json() {
   local source="$1" destination="$2"
-  python3 - "${source}" "${destination}" <<'PY'
+  "${py}" - "$(py_path "${source}")" "$(py_path "${destination}")" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -109,9 +132,57 @@ native_path() {
   fi
 }
 
+# Catastrophic payload ceilings (bytes) for emitted machine artifacts, keyed
+# by sample name as "<artifact-ceiling> <semantic-ceiling>"; '-' disables the
+# assertion for that file. These mirror the payload table in
+# docs/performance-budgets.md and are catastrophic-regression assertions,
+# not the <= 65,536 B advisory agent-read target.
+payload_ceilings() {
+  case "$1" in
+    first_audit | warm_audit) printf '%s\n' '8388608 8388608' ;;
+    worklist | agent_loop_worklist) printf '%s\n' '524288 524288' ;;
+    worklist_summary) printf '%s\n' '4096 4096' ;;
+    check_summary) printf '%s\n' '4096 16384' ;;
+    warm_check) printf '%s\n' '- 16384' ;;
+    agent_loop_check) printf '%s\n' '16384 16384' ;;
+    why_fast_path) printf '%s\n' '8192 8192' ;;
+    agent_loop_why_plan) printf '%s\n' '8192 12288' ;;
+    agent_loop_add) printf '%s\n' '4096 4096' ;;
+    *) printf '%s\n' '- -' ;;
+  esac
+}
+
+check_payload_ceiling() {
+  local name="$1" file="$2" ceiling="$3" bytes
+  bytes="$(wc -c <"${file}" | tr -d '[:space:]')"
+  (( bytes <= ceiling )) || \
+    fail "${name} payload $(basename "${file}") at ${bytes}B exceeded the ${ceiling}B catastrophic payload ceiling"
+}
+
+assert_payload_ceilings() {
+  local name="$1" artifact="$2" semantic="$3"
+  local ceilings
+  ceilings="$(payload_ceilings "${name}")"
+  if [[ "${ceilings%% *}" != '-' ]]; then
+    check_payload_ceiling "${name}" "${artifact}" "${ceilings%% *}"
+  fi
+  if [[ "${ceilings##* }" != '-' ]]; then
+    check_payload_ceiling "${name}" "${semantic}" "${ceilings##* }"
+  fi
+}
+
+artifact_payload_bytes() {
+  wc -c <"$1" | tr -d '[:space:]'
+}
+
+# Read one field of the most recent metrics row for a sample name.
+sample_field() {
+  awk -F '\t' -v name="$1" -v field="$2" '$2 == name { value = $field } END { print value }' "${metrics}"
+}
+
 write_receipt() {
   local result="$1" failure="$2"
-  python3 - "${receipt}" "${metrics}" "${profile}" "${hard_ceiling_ms}" \
+  "${py}" - "$(py_path "${receipt}")" "$(py_path "${metrics}")" "${profile}" "${hard_ceiling_ms}" \
     "${result}" "${failure}" <<'PY'
 import json
 import os
@@ -135,9 +206,9 @@ def records():
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         fields = line.split("\t")
-        if len(fields) != 9:
+        if len(fields) != 10:
             continue
-        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status, argv_json = fields
+        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status, argv_json, payload_bytes = fields
         try:
             argv = json.loads(argv_json)
         except json.JSONDecodeError:
@@ -157,6 +228,7 @@ def records():
             "argv": argv,
             "elapsed_ms": int(elapsed) if elapsed else None,
             "status": status,
+            "payload_bytes": int(payload_bytes) if payload_bytes else None,
             "artifact": {"path": artifact, "sha256": digest} if artifact else None,
             "semantic_artifact": {
                 "path": semantic,
@@ -167,8 +239,8 @@ def records():
 
 sample_rows = records()
 payload = {
-    "schema_version": 2,
-    "schema_id": "cargo-allow.operator-latency.v2",
+    "schema_version": 3,
+    "schema_id": "cargo-allow.operator-latency.v3",
     "tool": "cargo-allow",
     "command": "operator-latency",
     "result": result,
@@ -192,6 +264,7 @@ payload = {
         "cold_process_samples": sum(row["phase"] == "cold" for row in sample_rows),
         "warm_process_samples": sum(row["phase"] == "warm" for row in sample_rows),
         "targeted_samples": sum(row["phase"] == "targeted" for row in sample_rows),
+        "agent_loop_samples": sum(row["phase"] == "agent_loop" for row in sample_rows),
         "cache_mode_samples": {
             mode: sum(row["cache_mode"] == mode for row in sample_rows)
             for mode in ("on", "off", "not_applicable")
@@ -210,14 +283,21 @@ payload = {
         "semantic_artifact_verified",
         "persistent_cache_phase_compared",
         "binary_and_profile_identified",
+        "payload_bytes_recorded_per_sample",
+        "agent_loop_composite_steps_attributable",
     ],
     "limitations": [
         "first_process_sample is not an operating-system-cold cache measurement",
         "advisory product targets are not blocking in this harness",
         "receipt does not establish latency on every repository or machine",
         "off phase verifies no persistent-store creation, not absence of filesystem reads",
+        "payload ceilings are catastrophic artifact-size assertions, not agent-read advisory targets",
+        "hooks_overhead_ms is a paired same-host difference and carries host noise",
     ],
 }
+agent_loop_path = os.environ.get("PERF_AGENT_LOOP_SUMMARY", "")
+if agent_loop_path and Path(agent_loop_path).is_file():
+    payload["agent_loop"] = json.loads(Path(agent_loop_path).read_text(encoding="utf-8"))
 if failure:
     payload["failure"] = {"kind": "instrument_failure", "message": failure}
 Path(receipt_path).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -237,7 +317,8 @@ trap finish EXIT
   fail "PROFILE must be debug or release"
 [[ "${hard_ceiling_ms}" =~ ^[0-9]+$ ]] || \
   fail "HARD_CEILING_MS must be a non-negative integer"
-command -v python3 >/dev/null 2>&1 || fail "python3 is required to write the JSON receipt"
+[[ -n "${py}" ]] && command -v "${py}" >/dev/null 2>&1 || \
+  fail "a Python 3 interpreter is required to write the JSON receipt"
 command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || \
   fail "no SHA-256 utility is available"
 
@@ -251,10 +332,13 @@ if [[ -z "${binary}" ]]; then
   cargo build "${build_args[@]}" || fail "cargo build failed"
   binary="${ROOT}/target/${profile}/cargo-allow"
 fi
-if [[ ! -x "${binary}" && -x "${binary}.exe" ]]; then
+# Prefer the literal Windows executable name: MSYS resolves "cargo-allow"
+# transparently for exec/stat, but Windows-native consumers of the path
+# (hooks run --binary) need the exact on-disk file.
+if [[ -e "${binary}.exe" ]]; then
   binary="${binary}.exe"
 fi
-[[ -x "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
+[[ -e "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
 
 PERF_BINARY_REL="$(relative_path "${binary}")"
 PERF_BINARY_SHA256="$(sha256_file "${binary}")"
@@ -267,8 +351,8 @@ record_skipped() {
   shift 2
   local argv_json
   argv_json="$(encode_argv "$@")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "${phase}" "${name}" "" "" "" "" "" "skipped" "${argv_json}" >>"${metrics}"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${phase}" "${name}" "" "" "" "" "" "skipped" "${argv_json}" "" >>"${metrics}"
 }
 
 measure() {
@@ -284,7 +368,7 @@ measure() {
   local semantic="${output_dir}/${semantic_rel}"
   local stdout_path="${run_dir}/${name}.stdout"
   local stderr_path="${run_dir}/${name}.stderr"
-  local start end elapsed digest semantic_digest argv_json
+  local start end elapsed digest semantic_digest payload_bytes argv_json
 
   rm -f "${artifact}" "${semantic}"
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
@@ -313,14 +397,112 @@ measure() {
   fi
   digest="$(sha256_file "${artifact}")"
   semantic_digest="$(sha256_file "${semantic}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
+  payload_bytes="$(artifact_payload_bytes "${artifact}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${phase}" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
-    "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
+    "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" \
+    "${payload_bytes}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
 }
 
 measure_posture() {
   POSTURE_OK=1 measure "$@"
+}
+
+# One agent-loop composite step (#4366): same measurement contract as
+# measure(), executed inside the writable full-scale fixture clone so the
+# routed work item, plan artifact, applied entry, and green gate all bind to
+# the clone's own ledger. Command artifacts are written under the clone's
+# .measurement/ directory (check/summary outputs must stay inside the scan
+# root) and copied out to the receipt artifact directory afterwards.
+measure_agent_step() {
+  local name="$1" artifact_rel="$2" semantic_rel="$3" marker="$4"
+  shift 4
+  local artifact="${output_dir}/${artifact_rel}"
+  local semantic="${output_dir}/${semantic_rel}"
+  local in_artifact="${agent_loop_root}/.measurement/$(basename "${artifact_rel}")"
+  local in_semantic="${agent_loop_root}/.measurement/$(basename "${semantic_rel}")"
+  local stdout_path="${run_dir}/${name}.stdout"
+  local stderr_path="${run_dir}/${name}.stderr"
+  local start end elapsed digest semantic_digest payload_bytes argv_json
+
+  rm -f "${in_artifact}" "${in_semantic}" "${artifact}" "${semantic}"
+  mkdir -p "${agent_loop_root}/.measurement" \
+    "$(dirname "${artifact}")" "$(dirname "${semantic}")"
+  argv_json="$(encode_argv "$@")"
+  start="$(now_ms)"
+  local rc=0
+  (
+    cd "${agent_loop_root}" &&
+      env -u GIT_DIR -u GIT_WORK_TREE "${binary}" "$@"
+  ) >"${stdout_path}" 2>"${stderr_path}" || rc=$?
+  if (( rc != 0 )); then
+    cat "${stdout_path}" >&2
+    cat "${stderr_path}" >&2
+    fail "${name} agent-loop step failed (exit ${rc})"
+  fi
+  end="$(now_ms)"
+  elapsed=$(( end - start ))
+  [[ -s "${in_artifact}" ]] || fail "${name} did not produce $(basename "${artifact_rel}")"
+  [[ -s "${in_semantic}" ]] || fail "${name} did not produce $(basename "${semantic_rel}")"
+  grep -Fq "${marker}" "${in_semantic}" || \
+    fail "${name} semantic result did not contain expected marker: ${marker}"
+  if (( elapsed > hard_ceiling_ms )); then
+    fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling (${elapsed}ms)"
+  fi
+  cp "${in_artifact}" "${artifact}"
+  cp "${in_semantic}" "${semantic}"
+  digest="$(sha256_file "${artifact}")"
+  semantic_digest="$(sha256_file "${semantic}")"
+  assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
+  payload_bytes="$(artifact_payload_bytes "${artifact}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
+    "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" \
+    "${payload_bytes}" >>"${metrics}"
+  log "${name}: ${elapsed}ms"
+}
+
+# Paired hooks-run sample (#4366): the wrapped child is the exact closed
+# `check --mode no-new` command, so the sample's machine artifact is the
+# forwarded child stdout captured in the receipt artifact directory.
+measure_hooks_sample() {
+  local name="$1" artifact_rel="$2" marker="$3"
+  shift 3
+  local artifact="${output_dir}/${artifact_rel}"
+  local stderr_path="${run_dir}/${name}.stderr"
+  local start end elapsed digest payload_bytes argv_json
+
+  rm -f "${artifact}"
+  mkdir -p "$(dirname "${artifact}")"
+  argv_json="$(encode_argv "$@")"
+  start="$(now_ms)"
+  local rc=0
+  (
+    cd "${agent_loop_root}" &&
+      env -u GIT_DIR -u GIT_WORK_TREE "${binary}" "$@"
+  ) >"${artifact}" 2>"${stderr_path}" || rc=$?
+  if (( rc != 0 )); then
+    cat "${artifact}" >&2
+    cat "${stderr_path}" >&2
+    fail "${name} hooks sample failed (exit ${rc})"
+  fi
+  end="$(now_ms)"
+  elapsed=$(( end - start ))
+  [[ -s "${artifact}" ]] || fail "${name} did not produce ${artifact_rel}"
+  grep -Fq "${marker}" "${artifact}" || \
+    fail "${name} semantic result did not contain expected marker: ${marker}"
+  if (( elapsed > hard_ceiling_ms )); then
+    fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling (${elapsed}ms)"
+  fi
+  digest="$(sha256_file "${artifact}")"
+  payload_bytes="$(artifact_payload_bytes "${artifact}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
+    "${artifact_rel}" "${digest}" "passed" "${argv_json}" \
+    "${payload_bytes}" >>"${metrics}"
+  log "${name}: ${elapsed}ms"
 }
 
 fixture_root="${run_dir}/cache-fixture"
@@ -357,7 +539,7 @@ measure_cache_phase() {
   local fixture_root_arg="$(native_path "${fixture_root}")"
   local fixture_report_arg="$(native_path "${fixture_report}")"
   local fixture_receipt_arg="$(native_path "${fixture_receipt}")"
-  local start end elapsed rc=0 digest semantic_digest argv_json
+  local start end elapsed rc=0 digest semantic_digest payload_bytes argv_json
   local -a argv=(check --root "${fixture_root_arg}" --config policy/allow.toml
     --persistent-cache "${mode}" --format json --receipt "${fixture_receipt_arg}"
     --output "${fixture_report_arg}")
@@ -382,9 +564,11 @@ measure_cache_phase() {
   (( elapsed <= hard_ceiling_ms )) || fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling"
   digest="$(sha256_file "${report}")"
   semantic_digest="$(sha256_file "${semantic_report}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  payload_bytes="$(artifact_payload_bytes "${report}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${phase}" "${name}" "${elapsed}" "${report_rel}" "${digest}" \
-    "${semantic_report_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
+    "${semantic_report_rel}" "${semantic_digest}" "passed" "${argv_json}" \
+    "${payload_bytes}" >>"${metrics}"
 }
 
 cache_dir="${fixture_root}/target/cargo-allow/cache"
@@ -449,6 +633,145 @@ measure "warm" "warm_audit" \
   "artifacts/warm-audit.json" "artifacts/warm-audit.json" \
   '"status": "passed"' \
   audit --format json --output "${artifact_dir}/warm-audit.json"
+
+log "measuring worklist command summary projection"
+measure "targeted" "worklist_summary" \
+  "artifacts/worklist-summary.json" "artifacts/worklist-summary.json" \
+  '"schema_id": "cargo-allow.core-command-summary.v1"' \
+  worklist --command-summary-output "${artifact_dir}/worklist-summary.json"
+
+log "measuring check command summary projection"
+measure "targeted" "check_summary" \
+  "artifacts/check-summary.json" "artifacts/check-summary.receipt.json" \
+  '"failed": false' \
+  check --mode no-new --format markdown \
+  --receipt "${artifact_dir}/check-summary.receipt.json" \
+  --output "${artifact_dir}/check-summary.md" \
+  --command-summary-output "${artifact_dir}/check-summary.json"
+grep -Fq '"schema_id": "cargo-allow.core-command-summary.v1"' \
+  "${artifact_dir}/check-summary.json" || \
+  fail "check_summary did not produce the command summary schema"
+
+# --- Agentic-surface suite (#4366) -----------------------------------------
+#
+# The composite fixture mirrors the measure_cache_phase fixture pattern at
+# full repo scale: one writable `git clone --shared` copy of this repository
+# inside run_dir, with a fresh unreceipted unwrap probe committed on top.
+# The clone is torn down with run_dir on exit, so every harness run measures
+# the 4-command repair sequence against a fixture reset to the same probe
+# state, and the real repository tree is never modified.
+
+agent_loop_root="${run_dir}/agent-loop-fixture"
+log "preparing agent-loop fixture clone"
+env -u GIT_DIR -u GIT_WORK_TREE git clone --shared --quiet "${ROOT}" "${agent_loop_root}" ||
+  fail "agent-loop fixture clone failed"
+printf '%s\n' \
+  'pub fn agent_loop_probe(value: Option<u8>) -> u8 {' \
+  '    value.unwrap()' \
+  '}' >"${agent_loop_root}/crates/cargo-allow/src/agent_loop_probe.rs"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" \
+  add crates/cargo-allow/src/agent_loop_probe.rs ||
+  fail "agent-loop probe git add failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" \
+  -c user.email=cargo-allow@example.invalid -c user.name=cargo-allow-perf \
+  commit -qm agent-loop-probe || fail "agent-loop probe git commit failed"
+
+log "measuring agent-loop composite (worklist -> why --plan -> add --from-plan --update -> check)"
+composite_start="$(now_ms)"
+measure_agent_step "agent_loop_worklist" \
+  "artifacts/agent-loop-worklist.json" "artifacts/agent-loop-worklist.json" \
+  'new_unreceipted_finding' \
+  worklist --format json --output .measurement/agent-loop-worklist.json
+grep -Fq 'agent_loop_probe.rs' "${artifact_dir}/agent-loop-worklist.json" || \
+  fail "agent_loop_worklist did not route the probe finding"
+measure_agent_step "agent_loop_why_plan" \
+  "artifacts/agent-loop-why.json" "artifacts/agent-loop-plan.json" \
+  'cargo-allow.add-finding-plan.v1' \
+  why --kind panic --path crates/cargo-allow/src/agent_loop_probe.rs --line 2 \
+  --format json --output .measurement/agent-loop-why.json \
+  --plan .measurement/agent-loop-plan.json
+grep -Fq 'agent_loop_probe.rs' "${artifact_dir}/agent-loop-plan.json" || \
+  fail "agent_loop_why_plan did not bind the probe finding"
+measure_agent_step "agent_loop_add" \
+  "artifacts/agent-loop-add-summary.json" "artifacts/agent-loop-add-summary.json" \
+  'add-plan-application' \
+  add --from-plan .measurement/agent-loop-plan.json --update \
+  --owner core --reason "agent-loop composite measurement probe" \
+  --evidence issue:4366 --summary-format json \
+  --summary-output .measurement/agent-loop-add-summary.json
+grep -Fq 'added_allow_id' "${artifact_dir}/agent-loop-add-summary.json" || \
+  fail "agent_loop_add summary omitted the applied entry id"
+measure_agent_step "agent_loop_check" \
+  "artifacts/agent-loop-check.receipt.json" "artifacts/agent-loop-check.receipt.json" \
+  '"failed": false' \
+  check --mode no-new --format markdown \
+  --receipt .measurement/agent-loop-check.receipt.json \
+  --output .measurement/agent-loop-check.md
+composite_total=$(( $(now_ms) - composite_start ))
+log "agent-loop composite total: ${composite_total}ms"
+
+log "measuring paired hooks run wrapper overhead"
+hooks_binary="$(native_path "${binary}")"
+hooks_digest="$("${binary}" tool identity --format json |
+  "${py}" -c 'import json, sys; print(json.load(sys.stdin)["executable_digest"])')"
+[[ "${hooks_digest}" == sha256:v1:* ]] || \
+  fail "tool identity did not return an executable digest for hooks run"
+measure_hooks_sample "hooks_wrapped_check" "artifacts/hooks-wrapped-check.md" \
+  'Result: passed' \
+  hooks run --binary "${hooks_binary}" --digest "${hooks_digest}" \
+  --mode explicit-tool-under-test -- check --mode no-new
+measure_hooks_sample "hooks_bare_check" "artifacts/hooks-bare-check.md" \
+  'Result: passed' \
+  check --mode no-new
+
+log "recording agent-loop attribution rows"
+: >"${run_dir}/agent-loop.steps.tsv"
+for step in agent_loop_worklist agent_loop_why_plan agent_loop_add agent_loop_check; do
+  printf '%s\t%s\t%s\n' \
+    "${step}" "$(sample_field "${step}" 3)" "$(sample_field "${step}" 10)" \
+    >>"${run_dir}/agent-loop.steps.tsv"
+done
+added_allow_id="$("${py}" -c 'import json, sys; print(json.load(sys.stdin).get("added_allow_id") or "")' \
+  <"$(py_path "${artifact_dir}/agent-loop-add-summary.json")")"
+"${py}" - \
+  "$(py_path "${output_dir}/.agent-loop.summary.json")" \
+  "${added_allow_id}" "${composite_total}" \
+  "$(sample_field hooks_wrapped_check 3)" "$(sample_field hooks_bare_check 3)" \
+  "$(py_path "${run_dir}/agent-loop.steps.tsv")" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+out_path, added_allow_id, total, wrapped, bare, steps_path = sys.argv[1:7]
+steps = []
+for line in Path(steps_path).read_text(encoding="utf-8").splitlines():
+    name, elapsed, payload = line.split("\t")
+    steps.append({
+        "sample": name,
+        "elapsed_ms": int(elapsed),
+        "payload_bytes": int(payload) if payload else None,
+    })
+wrapped_ms = int(wrapped)
+bare_ms = int(bare)
+summary = {
+    "composite": {
+        "name": "agent_loop_composite",
+        "added_allow_id": added_allow_id or None,
+        "steps": steps,
+        "total_elapsed_ms": int(total),
+    },
+    "hooks_overhead": {
+        "wrapped_sample": "hooks_wrapped_check",
+        "bare_sample": "hooks_bare_check",
+        "wrapped_elapsed_ms": wrapped_ms,
+        "bare_elapsed_ms": bare_ms,
+        "overhead_ms": wrapped_ms - bare_ms,
+    },
+}
+Path(out_path).write_text(json.dumps(summary, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+PY
+PERF_AGENT_LOOP_SUMMARY="$(py_path "${output_dir}/.agent-loop.summary.json")"
+export PERF_AGENT_LOOP_SUMMARY
 
 write_receipt "pass" ""
 
