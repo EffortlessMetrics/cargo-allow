@@ -114,6 +114,10 @@ Consumers should rely on these properties:
   from any paths a suggested next action may write. The inspection commands
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
   exception, and it names the exact candidate plan path it wrote.
+- A relative `<path>` resolves against the process working directory — the same
+  base as `--output` — on every command that accepts the flag. A resolved path
+  outside the source-tree root is rejected with `E0002_INVALID_CONFIG` rather
+  than silently relocated into the scanned tree.
 
 The supported command set grows as the migration proceeds; a command that does
 not yet emit the summary rejects `--command-summary-output` rather than silently

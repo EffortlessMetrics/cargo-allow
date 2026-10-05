@@ -631,20 +631,42 @@ fn validate_summary_output_path(
     root: &Path,
     config: &SummaryOutputConfig,
 ) -> CargoAllowResult<ValidatedSummaryOutput> {
-    let target = resolve_summary_output_target(root, config)?;
+    let requested_path = resolve_summary_output_request(&config.path)?;
     Ok(ValidatedSummaryOutput {
-        requested_path: resolve_under_root(root, &config.path),
-        target,
+        requested_path: requested_path.clone(),
+        target: resolve_summary_output_target(root, &requested_path, config)?,
     })
+}
+
+/// Resolve the operator-requested summary sidecar path (#4363).
+///
+/// Relative paths resolve against the process working directory — the same
+/// base as `--output` — and absolute paths are kept verbatim. The caller then
+/// fails closed with the `E0002_INVALID_CONFIG` containment error when the
+/// resolved path falls outside the source-tree root, so a sidecar requested
+/// from a scratch directory can never land silently inside the scanned tree.
+fn resolve_summary_output_request(path: &Path) -> CargoAllowResult<PathBuf> {
+    if path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+    let cwd = std::env::current_dir().map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "cannot resolve --command-summary-output against the working directory: {error}"
+            ),
+        )
+    })?;
+    Ok(cwd.join(path))
 }
 
 fn resolve_summary_output_target(
     root: &Path,
+    path: &Path,
     config: &SummaryOutputConfig,
 ) -> CargoAllowResult<effortless_repo_edit::MutationTarget> {
-    let path = resolve_under_root(root, &config.path);
-    crate::assert_path_within_root(root, &path)?;
-    let summary_target = effortless_repo_edit::resolve_mutation_target(&path, root)
+    crate::assert_path_within_root(root, path)?;
+    let summary_target = effortless_repo_edit::resolve_mutation_target(path, root)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     if summary_target.ownership() != effortless_repo_edit::MutationTargetOwnership::SourceTreeOwned
     {
