@@ -27,6 +27,50 @@ verified_evidence_required = true
 safety_comment_required = false
 
 [[allow]]
+id = "allow-3151-linux-gnu-candidate"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/linux-gnu-candidate.py"
+owner = "core/release"
+classification = "release_packaging_producer"
+reason = "Static GNU ABI preflight and receipt-bound export of the already-installed, unpublished compatibility candidate; performs no Cargo build or publication."
+evidence = ["issue:3151", "test:scripts/test-linux-gnu-candidate.py", "doc:docs/release/README.md"]
+created = "2026-10-05"
+review_after = "2027-01-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/linux-gnu-candidate.py"
+target_fingerprint = "py"
+glob = "scripts/linux-gnu-candidate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3151-linux-gnu-candidate-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-linux-gnu-candidate.py"
+owner = "core/release"
+classification = "release_packaging_test"
+reason = "Bounded offline falsifiers for GNU ABI limits, binary drift and incomplete or stale predecessor receipts; no compiler or candidate execution."
+evidence = ["issue:3151", "test:scripts/test-linux-gnu-candidate.py"]
+created = "2026-10-05"
+review_after = "2027-01-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-linux-gnu-candidate.py"
+target_fingerprint = "py"
+glob = "scripts/test-linux-gnu-candidate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-3849-schema"
 kind = "non_rust_file"
 family = "documentation"

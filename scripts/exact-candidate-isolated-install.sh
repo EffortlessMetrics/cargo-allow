@@ -325,7 +325,7 @@ lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.
 entries = [json.loads(line) for line in lines]
 for entry in entries:
     if entry.get("cksum"):
-        entry["cksum"] = "sha256:" + "0" * 64
+        entry["cksum"] = "0" * 64  # Valid Cargo index encoding, deliberately wrong bytes.
         break
 path.write_text("\n".join(json.dumps(entry) for entry in entries) + "\n", encoding="utf-8")
 PY
@@ -334,13 +334,14 @@ CARGO_HOME="$install_home" cargo metadata --format-version 1 --offline \
     --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
     --config "source.crates-io.replace-with='candidate-local-registry'" \
     --config "source.candidate-local-registry.local-registry='${work_parent}/registry-index'" \
-    > /dev/null 2>&1
+    > /dev/null 2>"${work_parent}/index-checksum-negative.stderr"
 index_exit=$?
 set -e
-if [ "$index_exit" -eq 0 ]; then
-    echo "negative index-checksum mismatch unexpectedly succeeded" >&2
+if [ "$index_exit" -eq 0 ] || ! grep -qi checksum "${work_parent}/index-checksum-negative.stderr"; then
+    echo "negative index-checksum mismatch did not produce the expected checksum refusal" >&2
     NEGATIVE_FAILURES=$((NEGATIVE_FAILURES + 1))
 fi
+cat "${work_parent}/index-checksum-negative.stderr"
 
 # Negative: offline external input incomplete
 rm -rf "${work_parent}/registry-external" && cp -r "$registry" "${work_parent}/registry-external"

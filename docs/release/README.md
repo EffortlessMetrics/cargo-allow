@@ -232,6 +232,44 @@ receipts are the durable evidence for the #2256 Stage A / #2278 Stage A+ /
 #2372 / #3357 candidate claims; Windows and macOS candidate smoke remain a
 documented follow-up.
 
+## Nonpublishing GNU candidate compatibility
+
+The existing `package-smoke` job runs its package/install/journey chain on
+Ubuntu 22.04 with glibc 2.35, Python 3.12 and the unchanged stable Rust toolchain.
+It exports the **already installed #2925 binary** consumed by #2926; it does
+not add another Cargo build. `linux-gnu-glibc235-candidate` retains the archive,
+checksums, predecessor receipts, archive smoke receipt and a
+`linux-gnu-candidate.json` manifest binding the actual producer commit/tree and
+executable bytes. A PR build may name its synthetic merge commit.
+
+The export step checks x86_64 ELF identity and GLIBC **version needs** no newer
+than 2.35 before its binary/archive execution. It refuses missing/malformed inspection,
+different binary/receipt identities and incomplete predecessor evidence. The
+archive is checked again before the existing clean-repository verifier runs.
+Candidate archive instructions explicitly state that no release attestation
+exists. Exporting requires a fresh output directory, so reruns cannot overwrite
+a retained candidate. After the normal predecessor jobs, the export command is:
+
+```bash
+python3 scripts/linux-gnu-candidate.py package --output target/gnu-candidate-new
+```
+
+On another host, bind the artifact to the reviewed successful CI run, verify
+archive and extracted-executable checksums, and inspect ABI requirements before
+invoking its absolute path. Static inspection does not execute the candidate:
+
+```bash
+python3 scripts/linux-gnu-candidate.py inspect /absolute/path/cargo-allow --max-glibc 2.35
+```
+
+This proves the unpublished candidate on the named baseline, not a published
+archive channel, every Linux distribution/CPU, an external adoption pilot or
+the complete #3151 release experience. Release workflow behavior and the final
+support selection remain separate. The [Ubuntu 22.04 runner retires on
+2027-04-17](https://github.com/actions/runner-images/issues/14254); #3151 owns
+replacing that build environment while retaining the ABI limit and runtime
+proof. Returning silently to `ubuntu-latest` would lose this bound.
+
 ## Linux archive: download and install a tagged release
 
 The tagged release workflow publishes the prebuilt archive only for the

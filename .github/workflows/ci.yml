@@ -274,13 +274,20 @@ jobs:
   # separately proves Rust 1.95.
   package-smoke:
     needs: pregate
-    runs-on: ubuntu-latest
+    # The linked candidate must not inherit ubuntu-latest's libc upgrades.
+    # This image retires 2027-04-17; #3151 owns its successor.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
-          lane: package-smoke
+          lane: package-smoke-glibc235
+      - name: GNU candidate ABI and binding falsifiers (#3151)
+        run: python3 scripts/test-linux-gnu-candidate.py
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
       - name: Linux release binary packaging contract (#2464)
@@ -313,6 +320,7 @@ jobs:
           python3 scripts/exact-candidate-isolated-install.py --mode classify \
             --candidate-artifact target/exact-candidate-package-candidate/package-candidate-v2.json \
             --input-receipt target/exact-candidate-isolated-install/isolated-install.receipt.json
+          python3 scripts/test-exact-candidate-isolated-install.py
       - name: Exact candidate qualification journey (#2926)
         run: bash scripts/exact-candidate-qualification.sh
       - name: Cutover build receipts from package-set artifacts (#3469/#3552)
@@ -327,6 +335,14 @@ jobs:
         run: bash scripts/exact-upgrade-rollback-journey.sh
       - name: Exact upgrade and rollback contract characterization (#3853)
         run: bash scripts/test-exact-upgrade-rollback-journey.sh
+      - name: Export qualified GNU libc 2.35 candidate without rebuilding (#3151)
+        run: python3 scripts/linux-gnu-candidate.py package --output "${RUNNER_TEMP}/linux-gnu-candidate"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-gnu-glibc235-candidate
+          path: ${{ runner.temp }}/linux-gnu-candidate/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

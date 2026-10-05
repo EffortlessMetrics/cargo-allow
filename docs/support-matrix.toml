@@ -55,6 +55,15 @@ msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0, sets RUST
 msrv_scope = "cargo-allow-release-set"
 stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolchain@stable"
 
+[candidate_linux_binary]
+support = "source-candidate"
+target = "x86_64-unknown-linux-gnu"
+glibc_baseline = "2.35"
+runner = "ubuntu-22.04"
+evidence = "ci.yml package-smoke exports its existing isolated installed binary after exact-candidate qualification, GLIBC version-needs inspection and clean archive verification"
+claim_boundary = "Unpublished candidate bytes exercised on this baseline; not universal Linux compatibility, a published archive channel, external adoption or final-release qualification"
+successor_owner = "#3151: replace the build environment before Ubuntu 22.04 runner retirement on 2027-04-17 while retaining the ABI requirement and runtime proof"
+
 # Platform rows. `tier` is descriptive of executed evidence, not a promise:
 #   ci_proven   the full workspace test suite runs on this runner every PR
 #   ci_proven_bounded  the release-set suite runs, with a named fixture exclusion
@@ -65,7 +74,7 @@ stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolcha
 runner = "ubuntu-latest"
 target = "x86_64-unknown-linux-gnu"
 tier = "ci_proven"
-evidence = "ci.yml jobs `test`, `msrv`, `package-smoke`, `shallow-diff-smoke` run on ubuntu-latest"
+evidence = "ci.yml jobs `test`, `msrv`, `shallow-diff-smoke` run on ubuntu-latest; package-smoke separately proves the candidate_linux_binary baseline"
 install_evidence = "release.yml `install-smoke` matrix includes ubuntu-latest against the published crate on tag push"
 
 [[platform]]

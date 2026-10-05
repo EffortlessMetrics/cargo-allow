@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -116,6 +117,33 @@ class IsolatedInstallClassificationTests(unittest.TestCase):
         payload = self.clean_payload()
         payload["source_checkout_denied"] = False
         self.assertEqual(isolated.classify(payload), "SourceFallbackDetected")
+
+
+class IsolatedInstallReceiptTests(unittest.TestCase):
+    def produce(self, checksum):
+        row = {"cargo_package_name": "cargo-allow", "cargo_package_version": "0.2.0",
+               "crate_digest": "sha256:" + "a" * 64, "index_checksum": checksum}
+        with tempfile.TemporaryDirectory() as directory:
+            artifact = Path(directory) / "candidate.json"
+            artifact.write_text("{}", encoding="utf-8")
+            return isolated.receipt_payload(
+                artifact, [row], {"expected_packages": 1, "matched_packages": 1},
+                commit="1" * 40, tree="2" * 40, cargo_lock_digest="sha256:" + "b" * 64,
+                registry_index_digest="sha256:" + "c" * 64, external_cache_identity="lock-scoped",
+                source_checkout_denied=True, install_root_identity="sha256:" + "d" * 64,
+                cargo_home_identity="sha256:" + "e" * 64, installed_executable_digest="sha256:" + "f" * 64,
+                installed_version_output="cargo-allow 0.2.0", platform="x86_64-unknown-linux-gnu", toolchain="1.95.0")
+
+    def test_raw_registry_checksum_becomes_a_portable_receipt_identity(self):
+        receipt = self.produce("a" * 64)
+        row = receipt["package_rows"][0]
+        self.assertEqual(row["index_checksum"], "sha256:" + "a" * 64)
+        self.assertEqual(row["index_checksum"], row["crate_digest"])
+
+    def test_malformed_or_already_prefixed_registry_checksums_refuse(self):
+        for value in ("", "a" * 63, "g" * 64, "sha256:" + "a" * 64, None):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.produce(value)
 
 
 if __name__ == "__main__":
