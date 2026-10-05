@@ -107,11 +107,13 @@ Why this route rather than a single mutating command:
 - `why --plan` is read-only and `New`-only. It does not touch policy.
 - `add --from-plan --update` re-scans and revalidates repository, inventory,
   policy, source, finding, and selector identity. If anything moved between
-  the two commands it refuses and names the regeneration command rather than
-  writing against a stale plan. Because the recorded plan path already exists
-  (plans are never overwritten), the advice names a fresh plan path. If the
-  uniquely selected `New` finding moved, it uses that live finding's current
-  path and line, rather than the stale plan's line:
+  the two commands it refuses to write against the stale plan. Regeneration
+  advice is offered only when the uniquely selected `New` finding retains the
+  recorded semantic identity and selector. A nearby replacement receives no
+  recovery command; inspect current findings before planning a different target.
+  Because the recorded plan path already exists (plans are never overwritten),
+  the advice names a fresh plan path. If the same finding moved, the command
+  uses its current line:
 
   ```text
   error: add --from-plan rejected: source inventory changed since the plan was
