@@ -130,7 +130,8 @@ def validate_predecessors(payloads: list[dict], digests: list[str],
     candidate, install, qualification = payloads
     for payload, name in zip(payloads, ("package-candidate", "isolated-install", "exact-candidate")):
         require(payload.get("schema_id") == f"cargo-allow.{name}.v2"
-                and payload.get("schema_version") == 2, f"unsupported {name} generation")
+                and type(payload.get("schema_version")) is int
+                and payload["schema_version"] == 2, f"unsupported {name} generation")
         require(payload.get("repository_commit") == commit and payload.get("repository_tree") == tree,
                 f"stale {name} source identity")
     require(install.get("candidate_artifact_digest") == digests[0]
@@ -145,20 +146,86 @@ def validate_predecessors(payloads: list[dict], digests: list[str],
                 and payload.get("platform") == TARGET, "installed version or platform mismatch")
     require(install.get("source_checkout_denied") is True, "source-isolated installation not proven")
     graph = install.get("graph_comparison") or {}
-    require(graph.get("expected_packages", 0) > 0
+    require(isinstance(graph, dict)
+            and all(isinstance(graph.get(key, []), list) for key in
+                    ("unexpected_packages", "missing_packages", "version_mismatches", "path_sources")),
+            "isolated installation graph is malformed")
+    require(type(graph.get("expected_packages")) is int and type(graph.get("matched_packages")) is int
+            and graph["expected_packages"] > 0
             and graph.get("matched_packages") == graph.get("expected_packages")
             and not any(graph.get(key) for key in
                         ("unexpected_packages", "missing_packages", "version_mismatches", "path_sources")),
             "isolated installation graph is not Complete")
+    validate_install(install)
     validate_qualification(qualification)
+    rows = candidate.get("rows")
+    require(isinstance(rows, list) and bool(rows), "candidate rows are empty")
+    for row in rows:
+        require(isinstance(row.get("crate_digest"), str)
+                and re.fullmatch(r"sha256:[0-9a-fA-F]{64}", row["crate_digest"]) is not None
+                and type(row.get("crate_size_bytes")) is int and row["crate_size_bytes"] > 0,
+                "candidate package bytes are not bound")
+    expected = {row["cargo_package_name"]: (row["cargo_package_version"], row["crate_digest"]) for row in rows}
+    installed = {row["package_name"]: (row["package_version"], row["crate_digest"])
+                 for row in install["package_rows"]}
+    qualified = {row["package_name"]: (row["package_version"], row["crate_digest"])
+                 for row in qualification["package_rows"]}
+    require(len(expected) == len(rows) == graph["expected_packages"] and expected == installed == qualified,
+            "predecessor package rows disagree")
+    require({row["cargo_package_name"]: row["logical_id"] for row in rows}
+            == {row["package_name"]: row["logical_id"] for row in qualification["package_rows"]},
+            "qualification package logical identity mismatch")
     # Lock digests intentionally retain their owners' different input meanings:
     # normalized workspace, packaged root lock, and raw workspace respectively.
     return candidate["root_package_version"]
 
 
+def validate_install(payload: dict) -> None:
+    # Complete law owned by allow-report/src/artifacts/isolated_install_receipt_v2.rs.
+    # The legacy Python classifier checks only a subset of that contract.
+    fields = ("candidate_artifact_digest", "repository_commit", "repository_tree", "cargo_lock_digest",
+              "registry_index_digest", "external_cache_identity", "install_root_identity", "cargo_home_identity",
+              "installed_executable_digest", "installed_version_output", "platform", "toolchain", "claim_boundary")
+    require(all(isinstance(payload.get(key), str) and payload[key].strip() for key in fields),
+            "install identity is missing")
+    for key in ("candidate_artifact_digest", "cargo_lock_digest", "registry_index_digest",
+                "installed_executable_digest", "install_root_identity", "cargo_home_identity"):
+        require(re.fullmatch(r"sha256:[0-9a-fA-F]{64}", payload[key]) is not None,
+                f"install {key} is not a sha256 identity")
+    require(isinstance(payload.get("limitations"), list)
+            and all(isinstance(value, str) for value in payload["limitations"]), "install limitations are malformed")
+    rows = payload.get("package_rows")
+    require(isinstance(rows, list) and bool(rows), "install package rows are empty")
+    names = set()
+    portable = [payload["external_cache_identity"], payload["installed_version_output"], payload["claim_boundary"]]
+    for row in rows:
+        require(isinstance(row, dict) and all(isinstance(row.get(key), str) and row[key].strip()
+                for key in ("package_name", "package_version", "crate_digest", "index_checksum")),
+                "install package identity is missing")
+        require(row["package_name"] not in names
+                and all(re.fullmatch(r"sha256:[0-9a-fA-F]{64}", row[key]) is not None
+                        for key in ("crate_digest", "index_checksum")), "install package identity is invalid or duplicated")
+        resolved = row.get("resolved_version")
+        require(resolved is None or (isinstance(resolved, str) and bool(resolved.strip())),
+                "install resolved version is malformed")
+        require(row["index_checksum"] == row["crate_digest"]
+                and (resolved is None or resolved == row["package_version"]), "installed package bytes or version differ")
+        names.add(row["package_name"])
+        portable.extend((row["package_name"], row["package_version"]))
+    require(not any(marker in value.lower() for value in portable for marker in
+                    ("/home/", "/users/", "c:\\", "/runner/work/", "\\cargo-allow\\", "/cargo-allow/crates/")),
+            "install receipt carries private absolute path data")
+
+
 def command(argv: list[str], **kwargs) -> str:
     return subprocess.run(argv, cwd=ROOT, check=True, text=True,
                           stdout=subprocess.PIPE, **kwargs).stdout.strip()
+
+
+def validate_candidate_derivation(path: Path) -> None:
+    # Reuse the owner's read-only topology/manifest/lock derivation comparison.
+    # Its check mode neither invokes Cargo nor rewrites the consumed artifact.
+    command([sys.executable, "scripts/exact-candidate-package-candidate.py", "--mode", "check", "--output", str(path)])
 
 
 def package(output: Path) -> None:
@@ -180,6 +247,7 @@ def package(output: Path) -> None:
     payloads = [json.loads(data) for data in contents]
     digests = [digest_bytes(data) for data in contents]
     abi = inspect_abi(binary, baseline)  # No candidate execution precedes this preflight.
+    validate_candidate_derivation(paths[0])
     candidate_version = validate_predecessors(payloads, digests, commit, tree, abi["executable_sha256"])
     classification = command([sys.executable, "scripts/exact-candidate-isolated-install.py",
                               "--mode", "classify", "--candidate-artifact", str(paths[0]),

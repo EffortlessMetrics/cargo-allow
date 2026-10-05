@@ -2,9 +2,11 @@
 """Bounded ABI and predecessor falsifiers; no compiler or candidate execution."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import struct
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -35,12 +37,21 @@ def elf() -> bytes:
 def predecessors():
     common = {"schema_version": 2, "repository_commit": "1" * 40, "repository_tree": "2" * 40}
     package = {**common, "schema_id": "cargo-allow.package-candidate.v2", "root_package_version": "0.2.0",
-               "cargo_lock_digest": "sha256:" + "a" * 64}
+               "cargo_lock_digest": "sha256:" + "a" * 64,
+               "rows": [{"logical_id": "cargo-allow", "cargo_package_name": "cargo-allow",
+                         "cargo_package_version": "0.2.0", "crate_digest": "sha256:" + "a" * 64,
+                         "crate_size_bytes": 123}]}
     install = {**common, "schema_id": "cargo-allow.isolated-install.v2",
                "candidate_artifact_digest": "sha256:" + "d" * 64, "installed_executable_digest": "sha256:" + "f" * 64,
                "installed_version_output": "cargo-allow 0.2.0", "platform": candidate.TARGET,
-               "source_checkout_denied": True, "graph_comparison": {"expected_packages": 13, "matched_packages": 13},
-               "cargo_lock_digest": "sha256:" + "b" * 64}
+               "source_checkout_denied": True, "graph_comparison": {"expected_packages": 1, "matched_packages": 1},
+               "cargo_lock_digest": "sha256:" + "b" * 64, "registry_index_digest": "sha256:" + "3" * 64,
+               "external_cache_identity": "lock-scoped", "install_root_identity": "sha256:" + "4" * 64,
+               "cargo_home_identity": "sha256:" + "5" * 64, "toolchain": "1.95.0",
+               "claim_boundary": "isolated candidate only", "limitations": [],
+               "package_rows": [{"package_name": "cargo-allow", "package_version": "0.2.0",
+                                 "crate_digest": "sha256:" + "a" * 64,
+                                 "index_checksum": "sha256:" + "a" * 64, "resolved_version": "0.2.0"}]}
     qualification = {**common, "schema_id": "cargo-allow.exact-candidate.v2",
                      "candidate_artifact_digest": "sha256:" + "d" * 64, "isolated_install_receipt_digest": "sha256:" + "e" * 64,
                      "installed_executable_digest": "sha256:" + "f" * 64, "installed_version_output": "cargo-allow 0.2.0",
@@ -174,6 +185,40 @@ class BindingTests(unittest.TestCase):
                 with self.subTest(field=field, path=path), self.assertRaises(ValueError):
                     self.validate(data)
 
+    def test_malformed_candidate_bytes_and_numeric_types_refuse(self):
+        for field, value in (("crate_digest", "bad"), ("crate_size_bytes", 0),
+                             ("crate_size_bytes", True), ("crate_size_bytes", 123.0)):
+            data = predecessors()
+            data[0]["rows"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.validate(data)
+        for index in range(3):
+            data = predecessors()
+            data[index]["schema_version"] = 2.0
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                self.validate(data)
+        for value in (True, 1.0):
+            data = predecessors()
+            data[1]["graph_comparison"] = {"expected_packages": value, "matched_packages": value}
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.validate(data)
+
+    def test_existing_candidate_derivation_is_read_only_and_refuses_drift(self):
+        with tempfile.TemporaryDirectory() as directory:
+            artifact = Path(directory) / "candidate.json"
+            subprocess.run([sys.executable, "scripts/exact-candidate-package-candidate.py", "--mode", "derive",
+                            "--output", str(artifact)], cwd=candidate.ROOT, check=True, capture_output=True)
+            original = artifact.read_bytes()
+            candidate.validate_candidate_derivation(artifact)
+            self.assertEqual(artifact.read_bytes(), original)
+            for field, value in (("rows", []), ("topology_id", ""), ("cargo_lock_digest", "short")):
+                data = json.loads(original)
+                data[field] = value
+                changed = json.dumps(data).encode()
+                artifact.write_bytes(changed)
+                with self.subTest(field=field), self.assertRaises(subprocess.CalledProcessError):
+                    candidate.validate_candidate_derivation(artifact)
+                self.assertEqual(artifact.read_bytes(), changed)
     def test_non_complete_predecessors_refuse(self):
         mutations = [(1, "source_checkout_denied", False),
                      (1, "graph_comparison", {"expected_packages": 0, "matched_packages": 0}),
@@ -186,6 +231,38 @@ class BindingTests(unittest.TestCase):
             data[index][field] = copy.deepcopy(value)
             with self.subTest(field=field, value=value), self.assertRaises(ValueError):
                 self.validate(data)
+
+    def test_install_structural_gaps_refuse(self):
+        for field, value in (("package_rows", []), ("toolchain", ""), ("cargo_lock_digest", "short"),
+                             ("registry_index_digest", ""), ("external_cache_identity", "/home/local"),
+                             ("install_root_identity", "path"), ("cargo_home_identity", ""),
+                             ("claim_boundary", " ")):
+            data = predecessors()
+            data[1][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.validate(data)
+        for field, value in (("package_name", ""), ("package_version", ""), ("crate_digest", "bad"),
+                             ("index_checksum", "bad"), ("resolved_version", " ")):
+            data = predecessors()
+            data[1]["package_rows"][0][field] = value
+            with self.subTest(row_field=field), self.assertRaises(ValueError):
+                self.validate(data)
+        data = predecessors()
+        data[1]["package_rows"] *= 2
+        with self.assertRaises(ValueError):
+            self.validate(data)
+
+    def test_cross_receipt_package_rows_and_counts_must_match(self):
+        for index, rows_key, field in ((0, "rows", "crate_digest"), (1, "package_rows", "package_version"),
+                                      (1, "package_rows", "index_checksum"), (2, "package_rows", "logical_id")):
+            data = predecessors()
+            data[index][rows_key][0][field] = "sha256:" + "9" * 64
+            with self.subTest(index=index, field=field), self.assertRaises(ValueError):
+                self.validate(data)
+        data = predecessors()
+        data[1]["graph_comparison"] = {"expected_packages": 2, "matched_packages": 2}
+        with self.assertRaises(ValueError):
+            self.validate(data)
 
 
 if __name__ == "__main__":
