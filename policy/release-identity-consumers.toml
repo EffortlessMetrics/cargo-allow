@@ -26,6 +26,17 @@ guard = "crates/cargo-allow/src/release_identity_denominator_tests.rs"
 scan_roots = ["scripts", ".github/workflows", "action.yml", ".changie.yaml"]
 
 [[consumers]]
+id = "linux-gnu-candidate-abi-version"
+path = "scripts/linux-gnu-candidate.py"
+role = "numeric GNU libc ABI requirement comparison for the unpublished installed candidate"
+disposition = "exact-value-pass-through"
+owner = "#3151"
+marker_classes = ["version-regex"]
+exact_counts = [{ class = "version-regex", count = 1 }]
+sites = ["def version(value: str)", "unsupported GLIBC version label"]
+claim_boundary = "The numeric parser orders GLIBC ABI version needs against the declared host baseline. Product versions are passed unchanged from the bound package-candidate artifact and compared for exact equality with installed stdout; this surface decides no release channel, tag or prerelease posture."
+
+[[consumers]]
 id = "release-workflow-tag-channel"
 path = ".github/workflows/release.yml"
 role = "tag-triggered release orchestrator"
