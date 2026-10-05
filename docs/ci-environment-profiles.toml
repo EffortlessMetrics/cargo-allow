@@ -41,10 +41,10 @@ id = "ci-package-smoke"
 workflow = ".github/workflows/ci.yml"
 job = "package-smoke"
 posture = "MovingStableCompatibilityCanary"
-runner = "ubuntu-latest"
+runner = "ubuntu-22.04"
 toolchain = "stable"
 result_posture = "required"
-claim = "Candidate packaging and install journey in the observed stable environment"
+claim = "Candidate packaging and installed journey on glibc 2.35 with Python 3.12 and the observed stable Rust toolchain; GNU ABI and archive export evidence, not published-channel qualification"
 
 [[profile]]
 id = "ci-shallow-diff-smoke"

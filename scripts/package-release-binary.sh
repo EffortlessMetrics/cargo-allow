@@ -14,18 +14,25 @@ release_tag="${RELEASE_TAG:-}"
 release_commit="${RELEASE_COMMIT:-}"
 release_tree="${RELEASE_TREE:-}"
 output_dir="${OUTPUT_DIR:-${ROOT}/target/cargo-allow/release-assets}"
+candidate=false
 
 log() { printf 'package-release-binary: %s\n' "$*"; }
 fail() { printf 'package-release-binary: error: %s\n' "$*" >&2; exit 1; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --candidate) candidate=true; shift ;;
     --version) [[ $# -ge 2 ]] || fail "--version requires a value"; version="$2"; shift 2 ;;
     --target) [[ $# -ge 2 ]] || fail "--target requires a value"; target="$2"; shift 2 ;;
     --output-dir) [[ $# -ge 2 ]] || fail "--output-dir requires a value"; output_dir="$2"; shift 2 ;;
     *) fail "unknown argument: $1" ;;
   esac
 done
+
+if [[ "${candidate}" == true ]]; then
+  [[ -z "${release_tag}" ]] || fail "candidate archives must not name a release tag"
+  [[ -n "${CARGO_ALLOW_BIN:-}" ]] || fail "candidate archives require an already-installed CARGO_ALLOW_BIN"
+fi
 
 [[ "${target}" == "x86_64-unknown-linux-gnu" ]] \
   || fail "unsupported target ${target}; this lane is Linux-only"
@@ -71,6 +78,34 @@ archive_tree="${stage}/${archive_root}"
 mkdir -p "${archive_tree}"
 cp "${bin}" "${archive_tree}/cargo-allow"
 cp LICENSE-APACHE LICENSE-MIT "${archive_tree}/"
+if [[ "${candidate}" == true ]]; then
+cat >"${archive_tree}/README.md" <<EOF
+# cargo-allow ${version}: unpublished source candidate
+
+Target: ${target}
+
+These exact bytes are a nonpublishing CI candidate, not a tagged release.
+Retain the matching linux-gnu-candidate.json and its predecessor receipts from
+the same successful CI run. They bind the source commit/tree, installed binary,
+GLIBC requirements and archive checksums. Published-channel support, release
+attestation, universal Linux compatibility and external adoption are not claimed.
+EOF
+cat >"${archive_tree}/VERIFICATION.md" <<EOF
+# Candidate verification
+
+Obtain this archive and its sidecars from the same reviewed, successful CI run.
+Before extraction, verify the matching archive checksum:
+
+    sha256sum --check ${archive_name}.sha256
+
+Before executing, verify the extracted executable checksum against
+${archive_name}.executable.sha256 and the matching linux-gnu-candidate.json.
+Confirm the recorded target and GLIBC requirements fit the destination host.
+Run the exact extracted path; do not substitute an ambient cargo-allow binary.
+
+No release attestation exists for this unpublished source candidate.
+EOF
+else
 cat >"${archive_tree}/README.md" <<EOF
 # cargo-allow ${version}
 
@@ -98,6 +133,7 @@ After extraction, check the executable identity:
 
 This archive does not claim universal Linux, musl, or CPU compatibility.
 EOF
+fi
 chmod 0755 "${archive_tree}/cargo-allow"
 chmod 0755 "${archive_tree}"
 chmod 0644 "${archive_tree}/LICENSE-APACHE" "${archive_tree}/LICENSE-MIT" \

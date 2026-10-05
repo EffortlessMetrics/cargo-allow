@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  The nonpublishing GNU candidate lane now builds its existing isolated install
+  on the glibc 2.35 baseline and exports those qualified bytes with explicit
+  ABI, source and predecessor bindings. Candidate archives carry unpublished
+  instructions and require an existing installed binary. Rust/MSRV, release
+  publication and final support selection are unchanged.

@@ -61,6 +61,43 @@ expect_failure() {
   fi
 }
 
+# Candidate archives keep the envelope, require installed bytes and carry
+# instructions that do not request a nonexistent release attestation.
+mkdir -p "${work}/no-cargo"
+cat >"${work}/no-cargo/cargo" <<EOF
+#!/usr/bin/env bash
+touch "${work}/unexpected-cargo-call"
+exit 97
+EOF
+chmod 0755 "${work}/no-cargo/cargo"
+for attempt in 1 2; do
+  PATH="${work}/no-cargo:${PATH}" CARGO_ALLOW_BIN="${fixture_bin}" VERSION=9.9.9 RELEASE_TAG= \
+    bash scripts/package-release-binary.sh --candidate --output-dir "${work}/candidate-${attempt}" >/dev/null
+done
+candidate_archive="${work}/candidate-1/$(basename "${archive}")"
+cmp "${candidate_archive}" "${work}/candidate-2/$(basename "${archive}")"
+[[ ! -e "${work}/unexpected-cargo-call" ]] || { printf 'candidate invoked Cargo\n' >&2; exit 1; }
+bash scripts/verify-release-binary.sh --version 9.9.9 "${candidate_archive}" >/dev/null
+python3 - "${candidate_archive}" "${archive}" <<'PY'
+import sys
+import tarfile
+
+for path, candidate in zip(sys.argv[1:], (True, False)):
+    with tarfile.open(path, "r:gz") as bundle:
+        assert len(bundle.getmembers()) == 6
+        docs = "\n".join(
+            bundle.extractfile(member).read().decode("utf-8")
+            for member in bundle.getmembers() if member.name.endswith(("/README.md", "/VERIFICATION.md"))
+        )
+    assert ("unpublished source candidate" in docs) is candidate
+    assert ("gh attestation verify" in docs) is not candidate
+PY
+expect_failure env CARGO_ALLOW_BIN="${fixture_bin}" RELEASE_TAG=v9.9.9 \
+  bash scripts/package-release-binary.sh --candidate --version 9.9.9 --output-dir "${work}/tagged-candidate"
+expect_failure env PATH="${work}/no-cargo:${PATH}" CARGO_ALLOW_BIN= RELEASE_TAG= \
+  bash scripts/package-release-binary.sh --candidate --version 9.9.9 --output-dir "${work}/missing-installed"
+[[ ! -e "${work}/unexpected-cargo-call" ]] || { printf 'missing candidate invoked Cargo\n' >&2; exit 1; }
+
 python3 scripts/test-release-topology-publisher.py
 python3 scripts/test-final-package-docs.py
 bash scripts/check-crate-docs.sh
@@ -452,6 +489,8 @@ path = pathlib.Path(sys.argv[1])
 receipt = json.loads(path.read_text(encoding="utf-8"))
 receipt["schema_id"] = "cargo-allow.release-binary-contract-test.v1"
 receipt["negative_controls"] = [
+    "candidate_rejects_release_tag",
+    "candidate_requires_installed_binary_without_cargo_fallback",
     "missing_archive_checksum",
     "missing_executable_checksum",
     "wrong_version",
