@@ -23,7 +23,7 @@ pub(crate) use why_args::WhyArgs;
 #[cfg(test)]
 use why_render::render_why_text;
 use why_render::{
-    WhyCandidate, render_why_json_with_evaluation_and_scanner_completeness,
+    WhyCandidate, WhyRenderMetadata, render_why_json_with_evaluation_and_scanner_completeness,
     render_why_target_scan_json, render_why_target_scan_text,
     render_why_text_styled_with_evaluation_and_scanner_completeness,
 };
@@ -331,8 +331,10 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
                     &candidates,
                     style,
                     evaluation,
-                    scanner_completeness,
-                    line_targeting,
+                    WhyRenderMetadata {
+                        scanner_completeness,
+                        line_targeting,
+                    },
                 ),
             );
             rendered

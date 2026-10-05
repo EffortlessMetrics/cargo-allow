@@ -848,11 +848,13 @@ fn why_human_text_names_the_requested_line_on_mismatch() {
         &[],
         allow_report::Style::PLAIN,
         evaluation,
-        Some("complete"),
-        Some(allow_report::WhyLineTargeting {
-            requested: 999,
-            matched: 15,
-        }),
+        WhyRenderMetadata {
+            scanner_completeness: Some("complete"),
+            line_targeting: Some(allow_report::WhyLineTargeting {
+                requested: 999,
+                matched: 15,
+            }),
+        },
     );
     assert!(
         mismatched.contains("requested_line: 999"),
@@ -871,8 +873,10 @@ fn why_human_text_names_the_requested_line_on_mismatch() {
         &[],
         allow_report::Style::PLAIN,
         evaluation,
-        Some("complete"),
-        None,
+        WhyRenderMetadata {
+            scanner_completeness: Some("complete"),
+            line_targeting: None,
+        },
     );
     assert!(
         !exact.contains("requested_line"),
