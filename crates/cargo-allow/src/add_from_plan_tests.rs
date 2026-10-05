@@ -385,7 +385,8 @@ fn enrich_with_regen_hint_is_idempotent() {
 }
 
 #[test]
-fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded() {
+fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
+-> Result<(), Box<dyn std::error::Error>> {
     let dir = std::env::temp_dir().join(format!(
         "cargo-allow-from-plan-fresh-hint-{}",
         std::process::id()
@@ -393,8 +394,9 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded() {
     std::fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create hint fixture: {err}")));
     let plan_path = dir.join("add-finding-plan.json");
-    let first = fresh_plan_hint_path(&plan_path)
-        .expect("a free candidate name should exist beside the recorded plan");
+    let first = fresh_plan_hint_path(&plan_path).map_err(|error| {
+        format!("a free candidate name should exist beside the recorded plan: {error}")
+    })?;
     assert_eq!(
         first.file_name().and_then(std::ffi::OsStr::to_str),
         Some("add-finding-plan.retry-1.json"),
@@ -403,8 +405,8 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded() {
     );
     std::fs::write(&first, "taken")
         .unwrap_or_else(|err| std::panic::panic_any(format!("take candidate: {err}")));
-    let second =
-        fresh_plan_hint_path(&plan_path).expect("the probe should skip taken candidate names");
+    let second = fresh_plan_hint_path(&plan_path)
+        .map_err(|error| format!("the probe should skip taken candidate names: {error}"))?;
     assert_eq!(
         second.file_name().and_then(std::ffi::OsStr::to_str),
         Some("add-finding-plan.retry-2.json"),
