@@ -527,14 +527,15 @@ jobs:
           from pathlib import Path
 
           receipt_path = Path("target/perf-budget/operator-latency.receipt.json")
-          schema_path = Path("docs/schemas/operator-latency.v2.schema.json")
+          schema_path = Path("docs/schemas/operator-latency.v3.schema.json")
           assert receipt_path.is_file(), f"missing receipt: {receipt_path}; see the harness step output"
           receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
           schema = json.loads(schema_path.read_text(encoding="utf-8"))
-          assert schema["$id"].endswith("operator-latency.v2.schema.json")
-          assert receipt["schema_id"] == "cargo-allow.operator-latency.v2"
-          assert receipt["schema_version"] == 2
+          assert schema["$id"].endswith("operator-latency.v3.schema.json")
+          assert receipt["schema_id"] == "cargo-allow.operator-latency.v3"
+          assert receipt["schema_version"] == 3
           assert all("cache_mode" in sample for sample in receipt["samples"])
+          assert all("payload_bytes" in sample for sample in receipt["samples"])
           assert receipt["result"] == "pass"
           assert receipt["binary"]["profile"] == "release"
           samples = receipt["samples"]
@@ -543,16 +544,35 @@ jobs:
               policy["cold_process_samples"]
               + policy["warm_process_samples"]
               + policy["targeted_samples"]
+              + policy["agent_loop_samples"]
           )
-          assert policy["cache_mode_samples"] == {"on": 2, "off": 1, "not_applicable": 6}
-          assert (policy["cold_process_samples"], policy["warm_process_samples"], policy["targeted_samples"]) == (2, 3, 4)
+          assert policy["cache_mode_samples"] == {"on": 2, "off": 1, "not_applicable": 14}
+          assert (policy["cold_process_samples"], policy["warm_process_samples"], policy["targeted_samples"], policy["agent_loop_samples"]) == (2, 3, 6, 6)
           assert all(sample["status"] == "passed" for sample in receipt["samples"])
           ceiling = receipt["budget"]["ceiling_ms"]
           assert all(
               isinstance(sample["elapsed_ms"], int) and sample["elapsed_ms"] <= ceiling
               for sample in receipt["samples"]
           )
-          print(f"validated {len(receipt['samples'])} operator-latency samples")
+          agent_loop = receipt["agent_loop"]
+          composite = agent_loop["composite"]
+          assert [step["sample"] for step in composite["steps"]] == [
+              "agent_loop_worklist",
+              "agent_loop_why_plan",
+              "agent_loop_add",
+              "agent_loop_check",
+          ]
+          assert composite["total_elapsed_ms"] >= sum(
+              step["elapsed_ms"] for step in composite["steps"]
+          )
+          assert composite["added_allow_id"]
+          overhead = agent_loop["hooks_overhead"]
+          assert overhead["wrapped_sample"] == "hooks_wrapped_check"
+          assert overhead["bare_sample"] == "hooks_bare_check"
+          assert overhead["overhead_ms"] == (
+              overhead["wrapped_elapsed_ms"] - overhead["bare_elapsed_ms"]
+          )
+          print(f"validated {len(samples)} operator-latency samples")
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
