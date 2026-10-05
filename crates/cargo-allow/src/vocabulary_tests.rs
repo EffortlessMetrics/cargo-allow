@@ -126,3 +126,68 @@ fn json_vocabulary_kind_group_has_aliases_array() {
         "panic aliases should include no-panic-allowlist: {aliases:?}"
     );
 }
+
+/// #4368: `vocabulary` is the discoverability surface for accepted
+/// `--status` values, so its match-status rows must equal exactly the set
+/// `list --status` and `worklist --status` accept (both validated by
+/// `parse_match_status_arg`). Pinned in both directions against the rendered
+/// output so the surfaces cannot drift again.
+#[test]
+fn vocabulary_status_rows_equal_the_status_argument_grammar() {
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
+    let listed: Vec<&str> = text
+        .lines()
+        .skip_while(|line| !line.starts_with("Match statuses"))
+        .skip(1)
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    assert!(
+        !listed.is_empty(),
+        "vocabulary should render match-status rows: {text}"
+    );
+
+    for value in &listed {
+        assert_eq!(
+            crate::parse_match_status_arg(value).as_deref(),
+            Ok(*value),
+            "vocabulary row `{value}` must be accepted by `--status`"
+        );
+    }
+    for status in MatchStatus::ALL {
+        assert!(
+            listed.contains(&status.as_str()),
+            "`--status {}` is accepted but vocabulary omits it: {listed:?}",
+            status.as_str()
+        );
+    }
+    assert!(
+        listed.contains(&"baseline_debt"),
+        "`baseline_debt` is an accepted `--status` value and must be listed: {listed:?}"
+    );
+    assert_eq!(
+        listed.len(),
+        MatchStatus::ALL.len(),
+        "vocabulary should not invent statuses beyond the `--status` grammar"
+    );
+
+    let json = render_vocabulary_json();
+    let parsed: serde_json::Value = serde_json::from_str(&json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("vocabulary JSON parse: {err}")));
+    let json_statuses = parsed
+        .pointer("/statuses")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("statuses should be an array"));
+    let json_listed: Vec<&str> = json_statuses
+        .iter()
+        .map(|value| {
+            value.as_str().unwrap_or_else(|| {
+                std::panic::panic_any(format!("status should be a string: {value}"))
+            })
+        })
+        .collect();
+    assert_eq!(
+        json_listed, listed,
+        "JSON and human vocabulary must name the same status set"
+    );
+}
