@@ -19,3 +19,15 @@ allow_ids = ["allow-11303"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:36a9ae809e460eaef213a4cd0b60e92ec3eff4c8d518626d2a72d00be939aab3"
 reason = "Receipt this note's exact tracked configuration path and the scoped transition rationale."
+
+[[records]]
+allow_ids = ["allow-3151-linux-gnu-candidate"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f1eb6ea9fb097bf809cceda03618a63a26819ffd05181d4c71567f61d71ec429"
+reason = "Own only scripts/linux-gnu-candidate.py, the nonpublishing GLIBC and predecessor-identity verifier/exporter for #3151. Complete predecessor evidence and ABI refusal remain required."
+
+[[records]]
+allow_ids = ["allow-3151-linux-gnu-candidate-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:98a675d4f71f6cd2fe21dd8d365c9441ac2e4b3d7f5e38cfe4740aad0240b01c"
+reason = "Own only scripts/test-linux-gnu-candidate.py, the offline negative controls for #3151 ABI, source drift and complete predecessor obligations. This receipt does not claim external adoption or publication."
