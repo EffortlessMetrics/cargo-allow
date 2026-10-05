@@ -113,20 +113,22 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
 
 /// Append a plan-regeneration hint to a stale add --from-plan rejection. The
 /// hint names a fresh plan path because the recorded one already exists and
-/// add-finding plans are never overwritten (#4334 Break 3, #4364). Call sites
-/// whose rejection leaves regeneration impossible (an already-receipted
+/// add-finding plans are never overwritten (#4334 Break 3, #4364). Coordinates
+/// come from the already-selected live New finding's bindings so a moved finding
+/// is planned at its current line, rather than the stale recorded line.
+/// Call sites whose rejection leaves regeneration impossible (an already-receipted
 /// finding, a finding that can no longer be located at the plan's coordinates)
 /// must not attach this hint — the regeneration command would fail verbatim
 /// and strand the operator in an error loop.
 fn enrich_with_regen_hint(
     error: CargoAllowError,
     plan_path: &Path,
-    plan: &LoadedPlan,
+    bindings: &PlanFindingBindings,
 ) -> CargoAllowError {
-    let kind = &plan.finding.kind;
-    let path = &plan.finding.path;
+    let kind = &bindings.finding_kind;
+    let path = &bindings.finding_path;
     let recorded = plan_path.display();
-    let hint = match (plan.finding.line, fresh_plan_hint_path(plan_path)) {
+    let hint = match (bindings.finding_line, fresh_plan_hint_path(plan_path)) {
         (Some(line), Some(fresh)) => format!(
             "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line} \
              ({recorded} already exists and add-finding plans are never overwritten)",
@@ -199,8 +201,9 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         )?;
 
     // Re-select the finding by the plan's recorded coordinates against the live
-    // scan. A finding that moved or vanished, or a now-ambiguous location, fails
-    // here before any binding comparison.
+    // scan. A uniquely nearest moved finding is selected for diagnosis; exact
+    // bindings still reject its stale plan below. Missing or ambiguous findings
+    // fail here before any binding comparison.
     let finding_line = plan
         .finding
         .line
@@ -235,7 +238,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         finding,
     )?;
     verify_bindings(&plan, &bindings, source_context.source_tree_root())
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &bindings))?;
 
     // Construct the entry canonically from the live finding plus operator
     // judgment. Approval metadata is never read from the plan.

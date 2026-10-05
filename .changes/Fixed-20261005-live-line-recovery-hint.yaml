@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Stale add-finding plan recovery advice now uses the uniquely selected live
+  New finding's coordinates, so a moved finding can be regenerated at its
+  current line. The stale plan still refuses without changing policy; fresh
+  output paths, New-only planning, binding checks and replay refusal remain
+  required.
