@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Extend the operator-latency harness with the #4366 agentic-surface benchmark
+  suite: an agent_loop phase that measures the four-command repair composite
+  (worklist → why --plan → add --from-plan --update → check --mode no-new)
+  against a disposable full-scale clone with a fresh unreceipted probe
+  finding, paired hooks run wrapper overhead, command-summary projections for
+  worklist and check with byte assertions, and per-sample payload_bytes under
+  the additive operator-latency.v3 receipt schema. v2 remains a historical
+  compatibility schema. The budget doc gains per-surface latency targets, the
+  composite budget, and the payload table, with the measured baselines marked
+  as 2026-10-04 Windows debug-host observations pending the hosted release
+  re-baseline.

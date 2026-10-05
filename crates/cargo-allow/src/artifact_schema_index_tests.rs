@@ -161,6 +161,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
             !SELF_DESCRIPTION_SCHEMA_NAMES.contains(&name.as_str())
                 && name != "operator-latency"
                 && name != "operator-latency.v2"
+                && name != "operator-latency.v3"
                 && name != "release-manifest"
                 && name != "release-manifest-v2"
                 && name != "package-candidate-v2"
