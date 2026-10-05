@@ -47,7 +47,7 @@ pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
 #[cfg(test)]
 pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
-use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
+use worklist_queue::{filter_work_items, page_work_items, renumber_work_items, sort_work_items};
 #[cfg(test)]
 use worklist_render::render_worklist_human_with_context;
 use worklist_render::{
@@ -57,7 +57,7 @@ pub(crate) use worklist_scoring::work_item_kind;
 #[cfg(test)]
 use worklist_types::WorkItemLedger;
 pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
-use worklist_types::{WorklistContext, WorklistFilters};
+use worklist_types::{WorklistContext, WorklistFilters, WorklistPaging};
 
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
@@ -114,13 +114,26 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &federation.divergences,
         items.len() + 1,
     ));
+    let unfiltered_total = items.len();
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
     renumber_work_items(&mut items);
+    // Paging composes after filters and ranking (#4366 agent-read payload
+    // budgets). Renumbering runs first so a paged slice keeps the full-queue
+    // item IDs, and the paging block records the pre-paging queue size so an
+    // agent consumer knows what remains.
+    let paging = WorklistPaging {
+        limit: args.limit,
+        offset: args.offset.unwrap_or(0),
+        total: items.len(),
+        unfiltered_total,
+    };
+    let items = page_work_items(items, paging);
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = WorklistContext {
         inventory: source_context.inventory(),
         filters,
+        paging,
     };
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
         crate::reporting::output_style()
@@ -139,7 +152,9 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         &root,
         &source_context,
         &items,
-        filters.any_active(),
+        // A paged queue, like a filtered queue, only ever describes the slice
+        // it listed: an empty page must not read as a clean repository.
+        filters.any_active() || paging.is_applied(),
         inventory_facts,
         report_cfg.requirements.calendar_expiry_blocks_no_new,
     )?;
@@ -283,6 +298,12 @@ fn reject_source_exception_options_for_profile(args: &WorklistArgs) -> CargoAllo
     if args.include_untracked {
         return profile_option_error("--include-untracked");
     }
+    if args.limit.is_some() {
+        return profile_option_error("--limit");
+    }
+    if args.offset.is_some() {
+        return profile_option_error("--offset");
+    }
     Ok(())
 }
 
@@ -341,6 +362,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
                 Some(5),
             ),
             filters: WorklistFilters::default(),
+            paging: WorklistPaging::default(),
         },
     )
 }
@@ -366,6 +388,9 @@ mod filter_source_tests;
 #[cfg(test)]
 #[path = "worklist_filter_tests.rs"]
 mod filter_tests;
+#[cfg(test)]
+#[path = "worklist_paging_tests.rs"]
+mod paging_tests;
 #[cfg(test)]
 #[path = "worklist_proof_command_tests.rs"]
 mod proof_command_tests;

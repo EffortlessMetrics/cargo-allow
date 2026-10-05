@@ -256,6 +256,40 @@ fn worklist_spec_system_profile_rejects_source_exception_filters() {
     assert!(err.to_string().contains("--kind is not supported"));
 }
 
+#[test]
+fn worklist_spec_system_profile_rejects_paging_options() {
+    let root = fixture_root("worklist-profile-limit");
+    let output = root.join("worklist.json");
+    let mut args = worklist_args(&root, &output);
+    args.limit = Some(10);
+
+    let result = cmd_worklist(&args);
+    let _ = fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("--limit is not supported"));
+}
+
+#[test]
+fn worklist_spec_system_profile_rejects_offset_option() {
+    let root = fixture_root("worklist-profile-offset");
+    let output = root.join("worklist.json");
+    let mut args = worklist_args(&root, &output);
+    args.offset = Some(10);
+
+    let result = cmd_worklist(&args);
+    let _ = fs::remove_dir_all(&root);
+
+    assert!(result.is_err());
+    let Err(err) = result else {
+        return;
+    };
+    assert!(err.to_string().contains("--offset is not supported"));
+}
+
 fn worklist_args(root: &Path, output: &Path) -> WorklistArgs {
     WorklistArgs {
         root: RootArgs {
@@ -280,6 +314,8 @@ fn worklist_args(root: &Path, output: &Path) -> WorklistArgs {
         broken_evidence: false,
         weak_evidence: false,
         include_untracked: false,
+        limit: None,
+        offset: None,
         format: HumanJsonFormat::Json,
         output: Some(output.to_path_buf()),
     }

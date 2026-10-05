@@ -69,7 +69,11 @@ pub(crate) struct WorkItem {
 pub(super) struct WorklistContext<'a> {
     pub(super) inventory: allow_report::InventoryContext<'a>,
     pub(super) filters: WorklistFilters<'a>,
+    /// Applied paging, recorded in the JSON artifact when applied.
+    pub(super) paging: allow_report::WorklistPaging,
 }
+
+pub(super) use allow_report::WorklistPaging;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(super) struct WorklistFilters<'a> {

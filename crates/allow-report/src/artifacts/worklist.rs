@@ -1,5 +1,32 @@
 use super::explain::EvidenceReference;
 
+/// Applied worklist paging, recorded in the artifact so agent consumers know
+/// what remains beyond the emitted slice.
+///
+/// `total` counts the work items that matched the applied filters before
+/// limit/offset were applied; `unfiltered_total` counts the work items
+/// constructed before any filter was applied. The default value means no
+/// paging was applied and the artifact is byte-compatible with the unpaged
+/// worklist.v1 shape (no `paging` key is emitted).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct WorklistPaging {
+    /// Applied `--limit`, or `None` when the full filtered queue is emitted.
+    pub limit: Option<u32>,
+    /// Applied `--offset`; ranked work items skipped before emitting.
+    pub offset: u32,
+    /// Filter-matched queue size before paging was applied.
+    pub total: usize,
+    /// Queue size before any filter or paging was applied.
+    pub unfiltered_total: usize,
+}
+
+impl WorklistPaging {
+    /// Whether paging narrowed the emitted queue slice.
+    pub fn is_applied(&self) -> bool {
+        self.limit.is_some() || self.offset > 0
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct WorklistFilters<'a> {
     pub kind: Option<&'a str>,

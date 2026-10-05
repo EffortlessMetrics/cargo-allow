@@ -9,6 +9,7 @@ pub(super) fn render_worklist_json_with_context(
         &report_items,
         report_worklist_filters(context.filters),
         context.inventory,
+        context.paging,
     )
 }
 

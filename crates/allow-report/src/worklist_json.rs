@@ -3,13 +3,14 @@ use crate::json::{bool_json, json_string_array, option_json, push_json_fixed_art
 use crate::worklist_summary::{
     worklist_difficulty_count, worklist_kind_counts, worklist_risk_count,
 };
-use crate::{InventoryContext, WorklistFilters, WorklistItem};
+use crate::{InventoryContext, WorklistFilters, WorklistItem, WorklistPaging};
 use allow_core::json_escape;
 
 pub fn render_worklist_json(
     items: &[WorklistItem<'_>],
     filters: WorklistFilters<'_>,
     inventory: InventoryContext<'_>,
+    paging: WorklistPaging,
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -17,6 +18,13 @@ pub fn render_worklist_json(
     out.push_str("  \"filters\": ");
     out.push_str(&render_worklist_filters_json(filters, "  "));
     out.push_str(",\n");
+    if paging.is_applied() {
+        // The paging block is emitted only when paging was applied so the
+        // default artifact keeps its unpaged worklist.v1 shape.
+        out.push_str("  \"paging\": ");
+        out.push_str(&render_worklist_paging_json(paging, "  "));
+        out.push_str(",\n");
+    }
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"work_items\": {},\n", items.len()));
     out.push_str(&format!(
@@ -223,6 +231,26 @@ fn render_worklist_filters_json(filters: WorklistFilters<'_>, indent: &str) -> S
     out.push_str(&format!(
         "{indent}  \"weak_evidence\": {}\n",
         bool_json(filters.weak_evidence)
+    ));
+    out.push_str(&format!("{indent}}}"));
+    out
+}
+
+fn render_worklist_paging_json(paging: WorklistPaging, indent: &str) -> String {
+    let mut out = String::new();
+    out.push_str("{\n");
+    out.push_str(&format!(
+        "{indent}  \"limit\": {},\n",
+        paging
+            .limit
+            .map(|limit| limit.to_string())
+            .unwrap_or_else(|| "null".to_string())
+    ));
+    out.push_str(&format!("{indent}  \"offset\": {},\n", paging.offset));
+    out.push_str(&format!("{indent}  \"total\": {},\n", paging.total));
+    out.push_str(&format!(
+        "{indent}  \"unfiltered_total\": {}\n",
+        paging.unfiltered_total
     ));
     out.push_str(&format!("{indent}}}"));
     out

@@ -10,6 +10,7 @@ fn worklist_renderers_include_inventory_context() {
             Some(46),
         ),
         filters: WorklistFilters::default(),
+        paging: WorklistPaging::default(),
     };
 
     let json = render_worklist_json_with_context(&items, context);
@@ -52,6 +53,7 @@ fn worklist_renderers_include_applied_filters() {
             broken_evidence: true,
             weak_evidence: true,
         },
+        paging: WorklistPaging::default(),
     };
 
     let json = render_worklist_json_with_context(&items, context);

@@ -49,6 +49,53 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         Some("#/$defs/work_item"),
         "worklist work_items should use work item rows"
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/paging/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/paging"),
+        "worklist paging should use paging schema"
+    );
+    let paging = required_schema_pointer("worklist", &schema, "/$defs/paging");
+    assert_eq!(
+        paging.get("additionalProperties").and_then(Value::as_bool),
+        Some(false),
+        "worklist paging should reject unknown fields"
+    );
+    assert_required_fields(
+        "worklist paging",
+        paging,
+        &["limit", "offset", "total", "unfiltered_total"],
+    );
+    assert_schema_type_equals(
+        "worklist paging limit",
+        &schema,
+        "/$defs/paging/properties/limit/type",
+        &["integer", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/paging/properties/limit/minimum")
+            .and_then(Value::as_u64),
+        Some(1),
+        "worklist paging limit minimum"
+    );
+    for field in ["offset", "total", "unfiltered_total"] {
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/paging/properties/{field}/type"))
+                .and_then(Value::as_str),
+            Some("integer"),
+            "worklist paging {field} should be an integer"
+        );
+        assert_eq!(
+            schema
+                .pointer(&format!("/$defs/paging/properties/{field}/minimum"))
+                .and_then(Value::as_u64),
+            Some(0),
+            "worklist paging {field} minimum"
+        );
+    }
 
     let filters = required_schema_pointer("worklist", &schema, "/$defs/filters");
     assert_eq!(

@@ -69,6 +69,14 @@ pub(crate) struct WorklistArgs {
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     pub(super) include_untracked: bool,
+    /// Maximum number of ranked work items to emit after filters.
+    ///
+    /// Default: no limit; the full filtered queue is emitted.
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub(super) limit: Option<u32>,
+    /// Number of ranked work items to skip before emitting, after filters.
+    #[arg(long, value_parser = clap::value_parser!(u32).range(0..))]
+    pub(super) offset: Option<u32>,
     /// Output format.
     #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
     pub(super) format: HumanJsonFormat,
