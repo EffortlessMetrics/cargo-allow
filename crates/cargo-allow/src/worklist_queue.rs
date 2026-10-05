@@ -140,6 +140,27 @@ pub(super) fn renumber_work_items(items: &mut [WorkItem]) {
     }
 }
 
+/// Slice the ranked queue to the applied paging window.
+///
+/// Callers must page only after `renumber_work_items`: the emitted slice keeps
+/// the full-queue item IDs so `work-<kind>-0007` names the same work item on
+/// every page, and `paging.total` records the pre-paging queue size so an
+/// agent consumer knows what remains.
+pub(super) fn page_work_items(
+    items: Vec<WorkItem>,
+    paging: allow_report::WorklistPaging,
+) -> Vec<WorkItem> {
+    let take = paging
+        .limit
+        .map(|limit| limit as usize)
+        .unwrap_or(usize::MAX);
+    items
+        .into_iter()
+        .skip(paging.offset as usize)
+        .take(take)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{

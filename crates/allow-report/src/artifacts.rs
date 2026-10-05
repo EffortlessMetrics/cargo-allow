@@ -570,4 +570,4 @@ pub use why::{
     EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyLineTargeting, WhyProofPlan,
     WhyReport, WhyTargetScan, WhyTargetScanReport,
 };
-pub use worklist::{WorklistFilters, WorklistItem};
+pub use worklist::{WorklistFilters, WorklistItem, WorklistPaging};

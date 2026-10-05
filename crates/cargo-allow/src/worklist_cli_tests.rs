@@ -29,6 +29,64 @@ fn clap_parses_worklist_location_drift_status() {
 }
 
 #[test]
+fn clap_parses_worklist_limit_and_offset_with_filters() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "worklist",
+        "--kind",
+        "unsafe",
+        "--item-kind",
+        "stale_allow",
+        "--limit",
+        "25",
+        "--offset",
+        "50",
+    ]))
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("CLI should parse worklist paging args: {err}"))
+    });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            kind: Some(kind),
+            item_kind: Some(item_kind),
+            limit: Some(limit),
+            offset: Some(offset),
+            ..
+        })) if kind == "unsafe" && item_kind == "stale_allow" && limit == 25 && offset == 50
+    ));
+}
+
+#[test]
+fn clap_defaults_worklist_paging_to_no_limit() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "worklist"]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse bare worklist args: {err}"))
+        });
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Worklist(WorklistArgs {
+            limit: None,
+            offset: None,
+            ..
+        }))
+    ));
+}
+
+#[test]
+fn clap_rejects_zero_worklist_limit() {
+    let err = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "worklist", "--limit", "0"]))
+        .expect_err("worklist --limit 0 should fail closed");
+
+    assert!(
+        err.to_string().contains("--limit"),
+        "unexpected parse error: {err}"
+    );
+}
+
+#[test]
 fn clap_parses_worklist_json_output() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  `cargo-allow worklist` gains `--limit` and `--offset` paging so agent
+  consumers can take one actionable item without downloading the whole queue.
+  The flags compose with the existing filter flags after ranking, the emitted
+  slice keeps full-queue item IDs, and JSON output records the applied window
+  plus the pre-paging queue sizes (`paging.limit`/`offset`/`total`/
+  `unfiltered_total`) so agents know what remains; the default artifact keeps
+  its unpaged worklist.v1 shape.

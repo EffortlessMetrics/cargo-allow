@@ -51,6 +51,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
             ..WorklistFilters::default()
         },
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+        WorklistPaging::default(),
     );
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.worklist.v1\""));
@@ -242,6 +243,7 @@ fn worklist_json_renderer_includes_optional_evidence_reference() {
         &items,
         WorklistFilters::default(),
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+        WorklistPaging::default(),
     );
 
     assert!(json.contains("\"path\": null"));
@@ -391,4 +393,69 @@ fn worklist_status_style_is_fixed_label_only() {
     let plain =
         render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::PLAIN);
     assert!(!plain.contains('\u{1b}'));
+}
+
+#[test]
+fn worklist_json_renderer_emits_paging_only_when_applied() {
+    let suggested_actions = vec!["review stale allow".to_string()];
+    let proof_commands = vec!["cargo-allow check --mode no-new".to_string()];
+    let items = vec![WorklistItem {
+        id: "work-0001",
+        kind: "stale_allow",
+        exception_kind: Some("panic"),
+        family: Some("unwrap"),
+        owner: Some("parser"),
+        classification: Some("baseline_debt"),
+        reason: Some("generated baseline"),
+        created: Some("2026-05-27"),
+        review_after: Some("2026-07-01"),
+        expires: Some("2026-08-02"),
+        evidence_count: Some(1),
+        selector_precision: Some(42),
+        risk: "high",
+        difficulty: "small",
+        status: "stale",
+        allow_id: Some("allow-0001"),
+        candidate_ids: &[],
+        finding_index: None,
+        path: Some("src/lib.rs"),
+        line: None,
+        column: None,
+        evidence_reference: None,
+        source_package: Some("parser"),
+        message: "stale allow",
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
+    }];
+    let filters = WorklistFilters::default();
+    let inventory =
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47));
+
+    let unpaged = render_worklist_json(&items, filters, inventory, WorklistPaging::default());
+    assert!(
+        !unpaged.contains("\"paging\""),
+        "default render must keep the unpaged worklist.v1 shape"
+    );
+
+    let paged = render_worklist_json(
+        &items,
+        filters,
+        inventory,
+        WorklistPaging {
+            limit: Some(1),
+            offset: 2,
+            total: 5,
+            unfiltered_total: 9,
+        },
+    );
+    assert!(paged.contains("\"paging\""));
+    assert!(paged.contains("\"limit\": 1"));
+    assert!(paged.contains("\"offset\": 2"));
+    assert!(paged.contains("\"total\": 5"));
+    assert!(paged.contains("\"unfiltered_total\": 9"));
 }

@@ -54,6 +54,10 @@
       "$ref": "#/$defs/filters",
       "description": "Applied worklist filters. Absent in older v1 artifacts; null fields mean no filter was applied for that dimension."
     },
+    "paging": {
+      "$ref": "#/$defs/paging",
+      "description": "Applied worklist paging. Absent unless --limit or --offset was applied; records the applied window plus the pre-paging queue sizes so agent consumers know what remains."
+    },
     "summary": {
       "$ref": "#/$defs/summary"
     },
@@ -65,6 +69,41 @@
     }
   },
   "$defs": {
+    "paging": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "limit",
+        "offset",
+        "total",
+        "unfiltered_total"
+      ],
+      "properties": {
+        "limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Applied --limit, or null when the full filtered queue was emitted."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Applied --offset; the number of ranked work items skipped before emitting."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Work items that matched the applied filters before paging; the queue size available for paging, so agents know what remains after the emitted slice."
+        },
+        "unfiltered_total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Work items constructed before any filter or paging was applied."
+        }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

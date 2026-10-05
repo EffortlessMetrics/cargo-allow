@@ -205,7 +205,7 @@ pub use artifacts::{
     RelocatedPackageDocsRowV1, RendererFormatV1, RowReconciliationV1,
     SUPPORTED_TOPOLOGY_GENERATION_V1, TagObservationV1, WhyCandidateEntry, WhyLineTargeting,
     WhyProofPlan, WhyReport, WhyTargetScan, WhyTargetScanReport, WorklistFilters, WorklistItem,
-    WritePosture, compile_candidate_operations, manifest_rows_from_reconciled,
+    WorklistPaging, WritePosture, compile_candidate_operations, manifest_rows_from_reconciled,
     prepare_candidate_plan, project_github_pr_check, recommend_core_adoption_plan,
     render_evaluation_artifact_set_v1, render_evaluation_artifact_set_v1_bytes,
     render_exact_candidate_v2, render_exact_candidate_v2_bytes, render_isolated_install_v2,
