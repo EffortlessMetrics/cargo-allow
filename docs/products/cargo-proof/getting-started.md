@@ -45,9 +45,12 @@ items selected for execution. It never executes provider processes. An empty
 dry-run display is not evidence that obligations are satisfied.
 
 Default features select **zero providers**. Provider-dependent obligations
-can therefore remain `ProviderUnavailable`; blocking unavailable or other
-non-clean items cause `plan` to return a non-success result even when it has
-written the artifact. Inspect the diagnostics and item dispositions before
+can therefore remain `ProviderUnavailable`. The item-disposition check returns
+non-success for any `RepositoryDecisionRequired` item, or a blocking item outside
+`SelectedForExecution`, `SelectedForCapturedIngestion`, `SatisfiedByCurrentReceipt`,
+and `NotApplicableWithReason`, even when `plan` has written the artifact.
+Advisory non-clean items do not by themselves make this check fail.
+Inspect the diagnostics and item dispositions before
 using that artifact. Successful plan generation or dry-run validation is not
 proof execution, receipt currentness, or a satisfied gate.
 
