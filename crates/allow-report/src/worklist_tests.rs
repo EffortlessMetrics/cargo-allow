@@ -383,15 +383,25 @@ fn worklist_status_style_is_fixed_label_only() {
     let inventory =
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47));
 
-    let styled =
-        render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::ANSI);
+    let styled = render_worklist_human_styled(
+        &items,
+        WorklistFilters::default(),
+        inventory,
+        WorklistPaging::default(),
+        Style::ANSI,
+    );
     assert!(styled.contains("  status: \u{1b}[33mstale\u{1b}[0m"));
     assert!(styled.contains("\u{1b}[31mhigh\u{1b}[0m"));
     assert!(styled.contains("evidence reference: \u{1b}[33mmissing\u{1b}[0m:"));
     assert!(!styled.contains("message: \u{1b}"));
 
-    let plain =
-        render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::PLAIN);
+    let plain = render_worklist_human_styled(
+        &items,
+        WorklistFilters::default(),
+        inventory,
+        WorklistPaging::default(),
+        Style::PLAIN,
+    );
     assert!(!plain.contains('\u{1b}'));
 }
 
@@ -458,4 +468,84 @@ fn worklist_json_renderer_emits_paging_only_when_applied() {
     assert!(paged.contains("\"offset\": 2"));
     assert!(paged.contains("\"total\": 5"));
     assert!(paged.contains("\"unfiltered_total\": 9"));
+}
+
+#[test]
+fn worklist_human_names_the_window_of_a_nonempty_limited_page() {
+    // #4404: a paged human render must not present its slice as the whole
+    // queue; the requested window and the pre-paging filtered total are
+    // named. The unpaged layout stays unchanged.
+    let suggested_actions = vec!["review stale allow".to_string()];
+    let proof_commands = vec!["cargo-allow check --mode no-new".to_string()];
+    let items = vec![WorklistItem {
+        id: "work-0003",
+        kind: "stale_allow",
+        exception_kind: Some("panic"),
+        family: Some("unwrap"),
+        owner: Some("parser"),
+        classification: Some("baseline_debt"),
+        reason: Some("generated baseline"),
+        created: Some("2026-05-27"),
+        review_after: Some("2026-07-01"),
+        expires: Some("2026-08-02"),
+        evidence_count: Some(1),
+        selector_precision: Some(42),
+        risk: "high",
+        difficulty: "small",
+        status: "stale",
+        allow_id: Some("allow-0001"),
+        candidate_ids: &[],
+        finding_index: None,
+        path: Some("src/lib.rs"),
+        line: None,
+        column: None,
+        evidence_reference: None,
+        source_package: Some("parser"),
+        message: "stale allow",
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
+    }];
+    let text = render_worklist_human_styled(
+        &items,
+        WorklistFilters::default(),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+        WorklistPaging {
+            limit: Some(1),
+            offset: 2,
+            total: 5,
+            unfiltered_total: 9,
+        },
+        Style::PLAIN,
+    );
+    assert!(text.contains("Work items: 1"));
+    assert!(text.contains(
+        "Paging: showing 1 of 5 filtered items (offset 2, limit 1); adjust --offset/--limit to reach the rest."
+    ));
+}
+
+#[test]
+fn worklist_human_names_an_empty_out_of_range_page() {
+    // #4404: an empty out-of-range page must not read as a clean queue;
+    // the human render names the applied window and the pre-paging total.
+    let text = render_worklist_human_styled(
+        &[],
+        WorklistFilters::default(),
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47)),
+        WorklistPaging {
+            limit: Some(10),
+            offset: 40,
+            total: 4,
+            unfiltered_total: 4,
+        },
+        Style::PLAIN,
+    );
+    assert!(text.contains("Work items: 0"));
+    assert!(text.contains(
+        "Paging: showing 0 of 4 filtered items (offset 40, limit 10); adjust --offset/--limit to reach the rest."
+    ));
 }

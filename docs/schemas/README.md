@@ -115,7 +115,9 @@ Consumers should rely on these properties:
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
   exception, and it names the exact candidate plan path it wrote.
 - A relative `<path>` resolves against the process working directory — the same
-  base as `--output` — on every command that accepts the flag. A resolved path
+  base as `--output` on the working-directory commands (`adopt --output` and
+  `migrate --out` resolve against the source-tree root instead) — on every
+  command that accepts the flag. A resolved path
   outside the source-tree root is rejected with `E0002_INVALID_CONFIG` rather
   than silently relocated into the scanned tree.
 

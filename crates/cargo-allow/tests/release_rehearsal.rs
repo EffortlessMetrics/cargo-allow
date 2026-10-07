@@ -145,6 +145,40 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
     Ok(root.to_path_buf())
 }
 
+/// Scoped owner for a rehearsal fixture directory (#4377): removes the
+/// committed fixture from the system temp dir on scope exit, on success and
+/// on failure alike, so a failed `require` mid-test can no longer strand the
+/// fixture and package archives behind.
+struct FixtureOwner {
+    root: PathBuf,
+}
+
+impl FixtureOwner {
+    fn new(root: PathBuf) -> Self {
+        Self { root }
+    }
+}
+
+impl std::ops::Deref for FixtureOwner {
+    type Target = Path;
+
+    fn deref(&self) -> &Path {
+        &self.root
+    }
+}
+
+impl AsRef<Path> for FixtureOwner {
+    fn as_ref(&self) -> &Path {
+        &self.root
+    }
+}
+
+impl Drop for FixtureOwner {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.root);
+    }
+}
+
 #[test]
 fn rehearsal_candidate_selection_controls() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
@@ -431,7 +465,6 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         )?;
     }
 
-    let _ = std::fs::remove_dir_all(&root);
     Ok(())
 }
 
@@ -467,7 +500,7 @@ fn run_rehearsal_in_fixture(
 /// synthesized workspace that satisfies the verbatim V2 topology. The
 /// caller's worktree state cannot reach the result because the fixture
 /// is a separate committed git repository (#4246).
-fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
+fn rehearsal_fixture() -> Result<FixtureOwner, Box<dyn Error>> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     static FIXTURE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -653,7 +686,7 @@ fn rehearsal_fixture() -> Result<PathBuf, Box<dyn Error>> {
     }
     git_in(&root, &["add", "-A"])?;
     git_in(&root, &["commit", "-m", "rehearsal fixture subject"])?;
-    Ok(root)
+    Ok(FixtureOwner::new(root))
 }
 
 fn copy_directory(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
@@ -671,8 +704,23 @@ fn copy_directory(source: &Path, destination: &Path) -> Result<(), Box<dyn Error
     Ok(())
 }
 
+/// A `git` command for the committed fixture, stripped of the inherited
+/// repository-selection variables (#4377): an ambient `GIT_DIR`,
+/// `GIT_WORK_TREE`, or `GIT_INDEX_FILE` would otherwise aim the fixture's
+/// object store at a foreign repository before the rehearsal entrypoint
+/// rejects the environment.
+fn fixture_git_command() -> Command {
+    let mut command = Command::new("git");
+    for variable in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"] {
+        command.env_remove(variable);
+    }
+    command
+}
+
 fn git_in(root: &Path, args: &[&str]) -> Result<(), Box<dyn Error>> {
-    let output = Command::new("git").args(args).current_dir(root).output()?;
+    let mut command = fixture_git_command();
+    command.args(args).current_dir(root);
+    let output = command.output()?;
     require(
         output.status.success(),
         &format!(
@@ -680,6 +728,53 @@ fn git_in(root: &Path, args: &[&str]) -> Result<(), Box<dyn Error>> {
             args,
             String::from_utf8_lossy(&output.stderr)
         ),
+    )?;
+    Ok(())
+}
+
+#[test]
+fn fixture_git_commands_strip_inherited_repository_selection() -> Result<(), Box<dyn Error>> {
+    // #4377 negative control: the fixture git helper must explicitly remove
+    // the inherited repository-selection variables, so a hostile ambient
+    // GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE cannot aim the fixture's object
+    // store at a foreign repository.
+    let command = fixture_git_command();
+    for variable in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"] {
+        require(
+            command
+                .get_envs()
+                .any(|(key, value)| key == std::ffi::OsStr::new(variable) && value.is_none()),
+            &format!("fixture git commands must remove the inherited {variable}"),
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_owner_cleans_up_on_injected_failure() -> Result<(), Box<dyn Error>> {
+    // #4377: a failed `require` (or any mid-test `?`) aborts the test while
+    // the fixture owner is alive; the owner's Drop must still remove the
+    // committed fixture directory from the system temp dir.
+    let (fixture_subject, injected) = {
+        let root = rehearsal_fixture()?;
+        let fixture_subject = root.join("Cargo.toml");
+        require(
+            fixture_subject.is_file(),
+            "the injected-failure fixture must be built before the failure fires",
+        )?;
+        let injected: Result<(), Box<dyn Error>> =
+            Err(io::Error::other("injected rehearsal failure").into());
+        // The owner drops here on the injected-failure path — the same
+        // scope abort a failed `require` takes.
+        (fixture_subject, injected)
+    };
+    require(
+        injected.is_err(),
+        "the injected failure must be the observed outcome",
+    )?;
+    require(
+        !fixture_subject.exists(),
+        "the scoped owner must remove the fixture directory despite the injected failure",
     )?;
     Ok(())
 }
@@ -723,7 +818,6 @@ fn rehearsal_admission_rejects_a_dirty_fixture() -> Result<(), Box<dyn Error>> {
         stderr.contains("clean checkout"),
         "dirty-fixture admission must name the clean-checkout law",
     )?;
-    let _ = std::fs::remove_dir_all(&root);
     Ok(())
 }
 
@@ -765,6 +859,5 @@ fn rehearsal_packaging_law_fails_on_a_corrupted_candidate_row() -> Result<(), Bo
             receipt.phases.get("candidate_package_set")
         ),
     )?;
-    let _ = std::fs::remove_dir_all(&root);
     Ok(())
 }

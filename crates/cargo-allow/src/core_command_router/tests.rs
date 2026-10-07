@@ -314,8 +314,10 @@ fn an_absolute_working_directory_conflict_is_caught_independently_of_the_cwd() -
 }
 
 /// A relative `--command-summary-output` resolves against the working
-/// directory (#4363), the same base as `--output`, never against the
-/// source-tree root.
+/// directory (#4363), the same base as `--output` on the working-directory
+/// commands, never against the source-tree root. (`adopt --output` and
+/// `migrate --out` resolve against the source-tree root instead, so the
+/// sidecar base can differ from the artifact base on those commands.)
 #[test]
 fn relative_summary_requests_resolve_against_the_working_directory() -> Result<(), String> {
     let cwd = std::env::current_dir().map_err(|error| error.to_string())?;
