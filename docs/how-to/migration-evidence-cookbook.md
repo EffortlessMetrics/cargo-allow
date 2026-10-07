@@ -15,6 +15,11 @@ cargo-allow migrate \
   --summary-output target/cargo-allow/migrate-summary.json
 ```
 
+This re-runs migration into the same output path. The writer refuses to
+overwrite an existing file without `--force` (`E0007_ARTIFACT`), so add
+`--force` when an earlier migration run already created it; otherwise read the
+existing `target/cargo-allow/migrate-summary.json` directly.
+
 Read `closeout` first. It answers the migration handoff questions without chat
 memory:
 
@@ -90,6 +95,21 @@ cargo-allow worklist --kind unsafe --item-kind weak_evidence_reference --format 
 The `--broken-evidence` and `--weak-evidence` shortcuts route to the same
 generic worklist queues. Prefer `--item-kind` in migration notes and agent
 handoffs so the queued work item type is explicit.
+
+Queue counts in the migration summary are entry counts, not queue-output
+counts. The worklist lists an entry only while its selector matches a current
+finding, so when a sibling retained entry already claims that finding — or the
+selector no longer matches the current tree — the routed command can return
+zero items while the summary count is nonzero. Treat a zero-item queue as a
+prompt to close the entry in the ledger instead of proof the debt is gone:
+
+```bash
+cargo-allow list --classification baseline_debt --format json
+cargo-allow explain allow-0042
+```
+
+The closeout queues read the canonical policy: run them after installing
+`policy/allow.toml`, or pass `--config <migrated output>` on each command.
 
 For unsafe migration closeout, use the
 [unsafe migration evidence guide](close-unsafe-migration-evidence.md).

@@ -194,6 +194,15 @@ Migration converts generated baseline records into temporary
 legacy `count` field. The occurrence limit is important: a counted baseline
 entry must not approve unlimited future panic-family findings.
 
+Legacy baseline lifecycle dates must already satisfy canonical policy
+validation: a `baseline_debt` entry's `expires` must be within 120 days of its
+`created` date. Migration runs that validation before writing, so a legacy
+baseline with an over-long span aborts through both `migrate --from` and
+`--repo-policy` with `E0003_INVALID_POLICY ... baseline_debt expires must be
+within 120 days` and no output is written. The recovery is in the legacy file:
+edit the entry's `created`/`expires` dates to a span of 120 days or less, then
+re-run the migration.
+
 Clippy exception compat is available for legacy
 `policy/clippy-exceptions.toml` files:
 
@@ -224,11 +233,15 @@ cargo-allow migrate --from policy/unsafe-allowlist.toml --out target/unsafe.allo
 
 Compat maps retained unsafe entries to canonical `unsafe` receipts and compares
 them with current source-syntax unsafe findings. It does not run rustc, build
-scripts, proc macros, or unsafe-review. If a legacy entry is missing evidence,
-the migrated receipt remains temporary `baseline_debt` with
-`legacy-policy:<id>` traceability plus TODO unsafe-review or boundary-test
-evidence. The TODO remains weak evidence so the worklist still routes the entry
-for human review.
+scripts, proc macros, or unsafe-review. Legacy owner, reason, and
+classification metadata are preserved as written: an entry that already
+carries `classification = "reviewed_unsafe_boundary"` keeps that classification
+after migration. Only missing evidence falls back — the migrated receipt gains
+`legacy-policy:<id>` traceability plus a `TODO: add unsafe-review or
+boundary-test evidence` placeholder. That TODO stays weak evidence, so the
+summary counts it under `weak_evidence_references` and the unsafe
+weak-evidence worklist queue still routes the entry for human review; the
+entry itself is not demoted to `baseline_debt`.
 
 ## Canonical Policy Flow
 
@@ -238,6 +251,25 @@ The target state is:
 cargo-allow migrate --repo-policy policy/ --out policy/allow.toml
 cargo-allow check --mode no-new
 ```
+
+Expect the first gate run to stay red. The migrated ledger receipts the legacy
+exceptions, but the legacy `policy/*.toml` files themselves are still tracked
+source files, and so are the repo's manifests, workflows, scripts, and
+`.gitattributes`. `check --mode no-new` therefore typically reports new
+non-Rust findings for those paths immediately after migration; the companion
+kinds carried by migrated entries do not cover those plain non-Rust findings.
+Route the residue and retire the legacy files before treating the flow as
+green:
+
+```bash
+cargo-allow worklist --status new --format json
+```
+
+`closeout.legacy_retirement` in the migration summary lists which legacy
+sources are still `blocked` and why. Re-running migration into the existing
+`policy/allow.toml` requires `--force` (see the writer rules below). Once the
+legacy files are removed and the remaining infrastructure findings are
+receipted on their own merits, the same `check --mode no-new` passes.
 
 `--repo-policy` combines the supported legacy files in a policy directory into
 one canonical cargo-allow policy. It currently includes the shiplog-style
@@ -271,7 +303,17 @@ counts, lint-exception counts, evidence-bearing entry counts, total evidence
 reference counts, weak-evidence reference counts when present, and the same
 migration notes shown by the human summary. When migrated policy contains
 `baseline_debt`, the summary routes follow-up work through
-`cargo-allow worklist --item-kind baseline_debt --format json`. When migrated
+`cargo-allow worklist --item-kind baseline_debt --format json`. The `count`
+beside each routed queue is a classification count of migrated entries, not
+the number of items the routed command returns: the worklist lists an entry
+only while its selector matches a current finding. When a sibling retained
+entry already claims that finding, or the entry's selector no longer matches
+the current tree, the routed command can return zero items while the count is
+nonzero. Treat a zero-item queue as a prompt to close the entry in the ledger
+(`cargo-allow list --classification baseline_debt --format json`, then
+`cargo-allow explain <id>`), not as proof the debt is resolved. The closeout
+commands read the canonical policy: run them after installing
+`policy/allow.toml`, or pass `--config <migrated output>`. When migrated
 policy contains broken local evidence links or weak evidence references, the
 summary also routes repair work to the corresponding
 `cargo-allow worklist --item-kind ... --format json` queue. Unsafe-specific
@@ -387,7 +429,11 @@ cargo-allow migrate \
 
 `migrate --from` auto-detects `dialect = "xtask-ripr"` before legacy or
 canonical dispatch. The migration summary records `input_kind = "bespoke"` and
-compat kind `bespoke-ledger`.
+compat kind `bespoke-ledger`. The writer refuses to overwrite an existing
+output: a second migration into the same `--out` path (for example after
+following the how-to guide's bespoke command, which writes the same default
+path) fails with `E0007_ARTIFACT ... already exists; use --force to overwrite`.
+Pass `--force` only when replacing the earlier artifact is intended.
 
 After migration, run canonical check in no-new mode:
 
