@@ -125,6 +125,20 @@ pub(crate) fn lock_path(target: &Path) -> PathBuf {
     let canonical = canonicalize_lexically(&absolute_target);
     std::env::temp_dir().join("cargo-allow-locks").join(format!(
         "{}.lock",
-        crate::error::stable_hash_hex(&canonical.to_string_lossy())
+        lock_file_stem(&crate::error::stable_hash_hex(&canonical.to_string_lossy()))
     ))
+}
+
+/// Sanitize a fingerprint into a filename-safe lock file stem.
+///
+/// Fingerprints embed `fnv1a64:<hex>`; on Windows a colon in a filename is an
+/// NTFS alternate data stream, which made the lock invisible to `dir`/Explorer
+/// and let `Drop`'s `remove_file` delete only the stream instead of the lock
+/// file (#4378). Replacing the colon with `-` keeps the same lock directory and
+/// a regular, inspectable `fnv1a64-<hex>.lock` file whose name still shows the
+/// full fingerprint to operators. POSIX is unchanged: the new name is legal
+/// there too. Lock residue left under the old colon-bearing name by earlier
+/// versions is orphaned in temp (never re-locked) and harmless.
+pub(crate) fn lock_file_stem(fingerprint: &str) -> String {
+    fingerprint.replace(':', "-")
 }

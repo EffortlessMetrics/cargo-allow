@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Mutation lock filenames replace the fingerprint's colon with a dash
+  (fnv1a64-<hash>.lock) so on Windows the lock stays a regular, inspectable
+  file instead of an NTFS alternate data stream, and Drop cleanup really
+  removes it. Old-format lock residue in temp is orphaned and harmless.

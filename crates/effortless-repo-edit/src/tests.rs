@@ -93,6 +93,75 @@ fn acquire_with_timeout_returns_descriptive_error_on_timeout() {
         message.contains("stale processes"),
         "timeout error should suggest checking for stale processes: {message}"
     );
+    let lock_file_name = lock_path(&target)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    assert!(
+        message.contains(&lock_file_name),
+        "timeout error should name the actual lock file: {message}"
+    );
+    assert!(
+        !lock_file_name.contains(':'),
+        "diagnostic lock file name must be openable with standard tools \
+         (no NTFS alternate data stream): {lock_file_name}"
+    );
+}
+
+#[test]
+fn lock_path_file_name_is_windows_safe() {
+    let root = TempRoot::new("safe-lock-name")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("temp dir: {err}")));
+    let target = root.path().join("policy/allow.toml");
+
+    let name = lock_path(&target)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+
+    assert!(
+        !name.contains(':'),
+        "lock file name must not contain ':' (an NTFS alternate data stream on Windows): {name}"
+    );
+    assert!(
+        name.starts_with("fnv1a64-") && name.ends_with(".lock"),
+        "lock file name should keep the sanitized fingerprint visible: {name}"
+    );
+}
+
+#[test]
+fn dropped_lock_removes_its_lock_file() -> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("drop-removes")?;
+    let target = root.path().join("policy/allow.toml");
+
+    let lock = MutationLock::acquire(&target)?;
+    assert!(
+        lock_path(&target).exists(),
+        "acquire must create the lock file"
+    );
+    drop(lock);
+
+    assert!(
+        !lock_path(&target).exists(),
+        "Drop must remove the lock file so temp does not accumulate (#2781)"
+    );
+    Ok(())
+}
+
+#[test]
+fn stale_lock_file_does_not_block_acquisition() -> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("stale-lock-recovery")?;
+    let target = root.path().join("policy/allow.toml");
+    let path = lock_path(&target);
+    fs::create_dir_all(path.parent().unwrap_or(Path::new(".")))?;
+    // Residue of a kill -9'd run: the lock file persists on disk but no live
+    // process holds the advisory lock, so acquisition must still succeed.
+    fs::write(&path, b"stale")?;
+
+    let _recovered = MutationLock::acquire(&target)?;
+    Ok(())
 }
 
 #[test]

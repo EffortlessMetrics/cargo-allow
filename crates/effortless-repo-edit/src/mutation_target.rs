@@ -177,10 +177,15 @@ fn resolve_nearest_existing(path: &Path) -> RepoEditResult<PathBuf> {
 ///
 /// This replaces the old `lock_path` function that hashed raw lexical path
 /// text. Equal targets (by canonical identity) share one lock key.
+///
+/// The fingerprint (`fnv1a64:<hex>`) is sanitized into the filename
+/// (`fnv1a64-<hex>.lock`) because a colon is an NTFS alternate data stream
+/// separator on Windows (#4378); see `mutation_lock::lock_file_stem`.
 pub fn lock_path_for_target(target: &MutationTarget) -> PathBuf {
-    std::env::temp_dir()
-        .join("cargo-allow-locks")
-        .join(format!("{}.lock", target.target_fingerprint()))
+    std::env::temp_dir().join("cargo-allow-locks").join(format!(
+        "{}.lock",
+        crate::mutation_lock::lock_file_stem(target.target_fingerprint())
+    ))
 }
 
 /// Compare a requested target with the identity held when its lock was taken.
