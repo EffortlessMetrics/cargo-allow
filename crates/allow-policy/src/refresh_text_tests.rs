@@ -16,7 +16,7 @@ fn bounded_values_preserve_quoted_headers_fake_headers_comments_and_legacy_hints
     // A multiline reason containing apparent tables must never drive selection.
     let prefix = prefix.replace(
         "reason='fixture'",
-        "reason='''fixture\n[allow.last_seen]\nline=99\ncolumn=1\n'''",
+        "reason='''fixture\n[allow.last_seen]\nline=99\ncolumn=1'''",
     );
     let prefix = format!(
         "{prefix}# inert legacy hint above\r\n[ 'allow' . 'last_seen' ] # selected\r\n'line' = "
@@ -29,6 +29,7 @@ fn bounded_values_preserve_quoted_headers_fake_headers_comments_and_legacy_hints
         ("+99", "0x01", "3", "50"),
     ] {
         let input = format!("{prefix}{line} # line\ncolumn = {column} # EOF");
+        crate::parse_policy(&input)?;
         let expected = format!("{prefix}{new_line} # line\ncolumn = {new_column} # EOF");
         let actual = refresh_policy_entry(
             &input,
