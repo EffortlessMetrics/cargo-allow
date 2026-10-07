@@ -65,6 +65,51 @@ fn occurrence_headroom_work_item_reports_remaining_capacity() {
 }
 
 #[test]
+fn baseline_debt_queue_counts_entries_whose_match_a_sibling_claims() {
+    // #4394 G5: migrate's closeout.next_queues advertises a classification-
+    // based count and routes to `worklist --item-kind baseline_debt`. In the
+    // dual-file legacy shape the allowlist sibling consumes the live match,
+    // so the baseline entry has no Matched outcome — the queue must still
+    // list it from ledger posture, or the routed command returns zero items
+    // against the advertised count.
+    let mut cfg = AllowConfig::empty();
+    let mut sibling = test_entry("allow-sibling", FindingKind::Panic);
+    sibling.classification = "reviewed_exception".to_string();
+    cfg.allow.push(sibling);
+    let mut baseline = test_entry("allow-baseline", FindingKind::Panic);
+    baseline.classification = "baseline_debt".to_string();
+    cfg.allow.push(baseline);
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    );
+    let outcomes = vec![test_outcome(
+        MatchStatus::Matched,
+        Some("allow-sibling"),
+        Some(0),
+        "matched",
+    )];
+
+    let items = work_items_from_policy_advisories(&cfg, &[finding], &outcomes, 0);
+
+    let baseline_items: Vec<_> = items
+        .iter()
+        .filter(|item| item.kind == "baseline_debt")
+        .collect();
+    assert_eq!(baseline_items.len(), 1);
+    let item = baseline_items
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected baseline_debt posture work item"));
+    assert_eq!(item.allow_id.as_deref(), Some("allow-baseline"));
+    assert_eq!(item.status, MatchStatus::BaselineDebt);
+    assert_eq!(item.finding_index, None);
+    assert_eq!(item.path.as_deref(), Some("tracked.file"));
+    assert!(item.message.contains("still needs human review"));
+}
+
+#[test]
 fn source_package_name_call_presence_observer() {
     let mut cfg = AllowConfig::empty();
     let mut entry = test_entry("allow-baseline", FindingKind::Panic);
