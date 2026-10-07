@@ -145,6 +145,7 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         Path::new("src/child.rs"),
         "child".to_string(),
         false,
+        false,
         Vec::new(),
     );
     let (contention_tx, contention_rx) = mpsc::channel();
@@ -192,6 +193,7 @@ fn killed_lock_holder_releases_os_lock() -> Result<(), String> {
         Path::new("src/recovered.rs"),
         "recovered".to_string(),
         false,
+        false,
         Vec::new(),
     );
     if !store.flush() {
@@ -209,6 +211,7 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
     initial.put(
         Path::new("src/original.rs"),
         "original".to_string(),
+        false,
         false,
         Vec::new(),
     );
@@ -259,13 +262,14 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
         Path::new("src/next.rs"),
         "next".to_string(),
         false,
+        false,
         Vec::new(),
     );
     if !next.flush() {
         return Err("recovery production flush failed".to_string());
     }
     if ScanCacheStore::open(&root.0, "generation")
-        .get(Path::new("src/next.rs"), "next")
+        .get(Path::new("src/next.rs"), "next", false)
         .is_none()
     {
         return Err("recovery entry missing".to_string());
@@ -296,6 +300,7 @@ fn child_helper() -> Result<(), String> {
         store.put(
             Path::new("src/child.rs"),
             "child".to_string(),
+            false,
             false,
             Vec::new(),
         );

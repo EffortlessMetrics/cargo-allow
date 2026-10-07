@@ -141,6 +141,7 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
                 store.get(
                     Path::new("src/lib.rs"),
                     &allow_core::sha256_v1_bytes(text.as_bytes()),
+                    false,
                 )
             })
             .is_some()

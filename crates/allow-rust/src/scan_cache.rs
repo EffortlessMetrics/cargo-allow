@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use crate::finding_builder::identity_redaction_enabled;
 use crate::scan_cache_store::ScanCacheStore;
 
 /// In-memory cache of parsed Rust findings keyed by file identity.
@@ -121,6 +122,9 @@ impl ScanCache {
     ///
     /// The file is always read (the digest is the invalidation authority), but
     /// a digest match — in memory or on disk — skips the tree-sitter parse.
+    /// Durable entries are additionally keyed by the identity-redaction mode
+    /// so a warm cache never replays findings produced under the other mode's
+    /// redaction contract (#1920).
     /// Returns `(findings, has_parse_error, skipped)` with the same skipped
     /// semantics as [`ScanCache::scan_file`].
     #[cfg(feature = "syntax")]
@@ -141,6 +145,7 @@ impl ScanCache {
         };
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let content_digest = sha256_v1_bytes(text.as_bytes());
+        let redacted = identity_redaction_enabled();
 
         // In-memory hit: same evaluated bytes inside this invocation.
         if let Some(entry) = self.entries.get(rel)
@@ -149,6 +154,7 @@ impl ScanCache {
             store.put(
                 rel,
                 content_digest,
+                redacted,
                 entry.has_parse_error,
                 entry.findings.clone(),
             );
@@ -156,8 +162,8 @@ impl ScanCache {
         }
 
         // Durable hit: a previous invocation parsed these exact bytes with
-        // this scanner generation.
-        if let Some((findings, has_parse_error)) = store.get(rel, &content_digest) {
+        // this scanner generation under this identity-redaction mode.
+        if let Some((findings, has_parse_error)) = store.get(rel, &content_digest, redacted) {
             let metadata = std::fs::metadata(&abs).ok();
             self.entries.insert(
                 rel.to_path_buf(),
@@ -193,6 +199,7 @@ impl ScanCache {
         store.put(
             rel,
             content_digest,
+            redacted,
             scan.has_parse_error,
             scan.findings.clone(),
         );
