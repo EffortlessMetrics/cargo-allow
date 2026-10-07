@@ -88,7 +88,6 @@ pub(crate) fn apply_last_seen_refresh(entry: &mut AllowEntry, finding: &Finding)
         line: span.line,
         column: span.column,
     });
-    entry.selector.line_hint = Some(span.line);
 }
 
 #[cfg(test)]
@@ -144,9 +143,10 @@ mod tests {
     }
 
     #[test]
-    fn apply_last_seen_refresh_updates_coordinates_without_touching_lifecycle() {
+    fn apply_last_seen_refresh_updates_coordinates_without_touching_selector_or_lifecycle() {
         let mut entry = drift_entry();
         let lifecycle = entry.lifecycle.clone();
+        let selector = entry.selector.clone();
         let finding = drift_finding();
 
         apply_last_seen_refresh(&mut entry, &finding);
@@ -158,7 +158,7 @@ mod tests {
                 .map(|last_seen| (last_seen.line, last_seen.column)),
             Some((22, 4))
         );
-        assert_eq!(entry.selector.line_hint, Some(22));
+        assert_eq!(entry.selector, selector);
         assert_eq!(entry.lifecycle, lifecycle);
     }
 
