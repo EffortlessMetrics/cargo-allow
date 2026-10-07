@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  The allow-diff dependency graph delta classifies lockfile version pairs
+  with full semver precedence, matching the report-side delta compiler:
+  numeric prerelease identifiers compare numerically (1.0.0-2 upgrades to
+  1.0.0-10 instead of inverting), build-metadata-only version changes
+  surface as source/checksum changes instead of guessed upgrade/downgrade
+  polarity, pairs that cannot be ordered from syntax alone (empty
+  prerelease identifiers such as 1.0.0-, or all-digit identifiers that
+  overflow u64) fail closed as unsupported instead of guessing, and a
+  package name first entering or finally leaving the lock no longer
+  reports a false duplicate-version movement.

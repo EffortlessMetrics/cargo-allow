@@ -583,14 +583,92 @@ pub(crate) fn version_has_prerelease(version: &str) -> bool {
     core_end.split('-').nth(1).is_some()
 }
 
-/// Deterministic lockfile version ordering with prerelease awareness.
+/// Prerelease text of a lockfile version: everything after the first
+/// `-`, with build metadata stripped.
+fn prerelease_text(version: &str) -> &str {
+    version
+        .split_once('-')
+        .map(|(_, pre)| pre.split('+').next().unwrap_or(pre))
+        .unwrap_or("")
+}
+
+/// Compare two prerelease identifier lists per semver precedence,
+/// mirroring the allow-report delta compiler's ordering law
+/// (#4245/#4359): numeric identifiers compare numerically and rank
+/// below alphanumeric identifiers, alphanumeric identifiers compare
+/// ASCII-lexically, and the longer list wins when the shared prefix is
+/// equal. Identifiers that cannot parse as u64 (including all-digit
+/// ones that overflow) compare as text, keeping the total order the
+/// sort callers need; the classify surface gates movement polarity
+/// through [`version_orderable`] so no classification rides on that
+/// lenient path.
+fn compare_prerelease_identifiers(a: &str, b: &str) -> std::cmp::Ordering {
+    let a_ids: Vec<&str> = a.split('.').collect();
+    let b_ids: Vec<&str> = b.split('.').collect();
+    for (a_id, b_id) in a_ids.iter().zip(b_ids.iter()) {
+        let ordering = match (a_id.parse::<u64>().ok(), b_id.parse::<u64>().ok()) {
+            (Some(a_number), Some(b_number)) => a_number.cmp(&b_number),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a_id.cmp(b_id),
+        };
+        if ordering != std::cmp::Ordering::Equal {
+            return ordering;
+        }
+    }
+    a_ids.len().cmp(&b_ids.len())
+}
+
+/// Strict orderability, mirroring the delta compiler's law (#4347):
+/// every core segment must parse as u64 (an all-digit segment that
+/// overflows u64, like `99999999999999999999`, is non-orderable rather
+/// than silently dropped), and every prerelease identifier must be
+/// non-empty (semver 2.0.0 forbids empty identifiers, as in `1.0.0-`
+/// or `1.0.0-rc..1`) and parse as u64 when all-digit.
+pub(crate) fn version_orderable(version: &str) -> bool {
+    let no_build = version.split('+').next().unwrap_or(version);
+    let (core, pre) = match no_build.split_once('-') {
+        Some((core, pre)) => (core, Some(pre)),
+        None => (no_build, None),
+    };
+    if core.split('.').any(|part| part.parse::<u64>().is_err()) {
+        return false;
+    }
+    if let Some(pre) = pre {
+        for identifier in pre.split('.') {
+            if identifier.is_empty() {
+                return false;
+            }
+            if identifier.bytes().all(|byte| byte.is_ascii_digit())
+                && identifier.parse::<u64>().is_err()
+            {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+/// Deterministic lockfile version ordering with full semver precedence,
+/// mirroring the allow-report delta compiler's `compare_versions`
+/// (#4245/#4359): the numeric core triples compare first, a prerelease
+/// version is less than the same core version without one, prerelease
+/// identifier lists compare through [`compare_prerelease_identifiers`],
+/// and build metadata is ignored, so versions of equal precedence order
+/// equal regardless of their `+` suffixes. Versions that fail triple
+/// parsing fall back to raw string order; the classify surface gates
+/// movement polarity through [`version_orderable`] so no classification
+/// rides on that fallback.
 pub(crate) fn compare_lock_versions(left: &str, right: &str) -> std::cmp::Ordering {
     match (parse_semver_triple(left), parse_semver_triple(right)) {
         (Some(left_triple), Some(right_triple)) => left_triple.cmp(&right_triple).then_with(|| {
             match (version_has_prerelease(left), version_has_prerelease(right)) {
                 (true, false) => std::cmp::Ordering::Less,
                 (false, true) => std::cmp::Ordering::Greater,
-                _ => left.cmp(right),
+                (true, true) => {
+                    compare_prerelease_identifiers(prerelease_text(left), prerelease_text(right))
+                }
+                (false, false) => std::cmp::Ordering::Equal,
             }
         }),
         _ => left.cmp(right),
