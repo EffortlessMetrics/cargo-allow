@@ -2,10 +2,12 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
 };
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_policy};
+use allow_policy::validate_policy;
 
 #[path = "refresh_args.rs"]
 mod refresh_args;
+#[path = "refresh_policy.rs"]
+mod refresh_policy;
 #[path = "refresh_render.rs"]
 mod refresh_render;
 #[path = "refresh_select.rs"]
@@ -116,7 +118,14 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         )?;
         let policy_target =
             crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
-        let rendered = render_policy(&cfg);
+        let location = preview_entry.last_seen.as_ref().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "internal error: selected refresh has no coordinates",
+            )
+        })?;
+        let rendered =
+            refresh_policy::refresh_bound_policy(&policy_path, &policy_digest, allow_id, location)?;
         apply_single_target_with_target_and_expected_digest(
             SingleTargetApplyRequest {
                 repository_root: &root,

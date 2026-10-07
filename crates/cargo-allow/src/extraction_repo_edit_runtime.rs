@@ -77,12 +77,24 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
     let old_policy = old_root.join("policy").join("allow.toml");
     let new_policy = new_root.join("policy").join("allow.toml");
     let source = "pub fn fixture_refresh_drift() -> u32 {\n    // Padding lines so the expect attribute drifts beyond the\n    // DRIFT_LINE_TOLERANCE (3) relative to last_seen (line 2).\n    //\n    //\n    //\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
-    let initial = "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n\n[[allow]]\nid = \"allow-0250\"\nkind = \"lint_exception\"\nfamily = \"expect_attribute\"\npath = \"src/lib.rs\"\nowner = \"lint\"\nclassification = \"reviewed_lint_exception\"\nreason = \"Fixture keeps lint suppression with stale last_seen for refresh receipt proof.\"\nevidence = [\"test:refresh-receipt-fixture\"]\ncreated = \"2026-05-09\"\nreview_after = \"2027-06-30\"\nexpires = \"2027-09-30\"\n\n[allow.selector]\nast_kind = \"attribute\"\nlint = \"clippy::unwrap_used\"\ntarget_fingerprint = \"policy:allow-0250\"\ncontainer = \"fixture_refresh_drift\"\nline_hint = 1\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n";
+    let prefix = concat!(
+        "\u{feff}# retained refresh envelope\r\n",
+        "schema_version = 1\r\nowner='custom'\nstatus='advisory'\r\n",
+        "[[allow]]\nid='allow-0250'\r\nkind='lint_exception'\n",
+        "family='expect_attribute'\r\npath='src/lib.rs'\nowner='lint'\r\n",
+        "classification='reviewed_lint_exception'\nreason='Refresh receipt fixture.'\r\n",
+        "evidence=['test:refresh-receipt-fixture']\ncreated='2026-05-09'\r\n",
+        "review_after='2027-06-30'\nexpires='2027-09-30'\r\n",
+        "[allow.selector]\nast_kind='attribute'\r\nlint='clippy::unwrap_used'\n",
+        "target_fingerprint='policy:allow-0250'\r\ncontainer='fixture_refresh_drift'\n",
+        "line_hint='1' # inert legacy hint\r\n[allow.last_seen]\nline = "
+    );
+    let initial = format!("{prefix}1 # selected line\r\ncolumn = 1 # EOF");
     for root in [&old_root, &new_root] {
         fs::create_dir_all(root.join("policy")).map_err(io_error)?;
         fs::create_dir_all(root.join("src")).map_err(io_error)?;
         fs::write(root.join("src/lib.rs"), source).map_err(io_error)?;
-        fs::write(root.join("policy/allow.toml"), initial).map_err(io_error)?;
+        fs::write(root.join("policy/allow.toml"), &initial).map_err(io_error)?;
     }
 
     let (_, preflight_config, preflight_findings, _, _) = crate::load_world_with_evidence_mode(
@@ -169,9 +181,25 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         line: span.line,
         column: span.column,
     });
-    entry.selector.line_hint = Some(span.line);
     validate_policy(&expected_config)?;
-    let expected = render_policy(&expected_config);
+    let expected = allow_policy::refresh_policy_entry(
+        &initial,
+        "allow-0250",
+        &LastSeen {
+            line: span.line,
+            column: span.column,
+        },
+    )?;
+    let independent = format!(
+        "{prefix}{} # selected line\r\ncolumn = {} # EOF",
+        span.line, span.column
+    );
+    if expected != independent || parse_policy(&expected)? != expected_config {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "direct refresh changed unrelated policy bytes or semantics",
+        ));
+    }
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &new_root,
         target: &new_policy,
