@@ -244,6 +244,32 @@ fn lock_key_matches_for_same_target() -> Result<(), String> {
 }
 
 #[test]
+fn lock_file_name_for_target_is_windows_safe() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let file_path = repo.join("policy/allow.toml");
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
+    fs::write(&file_path, "test").ok();
+
+    let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
+    let name = lock_path_for_target(&target)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+
+    assert!(
+        !name.contains(':'),
+        "lock file name must not contain ':' (an NTFS alternate data stream on Windows): {name}"
+    );
+    assert!(
+        name.starts_with("fnv1a64-") && name.ends_with(".lock"),
+        "lock file name should keep the sanitized fingerprint visible: {name}"
+    );
+    fs::remove_dir_all(&repo).ok();
+    Ok(())
+}
+
+#[test]
 fn replace_recheck_accepts_regular_file_target() -> Result<(), String> {
     let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
