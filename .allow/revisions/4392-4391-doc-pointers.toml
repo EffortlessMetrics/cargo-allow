@@ -1,0 +1,7 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1057"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d50aa032cacf7c9b55fbb9586dd7dd04fb3479afb0716d27f594880536b5314"
+reason = "self-receipt for this revision note covering the #4392 support-tiers guide pointers and hooks plan comment and the #4391 cadence boundary-law doc correction, matching the #3792 precedent"
