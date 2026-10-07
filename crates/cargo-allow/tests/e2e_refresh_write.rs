@@ -12,7 +12,7 @@ use support::{
 
 /// `refresh --write` updates `last_seen` in the policy TOML
 /// when a finding has drifted from its recorded location. The existing
-/// `lifecycle_corpus.rs` test only checks the JSON receipt — this test verifies
+/// `lifecycle_corpus.rs` test only checks the JSON receipt - this test verifies
 /// the actual rewritten TOML contents, which is the real point of the command.
 #[test]
 fn refresh_write_updates_last_seen_in_policy_toml() {
@@ -448,6 +448,102 @@ fn refresh_write_refuses_unsupported_source_forms_without_any_output_change()
         assert_eq!(fs::read(&output)?, b"retained output");
         assert_eq!(fs::read(&summary)?, b"retained summary");
         assert_stdout_empty("unsupported refresh", &result, "refusal has no stdout");
+        remove_temp_root(root);
+    }
+    Ok(())
+}
+
+/// Receipt identities must describe the entry that the normal loader sees.
+#[test]
+fn refresh_write_and_preview_fingerprints_match_reloaded_policy_entry()
+-> Result<(), Box<dyn std::error::Error>> {
+    for strings in [false, true] {
+        let root = temp_root("e2e-refresh-reloaded-fingerprint");
+        write_drift_fixture(&root);
+        let policy = root.join("policy/allow.toml");
+        let before = byte_preservation_policy(strings, 99, 99, 1);
+        fs::write(&policy, &before)?;
+        let initial = allow_policy::load_policy(&policy)?;
+        let selected = initial
+            .allow
+            .iter()
+            .find(|entry| entry.id == "allow-drift")
+            .ok_or("selected initial entry missing")?;
+        assert_eq!(selected.selector.line_hint, None);
+        let before_fingerprint = allow_core::allow_entry_content_fingerprint(selected);
+        let modified = fs::metadata(&policy)?.modified()?;
+        let run = |write: bool, output: &Path| {
+            cargo_allow_command()
+                .arg("refresh")
+                .arg("--root")
+                .arg(&root)
+                .arg("--config")
+                .arg(&policy)
+                .arg("--allow-id")
+                .arg("allow-drift")
+                .arg(if write { "--write" } else { "--dry-run" })
+                .arg("--format")
+                .arg("json")
+                .arg("--output")
+                .arg(output)
+                .output()
+        };
+        let preview_path = root.join("preview.json");
+        let preview = run(false, &preview_path)?;
+        assert_status("refresh fingerprint preview", &preview, true);
+        assert_eq!(fs::read(&policy)?, before.as_bytes());
+        assert_eq!(fs::metadata(&policy)?.modified()?, modified);
+        let preview = assert_saved_json_artifact(
+            &preview_path,
+            "refresh",
+            "cargo-allow.refresh.v1",
+            "refresh",
+        );
+
+        let written_path = root.join("written.json");
+        let written = run(true, &written_path)?;
+        assert_status("refresh fingerprint write", &written, true);
+        assert_eq!(
+            fs::read(&policy)?,
+            byte_preservation_policy(strings, 99, 3, 50).as_bytes()
+        );
+        let written = assert_saved_json_artifact(
+            &written_path,
+            "refresh",
+            "cargo-allow.refresh.v1",
+            "refresh",
+        );
+        let reloaded = allow_policy::load_policy(&policy)?;
+        let selected = reloaded
+            .allow
+            .iter()
+            .find(|entry| entry.id == "allow-drift")
+            .ok_or("selected reloaded entry missing")?;
+        assert_eq!(selected.selector.line_hint, None);
+        let after_fingerprint = allow_core::allow_entry_content_fingerprint(selected);
+        assert_ne!(before_fingerprint, after_fingerprint);
+        assert_eq!(
+            written
+                .pointer("/mutation_receipt/after_fingerprints/0")
+                .and_then(Value::as_str),
+            Some(after_fingerprint.as_str()),
+            "written fingerprint must equal the selected entry reloaded from saved policy"
+        );
+        assert_eq!(
+            preview
+                .pointer("/mutation_receipt/after_fingerprints/0")
+                .and_then(Value::as_str),
+            Some(after_fingerprint.as_str()),
+            "dry-run fingerprint must predict the independently reloaded written entry"
+        );
+        for report in [&preview, &written] {
+            assert_eq!(
+                report
+                    .pointer("/mutation_receipt/before_fingerprints/0")
+                    .and_then(Value::as_str),
+                Some(before_fingerprint.as_str())
+            );
+        }
         remove_temp_root(root);
     }
     Ok(())

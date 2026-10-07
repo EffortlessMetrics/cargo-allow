@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Refresh write and preview fingerprints match the reloaded selected policy
+  entry instead of carrying a synthetic legacy selector hint.
