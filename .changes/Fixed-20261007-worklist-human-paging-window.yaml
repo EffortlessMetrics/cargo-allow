@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  The human worklist output now names the applied paging window (offset,
+  limit, and the pre-paging filtered total) instead of printing only the page
+  length, so an empty or short page cannot read as a clean queue; the
+  unpaged layout is unchanged.

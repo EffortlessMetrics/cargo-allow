@@ -641,7 +641,9 @@ fn validate_summary_output_path(
 /// Resolve the operator-requested summary sidecar path (#4363).
 ///
 /// Relative paths resolve against the process working directory — the same
-/// base as `--output` — and absolute paths are kept verbatim. The caller then
+/// base as `--output` on the working-directory commands (`adopt --output`
+/// and `migrate --out` resolve against the source-tree root instead) — and
+/// absolute paths are kept verbatim. The caller then
 /// fails closed with the `E0002_INVALID_CONFIG` containment error when the
 /// resolved path falls outside the source-tree root, so a sidecar requested
 /// from a scratch directory can never land silently inside the scanned tree.

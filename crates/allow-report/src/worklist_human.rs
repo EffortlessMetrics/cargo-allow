@@ -2,20 +2,29 @@ use crate::evidence_reference_human::evidence_reference_human_status;
 use crate::worklist_summary::{
     worklist_difficulty_count, worklist_kind_counts, worklist_risk_count,
 };
-use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, Style, WorklistFilters, WorklistItem};
+use crate::{
+    CLAIM_BOUNDARY_TEXT, InventoryContext, Style, WorklistFilters, WorklistItem, WorklistPaging,
+};
 
 pub fn render_worklist_human(
     items: &[WorklistItem<'_>],
     filters: WorklistFilters<'_>,
     inventory: InventoryContext<'_>,
 ) -> String {
-    render_worklist_human_styled(items, filters, inventory, Style::PLAIN)
+    render_worklist_human_styled(
+        items,
+        filters,
+        inventory,
+        WorklistPaging::default(),
+        Style::PLAIN,
+    )
 }
 
 pub fn render_worklist_human_styled(
     items: &[WorklistItem<'_>],
     filters: WorklistFilters<'_>,
     inventory: InventoryContext<'_>,
+    paging: WorklistPaging,
     style: Style,
 ) -> String {
     let mut out = String::new();
@@ -32,6 +41,21 @@ pub fn render_worklist_human_styled(
     }
     out.push_str(&worklist_filters_human(filters));
     out.push_str(&format!("Work items: {}\n", items.len()));
+    // A paged human render describes only its emitted slice (#4404): name
+    // the requested window and the pre-paging filtered total so an empty or
+    // short page cannot read as a clean queue. The unpaged layout is
+    // unchanged.
+    if paging.is_applied() {
+        out.push_str(&format!(
+            "Paging: showing {} of {} filtered items (offset {}{}); adjust --offset/--limit to reach the rest.\n",
+            items.len(),
+            paging.total,
+            paging.offset,
+            paging
+                .limit
+                .map_or_else(String::new, |limit| format!(", limit {limit}")),
+        ));
+    }
     out.push_str("Risk:\n");
     out.push_str(&format!(
         "  {}      {}\n",

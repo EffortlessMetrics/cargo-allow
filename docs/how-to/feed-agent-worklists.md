@@ -22,6 +22,17 @@ cargo-allow worklist --broken-evidence --format json
 cargo-allow worklist --allow-id allow-0042 --format json
 ```
 
+Page long queues so one agent session stays bounded: `--limit` caps the
+emitted slice and `--offset` skips ahead in the ranked queue.
+
+```bash
+cargo-allow worklist --limit 10 --offset 20 --format json
+```
+
+The JSON `paging` block and the human output both name the applied window and
+the pre-paging filtered total, so an empty or short page never reads as a
+clean queue.
+
 ## Route Migration Closeout
 
 When a migration summary reports `follow_up_queues` or

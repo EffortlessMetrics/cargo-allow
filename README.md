@@ -116,6 +116,7 @@ cargo-allow explain <allow-id>        # explain one allow entry
 cargo-allow why --kind panic --path src/lib.rs --line 42  # diagnose an unreceipted finding
 cargo-allow add --kind panic --path src/lib.rs --line 42 --update  # receipt a finding
 cargo-allow worklist --format json    # actionable work items
+cargo-allow worklist --limit 10 --offset 20 --format json  # page a long queue
 ```
 
 The source-candidate-only `adopt` command projects one current next step; it
@@ -404,6 +405,17 @@ reports what is missing.
 ```bash
 cargo-allow worklist --format json
 ```
+
+On the current main candidate (not yet in published `0.1.11`), `worklist`
+also supports paging:
+
+```bash
+cargo-allow worklist --format json --limit 10 --offset 20  # source candidate
+```
+
+`--limit` caps the emitted slice and `--offset` skips ahead in the ranked
+queue; the JSON `paging` block and the human output both name the applied
+window and the pre-paging total.
 
 Worklist items are intended for bounded human or agent work:
 

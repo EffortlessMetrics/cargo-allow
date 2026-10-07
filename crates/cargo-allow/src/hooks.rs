@@ -1760,6 +1760,24 @@ mod tests {
         Ok(())
     }
 
+    /// A child command for the hook probes, stripped of the ambient policy
+    /// and Git overrides (#4377): an inherited `CARGO_ALLOW_CONFIG` could
+    /// select a foreign policy and `GIT_DIR`/`GIT_WORK_TREE`/
+    /// `GIT_INDEX_FILE` could redirect the Git inventory away from the
+    /// fixture (#4247 fixture isolation).
+    fn probe_child_command(binary: &Path) -> Command {
+        let mut command = Command::new(binary);
+        for variable in [
+            "CARGO_ALLOW_CONFIG",
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+        ] {
+            command.env_remove(variable);
+        }
+        command
+    }
+
     /// Build a committed minimal governed fixture: a finding-free source
     /// tree with an initialized policy. The probe verdict then depends
     /// only on fixture bytes, never on the caller's worktree state
@@ -1782,7 +1800,7 @@ mod tests {
 ",
         )
         .map_err(|error| error.to_string())?;
-        let init = std::process::Command::new(binary)
+        let init = probe_child_command(binary)
             .arg("init")
             .current_dir(&root)
             .output()
@@ -1794,11 +1812,9 @@ mod tests {
             ));
         }
         let git = |args: &[&str]| -> Result<(), String> {
-            let output = std::process::Command::new("git")
-                .args(args)
-                .current_dir(&root)
-                .output()
-                .map_err(|error| error.to_string())?;
+            let mut command = probe_child_command(Path::new("git"));
+            command.args(args).current_dir(&root);
+            let output = command.output().map_err(|error| error.to_string())?;
             if output.status.success() {
                 Ok(())
             } else {
@@ -1847,7 +1863,7 @@ mod tests {
             &digest,
             verify_hook_binary,
             |binary, command| {
-                Command::new(binary)
+                probe_child_command(binary)
                     .args(command)
                     .env("CARGO_ALLOW_ROOT", &fixture)
                     .status()
@@ -1892,22 +1908,29 @@ mod tests {
             "--mode".to_string(),
             "no-new".to_string(),
         ];
+        // The child report is captured so the negative control can prove
+        // the nonzero exit names the fixture finding (#4377), not merely
+        // any process failure.
+        let child_output = std::cell::RefCell::new(None::<std::process::Output>);
         let result = run_verified_command(
             &binary,
             &command,
             &digest,
             verify_hook_binary,
             |binary, command| {
-                Command::new(binary)
+                let output = probe_child_command(binary)
                     .args(command)
                     .env("CARGO_ALLOW_ROOT", &fixture)
-                    .status()
+                    .output()
                     .map_err(|error| {
                         CargoAllowError::with_kind(
                             CargoAllowErrorKind::InstrumentFailure,
                             error.to_string(),
                         )
-                    })
+                    })?;
+                let status = output.status;
+                *child_output.borrow_mut() = Some(output);
+                Ok(status)
             },
         );
         let _ = std::fs::remove_dir_all(&fixture);
@@ -1918,6 +1941,49 @@ mod tests {
             return Err(format!(
                 "the fixture finding did not fail through the exit contract: {error}"
             ));
+        }
+        // #4377: an unrelated nonzero exit satisfies the exit contract, so
+        // the captured report must also identify the specific fixture
+        // finding — the deliberate unreceipted panic.indexing at its exact
+        // fixture path and line.
+        let output = child_output
+            .into_inner()
+            .ok_or("the verified hook command never executed".to_string())?;
+        let report = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if !report.contains("panic.indexing at src/lib.rs:3") {
+            return Err(format!(
+                "the nonzero hook exit did not identify the fixture finding: {report}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn probe_children_strip_inherited_policy_and_git_overrides() -> Result<(), String> {
+        // #4377 negative control: hook probe children must explicitly remove
+        // the ambient policy and Git repository-selection overrides, so a
+        // hostile inherited CARGO_ALLOW_CONFIG/GIT_DIR/GIT_WORK_TREE/
+        // GIT_INDEX_FILE cannot steer policy selection or the Git inventory
+        // away from the fixture.
+        let command = probe_child_command(Path::new("cargo-allow"));
+        for variable in [
+            "CARGO_ALLOW_CONFIG",
+            "GIT_DIR",
+            "GIT_WORK_TREE",
+            "GIT_INDEX_FILE",
+        ] {
+            if !command
+                .get_envs()
+                .any(|(key, value)| key == std::ffi::OsStr::new(variable) && value.is_none())
+            {
+                return Err(format!(
+                    "hook probe children must remove the inherited {variable}"
+                ));
+            }
         }
         Ok(())
     }

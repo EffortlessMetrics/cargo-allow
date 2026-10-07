@@ -31,6 +31,7 @@ pub(super) fn render_worklist_human_with_context_styled(
         &report_items,
         report_worklist_filters(context.filters),
         context.inventory,
+        context.paging,
         style,
     )
 }
