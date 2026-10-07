@@ -323,6 +323,7 @@ fn external_alias_is_admitted_without_authorizing_in_root_aliases() -> Result<()
         Path::new("src/lib.rs"),
         "digest".to_string(),
         false,
+        false,
         Vec::new(),
     );
     assert!(

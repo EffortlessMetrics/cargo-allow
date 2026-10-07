@@ -12,6 +12,15 @@ pub(crate) struct FindingSite<'a> {
     pub(crate) module_stack: &'a [String],
 }
 
+/// Single source of truth for the identity-redaction setting (#1920).
+///
+/// The finding builder and the persistent scan-cache key must observe the
+/// same mode: findings cached under one mode are invalid for the other, so
+/// `scan_cache` keys durable entries by this value.
+pub(crate) fn identity_redaction_enabled() -> bool {
+    std::env::var("CARGO_ALLOW_REDACT_IDENTITY").as_deref() == Ok("1")
+}
+
 pub(crate) fn push_finding<F>(
     site: FindingSite<'_>,
     kind: FindingKind,
@@ -40,7 +49,7 @@ pub(crate) fn push_finding<F>(
     // Opt-in: redact source-text-bearing identity fields for CI artifacts
     // where they are an info-leak surface. Structural hashes are preserved.
     // (#1920)
-    if std::env::var("CARGO_ALLOW_REDACT_IDENTITY").as_deref() == Ok("1") {
+    if identity_redaction_enabled() {
         identity.redact_source_text_fields();
     }
     findings.push(Finding {

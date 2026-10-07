@@ -15,6 +15,11 @@
 //! - Any read/decode failure discards the store (fail-open cold start).
 //! - A generation string binds entries to one scanner build; scanner changes
 //!   invalidate the whole store rather than silently mixing semantics.
+//! - Entries are additionally keyed by the identity-redaction mode
+//!   (`CARGO_ALLOW_REDACT_IDENTITY`, #1920): findings cached under one mode
+//!   are facts about the other mode's output contract, so redacted and
+//!   unredacted scans occupy separate entries instead of replaying each
+//!   other's identity fields.
 //! - Skipped files (oversized, non-UTF-8, unreadable) are never persisted.
 //!
 //! The store lives under `target/`, which cargo gitignores, so persisted
@@ -28,8 +33,10 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
 
-/// Store schema identifier; also the on-disk magic header line.
-const STORE_SCHEMA: &[u8] = b"cargo-allow.scan-cache.v2";
+/// Store schema identifier; also the on-disk magic header line. v3 keys each
+/// entry by relative path plus identity-redaction mode (#1920); v2 stores
+/// predate that key and are discarded rather than misdecoded.
+const STORE_SCHEMA: &[u8] = b"cargo-allow.scan-cache.v3";
 const CHECKSUM_LEN: usize = 74;
 const MAX_ENTRY_COUNT: usize = 100_000;
 const MAX_FINDINGS_PER_ENTRY: usize = 100_000;
@@ -122,6 +129,11 @@ fn remove_bound_file(path: &Path, identity: &PathIdentity) {
     }
 }
 
+/// Entry key: the scanned file's store-relative path plus the
+/// identity-redaction mode the findings were produced under (#1920). The
+/// boolean mirrors `CARGO_ALLOW_REDACT_IDENTITY=1` at scan time.
+type EntryKey = (PathBuf, bool);
+
 /// One persisted scan result: the digest it was produced from plus the
 /// scanner output for that exact input.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,7 +149,7 @@ struct StoredEntry {
 pub struct ScanCacheStore {
     dir: PathBuf,
     generation: String,
-    entries: HashMap<PathBuf, StoredEntry>,
+    entries: HashMap<EntryKey, StoredEntry>,
     dirty: bool,
     writable: bool,
 }
@@ -177,20 +189,30 @@ impl ScanCacheStore {
         self.dir.join("scan-cache.v2.bin")
     }
 
-    /// Look up cached findings whose recorded digest matches `content_digest`.
-    pub fn get(&self, rel: &Path, content_digest: &str) -> Option<(Vec<Finding>, bool)> {
-        let entry = self.entries.get(rel)?;
+    /// Look up cached findings whose recorded digest matches `content_digest`
+    /// and whose entry was stored under the same identity-redaction mode
+    /// (`redacted`, #1920).
+    pub fn get(
+        &self,
+        rel: &Path,
+        content_digest: &str,
+        redacted: bool,
+    ) -> Option<(Vec<Finding>, bool)> {
+        let entry = self.entries.get(&(rel.to_path_buf(), redacted))?;
         if entry.content_digest != content_digest {
             return None;
         }
         Some((entry.findings.clone(), entry.has_parse_error))
     }
 
-    /// Record scan output for a file. Skipped files must not be passed here.
+    /// Record scan output for a file under the identity-redaction mode
+    /// (`redacted`, #1920) it was produced under. Skipped files must not be
+    /// passed here.
     pub fn put(
         &mut self,
         rel: &Path,
         content_digest: String,
+        redacted: bool,
         has_parse_error: bool,
         findings: Vec<Finding>,
     ) {
@@ -202,7 +224,8 @@ impl ScanCacheStore {
         {
             return;
         }
-        if !self.entries.contains_key(rel) && self.entries.len() >= MAX_ENTRY_COUNT {
+        let key: EntryKey = (rel.to_path_buf(), redacted);
+        if !self.entries.contains_key(&key) && self.entries.len() >= MAX_ENTRY_COUNT {
             return;
         }
         let stored = StoredEntry {
@@ -212,12 +235,12 @@ impl ScanCacheStore {
         };
         if self
             .entries
-            .get(rel)
+            .get(&key)
             .is_some_and(|existing| *existing == stored)
         {
             return;
         }
-        self.entries.insert(rel.to_path_buf(), stored);
+        self.entries.insert(key, stored);
         self.dirty = true;
     }
 
@@ -365,6 +388,7 @@ impl ScanCacheStore {
     }
 
     /// Drop entries which are not part of the current deterministic scan set.
+    /// Applies to both redaction-mode variants of each retained path.
     pub fn retain_paths(&mut self, paths: &[PathBuf]) {
         let retained: std::collections::HashSet<&Path> = paths
             .iter()
@@ -373,13 +397,16 @@ impl ScanCacheStore {
             .collect();
         let before = self.entries.len();
         self.entries
-            .retain(|path, _| retained.contains(path.as_path()));
+            .retain(|(path, _), _| retained.contains(path.as_path()));
         self.dirty |= before != self.entries.len();
     }
 
     /// Remove facts for a path that could not be evaluated in this scan.
+    /// Removes both redaction-mode variants of the path.
     pub fn remove(&mut self, rel: &Path) {
-        if self.entries.remove(rel).is_some() {
+        let removed_redacted = self.entries.remove(&(rel.to_path_buf(), true)).is_some();
+        let removed_plain = self.entries.remove(&(rel.to_path_buf(), false)).is_some();
+        if removed_redacted || removed_plain {
             self.dirty = true;
         }
     }
@@ -665,9 +692,9 @@ fn write_opt_u32(out: &mut Vec<u8>, value: Option<u32>) -> Result<(), ()> {
     Ok(())
 }
 
-fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Result<Vec<u8>, ()> {
+fn encode_store(generation: &str, entries: &HashMap<EntryKey, StoredEntry>) -> Result<Vec<u8>, ()> {
     // Deterministic order so byte-identical states produce identical files.
-    let mut ordered: Vec<(&PathBuf, &StoredEntry)> = entries.iter().collect();
+    let mut ordered: Vec<(&EntryKey, &StoredEntry)> = entries.iter().collect();
     ordered.sort_by(|left, right| left.0.cmp(right.0));
 
     let mut out = Vec::new();
@@ -678,9 +705,11 @@ fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Re
     write_str(&mut out, generation)?;
     reserve(&out, 4)?;
     out.extend_from_slice(&(ordered.len() as u32).to_le_bytes());
-    for (rel, entry) in ordered {
+    for ((rel, redacted), entry) in ordered {
         let rel_text = rel.to_str().ok_or(())?;
         write_str(&mut out, rel_text)?;
+        reserve(&out, 1)?;
+        out.push(u8::from(*redacted));
         write_str(&mut out, &entry.content_digest)?;
         reserve(&out, 1 + 4)?;
         out.push(u8::from(entry.has_parse_error));
@@ -818,7 +847,7 @@ impl<'a> Reader<'a> {
 fn decode_store(
     bytes: &[u8],
     expected_generation: &str,
-) -> Result<HashMap<PathBuf, StoredEntry>, ()> {
+) -> Result<HashMap<EntryKey, StoredEntry>, ()> {
     if bytes.len() > MAX_STORE_BYTES {
         return Err(());
     }
@@ -857,6 +886,11 @@ fn decode_store(
                     std::path::Component::ParentDir | std::path::Component::CurDir
                 )
             });
+        let redacted = match reader.u8()? {
+            0 => false,
+            1 => true,
+            _ => return Err(()),
+        };
         let content_digest = reader.str()?;
         let has_parse_error = match reader.u8()? {
             0 => false,
@@ -873,7 +907,7 @@ fn decode_store(
         }
         if !invalid_path {
             entries.insert(
-                rel_path,
+                (rel_path, redacted),
                 StoredEntry {
                     content_digest,
                     has_parse_error,
@@ -993,7 +1027,10 @@ mod tests {
     fn checksum_valid_oversized_relative_path_is_rejected() {
         let mut entries = HashMap::new();
         entries.insert(
-            PathBuf::from(format!("src/{}", "a".repeat(MAX_RELATIVE_PATH_BYTES))),
+            (
+                PathBuf::from(format!("src/{}", "a".repeat(MAX_RELATIVE_PATH_BYTES))),
+                false,
+            ),
             StoredEntry {
                 content_digest: "digest".to_string(),
                 has_parse_error: false,
@@ -1011,12 +1048,14 @@ mod tests {
             Path::new("../escape.rs"),
             "digest".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(store.is_empty());
         store.put(
             Path::new("src/lib.rs"),
             "digest".to_string(),
+            false,
             false,
             (0..=MAX_FINDINGS_PER_ENTRY)
                 .map(|_| Finding {
@@ -1036,11 +1075,184 @@ mod tests {
     #[test]
     fn retain_paths_prunes_stale_entries_deterministically() {
         let mut store = ScanCacheStore::open(Path::new("target/cache-test"), "generation");
-        store.put(Path::new("src/a.rs"), "a".to_string(), false, Vec::new());
-        store.put(Path::new("src/b.rs"), "b".to_string(), false, Vec::new());
+        store.put(
+            Path::new("src/a.rs"),
+            "a".to_string(),
+            false,
+            false,
+            Vec::new(),
+        );
+        store.put(
+            Path::new("src/b.rs"),
+            "b".to_string(),
+            false,
+            false,
+            Vec::new(),
+        );
         store.retain_paths(&[PathBuf::from("src/a.rs")]);
-        assert!(store.get(Path::new("src/a.rs"), "a").is_some());
-        assert!(store.get(Path::new("src/b.rs"), "b").is_none());
+        assert!(store.get(Path::new("src/a.rs"), "a", false).is_some());
+        assert!(store.get(Path::new("src/b.rs"), "b", false).is_none());
+    }
+
+    fn identity_finding(container: Option<String>) -> Finding {
+        let mut identity = allow_core::StructuralIdentity::new("rust", "unsafe_fn");
+        identity.container = container;
+        Finding {
+            kind: allow_core::FindingKind::Unsafe,
+            family: Some("unsafe_fn".to_string()),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(allow_core::Span { line: 2, column: 5 }),
+            identity,
+            message: "unsafe unsafe_fn syntax found".to_string(),
+            ledger: None,
+        }
+    }
+
+    #[test]
+    fn redaction_modes_are_distinct_cache_entries() {
+        // #1920: findings cached under one identity-redaction mode must never
+        // be served to a scan running under the other mode.
+        let mut store = ScanCacheStore::open(Path::new("target/cache-test"), "generation");
+        let unredacted = vec![identity_finding(Some("secret_mod::f".to_string()))];
+        let redacted = vec![identity_finding(None)];
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            false,
+            unredacted.clone(),
+        );
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            true,
+            false,
+            redacted.clone(),
+        );
+        assert_eq!(store.len(), 2, "both redaction modes must coexist");
+        assert_eq!(
+            store.get(Path::new("src/lib.rs"), "digest", false),
+            Some((unredacted, false))
+        );
+        assert_eq!(
+            store.get(Path::new("src/lib.rs"), "digest", true),
+            Some((redacted, false))
+        );
+        assert_eq!(
+            store.get(Path::new("src/lib.rs"), "other-digest", false),
+            None,
+            "digest mismatch still misses within one mode"
+        );
+    }
+
+    #[test]
+    fn redaction_mode_key_round_trips_through_flush_and_reload() {
+        let root = canonical_temp_dir().join(format!(
+            "allow-rust-cache-redaction-roundtrip-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture: {err}")));
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            false,
+            vec![identity_finding(Some("secret_mod::f".to_string()))],
+        );
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            true,
+            false,
+            vec![identity_finding(None)],
+        );
+        assert!(store.flush(), "first flush should persist");
+
+        let reopened = ScanCacheStore::open(&root, "generation");
+        assert_eq!(reopened.len(), 2, "both mode entries must survive reload");
+        assert_eq!(
+            reopened
+                .get(Path::new("src/lib.rs"), "digest", false)
+                .map(|(findings, _)| findings[0].identity.container.clone()),
+            Some(Some("secret_mod::f".to_string())),
+            "unredacted entry keeps identity text after reload"
+        );
+        assert_eq!(
+            reopened
+                .get(Path::new("src/lib.rs"), "digest", true)
+                .map(|(findings, _)| findings[0].identity.container.clone()),
+            Some(None),
+            "redacted entry stays redacted after reload"
+        );
+        std::fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
+    }
+
+    #[test]
+    fn retain_paths_and_remove_span_both_redaction_variants() {
+        let mut store = ScanCacheStore::open(Path::new("target/cache-test"), "generation");
+        for redacted in [false, true] {
+            store.put(
+                Path::new("src/a.rs"),
+                "a".to_string(),
+                redacted,
+                false,
+                Vec::new(),
+            );
+            store.put(
+                Path::new("src/b.rs"),
+                "b".to_string(),
+                redacted,
+                false,
+                Vec::new(),
+            );
+        }
+        store.retain_paths(&[PathBuf::from("src/a.rs")]);
+        assert_eq!(store.len(), 2, "retain keeps both variants of a kept path");
+        store.remove(Path::new("src/a.rs"));
+        assert!(
+            store.is_empty(),
+            "remove drops both redaction variants of the path"
+        );
+    }
+
+    #[test]
+    fn legacy_v2_schema_store_is_discarded_not_misdecoded() {
+        // #1920 bumped the per-entry layout (path + redaction-mode key); a
+        // same-generation store written with the v2 layout must fail the
+        // schema check instead of being read with shifted offsets.
+        let mut entries: HashMap<EntryKey, StoredEntry> = HashMap::new();
+        entries.insert(
+            (PathBuf::from("src/lib.rs"), false),
+            StoredEntry {
+                content_digest: "digest".to_string(),
+                has_parse_error: false,
+                findings: Vec::new(),
+            },
+        );
+        let encoded = encode_store("generation", &entries).unwrap_or_default();
+        let payload_len = encoded.len() - CHECKSUM_LEN;
+        let mut legacy_payload = encoded.get(..payload_len).unwrap_or_default().to_vec();
+        let replaced = legacy_payload
+            .get_mut(..STORE_SCHEMA.len())
+            .is_some_and(|header| {
+                header.copy_from_slice(b"cargo-allow.scan-cache.v2");
+                true
+            });
+        assert!(
+            replaced,
+            "fixture premise: payload covers the schema header"
+        );
+        let checksum = allow_core::sha256_v1_bytes(&legacy_payload);
+        let mut legacy = legacy_payload;
+        legacy.extend_from_slice(checksum.as_bytes());
+        assert!(
+            decode_store(&legacy, "generation").is_err(),
+            "a v2-layout store must be discarded, never misdecoded"
+        );
     }
 
     #[test]
@@ -1087,6 +1299,7 @@ mod tests {
             Path::new("src/lib.rs"),
             "digest".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(store.flush());
@@ -1121,6 +1334,7 @@ mod tests {
                 Path::new("src/worker.rs"),
                 "worker".to_string(),
                 false,
+                false,
                 Vec::new(),
             );
             let wait_hook = || {
@@ -1136,7 +1350,7 @@ mod tests {
         assert!(flushed);
         assert!(
             ScanCacheStore::open(&root, "generation")
-                .get(Path::new("src/worker.rs"), "worker")
+                .get(Path::new("src/worker.rs"), "worker", false)
                 .is_some()
         );
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
@@ -1161,6 +1375,7 @@ mod tests {
                 store.put(
                     &PathBuf::from(format!("src/{index}.rs")),
                     format!("digest-{index}"),
+                    false,
                     false,
                     Vec::new(),
                 );
@@ -1205,6 +1420,7 @@ mod tests {
             Path::new("src/lib.rs"),
             "digest".to_string(),
             false,
+            false,
             Vec::new(),
         );
         std::fs::remove_dir_all(&cache_dir).map_err(|error| error.to_string())?;
@@ -1239,6 +1455,7 @@ mod tests {
             Path::new("src/lib.rs"),
             "digest".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(!store.flush_with_temp_path(Some(&temp)));
@@ -1269,6 +1486,7 @@ mod tests {
             Path::new("src/lib.rs"),
             "digest".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(!store.flush());
@@ -1290,6 +1508,7 @@ mod tests {
             Path::new("src/original.rs"),
             "original".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(initial.flush());
@@ -1305,6 +1524,7 @@ mod tests {
         store.put(
             Path::new("src/replacement.rs"),
             "replacement".to_string(),
+            false,
             false,
             Vec::new(),
         );
@@ -1334,6 +1554,7 @@ mod tests {
             Path::new("src/original.rs"),
             "original".to_string(),
             false,
+            false,
             Vec::new(),
         );
         assert!(initial.flush());
@@ -1348,6 +1569,7 @@ mod tests {
         store.put(
             Path::new("src/replacement.rs"),
             "replacement".to_string(),
+            false,
             false,
             Vec::new(),
         );
@@ -1446,6 +1668,7 @@ mod tests {
         store.put(
             Path::new("src/lib.rs"),
             "digest".to_string(),
+            false,
             false,
             Vec::new(),
         );
