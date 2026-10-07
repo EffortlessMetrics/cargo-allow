@@ -259,12 +259,12 @@ fn refresh_write_preserves_every_byte_outside_selected_coordinates()
 
         // The fixture's source puts the unwrap method name at line 3, column 50.
         // Construct the expected bytes from separate fragments, not writer output.
-        let expected = byte_preservation_policy(strings, 3, 3, 50);
+        let expected = byte_preservation_policy(strings, 99, 3, 50);
         let actual = fs::read_to_string(&policy)?;
         assert_eq!(
             actual.as_bytes(),
             expected.as_bytes(),
-            "only the selected line_hint/line/column value spans may change"
+            "only the selected last_seen line/column value spans may change"
         );
 
         let mut semantic_expected = allow_policy::parse_policy(&before)?;
@@ -273,14 +273,13 @@ fn refresh_write_preserves_every_byte_outside_selected_coordinates()
             .iter_mut()
             .find(|entry| entry.id == "allow-drift")
             .ok_or("selected entry missing from fixture")?;
-        selected.selector.line_hint = Some(3);
         selected.last_seen = Some(allow_core::LastSeen {
             line: 3,
             column: 50,
         });
         assert_eq!(
-            allow_policy::render_policy(&allow_policy::parse_policy(&actual)?),
-            allow_policy::render_policy(&semantic_expected),
+            allow_policy::parse_policy(&actual)?,
+            semantic_expected,
             "all other parsed policy fields must remain equivalent"
         );
         let mut raw_expected: toml::Value = toml::from_str(before.trim_start_matches('\u{feff}'))?;
@@ -293,11 +292,7 @@ fn refresh_write_preserves_every_byte_outside_selected_coordinates()
                 })
             })
             .ok_or("selected raw entry missing")?;
-        for (table, key, value) in [
-            ("selector", "line_hint", 3),
-            ("last_seen", "line", 3),
-            ("last_seen", "column", 50),
-        ] {
+        for (table, key, value) in [("last_seen", "line", 3), ("last_seen", "column", 50)] {
             let target = selected
                 .get_mut(table)
                 .and_then(|table| table.get_mut(key))
