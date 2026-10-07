@@ -35,8 +35,10 @@ pub(crate) struct HooksArgs {
 pub(crate) enum HooksCommand {
     /// Preview the checked worktree-advisory hook plan.
     ///
-    /// Resolves the Git root from the current directory only; the
-    /// `CARGO_ALLOW_ROOT` environment variable (#3230) is not honored (#4362).
+    /// Repo-independent preview: plan resolves no Git root and no hook path,
+    /// so it renders the same contract from any directory, including outside
+    /// a repository; the `CARGO_ALLOW_ROOT` environment variable (#3230) is
+    /// not honored either.
     Plan(HookPlanArgs),
     /// Report the managed Git-hook disposition without changing the repository.
     ///

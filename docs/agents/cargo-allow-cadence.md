@@ -24,8 +24,13 @@ classification reuses the match-engine lifecycle law exactly:
 `expires` flips to `expired` only strictly after the expires day (the expires
 day itself is `expiring` with zero days remaining), while `review_after` is
 overdue on the deadline day itself (the pre-existing #2008 `<` versus `<=`
-asymmetry, preserved so cadence never disagrees with `list`, `worklist`, or
-`check`).
+asymmetry). Cadence agrees with match authorization, but not unconditionally
+with `list`, `worklist`, or `check`: the shared read-model projections behind
+those surfaces apply the inclusive `has_passed_date_str` law to `expires`, so
+on the exact `expires == as-of` day they report the entry `expired` while
+cadence still reports `expiring` with zero days remaining; treat that
+boundary-day split as the documented posture until #4351 unifies the
+expires-day law.
 Work the rows by `required_disposition`:
 - `review_due_soon` (within 14 days): schedule the review.
 - `review_overdue`: review now or narrow the entry.

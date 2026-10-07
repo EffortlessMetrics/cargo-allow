@@ -83,10 +83,10 @@ User-facing command guides use this table as their maturity source. `Published
 | `adopt` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `capabilities` | Not included | Experimental | [Getting started](../getting-started.md) |
 | `vocabulary` | Not included | Experimental | [Source exception ledger](../source-exception-ledger.md) |
-| `tool` | Not included | Experimental | [Run in CI](../how-to/run-in-ci.md) |
+| `tool` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `completions` | Not included | Experimental | [Install shell completions](../how-to/install-shell-completions.md) |
 | `reference` | Not included | Experimental | [Getting started](../getting-started.md) |
-| `hooks` | Not included | Experimental | [Run in CI](../how-to/run-in-ci.md) |
+| `hooks` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 
 The table intentionally separates published stability from current-main
 maturity. A guide marker must not be read as a claim that the source candidate
