@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Refresh preserves unrelated policy bytes, comments, quoting and line endings
+  while updating only the selected entry's location hints.

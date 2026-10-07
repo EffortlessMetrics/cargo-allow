@@ -10,7 +10,7 @@ use support::{
     cargo_allow_command, remove_temp_root, temp_root,
 };
 
-/// `refresh --write` updates `last_seen` and `line_hint` in the policy TOML
+/// `refresh --write` updates `last_seen` in the policy TOML
 /// when a finding has drifted from its recorded location. The existing
 /// `lifecycle_corpus.rs` test only checks the JSON receipt — this test verifies
 /// the actual rewritten TOML contents, which is the real point of the command.
@@ -384,4 +384,71 @@ fn byte_preservation_policy(strings: bool, hint: u32, line: u32, column: u32) ->
         coordinate(line),
         coordinate(column)
     )
+}
+
+#[test]
+fn refresh_write_refuses_unsupported_source_forms_without_any_output_change()
+-> Result<(), Box<dyn std::error::Error>> {
+    let fields = "id='allow-drift',kind='panic',family='unwrap',path='src/lib.rs',owner='core',classification='reviewed_exception',reason='Fixture',evidence=['test:refresh_write'],review_after='2099-01-01'";
+    let selector = "selector={ast_kind='method_call',container='relocate',callee='unwrap'}";
+    let inline_array = format!(
+        "policy='cargo-allow'\nallow=[{{{fields},{selector},last_seen={{line=99,column=1}}}}]"
+    );
+    let explicit_fields = fields.split(',').collect::<Vec<_>>().join("\n");
+    let inline_last_seen = format!(
+        "policy='cargo-allow'\n[[allow]]\n{explicit_fields}\n{selector}\nlast_seen={{line=99,column=1}}"
+    );
+    let multiline = format!(
+        "policy='cargo-allow'\n[[allow]]\n{explicit_fields}\n{selector}\n[allow.last_seen]\nline='''99'''\ncolumn=1"
+    );
+    let escaped = format!(
+        "policy='cargo-allow'\n[[allow]]\n{explicit_fields}\n{selector}\n[allow.last_seen]\nline=\"\\u0039\\u0039\"\ncolumn=1"
+    );
+    for before in [inline_array, inline_last_seen, multiline, escaped] {
+        let root = temp_root("e2e-refresh-unsupported");
+        write_drift_fixture(&root);
+        let policy = root.join("policy/allow.toml");
+        allow_policy::parse_policy(&before)?;
+        fs::write(&policy, &before)?;
+        fs::File::options().write(true).open(&policy)?.set_times(
+            fs::FileTimes::new().set_modified(
+                std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_600_000_000),
+            ),
+        )?;
+        let modified = fs::metadata(&policy)?.modified()?;
+        let output = root.join("refresh.json");
+        let summary = root.join("summary.json");
+        fs::write(&output, b"retained output")?;
+        fs::write(&summary, b"retained summary")?;
+        let result = cargo_allow_command()
+            .arg("--command-summary-output")
+            .arg(&summary)
+            .arg("refresh")
+            .arg("--root")
+            .arg(&root)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--allow-id")
+            .arg("allow-drift")
+            .arg("--write")
+            .arg("--format")
+            .arg("json")
+            .arg("--output")
+            .arg(&output)
+            .output()?;
+        assert_eq!(
+            result.status.code(),
+            Some(1),
+            "unsupported source must refuse: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(String::from_utf8_lossy(&result.stderr).contains("E0003_INVALID_POLICY"));
+        assert_eq!(fs::read(&policy)?, before.as_bytes());
+        assert_eq!(fs::metadata(&policy)?.modified()?, modified);
+        assert_eq!(fs::read(&output)?, b"retained output");
+        assert_eq!(fs::read(&summary)?, b"retained summary");
+        assert_stdout_empty("unsupported refresh", &result, "refusal has no stdout");
+        remove_temp_root(root);
+    }
+    Ok(())
 }

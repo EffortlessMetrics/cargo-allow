@@ -13,6 +13,32 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static REFRESH_TEST_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
+#[test]
+fn selected_refresh_text_refuses_a_changed_preimage() -> Result<(), Box<dyn std::error::Error>> {
+    let root = unique_fixture_copy();
+    let policy = root.join("policy/allow.toml");
+    let original = fs::read(&policy)?;
+    let digest = allow_core::sha256_v1_bytes(&original);
+    let mut changed = original;
+    changed.extend_from_slice(b"\n# external change\n");
+    fs::write(&policy, &changed)?;
+    let Err(error) = super::refresh_policy::refresh_bound_policy(
+        &policy,
+        &digest,
+        "allow-0250",
+        &allow_core::LastSeen {
+            line: 22,
+            column: 5,
+        },
+    ) else {
+        return Err("stale refresh preimage unexpectedly accepted".into());
+    };
+    assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+    assert_eq!(fs::read(&policy)?, changed);
+    fs::remove_dir_all(root)?;
+    Ok(())
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }
