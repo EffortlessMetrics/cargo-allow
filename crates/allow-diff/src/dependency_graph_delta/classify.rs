@@ -7,7 +7,7 @@
 use super::inputs::{
     CeilingBound, ParsedLockPackage, ParsedRequirement, RequirementKey, RequirementOperator,
     WorkspaceSpecs, collect_workspace_specs, compare_lock_versions, parse_lockfile, parse_manifest,
-    requirement_satisfied,
+    requirement_satisfied, version_orderable,
 };
 use super::{
     DependencyGraphDeltaKindV1, DependencyGraphDeltaRequestV1, DependencyGraphDeltaRowV1,
@@ -848,7 +848,12 @@ fn compare_package_versions(
         .iter()
         .map(|package| package.version.as_str())
         .collect();
-    if base_versions.len().max(head_versions.len()) >= 2
+    // A duplicate-count story needs the name on both sides: a name first
+    // entering the lock is only PackageAdded, and a name finally leaving it
+    // is only PackageRemoved (parity with the delta compiler, #4359).
+    if !base_packages.is_empty()
+        && !head_packages.is_empty()
+        && base_versions.len().max(head_versions.len()) >= 2
         && base_versions.len() != head_versions.len()
     {
         let mut moved = row(
@@ -894,7 +899,28 @@ fn compare_package_versions(
         let base_package = base_only.get(index).copied();
         let head_package = head_only.get(index).copied();
         if let (Some(base_package), Some(head_package)) = (base_package, head_package) {
-            match compare_lock_versions(&base_package.version, &head_package.version) {
+            // A pair whose versions cannot be ordered from syntax alone
+            // (empty prerelease identifiers, or all-digit identifiers that
+            // overflow u64) fails closed as unsupported instead of guessing
+            // a polarity that could invert an upgrade or hide the movement
+            // (parity with the delta compiler, #4347/#4359).
+            let Some(ordering) = lock_pair_ordering(&base_package.version, &head_package.version)
+            else {
+                let mut unsupported = row(
+                    DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure,
+                    display,
+                    DependencyGraphEdgeClassV1::Normal,
+                    "",
+                );
+                unsupported.base_version = Some(base_package.version.clone());
+                unsupported.head_version = Some(head_package.version.clone());
+                unsupported.base_source = base_package.source.clone();
+                unsupported.head_source = head_package.source.clone();
+                unsupported.detail = "lock_version_pair_not_orderable".to_string();
+                rows.push(unsupported);
+                continue;
+            };
+            match ordering {
                 Ordering::Equal => {
                     let mut changed = row(
                         DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
@@ -953,6 +979,17 @@ fn compare_package_versions(
         added.head_source = package.source.clone();
         added.detail = "package_added_to_lockfile".to_string();
         rows.push(added);
+    }
+}
+
+/// Strict polarity gate for one lockfile version pair: order the pair
+/// only when both sides satisfy the orderability law; `None` marks a
+/// pair whose upgrade/downgrade polarity must not be guessed.
+fn lock_pair_ordering(base: &str, head: &str) -> Option<Ordering> {
+    if version_orderable(base) && version_orderable(head) {
+        Some(compare_lock_versions(base, head))
+    } else {
+        None
     }
 }
 

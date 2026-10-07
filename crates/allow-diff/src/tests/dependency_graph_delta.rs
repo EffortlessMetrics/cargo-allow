@@ -1391,6 +1391,311 @@ fn dependency_graph_delta_fixtures_duplicate_version_movement() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// Prerelease polarity and fail-closed orderability (#4245/#4359 residual)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn dependency_graph_delta_fixtures_prerelease_polarity_matches_issue_4245() {
+    // The allow-diff mirror of the shipped #4245 polarity table: the
+    // comparator previously string-compared prerelease texts, so numeric
+    // identifiers inverted (`1.0.0-2` vs `1.0.0-10`) and build metadata
+    // broke equal-precedence ties. Parity with the allow-report delta
+    // compiler's `compare_versions` (#4359 residual). The compiler table's
+    // `1.0` vs `1.0.0` entry cannot reach this surface: `parse_semver_triple`
+    // requires complete triples, and a two-component lockfile version is
+    // rejected at parse as an instrument failure.
+    use crate::dependency_graph_delta::inputs::compare_lock_versions;
+    use std::cmp::Ordering::{self, Equal, Greater, Less};
+
+    assert_eq!(compare_lock_versions("1.0.0-rc.1", "1.0.0-rc.2"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-rc.1", "1.0.0"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-rc.1", "1.0.1"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-alpha", "1.0.0-beta"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-1", "1.0.0-alpha"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-2", "1.0.0-10"), Less);
+    assert_eq!(
+        compare_lock_versions("1.0.0-alpha.10", "1.0.0-alpha.2"),
+        Greater
+    );
+    assert_eq!(compare_lock_versions("1.0.0-rc", "1.0.0-rc.1"), Less);
+    assert_eq!(compare_lock_versions("1.0.0-rc.2", "1.0.0-rc.1"), Greater);
+    assert_eq!(compare_lock_versions("1.0.0+build.7", "1.0.0"), Equal);
+    assert_eq!(compare_lock_versions("1.0.200", "1.0.228"), Less);
+
+    // Ordering<*> type anchor so the import is used even if the
+    // literals above are reordered.
+    let _: fn(&str, &str) -> Ordering = compare_lock_versions;
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_rc_to_final_is_upgrade_not_downgrade() {
+    // #4245 parity: an rc -> final release movement is an upgrade, not a
+    // downgrade, and a prerelease-to-later-release movement must not vanish.
+    let manifest = manifest_with_dependencies("serde = \"1\"\n");
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package(
+        "serde",
+        "1.0.0-rc.1",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package("serde", "1.0.0", Some(CRATES_IO), None, &[]));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", manifest.clone())], Some(base_lock)),
+        side("h", &[("Cargo.toml", manifest)], Some(head_lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert!(
+        has_kind(
+            &receipt,
+            DependencyGraphDeltaKindV1::PackageUpgraded,
+            "serde"
+        ),
+        "the rc -> final upgrade is detected: {receipt:?}"
+    );
+    assert!(
+        !receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageDowngraded
+                && row.package == "serde"
+        ),
+        "the rc -> final movement is never a downgrade: {receipt:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_build_metadata_only_version_change_is_visible() {
+    // A version-string change that differs only in build metadata has equal
+    // semver precedence but changes the lock identity: it must surface as a
+    // SourceOrChecksumChanged row, never as a guessed upgrade/downgrade
+    // polarity and never as silence (#4359 residual).
+    let manifest = manifest_with_dependencies("serde = \"1\"\n");
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package("serde", "1.0.0", Some(CRATES_IO), None, &[]));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package(
+        "serde",
+        "1.0.0+abc",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", manifest.clone())], Some(base_lock)),
+        side("h", &[("Cargo.toml", manifest)], Some(head_lock)),
+    ));
+
+    assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    let changed = single_row(
+        &receipt,
+        DependencyGraphDeltaKindV1::SourceOrChecksumChanged,
+        "serde",
+    );
+    assert_eq!(
+        changed.base_version.as_deref(),
+        Some("1.0.0"),
+        "rows: {receipt:?}"
+    );
+    assert_eq!(
+        changed.head_version.as_deref(),
+        Some("1.0.0+abc"),
+        "rows: {receipt:?}"
+    );
+    assert!(
+        !receipt.rows.iter().any(|row| row.package == "serde"
+            && (row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded)),
+        "a build-metadata-only change is never a guessed polarity: {receipt:?}"
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_pure_add_or_remove_is_not_duplicate_movement() {
+    // A name first entering the lock is only PackageAdded, and a name
+    // leaving it is only PackageRemoved — even when it enters or leaves
+    // carrying two versions. DuplicateVersionMovement is the
+    // duplicate-count story and needs the name on both sides (#4359
+    // residual parity with the delta compiler). The witness package keeps
+    // both lockfiles inside the non-zero-denominator contract.
+    let empty_manifest = manifest_with_dependencies("");
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package(
+        "witness",
+        "9.0.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package(
+        "witness",
+        "9.0.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    head_lock.push_str(&lock_package("fresh", "1.0.0", Some(CRATES_IO), None, &[]));
+    head_lock.push_str(&lock_package("fresh", "2.0.0", Some(CRATES_IO), None, &[]));
+
+    let added = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", empty_manifest.clone())],
+            Some(base_lock.clone()),
+        ),
+        side(
+            "h",
+            &[("Cargo.toml", empty_manifest.clone())],
+            Some(head_lock.clone()),
+        ),
+    ));
+    assert_eq!(added.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert_eq!(
+        rows_for(&added, DependencyGraphDeltaKindV1::PackageAdded, "fresh").len(),
+        2,
+        "both entering versions are PackageAdded rows: {:?}",
+        added.rows
+    );
+    assert!(
+        !added
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::DuplicateVersionMovement),
+        "a pure add carries no duplicate-count story: {:?}",
+        added.rows
+    );
+
+    let removed = dependency_graph_delta(&request(
+        side(
+            "b",
+            &[("Cargo.toml", empty_manifest.clone())],
+            Some(head_lock),
+        ),
+        side("h", &[("Cargo.toml", empty_manifest)], Some(base_lock)),
+    ));
+    assert_eq!(removed.verdict, DependencyGraphDeltaVerdictV1::Complete);
+    assert_eq!(
+        rows_for(
+            &removed,
+            DependencyGraphDeltaKindV1::PackageRemoved,
+            "fresh"
+        )
+        .len(),
+        2,
+        "both leaving versions are PackageRemoved rows: {:?}",
+        removed.rows
+    );
+    assert!(
+        !removed
+            .rows
+            .iter()
+            .any(|row| row.kind == DependencyGraphDeltaKindV1::DuplicateVersionMovement),
+        "a pure removal carries no duplicate-count story: {:?}",
+        removed.rows
+    );
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_non_orderable_version_pair_fails_closed() {
+    // Semver 2.0.0 forbids empty prerelease identifiers (`1.0.0-` or
+    // `1.0.0-rc..1`), and an all-digit identifier that overflows u64
+    // cannot be ordered from syntax alone: such pairs fail closed as
+    // unsupported instead of guessing an upgrade/downgrade polarity
+    // (parity with the delta compiler, #4347/#4359 residual).
+    let manifest = manifest_with_dependencies("serde = \"1\"\n");
+    for (base_version, head_version) in [
+        ("1.0.0-", "1.0.0"),
+        ("1.0.0-rc..1", "1.0.0"),
+        ("1.0.0-1", "1.0.0-99999999999999999999"),
+    ] {
+        let mut base_lock = String::from("version = 4\n");
+        base_lock.push_str(&lock_package(
+            "serde",
+            base_version,
+            Some(CRATES_IO),
+            None,
+            &[],
+        ));
+        let mut head_lock = String::from("version = 4\n");
+        head_lock.push_str(&lock_package(
+            "serde",
+            head_version,
+            Some(CRATES_IO),
+            None,
+            &[],
+        ));
+        let receipt = dependency_graph_delta(&request(
+            side("b", &[("Cargo.toml", manifest.clone())], Some(base_lock)),
+            side("h", &[("Cargo.toml", manifest.clone())], Some(head_lock)),
+        ));
+
+        assert_eq!(receipt.verdict, DependencyGraphDeltaVerdictV1::Complete);
+        let unsupported = single_row(
+            &receipt,
+            DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure,
+            "serde",
+        );
+        assert_eq!(
+            unsupported.detail, "lock_version_pair_not_orderable",
+            "the non-orderable pair {base_version} -> {head_version} fails closed: {receipt:?}"
+        );
+        assert!(
+            !receipt.rows.iter().any(|row| row.package == "serde"
+                && (row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                    || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded)),
+            "no polarity is guessed for {base_version} -> {head_version}: {receipt:?}"
+        );
+    }
+}
+
+#[test]
+fn dependency_graph_delta_fixtures_u64_overflow_version_fails_closed() {
+    // An all-digit core segment that overflows u64 is non-orderable rather
+    // than silently dropped: the delta fails closed naming the unparseable
+    // version — never a guessed polarity, never silence. allow-diff's
+    // lockfile syntax gate rejects the side at parse (the compiler surface
+    // fails the exact pair closed instead); both keep the movement visible
+    // (#4347/#4359 residual).
+    let manifest = manifest_with_dependencies("serde = \"1\"\n");
+    let mut base_lock = String::from("version = 4\n");
+    base_lock.push_str(&lock_package("serde", "1.5.0", Some(CRATES_IO), None, &[]));
+    let mut head_lock = String::from("version = 4\n");
+    head_lock.push_str(&lock_package(
+        "serde",
+        "1.99999999999999999999.0",
+        Some(CRATES_IO),
+        None,
+        &[],
+    ));
+    let receipt = dependency_graph_delta(&request(
+        side("b", &[("Cargo.toml", manifest.clone())], Some(base_lock)),
+        side("h", &[("Cargo.toml", manifest)], Some(head_lock)),
+    ));
+
+    assert_eq!(
+        receipt.verdict,
+        DependencyGraphDeltaVerdictV1::InstrumentFailure
+    );
+    assert!(
+        receipt.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::UnsupportedOrInstrumentFailure
+            && row
+                .detail
+                .starts_with("lockfile_version_unparseable:serde:1.99999999999999999999.0")),
+        "the overflow movement is never silent: {receipt:?}"
+    );
+    assert!(
+        !receipt.rows.iter().any(
+            |row| row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded
+        ),
+        "the overflow pair is never a guessed polarity: {receipt:?}"
+    );
+}
+
 #[test]
 fn dependency_graph_delta_fixtures_no_semantic_graph_change() {
     let manifest = manifest_with_dependencies("libc = \"0.2\"\n");
