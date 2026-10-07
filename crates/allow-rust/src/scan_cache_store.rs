@@ -1610,6 +1610,7 @@ mod tests {
                 Path::new("src/replacement.rs"),
                 "replacement".to_string(),
                 false,
+                false,
                 Vec::new(),
             );
             let wait_hook = || {
