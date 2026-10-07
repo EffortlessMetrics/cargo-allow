@@ -12,7 +12,12 @@ pub fn render_core_command_summary_json(summary: &CoreCommandSummaryV1) -> Resul
 
 pub fn render_core_command_summary_human(summary: &CoreCommandSummaryV1) -> String {
     let mut output = String::new();
-    output.push_str("Result: ");
+    // #4393: the block's first line is `Outcome`, not `Result`. Commands whose
+    // detailed report also prints a gate verdict line (`Result: passed
+    // (enforcing)` / `Result: failed (N new)`) used to leave one screen with
+    // two different words under the same `Result:` label; the summary class
+    // word now appears exactly once per screen, under a label of its own.
+    output.push_str("Outcome: ");
     output.push_str(&result_label(summary));
     output.push('\n');
     output.push_str("Why: ");

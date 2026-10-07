@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Align the --command-summary-output supported set across --help, the rejection
+  message, and the schema docs (all fourteen source-exception commands, #4393),
+  project adoption Next steps that still carry <placeholder> arguments as
+  decision actions instead of template commands, and label the human summary
+  block's class line Outcome so a report tail can no longer print two different
+  words under the same Result label.

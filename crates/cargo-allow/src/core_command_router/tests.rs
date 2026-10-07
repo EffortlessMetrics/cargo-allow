@@ -53,7 +53,7 @@ fn human_report_starts_with_the_common_summary() -> Result<(), String> {
     print_report_with_summary_config(args, None).map_err(|error| error.to_string())?;
     let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
     require(
-        text.starts_with("Result: satisfied\nWhy:"),
+        text.starts_with("Outcome: satisfied\nWhy:"),
         format!("common summary was not first: {text}"),
     )?;
     require(
@@ -79,7 +79,7 @@ fn non_core_report_commands_delegate_without_a_summary() -> Result<(), String> {
     print_report(args).map_err(|error| error.to_string())?;
     let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
     require(
-        !text.starts_with("Result:"),
+        !text.starts_with("Outcome:"),
         format!("non-core command received a common summary: {text}"),
     )?;
     require(
