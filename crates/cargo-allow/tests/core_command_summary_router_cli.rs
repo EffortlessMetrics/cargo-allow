@@ -12,8 +12,12 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 /// Every human summary block in the shared grammar, in order.
+///
+/// The first line is `Outcome:`, not `Result:` (#4393): commands whose detailed
+/// report also prints a gate verdict (`Result: passed (enforcing)`) must not
+/// leave one screen with two different words under one `Result:` label.
 const GRAMMAR_FIELDS: [&str; 8] = [
-    "Result:",
+    "Outcome:",
     "Why:",
     "Subject:",
     "Coverage:",
@@ -105,7 +109,7 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
         format!("init failed: {}", String::from_utf8_lossy(&output.stderr)),
     )?;
     require(
-        stdout(&output)?.starts_with("Result: satisfied"),
+        stdout(&output)?.starts_with("Outcome: satisfied"),
         format!(
             "init summary missing from human output: {}",
             stdout(&output)?
@@ -145,7 +149,7 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
         ),
     )?;
     require(
-        stdout(&preview)?.starts_with("Result: completed (advisory)"),
+        stdout(&preview)?.starts_with("Outcome: completed (advisory)"),
         format!("init preview summary missing: {}", stdout(&preview)?),
     )?;
     let preview_summary: Value = serde_json::from_str(
@@ -193,7 +197,7 @@ fn core_command_summary_mutation_propose_preserves_candidate_boundary() -> Resul
         ),
     )?;
     require(
-        String::from_utf8_lossy(&written.stderr).starts_with("Result: completed (advisory)"),
+        String::from_utf8_lossy(&written.stderr).starts_with("Outcome: completed (advisory)"),
         format!(
             "propose write must expose the candidate summary on stderr: {}",
             String::from_utf8_lossy(&written.stderr)
@@ -282,7 +286,7 @@ fn core_command_summary_mutation_add_separates_candidate_and_live_entry() -> Res
         ),
     )?;
     require(
-        String::from_utf8_lossy(&candidate.stderr).starts_with("Result: completed (advisory)"),
+        String::from_utf8_lossy(&candidate.stderr).starts_with("Outcome: completed (advisory)"),
         format!(
             "candidate add must be advisory: {}",
             String::from_utf8_lossy(&candidate.stderr)
@@ -666,7 +670,7 @@ callee = "unwrap"
             .iter()
             .zip(human_lines.iter().copied())
             .all(|(field_name, line)| line.starts_with(field_name))
-            && human.contains("Result: findings (decision_required)")
+            && human.contains("Outcome: findings (decision_required)")
             && human.contains("Next: Multiple allow entries compete for this finding.")
             && human.contains("Writes: nothing in this operation")
             && !human.contains('\u{1b}'),
@@ -1213,7 +1217,9 @@ fn summary_output_is_rejected_for_unmigrated_commands() -> Result<(), String> {
         &[
             "--command-summary-output",
             &sidecar.to_string_lossy(),
-            "vocabulary",
+            // An unmigrated command that still parses `--root`, so the refusal
+            // comes from the router gate rather than clap argv parsing.
+            "list",
         ],
     )?;
     require(
@@ -1223,6 +1229,15 @@ fn summary_output_is_rejected_for_unmigrated_commands() -> Result<(), String> {
     require(
         !sidecar.exists(),
         "a rejected --command-summary-output must not leave a partial artifact behind",
+    )?;
+    // #4393: the rejection names the one authoritative set, including the
+    // mutation commands that `--help` and the schema docs used to omit.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    require(
+        stderr.contains("currently supports")
+            && stderr.contains("refresh, prune, migrate")
+            && stderr.contains("and worklist commands only"),
+        format!("rejection must name the authoritative supported set: {stderr}"),
     )?;
 
     remove_temp_root(root)
@@ -1274,6 +1289,304 @@ fn doctor_summary_identity_is_stable_across_repository_relocation() -> Result<()
     }
     Ok(())
 }
+
+/// #4393 gap 1: every command the authoritative supported set names must
+/// actually emit the sidecar — a probe of the whole set, each with
+/// success-path argv, so `--help`, the schema docs, the rejection message,
+/// and the router cannot disagree about what emits.
+#[test]
+fn every_supported_command_emits_a_summary_sidecar() -> Result<(), String> {
+    let root = temp_root("summary-supported-set")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    // `add --update` below receipts the finding as `allow-0002` (`init` seeds
+    // `allow-0001` for the ledger itself), which gives `explain` a real entry.
+    for (label, command) in [
+        ("adopt", vec!["adopt"]),
+        ("doctor", vec!["doctor"]),
+        ("audit", vec!["audit"]),
+        ("check", vec!["check", "--mode", "no-new"]),
+        ("diff", vec!["diff", "--base", "HEAD"]),
+        ("worklist", vec!["worklist"]),
+        (
+            "why",
+            vec![
+                "why",
+                "--kind",
+                "panic",
+                "--path",
+                "src/lib.rs",
+                "--line",
+                "1",
+            ],
+        ),
+        ("propose", vec!["propose"]),
+        ("init", vec!["init", "--config", "policy/allow.probe.toml"]),
+        (
+            "add",
+            vec![
+                "add",
+                "--kind",
+                "panic",
+                "--path",
+                "src/lib.rs",
+                "--line",
+                "1",
+                "--owner",
+                "fixture",
+                "--reason",
+                "supported-set probe",
+                "--update",
+            ],
+        ),
+        ("explain", vec!["explain", "allow-0002"]),
+        ("prune", vec!["prune", "--stale", "--dry-run"]),
+        (
+            "migrate",
+            vec![
+                "migrate",
+                "--from",
+                "legacy-ledger.toml",
+                "--output",
+                "policy/allow.migrated.toml",
+                "--force",
+            ],
+        ),
+        // `refresh` needs real location drift: move the finding one line down
+        // after `add` pinned it, so the dry-run preview has something to show.
+        (
+            "refresh",
+            vec!["refresh", "--allow-id", "allow-0002", "--dry-run"],
+        ),
+    ] {
+        if label == "refresh" {
+            // Drift fires only past the #1808 line tolerance (3), so move the
+            // finding well clear of where `add` pinned its last_seen.
+            let mut drifted = "pub fn padding() {}\n".repeat(8);
+            drifted.push_str("pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n");
+            fs::write(root.join("src/lib.rs"), drifted)
+                .map_err(|error| format!("rewrite source for drift: {error}"))?;
+        }
+        if label == "migrate" {
+            fs::write(
+                root.join("legacy-ledger.toml"),
+                LEGACY_BESPOKE_LEDGER_FIXTURE,
+            )
+            .map_err(|error| format!("write legacy ledger: {error}"))?;
+        }
+        let sidecar = root.join(format!("{label}-probe-summary.json"));
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let mut argv: Vec<&str> = vec!["--command-summary-output", &sidecar_text];
+        argv.extend(command.iter().copied());
+        // `migrate` resolves `--from` and `--output` against the process
+        // working directory, not `--root`, so both must be spelled absolutely:
+        // a relative `--output` would otherwise write into the test runner's
+        // own working directory instead of the fixture.
+        let legacy = root
+            .join("legacy-ledger.toml")
+            .to_string_lossy()
+            .to_string();
+        let migrated = root
+            .join("policy/allow.migrated.toml")
+            .to_string_lossy()
+            .to_string();
+        let argv: Vec<&str> = argv
+            .into_iter()
+            .map(|arg| match arg {
+                "legacy-ledger.toml" => legacy.as_str(),
+                "policy/allow.migrated.toml" => migrated.as_str(),
+                other => other,
+            })
+            .collect();
+        let output = run(&root, &argv)?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        require(
+            sidecar.exists(),
+            format!("{label} must emit the summary sidecar, got {stderr}"),
+        )?;
+        let summary: Value = serde_json::from_str(
+            &fs::read_to_string(&sidecar)
+                .map_err(|error| format!("read {label} summary: {error}"))?,
+        )
+        .map_err(|error| format!("parse {label} summary: {error}"))?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from(label))
+                && field(&summary, &["schema_id"])
+                    == Some(&Value::from("cargo-allow.core-command-summary.v1")),
+            format!("{label} sidecar lost its operation identity: {summary}"),
+        )?;
+    }
+
+    remove_temp_root(root)
+}
+
+/// #4393 gap 2: an adoption Next whose argv carries an unsubstituted
+/// `<placeholder>` is not executable as printed, and the plan's facts carry
+/// counts rather than the reference the placeholder stands for — so the
+/// summary must project the step as a decision, never as a template command.
+#[test]
+fn adopt_projects_a_placeholder_next_step_as_a_decision() -> Result<(), String> {
+    let root = temp_root("summary-adopt-placeholder")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let sidecar = root.join("adopt-summary.json");
+    let output = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &sidecar.to_string_lossy(),
+            "adopt",
+        ],
+    )?;
+    require(
+        output.status.success(),
+        format!("adopt failed: {}", String::from_utf8_lossy(&output.stderr)),
+    )?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read adopt summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse adopt summary: {error}"))?;
+    // Pin the disposition so the fixture cannot silently drift away from the
+    // placeholder-carrying `inspect_new_finding` primary route.
+    require(
+        field(&summary, &["reason", "code"])
+            == Some(&Value::from("adoption.existing_policy_has_new_findings")),
+        format!("fixture must hit the new-finding adoption route: {summary}"),
+    )?;
+    let primary = summary
+        .get("primary_action")
+        .ok_or_else(|| "adopt summary needs a primary action".to_string())?;
+    require(
+        field(primary, &["kind"]) == Some(&Value::from("decision"))
+            && field(primary, &["program"]).is_none()
+            && field(primary, &["args"])
+                .and_then(Value::as_array)
+                .is_none_or(|args| args.is_empty()),
+        format!("placeholder next step must be a decision, not a template command: {primary}"),
+    )?;
+    require(
+        field(primary, &["expected_effect"])
+            .and_then(Value::as_str)
+            .is_some_and(|effect| effect.contains("why") && effect.contains("<finding>")),
+        format!("decision must carry the template and its named input: {primary}"),
+    )?;
+    for action in ["primary_action", "next_proof"] {
+        if let Some(args) = summary
+            .get(action)
+            .and_then(|action| action.get("args"))
+            .and_then(Value::as_array)
+        {
+            require(
+                args.iter().all(|arg| {
+                    arg.as_str()
+                        .is_none_or(|arg| !(arg.starts_with('<') && arg.ends_with('>')))
+                }),
+                format!("{action} args carry placeholder syntax: {args:?}"),
+            )?;
+        }
+    }
+    let human = stdout(&output)?;
+    require(
+        human.contains("Next: Choose the concrete input for the inspect_new_finding step"),
+        format!("adopt human Next must present the decision route: {human}"),
+    )?;
+    require(
+        !human.contains("\"<finding>\""),
+        format!("adopt human Next must not print the template as a command: {human}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+/// #4393 gap 3: one human screen must never print two different words under
+/// the `Result:` label. The grammar block states the #3148 class word as
+/// `Outcome:`; the report tail keeps the single gate-verdict `Result:` line.
+#[test]
+fn one_human_screen_prints_the_result_word_once() -> Result<(), String> {
+    let root = temp_root("summary-dual-result")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let audit = stdout(&run(&root, &["audit"])?)?;
+    require(
+        audit
+            .lines()
+            .next()
+            .is_some_and(|line| line.starts_with("Outcome: findings (advisory)")),
+        format!("audit summary must open with the Outcome class line: {audit}"),
+    )?;
+    let audit_result_lines = result_lines(&audit);
+    require(
+        audit_result_lines.len() == 1
+            && audit_result_lines
+                .first()
+                .is_some_and(|line| line.starts_with("Result: passed")),
+        format!(
+            "audit screen must keep exactly one gate-verdict Result line: {audit_result_lines:?}"
+        ),
+    )?;
+
+    let check = stdout(&run(&root, &["check", "--mode", "no-new"])?)?;
+    require(
+        check
+            .lines()
+            .next()
+            .is_some_and(|line| line.starts_with("Outcome: findings (blocking)")),
+        format!("check summary must open with the Outcome class line: {check}"),
+    )?;
+    let check_result_lines = result_lines(&check);
+    require(
+        check_result_lines.len() == 1
+            && check_result_lines
+                .first()
+                .is_some_and(|line| line.starts_with("Result: failed")),
+        format!(
+            "check screen must keep exactly one gate-verdict Result line: {check_result_lines:?}"
+        ),
+    )?;
+    // The class word lives on the Outcome line only: no `Result:` line may
+    // carry it, so no screen states the result twice with two words.
+    for text in [&audit, &check] {
+        require(
+            result_lines(text)
+                .iter()
+                .all(|line| !line.starts_with("Result: findings")),
+            format!("a Result line claims the class word: {text}"),
+        )?;
+    }
+
+    remove_temp_root(root)
+}
+
+/// Collect the lines of a human screen that claim the `Result:` label.
+fn result_lines(text: &str) -> Vec<&str> {
+    text.lines()
+        .filter(|line| line.starts_with("Result:"))
+        .collect()
+}
+
+/// Minimal bespoke xtask/ripr ledger for the `migrate` probe (#4393).
+const LEGACY_BESPOKE_LEDGER_FIXTURE: &str = r#"
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "fixture-semantic-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Semantic selector pins unwrap on optional after validation."
+selector = "method_call"
+container = "value"
+callee = "unwrap"
+receiver = "v"
+"#;
 
 /// Read a nested JSON field without panicking-index syntax.
 fn field<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {

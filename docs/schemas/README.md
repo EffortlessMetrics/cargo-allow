@@ -84,7 +84,7 @@ partial; #3876 owns single-resolution command consumption.
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 | Lifecycle cadence | `cargo-allow.cadence.v1` | `cargo-allow cadence --format json` |
-| Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... explain <id>`, `... why`, `... worklist` |
+| Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... diff --base <rev>`, `... init`, `... propose`, `... add ...`, `... refresh --allow-id <id>`, `... prune`, `... migrate --from <path>`, `... explain <id>`, `... why`, `... worklist` |
 
 ## Common command summary
 
@@ -95,9 +95,13 @@ result, reason, exact source subject, coverage, one primary next action, write
 posture, next proof boundary, and what remains unproven.
 
 The same projection is what the human output renders as its opening
-`Result` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` / `Then` /
+`Outcome` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` / `Then` /
 `Not proven` block, so automation never has to parse human prose to decide
-whether a command passed or what to run next.
+whether a command passed or what to run next. The block's first line is
+labelled `Outcome` — not `Result` — so that a report tail which prints the
+enforcement gate verdict (for example `Result: passed (enforcing)`) can never
+be mistaken for a second, contradictory statement of the summary's `result_class`
+(#4393): one screen carries the `result_class` word exactly once.
 
 Consumers should rely on these properties:
 
@@ -109,7 +113,14 @@ Consumers should rely on these properties:
   Where repository judgment is required, a `decision` action is emitted rather
   than a guessed command.
 - `subject.repository_identity` is content-addressed and stable across
-  relocated checkouts; it embeds no private absolute paths.
+  relocated checkouts; it embeds no private absolute paths. Comparability is
+  currently per command, not per repository, and is **design-pending**
+  (#4393): most commands derive the digest from their own rendered detail
+  (equal for re-runs of the same command on the same content, from any
+  checkout location), while `init` and `diff` still emit the unresolved
+  placeholder `local-repository:current`. Wrappers must not key one identity
+  across different commands, or across `init`/`diff`, until one
+  content-addressed cross-command format is designed and emitted uniformly.
 - `operation_effects` states the operation's own read/write posture, separately
   from any paths a suggested next action may write. The inspection commands
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
@@ -119,9 +130,12 @@ Consumers should rely on these properties:
   outside the source-tree root is rejected with `E0002_INVALID_CONFIG` rather
   than silently relocated into the scanned tree.
 
-The supported command set grows as the migration proceeds; a command that does
-not yet emit the summary rejects `--command-summary-output` rather than silently
-ignoring it.
+The supported command set is one authoritative list — the source-exception
+`adopt`, `doctor`, `audit`, `check`, `diff`, `init`, `propose`, `add`,
+`refresh`, `prune`, `migrate`, `explain`, `why`, and `worklist` commands. The
+`--help` flag text, the rejection message emitted for any other subcommand,
+and this table carry the same set (#4393); a command outside the set rejects
+`--command-summary-output` rather than silently ignoring it.
 
 Note the distinct names: the global `--command-summary-output` writes this
 projection, while `add`, `propose`, and `migrate` each own a separate

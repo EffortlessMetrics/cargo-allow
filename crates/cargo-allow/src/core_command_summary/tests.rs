@@ -624,7 +624,7 @@ fn check_summary_keeps_human_and_json_result_semantics_equal() -> Result<(), Str
     let value: serde_json::Value =
         serde_json::from_str(&json).map_err(|error| error.to_string())?;
     ensure(
-        human.contains("Result: findings (blocking)"),
+        human.contains("Outcome: findings (blocking)"),
         format!("human result missing: {human}"),
     )?;
     ensure(
@@ -765,6 +765,60 @@ fn adoption_adapter_counts_only_unpromoted_follow_ups() -> Result<(), String> {
             .as_deref()
             .is_some_and(|reference| reference.contains("exclude_index=0")),
         "additional action reference must exclude the promoted next proof",
+    )
+}
+
+/// #4393: an adoption action whose argv still carries an unsubstituted
+/// `<placeholder>` is not executable as printed, so the summary projects it
+/// as a decision carrying the template in `expected_effect`, and the write
+/// posture the plan already established survives the demotion.
+#[test]
+fn adoption_adapter_demotes_placeholder_argv_to_a_decision() -> Result<(), String> {
+    let mut plan = adoption_plan();
+    plan.bootstrap_disposition = allow_report::BootstrapDisposition::ExistingPolicyNeedsRepair;
+    plan.primary_action = allow_report::AdoptionAction {
+        kind: allow_report::AdoptionActionKind::ApplyStaleSafeFindingPlan,
+        argv: strings(&["cargo-allow", "add", "--from-plan", "<plan>", "--update"]),
+        reason: "a stale finding has an exact safe plan".to_string(),
+        write_posture: allow_report::WritePosture::MayWrite,
+        expected_result: "only the selected policy entry may change".to_string(),
+    };
+    plan.may_write_paths = vec!["policy/allow.toml".to_string()];
+    let summary = core_command_summary_from_adoption_plan(&plan)?;
+    let primary = summary
+        .primary_action
+        .as_ref()
+        .ok_or("placeholder primary action must survive projection")?;
+    ensure(
+        primary.kind == super::CoreCommandActionKindV1::Decision,
+        "a template argv must be projected as a decision",
+    )?;
+    ensure(
+        primary.program.is_none() && primary.args.is_empty(),
+        "a decision must not carry the template as executable argv",
+    )?;
+    ensure(
+        primary.expected_effect.contains("add") && primary.expected_effect.contains("<plan>"),
+        format!(
+            "the decision must carry the template and its named input: {}",
+            primary.expected_effect
+        ),
+    )?;
+    ensure(
+        primary.write_posture == super::CoreCommandWritePostureV1::LiveMutation
+            && primary.may_write_paths == vec!["policy/allow.toml".to_string()],
+        "the MayWrite template demotes with its write posture intact",
+    )?;
+    ensure(
+        summary.next_proof.as_ref().is_some_and(|proof| {
+            proof.kind == super::CoreCommandActionKindV1::Command
+                && proof
+                    .args
+                    .iter()
+                    .map(String::as_str)
+                    .eq(["check", "--mode", "no-new"])
+        }),
+        "the placeholder-free follow-up stays an executable next proof",
     )
 }
 

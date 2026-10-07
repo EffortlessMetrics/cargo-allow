@@ -38,7 +38,7 @@ fn core_command_summary_installed_diff_projection() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run diff summary: {err}")));
     assert_status("diff summary", &output, false);
     let text = String::from_utf8_lossy(&output.stdout);
-    assert!(text.starts_with("Result: findings (blocking)"), "{text}");
+    assert!(text.starts_with("Outcome: findings (blocking)"), "{text}");
     let summary: Value = serde_json::from_str(
         &fs::read_to_string(&sidecar)
             .unwrap_or_else(|err| std::panic::panic_any(format!("read diff summary: {err}"))),

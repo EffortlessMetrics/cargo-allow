@@ -28,6 +28,14 @@ mod workflow_date;
 mod workflow_security_command;
 mod workflow_syntax_command;
 
+/// The one authoritative `--command-summary-output` supported set (#4393).
+///
+/// This is the exact set of router arms in `configure_summary_output` below.
+/// The `--help` doc comment on the flag repeats it as prose because clap doc
+/// comments cannot interpolate; `cli_help_names_the_supported_summary_set`
+/// fails when the two drift. `docs/schemas/README.md` carries the same list.
+pub(crate) const COMMAND_SUMMARY_SUPPORTED_COMMANDS: &str = "adopt, doctor, audit, check, diff, init, propose, add, refresh, prune, migrate, explain, why, and worklist";
+
 #[derive(Debug, Parser)]
 #[command(
     name = "cargo-allow",
@@ -60,8 +68,10 @@ pub(crate) struct CargoAllowCli {
     /// Write the versioned common command summary to a separate JSON file.
     ///
     /// Supports the source-exception `adopt`, `doctor`, `audit`, `check`, `diff`,
-    /// `init`, `explain`, `why`, and `worklist` commands. Existing detailed human,
-    /// JSON, Markdown, HTML, SARIF, and receipt artifacts remain unchanged.
+    /// `init`, `propose`, `add`, `refresh`, `prune`, `migrate`, `explain`,
+    /// `why`, and `worklist` commands — the same set the router accepts and the
+    /// rejection message names. Existing detailed human, JSON, Markdown, HTML,
+    /// SARIF, and receipt artifacts remain unchanged.
     ///
     /// Deliberately *not* named `--summary-output`: `add`, `propose`, and
     /// `migrate` each own a per-command `--summary-output` with different
@@ -232,7 +242,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, check, diff, init, propose, add, refresh, prune, explain, why, or worklist subcommand",
+                format!(
+                    "--command-summary-output requires the {COMMAND_SUMMARY_SUPPORTED_COMMANDS} subcommand"
+                ),
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -398,7 +410,9 @@ fn configure_summary_output(
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, propose, add, refresh, prune, migrate, explain, why, and worklist commands only",
+                format!(
+                    "--command-summary-output currently supports the source-exception {COMMAND_SUMMARY_SUPPORTED_COMMANDS} commands only"
+                ),
             ));
         }
     }
@@ -527,4 +541,49 @@ impl CargoAllowCommand {
         "dependency-graph-evidence",
         "dependency-graph-delta",
     ];
+}
+
+#[cfg(test)]
+mod command_summary_supported_set_tests {
+    use super::{COMMAND_SUMMARY_SUPPORTED_COMMANDS, CargoAllowCli, CargoAllowCommand};
+    use clap::CommandFactory;
+
+    /// #4393: the supported set must be one list on every surface. The runtime
+    /// messages interpolate [`COMMAND_SUMMARY_SUPPORTED_COMMANDS`] directly, so
+    /// this pins the two surfaces that cannot interpolate: the flag's `--help`
+    /// doc text and the set of real subcommands the list names.
+    #[test]
+    fn cli_help_names_the_supported_summary_set() {
+        let flag_help = CargoAllowCli::command()
+            .get_arguments()
+            .find(|argument| argument.get_id() == "command_summary_output")
+            .and_then(|argument| argument.get_long_help())
+            .map(|help| help.to_string());
+        for name in supported_summary_command_names() {
+            assert!(
+                flag_help
+                    .as_deref()
+                    .is_some_and(|help| help.contains(&format!("`{name}`"))),
+                "--help must name `{name}` as a --command-summary-output command; flag help text: {flag_help:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn supported_summary_set_names_only_real_subcommands() {
+        for name in supported_summary_command_names() {
+            assert!(
+                CargoAllowCommand::SUBCOMMANDS.contains(&name),
+                "supported summary set names `{name}`, which is not a subcommand"
+            );
+        }
+    }
+
+    /// Parse the prose list ("a, b, and c") back into its command names.
+    fn supported_summary_command_names() -> Vec<&'static str> {
+        COMMAND_SUMMARY_SUPPORTED_COMMANDS
+            .split(", and ")
+            .flat_map(|part| part.split(", "))
+            .collect()
+    }
 }

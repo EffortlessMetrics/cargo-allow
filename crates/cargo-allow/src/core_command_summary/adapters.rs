@@ -1492,11 +1492,42 @@ fn action_from_adoption(
         ),
     };
 
+    let args: Vec<String> = argv.cloned().collect();
+    if let Some(placeholder) = args
+        .iter()
+        .find(|argument| is_unsubstituted_placeholder(argument))
+    {
+        // #4393: a template argv is not executable as printed (`why "<finding>"
+        // --plan` exits with a usage error), and the plan's facts carry counts,
+        // not the finding/plan/id reference the placeholder stands for, so the
+        // projection cannot substitute it either. The step is therefore the
+        // decision route the operator grammar already defines: the template and
+        // its named input move into `expected_effect`, `args` stays empty, and
+        // no consumer mistakes the Next line for a copyable command.
+        return Ok(CoreCommandActionV1::decision(
+            format!("adoption.{}", action.kind.as_str()),
+            format!(
+                "Choose the concrete input for the {} step",
+                action.kind.as_str()
+            ),
+        )
+        .with_write_posture(write_posture, write_paths)
+        .with_contract(
+            action.reason.clone(),
+            format!(
+                "the step is not executable as printed: {} — substitute a concrete value for {} from this command's detailed artifact to run it; the summary does not choose the input",
+                super::render::render_argv_for_display(program, &args),
+                placeholder
+            ),
+            "The action must be re-evaluated against current command-specific inputs; this summary does not execute it.",
+        ));
+    }
+
     Ok(CoreCommandActionV1::command(
         format!("adoption.{}", action.kind.as_str()),
         format!("Run {}", action.kind.as_str()),
         program.clone(),
-        argv.cloned().collect(),
+        args,
     )
     .with_write_posture(write_posture, write_paths)
     .with_contract(
@@ -1504,6 +1535,16 @@ fn action_from_adoption(
         action.expected_result.clone(),
         "The action must be re-evaluated against current command-specific inputs; this summary does not execute it.",
     ))
+}
+
+/// An adoption argv argument that names an input rather than carrying one.
+///
+/// The adoption plan spells unresolved inputs as angle-bracket tokens
+/// (`<finding>`, `<plan>`, `<allow-id>`); the same syntax is what the
+/// regression test asserts can never reach a summary `args` element (#4393).
+fn is_unsubstituted_placeholder(argument: &str) -> bool {
+    let trimmed = argument.trim();
+    trimmed.len() >= 2 && trimmed.starts_with('<') && trimmed.ends_with('>')
 }
 
 /// Doctor facts required to project the common operator summary.
