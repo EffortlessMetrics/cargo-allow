@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  List `baseline_debt`-classified ledger entries in the
+  `worklist --item-kind baseline_debt` queue even when a sibling exception
+  claims the live finding match or the finding has drifted. The migrate
+  closeout advertises a classification-based `count` and routes to that
+  queue, so a dual-file legacy migration (allowlist + baseline over the same
+  selector) previously advertised one item while the routed command returned
+  zero. The queue now derives baseline-debt items from ledger posture;
+  findings match behavior is unchanged (#4394).

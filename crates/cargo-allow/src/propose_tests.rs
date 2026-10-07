@@ -162,6 +162,107 @@ fn propose_without_policy_preserves_bootstrap_baseline_path() -> Result<(), Stri
 }
 
 #[test]
+fn propose_surfaces_bare_allow_skip_in_human_and_json_summaries() -> Result<(), String> {
+    // #4394 G7: propose must not silently drop bare `#[allow(...)]` findings.
+    // `requirements.allow_bare_allow_attributes = false` forbids receipting
+    // them, so both summary formats must carry the skipped count and the
+    // named requirement — otherwise the operator expects the follow-up
+    // no-new check to pass on findings propose never baselined.
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-bare-allow-skip-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+    fs::write(
+        root.join("src/lib.rs"),
+        "#[allow(clippy::needless_borrow)]\nfn bare() {}\n#[expect(clippy::let_unit_value)]\nfn expected() {}\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let target = root.join("policy/allow.toml");
+    let human_summary = root.join("propose-summary-human.txt");
+    cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: Some("lint-exception".to_string()),
+        include_untracked: true,
+        expires: None,
+        write: Some(target.clone()),
+        force: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: Some(human_summary.clone()),
+        max: 50,
+    })
+    .map_err(|error| format!("propose failed: {error}"))?;
+
+    let human = fs::read_to_string(&human_summary).map_err(|error| error.to_string())?;
+    assert!(
+        human.contains("baseline_debt entries proposed: 1"),
+        "the receiptable #[expect] finding should still be proposed: {human}"
+    );
+    assert!(
+        human.contains("not receiptable: 1 new finding not proposed"),
+        "human summary should surface the skipped bare-allow finding: {human}"
+    );
+    assert!(
+        human.contains(
+            "requirements.allow_bare_allow_attributes = false forbids receipting bare #[allow(...)] attributes"
+        ),
+        "human summary should name the forbidding requirement: {human}"
+    );
+    assert!(
+        human.contains("check --mode no-new still reports them as new"),
+        "human summary should set the expectation that the no-new gate stays red: {human}"
+    );
+
+    let json_summary = root.join("propose-summary.json");
+    cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: Some("lint-exception".to_string()),
+        include_untracked: true,
+        expires: None,
+        write: Some(target.clone()),
+        force: true,
+        summary_format: HumanJsonFormat::Json,
+        summary_output: Some(json_summary.clone()),
+        max: 50,
+    })
+    .map_err(|error| format!("json propose failed: {error}"))?;
+
+    let json = fs::read_to_string(&json_summary).map_err(|error| error.to_string())?;
+    let value = parse_json_artifact("propose", &json, allow_report::PROPOSE_SCHEMA_ID, "propose");
+    assert_eq!(
+        value
+            .pointer("/summary/unreceiptable_new_findings")
+            .and_then(Value::as_u64),
+        Some(1),
+        "json summary should count the skipped bare-allow finding: {json}"
+    );
+    let reason = value
+        .pointer("/summary/unreceiptable_reason")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        reason.contains("allow_bare_allow_attributes"),
+        "json summary should name the forbidding requirement: {json}"
+    );
+
+    let written = fs::read_to_string(&target).map_err(|error| error.to_string())?;
+    assert!(
+        !written.contains("family = \"allow_attribute\""),
+        "the bare #[allow] finding must not be receipted into the policy: {written}"
+    );
+
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[test]
 fn proposal_summary_preserves_distinct_rejection_reasons() {
     let mut reason = None;
     record_unreceiptable_reason(&mut reason, "bare allow forbidden");

@@ -23,6 +23,16 @@ pub(super) fn work_items_from_policy_advisories(
     let matched_counts = matched_occurrence_counts(outcomes);
     for entry in &cfg.allow {
         let Some(outcome) = matched_outcome_for_entry(outcomes, entry) else {
+            // #4394 G5: baseline_debt is review debt by ledger posture. A
+            // sibling exception can claim the live match (dual-file legacy
+            // migration shape) or the finding can drift, but the entry still
+            // needs human review — and migrate's closeout count is
+            // classification-based, so the routed
+            // `worklist --item-kind baseline_debt` queue must list it.
+            if entry.classification == "baseline_debt" {
+                let item_index = start_index + items.len();
+                items.push(baseline_debt_item(entry, None, None, item_index));
+            }
             continue;
         };
         let finding = outcome.finding_index.and_then(|idx| findings.get(idx));
@@ -68,41 +78,12 @@ pub(super) fn work_items_from_policy_advisories(
         }
         if entry.classification == "baseline_debt" {
             let item_index = start_index + items.len();
-            let kind = BASELINE_DEBT.to_string();
-            items.push(WorkItem {
-                id: format!("work-baseline-debt-{item_index:04}"),
-                exception_kind: Some(entry.kind.as_str().to_string()),
-                family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
-                owner: Some(entry.owner.clone()),
-                classification: Some(entry.classification.clone()),
-                reason: Some(entry.reason.clone()),
-                created: entry.lifecycle.created.clone(),
-                review_after: entry.lifecycle.review_after.clone(),
-                expires: entry.lifecycle.expires.clone(),
-                evidence_count: Some(entry.evidence.len()),
-                selector_precision: Some(selector_precision_score(entry)),
-                risk: work_item_risk(&kind, MatchStatus::BaselineDebt, finding, Some(entry)),
-                difficulty: work_item_difficulty(&kind, finding, Some(entry)),
-                status: MatchStatus::BaselineDebt,
-                allow_id: Some(entry.id.clone()),
-                candidate_ids: Vec::new(),
-                finding_index: outcome.finding_index,
-                path: finding
-                    .map(|finding| normalize_path(&finding.path))
-                    .or_else(|| Some(entry.path_or_glob())),
-                line: None,
-                column: None,
-                evidence_reference: None,
-                source_package: source_package_name(finding),
-                message: format!(
-                    "{} is generated baseline_debt and still needs human review",
-                    entry.id
-                ),
-                suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
-                proof_commands: proof_commands(&kind, finding, Some(entry)),
-                ledger: WorkItemLedger::from_finding(finding),
-                kind,
-            });
+            items.push(baseline_debt_item(
+                entry,
+                finding,
+                outcome.finding_index,
+                item_index,
+            ));
             continue;
         }
         if entry.evidence.is_empty() {
@@ -184,6 +165,49 @@ pub(super) fn work_items_from_policy_advisories(
         }
     }
     items
+}
+
+fn baseline_debt_item(
+    entry: &AllowEntry,
+    finding: Option<&Finding>,
+    finding_index: Option<usize>,
+    item_index: usize,
+) -> WorkItem {
+    let kind = BASELINE_DEBT.to_string();
+    WorkItem {
+        id: format!("work-baseline-debt-{item_index:04}"),
+        exception_kind: Some(entry.kind.as_str().to_string()),
+        family: exception_family(finding, Some(entry)).map(ToOwned::to_owned),
+        owner: Some(entry.owner.clone()),
+        classification: Some(entry.classification.clone()),
+        reason: Some(entry.reason.clone()),
+        created: entry.lifecycle.created.clone(),
+        review_after: entry.lifecycle.review_after.clone(),
+        expires: entry.lifecycle.expires.clone(),
+        evidence_count: Some(entry.evidence.len()),
+        selector_precision: Some(selector_precision_score(entry)),
+        risk: work_item_risk(&kind, MatchStatus::BaselineDebt, finding, Some(entry)),
+        difficulty: work_item_difficulty(&kind, finding, Some(entry)),
+        status: MatchStatus::BaselineDebt,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
+        finding_index,
+        path: finding
+            .map(|finding| normalize_path(&finding.path))
+            .or_else(|| Some(entry.path_or_glob())),
+        line: None,
+        column: None,
+        evidence_reference: None,
+        source_package: source_package_name(finding),
+        message: format!(
+            "{} is generated baseline_debt and still needs human review",
+            entry.id
+        ),
+        suggested_actions: suggested_actions_for_context(&kind, finding, Some(entry)),
+        proof_commands: proof_commands(&kind, finding, Some(entry)),
+        ledger: WorkItemLedger::from_finding(finding),
+        kind,
+    }
 }
 
 fn matched_outcome_for_entry<'a>(
