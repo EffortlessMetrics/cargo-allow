@@ -404,7 +404,13 @@ reports what is missing.
 
 ```bash
 cargo-allow worklist --format json
-cargo-allow worklist --format json --limit 10 --offset 20  # page a long queue
+```
+
+On the current main candidate (not yet in published `0.1.11`), `worklist`
+also supports paging:
+
+```bash
+cargo-allow worklist --format json --limit 10 --offset 20  # source candidate
 ```
 
 `--limit` caps the emitted slice and `--offset` skips ahead in the ranked
