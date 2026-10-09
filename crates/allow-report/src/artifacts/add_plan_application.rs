@@ -1,5 +1,19 @@
 use crate::InventoryContext;
 
+/// Exact bounded byte region of the postimage one ledger application changed
+/// (#4279 acceptance: "Mutation receipt records preimage/postimage digests and
+/// the exact bounded changed region").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ChangedRegionV1 {
+    /// Postimage byte offset where the changed region begins. For the plan
+    /// route this equals the preimage byte length: the appended entry is an
+    /// exact byte-prefix splice over the preimage.
+    pub byte_start: usize,
+    /// Postimage byte offset one past the changed region's last byte. For the
+    /// plan route this equals the postimage byte length.
+    pub byte_end: usize,
+}
+
 /// Structured payload for the `cargo-allow.add-plan-application.v1` receipt.
 ///
 /// Emitted by `add --from-plan` after a versioned add-finding plan has been
@@ -24,6 +38,10 @@ pub struct AddPlanApplicationV1<'a> {
     pub policy_before_digest: String,
     /// SHA-256 of the policy file after the atomic replace.
     pub policy_after_digest: String,
+    /// Exact bounded byte region of the postimage this application changed
+    /// (#4279). The plan route appends one entry while preserving every
+    /// preimage byte, so the region is exactly the appended suffix.
+    pub changed_region: ChangedRegionV1,
     /// Allow ID added to the ledger.
     pub added_allow_id: String,
     /// Targeted recheck result. After writing the entry, `add --from-plan`

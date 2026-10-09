@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Record the exact bounded changed region in the add-plan-application
+  receipt (#4279): `changed_region.byte_start`/`byte_end` locate the
+  appended entry block inside the postimage bytes, so a reviewer can
+  confirm the ledger mutation was byte-bounded from the receipt alone,
+  beside the existing preimage/postimage digest pair.

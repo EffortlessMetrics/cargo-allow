@@ -298,8 +298,9 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
-    let rendered =
+    let applied =
         super::add_policy::append_to_bound_policy(&policy_path, &policy_before_digest, &entry)?;
+    let rendered = applied.rendered;
     let policy_target =
         crate::policy_config::git_relative_selected_config_path(&root, &policy_path)?;
     apply_single_target_with_target_and_expected_digest(
@@ -321,6 +322,10 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     .into_result()
     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let policy_after_digest = sha256_v1_bytes(rendered.as_bytes());
+    let changed_region = allow_report::ChangedRegionV1 {
+        byte_start: applied.byte_start,
+        byte_end: applied.byte_end,
+    };
 
     // Targeted recheck: re-evaluate the target finding against the mutated
     // policy (already in memory) to confirm the receipt actually landed. This
@@ -380,6 +385,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         target_ledger: bindings.policy_path.clone(),
         policy_before_digest,
         policy_after_digest,
+        changed_region,
         added_allow_id,
         targeted_recheck: targeted_recheck.to_string(),
         full_check_argv,

@@ -164,6 +164,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
             expected_command: "add",
             expected_top_level_keys: &[
                 "added_allow_id",
+                "changed_region",
                 "claim_boundary",
                 "command",
                 "finding_digest",

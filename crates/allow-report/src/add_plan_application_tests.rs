@@ -14,6 +14,10 @@ fn sample_receipt() -> AddPlanApplicationV1<'static> {
         target_ledger: "policy/allow.toml".to_string(),
         policy_before_digest: digest.to_string(),
         policy_after_digest: after.to_string(),
+        changed_region: ChangedRegionV1 {
+            byte_start: 4096,
+            byte_end: 4224,
+        },
         added_allow_id: "allow-0007".to_string(),
         targeted_recheck: "not_executed".to_string(),
         full_check_argv: vec![
@@ -58,6 +62,20 @@ fn add_plan_application_json_binds_plan_and_policy_states() {
             .pointer("/policy_after_digest")
             .and_then(Value::as_str),
         "before/after policy digests must be distinct in the sample"
+    );
+    // #4279: the receipt records the exact bounded changed region beside the
+    // preimage/postimage digest pair.
+    assert_eq!(
+        value
+            .pointer("/changed_region/byte_start")
+            .and_then(Value::as_u64),
+        Some(4096)
+    );
+    assert_eq!(
+        value
+            .pointer("/changed_region/byte_end")
+            .and_then(Value::as_u64),
+        Some(4224)
     );
     assert_eq!(
         value.pointer("/full_check_argv/1").and_then(Value::as_str),

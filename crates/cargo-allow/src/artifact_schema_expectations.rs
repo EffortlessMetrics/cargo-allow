@@ -181,6 +181,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
             "add-plan-application",
             &[
                 "added_allow_id",
+                "changed_region",
                 "claim_boundary",
                 "command",
                 "finding_digest",
@@ -209,8 +210,8 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "federation",
                 "file_families",
                 "inventory",
-                "scanner",
                 "root",
+                "scanner",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",
@@ -508,6 +509,7 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
             "add-plan-application",
             &[
                 "added_allow_id",
+                "changed_region",
                 "claim_boundary",
                 "command",
                 "finding_digest",
