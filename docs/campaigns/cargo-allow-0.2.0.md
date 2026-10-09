@@ -1,488 +1,285 @@
 # Cargo-allow 0.2.0: Current Execution Plan
 
-Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issues/3768)
+Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issues/3768).
+Long-lived roadmap: [#2045](https://github.com/EffortlessMetrics/cargo-allow/issues/2045).
 
-Observed basis: `main@3a12a486aa4001d3d1a902749197f5f6a7ea9c80` on 2026-09-16.
+Observed basis: [`main@67d80f2fb4c50c8f74b1a99bfb3482c2d126deac`](https://github.com/EffortlessMetrics/cargo-allow/tree/67d80f2fb4c50c8f74b1a99bfb3482c2d126deac)
+on 2026-10-09. The inspected [main CI run](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/37973786441)
+has 25 successful jobs; final `0.2.0` is not cut. Source CI does not establish
+final qualification, a production publication operation, or public release closeout.
 
-This document owns campaign sequencing, current blocker classification, and stop
-boundaries. Child issues own their exact acceptance criteria. Live GitHub state
-outranks this snapshot when a branch, PR, external observation, or maintainer
-decision moves.
+This document owns current sequencing and blocker classification. Child issues
+own implementation acceptance; live GitHub state outranks this snapshot when
+source, ownership, evidence, or a maintainer decision changes. Recommendations
+below are not recorded maintainer rulings.
 
-## Release identity and non-negotiable boundaries
+## Selected product and release boundary
 
-- Product target: `cargo-allow 0.2.0`.
-- Public prerelease baseline: `0.2.0-rc.1`, retained as useful pilot evidence
-  with append-only incident lineage. Its tag, package bytes, authorization, and
-  receipts are not reusable as final `0.2.0` authority.
+- Product target: `cargo-allow 0.2.0`, stable channel, `v0.2.0`.
 - Stable rollback baseline: `0.1.11`.
-- Final package graph: ten cargo-allow-family packages at exact `0.2.0` plus
-  three already-published shared prerequisites at exact public `0.1.0`
-  checksums.
-- Rust/MSRV: `1.95` for the final line.
-- `cargo-intent` and `cargo-proof` remain independent experimental siblings.
-  Their absence may not break the cargo-allow core journey.
-- `0.2.0-rc.2` is not selected. It requires a new explicit maintainer decision
-  after evidence of a package-byte defect that warrants another public pilot.
-- No agent may create, move, or delete a release tag; read a publication token;
-  upload or yank a crate; publish or replace a GitHub Release; mutate live
-  repository settings; or modify an external pilot repository without the
-  exact separate authorization for that operation.
+- Public pilot: `0.2.0-rc.1`, with append-only moved-tag/publication incident
+  lineage. Preserve its tag, packages and retained history; none is final
+  package-byte, freeze or authorization evidence.
+- Final closure: ten cargo-allow-family packages at exact `0.2.0`, with
+  release-coupled requirements `=0.2.0`, plus three selected shared
+  prerequisites at public `0.1.0` expected registry checksums.
+- Final Rust/MSRV: `1.95`. The `0.1.11` rollback build floor is separate.
+- Cargo-intent and cargo-proof remain independently experimental siblings.
+  Their absence must not break the cargo-allow core journey.
+- The selected crates.io substrate is #3389's GitHub Actions
+  `CARGO_REGISTRY_TOKEN` path. Provenance attestation and crates.io
+  authentication are separate authorities.
+- `0.2.0-rc.2` is not selected. Another public prerelease requires an explicit
+  maintainer decision based on changed package bytes and pilot risk.
+- This plan grants no tag, token, registry, GitHub Release, live-setting or
+  external-pilot mutation authority. Those operations require their exact
+  separate authorization and checked prerequisites.
 
-## Current verdict
+## What has landed
 
-Most product, packaging, rehearsal, manifest, and freeze machinery has landed.
-The remaining route is not “close every open issue.” It is:
+The September source queue is no longer the active work list.
 
-```text
-route the retained freeze
-+ settle the moving source head
-+ finish the live registry observer
-+ finish the production authorization model and workflow gate
-+ make the clean-pilot / release-claim decision
-→ qualify one exact selected head
-→ produce one current Complete final freeze
-→ STOP
-→ separately authorize one exact operation
-→ publish once, verify, and reconcile
-```
+| Foundation | Current disposition |
+| --- | --- |
+| Registry observation #3850 | Credential-free adapter merged through #4287. Refresh actual observations for the selected candidate; do not build another observer. |
+| Authorization #3789 / #3790 | Production model/compiler and post-tag gate exist through #4291/#4292; #4299 binds the annotated tag object. Complete production composition remains below. |
+| Dependencies and security-update routing | #4204/#4170 and #4273/#4274 are resolved source lanes. #4284 closed unmerged after evidence transfer. |
+| Configuration #3875 / #3876 | Shared resolution and supported-consumer cutover are complete. #3877 still owns the selection decision. |
+| Default burden #3883 | The measured corpus is delivered. #3884/#3885 own the profile decision and implementation. |
+| Installed candidate #3151 | #4390 delivered a nonpublishing glibc 2.35-compatible candidate and bounded installed-host journey. It did not complete external adoption or final ReleaseExperience. |
+| Supporting tools #4403 | All six reported items are delivered through #4410–#4414 and #4416; the issue is closed. |
 
-Three different kinds of work remain and must not be collapsed:
+Earlier scanner-completeness work under #2486/#2492/#2493/#2494 remains accepted
+within its demonstrated scope. The newly found committed-revision reader gap
+needs a bounded repair of contradicted acceptance, not a restart of that train.
+An open umbrella may still need final proof or truthful closeout even when its
+source foundation has landed.
 
-| Class | Meaning | Current owners |
+## Stage 1 — repair release evidence admission
+
+These defects can turn insufficient evidence into an apparent successful
+handoff. Finish them before trusting a successor final freeze.
+
+| Owner | Required production result |
+| --- | --- |
+| [#4425](https://github.com/EffortlessMetrics/cargo-allow/issues/4425), under #2501/#3842 | Admit only the canonical rehearsal phase set with valid successful reversible outcomes, the documented unconsumed-authorization posture, and required zero-mutation proof. Missing, unknown, duplicate, foreign or failed phases must remain non-Complete through composition, readiness and replay. |
+| [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774 | Replace shared-row-count currentness with typed exact registry outcome, identity, checksums and timestamp/freshness admission. Missing, stale, malformed and provider-failed observations remain non-clean. |
+| [#4427](https://github.com/EffortlessMetrics/cargo-allow/issues/4427), under #2497/#3761 | Preserve the downloaded publication receipt when the GitHub Release job reconstructs package assets. A package-only receipt must not overwrite published evidence or bypass the final manifest's publication checks. |
+| [#4423](https://github.com/EffortlessMetrics/cargo-allow/issues/4423), under #3790 | Let ordinary dispatch reach its nonpublishing dry-run branch without authorization input, while denying every real tag/token/upload route without exact authorization. PR #4424 is in review at this snapshot. |
+
+#4249 remains the separate per-field rehearsal subject-binding test gap. Tests
+for the new admission defects must invoke the real consumer and distinguish the
+specific rejection from an unrelated failure. A green DTO/schema test is not
+production-consumer proof. These children repair existing authorities rather
+than defining another release model.
+
+## Stage 2 — finish the production release operation
+
+The existing authorization, custody, lease and operation types are useful
+foundations. Their existence and the post-tag check do not prove this complete
+sequence:
+
+1. **#3789/#3790:** assemble expected inputs from trusted freeze, package,
+   support, registry, workflow and control authorities. Validate the exact
+   external authorization before creating a tag or making a token reachable.
+   #4423 fixes only the ordinary dispatch branch.
+2. **#3940/#3927/#3925:** bind one operation identity to independently read-back
+   authorization custody, durable lease and append-only single-use state.
+   A caller-provided expected-context file or run-local success flag is
+   insufficient authority.
+3. **#3930:** create and observe one annotated tag transaction only after
+   admission; verify its object identity and peeled commit/tree.
+4. **#3389/#3922/#2509:** publish only frozen bytes in canonical dependency
+   order. Independently observe exact registry checksum equality before
+   unlocking dependent rows. Retain partial, conflicting and ambiguous outcomes
+   with their original-candidate recovery lineage.
+5. **#3761/#2497/#3726/#3933:** preserve publication/install evidence, produce
+   the typed public manifest, verify provenance, and independently read back the
+   actual draft asset set before public finalization. Draft creation plus
+   upload success is not actual-asset closeout.
+
+Ordinary PR, push and default dispatch remain nonpublishing. Skipped, cancelled,
+stale, malformed or failed predecessors cannot admit a token-bearing step.
+Clean publication authority cannot become recovery, containment or yank
+authority. Exercise production composition through bounded fixtures before
+claiming this stage complete; no live release mutation is part of implementation.
+
+## Stage 3 — settle the supported core and first-hour contract
+
+These current defects have existing owners. Independent work may run in
+parallel when its source/evidence authority does not overlap another writer.
+
+| Owner | Current remaining scope |
+| --- | --- |
+| #4349 | Make diff/worklist producers and their closed schemas agree, including emitted coverage movement and location fields. |
+| #4350 | Make entry explanation preserve full-world ambiguity; evaluating one entry alone cannot establish that it authorizes the finding. |
+| #4351 | Reconcile expires-today semantics across matcher, check, worklist and cadence. Record the chosen law and prove every projection against it. |
+| #4345 | Preserve precise error classification and an actionable hard-error route without deriving semantics from human prose. |
+| #4334 | Finish init/propose collision and existing/tracked evidence guidance. The original same-plan-path collision is repaired; recovery still needs explicit root/config and quoted-path coverage. |
+| #4335 | Teach the measured initial-red behavior of ordinary repositories under the current default instead of presenting empty init as a generally green adoption path. |
+| #3149 / #3882 | Reconcile the remaining operator grammar and supported help front door against the actual installed commands. |
+
+**Committed-revision reader [#4428](https://github.com/EffortlessMetrics/cargo-allow/issues/4428),
+under #2494/#3300/#1916, is a supported diff-completeness and bounded-input
+blocker.** Current source inspection found unbounded batch blob output and
+lossy UTF-8 decoding without the current-tree file-size limit, while revision
+completeness can report no skipped Rust files. The repair must retain typed
+per-file rejection/completeness and current-tree/revision parity, preserving
+useful Git batching. It repairs the contradicted acceptance without reopening
+the entire scanner design.
+
+### Product and support decisions
+
+| Decision owner | Recommendation to accept or correct | Downstream owner |
 | --- | --- | --- |
-| `RootDecision` | A maintainer must select policy, scope, or external authority. | #3768/#2501 freeze routing, #4204 security-update route, #3150 pilot selection |
-| `ReversibleImplementation` | Source-controlled code, schema, workflow, test, or documentation work. | #3850, #3789, #3790 |
-| `Qualification` | Existing producers must be rerun against one exact final subject and current external state. | #3774, #3151, #2501 and their retained evidence inputs |
-| `IrreversibleOperation` | Tag, token, registry, release, or live-setting mutation. | Separate maintainer authorization and #2502 only |
+| #3877 configuration | SimpleCore needs one binary/policy; advanced federation is explicit. Preserve existing selection during a concrete, visible legacy migration window. | #3878 |
+| #3884 default profile | Use the #3883 burden corpus to separate syntax/high-signal blocking families from ordinary presence-only registration and test-context panic noise. Retain explicit complete-file governance when selected. | #3885 |
+| #3777 support policy | Resolve all five support-matrix TODOs: maintenance window, security response, backports, platform commitment and MSRV changes. Make the smallest sustainable promise and name its transition/review trigger. | #3795 / #3796 |
+| #3150 clean-pilot/claim scope | Audit a selected exact installed candidate against env-check before deciding whether it is suitable for #2466; keep adze/brownfield post-final unless explicitly promoted. | #3771 / #2466 / #3151 |
 
-## The retained final freeze
+None of those recommendations changes the selected policy by itself. Existing
+tests, assignment or silence are not the ruling. Product choices must state
+whether they ship in final 0.2.0 or receive an explicit supported-limit/deferral
+disposition. A default change requires fresh installed and upgrade proof, plus
+an explicit decision if another public prerelease is warranted.
 
-A retained `CargoAllowFinalFreezeReceiptV1 = Complete` exists for
-`63248416c2bd73edd63e22f064a1f242afcc0622`, with its exact package graph,
-manifest binding, and replay evidence under
-[`docs/dogfood/receipts/final-freeze/`](../dogfood/receipts/final-freeze/).
-That receipt remains valid historical evidence for exactly those bytes. It must
-not be rewritten or weakened merely because `main` moved.
+The six-repository pilot comparison did not establish a clean target. #4390's
+installed-host evidence does not establish external adoption. Read-only target
+audit, target selection and target writes remain distinct scopes. If a clean
+pilot cannot complete, #2501/#3151 need an explicit narrowed `NotProven`
+external-adoption claim, not a fabricated Complete pilot. That claim decision
+must be supported by the actual receipt consumer; it cannot waive a required
+Complete input merely through prose. Brownfield #2467 is post-first-final by
+default.
 
-It is not the current planned final subject. Selected release-critical work has
-landed after that freeze, including the #3849/#4270 final-registry-preflight
-contract, and current required work in #3850, #3789, and #3790 is absent from
-the frozen source. Current dependency and evidence PRs also move package,
-lockfile, or retained-evidence identity.
+## Stage 4 — qualify one settled final subject
 
-**Recommended maintainer decision:** preserve the retained freeze as immutable
-historical evidence and supersede it for the final operation. Produce a new
-freeze only after this plan’s source, decision, and qualification phases
-converge.
+After selected source and claim decisions converge, record one stabilization
+baseline. Retain and reconcile:
 
-The call changes only if the maintainer explicitly selects the exact old frozen
-subject for publication and correspondingly removes every later selected
-package/release-control requirement from the final denominator. Ordinary issue
-closure, a green replay, or a desire to avoid requalification is insufficient.
-
-## Critical path
-
-```text
-Phase 0  maintainer decisions
-   ├─ retained freeze: supersede or deliberately select exact old subject
-   ├─ #4204 security-update control
-   └─ #3150 clean-pilot audit / claim posture
-
-Phase 1  settle all source movement selected before freeze
-   ├─ #4273 merge or defer
-   ├─ #4274 absorb #4284 evidence, then merge or defer
-   └─ #4170 resolve #4204, rebase/re-review, then merge or defer
-
-Phase 2  remaining source implementation
-   ├─ #3850 credential-free registry observation adapter
-   └─ #3789 production authorization model/compiler
-          ↓
-      #3790 pre-tag / pre-token workflow enforcement
-
-Phase 3  installed usability and external-claim evidence
-   ├─ exact-candidate installed journey
-   ├─ #3150 initial real-repository audit decision
-   ├─ #2466 clean pilot or explicit NotProven claim narrowing
-   └─ #3151 final release-experience result
-
-Phase 4  one exact selected-head qualification
-          ↓
-Phase 5  new #2501 Complete freeze
-          ↓
-        HARD STOP
-          ↓
-Phase 6  separate human authorization → #2502 publication and closeout
-```
-
-## Phase 0 — record the maintainer decisions
-
-Every recommendation in this phase is non-binding until a maintainer records
-the selected disposition on its owning issue. Agents may prepare evidence and
-decision packets; they may not infer consent.
-
-### 0A. Route the retained freeze
-
-Record on #3768/#2501 one closed decision:
-
-```text
-SupersedeForFinal
-  preserve the 63248416 freeze and replay as historical evidence
-  select a later reviewed head after the remaining work below
-  produce fresh package bytes, evidence, observations, and freeze
-
-SelectExactRetainedFreeze
-  name 63248416 as the release subject
-  explicitly defer every later selected package/control change
-  refresh only the observations and controls the retained contract permits
-```
-
-The recommended result is `SupersedeForFinal` in substance. Do not mutate the
-retained receipt to record the decision; add a separate campaign/freeze
-handoff.
-
-### 0B. Decide the security-update route — #4204
-
-PR #4170 correctly adds 14-day cooldowns for ordinary Cargo and GitHub Actions
-version updates, but automatic Dependabot security updates are currently
-disabled. A cooldown exemption does not create a security-update job.
-
-Recommended decision: explicitly authorize enabling Dependabot security
-updates, verify the live readback, correct the source comment/PR wording, then
-rebase and freshly review #4170. The accepted alternative is a documented
-prompt-remediation control with a named owner and evidence path. Leaving the
-route implicit blocks #4170.
-
-This document does not authorize the live setting change.
-
-### 0C. Decide the clean-pilot route — #3150
-
-The merged six-repository comparison does not establish a clean target.
-`EffortlessMetrics/env-check` is the smallest initial-audit candidate, but its
-panic/assertion-shaped test plumbing has not been measured by an exact installed
-cargo-allow audit. `adze` remains the proposed materially different brownfield
-target and is deliberately post-final by default.
-
-Recommended decision:
-
-1. authorize a read-only exact-candidate audit of `env-check` when the selected
-   candidate identity is available;
-2. do not authorize policy, workflow, source, branch-protection, or other target
-   mutation through that read-only audit;
-3. after the measured result, either select `env-check` for #2466 with exact
-   allowed writes and rollback scope, select a replacement, or accept an
-   explicit `NotProven` low-friction-adoption claim;
-4. retain `adze` as `NotIncludedBeforeFirstFinal` unless a separate decision
-   promotes it.
-
-Agents may prepare the decision packet and audit plan. They may not infer
-consent or mutate either repository.
-
-## Phase 1 — settle the moving head
-
-No qualification or freeze result is current while selected source movement is
-unresolved.
-
-| Item | Current posture | Required disposition before qualification |
-| --- | --- | --- |
-| #4273 `yaml-rust2` 0.13 | Open, non-draft dependency PR | Complete current-head review and CI, then merge; or close/defer explicitly until after 0.2.0. |
-| #4274 `jsonschema` 0.56 | Open, non-draft dependency PR with breaking upstream API changes | Transfer and verify the generated retained evidence, review the actual consumer/API impact, then merge; or close/defer explicitly. |
-| #4284 one-shot evidence carrier | Draft, explicitly non-mergeable | Use only to generate/transfer exact #4274 evidence. Close after the target branch contains and verifies the intended fast-forward result. Never merge it. |
-| #4170 Dependabot cooldown | Draft, blocked on #4204 and based on an older main | Resolve #4204, rebase onto current main, refresh exact-pair validation/review, then merge; or defer the cooldown. |
-
-After these dispositions, record one stabilization baseline. From that point,
-any selected change to shipped source, package manifests, `Cargo.lock`,
-topology, support/channel claims, release documents, schemas, workflows,
-authorization logic, or evidence producers invalidates the affected
-qualification and freeze inputs.
-
-## Phase 2 — finish the remaining source implementation
-
-### 2A. Credential-free registry observation — #3850
-
-Implement one bounded adapter over the merged #3849 production evaluator.
-
-It must:
-
-- load the exact ten final upload rows and three shared prerequisite rows from
-  real candidate/shared authorities rather than caller-supplied lookalikes;
-- query supported read-only crates.io/index/API surfaces with bounded retries,
-  timeouts, response sizes, and retained provider identity;
-- preserve exact-version visibility, yank posture, registry checksum, owner
-  observations when safely available, collection time, referenced response
-  bytes/digests, missing inputs, malformed rows, and surplus observations;
-- distinguish name unavailable, version missing, propagation delay, rate limit,
-  malformed provider data, provider unavailable, immutable conflict, and
-  residual permission risk;
-- call the production evaluator and validate the emitted canonical receipt
-  against the checked schema;
-- expose a bounded freshness policy and the smallest required refresh action;
-- never read `CARGO_REGISTRY_TOKEN`, Cargo credential files, environment dumps,
-  or private/unbounded provider content; and never upload, mutate owners, tag,
-  authorize, or create a release.
-
-The resulting observation is consumed by #3774, #2501, #3789, #3790, and
-#2502. Run it during candidate qualification, refresh after final bytes are
-frozen, refresh immediately before authorization, and refresh again before the
-token boundary.
-
-### 2B. Production exact authorization contract — #3789
-
-Move the authorization authority out of test-local characterization and into
-production release evidence/domain code.
-
-The production contract must bind:
-
-- operation `publish_cargo_allow_final_0_2_0`;
-- repository, `0.2.0`, `v0.2.0`, stable channel, and
-  `github_prerelease=false`;
-- exact freeze, commit, tree, `Cargo.lock`, topology, and ordered 13-row graph;
-- ten final package names, versions, sizes, and digests;
-- three shared prerequisite identities and expected registry checksums;
-- package/docs, registry preflight/freshness, support/platform/channel/assets,
-  prepublication manifest, rehearsal, source/live controls, and workflow/action
-  inventory;
-- selected authentication class without credential material;
-- exact structured maintainer source reference, actor, statement digest,
-  issued/expiry or one-run scope, nonce, and clean-publication operation class;
-- deterministic canonical bytes/digest and closed non-clean result classes.
-
-Arbitrary prose, assignment, issue state, a tag, a Complete freeze by itself,
-RC.1 evidence, another head, or digest-shaped copied strings are not
-authorization. The real authorization remains outside the frozen tree. #3789
-uses synthetic fixtures only and performs no external operation.
-
-### 2C. Enforce authorization before tag/token reachability — #3790
-
-After #3789’s production contract is stable, wire the checked release path so
-that it executes this order:
-
-```text
-load exact final freeze
-→ load exact external authorization
-→ validate operation, release identity, subject, package graph, evidence,
-  controls, workflow inventory, currentness, expiry, and one-use posture
-→ permit tag-create planning
-→ permit CARGO_REGISTRY_TOKEN lookup
-→ permit ordered publication
-```
-
-Implement and fixture-test the append-only operation transition:
-
-```text
-Available
-→ SelectedForRun
-→ IrreversibleOperationStarted
-→ ConsumedComplete | ConsumedIncident
-```
-
-Ordinary PR, push, and default `workflow_dispatch` paths must remain zero-token
-and nonpublishing. A skipped, cancelled, stale, malformed, or failed predecessor
-cannot reach the token step. Clean publication authority cannot become recovery,
-yank, or containment authority.
-
-### Parallelization
-
-#3850 and #3789 may proceed in parallel when each has one semantic writer.
-#3790 follows the stable #3789 contract. Do not create parallel models,
-adapters, state vocabularies, or workflow gates for the same authority.
-
-## Phase 3 — finish installed usability and external claim evidence
-
-### 3A. Exact installed candidate journey
-
-Run the existing package/install/journey producers against the selected final
-head and invoke the installed binary by absolute path. Preserve exact package,
-binary, commit/tree, lockfile, topology, platform/toolchain, and invocation
-identities. A checkout binary, `cargo install --path`, ambient `PATH`, RC.1, or
-another internal version cannot satisfy the result.
-
-### 3B. Clean external pilot — #3150/#2466
-
-After the read-only target audit and maintainer selection, execute only the
-explicitly authorized target-repository changes. The pilot must prove:
-
-- no fake baseline debt on a clean path;
-- a usable `adopt → doctor/audit → no-new` first hour;
-- one deliberate in-scope finding turns the gate red;
-- repair/removal returns it to green;
-- failure artifacts remain available;
-- rollback touches only adoption-owned files and preserves an unrelated file;
-- every defect, documentation gap, missing capability, supported limitation,
-  repository decision, and instrument failure is separately dispositioned.
-
-If no suitable target or authorization is available, record `NotProven` and
-remove the low-friction external-adoption claim from the release. `NotProven`
-may be an accepted claim-narrowing decision; it is not a Complete pilot and may
-not be rendered as one.
-
-### 3C. Final release experience — #3151
-
-Compile one current `CargoAllowReleaseExperienceV1` from the exact installed
-candidate, help/docs/support/command-registry coherence, first-hour and
-finding-to-green journey, selected clean-pilot result or explicit NotProven
-posture, and friction dispositions. Keep the candidate result separate from the
-post-publication public-final observation.
-
-The brownfield pilot #2467 remains `NotIncludedBeforeFirstFinal` by default and
-runs against exact public `0.2.0` after #2502. It does not silently satisfy
-clean-pilot evidence and does not block the first upload unless a maintainer
-promotes it.
-
-## Phase 4 — qualify one exact selected head
-
-Every required input must name the same selected repository subject or an
-explicitly compatible external prerequisite. At minimum retain and reconcile:
-
-- candidate-preparation result and exact source/target identities;
-- exact ten-package `.crate` set, normalized manifests, sizes, SHA-256s, and
-  release-coupled `=0.2.0` requirements;
-- the three shared `0.1.0` expected/observed registry checksums;
-- isolated local-registry install and resolved graph;
-- exact installed first-hour/finding-to-green journey;
-- package/docs, included assets, crate-doc warning-clean, and support/channel
-  coherence;
+- the exact ten-package candidate, normalized `=0.2.0` internal requirements,
+  sizes and SHA-256s, plus the three shared expected registry checksums;
+- candidate preparation, isolated registry install and exact resolved graph;
+- first-hour/finding-to-green journey invoked through the exact installed
+  binary, with identity, completeness, actions and failure artifacts;
+- package/docs/help/command-registry/support coherence and selected release
+  experience, including explicit external-pilot posture;
 - exact `0.1.11 → final candidate → 0.1.11` upgrade/rollback evidence;
-- current #3850 registry feasibility observation;
-- current release experience and explicit external-pilot posture;
-- full zero-tag, zero-token-read, zero-upload, zero-release rehearsal;
-- source and live release-control readbacks plus immutable workflow/action
-  inventory;
-- selected platform, install-channel, asset, and supported-limitation matrix;
-- ReleaseManifestV2 prepublication result, never fabricated public Complete;
-- full required CI, current exact-head independent review, and no-new source
-  guard.
+- selected platform, libc, install-channel and asset proof; unselected claims
+  remain `NotIncluded` or `NotProven`;
+- current typed registry observations, live release-control readbacks and
+  immutable workflow/action inventory;
+- the complete zero-tag, zero-token-read, zero-upload, zero-release rehearsal
+  and typed prepublication manifest/evidence result;
+- current independent review, required CI and no-new source guard.
 
-A passing predecessor from another commit, old freeze, old lockfile, different
-package bytes, stale external observation, or changed workflow/control identity
-is non-current. Do not repair mismatch by copying digests or relabeling
-results.
+Every input must bind the same selected subject or an explicitly compatible
+external prerequisite. A source/package/workflow/support change stales affected
+evidence. Do not copy digests or relabel predecessor receipts to repair a
+mismatch. Use #3850 for fresh registry observations and the corrected
+#4425/#4426 consumers for admission.
 
-## Phase 5 — produce the current final freeze and stop
+## Stage 5 — successor freeze, then exact authorization
 
-On the settled, reviewed, qualified subject, compose one new
-`CargoAllowFinalFreezeReceiptV1 = Complete` that binds the exact source,
-package, evidence, external observation, support, workflow, and control
-identities above.
+The retained `CargoAllowFinalFreezeReceiptV1 = Complete` records
+`63248416c2bd73edd63e22f064a1f242afcc0622`; its bytes and replay remain under
+[the final-freeze receipts](../dogfood/receipts/final-freeze/).
+Preserve them unchanged as historical evidence. They neither select current
+main nor prove a successor through the newly identified admission defects.
 
-Preserve the earlier `63248416` freeze and its replay unchanged. Record the new
-freeze as the selected successor for the final operation; do not erase or
-rewrite the earlier lineage.
+**Recommended routing remains `SupersedeForFinal`:** finish the selected work,
+requalify one later reviewed subject and retain a new successor Complete
+freeze. Selecting the exact old frozen subject instead requires an explicit
+maintainer decision disposing of every later selected requirement; a green
+replay or desire to avoid requalification is insufficient. Record the decision
+on #3768/#2501 without editing the historical receipt.
 
-The freeze operation performs no tag creation, token lookup, registry mutation,
-attestation, external pilot mutation, live-setting change, or GitHub Release
-operation.
+#2501 must compose the successor through the corrected production consumer.
+After it becomes Complete, ordinary implementation on that subject stops.
+Any selected subsequent change requires affected requalification and refreeze.
 
-After Complete:
+**HARD STOP:** the real #3760/#3927 authorization is supplied separately outside
+the frozen tree, naming that exact freeze and operation. A Complete freeze,
+green CI, tag event or broad campaign instruction is not the typed authorization.
 
-```text
-HARD STOP
-```
+## Stage 6 — publish, observe and reconcile once
 
-Ordinary implementation on the frozen subject stops. Any selected byte- or
-meaning-changing repair requires fresh affected qualification and a new freeze.
+Only after current freeze, exact authorization, custody/lease/state and live
+controls are admitted, #2502:
 
-## Phase 6 — separately authorize, publish, verify, and reconcile
+1. refreshes registry feasibility and live-control observations;
+2. creates and observes `v0.2.0` once at the authorized commit/tree;
+3. loads or reproduces only the frozen package bytes and requires digest
+   equality, then verifies shared prerequisite expectations;
+4. reads the publication token downstream of all gates and publishes ten rows
+   in dependency order, with observed equality before dependent uploads;
+5. executes exact public-registry installed journeys for selected claims;
+6. produces the public Complete manifest, verifies exact provenance/checksums,
+   and requires actual draft-asset closeout before public release visibility;
+7. publishes once and reconciles crates.io, docs.rs, stable/support/install and
+   command projections, changelog, main and controlling issues.
 
-A maintainer separately supplies the real structured authorization outside the
-frozen tree, naming the exact new freeze and operation. The #3790 gate validates
-it before tag or token reachability.
+Any failure or ambiguous response after irreversible work retains an incident.
+Do not move the observed tag, rebuild from moving main, replace immutable bytes,
+reuse clean authority for recovery, or erase the incident after a later success.
+Source/channel promotion remains #2364/#3783 and the reviewed reconciliation
+owners, driven by observed public truth.
 
-Then #2502 performs one operation:
+## After final: operated 0.2.x and measured 0.3
 
-1. refresh registry feasibility and live controls;
-2. create annotated `v0.2.0` once at the authorized commit;
-3. verify the tag peels to the exact authorized commit/tree;
-4. load or reproduce only the authorized `.crate` bytes and require digest
-   equality;
-5. verify the three shared prerequisites against retained expectations;
-6. read `CARGO_REGISTRY_TOKEN` only after every prior gate passes;
-7. publish the ten final rows in dependency order;
-8. require observed registry checksum equality before advancing dependents;
-9. run exact public-registry install and supported journeys;
-10. produce the public Complete manifest, attestations, checksums, and selected
-    assets from the exact tag;
-11. keep the GitHub Release draft/private until actual-asset reconciliation is
-    Complete;
-12. publish once, then reconcile crates.io, docs.rs, support/docs/install
-    guidance, main, and controlling issues.
+The release ends with a usable, honestly bounded source-exception ledger.
+Existing controllers own the next stages; no additional umbrella is needed.
 
-Any failure after the first irreversible row becomes append-only release
-incident evidence. Do not move the tag, rebuild from moving `main`, replace
-immutable bytes, reuse clean authority for recovery, or let a later green retry
-erase the incident.
+| Stage | Existing owners | Next earned outcome |
+| --- | --- | --- |
+| Operated 0.2.x | #2460 / #2467 / #2483 / #3151 | Sustain clean and brownfield no-new CI, safe reviewed repair, owned rollback and retained operator-friction evidence using exact released bytes. |
+| Reference measurements | #2468 / #2514 / #4374 / #4339 | Measure cold, repeated-process warm, one-file edit, policy-only, why/diff, full JSON payload and memory on retained exact subjects. The harness is now V4; preserve delivered agent-loop/payload controls. |
+| Remaining scale costs | #1809 / #2515 / #2571 / #4237 | Complete only measured matcher/cache/revision/currentness gaps. Git batching and some parallel source paths already exist; inspect before extending them. |
+| Machine and diagnostic coherence | #2188 / #2511 / #3887 / #3888 / #2567 | One evaluator supplies typed currentness/completeness/results and safe actions through an independently installed read-only provider. |
+| Continuous feedback | #2576 → #2513 | One bounded watch/provider operation and thin editor bridge, with incremental/full parity and explicit overlay/worktree limits. |
+| Evidence-led breadth and independence | #1776 / #2570 / #1875 / #2691 / #2568 / #2559 | Add useful sensors/channels from adopter evidence and retire duplicate compatibility authority without making sibling products mandatory. |
 
-## Follow-ups that do not automatically block 0.2.0
+Cargo-intent 0.3 under #3941/#2163 is a separate product/version programme.
+Cargo-allow 0.3 remains the measured scale/platform/editor stage in #2045.
+Retained budgets, bounded memory/artifacts, cached/uncached and incremental/full
+parity under stale/corrupt/partial inputs, and multiple adopter feedback loops
+govern expansion. Numerical targets follow current reference measurements.
+General CI economy #3753, branch hygiene #4340 and optional integrations block
+0.2 only when a concrete current gap prevents or weakens selected proof.
 
-- #4271: UB Review must retain deferred required-proof obligations in gate
-  summaries. Treat it as a release blocker only if that review proof class is
-  explicitly selected as required final evidence.
-- #3753: CI caching/economy work is semantic release work only when current
-  reliability or cost prevents or weakens selected proof. Any workflow or
-  evidence-producer change still lands before freeze or invalidates it.
-- #2467: the brownfield operated-product pilot remains a post-final gate by
-  default.
-- Broad backlog, optional sibling-product work, editor/LSP work, and issue-count
-  cleanup are not the release denominator.
-- Open umbrellas whose production acceptance is already landed need truthful
-  reconciliation/closeout; their open state alone is not implementation work.
+## Session routing and completion
 
-## Session routing
+For each lane, reload `GEMINI.md`, `AGENTS.md`, `CLAUDE.md`, this map, #3768,
+the selected child, current main, open PRs and relevant external observations.
+#3731/#3770 own agent context and the campaign router; #3747 and
+`review-current-head` own review-readiness consequences. Do not alter these
+contracts to make the campaign appear complete.
 
-At the start of every campaign session:
+Classify the lane as `ReversibleImplementation`, `ReadOnlyReview`,
+`ExternalObservation`, `RootDecision`, `IrreversibleOperation` or
+`BlockedOrStale`. Use one writer per authority, refresh ownership before
+starting, and hand the finished head to independent review. After merge,
+verify current main, retain required guards/evidence, reconcile the child and
+controller, and clean only the lane's owned disposable work.
 
-1. reload `GEMINI.md`, `AGENTS.md`, `CLAUDE.md`, this document, #3768, the
-   selected child, current `main`, open PRs, and relevant external state;
-2. classify the lane as `ReversibleImplementation`, `ReadOnlyReview`,
-   `ExternalObservation`, `RootDecision`, `IrreversibleOperation`, or
-   `BlockedOrStale`;
-3. select only an unblocked owner with no active competing writer;
-4. post/update a bounded execution packet when the issue body is stale;
-5. keep one semantic authority per PR and hand the final head to
-   `review-current-head`;
-6. treat pending, skipped, stale, quota-limited, unavailable, or
-   non-discriminating evidence as non-clean;
-7. after merge, verify synchronized `main`, rerun affected guards, update the
-   child and #3768, and route the next lane;
-8. stop at every root-decision and irreversible boundary.
-
-## Completion checklist
-
-### Decisions and source convergence
-
-- [ ] #3768/#2501 records whether the retained freeze is superseded or selected.
-- [ ] #4204 selects and proves the security-update control; #4170 is merged or deferred.
-- [ ] #3150 records the read-only audit and target/claim decision.
-- [ ] #4273 is merged or explicitly deferred.
-- [ ] #4274 receives #4284 evidence and is merged or explicitly deferred; #4284 is closed unmerged.
-- [ ] A stabilization baseline is recorded.
-
-### Remaining implementation
-
-- [ ] #3850 production registry observer is merged and current.
-- [ ] #3789 production authorization model/compiler is merged and current.
-- [ ] #3790 pre-tag/pre-token gate and replay law are merged and current.
-
-### Qualification and release
-
-- [ ] Exact installed candidate and package/docs/upgrade evidence are current.
-- [ ] Clean pilot completes or the final claim is explicitly narrowed to NotProven.
-- [ ] #3151 release-experience result is current.
-- [ ] Current registry, rehearsal, manifest, support, workflow, and control evidence agree.
-- [ ] A new selected `CargoAllowFinalFreezeReceiptV1 = Complete` is retained.
-- [ ] Ordinary work stops at the authorization boundary.
-- [ ] A separate maintainer authorization names the exact freeze and operation.
-- [ ] #2502 publishes, verifies, and reconciles once without rewriting incident history.
+- [ ] #4423/#4425/#4426/#4427 and selected core regressions have current closure.
+- [ ] Production pre-tag, custody, durable state, registry and actual-asset
+      composition is proven under its existing owners.
+- [ ] Config/default/support/pilot decisions and shipped projections agree.
+- [ ] Exact installed, package/docs/upgrade/platform and external/control
+      evidence is current for one settled subject.
+- [ ] #2501 records routing and a corrected, selected successor Complete freeze.
+- [ ] A separate exact out-of-tree authorization passes the real entry gates.
+- [ ] #2502 publishes, verifies and reconciles once, preserving incident history.
+- [ ] #2460/#2045 receive the operated-product and measured 0.3 handoff.
 
 ## Claim boundary
 
-This campaign plan routes the remaining work from current `main` and the
-retained historical freeze to one newly selected, exact, separately authorized
-cargo-allow `0.2.0` operation. It distinguishes source implementation,
-maintainer decisions, current-subject qualification, irreversible execution,
-and post-release proof. It does not itself select a pilot, change a live
-setting, invalidate or authorize a freeze, create a tag, read a token, publish a
-crate, or publish a GitHub Release.
+This is the current routing map from observed source to one exact qualified,
+separately authorized final cargo-allow release and bounded follow-on work. It
+does not choose unratified product/support policy, waive receipt requirements,
+select or mutate a pilot, authorize a tag/token/upload/live-setting change,
+perform publication, or declare final readiness.
 
 ## Closeout contract
 
