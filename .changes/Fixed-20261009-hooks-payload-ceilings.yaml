@@ -1,0 +1,4 @@
+kind: Fixed
+body: Enforce catastrophic byte ceilings for both paired hooks stdout artifacts before recording passed operator-latency samples.
+time: 2026-10-09T04:26:08Z
+custom: {}

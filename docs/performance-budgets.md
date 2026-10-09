@@ -134,13 +134,15 @@ step is attributable).
 
 An agent pays token cost on every machine read; the advisory agent-read
 target is ≤ 65,536 B (64 KiB ≈ ~16k tokens) per machine read. Catastrophic
-payload ceilings are harness-asserted; advisory targets are not.
+payload ceilings are harness-asserted for the listed artifacts, including the
+captured stdout of both paired hooks samples; advisory targets are not.
 
 | Machine artifact | Catastrophic ceiling (asserted) | Advisory agent-read target | Measured (2026-10-04, Windows debug) |
 | --- | ---: | ---: | ---: |
 | `worklist.json` (~159 items) | 524,288 B | 65,536 B (exceeded ~4.4×; needs paging/`--limit` or summary-first guidance) | 290,023 B |
 | `audit.json` (~16,170 findings) | 8,388,608 B | not agent-readable today; read `--command-summary-output` instead | 6,919,136 B |
 | `check` receipt | 16,384 B | 65,536 B | 9,520 B |
+| Paired `hooks_wrapped_check` / `hooks_bare_check` captured stdout | 524,288 B each | 65,536 B | hosted receipt (human check output, not the JSON receipt) |
 | `why.json` (fast path, matched) | 8,192 B | 65,536 B | 3,165 B |
 | `why --plan` plan artifact | 12,288 B | 65,536 B | 7,328 B |
 | `add` summary JSON | 4,096 B | 65,536 B | 2,448 B |
