@@ -22,6 +22,11 @@ CI. Per-sample payload byte sizes and the #4366 agentic-surface samples
 (`agent_loop` phase: the four-command repair composite plus paired `hooks
 run` overhead) are recorded under the same contract.
 
+The hosted receipt consumer requires nonnegative integer durations for samples,
+agent-loop steps and totals, and wrapped/bare hook timings. Derived hook
+overhead remains signed. These duration checks are targeted contract checks,
+not full JSON Schema validation.
+
 Run the local smoke with the default debug profile, or select release to match
 the hosted profile:
 
