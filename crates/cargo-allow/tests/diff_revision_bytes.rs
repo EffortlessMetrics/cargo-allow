@@ -397,7 +397,7 @@ fn current_tree_diff_keeps_unstaged_missing_source_partial() -> Result<(), Strin
         let valid_changes = if staged {
             changes.len() == 1
                 && changes.iter().any(|change| {
-                    change.get("kind").and_then(Value::as_str) == Some("removed")
+                    change.get("change").and_then(Value::as_str) == Some("removed")
                         && change.get("path").and_then(Value::as_str) == Some("src/subject.rs")
                 })
         } else {
