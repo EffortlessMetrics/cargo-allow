@@ -35,6 +35,11 @@ bash scripts/perf-budget-smoke.sh
 PROFILE=release bash scripts/perf-budget-smoke.sh
 ```
 
+Writing the receipt requires Python 3. `PYTHON3` selects the preferred command
+(default `python3`), with a Python 3 `python` fallback. Interpreter selection
+precedes disposable fixture allocation, so refusal for a missing interpreter
+leaves no new fixture directory behind.
+
 For an already-built executable, `CARGO_ALLOW_BIN` skips the build. Relative
 overrides resolve against the repository root before the harness enters its
 fixture clone; absolute paths are also accepted.

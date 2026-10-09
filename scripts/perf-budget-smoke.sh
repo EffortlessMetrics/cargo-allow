@@ -29,7 +29,6 @@ failure_reason=""
 
 mkdir -p "${ROOT}/target" "${artifact_dir}"
 : >"${metrics}"
-run_dir="$(mktemp -d "${ROOT}/target/cargo-allow-operator-latency.XXXXXX")"
 
 log() {
   printf 'operator-latency: %s\n' "$*"
@@ -52,6 +51,9 @@ if ! command -v "${py}" >/dev/null 2>&1; then
     exit 1
   fi
 fi
+
+# Allocate the disposable fixture only after interpreter selection succeeds.
+run_dir="$(mktemp -d "${ROOT}/target/cargo-allow-operator-latency.XXXXXX")"
 
 # Windows-native Python cannot open POSIX-form paths handed over by this
 # shell; convert to the mixed form when the bridge exists (CI Linux is a
