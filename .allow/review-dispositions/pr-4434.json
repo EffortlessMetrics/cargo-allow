@@ -1,0 +1,35 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4434,
+  "base_ref": "main",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "head_ref": "fix/4425-rehearsal-admission",
+  "head_sha": "6ac3f0f5f0317686bdcab49c43cb6f916dd23515",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:4b9f5417792c124fd7b11c8f5927635f29ce889bbd9781a11e22f7147d650d18",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4434#pullrequestreview-5475255489"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4434#pullrequestreview-5475255489",
+    "Independent full review covered seven effective paths and the actual Python producer, raw-byte admission, graph, readiness, replay and authorization consumer. The exact canonical eight phases, seven reversible successes, explicit unconsumed authorization, consistent aggregate, six boundary fields and seven true prevention proofs are required; duplicate keys are rejected before Value can discard failure. Current producer false flags remain denied. The exact embedded producer bridge was independently executed. All nine native formatter hunks, the five main file blobs, unchanged source paths and exact policy union were verified. Fingerprint feedback was RefutedWithEvidence against production eight-byte lengths and serialized creation dates; duplicate-map lookups and existing Python provisioning concerns were dispositioned NonBlocking and resolved. Current Formatting passed; full tests/no-new remain independently required. The observed cargo-deny job failed before tool execution due Docker Hub429; this is an unfulfilled infrastructure gate, not a dependency verdict or permission to merge.",
+    "Current synthetic merge 882dbaa17a85f88eadea387aba6879bbba5cd4c9; source/metadata identities remain distinct.",
+    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4434",
+  "reviewed_at_utc": "2026-10-09T20:53:27Z"
+}
