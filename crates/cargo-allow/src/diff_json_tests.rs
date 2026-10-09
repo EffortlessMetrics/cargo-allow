@@ -1,6 +1,124 @@
 use super::*;
 use crate::diff_json_test_support::{first_array_item, parse_json, structured_diff_fixture};
-use serde_json::Value;
+use serde_json::{Value, json};
+
+#[test]
+fn rendered_diff_rows_validate_against_report_schema() -> Result<(), String> {
+    let fixture = structured_diff_fixture();
+    let cfg = AllowConfig::empty();
+    let ledger = DiffLedgerContext::new(
+        &cfg,
+        &cfg,
+        &fixture.finding_changes,
+        &fixture.policy_changes,
+        allow_report::DiffAnalysisContext::default(),
+    );
+    let rendered = render_diff_json_report(
+        &[],
+        &fixture.outcomes,
+        true,
+        allow_report::ReportContext::default(),
+        1,
+        &ledger,
+    );
+    let artifact: Value = serde_json::from_str(&rendered)
+        .map_err(|error| format!("rendered diff JSON: {error}"))?;
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/report.schema.json"))
+            .map_err(|error| format!("report schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("report schema compilation: {error}"))?;
+
+    // Empty arrays missed #4349. Exercise both real row producers, including
+    // the optional policy detail objects in the existing structured fixture.
+    for (field, expected_count) in [
+        ("finding_changes", fixture.finding_changes.len()),
+        ("policy_changes", fixture.policy_changes.len()),
+    ] {
+        let pointer = format!("/diff/{field}");
+        let rows = artifact
+            .pointer(&pointer)
+            .and_then(Value::as_array)
+            .ok_or_else(|| format!("rendered diff must contain {pointer}"))?;
+        if rows.is_empty() || rows.len() != expected_count {
+            return Err(format!("{pointer} lost nonempty fixture rows"));
+        }
+        for row in rows {
+            if row.get("coverage_movement").and_then(Value::as_str).is_none() {
+                return Err(format!("{pointer} producer omitted coverage_movement"));
+            }
+        }
+    }
+    validator
+        .validate(&artifact)
+        .map_err(|error| format!("rendered diff violates report schema: {error}"))?;
+
+    for field in ["finding_changes", "policy_changes"] {
+        let pointer = format!("/diff/{field}/0");
+        let mut unknown_field = artifact.clone();
+        unknown_field
+            .pointer_mut(&pointer)
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("missing {pointer} negative-control row"))?
+            .insert("unexpected_field".to_string(), json!(true));
+        if validator.validate(&unknown_field).is_ok() {
+            return Err(format!("{pointer} must reject undeclared fields"));
+        }
+        for invalid in [json!("unknown"), json!(0), Value::Null] {
+            let mut invalid_coverage = artifact.clone();
+            invalid_coverage
+                .pointer_mut(&pointer)
+                .and_then(Value::as_object_mut)
+                .ok_or_else(|| format!("missing {pointer} negative-control row"))?
+                .insert("coverage_movement".to_string(), invalid.clone());
+            if validator.validate(&invalid_coverage).is_ok() {
+                return Err(format!("{pointer} must reject coverage_movement {invalid}"));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn report_schema_coverage_movement_matches_canonical_labels() -> Result<(), String> {
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/report.schema.json"))
+            .map_err(|error| format!("report schema JSON: {error}"))?;
+    let actual = schema
+        .pointer("/$defs/coverage_movement/enum")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "report schema must declare coverage movement labels".to_string())?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| "coverage movement labels must be strings".to_string())
+        })
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    let mut expected = BTreeSet::new();
+    for &movement in allow_core::PresenceMovement::ALL {
+        for &delta in allow_core::PostureDelta::ALL {
+            for changed_in_diff in [false, true] {
+                expected.insert(
+                    allow_core::LedgerPosture::new(movement, delta)
+                        .coverage_movement_classification(changed_in_diff),
+                );
+            }
+        }
+    }
+    if actual != expected {
+        return Err(format!(
+            "coverage movement schema {actual:?} differs from canonical labels {expected:?}"
+        ));
+    }
+    for definition in ["finding_posture_change", "policy_change"] {
+        let pointer = format!("/$defs/{definition}/properties/coverage_movement/$ref");
+        if schema.pointer(&pointer).and_then(Value::as_str) != Some("#/$defs/coverage_movement") {
+            return Err(format!("{definition} must reuse the coverage movement enum"));
+        }
+    }
+    Ok(())
+}
 
 #[test]
 fn json_report_includes_structured_posture_changes() {
