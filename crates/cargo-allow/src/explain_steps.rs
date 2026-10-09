@@ -29,12 +29,19 @@ pub(super) fn explain_next_steps(
         let kind = worklist::work_item_kind(outcome, finding, Some(entry));
         let mut suggested_actions =
             worklist::suggested_actions_for_context(&kind, finding, Some(entry));
-        if outcome.status == MatchStatus::Ambiguous && !outcome.candidate_ids.is_empty() {
+        let competing_ids = attention
+            .iter()
+            .filter(|outcome| outcome.status == MatchStatus::Ambiguous)
+            .flat_map(|outcome| outcome.candidate_ids.iter().cloned())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if !competing_ids.is_empty() {
             suggested_actions.insert(
                 0,
                 format!(
                     "resolve equal-strength competition among these allow entries: {}",
-                    outcome.candidate_ids.join(", ")
+                    competing_ids.join(", ")
                 ),
             );
         }

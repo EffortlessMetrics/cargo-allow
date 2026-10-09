@@ -569,6 +569,72 @@ fn explain_entry_text_reports_occurrence_limit_exceeded() {
     assert!(text.contains("occurrence_limit exceeded"));
 }
 
+#[test]
+fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Result<(), String> {
+    let mut cfg = AllowConfig::empty();
+    for (id, glob, limit) in [
+        ("allow-a", "src/a?.rs", Some(1)),
+        ("allow-b", "src/?b.rs", None),
+        ("allow-c", "src/?c.rs", None),
+    ] {
+        let mut entry = test_entry(id, FindingKind::NonRustFile);
+        entry.path = None;
+        entry.glob = Some(glob.to_string());
+        entry.occurrence_limit = limit;
+        entry.evidence = vec!["test:explain_mixed_attention".to_string()];
+        cfg.allow.push(entry);
+    }
+    let entry = cfg.allow.first().ok_or("missing requested entry")?;
+    let findings = ["src/a1.rs", "src/a2.rs", "src/ab.rs", "src/ac.rs"]
+        .into_iter()
+        .map(|path| test_finding(FindingKind::NonRustFile, None, path, "tracked_file"))
+        .collect::<Vec<_>>();
+    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let statuses = outcomes
+        .iter()
+        .map(|outcome| outcome.status)
+        .collect::<Vec<_>>();
+    if statuses
+        != [
+            MatchStatus::Matched,
+            MatchStatus::New,
+            MatchStatus::Ambiguous,
+            MatchStatus::Ambiguous,
+        ]
+    {
+        return Err(format!("fixture lost ordered mixed attention: {outcomes:?}"));
+    }
+    let guidance =
+        "resolve equal-strength competition among these allow entries: allow-a, allow-b, allow-c";
+    let json = explain_entry_json(
+        Path::new("."),
+        &cfg,
+        entry,
+        &findings,
+        ExplainContext::default(),
+    );
+    let report: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    if report
+        .pointer("/next/suggested_actions/0")
+        .and_then(Value::as_str)
+        != Some(guidance)
+        || report
+            .pointer("/summary/current_status")
+            .and_then(Value::as_str)
+            != Some("new")
+    {
+        return Err(format!("mixed attention lost guidance or changed status: {json}"));
+    }
+    let text = explain_entry_text(Path::new("."), &cfg, entry, &findings);
+    if !text.contains(guidance)
+        || !text.contains("current_status: new")
+        || !text.contains("occurrence_limit exceeded")
+    {
+        return Err(format!("human mixed attention lost its decision context: {text}"));
+    }
+    Ok(())
+}
+
 static NEXT_EXPLAIN_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn migrate_fixture_dir() -> PathBuf {
