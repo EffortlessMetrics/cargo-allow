@@ -4,28 +4,26 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4429,
   "base_ref": "main",
-  "base_sha": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "docs/3768-october-release-map",
-  "head_sha": "26791938342b59ddedd44a2528105835aa2e8794",
-  "merge_base": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
-  "reviewed_diff_digest": "sha256:v1:99e0b618113d7fbb85a17241618ee0151b9b2731ca4e9fa50f4a747721b688c4",
+  "head_sha": "72d2979cc355ce3ba46cbc721920989a3f43c389",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:7b366721617187cce612267d41efa60119f826da15359746930cd4ba67585c6c",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthoring model review of backlog_audit's documentation; shared model family and audit context; coordinator records metadata",
+  "reviewer_identity": "ChatGPT /root/release_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5474732386"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5475253458"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5474732386",
-    "Both changed files, live child/controller issues, cited merged PRs and their ancestry, relevant production source, and 0.3 routing independently reviewed.",
-    "Closeout contract tail is byte-identical to base; SHA256 ca773b694a9bba3fc4f20540ae3397b69c8de4e9d81b9fbd324b9e8d03c64e50.",
-    "Agent-context contract, fragment shape, local links and diff whitespace pass.",
-    "Gemini editorial thread PRRT_kwDOSnyN3s6q7Pn0 is NonBlocking and resolved with current-head reasoning.",
-    "No final release, selected policy, pilot mutation, Complete successor freeze or release authority is claimed; applicable hosted gates remain separately required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5475253458",
+    "The complete five-path effective patch, its unchanged campaign document/fragment, current child-controller ownership and closeout sequence were independently inspected. The historical closeout tail retains SHA256 ca773b694a9bba3fc4f20540ae3397b69c8de4e9d81b9fbd324b9e8d03c64e50. Every current-main policy entry is unchanged; only the two exact PR4429 evidence paths are added. allow-11345 is absent and main allow-11278 remains limit36. Both canonical entry fingerprints and revision notes were independently recomputed. Duplicate-selector feedback is repaired; editorial feedback remains NonBlocking. The stale-record finding is corrected by the following metadata-only refresh, which does not waive base currentness or CI.",
+    "Current synthetic merge 0b89f2207ccdf1fd099e8d6302eaf83f6f8bacb1; source/metadata identities remain distinct.",
+    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -33,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4429",
-  "reviewed_at_utc": "2026-10-09T19:57:30Z"
+  "reviewed_at_utc": "2026-10-09T20:53:13Z"
 }
