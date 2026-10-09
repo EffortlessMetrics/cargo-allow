@@ -333,13 +333,25 @@ if [[ -z "${binary}" ]]; then
   cargo build "${build_args[@]}" || fail "cargo build failed"
   binary="${ROOT}/target/${profile}/cargo-allow"
 fi
-# Prefer the literal Windows executable name: MSYS resolves "cargo-allow"
-# transparently for exec/stat, but Windows-native consumers of the path
-# (hooks run --binary) need the exact on-disk file.
-if [[ -e "${binary}.exe" ]]; then
-  binary="${binary}.exe"
-fi
-[[ -e "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
+# MSYS-family shells resolve the suffix transparently, but native path
+# consumers (hooks run --binary) need the literal on-disk .exe name.
+case "$(uname -s)" in
+  MINGW* | MSYS* | CYGWIN*)
+    if [[ -e "${binary}.exe" ]]; then
+      binary="${binary}.exe"
+    fi
+    [[ -e "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
+    ;;
+  *)
+    # On Unix honor a usable literal override before considering its suffix.
+    # A directory's search permission does not make it an executable file.
+    if [[ ! -f "${binary}" || ! -x "${binary}" ]]; then
+      [[ -f "${binary}.exe" && -x "${binary}.exe" ]] || \
+        fail "cargo-allow binary is not executable: ${binary}"
+      binary="${binary}.exe"
+    fi
+    ;;
+esac
 
 # Resolve the selected file before any sample changes directory. Normalize
 # Windows drive/backslash spelling when running under MSYS.
