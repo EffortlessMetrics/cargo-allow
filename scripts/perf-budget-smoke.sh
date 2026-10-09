@@ -135,7 +135,7 @@ native_path() {
   fi
 }
 
-# Catastrophic payload ceilings (bytes) for emitted machine artifacts, keyed
+# Catastrophic payload ceilings (bytes) for emitted artifacts and captured stdout, keyed
 # by sample name as "<artifact-ceiling> <semantic-ceiling>"; '-' disables the
 # assertion for that file. These mirror the payload table in
 # docs/performance-budgets.md and are catastrophic-regression assertions,
@@ -148,6 +148,7 @@ payload_ceilings() {
     check_summary) printf '%s\n' '4096 16384' ;;
     warm_check) printf '%s\n' '- 16384' ;;
     agent_loop_check) printf '%s\n' '16384 16384' ;;
+    hooks_wrapped_check | hooks_bare_check) printf '%s\n' '524288 -' ;;
     why_fast_path) printf '%s\n' '8192 8192' ;;
     agent_loop_why_plan) printf '%s\n' '8192 12288' ;;
     agent_loop_add) printf '%s\n' '4096 4096' ;;
@@ -522,6 +523,7 @@ measure_hooks_sample() {
     fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling (${elapsed}ms)"
   fi
   digest="$(sha256_file "${artifact}")"
+  assert_payload_ceilings "${name}" "${artifact}" "${artifact}"
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
