@@ -31,7 +31,14 @@ fn boundary_cases(today: SimpleDate) -> Vec<BoundaryCase> {
             "expired",
             Some(-1),
         ),
-        ("expiry-today", date(0), None, "matched", "expiring", Some(0)),
+        (
+            "expiry-today",
+            date(0),
+            None,
+            "matched",
+            "expiring",
+            Some(0),
+        ),
         (
             "expiry-tomorrow",
             date(1),
@@ -202,15 +209,13 @@ fn check_cli_cases(root: &Path, cases: &[BoundaryCase], today: SimpleDate) -> Re
         }
         let list = successful_json(root, &["list", "--allow-id", TARGET_ID])?;
         require(
-            row(&list, "allow_entries", "id")?.get("status")
-                == Some(&Value::from(case.status)),
+            row(&list, "allow_entries", "id")?.get("status") == Some(&Value::from(case.status)),
             format!("{} list must agree with check: {list}", case.name),
         )?;
         let explain = successful_json(root, &["explain", TARGET_ID])?;
         require(
             explain.pointer("/summary/current_status") == Some(&Value::from(case.status))
-                && explain.pointer("/current_findings/0/status")
-                    == Some(&Value::from(case.status))
+                && explain.pointer("/current_findings/0/status") == Some(&Value::from(case.status))
                 && row(&explain, "match_outcomes", "allow_id")?.get("status")
                     == Some(&Value::from(case.status)),
             format!("{} explain must agree with check: {explain}", case.name),
@@ -234,15 +239,17 @@ fn check_cli_cases(root: &Path, cases: &[BoundaryCase], today: SimpleDate) -> Re
                     && items
                         .iter()
                         .all(|item| item.get("status") == Some(&Value::from(case.status))),
-                format!("{} worklist must retain the due state: {worklist}", case.name),
+                format!(
+                    "{} worklist must retain the due state: {worklist}",
+                    case.name
+                ),
             )?;
         }
         let cadence = successful_json(root, &["cadence", "--as-of", &as_of])?;
         let cadence_row = row(&cadence, "rows", "allow_id")?;
         require(
             cadence_row.get("class") == Some(&Value::from(case.cadence_class))
-                && cadence_row.get("days_remaining").and_then(Value::as_i64)
-                    == case.days_remaining,
+                && cadence_row.get("days_remaining").and_then(Value::as_i64) == case.days_remaining,
             format!(
                 "{} cadence must use the same expiry day: {cadence_row}",
                 case.name
