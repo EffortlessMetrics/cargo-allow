@@ -194,6 +194,7 @@ with tempfile.TemporaryDirectory(prefix="perf-binary-path-") as temporary:
         ("target/windows/cargo-allow", marker),
         ("target/windows/cargo-allow.exe", marker),
         (symlink_override, "selected-symlink-parent"),
+        (str(root / symlink_override), "selected-symlink-parent"),
     )
     for override, expected_marker in cases:
         for _ in range(2):
