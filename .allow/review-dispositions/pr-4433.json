@@ -4,27 +4,26 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4433,
   "base_ref": "main",
-  "base_sha": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "fix/4351-expiry-day-coherence",
-  "head_sha": "ebe850883df7b047037021db28294d35ea0ec36b",
-  "merge_base": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
-  "reviewed_diff_digest": "sha256:v1:609044fd3f956667143bbe9972e6de09a4465e325bf62072d99ed2bb2ba668f6",
+  "head_sha": "684fed84e8cb493ba29370be32bdc5ac3db2e40b",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:842df6f61dc76e45f3179b2c062eb4d97f1b9632f70f36e6538d8373c5bf9949",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring source, regression, hosted-repair and exact-path governance review; same model family and prior audit context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475096774"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475254992"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475096774",
-    "Separate nonauthoring review covered complete expiry predicate, unchanged matcher semantics, all affected read consumers, fixed-day real scanner/evaluator outcomes and actual CLI boundary controls. The current delta exactly matches all five native Rust1.95 formatter hunks; no other path changed.",
-    "Two unique exact-path review-evidence receipts have independently verified canonical fingerprints; existing policy bytes and settings are preserved. This is review-evidence governance, not runtime policy widening.",
-    "Final live read found no unresolved review threads. Current pregate passed, but full hosted CI remains independently required.",
-    "The metadata successor changes only this retained JSON; it must be verified separately. Base movement requires a fresh current-pair review."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475254992",
+    "The strict policy-expiry predicate, unchanged matcher behavior, independent review/drain boundary and real scanner/evaluator/CLI boundary matrix remain independently reviewed. Integration changes only the five current-main file blobs and the byte-preserved exact policy union. Historical policy CRLF prefix and canonical entry fingerprints are preserved. No review threads are unresolved; current full native CI remains pending.",
+    "Current synthetic merge 1bf40c67f8db64621d0080a71e389a4c276266d9; source/metadata identities remain distinct.",
+    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -32,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4433",
-  "reviewed_at_utc": "2026-10-09T20:34:46Z"
+  "reviewed_at_utc": "2026-10-09T20:53:24Z"
 }
