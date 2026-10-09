@@ -21,8 +21,8 @@ fn rendered_diff_rows_validate_against_report_schema() -> Result<(), String> {
         1,
         &ledger,
     );
-    let artifact: Value = serde_json::from_str(&rendered)
-        .map_err(|error| format!("rendered diff JSON: {error}"))?;
+    let artifact: Value =
+        serde_json::from_str(&rendered).map_err(|error| format!("rendered diff JSON: {error}"))?;
     let schema: Value =
         serde_json::from_str(include_str!("../../../docs/schemas/report.schema.json"))
             .map_err(|error| format!("report schema JSON: {error}"))?;
@@ -44,7 +44,11 @@ fn rendered_diff_rows_validate_against_report_schema() -> Result<(), String> {
             return Err(format!("{pointer} lost nonempty fixture rows"));
         }
         for row in rows {
-            if row.get("coverage_movement").and_then(Value::as_str).is_none() {
+            if row
+                .get("coverage_movement")
+                .and_then(Value::as_str)
+                .is_none()
+            {
                 return Err(format!("{pointer} producer omitted coverage_movement"));
             }
         }
@@ -114,7 +118,9 @@ fn report_schema_coverage_movement_matches_canonical_labels() -> Result<(), Stri
     for definition in ["finding_posture_change", "policy_change"] {
         let pointer = format!("/$defs/{definition}/properties/coverage_movement/$ref");
         if schema.pointer(&pointer).and_then(Value::as_str) != Some("#/$defs/coverage_movement") {
-            return Err(format!("{definition} must reuse the coverage movement enum"));
+            return Err(format!(
+                "{definition} must reuse the coverage movement enum"
+            ));
         }
     }
     Ok(())
