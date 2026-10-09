@@ -116,6 +116,13 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // verbatim, and the tracked-file inventory reports the repo-relative path,
     // so the self-receipt would never match its own ledger (#3032).
     let policy_contents = starter_policy(args.strict, &policy_rel_display(&root, &path)?);
+    // `--force` over an existing ledger keeps its line-ending envelope; a new
+    // file keeps the canonical LF default (#4279).
+    let policy_contents = if path_existed {
+        crate::add::transpose_for_existing_target(&policy_contents, &path)?
+    } else {
+        policy_contents
+    };
     apply_single_target_with_target(
         SingleTargetApplyRequest {
             repository_root: &root,

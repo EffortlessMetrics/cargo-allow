@@ -318,10 +318,17 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         } else {
             SingleTargetApplyMode::CreateNewOnly
         };
+        // Overwriting an existing proposal target keeps its line-ending
+        // envelope; a new target keeps the canonical LF default (#4279).
+        let contents = if args.force {
+            crate::add::transpose_for_existing_target(&rendered, absolute_target)?
+        } else {
+            rendered
+        };
         apply_single_target(SingleTargetApplyRequest {
             repository_root: &root,
             target: &target,
-            contents: &rendered,
+            contents: &contents,
             caller_reference: Some("cargo-allow:propose"),
             lock_identity: Some(
                 target
