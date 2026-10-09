@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stdout
+from collections.abc import Mapping
 import hashlib
 import importlib.util
 import io
@@ -17,6 +18,7 @@ from pathlib import Path
 import sys
 import tempfile
 import textwrap
+from types import SimpleNamespace
 from typing import Any, Callable
 
 
@@ -30,6 +32,169 @@ SPEC.loader.exec_module(PUBLISHER)
 
 DIGEST = "a" * 64
 CANONICAL = f"sha256:{DIGEST}"
+TOKEN_KEY = "CARGO_REGISTRY_TOKEN"
+
+
+class TokenBoundaryEnvironment(Mapping[str, str]):
+    """Expose the selected key but trap its value outside a real upload."""
+
+    def __init__(self, *, allow_token: bool = False, present: bool = True) -> None:
+        self.allow_token = allow_token
+        self.present = present
+        self.reads = 0
+
+    def __iter__(self):
+        return iter(["PATH", "PUBLISHER_CONTROL"] + ([TOKEN_KEY] if self.present else []))
+
+    def __len__(self) -> int:
+        return 2 + int(self.present)
+
+    def __getitem__(self, name: str) -> str:
+        if name == TOKEN_KEY:
+            if not self.present:
+                raise KeyError(name)
+            self.reads += 1
+            assert self.allow_token, "selected token value was retrieved before an upload"
+            return "fixture-publication-token"
+        return {"PATH": "", "PUBLISHER_CONTROL": "retained"}[name]
+
+    def copy(self) -> dict[str, str]:
+        return dict(self)
+
+
+def exercise_publisher_token_boundary() -> None:
+    """Run main and its real helpers; replace only process and registry seams."""
+    original = {name: getattr(PUBLISHER, name) for name in ("ROOT", "os", "subprocess", "registry_checksum")}
+    original_argv = sys.argv
+    scenarios = 0
+    try:
+        with tempfile.TemporaryDirectory(prefix="publisher-token-boundary-") as temporary:
+            cases = [
+                ("list", "cargo-allow", ["--list"], "exact", None),
+                ("package", "cargo-allow", ["--package-only"], "exact", None),
+                ("shared-package", "shared", ["--package-only"], "exact", None),
+                ("dry-run", "cargo-allow", [], "exact", None),
+                ("preflight", "cargo-allow", ["--registry-preflight"], "exact", None),
+                ("publish-preflight", "cargo-allow", ["--publish", "--registry-preflight", "--authorization", "issue:3790"], "exact", None),
+                ("missing-shared", "cargo-allow", ["--registry-preflight"], "missing", "shared registry preflight blocked"),
+                ("conflicting-shared", "cargo-allow", ["--registry-preflight"], "conflict", "shared registry preflight blocked"),
+                ("unavailable-provider", "cargo-allow", ["--registry-preflight"], "unavailable", "fixture provider unavailable"),
+                ("publish-missing-shared", "cargo-allow", ["--publish", "--authorization", "issue:3790"], "missing", "shared registry preflight blocked"),
+                ("missing-authorization", "cargo-allow", ["--publish"], "exact", "--authorization is required"),
+                ("invalid-authorization", "cargo-allow", ["--publish", "--authorization", "not a reference"], "exact", "authorization must be a bounded"),
+                ("cargo-dry-run-failure", "cargo-allow", ["--publish", "--authorization", "issue:3790"], "exact", "command failed (1)"),
+                ("missing-token", "cargo-allow", ["--publish", "--authorization", "issue:3790"], "exact", "CARGO_REGISTRY_TOKEN is required"),
+                ("publish", "cargo-allow", ["--publish", "--authorization", "issue:3790"], "exact", None),
+            ]
+            for mode in ("shared", "namespace", "all"):
+                for publish in (False, True):
+                    cases.append((f"unsupported-preflight-{mode}-{publish}", mode,
+                                  ["--registry-preflight"] + (["--publish", "--authorization", "issue:3790"] if publish else []),
+                                  "exact", "--registry-preflight requires --mode cargo-allow"))
+                for label, flags in (("list", ["--list"]), ("dry-run", []), ("package", ["--package-only"])):
+                    if mode != "shared" or label != "package":
+                        cases.append((f"{mode}-{label}", mode, flags, "exact", None))
+            for mode in PUBLISHER.FAMILY_MODES:
+                for incompatible in ("--publish", "--registry-preflight"):
+                    cases.append((f"incompatible-{mode}-{incompatible}", mode,
+                                  ["--package-only", incompatible], "exact",
+                                  "--package-only cannot be combined"))
+            for name, mode, flags, registry_state, failure in cases:
+                directory = Path(temporary) / name
+                directory.mkdir()
+                (directory / "Cargo.lock").write_text("fixture lock", encoding="utf-8")
+                PUBLISHER.ROOT = directory
+                selected = PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, mode)[1]
+                rows = {row["cargo_package_name"]: row for row in selected}
+                packages = [
+                    {"name": row["cargo_package_name"], "version": row["package_version"], "publish": ["crates-io"], "dependencies": []}
+                    for row in selected
+                ]
+                environment = TokenBoundaryEnvironment(allow_token=name == "publish", present=name != "missing-token")
+                PUBLISHER.os = SimpleNamespace(environ=environment)
+                commands: list[list[str]] = []
+                uploaded: list[str] = []
+
+                def process(command, **kwargs):
+                    commands.append(command)
+                    child_env = kwargs.get("env")
+                    assert child_env is not None, "owned child implicitly inherited selected token"
+                    assert child_env["PUBLISHER_CONTROL"] == "retained"
+                    is_upload = command[:2] == ["cargo", "publish"] and "--dry-run" not in command
+                    if is_upload:
+                        assert name == "publish" and child_env[TOKEN_KEY] == "fixture-publication-token"
+                        assert environment.reads == len(uploaded) + 1
+                        uploaded.append(command[command.index("-p") + 1])
+                    else:
+                        assert TOKEN_KEY not in child_env, "nonpublishing child received selected token"
+                        assert environment.reads == len(uploaded), "selected token was read before dry-run completed"
+                    output = ""
+                    code = 0
+                    if command[:2] == ["cargo", "metadata"]:
+                        output = json.dumps({"packages": packages})
+                    elif command[:2] == ["cargo", "package"]:
+                        assert command[command.index("--target-dir") + 1] == str(directory / "target")
+                        archives = directory / "target/package"
+                        archives.mkdir(parents=True)
+                        for row in selected:
+                            (archives / f"{row['cargo_package_name']}-{row['package_version']}.crate").write_bytes(row["cargo_package_name"].encode())
+                    elif command[:2] == ["git", "rev-parse"]:
+                        output = "a" * 40
+                    elif command[:2] == ["cargo", "publish"]:
+                        if name == "cargo-dry-run-failure":
+                            code = 1
+                    else:
+                        raise AssertionError(f"unexpected external command: {command}")
+                    return subprocess.CompletedProcess(command, code, output)
+
+                def registry(package, _version):
+                    row = rows[package]
+                    if mode != "cargo-allow":
+                        return hashlib.sha256(package.encode()).hexdigest()
+                    if row["product_family"] == "shared":
+                        if registry_state == "unavailable":
+                            PUBLISHER.fail("fixture provider unavailable")
+                        if registry_state == "missing":
+                            return None
+                        if registry_state == "conflict":
+                            return "f" * 64
+                        return row["expected_registry_checksum"].removeprefix("sha256:")
+                    return hashlib.sha256(package.encode()).hexdigest() if package in uploaded else None
+
+                PUBLISHER.subprocess = SimpleNamespace(run=process, PIPE=subprocess.PIPE, STDOUT=subprocess.STDOUT)
+                PUBLISHER.registry_checksum = registry
+                receipt = directory / "receipt.json"
+                sys.argv = [str(PUBLISHER_PATH), "--mode", mode, "--receipt", str(receipt), *flags]
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    try:
+                        assert PUBLISHER.main() == 0
+                    except SystemExit as error:
+                        assert failure is not None and failure in str(error), (name, str(error))
+                    else:
+                        assert failure is None, f"{name} unexpectedly succeeded"
+                if name == "publish":
+                    assert uploaded == [row["cargo_package_name"] for row in selected if row["product_family"] == "cargo-allow"]
+                    assert environment.reads > 0
+                    data = json.loads(receipt.read_text(encoding="utf-8"))
+                    assert data["complete"] is True
+                    assert data["first_irreversible_row"] == min(row["release_order"] for row in selected if row["product_family"] == "cargo-allow")
+                    assert all(row["state"] == "published_verified" for row in data["rows"])
+                else:
+                    assert not uploaded and environment.reads == 0
+                if name in {"list", "missing-authorization", "invalid-authorization"}:
+                    assert not commands and not receipt.exists()
+                if name.startswith(("unsupported-preflight-", "incompatible-")) or "--list" in flags:
+                    assert not commands and not receipt.exists()
+                if receipt.exists():
+                    assert "fixture-publication-token" not in receipt.read_text(encoding="utf-8")
+                assert "fixture-publication-token" not in output.getvalue()
+                scenarios += 1
+    finally:
+        sys.argv = original_argv
+        for name, value in original.items():
+            setattr(PUBLISHER, name, value)
+    print(f"publisher selected-token boundary: {scenarios} scenarios passed")
 
 
 def expect_failure(action: Callable[[], Any]) -> None:
@@ -500,6 +665,91 @@ def workflow_run_step(workflow: str, name: str) -> str:
     if not script:
         raise AssertionError(f"empty run block for {name!r}")
     return "\n".join(script) + "\n"
+
+
+def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
+    """Check runner gates and execute the real strict preflight shell block."""
+    if workflow is None:
+        workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    job = workflow.split("\n  publish:\n", 1)[1].split("\n  build:", 1)[0]
+    assert "    needs: [preflight, authorize]\n" in job
+    assert "    if:" not in job.split("    steps:\n", 1)[0]
+    preflight_name = "Prove shared registry preflight before upload"
+    token_name = "Require crates.io API token for publication"
+    publish_name = "Publish cargo-allow topology rows in dependency order"
+    assert job.index(preflight_name) < job.index(token_name) < job.index(publish_name)
+    # An explicit successful outcome also denies a skipped preflight. Keep
+    # success() so failed/cancelled earlier steps cannot select a secret step.
+    gate = "if: success() && steps.shared_registry_preflight.outcome == 'success'"
+    for name in (token_name, publish_name):
+        block = job.split(f"      - name: {name}\n", 1)[1].split("\n      - ", 1)[0]
+        expected_gate = gate
+        if name == token_name:
+            expected_gate += " && (needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true')"
+        assert [line.strip() for line in block.splitlines() if line.strip().startswith("if:")] == [expected_gate]
+        assert "continue-on-error:" not in block
+    preflight_block = job.split(f"      - name: {preflight_name}\n", 1)[1].split("\n      - ", 1)[0]
+    assert "        id: shared_registry_preflight\n" in preflight_block
+    assert "        if:" not in preflight_block and "continue-on-error:" not in preflight_block
+    # The selected secret must not be materialized at workflow/job scope or
+    # in any earlier step. Later unrelated jobs are outside this assertion.
+    assert "secrets.CARGO_REGISTRY_TOKEN" not in workflow.split(f"      - name: {preflight_name}\n", 1)[0]
+    assert "CARGO_REGISTRY_TOKEN" not in preflight_block
+    preflight = workflow_run_step(workflow, preflight_name)
+    require = workflow_run_step(workflow, token_name)
+    bash = shutil.which("bash")
+    assert bash is not None, "workflow boundary requires bash"
+    commands = '''git() {
+      case "$*" in
+        "rev-parse HEAD^{commit}") printf '%s\\n' "$OBSERVED_COMMIT" ;;
+        "rev-parse HEAD^{tree}") printf '%s\\n' "$OBSERVED_TREE" ;;
+        *) return 97 ;;
+      esac
+    }
+    python3() {
+      [ "$*" = 'scripts/release-topology-publisher.py --mode cargo-allow --registry-preflight --receipt target/cargo-allow/shared-registry-preflight.receipt.json' ] || return 98
+      [ "${CARGO_REGISTRY_TOKEN+x}" != x ] || return 99
+      printf 'strict-preflight\\n'
+      return "$PROVIDER_EXIT"
+    }
+    '''
+    scenarios = 0
+    with tempfile.TemporaryDirectory(prefix="workflow-token-boundary-") as temporary:
+        for name, provider_exit, changed_subject, authorized in (
+            ("authorized", "0", "", True),
+            ("dispatch", "0", "", False),
+            ("missing", "1", "", True),
+            ("conflict", "1", "", True),
+            ("unavailable", "1", "", True),
+            ("wrong-commit", "0", "commit", True),
+            ("wrong-tree", "0", "tree", True),
+        ):
+            environment = {
+                "PATH": "", "PROVIDER_EXIT": provider_exit,
+                "RELEASE_COMMIT": "a" * 40, "RELEASE_TREE": "b" * 40,
+                "OBSERVED_COMMIT": "c" * 40 if changed_subject == "commit" else "a" * 40,
+                "OBSERVED_TREE": "c" * 40 if changed_subject == "tree" else "b" * 40,
+            }
+            if os.name == "nt" and "SYSTEMROOT" in os.environ:
+                environment["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+            selected_secret = TokenBoundaryEnvironment(allow_token=name == "authorized")
+            result = subprocess.run(
+                [bash, "--noprofile", "--norc", "-c", commands + preflight],
+                cwd=temporary, env=environment, capture_output=True, text=True, timeout=10,
+            )
+            assert (result.returncode == 0) == (name in {"authorized", "dispatch"}), result.stdout + result.stderr
+            if result.returncode == 0 and authorized:
+                # Materialization happens only after the actual gate returned
+                # successfully; native Actions still owns scheduling semantics.
+                environment[TOKEN_KEY] = selected_secret[TOKEN_KEY]
+                required = subprocess.run(
+                    [bash, "--noprofile", "--norc", "-c", require],
+                    cwd=temporary, env=environment, capture_output=True, text=True, timeout=10,
+                )
+                assert required.returncode == 0, required.stdout + required.stderr
+            assert selected_secret.reads == int(name == "authorized")
+            scenarios += 1
+    print(f"release workflow pre-token boundary: {scenarios} scenarios passed")
 
 
 def exercise_workflow_dispatch(workflow: str | None = None) -> None:
@@ -1047,6 +1297,8 @@ def main() -> None:
         invalid["local_checksum"] = malformed
         expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
 
+    exercise_publisher_token_boundary()
+    exercise_workflow_token_boundary()
     exercise_workflow_dispatch()
     exercise_package_artifact_directory()
     exercise_main_receipt_shapes()
@@ -1066,7 +1318,10 @@ def main() -> None:
 if __name__ == "__main__":
     if sys.argv[1:] == ["--manifest-handoff"]:
         exercise_publication_handoff()
+    elif sys.argv[1:] == ["--token-boundary"]:
+        exercise_publisher_token_boundary()
+        exercise_workflow_token_boundary()
     elif sys.argv[1:]:
-        raise SystemExit("supported test mode: --manifest-handoff")
+        raise SystemExit("supported test modes: --manifest-handoff, --token-boundary")
     else:
         main()

@@ -57,11 +57,21 @@ def bounded_reference(value: str, field: str) -> str:
     return value
 
 
+def token_free_environment() -> dict[str, str]:
+    # Filter the selected key before retrieving any values. This is a
+    # CARGO_REGISTRY_TOKEN boundary, not proof about other credential sources.
+    return {
+        name: os.environ[name]
+        for name in os.environ
+        if name.upper() != "CARGO_REGISTRY_TOKEN"
+    }
+
+
 def run(command: list[str], *, env: dict[str, str] | None = None) -> str:
     result = subprocess.run(
         command,
         cwd=ROOT,
-        env=env,
+        env=token_free_environment() if env is None else env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -550,7 +560,7 @@ def main() -> int:
     parser.add_argument(
         "--registry-preflight",
         action="store_true",
-        help="prove shared registry rows and exit without publication",
+        help="prove cargo-allow shared registry rows and exit without publication",
     )
     parser.add_argument(
         "--package-only",
@@ -580,6 +590,8 @@ def main() -> int:
 
     if args.package_only and (args.publish or args.registry_preflight):
         fail("--package-only cannot be combined with --publish or --registry-preflight")
+    if args.registry_preflight and args.mode != "cargo-allow":
+        fail("--registry-preflight requires --mode cargo-allow")
     if bool(args.publication_receipt) != bool(args.publication_receipt_sha256):
         fail("--publication-receipt and --publication-receipt-sha256 are required together")
     if args.publication_receipt is not None:
@@ -601,9 +613,6 @@ def main() -> int:
             )
         return 0
 
-    token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
-    if args.publish and not token:
-        fail("CARGO_REGISTRY_TOKEN is required before the first upload")
     authorization = bounded_reference(args.authorization, "authorization") if args.authorization else ""
     if args.publish and not authorization:
         fail("--authorization is required before publication")
@@ -677,7 +686,6 @@ def main() -> int:
             print(json.dumps(receipt, indent=2, sort_keys=True))
             return 0
 
-    publish_env = os.environ.copy()
     for row in rows:
         if args.mode == "cargo-allow" and row["product_family"] != "cargo-allow":
             continue
@@ -760,7 +768,15 @@ def main() -> int:
             continue
 
         try:
-            run(["cargo", "publish", "--dry-run", "-p", name, "--locked"], env=publish_env)
+            run(["cargo", "publish", "--dry-run", "-p", name, "--locked"])
+            # Only the actual upload receives the selected token. Packaging,
+            # registry preflight and Cargo's dry-run have already succeeded
+            # without retrieving or forwarding it.
+            token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
+            if not token:
+                fail("CARGO_REGISTRY_TOKEN is required before the first upload")
+            publish_env = token_free_environment()
+            publish_env["CARGO_REGISTRY_TOKEN"] = token
         except SystemExit:
             receipt["incident_state"] = "release_incident"
             write_receipt(args.receipt, receipt)
