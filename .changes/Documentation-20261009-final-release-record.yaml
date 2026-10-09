@@ -1,0 +1,8 @@
+kind: Documentation
+body: >-
+  Refresh the final 0.2.0 draft release record and GitHub release body (#2502):
+  distinguish the stable 0.1.11 rollback baseline from the incident-bearing
+  public RC.1, correct the topology order and scoped performance/CI evidence,
+  describe the implemented
+  typed release delegation and its remaining qualification gates, and link
+  current owners without promoting candidate evidence to final publication.
