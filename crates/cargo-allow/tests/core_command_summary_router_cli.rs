@@ -777,8 +777,8 @@ callee = "unwrap"
         .and_then(Value::as_str)
         .ok_or("why must expose the scanned finding identity")?;
     let policy_path = root.join("policy/allow.toml");
-    let policy = fs::read_to_string(&policy_path)
-        .map_err(|error| format!("read tied policy: {error}"))?;
+    let policy =
+        fs::read_to_string(&policy_path).map_err(|error| format!("read tied policy: {error}"))?;
     fs::write(
         &policy_path,
         policy.replacen(
