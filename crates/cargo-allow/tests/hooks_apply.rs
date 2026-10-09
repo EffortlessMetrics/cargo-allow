@@ -502,6 +502,128 @@ fn hooks_run_executes_only_the_verified_check_command() -> TestResult {
 }
 
 #[test]
+fn hooks_run_inherits_fixture_root_from_the_outer_process() -> TestResult {
+    let fixture = Fixture::new("run-env-root")?;
+    let outside = Fixture::new("run-env-outside")?;
+    init_git(&fixture.path)?;
+    let outside_git = Command::new("git")
+        .arg("-C")
+        .arg(&outside.path)
+        .args(["rev-parse", "--show-toplevel"])
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .output()?;
+    require(
+        !outside_git.status.success(),
+        "outside hook fixture unexpectedly resolves a Git repository",
+    )?;
+    let initialized = command(&fixture.path, &["init", "--strict"])
+        .env_remove("CARGO_ALLOW_ROOT")
+        .env_remove("CARGO_ALLOW_CONFIG")
+        .output()?;
+    require(
+        initialized.status.success(),
+        &format!(
+            "fixture policy initialization failed: {}",
+            String::from_utf8_lossy(&initialized.stderr)
+        ),
+    )?;
+    fs::create_dir_all(fixture.path.join("src"))?;
+    fs::write(fixture.path.join("src/lib.rs"), "pub fn clean() -> u32 { 1 }\n")?;
+    git_add(&fixture.path, "policy/allow.toml")?;
+    git_add(&fixture.path, "src/lib.rs")?;
+
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    let identity = run_success(&outside.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+    let expected_root = format!(
+        "Source tree root: {}",
+        allow_report::source_tree_path_text(&fixture.path.canonicalize()?)
+    );
+    let mut outer = command(
+        &outside.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    );
+    for variable in [
+        "CARGO_ALLOW_CONFIG",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+    ] {
+        outer.env_remove(variable);
+    }
+    // Set the root only on the actual outer CLI. Its production executor
+    // must pass it to the verified child; no test executor supplies it.
+    outer.env("CARGO_ALLOW_ROOT", &fixture.path);
+    let clean = outer.output()?;
+    let clean_report = String::from_utf8_lossy(&clean.stdout);
+    require(
+        clean.status.success()
+            && clean_report.lines().any(|line| line == expected_root)
+            && clean_report.contains("Result: passed (enforcing)"),
+        &format!(
+            "outer hooks run did not inherit the clean fixture root: status={}, stdout=`{clean_report}`, stderr=`{}`",
+            clean.status,
+            String::from_utf8_lossy(&clean.stderr)
+        ),
+    )?;
+
+    fs::write(
+        fixture.path.join("src/lib.rs"),
+        "pub fn finding() { let _ = Some(1).unwrap(); }\n",
+    )?;
+    let finding = outer.output()?;
+    let finding_report = String::from_utf8_lossy(&finding.stdout);
+    require(
+        finding.status.code() == Some(1)
+            && finding_report.lines().any(|line| line == expected_root)
+            && finding_report.contains("Result: failed")
+            && finding_report.contains("panic.unwrap at src/lib.rs:1"),
+        &format!(
+            "outer hooks run did not report the selected fixture finding: status={}, stdout=`{finding_report}`, stderr=`{}`",
+            finding.status,
+            String::from_utf8_lossy(&finding.stderr)
+        ),
+    )?;
+
+    // The same non-repository cwd cannot reach the fixture without the
+    // environment variable. A generic nonzero exit is insufficient proof.
+    let missing_root = outer.env_remove("CARGO_ALLOW_ROOT").output()?;
+    let missing_report = String::from_utf8_lossy(&missing_root.stdout);
+    let missing_error = String::from_utf8_lossy(&missing_root.stderr);
+    require(
+        missing_root.status.code() == Some(1)
+            && missing_error.contains("no policy config found")
+            && !missing_report.contains(&expected_root)
+            && !missing_report.contains("panic.unwrap at src/lib.rs:1")
+            && !missing_report.contains("Result: passed"),
+        &format!(
+            "hooks run without CARGO_ALLOW_ROOT did not reject the outside cwd: status={}, stdout=`{missing_report}`, stderr=`{missing_error}`",
+            missing_root.status
+        ),
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_apply_creates_and_reports_a_managed_hook() -> TestResult {
     let fixture = Fixture::new("create")?;
     init_git(&fixture.path)?;
@@ -1293,10 +1415,13 @@ fn run_success(root: &Path, args: &[&str]) -> Result<Output, Box<dyn std::error:
 }
 
 fn run(root: &Path, args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
-    Ok(Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
-        .current_dir(root)
-        .args(args)
-        .output()?)
+    Ok(command(root, args).output()?)
+}
+
+fn command(root: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-allow"));
+    command.current_dir(root).args(args);
+    command
 }
 
 fn path_arg(path: &Path) -> String {
