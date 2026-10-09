@@ -1,0 +1,7 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1064"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a45f44942f8120bb678aa7935cf585ef03285fa8fe9d37c8048c861ec56ddbf1"
+reason = "receipt for the PR #4429 review disposition file, matching the #3844 protocol"
