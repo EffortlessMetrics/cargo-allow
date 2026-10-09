@@ -47,8 +47,9 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
     }
 
     match value.get("phases").and_then(Json::as_object) {
-        None => notes
-            .push("fail:rehearsal phases must be the canonical eight-phase object".to_string()),
+        None => {
+            notes.push("fail:rehearsal phases must be the canonical eight-phase object".to_string())
+        }
         Some(phases) => {
             for name in PHASES {
                 let expected = if name == "authorization_boundary" {
@@ -63,7 +64,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
                     ));
                 }
             }
-            for name in phases.keys().filter(|name| !PHASES.contains(&name.as_str())) {
+            for name in phases
+                .keys()
+                .filter(|name| !PHASES.contains(&name.as_str()))
+            {
                 notes.push(format!("fail:rehearsal records unknown phase {name:?}"));
             }
         }
@@ -79,7 +83,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
         );
     }
 
-    match value.get("authorization_boundary").and_then(Json::as_object) {
+    match value
+        .get("authorization_boundary")
+        .and_then(Json::as_object)
+    {
         None => notes
             .push("fail:rehearsal records no authorization_boundary evidence object".to_string()),
         Some(boundary) => {
@@ -114,8 +121,7 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
             }
             if boundary.get("token_present").and_then(Json::as_bool) != Some(false) {
                 notes.push(
-                    "fail:rehearsal authorization_boundary.token_present must be false"
-                        .to_string(),
+                    "fail:rehearsal authorization_boundary.token_present must be false".to_string(),
                 );
             }
             if !boundary

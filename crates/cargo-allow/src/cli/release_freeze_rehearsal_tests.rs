@@ -293,10 +293,7 @@ fn canonical_phase_denominator_and_each_result_are_required() -> Result<(), Box<
     for index in 0..7 {
         arbitrary_phases.insert(format!("phase{index}"), json!("Complete"));
     }
-    arbitrary_phases.insert(
-        "authorization_boundary".to_string(),
-        json!("Incomplete"),
-    );
+    arbitrary_phases.insert("authorization_boundary".to_string(), json!("Incomplete"));
     replace(&mut arbitrary, "/phases", Json::Object(arbitrary_phases))?;
     rejected_with(&subject, &arbitrary, "phase release_identity must be")?;
     rejected_with(&subject, &arbitrary, "unknown phase")?;
@@ -430,7 +427,11 @@ fn every_zero_mutation_flag_is_required_as_boolean_true() -> Result<(), Box<dyn 
             json!({"prevented": true}),
         ] {
             let mut malformed = receipt.clone();
-            replace(&mut malformed, &format!("/zero_mutation_proof/{name}"), replacement)?;
+            replace(
+                &mut malformed,
+                &format!("/zero_mutation_proof/{name}"),
+                replacement,
+            )?;
             rejected_with(
                 &subject,
                 &malformed,

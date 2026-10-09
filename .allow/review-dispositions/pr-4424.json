@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4424,
+  "base_ref": "main",
+  "base_sha": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
+  "head_ref": "fix/release-rehearsal-dispatch",
+  "head_sha": "955c2596d0cc544c3ce41be96534f27ec3311428",
+  "merge_base": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
+  "reviewed_diff_digest": "sha256:v1:4c174cef7846a789e2b0a10dde0f2f41daec16af5763ae3668b54ae2c2716fdd",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit original source review; /root/backlog_audit independent current-base integration and governance review; same model family and prior audit context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4424#pullrequestreview-5474920004"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4424#pullrequestreview-5474920004",
+    "Complete changed-path set, relevant consumers and current-base integration independently reviewed; original source retained.",
+    "Exactly two unique, exact-path review evidence receipts; full existing policy byte prefix unchanged; independent Rust canonical fingerprint reproduction matches both authored added_allow rows.",
+    "Prior portability thread and exact review-record receipt thread repaired and resolved with current-source evidence.",
+    "Old retained JSON currentness is deliberately replaced only in a metadata-only successor. No CI success or release authority is inferred from this source disposition."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4424",
+  "reviewed_at_utc": "2026-10-09T20:14:27Z"
+}

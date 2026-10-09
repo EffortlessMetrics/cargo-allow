@@ -2049,10 +2049,9 @@ mod tests {
                 .iter()
                 .any(|note| !note.starts_with("fail:rehearsal zero_mutation_proof."))
         {
-            return Err(format!(
-                "characterization must retain its seven proof gaps: {full:?}"
-            )
-            .into());
+            return Err(
+                format!("characterization must retain its seven proof gaps: {full:?}").into(),
+            );
         }
 
         let short = bind_evidence(
@@ -3186,7 +3185,11 @@ mod compose_fixture_tests {
         ] {
             let mut invalid = rehearsal.clone();
             super::rehearsal_tests::replace(&mut invalid, pointer, replacement)?;
-            write(&evidence_dir, "rehearsal.json", &serde_json::to_vec(&invalid)?);
+            write(
+                &evidence_dir,
+                "rehearsal.json",
+                &serde_json::to_vec(&invalid)?,
+            );
             super::rehearsal_tests::require_noncomplete_composition(
                 &root, &args, &subject, diagnostic,
             )?;
@@ -3210,10 +3213,7 @@ mod compose_fixture_tests {
             || !error.to_string().contains("duplicate JSON object key")
             || args.out_dir.exists()
         {
-            return Err(format!(
-                "duplicate phase did not fail before composition: {error}"
-            )
-            .into());
+            return Err(format!("duplicate phase did not fail before composition: {error}").into());
         }
         std::fs::remove_dir_all(&root)?;
         Ok(())
