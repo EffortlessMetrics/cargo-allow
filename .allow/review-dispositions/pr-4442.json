@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4442,
+  "base_ref": "fix/4439-windows-junction-fixture",
+  "base_sha": "30a1e2eaff8c6fb1c97292454af247139ce282de",
+  "head_ref": "fix/4441-rehearsal-token-boundary",
+  "head_sha": "7baadfa9f5b51443aeffdd15cc56f7529746a113",
+  "merge_base": "30a1e2eaff8c6fb1c97292454af247139ce282de",
+  "reviewed_diff_digest": "sha256:v1:623d8d9958b099c1ace7749f671434a73e278bb4edb5e0f6c221bf4380558f71",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source/governance review; shared model family/session context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5475837469"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5475837469",
+    "Full five-path review verifies selected-key-only early admission at CLI and direct builder, filter-before-value child environments on all 13 owned processes, late InstrumentFailure and bounded receipt claims. All seven broader prevention flags remain false; phase set/schema/aggregate denial unchanged. #3792/#2501 remain open for actual full qualification.",
+    "The composed test AST preserves all original token tests and the exact #4440 native junction fixture. Independently rerun targeted suite: 66 pass and one existing Windows-only skip. Five new controls yield 12 expected failures against original producer bytes and five passes against repaired bytes. These are local Python results, not Cargo or native Windows proof.",
+    "All 728,886 base policy bytes and 1,068 entries are unchanged, with exactly two file-scoped receipts and independently verified canonical fingerprints. Exact synthetic 2c022b34daaeb807693ddf49cae0d97ef403123d matches the live pair and tree. No actionable thread; bot quota/nondefault-base skips supply no review evidence.",
+    "Current cargo-deny and workflow checks passed while pregate/full native validation were running. Own-record bootstrap, every applicable current check and the eventual retargeted main pair remain required; no pending or stale result is treated as green."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4442",
+  "reviewed_at_utc": "2026-10-09T22:13:46.724Z"
+}
