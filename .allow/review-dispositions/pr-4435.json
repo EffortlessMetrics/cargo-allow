@@ -1,0 +1,45 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4435,
+  "base_ref": "main",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "head_ref": "fix/4428-strict-revision-bytes",
+  "head_sha": "6f9e15e0f05bda67f30e3e25047f0ded0da106c0",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:5292edbb8fbc673988bb3f8e092e07b7813c659f51662936c9b19b6fdac0947f",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring full source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475337599"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-2511",
+      "severity": "advisory",
+      "owned_seam": "Per-path machine diagnostics and existing PR-adapter failed-artifact precedence",
+      "source_path": "crates/cargo-allow/tests/diff_revision_bytes.rs",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp → #2511: add machine-readable per-path diagnostic projection and separately decide the existing PR-adapter failed-artifact result while retaining conservative completeness and movement.",
+      "claim_boundary": "This PR preserves typed per-path library facts and actual failed-report non-clean consumption; it does not invent a passed partial DTO or unproven ordinary movement."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475337599",
+    "Independent review covered all eleven effective source/governance paths and production consumers. Strict bounded ordered Git reads preserve valid findings and per-file rejected status, subprocess completion and existing batching. Incomplete base/head evidence cannot earn false introduced/resolved claims. Real Git, CLI, human/JSON/Markdown, receipt, common summary and PR-adapter regressions are included. The four-file final transition exactly matches all 32 native Rust1.95 formatter hunks. Main integration and both exact policy/note fingerprints were independently verified.",
+    "Threads4234372307/2340/2350/2359 are resolved RefutedWithEvidence: public ResolvedRevisionIdentity.commit exists; the opaque capability is a distinct type; mutable writer/Take/reader temporaries live through calls returning owned results. Current-head pregate114022949002 passed production compilation, formatting, enforcing no-new and typed ci-pregate. Full native test/platform/MSRV/package checks remain required; cargo-deny114022949086 is blocked before analysis by Docker Hub429.",
+    "Synthetic8aa7f35699e8cd007664c528df621d335de649ca matches exact source base/head parents and tree. This successor changes only the retained review JSON; every current applicable check, fresh feedback review and post-main source guard remain required."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4435",
+  "reviewed_at_utc": "2026-10-09T21:04:09Z"
+}
