@@ -263,6 +263,70 @@ fn propose_surfaces_bare_allow_skip_in_human_and_json_summaries() -> Result<(), 
 }
 
 #[test]
+fn propose_write_force_keeps_crlf_target_envelope() -> Result<(), String> {
+    // #4337 acceptance: a `--write --force` overwrite of a CRLF target must
+    // not rewrite it LF-only; a new target keeps the LF default (#4279).
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-crlf-envelope-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+    fs::write(root.join("src/lib.rs"), "fn fixture() {}\n").map_err(|error| error.to_string())?;
+    let target = root.join("policy/allow.toml");
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    let before = "policy = \"cargo-allow\"\r\n# historical target\r\n";
+    fs::write(&target, before).map_err(|error| error.to_string())?;
+
+    cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        kind: Some("lint-exception".to_string()),
+        include_untracked: true,
+        expires: None,
+        write: Some(target.clone()),
+        force: true,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: Some(root.join("propose-summary.txt")),
+        max: 50,
+    })
+    .map_err(|error| format!("propose failed: {error}"))?;
+
+    let after = fs::read_to_string(&target).map_err(|error| error.to_string())?;
+    let (crlf, lone) = count_line_endings(after.as_bytes());
+    assert!(
+        lone == 0 && crlf > 0,
+        "a CRLF target must stay fully CRLF ({crlf} CRLF, {lone} lone LF)"
+    );
+    assert!(
+        after.contains("default_mode"),
+        "propose should have written the rendered policy"
+    );
+
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn count_line_endings(bytes: &[u8]) -> (usize, usize) {
+    let mut crlf = 0;
+    let mut lone_lf = 0;
+    let mut previous = 0u8;
+    for &byte in bytes {
+        if byte == b'\n' {
+            if previous == b'\r' {
+                crlf += 1;
+            } else {
+                lone_lf += 1;
+            }
+        }
+        previous = byte;
+    }
+    (crlf, lone_lf)
+}
+
+#[test]
 fn proposal_summary_preserves_distinct_rejection_reasons() {
     let mut reason = None;
     record_unreceiptable_reason(&mut reason, "bare allow forbidden");

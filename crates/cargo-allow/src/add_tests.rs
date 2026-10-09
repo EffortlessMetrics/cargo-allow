@@ -804,6 +804,181 @@ fn cmd_add_update_writes_entry_into_live_policy() -> Result<(), Box<dyn std::err
 }
 
 #[test]
+fn cmd_add_update_preserves_crlf_ledger_byte_form() -> Result<(), Box<dyn std::error::Error>> {
+    // #4279: the appended block must carry the ledger's CRLF byte-form instead
+    // of planting an LF tail operators had to restore byte-level after every
+    // add (#4037/#4050/#4337 recurrences).
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let policy_path = root.join("policy/allow.toml");
+    let base = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read base policy: {err}")));
+    let before = base.replace('\n', "\r\n");
+    fs::write(&policy_path, &before)?;
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: Some("panic".to_string()),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        dry_run: false,
+        update: true,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("add --update should write: {err}")));
+
+    let after = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read updated policy: {err}")));
+    assert!(
+        after.as_bytes().starts_with(before.as_bytes()),
+        "update must preserve every existing CRLF byte"
+    );
+    let (crlf_before, lone_before) = count_line_endings(before.as_bytes());
+    let (crlf_after, lone_after) = count_line_endings(after.as_bytes());
+    assert_eq!(lone_before, 0);
+    assert_eq!(lone_after, 0, "a CRLF ledger must not grow lone LF bytes");
+    assert!(
+        crlf_after > crlf_before,
+        "the appended block must be CRLF too"
+    );
+    assert!(
+        after.contains("allow-0002") && after.contains("test:parser_validates"),
+        "updated policy should contain the new entry"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    Ok(())
+}
+
+#[test]
+fn cmd_add_update_keeps_lf_ledger_byte_form() -> Result<(), Box<dyn std::error::Error>> {
+    // The LF mirror of the CRLF guard: an LF ledger must not grow CR bytes.
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let policy_path = root.join("policy/allow.toml");
+    let before = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read base policy: {err}")));
+    assert!(!before.contains('\r'), "fixture must start LF-only");
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: Some("panic".to_string()),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        dry_run: false,
+        update: true,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("add --update should write: {err}")));
+
+    let after = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read updated policy: {err}")));
+    assert!(
+        after.as_bytes().starts_with(before.as_bytes()),
+        "update must preserve every existing LF byte"
+    );
+    assert!(!after.contains('\r'), "an LF ledger must not grow CR bytes");
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    Ok(())
+}
+
+#[test]
+fn cmd_add_write_force_keeps_crlf_candidate_envelope() {
+    // #4337 acceptance: a --force overwrite of a CRLF candidate must not
+    // rewrite it LF-only.
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let output = root.join("policy/allow.added.toml");
+    fs::write(
+        &output,
+        "policy = \"cargo-allow\"\r\n# historical candidate\r\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("seed candidate policy: {err}")));
+
+    cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: Some("panic".to_string()),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: true,
+        dry_run: false,
+        update: false,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("add --write --force should overwrite: {err}"))
+    });
+
+    let after = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read candidate policy: {err}")));
+    let (crlf, lone) = count_line_endings(after.as_bytes());
+    assert!(
+        lone == 0 && crlf > 0,
+        "a CRLF candidate must stay fully CRLF ({crlf} CRLF, {lone} lone LF)"
+    );
+    assert!(
+        after.contains("allow-0002"),
+        "overwritten candidate should contain the new entry"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn cmd_add_update_rejects_when_write_also_set() {
     let root = add_fixture_dir();
     write_add_fixture_with_new_panic_finding(&root);
@@ -1216,6 +1391,25 @@ fn add_fixture_dir() -> std::path::PathBuf {
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create add fixture: {err}")));
     dir
+}
+
+/// Count `\r\n` pairs and lone `\n` bytes, mirroring the writer's detector
+/// (#4279).
+fn count_line_endings(bytes: &[u8]) -> (usize, usize) {
+    let mut crlf = 0;
+    let mut lone_lf = 0;
+    let mut previous = 0u8;
+    for &byte in bytes {
+        if byte == b'\n' {
+            if previous == b'\r' {
+                crlf += 1;
+            } else {
+                lone_lf += 1;
+            }
+        }
+        previous = byte;
+    }
+    (crlf, lone_lf)
 }
 
 fn git(root: &std::path::Path, args: &[&str]) {

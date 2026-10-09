@@ -1,0 +1,4 @@
+kind: Fixed
+body: Preserve an existing ledger's dominant line ending when `add --update`, `add --write --force`, `init --force`, or `propose --write --force` rewrites it, so CRLF ledgers no longer decay into mixed endings; a contested (tied) ending envelope now refuses instead of guessing.
+time: 2026-10-09T00:00:00Z
+custom: {}
