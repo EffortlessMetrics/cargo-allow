@@ -1,13 +1,7 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-1064"]
+allow_ids = ["allow-1065"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:d80f7aa78553c267fbf68f7d81781ab6a7562f409a6faf98ce1563e41ffe5046"
-reason = "receipt for the PR #4424 review disposition file, matching the #3844 protocol"
-
-[[records]]
-allow_ids = [""allow-1065""]
-change_kinds = ["added_allow"]
-after_fingerprint = ""
+after_fingerprint = "sha256:v1:3d7bccb9206940a2145faa4d3ee6ec8ea6b11b812f572e3d5bf0167c0753a5b3"
 reason = "self-receipt for this revision note, matching the #3792 precedent"
