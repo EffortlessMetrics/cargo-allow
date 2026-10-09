@@ -344,6 +344,19 @@ def set_duration(receipt, path, value):
         hooks["overhead_ms"] = hooks["wrapped_elapsed_ms"] - hooks["bare_elapsed_ms"]
 
 
+def duration_diagnostic(path):
+    # Literal consumer diagnostics distinguish duration admission from arithmetic.
+    if path[0] == "samples":
+        return "samples.elapsed_ms must be nonnegative integers within the ceiling"
+    if path[:3] == ("agent_loop", "composite", "steps"):
+        return "agent_loop.composite.steps.elapsed_ms must be nonnegative integers"
+    if path == ("agent_loop", "composite", "total_elapsed_ms"):
+        return "agent_loop.composite.total_elapsed_ms must be a nonnegative integer"
+    if path[:2] == ("agent_loop", "hooks_overhead"):
+        return "agent_loop.hooks_overhead elapsed values must be nonnegative integers"
+    raise AssertionError(f"uncovered duration path: {path}")
+
+
 class ReceiptDurationControls(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -370,7 +383,7 @@ class ReceiptDurationControls(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "validated 17 operator-latency samples")
 
-    def assert_rejected(self, receipt, label):
+    def assert_rejected(self, receipt, label, *, diagnostic=None):
         result = self.invoke(receipt)
         self.assertEqual(
             result.returncode, 1,
@@ -378,6 +391,8 @@ class ReceiptDurationControls(unittest.TestCase):
         )
         self.assertNotIn("validated 17 operator-latency samples", result.stdout)
         self.assertTrue(result.stderr, f"missing rejection diagnostic: {label}")
+        if diagnostic is not None:
+            self.assertIn(diagnostic, result.stderr)
 
     def test_schema_duration_contract(self):
         schema = json.loads(self.schema_text)
@@ -405,7 +420,7 @@ class ReceiptDurationControls(unittest.TestCase):
             with self.subTest(path=path):
                 receipt = receipt_fixture()
                 set_duration(receipt, path, -1)
-                self.assert_rejected(receipt, path)
+                self.assert_rejected(receipt, path, diagnostic=duration_diagnostic(path))
 
     def test_duration_types_refuse(self):
         for path in duration_paths():
@@ -413,7 +428,7 @@ class ReceiptDurationControls(unittest.TestCase):
                 with self.subTest(path=path, value=value):
                     receipt = receipt_fixture()
                     set_duration(receipt, path, value)
-                    self.assert_rejected(receipt, (path, value))
+                    self.assert_rejected(receipt, (path, value), diagnostic=duration_diagnostic(path))
 
     def test_signed_hook_overhead_is_valid(self):
         for wrapped, bare in ((0, 1), (1, 0)):
