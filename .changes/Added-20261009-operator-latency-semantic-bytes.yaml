@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Record semantic-artifact byte counts alongside artifact byte counts in the
+  operator-latency receipt (#4403 item 6): the harness now records
+  `semantic_payload_bytes` per sample and per agent-loop composite step, the
+  receipt follows the new `cargo-allow.operator-latency.v4` schema (v3, v2 and
+  v1 remain historical compatibility schemas), and the hosted receipt consumer
+  requires nonnegative byte counts that match the byte size of the retained
+  uploaded artifact files.

@@ -244,7 +244,7 @@ under #2567/#3602; descriptor conformance alone does not prove interoperability.
 
 | Receipt | Schema ID | Producer |
 |---|---|---|
-| Operator latency | `cargo-allow.operator-latency.v3` | `scripts/perf-budget-smoke.sh` |
+| Operator latency | `cargo-allow.operator-latency.v4` | `scripts/perf-budget-smoke.sh` |
 | Redacted support bundle | `cargo-allow.support-bundle.v2` | `cargo-allow doctor --support-bundle <path>` |
 | Extraction cutover evidence manifest | `cargo-allow.extraction-cutover-evidence.v2` | `scripts/extraction-cutover-status.sh` / `cargo-allow extraction-parity --cutover-evidence` |
 | Extraction cutover ownership receipt | `cargo-allow.extraction-cutover-ownership.v1` | `scripts/extraction-cutover-status.sh` |
@@ -252,7 +252,8 @@ under #2567/#3602; descriptor conformance alone does not prove interoperability.
 
 The operator-latency receipt binds end-to-end wall-clock observations to the
 tested binary, host, repository fixture, ordered command arguments, output
-digests, semantic artifact checks, per-sample payload byte sizes, and the
+digests, semantic artifact checks, per-sample artifact and semantic-artifact
+byte sizes, and the
 #4366 agent-loop composite (per-step rows plus a derived composite total and
 a paired `hooks run` overhead difference). It is a hosted
 performance-regression signal, not a source-tree scan artifact and not a
@@ -300,7 +301,7 @@ promote policy, authorize publication, or establish release readiness.
 - [worklist.schema.json](worklist.schema.json)
 - [cadence.schema.json](cadence.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
-- [operator-latency.schema.json](operator-latency.schema.json) v1 and [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2 historical compatibility schemas; [operator-latency.v3.schema.json](operator-latency.v3.schema.json) current hosted performance receipt (not governed artifacts)
+- [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
