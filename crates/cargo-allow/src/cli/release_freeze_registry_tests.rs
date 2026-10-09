@@ -7,13 +7,12 @@ use std::process::{Command, Stdio};
 
 use allow_report::{
     FinalEvidenceNodeResultV1 as Node, FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1,
-    FinalRegistryContextV1, FinalRegistryObservationOriginV1,
-    FinalRegistryObservationV1, FinalRegistryOwnerStateV1, FinalRegistryPreflightInputV1,
-    FinalRegistryPreflightResultV1, FinalRegistryProvenanceV1, FinalRegistryPublishAuthorityV1,
-    FinalRegistrySharedAuthorityV1, FinalRegistryVersionResponseV1, ObservationFreshnessV1,
-    ObservationReadingV1, PackageCandidateFamilyV2, PackageCandidatePayloadV2,
-    RefreshableObservationAdapterV1, RefreshableObservationV1, evaluate_final_registry_preflight_v1,
-    final_registry_bindings_v1,
+    FinalRegistryContextV1, FinalRegistryObservationOriginV1, FinalRegistryObservationV1,
+    FinalRegistryOwnerStateV1, FinalRegistryPreflightInputV1, FinalRegistryPreflightResultV1,
+    FinalRegistryProvenanceV1, FinalRegistryPublishAuthorityV1, FinalRegistrySharedAuthorityV1,
+    FinalRegistryVersionResponseV1, ObservationFreshnessV1, ObservationReadingV1,
+    PackageCandidateFamilyV2, PackageCandidatePayloadV2, RefreshableObservationAdapterV1,
+    RefreshableObservationV1, evaluate_final_registry_preflight_v1, final_registry_bindings_v1,
 };
 use serde_json::{Value as Json, json};
 
@@ -47,11 +46,7 @@ pub(super) fn fixture(
     candidate.cargo_lock_digest = subject
         .cargo_lock_digest
         .replacen("sha256:v1:", "sha256:", 1);
-    candidate.topology_digest = Some(
-        subject
-            .topology_digest
-            .replacen("sha256:v1:", "sha256:", 1),
-    );
+    candidate.topology_digest = Some(subject.topology_digest.replacen("sha256:v1:", "sha256:", 1));
     candidate.root_package_version = subject.version.clone();
     let selected = selected.map(|rows| rows.to_vec()).unwrap_or_else(|| {
         candidate
@@ -103,9 +98,7 @@ pub(super) fn fixture(
                 package_name: row.cargo_package_name.clone(),
                 package_version: row.cargo_package_version.clone(),
                 expected_checksum: checksum.clone(),
-                authority_digest: subject
-                    .topology_digest
-                    .replacen("sha256:v1:", "sha256:", 1),
+                authority_digest: subject.topology_digest.replacen("sha256:v1:", "sha256:", 1),
             });
         }
         observations.push(FinalRegistryObservationV1 {
@@ -192,10 +185,9 @@ fn legacy_rows_and_retained_context_cannot_make_registry_current() -> TestResult
     let (input, selected, context) = fixture(&subject, None)?;
     let evaluated = evaluate_final_registry_preflight_v1(&input);
     if evaluated.result != FinalRegistryPreflightResultV1::Complete {
-        return Err(format!(
-            "the exact typed fixture is not semantically complete: {evaluated:?}"
-        )
-        .into());
+        return Err(
+            format!("the exact typed fixture is not semantically complete: {evaluated:?}").into(),
+        );
     }
     let mut legacy = retained(
         &subject,
@@ -204,9 +196,7 @@ fn legacy_rows_and_retained_context_cannot_make_registry_current() -> TestResult
     legacy.role = FreezeEvidenceRole::Rehearsal;
     let result = super::registry::reconcile(&subject, &selected, &[legacy], None);
     require_result(&result, Node::NotProven, Freshness::ProviderUnavailable)?;
-    if !result.2.detail.contains("legacy rehearsal")
-        || result.1.observed_at_utc != "unavailable"
-    {
+    if !result.2.detail.contains("legacy rehearsal") || result.1.observed_at_utc != "unavailable" {
         return Err("legacy evidence acquired a timestamp or lost its denial".into());
     }
     let evidence = [retained(&subject, serde_json::to_value(&input)?)?];
@@ -221,22 +211,15 @@ fn legacy_rows_and_retained_context_cannot_make_registry_current() -> TestResult
             || !result.2.detail.contains("TestFixture provenance")
             || (expected.is_none() && !result.2.detail.contains("#3792/#2501"))
         {
-            return Err(format!(
-                "registry provenance/authority boundary lost: {result:?}"
-            )
-            .into());
+            return Err(format!("registry provenance/authority boundary lost: {result:?}").into());
         }
     }
     for value in [
         json!({"shared_prerequisites": [1, 2, 3]}),
         serde_json::to_value(evaluated)?,
     ] {
-        let result = super::registry::reconcile(
-            &subject,
-            &selected,
-            &[retained(&subject, value)?],
-            None,
-        );
+        let result =
+            super::registry::reconcile(&subject, &selected, &[retained(&subject, value)?], None);
         require_result(&result, Node::Malformed, Freshness::InstrumentFailure)?;
     }
     let duplicate = [
@@ -244,12 +227,7 @@ fn legacy_rows_and_retained_context_cannot_make_registry_current() -> TestResult
         retained(&subject, serde_json::to_value(&input)?)?,
     ];
     require_result(
-        &super::registry::reconcile(
-            &subject,
-            &selected,
-            &duplicate,
-            Some((&context, 110, 10)),
-        ),
+        &super::registry::reconcile(&subject, &selected, &duplicate, Some((&context, 110, 10))),
         Node::Malformed,
         Freshness::InstrumentFailure,
     )?;
@@ -265,10 +243,7 @@ fn registry_candidate_and_checksums_bind_the_selected_freeze_bytes() -> TestResu
         ("/candidate/repository_commit", json!("1".repeat(40))),
         ("/candidate/repository_tree", json!("2".repeat(40))),
         ("/candidate/root_package_version", json!("0.2.0-rc.1")),
-        (
-            "/candidate/cargo_lock_digest",
-            json!(digest(b"wrong lock")),
-        ),
+        ("/candidate/cargo_lock_digest", json!(digest(b"wrong lock"))),
         ("/candidate/topology_digest", Json::Null),
         (
             "/candidate/rows/0/crate_digest",
@@ -331,7 +306,12 @@ fn registry_retains_denominator_state_and_independent_provenance_failures() -> T
         .expected_digest
         .clone();
     for (pointer, value, node, freshness) in [
-        ("/schema_version", json!(99), Node::Unsupported, Freshness::InstrumentFailure),
+        (
+            "/schema_version",
+            json!(99),
+            Node::Unsupported,
+            Freshness::InstrumentFailure,
+        ),
         (
             "/observations/0/package_name",
             json!("effortless-repo-protocol"),
@@ -479,7 +459,11 @@ fn registry_retains_denominator_state_and_independent_provenance_failures() -> T
             ("/provider", json!(""), Node::Malformed),
             ("/source", json!(""), Node::Malformed),
             ("/evidence_digest", json!("sha256:invalid"), Node::Malformed),
-            ("/observed_at_unix_seconds", json!("yesterday"), Node::Malformed),
+            (
+                "/observed_at_unix_seconds",
+                json!("yesterday"),
+                Node::Malformed,
+            ),
             ("/observed_at_unix_seconds", Json::Null, Node::Malformed),
             ("/observed_at_unix_seconds", json!(99), Node::Stale),
             ("/observed_at_unix_seconds", json!(111), Node::Stale),
@@ -546,12 +530,8 @@ fn registry_freshness_uses_independent_context_clock_and_selected_window() -> Te
         (99, 10, Node::Stale),
         (110, 0, Node::Malformed),
     ] {
-        let result = super::registry::reconcile(
-            &subject,
-            &selected,
-            &evidence,
-            Some((&context, now, age)),
-        );
+        let result =
+            super::registry::reconcile(&subject, &selected, &evidence, Some((&context, now, age)));
         let freshness = if expected == Node::Stale {
             ObservationFreshnessV1::Stale
         } else {
@@ -706,15 +686,24 @@ fn delivered_public_observer_cannot_supply_missing_freeze_authority() -> TestRes
         &[retained(&subject, serde_json::to_value(observed)?)?],
         None,
     );
-    require_result(&result, Node::NotProven, ObservationFreshnessV1::ProviderUnavailable)?;
-    if !result.2.detail.contains("owner permission remains unproven")
-        || !result.2.detail.contains("publication authority remains unproven")
+    require_result(
+        &result,
+        Node::NotProven,
+        ObservationFreshnessV1::ProviderUnavailable,
+    )?;
+    if !result
+        .2
+        .detail
+        .contains("owner permission remains unproven")
+        || !result
+            .2
+            .detail
+            .contains("publication authority remains unproven")
         || !result.2.detail.contains("#3792/#2501")
     {
-        return Err(format!(
-            "public observer limitation lost at freeze admission: {result:?}"
-        )
-        .into());
+        return Err(
+            format!("public observer limitation lost at freeze admission: {result:?}").into(),
+        );
     }
     Ok(())
 }
@@ -744,13 +733,21 @@ pub(super) fn require_noncomplete_composition(
     let actual = serde_json::to_value(&observed)?;
     for (pointer, replacement, expected) in [
         ("", actual.clone(), Node::NotProven),
-        ("", json!({"shared_prerequisites": [1, 2, 3]}), Node::Malformed),
+        (
+            "",
+            json!({"shared_prerequisites": [1, 2, 3]}),
+            Node::Malformed,
+        ),
         (
             "/observations/0/version",
             json!({"status": "provider_unavailable"}),
             Node::ProviderUnavailable,
         ),
-        ("/observations/0/version_provenance/observed_at_unix_seconds", json!(0), Node::Stale),
+        (
+            "/observations/0/version_provenance/observed_at_unix_seconds",
+            json!(0),
+            Node::Stale,
+        ),
         (
             "/observations/0/version_provenance/observed_at_unix_seconds",
             json!("unknown"),
@@ -792,7 +789,9 @@ pub(super) fn require_noncomplete_composition(
         if row.result != expected
             || reading.freshness == ObservationFreshnessV1::Current
             || !reading.authoritative
-            || !reading.detail.contains(&allow_core::sha256_v1_bytes(&bytes))
+            || !reading
+                .detail
+                .contains(&allow_core::sha256_v1_bytes(&bytes))
             || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
             || replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
         {

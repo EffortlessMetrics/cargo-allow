@@ -3366,8 +3366,8 @@ mod probe_cover_tests2 {
     }
 
     #[test]
-    fn registry_role_binds_exact_version_and_flags_drift()
-    -> Result<(), Box<dyn std::error::Error>> {
+    fn registry_role_binds_exact_version_and_flags_drift() -> Result<(), Box<dyn std::error::Error>>
+    {
         let subject = subject();
         let (input, _, _) = super::registry_tests::fixture(&subject, None)?;
         let bound = bind_evidence(
@@ -3395,7 +3395,10 @@ mod probe_cover_tests2 {
                 FreezeEvidenceRole::RegistryObservation,
                 &json!({"crate": "cargo-allow", "version": version}),
             );
-            if !legacy.iter().any(|note| note.contains("FinalRegistryPreflightInputV1")) {
+            if !legacy
+                .iter()
+                .any(|note| note.contains("FinalRegistryPreflightInputV1"))
+            {
                 return Err(format!("legacy registry JSON was admitted: {legacy:?}").into());
             }
         }

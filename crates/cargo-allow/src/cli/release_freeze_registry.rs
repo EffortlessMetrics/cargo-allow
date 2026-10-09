@@ -13,8 +13,7 @@ use allow_report::{
     FinalEvidencePackageSubjectV1, FinalRegistryContextV1, FinalRegistryObservationOriginV1,
     FinalRegistryPreflightInputV1, FinalRegistryPreflightResultV1, FinalRegistryRowRoleV1,
     ObservationFreshnessV1, ObservationReadingV1, RefreshableObservationKindV1,
-    RefreshableObservationV1,
-    evaluate_final_registry_preflight_v1,
+    RefreshableObservationV1, evaluate_final_registry_preflight_v1,
 };
 use serde_json::Value as Json;
 
