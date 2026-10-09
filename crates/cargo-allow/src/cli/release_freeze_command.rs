@@ -50,9 +50,16 @@ use crate::cli::candidate_preparation_command::git_root;
 #[path = "release_freeze_rehearsal.rs"]
 mod rehearsal;
 
+#[path = "release_freeze_registry.rs"]
+mod registry;
+
 #[cfg(test)]
 #[path = "release_freeze_rehearsal_tests.rs"]
 mod rehearsal_tests;
+
+#[cfg(test)]
+#[path = "release_freeze_registry_tests.rs"]
+mod registry_tests;
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
@@ -119,7 +126,7 @@ pub(crate) enum FreezeEvidenceRole {
     /// Exact-candidate interop smoke receipt.
     #[value(name = "interop")]
     Interop,
-    /// `scripts/verify-crate-registry-version.sh` observation JSON.
+    /// FinalRegistryPreflightInputV1 from the final registry observer.
     #[value(name = "registry-observation")]
     RegistryObservation,
     /// ReleaseManifestV2 prepublication envelope JSON.
@@ -287,12 +294,17 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     // The exact 10+3 package graph must exist before the evidence graph:
     // the graph's selected subject carries the full row set.
     let package_rows = subject.package_rows(&shared, &evidence)?;
+    // #3792/#2501 must supply independently verified current registry context,
+    // evaluation time, and a selected freshness window. Retained input fields
+    // cannot fill this authority gap or make the production freeze Current.
+    let registry = registry::reconcile(&subject, &package_rows, &evidence, None);
     let graph = build_evidence_graph(
         &subject,
         &selection,
         &evidence,
         &package_rows,
         incident_digest.as_deref(),
+        (registry.0, &registry.2),
     );
     let evaluation = evaluate_final_evidence_graph(&graph);
     let decision_inputs = readiness_decision_inputs(&subject, &selection, &evidence);
@@ -361,7 +373,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         freeze_receipt: receipt,
         retained_transfers: transfers,
         retained_artifacts,
-        observations: observation_set(&evidence),
+        observations: observation_set(&evidence, registry.1),
         replayed_at_utc: subject.frozen_at_utc.clone(),
     };
     let replayed = replay_final_freeze(
@@ -370,7 +382,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
             source_current: evidence_role(&evidence, FreezeEvidenceRole::Controls)
                 .map(EvidenceInput::bound_ok)
                 .unwrap_or(false),
-            registry_current: rehearsal_registry_preflight_current(&evidence),
+            registry_reading: registry.2,
         },
     );
     let receipt_sha256 = sha256_v1_bytes(&receipt_bytes);
@@ -782,7 +794,10 @@ fn collect_evidence(
                 path.display()
             ))
         })?;
-        let value: Json = if role == FreezeEvidenceRole::Rehearsal {
+        let value: Json = if matches!(
+            role,
+            FreezeEvidenceRole::Rehearsal | FreezeEvidenceRole::RegistryObservation
+        ) {
             rehearsal::decode(&bytes)
         } else {
             serde_json::from_slice(&bytes)
@@ -1023,19 +1038,7 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             }
         }
         FreezeEvidenceRole::RegistryObservation => {
-            let observed = deep_find_version(value);
-            match observed {
-                Some(found) if found == subject.version => {
-                    notes.push("registry observation binds the freeze version".to_string());
-                }
-                Some(found) => notes.push(format!(
-                    "fail:registry observation reports {found:?}, not the freeze version {:?}",
-                    subject.version
-                )),
-                None => {
-                    notes.push("note:registry observation carries no version marker".to_string())
-                }
-            }
+            notes.extend(registry::binding_notes(subject, value));
         }
         FreezeEvidenceRole::Controls => {
             let state = str_field(value, "state").unwrap_or_default();
@@ -1176,11 +1179,15 @@ fn build_evidence_graph(
     evidence: &[EvidenceInput],
     package_rows: &[FinalEvidencePackageSubjectV1],
     incident_digest: Option<&str>,
+    registry: (FinalEvidenceNodeResultV1, &ObservationReadingV1),
 ) -> FinalEvidenceGraphV1 {
     let mut nodes = Vec::new();
     let mut required_ids = Vec::new();
 
-    for input in evidence {
+    for input in evidence
+        .iter()
+        .filter(|input| input.role != FreezeEvidenceRole::RegistryObservation)
+    {
         let (class, origin, id) = input.role.graph_shape();
         let result = if input.bound_ok() {
             FinalEvidenceNodeResultV1::Complete
@@ -1200,6 +1207,42 @@ fn build_evidence_graph(
         node.required = required;
         nodes.push(node);
     }
+
+    // Registry admission is required even when no input was supplied. Its
+    // result and currentness come from the typed consumer, never bound_ok or
+    // the number of rows in a legacy rehearsal receipt.
+    let registry_digest = evidence_role(evidence, FreezeEvidenceRole::RegistryObservation)
+        .map(|input| input.sha256.clone())
+        .unwrap_or_else(|| sha256_v1_bytes(b"registry-observation-absent"));
+    let mut registry_node = node_for(
+        "registry-observation",
+        FinalEvidenceNodeClassV1::RegistryObservation,
+        FinalEvidenceOriginV1::ProviderObservation,
+        &registry_digest,
+        registry.0,
+        subject,
+    );
+    registry_node.currentness = match registry.1.freshness {
+        ObservationFreshnessV1::Current => FinalEvidenceCurrentnessV1::Current,
+        ObservationFreshnessV1::Stale => FinalEvidenceCurrentnessV1::Stale,
+        ObservationFreshnessV1::Mismatch => FinalEvidenceCurrentnessV1::Mismatch,
+        ObservationFreshnessV1::ProviderUnavailable => {
+            FinalEvidenceCurrentnessV1::ProviderUnavailable
+        }
+        ObservationFreshnessV1::InstrumentFailure => FinalEvidenceCurrentnessV1::InstrumentFailure,
+    };
+    registry_node.invalidation_dimensions = vec![
+        FinalEvidenceInvalidationDimensionV1::Source,
+        FinalEvidenceInvalidationDimensionV1::PackageBytes,
+        FinalEvidenceInvalidationDimensionV1::CargoLock,
+        FinalEvidenceInvalidationDimensionV1::Topology,
+        FinalEvidenceInvalidationDimensionV1::Workflow,
+        FinalEvidenceInvalidationDimensionV1::ProviderObservation,
+        FinalEvidenceInvalidationDimensionV1::LiveControls,
+    ];
+    registry_node.limitations.push(registry.1.detail.clone());
+    required_ids.push(registry_node.evidence_id.clone());
+    nodes.push(registry_node);
 
     // The support-selection node binds the committed support source itself.
     let selection_semantic = sha256_v1_bytes(selection.selection_digest.as_bytes());
@@ -1667,14 +1710,16 @@ fn manifest_binding(evidence: &[EvidenceInput]) -> FinalFreezeManifestBindingV1 
 
 struct FreezeObservationAdapter {
     source_current: bool,
-    registry_current: bool,
+    registry_reading: ObservationReadingV1,
 }
 
 impl RefreshableObservationAdapterV1 for FreezeObservationAdapter {
     fn refresh(&self, observation: &RefreshableObservationV1) -> ObservationReadingV1 {
         let current = match observation.kind {
             RefreshableObservationKindV1::SourceLiveControl => self.source_current,
-            RefreshableObservationKindV1::RegistryFeasibility => self.registry_current,
+            RefreshableObservationKindV1::RegistryFeasibility => {
+                return self.registry_reading.clone();
+            }
             RefreshableObservationKindV1::AmbientCache => true,
         };
         let freshness = if current {
@@ -1689,21 +1734,10 @@ impl RefreshableObservationAdapterV1 for FreezeObservationAdapter {
     }
 }
 
-/// Registry feasibility is current when the rehearsal's shared registry
-/// preflight observed the three retained 0.1.0 rows at the frozen subject.
-fn rehearsal_registry_preflight_current(evidence: &[EvidenceInput]) -> bool {
-    evidence_role(evidence, FreezeEvidenceRole::Rehearsal)
-        .and_then(|input| {
-            input
-                .value
-                .pointer("/shared_prerequisites")
-                .and_then(Json::as_array)
-        })
-        .map(|rows| rows.len() >= 3)
-        .unwrap_or(false)
-}
-
-fn observation_set(evidence: &[EvidenceInput]) -> Vec<RefreshableObservationV1> {
+fn observation_set(
+    evidence: &[EvidenceInput],
+    registry: RefreshableObservationV1,
+) -> Vec<RefreshableObservationV1> {
     vec![
         RefreshableObservationV1 {
             observation_id: "obs:source-live-control".to_string(),
@@ -1712,13 +1746,7 @@ fn observation_set(evidence: &[EvidenceInput]) -> Vec<RefreshableObservationV1> 
                 .map(|input| input.sha256.clone())
                 .unwrap_or_else(|| "absent".to_string()),
         },
-        RefreshableObservationV1 {
-            observation_id: "obs:registry-feasibility".to_string(),
-            kind: RefreshableObservationKindV1::RegistryFeasibility,
-            observed_at_utc: evidence_role(evidence, FreezeEvidenceRole::RegistryObservation)
-                .map(|input| input.sha256.clone())
-                .unwrap_or_else(|| "absent".to_string()),
-        },
+        registry,
         RefreshableObservationV1 {
             observation_id: "obs:ambient-cache".to_string(),
             kind: RefreshableObservationKindV1::AmbientCache,
@@ -2357,12 +2385,14 @@ expected_registry_checksum = "sha256:cccc"
         };
         let evidence = vec![package_set, rehearsal];
         let package_rows = Vec::new();
+        let registry = super::registry::reconcile(&subject, &package_rows, &evidence, None);
         let graph = super::build_evidence_graph(
             &subject,
             &selection,
             &evidence,
             &package_rows,
             Some("sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+            (registry.0, &registry.2),
         );
         assert_eq!(
             graph.mode,
@@ -2433,7 +2463,15 @@ expected_registry_checksum = "sha256:cccc"
             // One already-admitted input isolates role classification. This
             // intentionally sparse graph is not complete freeze evidence.
             let evidence = [graph_role_input(role)];
-            let mut graph = super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+            let registry = super::registry::reconcile(&subject, &[], &evidence, None);
+            let mut graph = super::build_evidence_graph(
+                &subject,
+                &selection,
+                &evidence,
+                &[],
+                None,
+                (registry.0, &registry.2),
+            );
             // Isolate the consumers' required-node classification from the
             // builder's support-selection edges for journey/control inputs.
             graph.edges.clear();
@@ -2492,9 +2530,16 @@ expected_registry_checksum = "sha256:cccc"
             FreezeEvidenceRole::ReleaseManifest,
         ] {
             let evidence = [graph_role_input(role)];
+            let registry = super::registry::reconcile(&subject, &[], &evidence, None);
             for malformed_schema in [true, false] {
-                let mut graph =
-                    super::build_evidence_graph(&subject, &selection, &evidence, &[], None);
+                let mut graph = super::build_evidence_graph(
+                    &subject,
+                    &selection,
+                    &evidence,
+                    &[],
+                    None,
+                    (registry.0, &registry.2),
+                );
                 let id = role.graph_shape().2;
                 let node = graph
                     .nodes
@@ -2574,12 +2619,15 @@ expected_registry_checksum = "sha256:cccc"
             value: package_set_value("0.2.0", "Passed"),
             binding_notes: Vec::new(),
         };
+        let evidence = [package_set, rehearsal];
+        let registry = super::registry::reconcile(&subject, &[], &evidence, None);
         let graph = super::build_evidence_graph(
             &subject,
             &selection(),
-            &[package_set, rehearsal],
+            &evidence,
             &Vec::new(),
             Some("sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+            (registry.0, &registry.2),
         );
         let rehearsal_node = graph
             .nodes
@@ -3101,8 +3149,8 @@ mod compose_fixture_tests {
             out_dir: root.join("target/freeze-out"),
         };
         // The unchanged real producer is structurally compatible, but its
-        // seven false proof flags cannot become Complete. All other required
-        // rows in this committed fixture remain admissible.
+        // seven false proof flags cannot become Complete. The separately
+        // required registry row is NotProven until trusted context is wired.
         write(
             &evidence_dir,
             "rehearsal.json",
@@ -3215,6 +3263,12 @@ mod compose_fixture_tests {
         {
             return Err(format!("duplicate phase did not fail before composition: {error}").into());
         }
+        write(
+            &evidence_dir,
+            "rehearsal.json",
+            &serde_json::to_vec(&rehearsal)?,
+        );
+        super::registry_tests::require_noncomplete_composition(&root, &args, &subject)?;
         std::fs::remove_dir_all(&root)?;
         Ok(())
     }
@@ -3312,27 +3366,40 @@ mod probe_cover_tests2 {
     }
 
     #[test]
-    fn registry_role_binds_exact_version_and_flags_drift() {
+    fn registry_role_binds_exact_version_and_flags_drift()
+    -> Result<(), Box<dyn std::error::Error>> {
         let subject = subject();
+        let (input, _, _) = super::registry_tests::fixture(&subject, None)?;
         let bound = bind_evidence(
             &subject,
             FreezeEvidenceRole::RegistryObservation,
-            &json!({"crate": "cargo-allow", "version": "0.2.0"}),
+            &serde_json::to_value(&input)?,
         );
-        assert!(
-            !bound.iter().any(|note| note.starts_with("fail:")),
-            "{bound:?}"
-        );
+        if bound.iter().any(|note| note.starts_with("fail:")) {
+            return Err(format!("typed registry candidate lost subject binding: {bound:?}").into());
+        }
 
+        let mut changed = input;
+        changed.candidate.root_package_version = "0.1.11".to_string();
         let drifted = bind_evidence(
             &subject,
             FreezeEvidenceRole::RegistryObservation,
-            &json!({"crate": "cargo-allow", "version": "0.1.11"}),
+            &serde_json::to_value(changed)?,
         );
-        assert!(
-            drifted.iter().any(|note| note.starts_with("fail:")),
-            "{drifted:?}"
-        );
+        if !drifted.iter().any(|note| note.starts_with("fail:")) {
+            return Err("foreign registry candidate version acquired subject binding".into());
+        }
+        for version in ["0.2.0", "0.1.11"] {
+            let legacy = bind_evidence(
+                &subject,
+                FreezeEvidenceRole::RegistryObservation,
+                &json!({"crate": "cargo-allow", "version": version}),
+            );
+            if !legacy.iter().any(|note| note.contains("FinalRegistryPreflightInputV1")) {
+                return Err(format!("legacy registry JSON was admitted: {legacy:?}").into());
+            }
+        }
+        Ok(())
     }
 
     #[test]
