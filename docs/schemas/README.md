@@ -417,6 +417,11 @@ it. Unlike the plan, this receipt records a mutation that already happened: it
 binds `plan_digest`, `finding_digest`, `repository_identity`, the
 `policy_before_digest`/`policy_after_digest` pair, `added_allow_id`, and the
 `target_ledger` it replaced. It does not claim `policy_not_mutated`. The
+`changed_region` object records the exact bounded byte region of the postimage
+the application changed: because the append route preserves every preimage
+byte, `byte_start` equals the preimage byte length and `byte_end` equals the
+postimage byte length, so a reviewer can confirm the mutation was bounded
+without recomputing the diff. The
 `targeted_recheck` field records the bounded post-write finding check: it may be
 `matched`, `still_new`, `no_outcome`, or `unexpected:<status>` when that check
 runs, while a renderer-only receipt may report `not_executed`.

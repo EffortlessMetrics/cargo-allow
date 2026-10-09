@@ -349,6 +349,37 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
             .and_then(Value::as_str),
         Some(allow_core::sha256_v1_bytes(policy_after.as_bytes()).as_str())
     );
+    // #4279: the receipt must also record the exact bounded changed region.
+    // The append is an exact byte-prefix splice, so the region begins at the
+    // preimage byte length and ends at the postimage byte length.
+    assert_eq!(
+        receipt
+            .pointer("/changed_region/byte_start")
+            .and_then(Value::as_u64),
+        Some(policy_before.len() as u64),
+        "changed_region.byte_start must equal the preimage byte length"
+    );
+    assert_eq!(
+        receipt
+            .pointer("/changed_region/byte_end")
+            .and_then(Value::as_u64),
+        Some(policy_after.len() as u64),
+        "changed_region.byte_end must equal the postimage byte length"
+    );
+    let changed_region_text = &policy_after[policy_before.len()..];
+    assert!(
+        changed_region_text.contains(
+            receipt
+                .pointer("/added_allow_id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+        ),
+        "the recorded changed region must be exactly the appended entry block: {changed_region_text:?}"
+    );
+    assert!(
+        !changed_region_text.contains("Historical CRLF header"),
+        "the recorded changed region must not cover preserved preimage bytes"
+    );
     let numstat = Command::new("git")
         .arg("-C")
         .arg(&root)

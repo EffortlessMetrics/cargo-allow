@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1061"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1a211177c7dcddf2dcdc1295b7ae0f0bbacec871368ddf0667a7c6b154b320c9"
+reason = "receipts the byte-region assertion in the add unit suite so the #4279 changed-region receipt acceptance test can pin the appended region byte-exactly"
+
+[[records]]
+allow_ids = ["allow-1062"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8d1c19fea9ed84dd4163b47df7205130e232ebfccd57c9d98d2914abe162393c"
+reason = "receipts the byte-region assertion in the add-from-plan integration suite so the runtime receipt validation can assert the exact bounded changed region against real ledger bytes"
+
+[[records]]
+allow_ids = ["allow-1063"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dbce823d0bc026f2c443e1217483fb4a6789d0c135c5e844c26b1acec25986fa"
+reason = "self-receipt for this revision note covering the #4279 changed-region receipt schema row, following the #3792 precedent"
