@@ -372,6 +372,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = if args.update {
         add_policy::append_to_bound_policy(&selected_policy_path, &selected_policy_digest, &entry)?
+            .rendered
     } else {
         render_policy(&cfg)
     };
@@ -716,6 +717,10 @@ pub(crate) fn sample_add_plan_application_json_for_contract_test() -> String {
         target_ledger: "policy/allow.toml".to_string(),
         policy_before_digest: digest.to_string(),
         policy_after_digest: after.to_string(),
+        changed_region: allow_report::ChangedRegionV1 {
+            byte_start: 4096,
+            byte_end: 4224,
+        },
         added_allow_id: "allow-0007".to_string(),
         targeted_recheck: "not_executed".to_string(),
         full_check_argv: vec![

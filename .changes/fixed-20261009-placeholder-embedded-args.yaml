@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  The command summary now demotes an adoption Next step to a decision when an
+  unsubstituted angle-bracket placeholder is embedded inside a larger argv word
+  (--from-plan=<plan>), not only when a whole argument is the placeholder
+  (#4406); concrete composed values stay executable commands.

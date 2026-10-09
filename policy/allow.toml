@@ -21039,7 +21039,7 @@ owner = "core/deps"
 classification = "reviewed_exception"
 reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
 evidence = ["issue:3920"]
-occurrence_limit = 36
+occurrence_limit = 34
 created = "2026-09-09"
 review_after = "2026-12-09"
 
@@ -22645,6 +22645,94 @@ column = 1
 
 [[allow]]
 id = "allow-1061"
+kind = "panic"
+family = "string_slice"
+path = "crates/cargo-allow/src/add_tests.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Pin the byte-region assertions of the add --from-plan changed-region receipt test (#4279)"
+evidence = ["issue:4279"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "append_to_bound_policy_reports_the_exact_bounded_changed_region"
+symbol = "applied.rendered[applied.byte_start..applied.byte_end]"
+receiver_fingerprint = "applied.rendered"
+target_fingerprint = "applied.byte_start..applied.byte_end"
+normalized_snippet_hash = "fnv1a64:6bfe23ef119c9aed"
+
+[allow.last_seen]
+line = 960
+column = 35
+
+[[allow]]
+id = "allow-1062"
+kind = "panic"
+family = "string_slice"
+path = "crates/cargo-allow/tests/add_from_plan_apply.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Pin the receipt changed-region byte assertions in the add-from-plan integration test (#4279)"
+evidence = ["issue:4279"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "add_from_plan_applies_a_verified_plan_and_binds_a_receipt"
+symbol = "policy_after[policy_before.len()..]"
+receiver_fingerprint = "policy_after"
+target_fingerprint = "policy_before.len().."
+normalized_snippet_hash = "fnv1a64:dcd6df58b4dce308"
+
+[allow.last_seen]
+line = 369
+column = 44
+
+[[allow]]
+id = "allow-1063"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4279-changed-region-receipt-schema.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "self-receipt for the 4279-changed-region-receipt-schema revision note, following the #3792 precedent"
+evidence = ["issue:4279"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4279-changed-region-receipt-schema.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4279-changed-region-receipt-schema.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11343"
+kind = "panic"
+family = "expect"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+owner = "core/deps"
+classification = "reviewed_exception"
+reason = "Invariant-guarded expects in the dependency graph delta compiler tests (#3920 PR B); every expect guards a fixture compilation whose success is the property under test"
+evidence = ["issue:3920"]
+occurrence_limit = 36
+created = "2026-09-09"
+review_after = "2026-12-09"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/allow-report/src/dependency_graph_delta_compiler_tests.rs"
+
+
+[[allow]]
+id = "allow-11344"
 kind = "non_rust_file"
 family = "configuration"
 path = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
@@ -22664,3 +22752,4 @@ glob = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
