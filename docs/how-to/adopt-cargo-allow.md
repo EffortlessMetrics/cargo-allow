@@ -235,16 +235,19 @@ managed-hook planner remains a separate follow-up capability.
 
 ### Root resolution and fixture testing
 
-Repo-scoped hooks commands (`hooks plan`, `hooks status`, `hooks apply`,
-`hooks remove`) resolve the Git root from the current directory only. They
-take no `--root` flag and do not honor the `CARGO_ALLOW_ROOT` environment
-variable (#3230); run them from the repository that owns the hook. When they
-cannot resolve a hook path, the error names this current-directory rule.
+The hooks commands take no `--root` flag, and only `hooks run` honors the
+`CARGO_ALLOW_ROOT` environment variable (#3230). `hooks plan` is
+repo-independent: it resolves no Git root and no hook path, so it renders the
+same plan from any directory, including outside a repository; plan performs no
+repository action until `hooks apply`. The repo-scoped commands (`hooks
+status`, `hooks apply`, `hooks remove`) resolve the Git root from the current
+directory only (#4362); run them from the repository that owns the hook. When
+they cannot resolve a hook path, the error names this current-directory rule.
 
-`hooks run` is the exception: its child `check --mode no-new` inherits the
-ambient environment, so setting `CARGO_ALLOW_ROOT=<fixture-root>` is the
-supported way to exercise an installed hook against a fixture root without
-touching the host repository:
+`hooks run` is the exception on the environment: its child `check --mode
+no-new` inherits the ambient environment, so setting
+`CARGO_ALLOW_ROOT=<fixture-root>` is the supported way to exercise an
+installed hook against a fixture root without touching the host repository:
 
 ```bash
 CARGO_ALLOW_ROOT=/tmp/hook-fixture cargo-allow hooks run \
