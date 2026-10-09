@@ -366,8 +366,14 @@ fn current_tree_diff_keeps_unstaged_missing_source_partial() -> Result<(), Strin
                 .get("head_inventory_complete")
                 .and_then(Value::as_bool)
                 != Some(staged)
-            || analysis.get("base_scanner_complete").and_then(Value::as_bool) != Some(true)
-            || analysis.get("head_scanner_complete").and_then(Value::as_bool) != Some(true)
+            || analysis
+                .get("base_scanner_complete")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || analysis
+                .get("head_scanner_complete")
+                .and_then(Value::as_bool)
+                != Some(true)
             || analysis.get("introduced").and_then(Value::as_u64) != Some(0)
             || analysis.get("removed").and_then(Value::as_u64) != Some(removed)
         {
