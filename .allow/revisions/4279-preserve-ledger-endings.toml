@@ -1,0 +1,7 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1058"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:08c5cee25798d6dec54e82135dddbf3526b605f08dbff45a806a73f5596582ee"
+reason = "self-receipt for this revision note covering the #4279 line-ending preservation fix across the add/init/propose mutation writers, matching the #3792 precedent"

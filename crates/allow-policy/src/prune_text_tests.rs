@@ -126,9 +126,21 @@ fn sole_headerless_entry_leaves_explicit_empty_ledger() -> TestResult {
             crate::render_policy(&expected)
         );
         assert_eq!(prune_policy_entries(&result, &[])?, result);
-        let appended = crate::append_policy_entry(&result, &removed)?;
-        assert!(appended.starts_with(&result));
-        assert_eq!(crate::parse_policy(&appended)?.allow.len(), 1);
+        // The re-append keeps the surviving envelope; a contested (tied)
+        // ending envelope must refuse instead of guessing (#4279/#4337).
+        match crate::detect_dominant_line_ending(result.as_bytes()) {
+            crate::PolicyLineEnding::Ambiguous => {
+                let error = crate::append_policy_entry(&result, &removed)
+                    .err()
+                    .ok_or("a tied ending envelope must refuse the re-append")?;
+                assert!(error.to_string().contains("line endings are ambiguous"));
+            }
+            _ => {
+                let appended = crate::append_policy_entry(&result, &removed)?;
+                assert!(appended.starts_with(&result));
+                assert_eq!(crate::parse_policy(&appended)?.allow.len(), 1);
+            }
+        }
     }
     // Deliberately empty or truncated input must still refuse.
     assert!(crate::parse_policy("").is_err());

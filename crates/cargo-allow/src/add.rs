@@ -23,6 +23,7 @@ use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
     count_in_scope_findings, ensure_addable_outcome, next_allow_id,
 };
+pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
 use add_render::render_add_summary;
 use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summary_styled};
@@ -427,11 +428,18 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         } else {
             SingleTargetApplyMode::CreateNewOnly
         };
+        // Overwriting an existing candidate keeps its line-ending envelope; a
+        // new candidate keeps the canonical LF default (#4279).
+        let contents = if args.force {
+            add_policy::transpose_for_existing_target(&rendered, absolute_target)?
+        } else {
+            rendered
+        };
         apply_single_target_with_target(
             SingleTargetApplyRequest {
                 repository_root: &mutation_root,
                 target: &target,
-                contents: &rendered,
+                contents: &contents,
                 caller_reference: Some("cargo-allow:add"),
                 lock_identity: Some(
                     target
