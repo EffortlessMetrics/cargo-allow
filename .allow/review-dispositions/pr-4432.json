@@ -3,29 +3,37 @@
   "schema_version": 1,
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4432,
-  "base_ref": "fix/release-rehearsal-dispatch",
-  "base_sha": "18c3d115642c7df3d3044fc8f0f51c6cf39e842e",
+  "base_ref": "main",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "fix/4427-preserve-publish-receipt",
-  "head_sha": "c3e9ecc81463cf1fba5cc2c2f7330b5979f29cdc",
-  "merge_base": "18c3d115642c7df3d3044fc8f0f51c6cf39e842e",
-  "reviewed_diff_digest": "sha256:v1:ff03a7e9b0cd8d99c82f631c5a04c00f5b54ffa39a224f8c982af2f580a36259",
+  "head_sha": "073c057fc301e6f9c04041459fe54e65494c61ea",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:4250c15995a1ec0af36f82ea19c773078c1c13f815cb18fe3f119be2bd1ac9c5",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current source, root correction, integration and governance review; same model family and prior audit context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full current-source and consumer review; shared model family/campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475014665"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013"
     }
   },
   "claimed_verdict": "review_clean",
-  "findings": [],
+  "findings": [
+    {
+      "id": "discussion-4234236848",
+      "severity": "advisory",
+      "owned_seam": "Recovery publication and typed manifest admission",
+      "source_path": "scripts/release-topology-publisher.py",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp → #2509/#3761: compose fresh registry evidence, typed recovery/incident lineage and manifest closeout before admitting recovered publication.",
+      "claim_boundary": "Clean publication evidence preservation only; this PR does not complete incident recovery or authorize publication."
+    }
+  ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475014665",
-    "Complete effective eight-file change and unchanged workflow/producer/typed consumers independently reviewed at the exact stacked pair.",
-    "22 actual-workflow local-instrument handoff scenarios, 11 dispatch scenarios and checksum contracts pass; exact old-source overwrite RED and ambient-target RED distinguish the repairs. No real Cargo/registry/publication proof claimed.",
-    "Two unique exact-path review evidence receipts and independent canonical fingerprints verified; all prior policy bytes unchanged.",
-    "Thread4234236848: AcceptedFollowUp under existing open2509/3761; retained incident, native state, fresh registry and lineage obligations remain, with no broadening of public evidence admission.",
-    "Metadata-only source-disposition retention is separate from current-pair hosted gates. Retarget/base movement requires affected review and fresh required proof."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013",
+    "A separate nonauthoring reviewer /root/product_audit inspected all nine effective paths, the workflow/download/manifest/attestation ordering and unchanged typed publication consumers. Current source is a tree-identical normal merge of former head56da00b2 with main1d9c9148. The reviewer independently passed 22 actual workflow→publisher→manifest handoff scenarios, 11 dispatch scenarios and checksum contracts, with Cargo/provider/Git instruments explicitly local. Exact receipt bytes, authorization/digest, ten-row membership and local/registry/rebuilt/archive checksums remain bound; pinned ROOT/target lookup matches the publisher despite ambient CARGO_TARGET_DIR. Candidate/public routes and alias/incident rejection remain distinct. Both exact policy fingerprints and revision notes were independently recomputed. Current hosted pregate114019224313 passed actionlint, formatting, no-new and its typed gate; full native release/package/MSRV/platform checks remain pending. Cargo-deny114019224466 failed before execution due Docker Hub429, an unfulfilled infrastructure gate.",
+    "Thread4234236848 is resolved as AcceptedFollowUp under #2509/#3761. Current incident/recovered publication is not declared Complete; this retained advisory is not an authority waiver.",
+    "The metadata successor changes only this record; every current applicable gate and post-main source guard remains required."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -33,5 +41,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4432",
-  "reviewed_at_utc": "2026-10-09T20:25:23Z"
+  "reviewed_at_utc": "2026-10-09T20:54:45Z"
 }
