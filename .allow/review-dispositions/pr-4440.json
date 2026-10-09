@@ -4,26 +4,26 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4440,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "da975d560ac8961f24f134513a1264beff1453d7",
   "head_ref": "fix/4439-windows-junction-fixture",
-  "head_sha": "38034ebd98950260beb319cbd3fae78ba7614732",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:2df21b392547d3176b9f39d0f5e805df46b6a019fc10fb791f9806f64fa43e27",
+  "head_sha": "245d0dc4c68b45620918b402dd3da4f4a4399fc8",
+  "merge_base": "da975d560ac8961f24f134513a1264beff1453d7",
+  "reviewed_diff_digest": "sha256:v1:38e2c34cd5686011b35c4364a0ce070966a3016956aefb6d549ad1f3abe5aa0b",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source/governance review; shared model family/session context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4440#pullrequestreview-5475722114"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4440#pullrequestreview-5475922621"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4440#pullrequestreview-5475722114",
-    "Full four-path review verified constant raw cmd line, quoted environment paths, AutoRun and delayed-expansion controls, existing 15-second timeout, explicit nonzero handling and pre-registered idempotent reparse-entry cleanup. Both real dangling-alias before-phase assertions and existing Windows-only selection remain unchanged. No production or workflow change.",
-    "Independent targeted Python controls passed 25 cases with one existing Windows-only skip; four actual-method injected setup failures preserved failure and cleanup. These Linux controls are not native Windows proof. All prior 727,309 policy bytes and existing entries are unchanged; two exact receipts and revision fingerprints independently agree.",
-    "No actionable review threads were present; synthetic 224945a14bec75b1a8e898465093b306ae86867a matches the exact pair/tree. Hosted Windows and all current applicable checks remain pending; quota notices do not establish clean review."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4440#pullrequestreview-5475922621",
+    "Fresh independent review of the actual-main integrated five-path effective diff, complete test context and unchanged producer/consumer. Exact incoming CI blobs retained; all 728,886 current-main policy bytes and 1,068 entries preserved, with only two independently verified existing junction receipts.",
+    "The raw constant command, quoted environment paths, /d and /v:off, 15-second bound, explicit failure, cleanup-before-start, real dangling-reparse and both before-phase denial assertions remain intact. Exact integrated Python test blob: 25 pass, one existing Windows-only skip.",
+    "Actual predecessor Windows job 114044040783 passed; historical evidence only. Current source has no inline findings and matching synthetic 6c77be554932e3ea597158ab5da8991e0e5a4c6a. Current native gates, metadata bootstrap and fresh feedback are required separately; this record does not claim CI or merge readiness."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
@@ -31,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4440",
-  "reviewed_at_utc": "2026-10-09T21:56:10.560Z"
+  "reviewed_at_utc": "2026-10-09T22:28:33.899Z"
 }
