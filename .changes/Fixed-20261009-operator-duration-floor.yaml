@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Reject negative and non-integer elapsed measurements in hosted operator
+  latency receipts while preserving valid signed hooks-overhead values.
