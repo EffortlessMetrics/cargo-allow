@@ -1,3 +1,4 @@
+use super::repository_environment::isolate_repository;
 use super::*;
 use std::fs;
 use std::process::Command;
@@ -3977,6 +3978,13 @@ fn saved_diff_output_covers_added_allow_details() {
 }
 
 #[test]
+fn saved_diff_fixture_children_ignore_repository_environment() -> Result<(), String> {
+    super::repository_environment::require_isolated_fixture_test(
+        "diff::saved_diff_output_covers_removed_allow_details",
+    )
+}
+
+#[test]
 fn saved_diff_output_covers_removed_allow_details() {
     let fixture = SourceTreeFixture::new("saved-diff-allow-removed");
     fixture.write_panic_source();
@@ -6909,10 +6917,9 @@ fn write_diff_evidence_fixture_doc(fixture: &SourceTreeFixture, relative_path: &
 }
 
 fn git_for_saved_diff(root: &std::path::Path, args: &[&str]) {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
+    let mut command = Command::new("git");
+    command.arg("-C").arg(root).args(args);
+    let output = isolate_repository(&mut command)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {

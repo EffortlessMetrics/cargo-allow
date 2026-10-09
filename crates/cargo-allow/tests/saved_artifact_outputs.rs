@@ -24,6 +24,8 @@ mod migrate;
 mod propose;
 #[path = "saved_artifact_outputs/prune.rs"]
 mod prune;
+#[path = "support/repository_environment.rs"]
+mod repository_environment;
 mod support;
 #[path = "saved_artifact_outputs/worklist.rs"]
 mod worklist;

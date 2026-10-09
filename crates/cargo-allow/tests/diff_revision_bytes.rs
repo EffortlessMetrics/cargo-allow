@@ -6,6 +6,11 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[path = "support/repository_environment.rs"]
+mod repository_environment;
+
+use repository_environment::isolate_repository;
+
 const VALID: &[u8] = b"fn retained(value: Option<u8>) -> u8 { value.unwrap() }\n";
 const INVALID: &[u8] =
     b"// invalid comment byte: \xff\nfn retained(value: Option<u8>) -> u8 { value.unwrap() }\n";
@@ -55,10 +60,9 @@ impl Fixture {
     }
 
     fn git(&self, args: &[&str]) -> Result<String, String> {
-        let output = Command::new("git")
-            .arg("-C")
-            .arg(&self.0)
-            .args(args)
+        let mut command = Command::new("git");
+        command.arg("-C").arg(&self.0).args(args);
+        let output = isolate_repository(&mut command)
             .output()
             .map_err(|error| error.to_string())?;
         if !output.status.success() {
@@ -102,7 +106,9 @@ impl Fixture {
         if let Some(head) = head {
             command.args(["--head", head]);
         }
-        command.output().map_err(|error| error.to_string())
+        isolate_repository(&mut command)
+            .output()
+            .map_err(|error| error.to_string())
     }
 
     fn receipt(&self, format: &str) -> Result<Value, String> {
@@ -410,6 +416,13 @@ fn current_tree_diff_keeps_unstaged_missing_source_partial() -> Result<(), Strin
         }
     }
     Ok(())
+}
+
+#[test]
+fn revision_fixture_children_ignore_repository_environment() -> Result<(), String> {
+    repository_environment::require_isolated_fixture_test(
+        "current_tree_diff_keeps_unstaged_missing_source_partial",
+    )
 }
 
 #[test]
