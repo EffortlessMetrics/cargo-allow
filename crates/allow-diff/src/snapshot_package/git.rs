@@ -1,8 +1,11 @@
 //! Git subprocess helpers for repository snapshot reads (#2583-D).
 
-use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_core::{
+    CappedReadError, CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+    SOURCE_FILE_READ_MAX_BYTES,
+};
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{BufWriter, Read, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 
@@ -16,6 +19,9 @@ use std::os::unix::ffi::OsStrExt;
 
 const GIT_DIAGNOSTIC_CATEGORY: &str = "git_revision";
 const MAX_DISAMBIGUATION_CANDIDATES: usize = 64;
+// SHA-256 object identity, object kind, u64 byte count, separators, and newline.
+const MAX_BATCH_HEADER_BYTES: u64 = 128;
+const MAX_BATCH_STDERR_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GitTreeFile {
@@ -116,29 +122,41 @@ pub(crate) fn git_tree_files_at_commit(
 ///
 /// The tree entries already bind each path to its blob object id. Reusing that
 /// identity lets revision-wide scanners resolve the commit and tree once, then
-/// stream all selected blobs through one `git cat-file --batch` process.
-pub(crate) fn read_files_at_revision(
+/// stream all selected blobs through one `git cat-file --batch` process. The
+/// callback borrows one bounded blob at a time; no aggregate source-text map is
+/// retained. Identical blobs are read once and visited for every selected path.
+pub(crate) fn read_files_at_revision<F>(
     root: &Path,
     tree_files: &[GitTreeFile],
     paths: &[PathBuf],
-) -> CargoAllowResult<BTreeMap<PathBuf, String>> {
+    mut visit: F,
+) -> CargoAllowResult<()>
+where
+    F: FnMut(&Path, Result<&str, &CappedReadError>) -> CargoAllowResult<()>,
+{
     let entries = tree_files
         .iter()
         .map(|entry| (entry.path.clone(), entry))
         .collect::<BTreeMap<_, _>>();
-    let mut requested_oids = BTreeSet::new();
-    let mut path_oids = BTreeMap::new();
+    let mut blob_paths = BTreeMap::<String, BTreeSet<PathBuf>>::new();
     for path in paths {
         if let Some(entry) = entries.get(path)
             && entry.mode.starts_with("100")
         {
             let oid = entry.object_oid.to_ascii_lowercase();
-            requested_oids.insert(oid.clone());
-            path_oids.insert(path.clone(), oid);
+            blob_paths.entry(oid).or_default().insert(path.clone());
         }
     }
-    let blobs = read_blobs_by_oid(root, &requested_oids.into_iter().collect::<Vec<_>>())?;
-    map_blob_texts_by_path(path_oids, blobs)
+    let requested_oids = blob_paths.keys().cloned().collect::<Vec<_>>();
+    read_blobs_by_oid(root, &requested_oids, |oid, text| {
+        let paths = blob_paths.get(oid).ok_or_else(|| {
+            malformed_batch("git cat-file --batch returned an unrequested blob")
+        })?;
+        for path in paths {
+            visit(path, text)?;
+        }
+        Ok(())
+    })
 }
 
 pub fn read_file_at_revision(
@@ -167,7 +185,7 @@ pub fn read_file_at_revision(
             if !mode.starts_with("100") {
                 return Ok(None);
             }
-            read_blob_by_oid(root, &blob_oid).map(Some)
+            read_blob_by_oid(root, &blob_oid, path.as_ref()).map(Some)
         }
     }
 }
@@ -477,31 +495,40 @@ fn lookup_tree_path(
     }
 }
 
-fn read_blob_by_oid(root: &Path, blob_oid: &str) -> CargoAllowResult<String> {
-    if !is_full_oid(blob_oid) {
-        return Err(git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_output_malformed",
-            "git ls-tree returned a malformed blob object identity",
-        ));
-    }
-    let mut cmd = git_command(root);
-    // Read by object identity only. Do not reconstruct `commit:path`, which is
-    // ambiguous for paths containing ':' and loses the exact tree binding.
-    cmd.arg("cat-file").arg("blob").arg(blob_oid);
-    let output = run_git(cmd, "git cat-file blob")?;
-    if !output.status.success() {
-        return Err(git_status_error("git cat-file blob", &output));
-    }
-    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+fn read_blob_by_oid(root: &Path, blob_oid: &str, path: &Path) -> CargoAllowResult<String> {
+    let mut text = None;
+    read_blobs_by_oid(root, &[blob_oid.to_string()], |_, source| {
+        text = Some(
+            source
+                .map_err(|error| {
+                    git_error(
+                        CargoAllowErrorKind::Scan,
+                        "revision_source_unreadable",
+                        format!("cannot read revision source `{}`: {error}", path.display()),
+                    )
+                })?
+                .to_string(),
+        );
+        Ok(())
+    })?;
+    text.ok_or_else(|| malformed_batch("git cat-file --batch did not return the selected blob"))
 }
 
-fn read_blobs_by_oid(
+fn read_blobs_by_oid<F>(
     root: &Path,
     blob_oids: &[String],
-) -> CargoAllowResult<BTreeMap<String, String>> {
+    visit: F,
+) -> CargoAllowResult<()>
+where
+    F: FnMut(&str, Result<&str, &CappedReadError>) -> CargoAllowResult<()>,
+{
     if blob_oids.is_empty() {
-        return Ok(BTreeMap::new());
+        return Ok(());
+    }
+    if blob_oids.iter().any(|oid| !is_full_oid(oid)) {
+        return Err(malformed_batch(
+            "git ls-tree returned a malformed blob object identity",
+        ));
     }
     let mut child = git_command(root)
         .arg("cat-file")
@@ -515,37 +542,69 @@ fn read_blobs_by_oid(
         })?;
     let stdout = require_batch_pipe(child.stdout.take(), &mut child, "stdout")?;
     let stdin = require_batch_pipe(child.stdin.take(), &mut child, "stdin")?;
-    let stdout_reader = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        let mut stdout = stdout;
-        stdout.read_to_end(&mut bytes).map(|_| bytes)
-    });
-    let mut stdin = BufWriter::new(stdin);
-    let input_error = write_batch_oids(&mut stdin, blob_oids).err();
-    drop(stdin);
-    let output = child.wait_with_output().map_err(|source| {
-        batch_git_error("git cat-file --batch could not finish").with_cause(&source)
-    })?;
-    let stdout = stdout_reader
-        .join()
-        .map_err(|_| batch_git_error("git cat-file --batch stdout reader panicked"))?
-        .map_err(|source| {
-            batch_git_error("git cat-file --batch stdout could not be read").with_cause(&source)
+    let stderr = require_batch_pipe(child.stderr.take(), &mut child, "stderr")?;
+    std::thread::scope(|scope| {
+        // Feed all requests independently of response consumption, retaining
+        // the single-process batch throughput without a pipe-buffer deadlock.
+        let input_writer =
+            scope.spawn(move || write_batch_oids(&mut BufWriter::new(stdin), blob_oids));
+        let stderr_reader = scope.spawn(move || read_batch_stderr(stderr));
+        let mut stdout = BufReader::new(stdout);
+        let parsed = parse_git_cat_file_batch(&mut stdout, blob_oids, visit);
+        if parsed.is_err() {
+            // A malformed response or consumer error can stop before Git has
+            // consumed all requests. Unblock both pipes before waiting/joining.
+            let _ = child.kill();
+        }
+        drop(stdout);
+        let status = child.wait();
+        let input = input_writer
+            .join()
+            .map_err(|_| batch_git_error("git cat-file --batch input writer panicked"))?;
+        let stderr = stderr_reader
+            .join()
+            .map_err(|_| batch_git_error("git cat-file --batch stderr reader panicked"))?
+            .map_err(|source| {
+                batch_git_error("git cat-file --batch stderr could not be read")
+                    .with_cause(&source)
+            })?;
+        let status = status.map_err(|source| {
+            batch_git_error("git cat-file --batch could not finish").with_cause(&source)
         })?;
-    let output = Output {
-        status: output.status,
-        stdout,
-        stderr: output.stderr,
-    };
-    if !output.status.success() {
-        return Err(git_status_error("git cat-file --batch", &output));
+        // Preserve a precise parser/consumer error when we killed the child.
+        parsed.map_err(|error| {
+            let diagnostic = bounded_stderr(&stderr);
+            if diagnostic.is_empty() {
+                error
+            } else {
+                error.with_message_suffix(format!("; Git stderr: {diagnostic}"))
+            }
+        })?;
+        if !status.success() {
+            return Err(git_status_error(
+                "git cat-file --batch",
+                &Output {
+                    status,
+                    stdout: Vec::new(),
+                    stderr,
+                },
+            ));
+        }
+        input.map_err(|source| {
+            batch_git_error("git cat-file --batch input could not be written").with_cause(&source)
+        })
+    })
+}
+
+fn read_batch_stderr(mut stderr: impl Read) -> io::Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    (&mut stderr)
+        .take(MAX_BATCH_STDERR_BYTES)
+        .read_to_end(&mut bytes)?;
+    if io::copy(&mut stderr, &mut io::sink())? > 0 {
+        bytes.extend_from_slice(b"\n[additional Git diagnostics omitted]\n");
     }
-    if let Some(source) = input_error {
-        return Err(
-            batch_git_error("git cat-file --batch input could not be written").with_cause(&source),
-        );
-    }
-    parse_git_cat_file_batch(&output.stdout)
+    Ok(bytes)
 }
 
 fn terminate_batch_child(child: &mut Child) {
@@ -607,107 +666,135 @@ pub(crate) fn write_batch_oids_for_test<W: Write>(
     write_batch_oids(writer, blob_oids)
 }
 
-fn map_blob_texts_by_path(
-    path_oids: BTreeMap<PathBuf, String>,
-    blobs: BTreeMap<String, String>,
-) -> CargoAllowResult<BTreeMap<PathBuf, String>> {
-    let mut texts = BTreeMap::new();
-    for (path, oid) in path_oids {
-        let normalized_oid = oid.to_ascii_lowercase();
-        let Some(text) = blobs.get(&normalized_oid) else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                format!("git cat-file --batch did not return blob `{normalized_oid}`"),
-            ));
-        };
-        texts.insert(path, text.clone());
-    }
-    Ok(texts)
+fn malformed_batch(message: impl Into<String>) -> CargoAllowError {
+    git_error(
+        CargoAllowErrorKind::Inventory,
+        "git_output_malformed",
+        message,
+    )
 }
 
-fn parse_git_cat_file_batch(stdout: &[u8]) -> CargoAllowResult<BTreeMap<String, String>> {
-    let mut blobs = BTreeMap::new();
-    let mut cursor = 0;
-    while cursor < stdout.len() {
-        let remaining = stdout.get(cursor..).unwrap_or_default();
-        let Some(header_end) = remaining.iter().position(|byte| *byte == b'\n') else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned a header without a newline",
-            ));
-        };
-        let header_end = cursor + header_end;
-        let header_bytes = stdout.get(cursor..header_end).unwrap_or_default();
-        let header = std::str::from_utf8(header_bytes).map_err(|source| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned a non-UTF-8 header",
-            )
-            .with_cause(&source)
+fn parse_git_cat_file_batch<R, F>(
+    reader: &mut R,
+    blob_oids: &[String],
+    mut visit: F,
+) -> CargoAllowResult<()>
+where
+    R: BufRead,
+    F: FnMut(&str, Result<&str, &CappedReadError>) -> CargoAllowResult<()>,
+{
+    for expected_oid in blob_oids {
+        let (oid, source) = read_batch_blob(reader, Some(expected_oid))?;
+        visit(&oid, source.as_deref())?;
+        // `source` is dropped here, before the next body is allocated/read.
+    }
+    if !reader
+        .fill_buf()
+        .map_err(|source| {
+            batch_git_error("git cat-file --batch output could not be read").with_cause(&source)
+        })?
+        .is_empty()
+    {
+        return Err(malformed_batch(
+            "git cat-file --batch returned an unrequested response",
+        ));
+    }
+    Ok(())
+}
+
+fn read_batch_blob<R: BufRead>(
+    reader: &mut R,
+    expected_oid: Option<&str>,
+) -> CargoAllowResult<(String, Result<String, CappedReadError>)> {
+    let mut header_bytes = Vec::new();
+    (&mut *reader)
+        .take(MAX_BATCH_HEADER_BYTES)
+        .read_until(b'\n', &mut header_bytes)
+        .map_err(|source| {
+            batch_git_error("git cat-file --batch header could not be read").with_cause(&source)
         })?;
-        let mut fields = header.split_ascii_whitespace();
-        let Some(oid) = fields.next() else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an empty header",
-            ));
-        };
-        let Some(kind) = fields.next() else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an incomplete header",
-            ));
-        };
-        let Some(size) = fields.next() else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned a header without a blob size",
-            ));
-        };
-        if fields.next().is_some() || !is_full_oid(oid) || kind != "blob" {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an unexpected blob header",
-            ));
-        }
-        let size = size.parse::<usize>().map_err(|source| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an invalid blob size",
-            )
-            .with_cause(&source)
-        })?;
-        let body_start = header_end + 1;
-        let body_end = body_start.checked_add(size).ok_or_else(|| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch blob size overflowed",
-            )
-        })?;
-        if stdout.get(body_end) != Some(&b'\n') {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
+    if header_bytes.last() != Some(&b'\n') {
+        return Err(malformed_batch(
+            "git cat-file --batch returned a missing, truncated, or oversized header",
+        ));
+    }
+    let header = std::str::from_utf8(&header_bytes).map_err(|source| {
+        malformed_batch("git cat-file --batch returned a non-UTF-8 header").with_cause(&source)
+    })?;
+    let mut fields = header.split_ascii_whitespace();
+    let oid = fields
+        .next()
+        .ok_or_else(|| malformed_batch("git cat-file --batch returned an empty header"))?;
+    let kind = fields
+        .next()
+        .ok_or_else(|| malformed_batch("git cat-file --batch returned an incomplete header"))?;
+    let size = fields.next().ok_or_else(|| {
+        malformed_batch("git cat-file --batch returned a header without a blob size")
+    })?;
+    if fields.next().is_some() || !is_full_oid(oid) || kind != "blob" {
+        return Err(malformed_batch(
+            "git cat-file --batch returned an unexpected blob header",
+        ));
+    }
+    if expected_oid.is_some_and(|expected| !oid.eq_ignore_ascii_case(expected)) {
+        return Err(malformed_batch(
+            "git cat-file --batch returned a blob other than the requested object identity",
+        ));
+    }
+    if !size.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(malformed_batch(
+            "git cat-file --batch returned an invalid blob size",
+        ));
+    }
+    let size = size.parse::<u64>().map_err(|source| {
+        malformed_batch("git cat-file --batch returned an invalid blob size").with_cause(&source)
+    })?;
+    let source = if size > SOURCE_FILE_READ_MAX_BYTES {
+        // Inspect the advertised size before any body allocation. Drain through
+        // a fixed buffer so later valid files still contribute their findings.
+        let copied =
+            io::copy(&mut (&mut *reader).take(size), &mut io::sink()).map_err(|source| {
+                batch_git_error("git cat-file --batch blob could not be read").with_cause(&source)
+            })?;
+        if copied != size {
+            return Err(malformed_batch(
                 "git cat-file --batch returned a truncated blob",
             ));
         }
-        let body = stdout.get(body_start..body_end).unwrap_or_default();
-        blobs.insert(
-            oid.to_ascii_lowercase(),
-            String::from_utf8_lossy(body).into_owned(),
-        );
-        cursor = body_end + 1;
+        Err(CappedReadError::Oversized {
+            len: Some(size),
+            limit: SOURCE_FILE_READ_MAX_BYTES,
+        })
+    } else {
+        let capacity = usize::try_from(size).map_err(|source| {
+            malformed_batch("git cat-file --batch blob size is not representable")
+                .with_cause(&source)
+        })?;
+        let mut bytes = Vec::with_capacity(capacity);
+        (&mut *reader)
+            .take(size)
+            .read_to_end(&mut bytes)
+            .map_err(|source| {
+                batch_git_error("git cat-file --batch blob could not be read").with_cause(&source)
+            })?;
+        if bytes.len() != capacity {
+            return Err(malformed_batch(
+                "git cat-file --batch returned a truncated blob",
+            ));
+        }
+        String::from_utf8(bytes).map_err(CappedReadError::NotUtf8)
+    };
+    let mut delimiter = [0u8; 1];
+    reader.read_exact(&mut delimiter).map_err(|source| {
+        malformed_batch("git cat-file --batch returned a truncated blob delimiter")
+            .with_cause(&source)
+    })?;
+    if delimiter.first() != Some(&b'\n') {
+        return Err(malformed_batch(
+            "git cat-file --batch returned an invalid blob delimiter",
+        ));
     }
-    Ok(blobs)
+    Ok((oid.to_ascii_lowercase(), source))
 }
 
 fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowResult<()> {
@@ -952,17 +1039,39 @@ pub(crate) fn source_tree_path_bytes_for_test(path: &Path) -> CargoAllowResult<V
 
 #[cfg(test)]
 pub(crate) fn parse_git_cat_file_batch_for_test(
-    stdout: &[u8],
+    mut stdout: &[u8],
 ) -> CargoAllowResult<BTreeMap<String, String>> {
-    parse_git_cat_file_batch(stdout)
+    let mut blobs = BTreeMap::new();
+    while !stdout.is_empty() {
+        let (oid, source) = read_batch_blob(&mut stdout, None)?;
+        let source = source.map_err(|error| {
+            git_error(
+                CargoAllowErrorKind::Scan,
+                "revision_source_unreadable",
+                error.to_string(),
+            )
+        })?;
+        blobs.insert(oid, source);
+    }
+    Ok(blobs)
 }
 
 #[cfg(test)]
-pub(crate) fn map_blob_texts_by_path_for_test(
-    path_oids: BTreeMap<PathBuf, String>,
-    blobs: BTreeMap<String, String>,
-) -> CargoAllowResult<BTreeMap<PathBuf, String>> {
-    map_blob_texts_by_path(path_oids, blobs)
+pub(crate) fn visit_git_cat_file_batch_for_test<R, F>(
+    reader: R,
+    blob_oids: &[String],
+    visit: F,
+) -> CargoAllowResult<()>
+where
+    R: Read,
+    F: FnMut(&str, Result<&str, &CappedReadError>) -> CargoAllowResult<()>,
+{
+    parse_git_cat_file_batch(&mut BufReader::new(reader), blob_oids, visit)
+}
+
+#[cfg(test)]
+pub(crate) fn read_batch_stderr_for_test(reader: impl Read) -> io::Result<Vec<u8>> {
+    read_batch_stderr(reader)
 }
 
 fn parse_git_tree_record_any(record: &[u8]) -> TreeRecordParse {
