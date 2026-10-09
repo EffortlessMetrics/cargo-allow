@@ -22575,3 +22575,47 @@ glob = ".allow/revisions/4392-4391-doc-pointers.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1058"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/operator-latency.v4.schema.json"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Operator-latency v4 receipt schema: additive per-sample and per-step semantic_payload_bytes byte counts for the #4403 item 6 harness follow-up; v3 remains a historical compatibility schema."
+evidence = ["issue:4403"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/operator-latency.v4.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/operator-latency.v4.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1059"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
+evidence = ["issue:4403"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

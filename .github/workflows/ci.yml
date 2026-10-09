@@ -528,15 +528,18 @@ jobs:
           from pathlib import Path
 
           receipt_path = Path("target/perf-budget/operator-latency.receipt.json")
-          schema_path = Path("docs/schemas/operator-latency.v3.schema.json")
+          schema_path = Path("docs/schemas/operator-latency.v4.schema.json")
           assert receipt_path.is_file(), f"missing receipt: {receipt_path}; see the harness step output"
           receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
           schema = json.loads(schema_path.read_text(encoding="utf-8"))
-          assert schema["$id"].endswith("operator-latency.v3.schema.json")
-          assert receipt["schema_id"] == "cargo-allow.operator-latency.v3"
-          assert receipt["schema_version"] == 3
+          assert schema["$id"].endswith("operator-latency.v4.schema.json")
+          assert receipt["schema_id"] == "cargo-allow.operator-latency.v4"
+          assert receipt["schema_version"] == 4
           assert all("cache_mode" in sample for sample in receipt["samples"])
-          assert all("payload_bytes" in sample for sample in receipt["samples"])
+          assert all(
+              "payload_bytes" in sample and "semantic_payload_bytes" in sample
+              for sample in receipt["samples"]
+          ), "samples must record payload_bytes and semantic_payload_bytes"
           assert receipt["result"] == "pass"
           assert receipt["binary"]["profile"] == "release"
           samples = receipt["samples"]
@@ -552,6 +555,24 @@ jobs:
           assert all(sample["status"] == "passed" for sample in receipt["samples"])
           def is_nonnegative_integer(value):
               return type(value) is int and value >= 0
+
+          # Byte-count admission: each recorded count must be a nonnegative
+          # integer and must match the byte size of the retained file behind
+          # its own digest, so receipt growth stays observable per artifact.
+          artifact_root = receipt_path.parent
+          for sample in samples:
+              assert (
+                  is_nonnegative_integer(sample["payload_bytes"])
+                  and is_nonnegative_integer(sample["semantic_payload_bytes"])
+              ), "samples payload and semantic payload byte counts must be nonnegative integers"
+              assert (
+                  artifact_root.joinpath(sample["artifact"]["path"]).stat().st_size
+                  == sample["payload_bytes"]
+              ), f"sample {sample['name']} payload_bytes must match the retained artifact size"
+              assert (
+                  artifact_root.joinpath(sample["semantic_artifact"]["path"]).stat().st_size
+                  == sample["semantic_payload_bytes"]
+              ), f"sample {sample['name']} semantic_payload_bytes must match the retained semantic artifact size"
 
           ceiling = receipt["budget"]["ceiling_ms"]
           assert all(
@@ -572,6 +593,11 @@ jobs:
           assert all(
               is_nonnegative_integer(step["elapsed_ms"]) for step in composite["steps"]
           ), "agent_loop.composite.steps.elapsed_ms must be nonnegative integers"
+          assert all(
+              is_nonnegative_integer(step.get("payload_bytes"))
+              and is_nonnegative_integer(step.get("semantic_payload_bytes"))
+              for step in composite["steps"]
+          ), "agent_loop.composite.steps payload and semantic payload byte counts must be nonnegative integers"
           assert composite["total_elapsed_ms"] >= sum(
               step["elapsed_ms"] for step in composite["steps"]
           )

@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/operator-latency.v4.schema.json",
+  "title": "cargo-allow operator latency receipt v4",
+  "description": "Supporting harness receipt for the hosted operator-latency smoke. This is not a source-tree cargo-allow command artifact or a universal hardware-performance claim. v4 additively extends v3 with per-sample semantic_payload_bytes recording the semantic artifact's byte count alongside the artifact payload_bytes, and per-composite-step semantic_payload_bytes; v3, v2, and v1 remain historical compatibility schemas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "result",
+    "binary",
+    "host",
+    "repository",
+    "sample_policy",
+    "budget",
+    "samples",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 4 },
+    "schema_id": { "const": "cargo-allow.operator-latency.v4" },
+    "tool": { "const": "cargo-allow" },
+    "command": { "const": "operator-latency" },
+    "result": { "enum": ["pass", "failed"] },
+    "binary": { "$ref": "#/$defs/binary" },
+    "host": { "$ref": "#/$defs/host" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "sample_policy": { "$ref": "#/$defs/sample_policy" },
+    "budget": { "$ref": "#/$defs/budget" },
+    "agent_loop": { "$ref": "#/$defs/agent_loop" },
+    "samples": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sample" }
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "failure": { "$ref": "#/$defs/failure" }
+  },
+  "$defs": {
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "profile"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "profile": { "enum": ["debug", "release"] }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "release", "machine", "rustc"],
+      "properties": {
+        "os": { "type": "string" },
+        "release": { "type": "string" },
+        "machine": { "type": "string" },
+        "rustc": { "type": "string" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tracked_files", "policy_entries"],
+      "properties": {
+        "commit": { "type": "string" },
+        "tracked_files": { "type": "integer", "minimum": 0 },
+        "policy_entries": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sample_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cold_process_samples", "warm_process_samples", "targeted_samples", "cache_mode_samples"],
+      "properties": {
+        "cold_process_samples": { "type": "integer", "minimum": 0 },
+        "warm_process_samples": { "type": "integer", "minimum": 0 },
+        "targeted_samples": { "type": "integer", "minimum": 0 },
+        "agent_loop_samples": { "type": "integer", "minimum": 0 },
+        "cache_mode_samples": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["on", "off", "not_applicable"],
+          "properties": {
+            "on": { "type": "integer", "minimum": 0 },
+            "off": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "ceiling_ms", "disposition"],
+      "properties": {
+        "name": { "const": "operator_loop_hard_ceiling" },
+        "kind": { "const": "catastrophic_regression" },
+        "ceiling_ms": { "type": "integer", "minimum": 0 },
+        "disposition": { "enum": ["passed", "failed"] }
+      }
+    },
+    "agent_loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["composite", "hooks_overhead"],
+      "properties": {
+        "composite": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "steps", "total_elapsed_ms"],
+          "properties": {
+            "name": { "type": "string" },
+            "added_allow_id": { "type": ["string", "null"] },
+            "steps": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["sample", "elapsed_ms"],
+                "properties": {
+                  "sample": { "type": "string" },
+                  "elapsed_ms": { "type": "integer", "minimum": 0 },
+                  "payload_bytes": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                  },
+                  "semantic_payload_bytes": {
+                    "type": ["integer", "null"],
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "total_elapsed_ms": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "hooks_overhead": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wrapped_sample",
+            "bare_sample",
+            "wrapped_elapsed_ms",
+            "bare_elapsed_ms",
+            "overhead_ms"
+          ],
+          "properties": {
+            "wrapped_sample": { "type": "string" },
+            "bare_sample": { "type": "string" },
+            "wrapped_elapsed_ms": { "type": "integer", "minimum": 0 },
+            "bare_elapsed_ms": { "type": "integer", "minimum": 0 },
+            "overhead_ms": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "phase", "cache_mode", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
+      "properties": {
+        "name": { "type": "string" },
+        "phase": { "enum": ["cold", "warm", "targeted", "agent_loop"] },
+        "cache_mode": { "enum": ["on", "off", "not_applicable"] },
+        "argv": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "elapsed_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "status": { "enum": ["passed", "skipped"] },
+        "payload_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "semantic_payload_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "artifact": { "$ref": "#/$defs/digest" },
+        "semantic_artifact": { "$ref": "#/$defs/digest" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "passed" }
+            }
+          },
+          "then": {
+            "properties": {
+              "elapsed_ms": { "type": "integer", "minimum": 0 },
+              "artifact": { "type": "object" },
+              "semantic_artifact": { "type": "object" }
+            }
+          }
+        }
+      ]
+    },
+    "digest": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "const": "instrument_failure" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
