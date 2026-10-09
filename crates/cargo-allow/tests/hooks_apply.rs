@@ -10,6 +10,15 @@ use std::os::unix::fs::symlink;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
+const GIT_REPOSITORY_ENV: [&str; 6] = [
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_COMMON_DIR",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+];
+
 #[test]
 fn hooks_verify_accepts_explicit_preview_binary_and_reports_digest_mismatch() -> TestResult {
     let fixture = Fixture::new("verify")?;
@@ -506,29 +515,13 @@ fn hooks_run_inherits_fixture_root_from_the_outer_process() -> TestResult {
     let fixture = Fixture::new("run-env-root")?;
     let outside = Fixture::new("run-env-outside")?;
     init_git(&fixture.path)?;
-    let outside_git = Command::new("git")
-        .arg("-C")
-        .arg(&outside.path)
-        .args(["rev-parse", "--show-toplevel"])
-        .env_remove("GIT_DIR")
-        .env_remove("GIT_WORK_TREE")
-        .env_remove("GIT_INDEX_FILE")
-        .output()?;
+    let outside_git =
+        fixture_git_command(&outside.path, &["rev-parse", "--show-toplevel"]).output()?;
     require(
         !outside_git.status.success(),
         "outside hook fixture unexpectedly resolves a Git repository",
     )?;
-    let initialized = command(&fixture.path, &["init", "--strict"])
-        .env_remove("CARGO_ALLOW_ROOT")
-        .env_remove("CARGO_ALLOW_CONFIG")
-        .output()?;
-    require(
-        initialized.status.success(),
-        &format!(
-            "fixture policy initialization failed: {}",
-            String::from_utf8_lossy(&initialized.stderr)
-        ),
-    )?;
+    init_fixture_policy(&fixture.path)?;
     fs::create_dir_all(fixture.path.join("src"))?;
     fs::write(fixture.path.join("src/lib.rs"), "pub fn clean() -> u32 { 1 }\n")?;
     git_add(&fixture.path, "policy/allow.toml")?;
@@ -562,12 +555,8 @@ fn hooks_run_inherits_fixture_root_from_the_outer_process() -> TestResult {
             "no-new",
         ],
     );
-    for variable in [
-        "CARGO_ALLOW_CONFIG",
-        "GIT_DIR",
-        "GIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-    ] {
+    outer.env_remove("CARGO_ALLOW_CONFIG");
+    for variable in GIT_REPOSITORY_ENV {
         outer.env_remove(variable);
     }
     // Set the root only on the actual outer CLI. Its production executor
@@ -1369,11 +1358,104 @@ fn hooks_apply_reports_created_hook_when_receipt_cannot_be_written() -> TestResu
     Ok(())
 }
 
+#[test]
+fn hook_fixture_git_setup_preserves_the_callers_index() -> TestResult {
+    const CHILD_ROOT: &str = "CARGO_ALLOW_HOOK_GIT_ISOLATION_CHILD_ROOT";
+    if let Some(root) = std::env::var_os(CHILD_ROOT) {
+        let root = PathBuf::from(root);
+        init_git(&root)?;
+        init_fixture_policy(&root)?;
+        fs::write(root.join("canary.txt"), "fixture-only bytes\n")?;
+        git_add(&root, "canary.txt")?;
+        require(
+            root.join(".git/index").is_file() && root.join("policy/allow.toml").is_file(),
+            "fixture setup did not create its own index and policy",
+        )?;
+        return Ok(());
+    }
+
+    let caller = Fixture::new("git-caller-canary")?;
+    init_git(&caller.path)?;
+    fs::write(caller.path.join("canary.txt"), "caller bytes\n")?;
+    git_add(&caller.path, "canary.txt")?;
+    let caller_index = caller.path.join(".git/index");
+    let original_index = fs::read(&caller_index)?;
+    for repository_overrides in [false, true] {
+        let fixture = Fixture::new("git-isolated-setup")?;
+        // Re-enter only this test with process-local overrides. The child
+        // calls the real setup helpers; no global test-process env is changed.
+        let mut child = Command::new(std::env::current_exe()?);
+        child.args([
+            "--exact",
+            "hook_fixture_git_setup_preserves_the_callers_index",
+            "--nocapture",
+        ]);
+        for variable in GIT_REPOSITORY_ENV {
+            child.env_remove(variable);
+        }
+        child
+            .env(CHILD_ROOT, &fixture.path)
+            .env("GIT_INDEX_FILE", &caller_index);
+        if repository_overrides {
+            child
+                .env("GIT_DIR", caller.path.join(".git"))
+                .env("GIT_WORK_TREE", &caller.path)
+                .env("GIT_COMMON_DIR", caller.path.join(".git"))
+                .env("GIT_OBJECT_DIRECTORY", caller.path.join(".git/objects"))
+                .env(
+                    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+                    caller.path.join(".git/objects"),
+                );
+        }
+        let output = child.output()?;
+        require(
+            output.status.success()
+                && fixture.path.join(".git/index").is_file()
+                && fixture.path.join("policy/allow.toml").is_file()
+                && fs::read_to_string(fixture.path.join("canary.txt"))? == "fixture-only bytes\n"
+                && fs::read(&caller_index)? == original_index
+                && !caller.path.join("policy").exists()
+                && fs::read_to_string(caller.path.join("canary.txt"))? == "caller bytes\n",
+            &format!(
+                "fixture Git setup escaped its root with repository_overrides={repository_overrides}: status={}, stdout=`{}`, stderr=`{}`",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ),
+        )?;
+    }
+    Ok(())
+}
+
+fn fixture_git_command(root: &Path, args: &[&str]) -> Command {
+    let mut command = Command::new("git");
+    command.arg("-C").arg(root).args(args);
+    for variable in GIT_REPOSITORY_ENV {
+        command.env_remove(variable);
+    }
+    command
+}
+
+fn init_fixture_policy(root: &Path) -> TestResult {
+    let mut setup = command(root, &["init", "--strict"]);
+    setup
+        .env_remove("CARGO_ALLOW_ROOT")
+        .env_remove("CARGO_ALLOW_CONFIG");
+    for variable in GIT_REPOSITORY_ENV {
+        setup.env_remove(variable);
+    }
+    let initialized = setup.output()?;
+    require(
+        initialized.status.success(),
+        &format!(
+            "fixture policy initialization failed: {}",
+            String::from_utf8_lossy(&initialized.stderr)
+        ),
+    )
+}
+
 fn init_git(root: &Path) -> TestResult {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["-c", "init.defaultBranch=main", "init", "--quiet"])
+    let output = fixture_git_command(root, &["-c", "init.defaultBranch=main", "init", "--quiet"])
         .output()?;
     if !output.status.success() {
         return Err(format!(
@@ -1386,11 +1468,7 @@ fn init_git(root: &Path) -> TestResult {
 }
 
 fn git_add(root: &Path, path: &str) -> TestResult {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(["add", "--", path])
-        .output()?;
+    let output = fixture_git_command(root, &["add", "--", path]).output()?;
     if output.status.success() {
         Ok(())
     } else {
