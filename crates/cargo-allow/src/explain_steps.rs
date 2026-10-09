@@ -27,11 +27,19 @@ pub(super) fn explain_next_steps(
     if let Some(outcome) = attention.first() {
         let finding = outcome.finding_index.and_then(|index| findings.get(index));
         let kind = worklist::work_item_kind(outcome, finding, Some(entry));
+        let mut suggested_actions =
+            worklist::suggested_actions_for_context(&kind, finding, Some(entry));
+        if outcome.status == MatchStatus::Ambiguous && !outcome.candidate_ids.is_empty() {
+            suggested_actions.insert(
+                0,
+                format!(
+                    "resolve equal-strength competition among these allow entries: {}",
+                    outcome.candidate_ids.join(", ")
+                ),
+            );
+        }
         return (
-            worklist::suggested_actions_for_context(&kind, finding, Some(entry))
-                .into_iter()
-                .take(2)
-                .collect(),
+            suggested_actions.into_iter().take(2).collect(),
             worklist::proof_commands(&kind, finding, Some(entry))
                 .into_iter()
                 .take(EXPLAIN_PROOF_COMMAND_LIMIT)

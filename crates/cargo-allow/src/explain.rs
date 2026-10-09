@@ -1,8 +1,8 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    MatchOutcome, normalize_path,
+    MatchOutcome, MatchStatus, normalize_path,
 };
-use allow_match::{CheckMode, evaluate, score_match};
+use allow_match::{CheckMode, evaluate};
 use std::path::Path;
 
 use crate::{
@@ -315,19 +315,32 @@ fn explain_entry_state(
     entry: &AllowEntry,
     findings: &[Finding],
 ) -> (Vec<Finding>, Vec<MatchOutcome>) {
-    let matching_findings = findings
-        .iter()
-        .filter(|finding| score_match(entry, finding).is_some())
-        .cloned()
-        .collect::<Vec<_>>();
-    let mut single_entry_cfg = cfg.clone();
-    single_entry_cfg.allow = vec![entry.clone()];
+    // Resolve competition and occurrence limits in the complete ledger before
+    // projecting this entry. Evaluating it alone would turn tied candidates
+    // into authorizing matches and discard stronger neighboring entries.
+    let mut matching_findings = Vec::new();
     let outcomes = evaluate(
-        &single_entry_cfg,
-        &matching_findings,
+        cfg,
+        findings,
         CheckMode::NoNew,
         allow_core::SimpleDate::today_utc_approx(),
-    );
+    )
+    .into_iter()
+    .filter(|outcome| {
+        outcome.allow_id.as_deref() == Some(entry.id.as_str())
+            || (outcome.status == MatchStatus::Ambiguous
+                && outcome.candidate_ids.contains(&entry.id))
+    })
+    .map(|mut outcome| {
+        // Renderers index the entry-local finding list. Candidate IDs, status,
+        // score, and message remain the full-ledger evaluator's result.
+        if let Some(finding) = outcome.finding_index.and_then(|index| findings.get(index)) {
+            outcome.finding_index = Some(matching_findings.len());
+            matching_findings.push(finding.clone());
+        }
+        outcome
+    })
+    .collect();
     (matching_findings, outcomes)
 }
 

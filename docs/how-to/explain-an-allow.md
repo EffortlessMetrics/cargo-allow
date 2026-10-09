@@ -16,6 +16,17 @@ The human view shows the allow entry, current match status, owner, reason,
 classification, lifecycle, selector details, evidence diagnostics, suggested
 actions, proof commands, and claim boundary.
 
+Current match state comes from evaluating the complete effective ledger and
+then selecting the outcomes for the requested entry. If two entries tie for a
+finding, explaining either entry reports `ambiguous` and identifies the
+competing IDs in the attention and next-action sections. Narrow the competing
+selectors and rerun `check --mode no-new` to verify the result.
+
+`current_matches` counts the finding rows shown for this entry, including tied
+findings. It is not a count of authorized exceptions: check each row's status.
+A weaker entry that loses to a unique stronger match retains its own evaluated
+state, such as `stale`, instead of reporting the winner's finding as its match.
+
 ## JSON Output
 
 ```bash
