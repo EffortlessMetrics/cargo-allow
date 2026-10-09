@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4429,
+  "base_ref": "main",
+  "base_sha": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "head_ref": "docs/3768-october-release-map",
+  "head_sha": "26791938342b59ddedd44a2528105835aa2e8794",
+  "merge_base": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "reviewed_diff_digest": "sha256:v1:99e0b618113d7fbb85a17241618ee0151b9b2731ca4e9fa50f4a747721b688c4",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthoring model review of backlog_audit's documentation; shared model family and audit context; coordinator records metadata",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5474732386"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5474732386",
+    "Both changed files, live child/controller issues, cited merged PRs and their ancestry, relevant production source, and 0.3 routing independently reviewed.",
+    "Closeout contract tail is byte-identical to base; SHA256 ca773b694a9bba3fc4f20540ae3397b69c8de4e9d81b9fbd324b9e8d03c64e50.",
+    "Agent-context contract, fragment shape, local links and diff whitespace pass.",
+    "Gemini editorial thread PRRT_kwDOSnyN3s6q7Pn0 is NonBlocking and resolved with current-head reasoning.",
+    "No final release, selected policy, pilot mutation, Complete successor freeze or release authority is claimed; applicable hosted gates remain separately required."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4429",
+  "reviewed_at_utc": "2026-10-09T19:57:30Z"
+}
