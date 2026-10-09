@@ -215,6 +215,173 @@ with tempfile.TemporaryDirectory(prefix="perf-binary-path-") as temporary:
 
 PY
 
+# Binary selection is admission, before identity capture or sample dispatch.
+# Native Unix probes execute independent marker files. Windows-family probes
+# simulate only uname-based selection policy; they do not execute Windows code.
+"${py}" - <<'PY_BINARY_SELECTION'
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+
+
+class BinarySelectionControls(unittest.TestCase):
+    def invoke(self, entries, *, override="target/selected/cargo-allow",
+               platform_name="Linux", execute=True):
+        with tempfile.TemporaryDirectory(prefix="perf-binary-selection-") as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            clone = root / "fixture clone"
+            clone.mkdir()
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(
+                bootstrap
+                + '\nprintf "dispatch-ready:%s\\n" "$binary"\n'
+                + 'if [[ "$PROBE_EXECUTE" == yes ]]; then "$binary"; fi\n',
+                encoding="utf-8",
+            )
+            for relative, kind, marker in entries:
+                candidate = root / relative
+                candidate.parent.mkdir(parents=True, exist_ok=True)
+                if kind == "directory":
+                    candidate.mkdir()
+                else:
+                    candidate.write_text(
+                        "#!/usr/bin/env bash\nprintf '%s\\n' '" + marker + "'\n",
+                        encoding="utf-8",
+                    )
+                    candidate.chmod(0o755 if kind == "executable" else 0o644)
+
+            shims = root / "platform-shims"
+            shims.mkdir()
+            uname = shims / "uname"
+            uname.write_text(
+                "#!/bin/sh\nprintf '%s\\n' '" + platform_name + "'\n",
+                encoding="utf-8",
+            )
+            uname.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": str(shims) + os.pathsep + environment["PATH"],
+                "CARGO_ALLOW_BIN": override,
+                "OUTPUT_DIR": str(root / "receipt"),
+                "PROFILE": "debug",
+                "PROBE_CWD": str(clone),
+                "PROBE_EXECUTE": "yes" if execute else "no",
+                "PYTHON3": sys.executable,
+                "CDPATH": "",
+            })
+            result = subprocess.run(
+                ["bash", str(probe)], cwd=clone, env=environment,
+                capture_output=True, text=True, timeout=20,
+            )
+            self.assertFalse(
+                list((root / "target").glob("cargo-allow-operator-latency.*")),
+                "binary selection left a disposable run directory",
+            )
+            return result, root
+
+    def assert_selected(self, entries, expected, marker, **options):
+        result, root = self.invoke(entries, **options)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = [f"dispatch-ready:{root / expected}"]
+        if options.get("execute", True):
+            lines.append(marker)
+        self.assertEqual(result.stdout.splitlines(), lines, result.stdout)
+
+    def test_unix_literal_and_fallback_selection(self):
+        literal = "target/selected/cargo-allow"
+        suffix = literal + ".exe"
+        cases = (
+            ("both_executable", (
+                (literal, "executable", "literal-marker"),
+                (suffix, "executable", "suffix-marker"),
+            ), literal, "literal-marker", literal),
+            ("nonexecutable_sibling", (
+                (literal, "executable", "literal-marker"),
+                (suffix, "nonexecutable", "unusable-suffix"),
+            ), literal, "literal-marker", literal),
+            ("directory_sibling", (
+                (literal, "executable", "literal-marker"),
+                (suffix, "directory", ""),
+            ), literal, "literal-marker", literal),
+            ("nonexecutable_literal_fallback", (
+                (literal, "nonexecutable", "unusable-literal"),
+                (suffix, "executable", "suffix-marker"),
+            ), suffix, "suffix-marker", literal),
+            ("missing_literal_fallback", (
+                (suffix, "executable", "suffix-marker"),
+            ), suffix, "suffix-marker", literal),
+            ("explicit_exe", (
+                (suffix, "executable", "suffix-marker"),
+            ), suffix, "suffix-marker", suffix),
+        )
+        for label, entries, expected, marker, override in cases:
+            for repetition in range(2):
+                with self.subTest(case=label, repetition=repetition):
+                    self.assert_selected(entries, expected, marker, override=override)
+                    print(f"ok Unix binary selection: {label}, repetition {repetition}")
+
+    def test_unix_unusable_candidates_refuse_before_dispatch(self):
+        literal = "target/selected/cargo-allow"
+        suffix = literal + ".exe"
+        cases = (
+            ("nonexecutable_literal", ((literal, "nonexecutable", "unusable"),)),
+            ("nonexecutable_suffix", ((suffix, "nonexecutable", "unusable"),)),
+            ("both_nonexecutable", (
+                (literal, "nonexecutable", "unusable-literal"),
+                (suffix, "nonexecutable", "unusable-suffix"),
+            )),
+            ("directory_literal", ((literal, "directory", ""),)),
+            ("directory_suffix", ((suffix, "directory", ""),)),
+            ("both_directories", (
+                (literal, "directory", ""), (suffix, "directory", ""),
+            )),
+        )
+        for label, entries in cases:
+            for repetition in range(2):
+                with self.subTest(case=label, repetition=repetition):
+                    result, _ = self.invoke(entries, execute=False)
+                    self.assertEqual(result.returncode, 1, (result.stdout, result.stderr))
+                    self.assertIn(
+                        "cargo-allow binary is not executable: " + literal,
+                        result.stderr,
+                    )
+                    self.assertNotIn("dispatch-ready:", result.stdout)
+                    self.assertNotIn("unusable", result.stdout)
+                    print(f"ok Unix binary refusal: {label}, repetition {repetition}")
+
+    def test_windows_family_literal_exe_policy_without_dispatch(self):
+        literal = "target/selected/cargo-allow"
+        suffix = literal + ".exe"
+        for platform_name in ("MINGW64_NT-fixture", "MSYS_NT-fixture", "CYGWIN_NT-fixture"):
+            for explicit in (False, True):
+                for repetition in range(2):
+                    with self.subTest(platform=platform_name, explicit=explicit,
+                                      repetition=repetition):
+                        entries = (
+                            (literal, "executable", "literal-marker"),
+                            (suffix, "nonexecutable", "native-exe-fixture"),
+                        )
+                        self.assert_selected(
+                            entries, suffix, "native-exe-fixture",
+                            override=suffix if explicit else literal,
+                            platform_name=platform_name, execute=False,
+                        )
+                        print(f"ok Windows-family selection policy: {platform_name}, "
+                              f"explicit {explicit}, repetition {repetition}")
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+PY_BINARY_SELECTION
+
 # The receipt consumer belongs to this same operator-harness contract.
 "${py}" - <<'PY_RECEIPT'
 """Exercise the actual inline CI receipt consumer with synthetic v3 receipts.
