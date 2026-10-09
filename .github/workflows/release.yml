@@ -247,6 +247,7 @@ jobs:
           # identity artifact for this run. Downstream jobs consume it and
           # verify agreement instead of reconstructing operation identity
           # from their own checkout, ref, or inputs.
+          mkdir -p target/cargo-allow
           cat > target/cargo-allow/release-operation-identity.json <<EOF
           {
             "version": "${{ needs.preflight.outputs.version }}",
@@ -386,6 +387,14 @@ jobs:
           set -euo pipefail
           version="${RELEASE_VERSION}"
           [ -n "${version}" ] || { echo "::error::preflight did not resolve a release version"; exit 1; }
+          # A rehearsal deliberately carries no publication authority. It
+          # qualifies candidate bytes without selecting the upload path.
+          if [ "${DRY_RUN}" = "true" ]; then
+            python3 scripts/release-topology-publisher.py \
+              --mode cargo-allow \
+              --receipt target/cargo-allow/topology-publish.receipt.json
+            exit 0
+          fi
           # #3790: the publish authorization is the compiled gate digest on
           # the clean path and the incident-owned recovery reference on the
           # recovery path. A tag name is never authority; an empty value
@@ -399,12 +408,6 @@ jobs:
           if [ "${RECOVERY}" = "true" ]; then
             [ "$(git rev-parse HEAD^{commit})" = "${RELEASE_COMMIT}" ] || { echo "::error::publish checkout commit differs from preflight"; exit 1; }
             [ "$(git rev-parse HEAD^{tree})" = "${RELEASE_TREE}" ] || { echo "::error::publish checkout tree differs from preflight"; exit 1; }
-          fi
-          if [ "${DRY_RUN}" = "true" ]; then
-            python3 scripts/release-topology-publisher.py \
-              --mode cargo-allow \
-              --receipt target/cargo-allow/topology-publish.receipt.json
-            exit 0
           fi
           publisher_args=(
             --mode cargo-allow

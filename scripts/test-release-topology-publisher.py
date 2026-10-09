@@ -8,6 +8,9 @@ import importlib.util
 import io
 import json
 import os
+import re
+import shutil
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -472,6 +475,158 @@ def exercise_package_artifact_directory() -> None:
             os.environ["CARGO_TARGET_DIR"] = original_target
 
 
+
+def workflow_run_step(workflow: str, name: str) -> str:
+    """Read the actual checked-in shell block, without a second workflow model."""
+    marker = f"      - name: {name}\n"
+    if workflow.count(marker) != 1:
+        raise AssertionError(f"expected one workflow step named {name!r}")
+    step = workflow.split(marker, 1)[1].split("\n      - ", 1)[0]
+    run_marker = "        run: |\n"
+    if step.count(run_marker) != 1:
+        raise AssertionError(f"expected one literal run block for {name!r}")
+    lines = step.split(run_marker, 1)[1].splitlines()
+    script = []
+    for line in lines:
+        if not line.strip():
+            script.append("")
+        elif line.startswith("          "):
+            script.append(line[10:])
+        else:
+            break
+    if not script:
+        raise AssertionError(f"empty run block for {name!r}")
+    return "\n".join(script) + "\n"
+
+
+def exercise_workflow_dispatch(workflow: str | None = None) -> None:
+    """Execute rehearsal/publication branches with no credential or real publisher."""
+    if workflow is None:
+        workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    bash = shutil.which("bash")
+    python = shutil.which("python3")
+    if bash is None or python is None:
+        raise AssertionError("workflow contract requires bash and python3")
+    authorize = workflow_run_step(workflow, "Validate release authorization before token access")
+    publish = workflow_run_step(workflow, "Publish cargo-allow topology rows in dependency order")
+    context = {
+        "needs.preflight.outputs.version": "0.2.0",
+        "needs.preflight.outputs.tag": "",
+        "needs.preflight.outputs.commit": "a" * 40,
+        "needs.preflight.outputs.tree": "b" * 40,
+        "github.run_id": "4423",
+    }
+    for key, value in context.items():
+        authorize = authorize.replace("${{ " + key + " }}", value)
+    authorize = authorize.replace("${{ needs.preflight.outputs.recovery }}", "${RECOVERY}")
+    if re.search(r"\$\{\{", authorize + publish):
+        raise AssertionError("workflow contract has an unbound expression")
+
+    scenarios = 0
+    with tempfile.TemporaryDirectory(prefix="release-workflow-dispatch-") as temporary:
+        root = Path(temporary)
+        bin_dir = root / "bin"
+        bin_dir.mkdir()
+        # All external tools used by these branches are local stand-ins. No
+        # ambient credentials or environment are forwarded to the shell.
+        (bin_dir / "python3").symlink_to(python)
+        (bin_dir / "mkdir").symlink_to(shutil.which("mkdir") or "/bin/mkdir")
+        (bin_dir / "cat").symlink_to(shutil.which("cat") or "/bin/cat")
+        git = bin_dir / "git"
+        git.write_text(
+            '#!' + bash + '\ncase "$*" in\n'
+            '  "rev-parse HEAD^{commit}") printf "%s\\n" "$OBSERVED_COMMIT" ;;\n'
+            '  "rev-parse HEAD^{tree}") printf "%s\\n" "$OBSERVED_TREE" ;;\n'
+            '  *) exit 97 ;;\nesac\n', encoding="utf-8"
+        )
+        git.chmod(0o755)
+
+        def invoke(script: str, name: str, **overrides: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+            directory = root / name
+            directory.mkdir()
+            scripts = directory / "scripts"
+            scripts.mkdir()
+            (scripts / "release-topology-publisher.py").write_text(
+                "import json, os, pathlib, sys\n"
+                "assert not os.environ.get('CARGO_REGISTRY_TOKEN')\n"
+                "path = pathlib.Path('publisher-calls.jsonl')\n"
+                "with path.open('a', encoding='utf-8') as stream:\n"
+                "    stream.write(json.dumps(sys.argv[1:]) + '\\n')\n",
+                encoding="utf-8",
+            )
+            env = {
+                "PATH": str(bin_dir),
+                "EVENT": "workflow_dispatch",
+                "TAG": "",
+                "VERSION": "0.2.0",
+                "COMMIT": "a" * 40,
+                "TREE": "b" * 40,
+                "RECOVERY": "false",
+                "DRY_RUN": "true",
+                "RELEASE_VERSION": "0.2.0",
+                "RELEASE_COMMIT": "a" * 40,
+                "RELEASE_TREE": "b" * 40,
+                "OBSERVED_COMMIT": "a" * 40,
+                "OBSERVED_TREE": "b" * 40,
+                "GATE_AUTHORIZATION_DIGEST": "",
+                "RECOVERY_AUTHORIZATION": "",
+                "RECOVERY_RECEIPT": "incident-receipt.json",
+                "GITHUB_OUTPUT": str(directory / "outputs"),
+            }
+            env.update(overrides)
+            completed = subprocess.run(
+                [bash, "--noprofile", "--norc", "-c", script],
+                cwd=directory, env=env, text=True, capture_output=True, timeout=10,
+            )
+            return completed, directory
+
+        for recovery in ("false", "true"):
+            result, directory = invoke(authorize, f"identity-{recovery}", RECOVERY=recovery)
+            assert result.returncode == 0, result.stdout + result.stderr
+            identity = json.loads((directory / "target/cargo-allow/release-operation-identity.json").read_text())
+            assert identity["commit"] == "a" * 40 and identity["tree"] == "b" * 40
+            assert identity["version"] == "0.2.0" and identity["authorization_digest"] == ""
+            assert identity["recovery"] is (recovery == "true")
+            outputs = dict(line.split("=", 1) for line in (directory / "outputs").read_text().splitlines())
+            assert outputs["valid"] == "false" and outputs["authorization_digest"] == ""
+            assert outputs["rehearsal"] == ("false" if recovery == "true" else "true")
+            assert outputs["recovery"] == recovery
+            assert not (directory / "publisher-calls.jsonl").exists()
+            scenarios += 1
+
+        result, directory = invoke(publish, "dry-run")
+        assert result.returncode == 0, result.stdout + result.stderr
+        calls = [json.loads(line) for line in (directory / "publisher-calls.jsonl").read_text().splitlines()]
+        assert calls == [["--mode", "cargo-allow", "--receipt", "target/cargo-allow/topology-publish.receipt.json"]]
+        scenarios += 1
+
+        for name, overrides in (
+            ("clean-without-authority", {"DRY_RUN": "false"}),
+            ("recovery-without-authority", {"DRY_RUN": "false", "RECOVERY": "true", "GATE_AUTHORIZATION_DIGEST": CANONICAL}),
+            ("missing-version", {"RELEASE_VERSION": ""}),
+            ("recovery-wrong-commit", {"DRY_RUN": "false", "RECOVERY": "true", "RECOVERY_AUTHORIZATION": "incident:4423", "OBSERVED_COMMIT": "c" * 40}),
+            ("recovery-wrong-tree", {"DRY_RUN": "false", "RECOVERY": "true", "RECOVERY_AUTHORIZATION": "incident:4423", "OBSERVED_TREE": "c" * 40}),
+        ):
+            result, directory = invoke(publish, name, **overrides)
+            assert result.returncode != 0, f"{name} unexpectedly succeeded"
+            assert not (directory / "publisher-calls.jsonl").exists(), f"{name} reached publisher"
+            scenarios += 1
+
+        for recovery in ("false", "true"):
+            result, directory = invoke(
+                publish, f"authorized-{recovery}", DRY_RUN="false", RECOVERY=recovery,
+                GATE_AUTHORIZATION_DIGEST=CANONICAL, RECOVERY_AUTHORIZATION="incident:4423",
+            )
+            assert result.returncode == 0, result.stdout + result.stderr
+            calls = [json.loads(line) for line in (directory / "publisher-calls.jsonl").read_text().splitlines()]
+            expected = ["--mode", "cargo-allow", "--publish", "--authorization", "incident:4423" if recovery == "true" else CANONICAL,
+                        "--receipt", "target/cargo-allow/topology-publish.receipt.json"]
+            if recovery == "true":
+                expected += ["--recovery-receipt", "incident-receipt.json"]
+            assert calls == [expected]
+            scenarios += 1
+    print(f"release workflow dispatch contract: {scenarios} scenarios passed")
+
 def main() -> None:
     assert PUBLISHER.receipt_checksum(DIGEST, field="fresh local checksum") == CANONICAL
     assert PUBLISHER.receipt_checksum(CANONICAL, field="published registry checksum") == CANONICAL
@@ -506,6 +661,7 @@ def main() -> None:
         invalid["local_checksum"] = malformed
         expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
 
+    exercise_workflow_dispatch()
     exercise_package_artifact_directory()
     exercise_main_receipt_shapes()
     exercise_shared_registry_preflight()
