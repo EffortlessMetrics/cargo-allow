@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Honor usable literal performance binaries on Unix and refuse non-executable
+  candidates before dispatch while preserving Windows executable naming.

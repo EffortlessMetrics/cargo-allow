@@ -39,6 +39,11 @@ For an already-built executable, `CARGO_ALLOW_BIN` skips the build. Relative
 overrides resolve against the repository root before the harness enters its
 fixture clone; absolute paths are also accepted.
 
+On Unix, selection prefers an executable regular file at the literal override
+and uses an executable `.exe` fallback only when that literal path is unusable.
+Unusable files and directories refuse before sample dispatch. MINGW, MSYS and
+Cygwin retain literal `.exe` selection for Windows-native path consumers.
+
 ```bash
 PROFILE=release CARGO_ALLOW_BIN=target/release/cargo-allow bash scripts/perf-budget-smoke.sh
 ```
