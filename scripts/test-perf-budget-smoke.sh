@@ -223,6 +223,7 @@ These fixtures test duration admission, not latency or artifact integrity.
 No second runtime validator or third-party dependency is introduced.
 """
 import json
+import math
 import subprocess
 import sys
 import tempfile
@@ -332,10 +333,12 @@ def set_duration(receipt, path, value):
     for key in path[:-1]:
         node = node[key]
     node[path[-1]] = value
-    # Keep unrelated arithmetic consistent so it cannot mask an admission bug.
+    # Keep unrelated durations admissible and arithmetic valid so they cannot mask this field.
     composite = receipt["agent_loop"]["composite"]
     if path[:3] == ("agent_loop", "composite", "steps") and isinstance(value, (int, float)):
-        composite["total_elapsed_ms"] = sum(step["elapsed_ms"] for step in composite["steps"])
+        composite["total_elapsed_ms"] = max(
+            0, math.ceil(sum(step["elapsed_ms"] for step in composite["steps"]))
+        )
     elif path == ("agent_loop", "composite", "total_elapsed_ms") and isinstance(value, (int, float)):
         for step in composite["steps"]:
             step["elapsed_ms"] = 0
