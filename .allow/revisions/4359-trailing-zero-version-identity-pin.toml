@@ -1,0 +1,20 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11278"]
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:d52d270d143ff785efe685b7d4655a9dcf3429653dca95f5fffa0dc02ced4fb4"
+after_fingerprint = "sha256:v1:f014529b2cf525e29d371a632b0525d98054dc64c68a4d8c1b0e68cfdb72a3e5"
+reason = "two more invariant-guarded expects in the dependency graph delta compiler tests: the #4359 trailing-zero identity pin compiles forward and reverse 1.0 -> 1.0.0 lock pairs whose success is the property under test, matching the #3920 PR B ratchet's stated scope"
+
+[[records]]
+allow_ids = ["allow-1061"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3196ddaca5fbc2fefa88dd916a2e9ff293ab7bb089e143b425edec4219f7f768"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
+
+[[records]]
+allow_ids = ["allow-11344"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:43509a801d07b1d19c03eea0715e67228b5f70517937caf7555b60fd42745f1c"
+reason = "re-ided from allow-1061 after a same-id collision with a parallel lane's receipt during the main-tail merge; covers the trailing-zero pin test's string-slice finding (#4359)"
