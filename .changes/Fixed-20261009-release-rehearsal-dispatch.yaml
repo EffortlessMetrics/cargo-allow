@@ -1,0 +1,2 @@
+kind: Fixed
+body: Restore the zero-upload release dispatch by creating canonical identity output directories in fresh jobs and keeping dry-run qualification separate from publication authorization checks.
