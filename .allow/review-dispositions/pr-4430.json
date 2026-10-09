@@ -4,27 +4,26 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4430,
   "base_ref": "main",
-  "base_sha": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "fix/4349-producer-schemas",
-  "head_sha": "16d584caae5058f5ca3458657e38ab8c7dbbbb93",
-  "merge_base": "29e465c3d2e7bc300a96917cb2a77c7d019a0b4f",
-  "reviewed_diff_digest": "sha256:v1:18f06dfca9aa1e980bc5d5c34eaea99f01df1a562fd2131ad6999c13b0d45857",
+  "head_sha": "ce1a0b350f5a140cc112916381a742d7b3b5e48c",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:dbed7a95e243dbae528d27378401d31b5e67e7abc5306f796ca0da7553ff78b3",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring source, regression, hosted-repair and exact-path governance review; same model family and prior audit context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475037655"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475253960"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475037655",
-    "The two-file successor repairs the common schema synchronization exposed by hosted MSRV/Linux. The common coverage enum and both report row references match the local report schema; optional common work_item line/column match worklist. The explicit catalog and parity test lists now include coverage_movement. No test was weakened. Independently reproduced shared wire-shape comparisons and removal-of-additions equivalence establish that schema identities, required arrays, closure and unrelated definitions are preserved. Original nonempty renderer controls and exact-path governance remain unchanged.",
-    "Two unique exact-path review-evidence receipts and independently verified canonical fingerprints; prior policy bytes/settings preserved.",
-    "Current feedback resolved; common schema parity is repaired rather than weakening the existing failing tests.",
-    "Only the retained JSON changes in the successor; current-pair full CI and post-main guard remain independently required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475253960",
+    "The full schema/producer/common-catalog source and consumers remain independently reviewed. The delivered common mirror correction and parity checks are intact. This integration is exactly the five current-main dispatch file blobs plus final_policy=main_policy+the unchanged PR-specific suffix, preserving every prior entry and all six independently reviewed peer fingerprints. No executable/schema behavior was changed by integration. Every existing review thread was re-read and resolved; current full native CI remains pending.",
+    "Current synthetic merge 16b298e6b904efd808149bd4c97989ce9f380f7a; source/metadata identities remain distinct.",
+    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -32,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4430",
-  "reviewed_at_utc": "2026-10-09T20:27:49Z"
+  "reviewed_at_utc": "2026-10-09T20:53:16Z"
 }
