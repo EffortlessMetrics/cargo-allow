@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
 from pathlib import Path
 import sys
@@ -525,23 +526,21 @@ def exercise_workflow_dispatch(workflow: str | None = None) -> None:
     scenarios = 0
     with tempfile.TemporaryDirectory(prefix="release-workflow-dispatch-") as temporary:
         root = Path(temporary)
-        bin_dir = root / "bin"
-        bin_dir.mkdir()
-        # All external tools used by these branches are local stand-ins. No
-        # ambient credentials or environment are forwarded to the shell.
-        (bin_dir / "python3").symlink_to(python)
-        (bin_dir / "mkdir").symlink_to(shutil.which("mkdir") or "/bin/mkdir")
-        (bin_dir / "cat").symlink_to(shutil.which("cat") or "/bin/cat")
-        git = bin_dir / "git"
-        git.write_text(
-            '#!' + bash + '\ncase "$*" in\n'
-            '  "rev-parse HEAD^{commit}") printf "%s\\n" "$OBSERVED_COMMIT" ;;\n'
-            '  "rev-parse HEAD^{tree}") printf "%s\\n" "$OBSERVED_TREE" ;;\n'
-            '  *) exit 97 ;;\nesac\n', encoding="utf-8"
+        # Call absolute tool paths through functions: an executable shebang
+        # cannot represent a Bash installation path containing spaces.
+        tool_paths = {"python3": python, "mkdir": shutil.which("mkdir"), "cat": shutil.which("cat")}
+        if not all(tool_paths.values()):
+            raise AssertionError("workflow contract requires mkdir and cat")
+        commands = "\n".join(
+            f"{name}() {{ {shlex.quote(Path(path).as_posix())} \"$@\"; }}"
+            for name, path in tool_paths.items() if path is not None
         )
-        git.chmod(0o755)
+        commands += '\ngit() {\ncase "$*" in\n'
+        commands += '  "rev-parse HEAD^{commit}") printf "%s\\n" "$OBSERVED_COMMIT" ;;\n'
+        commands += '  "rev-parse HEAD^{tree}") printf "%s\\n" "$OBSERVED_TREE" ;;\n'
+        commands += '  *) return 97 ;;\nesac\n}\n'
 
-        def invoke(script: str, name: str, **overrides: str) -> tuple[subprocess.CompletedProcess[str], Path]:
+        def invoke(script: str, name: str, *, runner: str = bash, **overrides: str) -> tuple[subprocess.CompletedProcess[str], Path]:
             directory = root / name
             directory.mkdir()
             scripts = directory / "scripts"
@@ -555,7 +554,7 @@ def exercise_workflow_dispatch(workflow: str | None = None) -> None:
                 encoding="utf-8",
             )
             env = {
-                "PATH": str(bin_dir),
+                "PATH": "",
                 "EVENT": "workflow_dispatch",
                 "TAG": "",
                 "VERSION": "0.2.0",
@@ -571,11 +570,13 @@ def exercise_workflow_dispatch(workflow: str | None = None) -> None:
                 "GATE_AUTHORIZATION_DIGEST": "",
                 "RECOVERY_AUTHORIZATION": "",
                 "RECOVERY_RECEIPT": "incident-receipt.json",
-                "GITHUB_OUTPUT": str(directory / "outputs"),
+                "GITHUB_OUTPUT": (directory / "outputs").as_posix(),
             }
+            if os.name == "nt" and "SYSTEMROOT" in os.environ:
+                env["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
             env.update(overrides)
             completed = subprocess.run(
-                [bash, "--noprofile", "--norc", "-c", script],
+                [runner, "--noprofile", "--norc", "-c", commands + script],
                 cwd=directory, env=env, text=True, capture_output=True, timeout=10,
             )
             return completed, directory
@@ -612,9 +613,17 @@ def exercise_workflow_dispatch(workflow: str | None = None) -> None:
             assert not (directory / "publisher-calls.jsonl").exists(), f"{name} reached publisher"
             scenarios += 1
 
-        for recovery in ("false", "true"):
+        publishing_cases = [("clean", "false", bash), ("recovery", "true", bash)]
+        if os.name == "posix":
+            # Native Windows exercises its real Git Bash path above; POSIX
+            # can also exercise a spaced interpreter path through a symlink.
+            spaced = root / "Program Files" / "bash"
+            spaced.parent.mkdir()
+            spaced.symlink_to(bash)
+            publishing_cases.append(("spaced-bash-recovery", "true", str(spaced)))
+        for name, recovery, runner in publishing_cases:
             result, directory = invoke(
-                publish, f"authorized-{recovery}", DRY_RUN="false", RECOVERY=recovery,
+                publish, f"authorized-{name}", runner=runner, DRY_RUN="false", RECOVERY=recovery,
                 GATE_AUTHORIZATION_DIGEST=CANONICAL, RECOVERY_AUTHORIZATION="incident:4423",
             )
             assert result.returncode == 0, result.stdout + result.stderr
