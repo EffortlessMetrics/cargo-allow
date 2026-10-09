@@ -6,24 +6,24 @@
   "base_ref": "main",
   "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "fix/4350-explain-ambiguity",
-  "head_sha": "0b69590a845e8a243c7a49ec9dede2c10bba8e20",
+  "head_sha": "80fc6bef655ebbc03369018985645aa89debaf53",
   "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:849b661d596917bfcc1e2620a13b552f88f4df5a662d477cc1d30136aed2ebab",
+  "reviewed_diff_digest": "sha256:v1:c993be695e252aaca2ed528ac017a33b0dcf8650fe2f080c8b45c07106d98a25",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475254538"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475520996"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475254538",
-    "Full-ledger explain projection, actual CLI/renderers/summary coverage and the actual-evaluator mixed Matched/New/Ambiguous/Ambiguous fixture remain independently reviewed. All ambiguous rows contribute deterministic deduplicated competitor IDs without changing original first-attention context or the two-action bound. Integration is exactly the five current-main file blobs and byte-preserved exact policy union. Existing mixed-guidance feedback is repaired and iterator-style feedback remains NonBlocking; every thread was re-read and resolved. Current full native CI remains pending.",
-    "Current synthetic merge 3fba8ab1103f7f6651a94b5bec3b0f04ec647d04; source/metadata identities remain distinct.",
-    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475520996",
+    "Independent full source/governance/consumer review remains valid after the narrow native-test oracle repair. The sole transition from metadata parent a6eea2b6 changes six added/one removed line in require_explain_projection: matched human output expects the established Outcome: satisfied label; ambiguous and stale labels remain unchanged. This matches the untouched production renderer and actual Linux/macOS ARM failures. Typed sidecar equality, schema validation, canonical evaluator outcomes, candidate IDs, local finding-index remapping, coverage, unrelated-finding exclusion and read-only posture remain intact.",
+    "Full-ledger explain evaluation preserves ambiguous candidates and stronger-loser outcomes; mixed matched/new/ambiguous guidance unions all ambiguous candidate IDs while retaining first-attention context and the bounded action contract. Exact policy receipts, native formatter corrections and main integration remain unchanged. Existing style and repaired mixed-outcome threads remain resolved; no new source blocker was found.",
+    "Synthetic af76e990ae958122be992d66bd2448def82c1f90 has exact base/head parents and the reviewed source tree. Previous failed jobs establish the test-oracle defect, not a pass for this corrected head. Every current applicable native check, dependency audit, fresh feedback inspection and post-main source guard remains required. This successor changes only the retained review JSON."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -31,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4431",
-  "reviewed_at_utc": "2026-10-09T20:53:21Z"
+  "reviewed_at_utc": "2026-10-09T21:32:14Z"
 }
