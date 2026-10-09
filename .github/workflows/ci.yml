@@ -1072,9 +1072,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
-        with:
-          toolchain: stable
+      - name: Install stable Rust for the dependency audit
+        run: rustup toolchain install stable --profile minimal --no-self-update
       - name: Check supply chain (cargo-deny, pinned)
         env:
           # Preserve the binary selected by cargo-deny-action v2.1.1
@@ -1083,6 +1082,7 @@ jobs:
           CARGO_DENY_VERSION: "0.20.2"
           CARGO_DENY_SHA256: "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
           CARGO_TERM_COLOR: always
+          RUSTUP_TOOLCHAIN: stable
         run: |
           set -euo pipefail
           cargo_deny_dir="${RUNNER_TEMP}/cargo-deny"
