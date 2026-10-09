@@ -3984,6 +3984,9 @@ fn saved_diff_output_covers_removed_allow_details() {
     commit_fixture_base(&fixture.root);
     fs::remove_file(fixture.root.join("src/lib.rs"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove source fixture: {err}")));
+    // Record the intentional deletion in the tracked inventory. A path still
+    // in the index but absent from disk is partial coverage, not a removal proof.
+    git_for_saved_diff(&fixture.root, &["add", "-u", "--", "src/lib.rs"]);
     fixture.write_minimal_policy();
 
     let artifact_dir = fixture.root.join("target/cargo-allow");

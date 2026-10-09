@@ -338,6 +338,75 @@ fn diff_distinguishes_deleted_and_unreadable_source() -> Result<(), String> {
 }
 
 #[test]
+fn current_tree_diff_keeps_unstaged_missing_source_partial() -> Result<(), String> {
+    let fixture = Fixture::new("current-deletion-control")?;
+    fixture.write("src/subject.rs", VALID)?;
+    fixture.write("src/kept.rs", b"fn kept() {}\n")?;
+    let base = fixture.commit("base")?;
+    fs::remove_file(fixture.0.join("src/subject.rs")).map_err(|error| error.to_string())?;
+
+    let cases = [(false, "head_partial", 0, 1), (true, "complete", 1, 0)];
+    for (staged, class, removed, exit) in cases {
+        if staged {
+            fixture.git(&["add", "-u", "--", "src/subject.rs"])?;
+        }
+        let output = fixture.diff(&base, None, "json")?;
+        let report = json_report(&output)?;
+        let analysis = report
+            .pointer("/diff/diff_analysis")
+            .ok_or_else(|| "missing current-tree deletion analysis".to_string())?;
+        if output.status.code() != Some(exit)
+            || !output.stderr.is_empty()
+            || analysis.get("result_class").and_then(Value::as_str) != Some(class)
+            || analysis
+                .get("base_inventory_complete")
+                .and_then(Value::as_bool)
+                != Some(true)
+            || analysis
+                .get("head_inventory_complete")
+                .and_then(Value::as_bool)
+                != Some(staged)
+            || analysis.get("base_scanner_complete").and_then(Value::as_bool) != Some(true)
+            || analysis.get("head_scanner_complete").and_then(Value::as_bool) != Some(true)
+            || analysis.get("introduced").and_then(Value::as_u64) != Some(0)
+            || analysis.get("removed").and_then(Value::as_u64) != Some(removed)
+        {
+            return Err(format!(
+                "current-tree deletion staged={staged} lost coverage or movement: {report}"
+            ));
+        }
+        let receipt = fixture.receipt("json")?;
+        if receipt.get("diff_analysis") != Some(analysis)
+            || receipt.get("status").and_then(Value::as_str)
+                != Some(if staged { "passed" } else { "failed" })
+        {
+            return Err(format!(
+                "current-tree deletion receipt disagrees with coverage: {receipt}"
+            ));
+        }
+        let changes = report
+            .pointer("/diff/finding_changes")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "current-tree deletion lost finding changes".to_string())?;
+        let valid_changes = if staged {
+            changes.len() == 1
+                && changes.iter().any(|change| {
+                    change.get("kind").and_then(Value::as_str) == Some("removed")
+                        && change.get("path").and_then(Value::as_str) == Some("src/subject.rs")
+                })
+        } else {
+            changes.is_empty()
+        };
+        if !valid_changes {
+            return Err(format!(
+                "current-tree deletion staged={staged} lost finding details: {changes:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn current_tree_head_and_committed_head_reject_the_same_invalid_source() -> Result<(), String> {
     let fixture = Fixture::new("current-tree-parity")?;
     fixture.write("src/subject.rs", VALID)?;
