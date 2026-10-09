@@ -1,7 +1,7 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-1058"]
+allow_ids = ["allow-11342"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:08c5cee25798d6dec54e82135dddbf3526b605f08dbff45a806a73f5596582ee"
-reason = "self-receipt for this revision note covering the #4279 line-ending preservation fix across the add/init/propose mutation writers, matching the #3792 precedent"
+after_fingerprint = "sha256:v1:a32288fcdc3452f0c9e48c52f00eea97d15a1d1e25732795e71d48e0e57bdd49"
+reason = "self-receipt for this revision note covering the #4279 line-ending preservation fix across the add/init/propose mutation writers, matching the #3792 precedent; id re-assigned from allow-1058 after a same-id collision with a parallel lane's receipt during the main-tail merge"

@@ -22619,3 +22619,26 @@ glob = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11342"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4279-preserve-ledger-endings.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "self-receipt for the #4279 line-ending preservation revision note, matching the #3792 precedent"
+evidence = ["issue:4279"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4279-preserve-ledger-endings.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4279-preserve-ledger-endings.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
