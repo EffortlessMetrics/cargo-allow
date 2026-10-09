@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4430,
+  "base_ref": "main",
+  "base_sha": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "head_ref": "fix/4349-producer-schemas",
+  "head_sha": "298a0d96f75316376e694dc36b493df975108d46",
+  "merge_base": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "reviewed_diff_digest": "sha256:v1:0628744fced257308f10d56e610eba5ab41dca7d799560ea9db8154ca9a6203a",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit, separate nonauthoring model review; product_audit authored source and coordinator applied formatter output; shared model family/context disclosed",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5474768458"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5474768458",
+    "All five changed files and parent modules, actual renderers/projection, canonical vocabulary, existing fixtures and jsonschema API independently reviewed.",
+    "Nonempty complete artifacts are validated; undeclared keys, invalid coverage values and invalid source locations have negative controls; existing IDs, required arrays and object-closure values are preserved.",
+    "Successor's 10-added/4-deleted whitespace delta exactly equals the original Rust1.95 formatter output; new pregate113999409005 Formatting success.",
+    "Gemini BTreeSet thread PRRT_kwDOSnyN3s6q7Px2 RefutedWithEvidence and resolved: parent diff.rs imports BTreeSet and child json_tests uses super::*.",
+    "Full Rust tests, no-new, remaining hosted proof and resulting-head readiness are pending; this record establishes clean source review, not completed CI or release qualification."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4430",
+  "reviewed_at_utc": "2026-10-09T19:57:30Z"
+}
