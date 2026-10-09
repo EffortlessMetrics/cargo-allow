@@ -862,6 +862,86 @@ fn adoption_adapter_demotes_placeholder_argv_to_a_decision() -> Result<(), Strin
     )
 }
 
+/// #4406: an adoption plan can compose the placeholder into a larger argv
+/// word (`--from-plan=<plan>`); the token still names an input the summary
+/// cannot substitute, so the step must demote to a decision exactly like a
+/// fully bracketed `<plan>` argument.
+#[test]
+fn adoption_adapter_demotes_a_placeholder_embedded_in_a_larger_arg() -> Result<(), String> {
+    let mut plan = adoption_plan();
+    plan.bootstrap_disposition = allow_report::BootstrapDisposition::ExistingPolicyNeedsRepair;
+    plan.primary_action = allow_report::AdoptionAction {
+        kind: allow_report::AdoptionActionKind::ApplyStaleSafeFindingPlan,
+        argv: strings(&["cargo-allow", "add", "--from-plan=<plan>", "--update"]),
+        reason: "a stale finding has an exact safe plan".to_string(),
+        write_posture: allow_report::WritePosture::MayWrite,
+        expected_result: "only the selected policy entry may change".to_string(),
+    };
+    plan.may_write_paths = vec!["policy/allow.toml".to_string()];
+    let summary = core_command_summary_from_adoption_plan(&plan)?;
+    let primary = summary
+        .primary_action
+        .as_ref()
+        .ok_or("embedded-placeholder primary action must survive projection")?;
+    ensure(
+        primary.kind == super::CoreCommandActionKindV1::Decision,
+        "an argv word carrying an embedded <plan> token must demote to a decision",
+    )?;
+    ensure(
+        primary.program.is_none() && primary.args.is_empty(),
+        "a decision must not carry the composed template as executable argv",
+    )?;
+    ensure(
+        primary.expected_effect.contains("--from-plan=<plan>")
+            && primary.expected_effect.contains("<plan>"),
+        format!(
+            "the decision must carry the composed template: {}",
+            primary.expected_effect
+        ),
+    )?;
+    ensure(
+        primary.write_posture == super::CoreCommandWritePostureV1::LiveMutation
+            && primary.may_write_paths == vec!["policy/allow.toml".to_string()],
+        "the embedded-placeholder template demotes with its write posture intact",
+    )
+}
+
+#[test]
+fn adoption_adapter_keeps_concrete_composed_args_executable() -> Result<(), String> {
+    let mut plan = adoption_plan();
+    plan.bootstrap_disposition = allow_report::BootstrapDisposition::ExistingPolicyNeedsRepair;
+    plan.primary_action = allow_report::AdoptionAction {
+        kind: allow_report::AdoptionActionKind::ApplyStaleSafeFindingPlan,
+        argv: strings(&["cargo-allow", "add", "--from-plan=plan.json", "--update"]),
+        reason: "a stale finding has an exact safe plan".to_string(),
+        write_posture: allow_report::WritePosture::MayWrite,
+        expected_result: "only the selected policy entry may change".to_string(),
+    };
+    plan.may_write_paths = vec!["policy/allow.toml".to_string()];
+    let summary = core_command_summary_from_adoption_plan(&plan)?;
+    let primary = summary
+        .primary_action
+        .as_ref()
+        .ok_or("concrete primary action must survive projection")?;
+    ensure(
+        primary.kind == super::CoreCommandActionKindV1::Command,
+        "a concrete composed value must stay an executable command",
+    )?;
+    ensure(
+        primary.program.as_deref() == Some("cargo-allow")
+            && primary.args.iter().map(String::as_str).eq([
+                "add",
+                "--from-plan=plan.json",
+                "--update",
+            ]),
+        format!(
+            "the concrete argv must survive projection: {} {:?}",
+            primary.program.as_deref().unwrap_or_default(),
+            primary.args
+        ),
+    )
+}
+
 #[test]
 fn adoption_adapter_rejects_unknown_live_mutation_target() -> Result<(), String> {
     let mut plan = adoption_plan();
