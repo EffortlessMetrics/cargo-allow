@@ -856,4 +856,167 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 PY_INTERPRETER_ALLOCATION
 
+# Execute the real hooks measurement with independently controlled stdout.
+# The child emits UTF-8 bytes; the limit is a byte budget, not a character count.
+"${py}" - <<'PY_HOOK_PAYLOAD'
+import contextlib
+import hashlib
+import json
+import os
+import shlex
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+_, boundary, tail = script.partition("\nmeasure_hooks_sample() {\n")
+assert boundary, "missing production hooks measurement"
+body, boundary, _ = tail.partition("\n}\n")
+assert boundary, "missing hooks measurement end"
+measurement = "\nmeasure_hooks_sample() {\n" + body + "\n}\n"
+CEILING = 524288
+SAMPLES = ("hooks_wrapped_check", "hooks_bare_check")
+
+
+class HookPayloadControls(unittest.TestCase):
+    @contextlib.contextmanager
+    def fixture(self):
+        with tempfile.TemporaryDirectory(prefix="perf-hooks-payload-") as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            clone = root / "fixture clone"
+            clone.mkdir()
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir(parents=True)
+            child = root / "controlled-child.py"
+            child.write_text(
+                "import sys\n"
+                "size, marker, status = int(sys.argv[1]), sys.argv[2], int(sys.argv[3])\n"
+                "prefix = (marker + '\\n').encode('utf-8')\n"
+                "assert size >= len(prefix)\n"
+                "remaining = size - len(prefix)\n"
+                "sys.stdout.buffer.write(prefix + b'\\xc3\\xa9' * (remaining // 2)"
+                " + b'x' * (remaining % 2))\n"
+                "sys.stdout.flush()\nsys.exit(status)\n",
+                encoding="utf-8",
+            )
+            candidate.write_text(
+                "#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                + shlex.quote(str(child)) + ' "$@"\n',
+                encoding="utf-8",
+            )
+            candidate.chmod(0o755)
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(
+                bootstrap + measurement
+                + '\nagent_loop_root="$PROBE_CWD"\n'
+                + 'if [[ "$PROBE_CLOCK_MODE" == over ]]; then\n'
+                + '  now_ms() {\n'
+                + '    if [[ -e "$PROBE_CLOCK" ]]; then printf 60001; '
+                + 'else : >"$PROBE_CLOCK"; printf 0; fi\n'
+                + '  }\nfi\n'
+                + 'measure_hooks_sample "$PROBE_SAMPLE" '
+                + '"artifacts/$PROBE_SAMPLE.md" "Result: passed" '
+                + '"$PROBE_SIZE" "$PROBE_MARKER" "$PROBE_EXIT"\n'
+                + 'write_receipt "pass" ""\n'
+                + 'printf "hooks-probe-complete\\n"\n',
+                encoding="utf-8",
+            )
+            yield root, clone, probe
+
+    def invoke(self, fixture, sample, size, *, marker="Result: passed",
+               status=0, clock="normal"):
+        root, clone, probe = fixture
+        environment = os.environ.copy()
+        environment.update({
+            "CARGO_ALLOW_BIN": "target/selected/cargo-allow",
+            "OUTPUT_DIR": str(root / "receipt"),
+            "PROFILE": "debug", "HARD_CEILING_MS": "60000",
+            "PYTHON3": sys.executable, "CDPATH": "",
+            "PROBE_CWD": str(clone), "PROBE_SAMPLE": sample,
+            "PROBE_SIZE": str(size), "PROBE_MARKER": marker,
+            "PROBE_EXIT": str(status), "PROBE_CLOCK_MODE": clock,
+            "PROBE_CLOCK": str(root / "controlled-clock"),
+            "PERF_AGENT_LOOP_SUMMARY": "",
+        })
+        (root / "controlled-clock").unlink(missing_ok=True)
+        result = subprocess.run(
+            ["bash", str(probe)], cwd=clone, env=environment,
+            capture_output=True, text=True, timeout=20,
+        )
+        artifact = root / "receipt/artifacts" / (sample + ".md")
+        metrics = (root / "receipt/.operator-latency.samples.tsv").read_text(encoding="utf-8")
+        receipt = json.loads((root / "receipt/operator-latency.receipt.json")
+                             .read_text(encoding="utf-8"))
+        self.assertEqual(len(artifact.read_bytes()), size)
+        self.assertFalse(list((root / "target").glob("cargo-allow-operator-latency.*")))
+        return result, artifact, metrics, receipt
+
+    def test_valid_byte_boundaries_record_real_payload(self):
+        for sample in SAMPLES:
+            with self.fixture() as fixture:
+                for size in (64, CEILING - 1, CEILING):
+                    with self.subTest(sample=sample, size=size):
+                        result, artifact, metrics, receipt = self.invoke(fixture, sample, size)
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertIn("hooks-probe-complete", result.stdout)
+                        fields = metrics.strip().split("\t")
+                        self.assertEqual(len(fields), 10)
+                        self.assertEqual(fields[1], sample)
+                        self.assertEqual(fields[7], "passed")
+                        self.assertEqual(int(fields[9]), size)
+                        self.assertEqual(fields[4], hashlib.sha256(artifact.read_bytes()).hexdigest())
+                        self.assertEqual(fields[3:5], fields[5:7])
+                        self.assertEqual(receipt["result"], "pass")
+                        self.assertEqual(receipt["samples"][0]["payload_bytes"], size)
+                        print(f"hooks payload positive {sample}: {size}B accepted")
+
+    def test_oversized_byte_payload_refuses_repeatedly(self):
+        for sample in SAMPLES:
+            with self.fixture() as fixture:
+                for repetition in range(2):
+                    with self.subTest(sample=sample, repetition=repetition):
+                        result, artifact, metrics, receipt = self.invoke(
+                            fixture, sample, CEILING + 1,
+                        )
+                        print(f"hooks payload refusal {sample} repeat{repetition}: "
+                              f"exit={result.returncode} bytes={len(artifact.read_bytes())}")
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertIn(
+                            f"{sample} payload {sample}.md at {CEILING + 1}B exceeded "
+                            f"the {CEILING}B catastrophic payload ceiling", result.stderr,
+                        )
+                        self.assertNotIn("hooks-probe-complete", result.stdout)
+                        self.assertEqual(metrics, "")
+                        self.assertEqual(receipt["result"], "failed")
+                        self.assertEqual(receipt["failure"]["kind"], "instrument_failure")
+                        self.assertIn("catastrophic payload ceiling", receipt["failure"]["message"])
+
+    def test_existing_failure_gates_remain_independent(self):
+        for sample in SAMPLES:
+            with self.fixture() as fixture:
+                controls = (
+                    ({"marker": "Wrong result"}, "semantic result did not contain expected marker"),
+                    ({"status": 2}, "hooks sample failed (exit 2)"),
+                    ({"clock": "over"}, "exceeded the 60000ms catastrophic ceiling (60001ms)"),
+                )
+                for options, diagnostic in controls:
+                    with self.subTest(sample=sample, options=options):
+                        result, _, metrics, receipt = self.invoke(fixture, sample, 64, **options)
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertIn(diagnostic, result.stderr)
+                        self.assertNotIn("hooks-probe-complete", result.stdout)
+                        self.assertEqual(metrics, "")
+                        self.assertEqual(receipt["result"], "failed")
+                        self.assertIn(diagnostic, receipt["failure"]["message"])
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+PY_HOOK_PAYLOAD
+
 printf 'ok operator-latency harness characterization\n'
