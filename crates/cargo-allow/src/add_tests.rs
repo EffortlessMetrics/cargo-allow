@@ -920,6 +920,54 @@ fn cmd_add_update_keeps_lf_ledger_byte_form() -> Result<(), Box<dyn std::error::
 }
 
 #[test]
+fn append_to_bound_policy_reports_the_exact_bounded_changed_region()
+-> Result<(), Box<dyn std::error::Error>> {
+    // #4279 receipt acceptance: the writer seam must report the appended byte
+    // region so the add --from-plan receipt can record the exact bounded
+    // changed region alongside its preimage/postimage digests.
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let policy_path = root.join("policy/allow.toml");
+    let base = fs::read_to_string(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read base policy: {err}")));
+    let before = base.replace('\n', "\r\n");
+    fs::write(&policy_path, &before)?;
+    let entry = AllowEntry {
+        id: "allow-0002".to_string(),
+        ..test_policy_entry_with_untracked_evidence()
+    };
+
+    let applied = super::add_policy::append_to_bound_policy(
+        &policy_path,
+        &allow_core::sha256_v1_bytes(before.as_bytes()),
+        &entry,
+    )?;
+
+    assert_eq!(
+        applied.byte_start,
+        before.len(),
+        "the region must begin exactly at the preimage byte length"
+    );
+    assert_eq!(
+        applied.byte_end,
+        applied.rendered.len(),
+        "the region must end exactly at the postimage byte length"
+    );
+    assert!(
+        applied.rendered.as_bytes().starts_with(before.as_bytes()),
+        "the preimage must be an exact byte prefix of the rendered postimage"
+    );
+    let region = &applied.rendered[applied.byte_start..applied.byte_end];
+    assert!(
+        region.contains(&entry.id) && region.contains("doc:policy/evidence.md"),
+        "the region must be exactly the appended entry block: {region:?}"
+    );
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    Ok(())
+}
+
+#[test]
 fn cmd_add_write_force_keeps_crlf_candidate_envelope() {
     // #4337 acceptance: a --force overwrite of a CRLF candidate must not
     // rewrite it LF-only.

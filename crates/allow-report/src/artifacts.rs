@@ -73,7 +73,7 @@ pub use add_finding_plan::{
     AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
     AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
 };
-pub use add_plan_application::AddPlanApplicationV1;
+pub use add_plan_application::{AddPlanApplicationV1, ChangedRegionV1};
 pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,

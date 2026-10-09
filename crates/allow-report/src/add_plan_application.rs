@@ -46,6 +46,10 @@ pub fn render_add_plan_application_json(receipt: &AddPlanApplicationV1<'_>) -> S
         "target_ledger": receipt.target_ledger,
         "policy_before_digest": receipt.policy_before_digest,
         "policy_after_digest": receipt.policy_after_digest,
+        "changed_region": json!({
+            "byte_start": receipt.changed_region.byte_start,
+            "byte_end": receipt.changed_region.byte_end,
+        }),
         "added_allow_id": receipt.added_allow_id,
         "targeted_recheck": receipt.targeted_recheck,
         "full_check_argv": receipt.full_check_argv,
