@@ -141,11 +141,10 @@ fn git_cat_file_batch_input_reports_write_and_flush_failures() {
 
 #[test]
 fn git_cat_file_batch_rejects_missing_requested_blob() {
-    let err = revision_git::visit_git_cat_file_batch_for_test(
-        io::empty(),
-        &["a".repeat(40)],
-        |_, _| Ok(()),
-    )
+    let err =
+        revision_git::visit_git_cat_file_batch_for_test(io::empty(), &["a".repeat(40)], |_, _| {
+            Ok(())
+        })
         .err()
         .unwrap_or_else(|| std::panic::panic_any("missing blob response should fail"));
 

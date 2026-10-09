@@ -149,9 +149,9 @@ where
     }
     let requested_oids = blob_paths.keys().cloned().collect::<Vec<_>>();
     read_blobs_by_oid(root, &requested_oids, |oid, text| {
-        let paths = blob_paths.get(oid).ok_or_else(|| {
-            malformed_batch("git cat-file --batch returned an unrequested blob")
-        })?;
+        let paths = blob_paths
+            .get(oid)
+            .ok_or_else(|| malformed_batch("git cat-file --batch returned an unrequested blob"))?;
         for path in paths {
             visit(path, text)?;
         }
@@ -514,11 +514,7 @@ fn read_blob_by_oid(root: &Path, blob_oid: &str, path: &Path) -> CargoAllowResul
     text.ok_or_else(|| malformed_batch("git cat-file --batch did not return the selected blob"))
 }
 
-fn read_blobs_by_oid<F>(
-    root: &Path,
-    blob_oids: &[String],
-    visit: F,
-) -> CargoAllowResult<()>
+fn read_blobs_by_oid<F>(root: &Path, blob_oids: &[String], visit: F) -> CargoAllowResult<()>
 where
     F: FnMut(&str, Result<&str, &CappedReadError>) -> CargoAllowResult<()>,
 {
@@ -565,8 +561,7 @@ where
             .join()
             .map_err(|_| batch_git_error("git cat-file --batch stderr reader panicked"))?
             .map_err(|source| {
-                batch_git_error("git cat-file --batch stderr could not be read")
-                    .with_cause(&source)
+                batch_git_error("git cat-file --batch stderr could not be read").with_cause(&source)
             })?;
         let status = status.map_err(|source| {
             batch_git_error("git cat-file --batch could not finish").with_cause(&source)

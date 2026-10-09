@@ -62,7 +62,10 @@ impl Fixture {
             .output()
             .map_err(|error| error.to_string())?;
         if !output.status.success() {
-            return Err(format!("git {args:?}: {}", String::from_utf8_lossy(&output.stderr)));
+            return Err(format!(
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
         }
         String::from_utf8(output.stdout)
             .map(|text| text.trim().to_string())
@@ -76,7 +79,9 @@ impl Fixture {
     }
 
     fn diff(&self, base: &str, head: Option<&str>, format: &str) -> Result<Output, String> {
-        let receipt = self.0.join(format!("target/cargo-allow/{format}.receipt.json"));
+        let receipt = self
+            .0
+            .join(format!("target/cargo-allow/{format}.receipt.json"));
         let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-allow"));
         command
             .arg("diff")
@@ -132,8 +137,14 @@ fn require_side_facts(
     class: &str,
 ) -> Result<(), String> {
     if value.get("result_class").and_then(Value::as_str) != Some(class)
-        || value.get("base_inventory_complete").and_then(Value::as_bool) != Some(true)
-        || value.get("head_inventory_complete").and_then(Value::as_bool) != Some(true)
+        || value
+            .get("base_inventory_complete")
+            .and_then(Value::as_bool)
+            != Some(true)
+        || value
+            .get("head_inventory_complete")
+            .and_then(Value::as_bool)
+            != Some(true)
         || value.get("base_scanner_complete").and_then(Value::as_bool) != Some(base_complete)
         || value.get("head_scanner_complete").and_then(Value::as_bool) != Some(head_complete)
     {
@@ -151,10 +162,19 @@ fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
     ] {
         let fixture = Fixture::new(class)?;
         fixture.write("src/retained.rs", VALID)?;
-        fixture.write("src/subject.rs", if base_complete { VALID } else { INVALID })?;
+        fixture.write(
+            "src/subject.rs",
+            if base_complete { VALID } else { INVALID },
+        )?;
         let base = fixture.commit("base")?;
-        fixture.write("src/subject.rs", if head_complete { VALID } else { INVALID })?;
-        fixture.write("src/new.rs", b"fn added(value: Option<u8>) -> u8 { value.unwrap() }\n")?;
+        fixture.write(
+            "src/subject.rs",
+            if head_complete { VALID } else { INVALID },
+        )?;
+        fixture.write(
+            "src/new.rs",
+            b"fn added(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )?;
         let head = fixture.commit("head")?;
         let output = fixture.diff(&base, Some(&head), "json")?;
         if output.status.code() != Some(1) || !output.stderr.is_empty() {
@@ -172,15 +192,17 @@ fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
         if receipt.get("diff_analysis") != Some(analysis)
             || receipt.get("status").and_then(Value::as_str) != Some("failed")
         {
-            return Err(format!("receipt does not retain the report side facts: {receipt}"));
+            return Err(format!(
+                "receipt does not retain the report side facts: {receipt}"
+            ));
         }
         let changes = report
             .pointer("/diff/finding_changes")
             .and_then(Value::as_array)
             .ok_or_else(|| "diff lost finding changes".to_string())?;
-        if changes.iter().any(|change| {
-            change.get("path").and_then(Value::as_str) == Some("src/subject.rs")
-        })
+        if changes
+            .iter()
+            .any(|change| change.get("path").and_then(Value::as_str) == Some("src/subject.rs"))
             || analysis.get("removed").and_then(Value::as_u64) != Some(0)
             || (!base_complete && analysis.get("introduced").and_then(Value::as_u64) != Some(0))
         {
@@ -228,12 +250,13 @@ fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
             pr_check.result,
             allow_report::GitHubPrCheckResultV1::Partial
                 | allow_report::GitHubPrCheckResultV1::InstrumentFailure
-        )
-            || pr_check.base_scan_completeness != completeness
+        ) || pr_check.base_scan_completeness != completeness
             || pr_check.introduced_count != 0
             || pr_check.resolved_count != 0
         {
-            return Err(format!("PR consumer invented confident movement: {pr_check:?}"));
+            return Err(format!(
+                "PR consumer invented confident movement: {pr_check:?}"
+            ));
         }
         for format in ["human", "markdown"] {
             let rendered = fixture.diff(&base, Some(&head), format)?;
@@ -263,7 +286,9 @@ fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
                 ]
             };
             if expected.iter().any(|part| !text.contains(part)) {
-                return Err(format!("{format} or its PR summary lost independent facts: {text}"));
+                return Err(format!(
+                    "{format} or its PR summary lost independent facts: {text}"
+                ));
             }
             if fixture.receipt(format)?.get("diff_analysis") != Some(analysis) {
                 return Err(format!("{format} receipt disagrees with JSON analysis"));
@@ -300,7 +325,10 @@ fn diff_distinguishes_deleted_and_unreadable_source() -> Result<(), String> {
     require_side_facts(analysis, true, true, "complete")?;
     if complete_output.status.code() != Some(0)
         || analysis.get("removed").and_then(Value::as_u64) != Some(1)
-        || partial.pointer("/diff/diff_analysis/removed").and_then(Value::as_u64) != Some(0)
+        || partial
+            .pointer("/diff/diff_analysis/removed")
+            .and_then(Value::as_u64)
+            != Some(0)
     {
         return Err(format!(
             "genuine deletion and skipped blob were collapsed: {partial} / {complete}"
@@ -328,9 +356,14 @@ fn current_tree_head_and_committed_head_reject_the_same_invalid_source() -> Resu
             "head_partial",
         )?;
         if output.status.code() != Some(1)
-            || report.pointer("/diff/diff_analysis/removed").and_then(Value::as_u64) != Some(0)
+            || report
+                .pointer("/diff/diff_analysis/removed")
+                .and_then(Value::as_u64)
+                != Some(0)
         {
-            return Err(format!("current/committed head falsely cleaned missing source: {report}"));
+            return Err(format!(
+                "current/committed head falsely cleaned missing source: {report}"
+            ));
         }
     }
     Ok(())
@@ -362,9 +395,14 @@ fn binary_diff_rejects_cap_plus_one_but_scans_the_exact_cap() -> Result<(), Stri
     )?;
     if output.status.code() != Some(1)
         || !output.stderr.is_empty()
-        || report.pointer("/diff/diff_analysis/removed").and_then(Value::as_u64) != Some(0)
+        || report
+            .pointer("/diff/diff_analysis/removed")
+            .and_then(Value::as_u64)
+            != Some(0)
     {
-        return Err(format!("binary cap boundary produced false confidence: {report}"));
+        return Err(format!(
+            "binary cap boundary produced false confidence: {report}"
+        ));
     }
     Ok(())
 }
@@ -384,7 +422,9 @@ fn malformed_revision_identity_is_an_instrument_failure_not_a_clean_diff() -> Re
             .and_then(Value::as_str)
             == Some("complete")
     {
-        return Err(format!("missing Git input produced a clean diff artifact: {value}"));
+        return Err(format!(
+            "missing Git input produced a clean diff artifact: {value}"
+        ));
     }
     Ok(())
 }

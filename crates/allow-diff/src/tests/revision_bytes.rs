@@ -1,7 +1,9 @@
 //! Exact revision bytes must earn the same scanner disposition as current files.
 
 use super::*;
-use allow_core::{CappedReadError, CargoAllowError, CargoAllowErrorKind, SOURCE_FILE_READ_MAX_BYTES};
+use allow_core::{
+    CappedReadError, CargoAllowError, CargoAllowErrorKind, SOURCE_FILE_READ_MAX_BYTES,
+};
 use allow_rust::RustFileScanOutcome;
 use std::cell::Cell;
 use std::io::{self, Cursor, Read};
@@ -113,8 +115,7 @@ fn invalid_comment_bytes_preserve_valid_findings_and_order() -> Result<(), Strin
     if !matches!(
         &rejected.outcome,
         RustFileScanOutcome::Skipped { reason } if reason.contains("not valid UTF-8")
-    )
-        || rejected.path.is_absolute()
+    ) || rejected.path.is_absolute()
     {
         return Err(format!(
             "invalid bytes were not a repository-relative rejected read: {rejected:?}"
@@ -127,7 +128,9 @@ fn invalid_comment_bytes_preserve_valid_findings_and_order() -> Result<(), Strin
     if rejected_single.kind() != CargoAllowErrorKind::Scan
         || !rejected_single.to_string().contains("src/bad.rs")
     {
-        return Err(format!("single-file read lost its typed path diagnostic: {rejected_single}"));
+        return Err(format!(
+            "single-file read lost its typed path diagnostic: {rejected_single}"
+        ));
     }
     Ok(())
 }
@@ -241,10 +244,15 @@ fn batch_rejections_preserve_bytes_and_require_exact_identities() -> Result<(), 
         )
         || !matches!(seen.get(1), Some((oid, Ok(text))) if oid == &second && text == "ok")
     {
-        return Err(format!("invalid source desynchronized following exact bytes: {seen:?}"));
+        return Err(format!(
+            "invalid source desynchronized following exact bytes: {seen:?}"
+        ));
     }
     for (bytes, requested) in [
-        (format!("{second} blob 0\n\n").into_bytes(), vec![first.clone()]),
+        (
+            format!("{second} blob 0\n\n").into_bytes(),
+            vec![first.clone()],
+        ),
         (
             format!("{first} blob 0\n\n{second} blob 0\n\n").into_bytes(),
             vec![first.clone()],
@@ -253,9 +261,18 @@ fn batch_rejections_preserve_bytes_and_require_exact_identities() -> Result<(), 
             format!("{first} blob 0\n\n{first} blob 0\n\n").into_bytes(),
             vec![first.clone(), second.clone()],
         ),
-        (format!("{first} blob 3\nab").into_bytes(), vec![first.clone()]),
-        (format!("{first} blob 2\nab!").into_bytes(), vec![first.clone()]),
-        (format!("{first} blob 0\n").into_bytes(), vec![first.clone()]),
+        (
+            format!("{first} blob 3\nab").into_bytes(),
+            vec![first.clone()],
+        ),
+        (
+            format!("{first} blob 2\nab!").into_bytes(),
+            vec![first.clone()],
+        ),
+        (
+            format!("{first} blob 0\n").into_bytes(),
+            vec![first.clone()],
+        ),
         (vec![b'a'; 129], vec![first.clone()]),
     ] {
         let error = revision_git::visit_git_cat_file_batch_for_test(
@@ -266,7 +283,9 @@ fn batch_rejections_preserve_bytes_and_require_exact_identities() -> Result<(), 
         .err()
         .ok_or_else(|| "malformed batch response was accepted".to_string())?;
         if error.kind() != CargoAllowErrorKind::Inventory {
-            return Err(format!("malformed response lost inventory classification: {error}"));
+            return Err(format!(
+                "malformed response lost inventory classification: {error}"
+            ));
         }
     }
     Ok(())
@@ -283,7 +302,10 @@ fn early_batch_consumer_failure_reaps_git_without_reading_the_aggregate() -> Res
     fixture.commit();
     let tree = revision_git::git_tree_files_at_revision(&fixture.0, "HEAD")
         .map_err(|error| error.to_string())?;
-    let paths = tree.iter().map(|entry| entry.path.clone()).collect::<Vec<_>>();
+    let paths = tree
+        .iter()
+        .map(|entry| entry.path.clone())
+        .collect::<Vec<_>>();
     let mut visited = 0;
     let result = revision_git::read_files_at_revision(&fixture.0, &tree, &paths, |_, _| {
         visited += 1;
@@ -292,12 +314,16 @@ fn early_batch_consumer_failure_reaps_git_without_reading_the_aggregate() -> Res
             "consumer rejected the first selected source",
         ))
     });
-    let error = result.err().ok_or_else(|| "consumer failure was discarded".to_string())?;
+    let error = result
+        .err()
+        .ok_or_else(|| "consumer failure was discarded".to_string())?;
     if visited != 1
         || error.kind() != CargoAllowErrorKind::Scan
         || !error.to_string().contains("consumer rejected")
     {
-        return Err(format!("batch did not preserve the early consumer failure: {error}"));
+        return Err(format!(
+            "batch did not preserve the early consumer failure: {error}"
+        ));
     }
     Ok(())
 }
@@ -310,7 +336,8 @@ struct MeteredReader<R> {
 
 impl<R: Read> Read for MeteredReader<R> {
     fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
-        self.largest_read.set(self.largest_read.get().max(buffer.len()));
+        self.largest_read
+            .set(self.largest_read.get().max(buffer.len()));
         let count = self.inner.read(buffer)?;
         self.bytes_read.set(self.bytes_read.get() + count as u64);
         Ok(count)
@@ -344,7 +371,9 @@ fn oversized_batch_body_is_drained_in_bounded_reads_before_next_valid_blob() -> 
             source.is_ok_and(|text| text == "ok")
         };
         if !expected {
-            return Err(CargoAllowError::new("oversized body changed the following response"));
+            return Err(CargoAllowError::new(
+                "oversized body changed the following response",
+            ));
         }
         Ok(())
     })
@@ -361,13 +390,17 @@ fn oversized_batch_body_is_drained_in_bounded_reads_before_next_valid_blob() -> 
 
 #[test]
 fn aggregate_batch_bytes_are_streamed_before_later_source_is_read() -> Result<(), String> {
-    let oids = (1..=16).map(|index| format!("{index:040x}")).collect::<Vec<_>>();
+    let oids = (1..=16)
+        .map(|index| format!("{index:040x}"))
+        .collect::<Vec<_>>();
     let blob_size = 1024 * 1024u64;
     let mut stream: Box<dyn Read> = Box::new(io::empty());
     for oid in &oids {
         stream = Box::new(
             stream
-                .chain(Cursor::new(format!("{oid} blob {blob_size}\n").into_bytes()))
+                .chain(Cursor::new(
+                    format!("{oid} blob {blob_size}\n").into_bytes(),
+                ))
                 .chain(io::repeat(b'x').take(blob_size))
                 .chain(Cursor::new(b"\n")),
         );
@@ -457,7 +490,9 @@ fn trace_child_scans_many_selected_sources() -> Result<(), String> {
     let scan = scan_at_revision(&fixture.0, "HEAD", &AllowConfig::empty())
         .map_err(|error| error.to_string())?;
     if scan.rust_files_scanned != 64 || scan.rust_files_skipped != 0 || scan.findings.len() != 64 {
-        return Err(format!("batched scan did not retain all valid source findings: {scan:?}"));
+        return Err(format!(
+            "batched scan did not retain all valid source findings: {scan:?}"
+        ));
     }
     Ok(())
 }
@@ -470,8 +505,8 @@ fn batch_stderr_is_capped_but_excess_diagnostics_are_still_drained() -> Result<(
         bytes_read: Rc::clone(&bytes_read),
         largest_read: Rc::new(Cell::new(0)),
     };
-    let stderr = revision_git::read_batch_stderr_for_test(reader)
-        .map_err(|error| error.to_string())?;
+    let stderr =
+        revision_git::read_batch_stderr_for_test(reader).map_err(|error| error.to_string())?;
     if bytes_read.get() != 256 * 1024
         || stderr.len() > 64 * 1024 + 64
         || !stderr.ends_with(b"[additional Git diagnostics omitted]\n")
