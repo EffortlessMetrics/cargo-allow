@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4424,
+  "base_ref": "main",
+  "base_sha": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "head_ref": "fix/release-rehearsal-dispatch",
+  "head_sha": "3e995e76f23f4ac3bc5d571722eebf2af273a229",
+  "merge_base": "67d80f2fb4c50c8f74b1a99bfb3482c2d126deac",
+  "reviewed_diff_digest": "sha256:v1:2ed3a315341758795ac18da93ef57ba4d8710c7b35d16b93743e94cf3b0ad4ec",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthoring model review; same model family and prior audit context; coordinating account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4424#pullrequestreview-5474647629"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4424#pullrequestreview-5474647629",
+    "Complete workflow/test/fragment diff and actual shell-step consumers independently reviewed at the exact recorded pair.",
+    "Both original default-dispatch failures reproduced with mocked providers; repaired eleven-scenario shell suite passes including spaced Bash paths; independent extra spaces/apostrophe tool-path controls pass.",
+    "PRRT_kwDOSnyN3s6q7DH0 resolved with current-head portability repair evidence; no unresolved thread at 2026-10-09T19:53Z readback.",
+    "Review covers zero-upload dispatch only; production custody, registry admission and final publication remain separately owned.",
+    "Source CI at the reviewed head has passed pregate/no-new, platform tests, MSRV, coverage and other completed lanes; package qualification and remaining review lane are still pending and are not claimed green."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4424",
+  "reviewed_at_utc": "2026-10-09T19:57:30Z"
+}
