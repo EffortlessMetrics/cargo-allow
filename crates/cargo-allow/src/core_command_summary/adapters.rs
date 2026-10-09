@@ -1602,9 +1602,14 @@ fn action_from_adoption(
 /// The adoption plan spells unresolved inputs as angle-bracket tokens
 /// (`<finding>`, `<plan>`, `<allow-id>`); the same syntax is what the
 /// regression test asserts can never reach a summary `args` element (#4393).
+/// The token may also be embedded in a larger argument (`--from-plan=<plan>`,
+/// #4406), so an opening bracket followed by a closing bracket anywhere in
+/// the word is enough; a bare `<` or `>` alone stays executable.
 fn is_unsubstituted_placeholder(argument: &str) -> bool {
     let trimmed = argument.trim();
-    trimmed.len() >= 2 && trimmed.starts_with('<') && trimmed.ends_with('>')
+    // True exactly when a `>` follows some `<`: every `split('<')` segment
+    // after the first is the remainder of the word past an opening bracket.
+    trimmed.split('<').skip(1).any(|rest| rest.contains('>'))
 }
 
 /// Doctor facts required to project the common operator summary.
