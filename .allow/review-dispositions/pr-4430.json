@@ -4,26 +4,27 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4430,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "8665ab4957c2d20fa08d6dd5cd4a900ce5fe6853",
   "head_ref": "fix/4349-producer-schemas",
-  "head_sha": "ce1a0b350f5a140cc112916381a742d7b3b5e48c",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:dbed7a95e243dbae528d27378401d31b5e67e7abc5306f796ca0da7553ff78b3",
+  "head_sha": "c89c58a5c36df916ed686990e79861add3c97ecd",
+  "merge_base": "8665ab4957c2d20fa08d6dd5cd4a900ce5fe6853",
+  "reviewed_diff_digest": "sha256:v1:3d4562920efe0b3b45278cffb38d7936a87a441370b50540d91220d1e2701c78",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring current-source, integration and consumer review; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475253960"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5476186961"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5475253960",
-    "The full schema/producer/common-catalog source and consumers remain independently reviewed. The delivered common mirror correction and parity checks are intact. This integration is exactly the five current-main dispatch file blobs plus final_policy=main_policy+the unchanged PR-specific suffix, preserving every prior entry and all six independently reviewed peer fingerprints. No executable/schema behavior was changed by integration. Every existing review thread was re-read and resolved; current full native CI remains pending.",
-    "Current synthetic merge 16b298e6b904efd808149bd4c97989ce9f380f7a; source/metadata identities remain distinct.",
-    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4430#pullrequestreview-5476186961",
+    "Fresh full ten-path schema/test/producer/consumer/mirror/fragment/governance review: exact five coverage classifications and optional positive-u32 worklist coordinates match actual producers. Nonempty rendered fixtures and negative controls retain closure, type/label, null, bounds, overflow and undeclared-field grip.",
+    "All nine non-policy PR blobs are unchanged. Incoming CI/junction blobs match actual main exactly. All 730,463 main-policy bytes, 22,737 CRLF sequences and 1,070 entries are unchanged with only two exact reviewed receipts; original allow-11278 limit 36 and both canonical fingerprints preserved.",
+    "Current source synthetic a320eb6b6588dd2d89fb880315d6017365a0d585 has exact parents and matching tree. Sole prior thread remains resolved RefutedWithEvidence: BTreeSet is inherited through super::*. No new substantive feedback at final source readback.",
+    "Diff whitespace, JSON delta equivalence, mirror/bounds/fingerprint/preservation controls pass. No local Rust or independent Python jsonschema execution claimed. Historical 35-check predecessor does not validate this new pair; own-record-only bootstrap and all current applicable native checks remain separately required."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -31,5 +32,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4430",
-  "reviewed_at_utc": "2026-10-09T20:53:16Z"
+  "reviewed_at_utc": "2026-10-09T23:03:37.403Z"
 }
