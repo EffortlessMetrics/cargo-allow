@@ -1,0 +1,9 @@
+kind: Documentation
+body: >-
+  Correct the adoption guide's hooks root-resolution section (#4401 review
+  note; #4362 split): `hooks plan` is repo-independent — it resolves no Git
+  root or hook path and renders the same plan from any directory, including
+  outside a repository — while `hooks status`, `hooks apply`, and `hooks
+  remove` resolve the Git root from the current directory only and ignore
+  `CARGO_ALLOW_ROOT`; only `hooks run` honors `CARGO_ALLOW_ROOT`, through the
+  ambient environment its child check inherits.
