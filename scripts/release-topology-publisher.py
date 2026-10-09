@@ -769,18 +769,19 @@ def main() -> int:
 
         try:
             run(["cargo", "publish", "--dry-run", "-p", name, "--locked"])
-            # Only the actual upload receives the selected token. Packaging,
-            # registry preflight and Cargo's dry-run have already succeeded
-            # without retrieving or forwarding it.
-            token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
-            if not token:
-                fail("CARGO_REGISTRY_TOKEN is required before the first upload")
-            publish_env = token_free_environment()
-            publish_env["CARGO_REGISTRY_TOKEN"] = token
         except SystemExit:
             receipt["incident_state"] = "release_incident"
             write_receipt(args.receipt, receipt)
             raise
+        # Only the actual upload receives the selected token. Packaging,
+        # registry preflight and Cargo's dry-run have already succeeded
+        # without retrieving or forwarding it. A missing token is a local
+        # denial, not a new publication incident eligible for recovery.
+        token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
+        if not token:
+            fail("CARGO_REGISTRY_TOKEN is required before the first upload")
+        publish_env = token_free_environment()
+        publish_env["CARGO_REGISTRY_TOKEN"] = token
         if receipt["first_irreversible_row"] is None:
             receipt["first_irreversible_row"] = row["release_order"]
         write_receipt(args.receipt, receipt)

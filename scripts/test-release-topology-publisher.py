@@ -182,6 +182,33 @@ def exercise_publisher_token_boundary() -> None:
                     assert all(row["state"] == "published_verified" for row in data["rows"])
                 else:
                     assert not uploaded and environment.reads == 0
+                if name in {"missing-token", "cargo-dry-run-failure"}:
+                    data = json.loads(receipt.read_text(encoding="utf-8"))
+                    assert data["complete"] is False
+                    assert data["first_irreversible_row"] is None
+                    assert all(row["state"] == "missing" for row in data["rows"])
+
+                    def recover():
+                        return PUBLISHER.load_recovery_receipt(
+                            receipt, mode=mode,
+                            topology=PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, mode)[0],
+                            topology_path=PUBLISHER.DEFAULT_TOPOLOGY,
+                            authorization="issue:3790",
+                        )
+
+                    if name == "missing-token":
+                        assert data["incident_state"] == "none"
+                        try:
+                            recover()
+                        except SystemExit as error:
+                            assert "does not preserve a publish incident" in str(error)
+                        else:
+                            raise AssertionError("missing token created a recovery-eligible incident")
+                    else:
+                        # Preserve the existing dry-run failure classification;
+                        # this repair owns only the missing-token denial.
+                        assert data["incident_state"] == "release_incident"
+                        assert recover() == data
                 if name in {"list", "missing-authorization", "invalid-authorization"}:
                     assert not commands and not receipt.exists()
                 if name.startswith(("unsupported-preflight-", "incompatible-")) or "--list" in flags:
