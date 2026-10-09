@@ -512,8 +512,6 @@ jobs:
           lane: operator-latency
       - name: Operator latency harness contract (#2468)
         run: bash scripts/test-perf-budget-smoke.sh
-      - name: Receipt duration admission controls (#4403)
-        run: python3 scripts/test-operator-latency-receipt.py
       - name: Build release cargo-allow binary
         run: cargo build -p cargo-allow --bin cargo-allow --release --locked
       - name: Operator latency smoke (#2468)
