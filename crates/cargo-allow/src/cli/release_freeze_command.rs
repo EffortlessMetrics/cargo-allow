@@ -47,6 +47,13 @@ use serde_json::Value as Json;
 
 use crate::cli::candidate_preparation_command::git_root;
 
+#[path = "release_freeze_rehearsal.rs"]
+mod rehearsal;
+
+#[cfg(test)]
+#[path = "release_freeze_rehearsal_tests.rs"]
+mod rehearsal_tests;
+
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
 pub(crate) const CARGO_LOCK_PATH: &str = "Cargo.lock";
@@ -775,8 +782,12 @@ fn collect_evidence(
                 path.display()
             ))
         })?;
-        let value: Json = serde_json::from_slice(&bytes)
-            .map_err(|error| usage(format!("evidence {role_text} is not valid JSON: {error}")))?;
+        let value: Json = if role == FreezeEvidenceRole::Rehearsal {
+            rehearsal::decode(&bytes)
+        } else {
+            serde_json::from_slice(&bytes)
+        }
+        .map_err(|error| usage(format!("evidence {role_text} is not valid JSON: {error}")))?;
         staged.push((role, path, sha256_v1_bytes(&bytes), value));
     }
 
@@ -894,27 +905,7 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                     )),
                 }
             }
-            match value.pointer("/phases").and_then(Json::as_object) {
-                None => notes.push("fail:rehearsal receipt records no phases".to_string()),
-                Some(phases) => {
-                    if phases.len() < 8 {
-                        notes.push(format!(
-                            "fail:rehearsal records {} phases, expected the full eight-phase aggregate",
-                            phases.len()
-                        ));
-                    }
-                    let boundary = phases
-                        .get("authorization_boundary")
-                        .and_then(Json::as_str)
-                        .unwrap_or("missing");
-                    if boundary == "Complete" {
-                        notes.push(
-                            "fail:rehearsal authorization boundary must stay non-Complete pre-authorization"
-                                .to_string(),
-                        );
-                    }
-                }
-            }
+            notes.extend(rehearsal::binding_notes(value, &subject.tag));
         }
         FreezeEvidenceRole::PackageDocs => {
             // commit/tree are exact identity strings; the two sha256
@@ -1895,7 +1886,7 @@ mod tests {
         FinalSupportSelectionV1,
     };
 
-    fn subject() -> SubjectIdentity {
+    pub(super) fn subject() -> SubjectIdentity {
         SubjectIdentity {
             version: "0.2.0".to_string(),
             tag: "v0.2.0".to_string(),
@@ -1940,9 +1931,20 @@ mod tests {
         boundary: &str,
     ) -> serde_json::Value {
         let mut phase_map = serde_json::Map::new();
-        for index in 0..phases.saturating_sub(1) {
+        for phase in [
+            "release_identity",
+            "candidate_package_set",
+            "shared_prerequisites",
+            "publisher_state_machine",
+            "docs_and_support_identity",
+            "manifest_and_assets",
+            "workflow_graph_permissions",
+        ]
+        .into_iter()
+        .take(phases.saturating_sub(1) as usize)
+        {
             phase_map.insert(
-                format!("phase{index}"),
+                phase.to_string(),
                 serde_json::Value::String("Complete".into()),
             );
         }
@@ -1951,11 +1953,30 @@ mod tests {
             serde_json::Value::String(boundary.into()),
         );
         serde_json::json!({
+            "schema_version": "1.0",
             "release_identity": { "version": "0.2.0", "tag": "v0.2.0" },
             "phases": phase_map,
             "commit_sha": subject.commit,
             "subject_lockfile_digest": subject.cargo_lock_digest,
             "subject_topology_digest": subject.topology_digest,
+            "aggregate_status": "Incomplete",
+            "authorization_boundary": {
+                "authorization_artifact": "release/authorize-v0.2.0.json",
+                "schema": "cargo-allow.release-authorization.v1",
+                "named_release": "v0.2.0",
+                "candidate_commit": subject.commit,
+                "token_present": false,
+                "phase_status_note": "authorization remains reserved",
+            },
+            "zero_mutation_proof": {
+                "tag_mutation_prevented": false,
+                "token_read_prevented": false,
+                "cargo_publish_prevented": false,
+                "registry_mutation_prevented": false,
+                "github_release_mutation_prevented": false,
+                "live_setting_mutation_prevented": false,
+                "external_repository_mutation_prevented": false,
+            },
         })
     }
 
@@ -2015,17 +2036,24 @@ mod tests {
     }
 
     #[test]
-    fn rehearsal_binding_requires_all_phases_and_open_authorization() {
+    fn rehearsal_binding_requires_all_phases_and_open_authorization()
+    -> Result<(), Box<dyn std::error::Error>> {
         let subject = subject();
         let full = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
             &rehearsal_value(8, "Incomplete"),
         );
-        assert!(
-            !full.iter().any(|note| note.starts_with("fail:")),
-            "{full:?}"
-        );
+        if full.len() != 7
+            || full
+                .iter()
+                .any(|note| !note.starts_with("fail:rehearsal zero_mutation_proof."))
+        {
+            return Err(format!(
+                "characterization must retain its seven proof gaps: {full:?}"
+            )
+            .into());
+        }
 
         let short = bind_evidence(
             &subject,
@@ -2122,6 +2150,7 @@ mod tests {
                 .any(|note| note.contains("records no subject_topology_digest")),
             "a missing topology digest fails closed"
         );
+        Ok(())
     }
 
     #[test]
@@ -2889,11 +2918,12 @@ mod compose_fixture_tests {
     }
 
     #[test]
-    fn compose_reaches_a_verified_complete_freeze_from_a_fixture_repository() {
+    fn compose_retains_rehearsal_denials_through_graph_readiness_and_replay()
+    -> Result<(), Box<dyn std::error::Error>> {
         let root =
             std::env::temp_dir().join(format!("freeze-compose-fixture-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).expect("root");
+        std::fs::create_dir_all(&root)?;
 
         git(&root, &["init"]);
         git(&root, &["config", "user.email", "freeze@example.invalid"]);
@@ -2956,7 +2986,7 @@ mod compose_fixture_tests {
 
         let evidence_dir = root.join("target/freeze-evidence");
         let packages_dir = evidence_dir.join("packages");
-        std::fs::create_dir_all(&packages_dir).expect("packages dir");
+        std::fs::create_dir_all(&packages_dir)?;
         let product_names = [
             "allow-core",
             "allow-policy",
@@ -2972,8 +3002,7 @@ mod compose_fixture_tests {
         let mut crate_rows = Vec::new();
         for (index, name) in product_names.iter().enumerate() {
             let bytes = format!("archive-bytes-{name}-{index}").into_bytes();
-            std::fs::write(packages_dir.join(format!("{name}-0.2.0.crate")), &bytes)
-                .expect("archive");
+            std::fs::write(packages_dir.join(format!("{name}-0.2.0.crate")), &bytes)?;
             crate_rows.push(format!(
                 "{{\"name\": \"{name}\", \"version\": \"0.2.0\", \"crate_file\": \"{name}-0.2.0.crate\", \"sha256\": \"{}\", \"size_bytes\": {}}}",
                 hex(&bytes),
@@ -2995,19 +3024,10 @@ mod compose_fixture_tests {
             package_set.as_bytes(),
         );
 
-        let mut phases = String::new();
-        for phase in [
-            "release_identity",
-            "candidate_package_set",
-            "shared_prerequisites",
-            "publisher_state_machine",
-            "docs_and_support_identity",
-            "manifest_and_assets",
-            "workflow_graph_permissions",
-        ] {
-            phases.push_str(&format!("\"{phase}\": \"Complete\", "));
-        }
-        phases.push_str("\"authorization_boundary\": \"Incomplete\"");
+        let subject = super::SubjectIdentity::collect(
+            &mut super::FilesystemSubjectInputs { root: &root },
+            "0.2.0",
+        )?;
         let preflight = serde_json::json!(
             shared_checksums
                 .iter()
@@ -3015,22 +3035,17 @@ mod compose_fixture_tests {
                     serde_json::json!({
                         "name": name,
                         "version": "0.1.0",
+                        "state": "already_published_exact",
                         "registry_checksum": format!("sha256:{checksum}")
                     })
                 })
                 .collect::<Vec<_>>()
-        )
-        .to_string();
-        let rehearsal = format!(
-            "{{\"release_identity\": {{\"version\": \"0.2.0\", \"tag\": \"v0.2.0\"}}, \"phases\": {{{phases}}}, \"shared_prerequisites\": {preflight}}}"
-        )
-        .replace(
-            "\"shared_prerequisites\"",
-            &format!(
-                "\"commit_sha\": \"{commit}\", \"subject_lockfile_digest\": \"{cargo_lock_sha}\", \"subject_topology_digest\": \"{topology_sha}\", \"shared_prerequisites\""
-            ),
         );
-        write(&evidence_dir, "rehearsal.json", rehearsal.as_bytes());
+        let mut rehearsal = super::rehearsal_tests::producer_characterization(&subject)?;
+        rehearsal
+            .as_object_mut()
+            .ok_or("producer receipt is not an object")?
+            .insert("shared_prerequisites".to_string(), preflight);
 
         let package_docs = format!(
             "{{\"basis\": {{\"commit\": \"{commit}\", \"tree\": \"{tree}\", \"cargo_lock_sha256\": \"{cargo_lock_sha}\", \"topology_sha256\": \"{topology_sha}\", \"release_identity\": {{\"version\": \"0.2.0\"}}}}, \"rows\": []}}"
@@ -3086,16 +3101,122 @@ mod compose_fixture_tests {
             ],
             out_dir: root.join("target/freeze-out"),
         };
-        cmd_compose(&root, &args)
-            .expect("the fixture freeze composes and replays to a verified Complete");
-        let replay =
-            std::fs::read_to_string(root.join("target/freeze-out/final-freeze.replay.json"))
-                .expect("replay artifact written");
-        assert!(
-            replay.contains("complete_equivalent"),
-            "the fixture freeze must replay complete_equivalent"
+        // The unchanged real producer is structurally compatible, but its
+        // seven false proof flags cannot become Complete. All other required
+        // rows in this committed fixture remain admissible.
+        write(
+            &evidence_dir,
+            "rehearsal.json",
+            &serde_json::to_vec(&rehearsal)?,
         );
-        let _ = std::fs::remove_dir_all(&root);
+        super::rehearsal_tests::require_noncomplete_composition(
+            &root,
+            &args,
+            &subject,
+            "zero_mutation_proof.tag_mutation_prevented",
+        )?;
+
+        for (pointer, replacement, diagnostic) in [
+            (
+                "/phases/release_identity",
+                serde_json::json!("Mismatch"),
+                "phase release_identity",
+            ),
+            (
+                "/phases/candidate_package_set",
+                serde_json::json!("Incomplete"),
+                "phase candidate_package_set",
+            ),
+            (
+                "/phases/shared_prerequisites",
+                serde_json::json!("ProviderUnavailable"),
+                "phase shared_prerequisites",
+            ),
+            (
+                "/phases/publisher_state_machine",
+                serde_json::json!("InstrumentFailure"),
+                "phase publisher_state_machine",
+            ),
+            (
+                "/phases/docs_and_support_identity",
+                serde_json::json!("Unsupported"),
+                "phase docs_and_support_identity",
+            ),
+            (
+                "/phases/manifest_and_assets",
+                serde_json::json!(false),
+                "phase manifest_and_assets",
+            ),
+            (
+                "/phases/workflow_graph_permissions",
+                serde_json::json!("Failed"),
+                "phase workflow_graph_permissions",
+            ),
+            (
+                "/phases/authorization_boundary",
+                serde_json::json!("Complete"),
+                "phase authorization_boundary",
+            ),
+            (
+                "/aggregate_status",
+                serde_json::json!("Complete"),
+                "aggregate_status",
+            ),
+            (
+                "/aggregate_status",
+                serde_json::json!("Mismatch"),
+                "aggregate_status",
+            ),
+            (
+                "/authorization_boundary",
+                serde_json::Value::Null,
+                "authorization_boundary evidence object",
+            ),
+            (
+                "/authorization_boundary/token_present",
+                serde_json::json!(true),
+                "authorization_boundary.token_present",
+            ),
+            ("/phases", serde_json::json!({}), "phase release_identity"),
+            (
+                "/zero_mutation_proof",
+                serde_json::Value::Null,
+                "zero_mutation_proof object",
+            ),
+        ] {
+            let mut invalid = rehearsal.clone();
+            super::rehearsal_tests::replace(&mut invalid, pointer, replacement)?;
+            write(&evidence_dir, "rehearsal.json", &serde_json::to_vec(&invalid)?);
+            super::rehearsal_tests::require_noncomplete_composition(
+                &root, &args, &subject, diagnostic,
+            )?;
+        }
+
+        // A duplicate key must fail at raw-byte admission, before its failed
+        // result disappears into Value or a stale successful artifact is used.
+        let duplicated = serde_json::to_string(&rehearsal)?.replace(
+            "\"release_identity\":\"Complete\"",
+            "\"release_identity\":\"Mismatch\",\"release_identity\":\"Complete\"",
+        );
+        if duplicated == serde_json::to_string(&rehearsal)? {
+            return Err("the duplicate-phase control did not change receipt bytes".into());
+        }
+        write(&evidence_dir, "rehearsal.json", duplicated.as_bytes());
+        std::fs::remove_dir_all(&args.out_dir)?;
+        let error = cmd_compose(&root, &args)
+            .err()
+            .ok_or("duplicate phase was admitted")?;
+        if error.kind() != allow_core::CargoAllowErrorKind::Usage
+            || !error.to_string().contains("duplicate JSON object key")
+            || args.out_dir.exists()
+        {
+            return Err(format!(
+                "duplicate phase did not fail before composition: {error}"
+            )
+            .into());
+        }
+        std::fs::remove_dir_all(&root)?;
+        Ok(())
     }
 }
 //

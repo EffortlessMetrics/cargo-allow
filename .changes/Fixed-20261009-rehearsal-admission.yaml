@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Reject incomplete or contradictory rehearsal evidence before it can qualify
+  a Complete final freeze. The existing receipt schema now requires the exact
+  canonical phase set, successful reversible outcomes, an explicit unconsumed
+  authorization boundary, a consistent aggregate, and all seven zero-mutation
+  proofs; duplicate JSON keys fail before decoding can discard a failed result.
+  Current characterization receipts retain their false proof flags and remain
+  non-Complete through the production graph, readiness, and replay.
+time: 2026-10-09T00:00:00Z
