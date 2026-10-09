@@ -1582,7 +1582,6 @@ fn summary_next_commands_carry_the_root_and_run_from_a_foreign_cwd() -> Result<(
     let sidecar_text = sidecar.to_string_lossy().to_string();
     // The suggested argv spells the root in the portable forward-slash form
     // `normalize_path` produces, so compare against that spelling.
-    let root_text = root.to_string_lossy().replace('\\', "/");
     let root_native = root.to_string_lossy().to_string();
     let output = run_from(
         &scratch,
@@ -1610,10 +1609,21 @@ fn summary_next_commands_carry_the_root_and_run_from_a_foreign_cwd() -> Result<(
     let argv = field(&summary, &["primary_action", "args"])
         .and_then(Value::as_array)
         .ok_or_else(|| "a blocking check must route to the worklist".to_string())?;
+    // Compare the root by canonicalized path, not exact spelling: on some
+    // Windows runners `std::env::temp_dir()` spells the directory in 8.3
+    // short form while the tool's `normalize_path` output spells it out.
+    let root_canonical = std::fs::canonicalize(&root)
+        .map_err(|error| format!("canonicalize fixture root: {error}"))?;
+    let argv_root = argv
+        .last()
+        .and_then(Value::as_str)
+        .ok_or("the suggested next command must end with the root path")?;
+    let argv_root_canonical = std::fs::canonicalize(argv_root)
+        .map_err(|error| format!("canonicalize suggested root {argv_root}: {error}"))?;
     require(
         argv.first() == Some(&Value::from("worklist"))
-            && argv.last() == Some(&Value::from(root_text.as_str()))
-            && argv.iter().any(|arg| arg.as_str() == Some("--root")),
+            && argv.iter().any(|arg| arg.as_str() == Some("--root"))
+            && argv_root_canonical == root_canonical,
         format!("the suggested next command must carry --root <root>: {argv:?}"),
     )?;
     // Executed as printed from the scratch cwd, the suggestion must reach the
