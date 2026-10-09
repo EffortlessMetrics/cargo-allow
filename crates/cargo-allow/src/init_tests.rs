@@ -6,6 +6,70 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[test]
+fn cmd_init_force_preserves_crlf_ledger_envelope() {
+    // #4337 acceptance: `init --force` over a CRLF ledger must not rewrite it
+    // LF-only; a new file keeps the canonical LF default (#4279).
+    let root = init_fixture_dir();
+    let policy = root.join("policy/allow.toml");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    let before = "policy = \"cargo-allow\"\r\n# historical ledger\r\n";
+    fs::write(&policy, before)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("seed CRLF ledger: {err}")));
+
+    let result = cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: None,
+        dry_run: false,
+        force: true,
+        config: PathBuf::from("policy/allow.toml"),
+    });
+    assert!(
+        result.is_ok(),
+        "init --force should overwrite the seeded ledger"
+    );
+
+    let after = fs::read_to_string(&policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read overwritten ledger: {err}")));
+    let (crlf_before, lone_before) = count_line_endings(before.as_bytes());
+    let (crlf_after, lone_after) = count_line_endings(after.as_bytes());
+    assert_eq!(lone_before, 0);
+    assert_eq!(
+        lone_after, 0,
+        "a CRLF ledger must not be rewritten with lone LF bytes"
+    );
+    assert!(
+        crlf_after >= crlf_before,
+        "the overwritten ledger should keep at least the historical CRLF count"
+    );
+    assert!(
+        after.contains("default_mode"),
+        "init should have written the starter policy"
+    );
+    remove_init_fixture_dir(root);
+}
+
+fn count_line_endings(bytes: &[u8]) -> (usize, usize) {
+    let mut crlf = 0;
+    let mut lone_lf = 0;
+    let mut previous = 0u8;
+    for &byte in bytes {
+        if byte == b'\n' {
+            if previous == b'\r' {
+                crlf += 1;
+            } else {
+                lone_lf += 1;
+            }
+        }
+        previous = byte;
+    }
+    (crlf, lone_lf)
+}
+
+#[test]
 fn clap_parses_init_root_config_and_force() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

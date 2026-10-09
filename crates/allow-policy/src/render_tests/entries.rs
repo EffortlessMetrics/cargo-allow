@@ -1,7 +1,28 @@
 use allow_core::{AllowConfig, AllowEntry, FindingKind, LastSeen, Lifecycle, Selector};
 use std::path::PathBuf;
 
-use crate::{append_policy_entry, parse_policy, render_policy};
+use crate::{
+    PolicyLineEnding, append_policy_entry, detect_dominant_line_ending, parse_policy,
+    render_policy, transpose_policy_rendering,
+};
+
+/// Count `\r\n` pairs and lone `\n` bytes, mirroring the writer's detector.
+fn count_endings(bytes: &[u8]) -> (usize, usize) {
+    let mut crlf = 0;
+    let mut lone_lf = 0;
+    let mut previous = 0u8;
+    for &byte in bytes {
+        if byte == b'\n' {
+            if previous == b'\r' {
+                crlf += 1;
+            } else {
+                lone_lf += 1;
+            }
+        }
+        previous = byte;
+    }
+    (crlf, lone_lf)
+}
 
 fn appended_entry() -> Result<AllowEntry, Box<dyn std::error::Error>> {
     let cfg = parse_policy(
@@ -117,6 +138,128 @@ fn append_policy_entry_obeys_policy_read_limit() -> Result<(), Box<dyn std::erro
         .ok_or("one byte over the normal loader limit must refuse")?;
     assert!(error.to_string().contains("8388609 bytes"));
     assert!(error.to_string().contains("8388608-byte read limit"));
+    Ok(())
+}
+
+#[test]
+fn detect_dominant_line_ending_classifies_envelopes() {
+    // No line endings at all: nothing to preserve, keep the LF default.
+    assert_eq!(detect_dominant_line_ending(b""), PolicyLineEnding::Lf);
+    assert_eq!(
+        detect_dominant_line_ending(b"policy = 'cargo-allow'"),
+        PolicyLineEnding::Lf
+    );
+    // Lone CR is not a line ending.
+    assert_eq!(detect_dominant_line_ending(b"a\rb\n"), PolicyLineEnding::Lf);
+    // Uniform envelopes.
+    assert_eq!(detect_dominant_line_ending(b"a\nb\n"), PolicyLineEnding::Lf);
+    assert_eq!(
+        detect_dominant_line_ending(b"a\r\nb\r\n"),
+        PolicyLineEnding::Crlf
+    );
+    // Mixed envelopes round-trip their majority (#4337).
+    assert_eq!(
+        detect_dominant_line_ending(b"a\r\nb\r\nc\n"),
+        PolicyLineEnding::Crlf
+    );
+    assert_eq!(
+        detect_dominant_line_ending(b"a\nb\nc\r\n"),
+        PolicyLineEnding::Lf
+    );
+    // A tied, contested envelope fails closed instead of guessing.
+    assert_eq!(
+        detect_dominant_line_ending(b"a\r\nb\n"),
+        PolicyLineEnding::Ambiguous
+    );
+    assert_eq!(
+        transpose_policy_rendering("a = 1\nb = 2\n", PolicyLineEnding::Crlf),
+        "a = 1\r\nb = 2\r\n"
+    );
+    assert_eq!(
+        transpose_policy_rendering("a = 1\n", PolicyLineEnding::Lf),
+        "a = 1\n"
+    );
+}
+
+#[test]
+fn append_policy_entry_matches_the_ledgers_dominant_ending()
+-> Result<(), Box<dyn std::error::Error>> {
+    let entry = appended_entry()?;
+    let crlf_ledger = "\u{feff}# historical\r\npolicy = 'cargo-allow'\r\n";
+    let lf_ledger = "\u{feff}# historical\npolicy = 'cargo-allow'\n";
+
+    // A CRLF ledger stays CRLF: the preimage is an exact byte prefix and the
+    // appended block carries CRLF, so no lone LF bytes appear (#4279).
+    let mut crlf_result = append_policy_entry(crlf_ledger, &entry)?;
+    assert!(crlf_result.as_bytes().starts_with(crlf_ledger.as_bytes()));
+    let (crlf_before, lone_before) = count_endings(crlf_ledger.as_bytes());
+    let (crlf_after, lone_after) = count_endings(crlf_result.as_bytes());
+    assert_eq!(lone_before, 0);
+    assert_eq!(lone_after, 0, "a CRLF ledger must not grow lone LF bytes");
+    assert!(crlf_after > crlf_before);
+    assert_eq!(parse_policy(&crlf_result)?.allow.last(), Some(&entry));
+    let appended = crlf_result.split_off(crlf_ledger.len());
+    let (block_crlf, block_lone) = count_endings(appended.as_bytes());
+    assert!(block_crlf > 0 && block_lone == 0);
+
+    // An LF ledger stays LF.
+    let mut lf_result = append_policy_entry(lf_ledger, &entry)?;
+    assert!(lf_result.as_bytes().starts_with(lf_ledger.as_bytes()));
+    let lf_appended = lf_result.split_off(lf_ledger.len());
+    let (lf_block_crlf, _) = count_endings(lf_appended.as_bytes());
+    assert_eq!(lf_block_crlf, 0, "an LF ledger must not grow CR bytes");
+
+    // A mixed ledger round-trips its dominant envelope and never normalizes
+    // the minority endings (#4337).
+    let crlf_dominant_mixed = format!("{crlf_ledger}# recent LF note\n");
+    let mixed_result = append_policy_entry(&crlf_dominant_mixed, &entry)?;
+    assert!(
+        mixed_result
+            .as_bytes()
+            .starts_with(crlf_dominant_mixed.as_bytes())
+    );
+    let (mixed_crlf_before, mixed_lone_before) = count_endings(crlf_dominant_mixed.as_bytes());
+    let (mixed_crlf_after, mixed_lone_after) = count_endings(mixed_result.as_bytes());
+    assert_eq!(
+        mixed_lone_after, mixed_lone_before,
+        "the minority LF endings must survive untouched"
+    );
+    assert!(mixed_crlf_after > mixed_crlf_before);
+
+    let lf_dominant_mixed = format!("{lf_ledger}# stray CRLF comment\r\n");
+    let lf_mixed_result = append_policy_entry(&lf_dominant_mixed, &entry)?;
+    assert!(
+        lf_mixed_result
+            .as_bytes()
+            .starts_with(lf_dominant_mixed.as_bytes())
+    );
+    let (dom_crlf_before, dom_lone_before) = count_endings(lf_dominant_mixed.as_bytes());
+    let (dom_crlf_after, dom_lone_after) = count_endings(lf_mixed_result.as_bytes());
+    assert_eq!(
+        dom_crlf_after, dom_crlf_before,
+        "the minority CRLF endings must survive untouched"
+    );
+    assert!(dom_lone_after > dom_lone_before);
+    Ok(())
+}
+
+#[test]
+fn append_policy_entry_refuses_a_contested_ending_envelope()
+-> Result<(), Box<dyn std::error::Error>> {
+    let entry = appended_entry()?;
+    // Equal CRLF and lone-LF counts with both present have no dominant
+    // envelope; the append must fail closed instead of guessing (#4337).
+    let tied = "policy = 'cargo-allow'\r\n# crlf-two\r\n# lf-one\n# lf-two\n";
+    let (crlf, lone_lf) = count_endings(tied.as_bytes());
+    assert_eq!((crlf, lone_lf), (2, 2), "fixture must actually be tied");
+    let error = append_policy_entry(tied, &entry)
+        .err()
+        .ok_or("a tied ending envelope must refuse the append")?;
+    assert!(
+        error.to_string().contains("line endings are ambiguous"),
+        "unexpected error: {error}"
+    );
+    assert!(error.to_string().contains("policy unchanged"));
     Ok(())
 }
 

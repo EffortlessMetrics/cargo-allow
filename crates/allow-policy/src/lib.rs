@@ -78,7 +78,10 @@ pub use ledger_self_receipt::{
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use prune_text::prune_policy_entries;
 pub use refresh_text::refresh_policy_entry;
-pub use render::{append_policy_entry, render_policy};
+pub use render::{
+    PolicyLineEnding, append_policy_entry, detect_dominant_line_ending, render_policy,
+    transpose_policy_rendering,
+};
 pub use resolved_config::{
     ConfigCandidateDispositionV1, ConfigCandidateObservationV1, ConfigCandidateSourceV1,
     ConfigCandidateV1, ConfigCompletenessV1, ConfigDiagnosticV1, ConfigFallbackV1,
