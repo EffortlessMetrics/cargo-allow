@@ -342,13 +342,14 @@ fi
 [[ -e "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
 
 # Resolve the selected file before any sample changes directory. Normalize
-# Windows drive/backslash spelling before dirname when running under MSYS.
+# Windows drive/backslash spelling when running under MSYS.
 if command -v cygpath >/dev/null 2>&1; then
   binary="$(cygpath -u "${binary}")" || fail "cannot resolve cargo-allow binary path"
 fi
-binary_dir="$(CDPATH= cd -- "$(dirname -- "${binary}")" && pwd)" || \
-  fail "cannot resolve cargo-allow binary directory: ${binary}"
-binary="${binary_dir}/$(basename -- "${binary}")"
+# Prefix relative paths without normalizing symlink/.. lookup semantics.
+if [[ "${binary}" != /* ]]; then
+  binary="${ROOT}/${binary}"
+fi
 
 PERF_BINARY_REL="$(relative_path "${binary}")"
 PERF_BINARY_SHA256="$(sha256_file "${binary}")"

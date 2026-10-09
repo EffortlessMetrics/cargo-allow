@@ -149,6 +149,28 @@ with tempfile.TemporaryDirectory(prefix="perf-binary-path-") as temporary:
     )
     decoy_binary.chmod(0o755)
 
+    # Kernel lookup of symlink/.. must keep selecting the original file,
+    # even when a different executable exists at the logical parent.
+    (root / "alternate/inner").mkdir(parents=True)
+    selected = root / "alternate/selected/cargo-allow"
+    selected.parent.mkdir()
+    selected.write_text(
+        "#!/usr/bin/env bash\nprintf '%s\\n' 'selected-symlink-parent'\n",
+        encoding="utf-8",
+    )
+    selected.chmod(0o755)
+    logical = root / "target/selected/cargo-allow"
+    logical.parent.mkdir()
+    logical.write_text(
+        "#!/usr/bin/env bash\nprintf '%s\\n' 'wrong-logical-parent'\n",
+        encoding="utf-8",
+    )
+    logical.chmod(0o755)
+    (root / "target/link-to-dir").symlink_to(root / "alternate/inner", target_is_directory=True)
+    symlink_override = "target/link-to-dir/../selected/cargo-allow"
+    assert (root / symlink_override).samefile(selected)
+    assert not (root / symlink_override).samefile(logical)
+
     def run_probe(override):
         environment = os.environ.copy()
         environment.update({
@@ -165,20 +187,21 @@ with tempfile.TemporaryDirectory(prefix="perf-binary-path-") as temporary:
         )
 
     cases = (
-        "target/release/cargo-allow",
-        "./target/release/cargo-allow",
-        "target/bin with spaces/cargo-allow",
-        str(root / "target/release/cargo-allow"),
-        "target/windows/cargo-allow",
-        "target/windows/cargo-allow.exe",
+        ("target/release/cargo-allow", marker),
+        ("./target/release/cargo-allow", marker),
+        ("target/bin with spaces/cargo-allow", marker),
+        (str(root / "target/release/cargo-allow"), marker),
+        ("target/windows/cargo-allow", marker),
+        ("target/windows/cargo-allow.exe", marker),
+        (symlink_override, "selected-symlink-parent"),
     )
-    for override in cases:
+    for override, expected_marker in cases:
         for _ in range(2):
             result = run_probe(override)
             assert result.returncode == 0, (
                 override, result.returncode, result.stdout, result.stderr,
             )
-            assert result.stdout.strip() == marker, (override, result.stdout)
+            assert result.stdout.strip() == expected_marker, (override, result.stdout)
             assert not list((root / "target").glob("cargo-allow-operator-latency.*"))
         print(f"ok binary cwd control: {override}")
 
