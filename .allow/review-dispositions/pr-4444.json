@@ -6,25 +6,26 @@
   "base_ref": "fix/4427-preserve-publish-receipt",
   "base_sha": "bdce4c8b1b33e8cc36e60eed757c250233937040",
   "head_ref": "fix/3790-pretoken-registry-gate",
-  "head_sha": "1d6ea3b635fc3d062a372cb82ebf5b2fef173be7",
+  "head_sha": "33bc8b86c3949fb0739cc65911baf26fc0baa29a",
   "merge_base": "bdce4c8b1b33e8cc36e60eed757c250233937040",
-  "reviewed_diff_digest": "sha256:v1:7bce0151c240cb05faea5a680e7b4daf7faeec3f05092102a43e9b1c0a1c2e41",
+  "reviewed_diff_digest": "sha256:v1:b54699c36ecfc21ea39bec3655f66e89fd44bbd1c0842a0843a8c640eb315125",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source/governance review; shared model family/session context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476179112"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476258294"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476179112",
-    "Full six-path source/governance and consumer review: strict shared-registry preflight before selected-secret steps with explicit successful outcome; key filtering before value reads; token-free Git, metadata, packaging and Cargo publish dry-run; selected-token lookup immediately before actual upload only after successful authority/preflight/dry-run; unsupported preflight modes reject before work.",
-    "Independent actual controls passed 37 publisher, seven extracted workflow, 11 dispatch, checksum and 22 original-publication-handoff scenarios; parent token-lookup/workflow-order controls fail. Pinned actionlint and diff check pass. Publication receipt/evaluator/hash/identity helpers preserved; test executable mode preserved.",
-    "All 728,886 base policy bytes and 1,068 prior entries are unchanged with two exact independently fingerprinted receipts. Exact synthetic 4da71c5db02463ca375107ca87aebba4a96bf0f1 binds base/head and reviewed tree. No inline findings; quota and nondefault-base skipped reviews are not independent evidence.",
-    "Hosted cargo-deny and early formatting/actionlint passed; remaining current native gates and metadata bootstrap are separately required. Parent integration/base movement requires new review. No broader credential, seven-safeguard, registry freshness, custody/lease, recovery-completion or release-authority claim; #3790/#3792/#2509/#3761 remain open."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476258294",
+    "Fresh full seven-path source/governance and consumer review on the repaired source. Strict shared preflight precedes selected-secret steps; key filtering occurs before value reads; Git, metadata, packaging and Cargo dry-run are token-free; selected-token lookup follows successful authority/preflight/dry-run immediately before upload; unsupported preflight modes reject before work.",
+    "Comment4235250813 / threadPRRT_kwDOSnyN3s6q-OdN ConfirmedAndFixed: missing-token denial is outside the dry-run exception handler, retains incomplete/incident_state=none/first_irreversible_row=null/missing rows, and actual recovery loader rejects the generated receipt. New test is RED on exact9cf parent and GREEN on this repair. Existing failed-dry-run incident and loader acceptance are preserved.",
+    "Independent 37 publisher-entrypoint, seven workflow, 11 dispatch, 22 handoff/checksum controls and diff check pass. Workflow/actionlint proof is unchanged. All five non-script paths and test mode100755 are preserved; exact728886 base-policy bytes/1068entries+two canonical receipts retained.",
+    "Exact synthetic d9ed72d2fe3c1f53588244efed3873887aca841a binds base/head and reviewed tree. Fresh close readback found no new substantive feedback; verified source thread resolved after review. Quota and skipped bot reviews are not independent evidence.",
+    "Current native CI remains running; stale prior record correctly fails readiness. This own-record successor, parent integration/retargeting, fresh pair/feedback, all applicable checks and exact post-main guard remain required. No broader credential, seven-safeguard, freshness, custody/lease, recovery-completion or release-authority claim; parent owners remain open."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify exact resulting base/head, own-record-only bootstrap, every applicable native check, new feedback, explicit parent retargeting and post-main enforcing guard. Pending, skipped, neutral and stale results are not green.",
@@ -32,5 +33,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4444",
-  "reviewed_at_utc": "2026-10-09T23:01:46.179Z"
+  "reviewed_at_utc": "2026-10-09T23:17:11.489Z"
 }
