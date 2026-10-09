@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4432,
+  "base_ref": "fix/release-rehearsal-dispatch",
+  "base_sha": "18c3d115642c7df3d3044fc8f0f51c6cf39e842e",
+  "head_ref": "fix/4427-preserve-publish-receipt",
+  "head_sha": "c3e9ecc81463cf1fba5cc2c2f7330b5979f29cdc",
+  "merge_base": "18c3d115642c7df3d3044fc8f0f51c6cf39e842e",
+  "reviewed_diff_digest": "sha256:v1:ff03a7e9b0cd8d99c82f631c5a04c00f5b54ffa39a224f8c982af2f580a36259",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current source, root correction, integration and governance review; same model family and prior audit context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475014665"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475014665",
+    "Complete effective eight-file change and unchanged workflow/producer/typed consumers independently reviewed at the exact stacked pair.",
+    "22 actual-workflow local-instrument handoff scenarios, 11 dispatch scenarios and checksum contracts pass; exact old-source overwrite RED and ambient-target RED distinguish the repairs. No real Cargo/registry/publication proof claimed.",
+    "Two unique exact-path review evidence receipts and independent canonical fingerprints verified; all prior policy bytes unchanged.",
+    "Thread4234236848: AcceptedFollowUp under existing open2509/3761; retained incident, native state, fresh registry and lineage obligations remain, with no broadening of public evidence admission.",
+    "Metadata-only source-disposition retention is separate from current-pair hosted gates. Retarget/base movement requires affected review and fresh required proof."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4432",
+  "reviewed_at_utc": "2026-10-09T20:25:23Z"
+}
