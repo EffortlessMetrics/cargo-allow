@@ -1,0 +1,2 @@
+kind: Fixed
+body: Preserve downloaded publication receipts during release asset reconstruction, verify rebuilt crate bytes against the published rows, and require the original publication evidence at the public manifest entry.

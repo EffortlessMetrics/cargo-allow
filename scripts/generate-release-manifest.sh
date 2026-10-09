@@ -19,6 +19,8 @@
 #   RUST_TOOLCHAIN  toolchain used for the binary (default: stable)
 #   RUNNER          runner used for the binary (default: ubuntu-latest)
 #   TOPOLOGY_RECEIPT  exact topology publisher receipt
+#   REQUIRE_PUBLISHED_TOPOLOGY  true for the public release entry (default: false)
+#   EXPECTED_TOPOLOGY_RECEIPT_SHA256  digest bound at download; required for public entry
 #   OUTPUT         output path (default: target/cargo-allow/release-manifest-v2.json)
 #
 # Outputs:
@@ -94,18 +96,29 @@ def file_digest(path):
 def receipt(path, schema):
     receipt_path = pathlib.Path(path)
     try:
-        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+        data = receipt_path.read_bytes()
+        payload = json.loads(data)
         if not isinstance(payload, dict):
             raise ValueError("JSON payload is not an object")
     except (OSError, json.JSONDecodeError, ValueError) as error:
         raise SystemExit(f"release-manifest: invalid receipt {path}: {error}")
     if payload.get("schema_id") != schema or payload.get("schema_version") != 1:
         raise SystemExit(f"release-manifest: unsupported receipt schema in {path}")
-    return receipt_path, payload
+    return receipt_path, payload, "sha256:" + hashlib.sha256(data).hexdigest()
 
 
-topology_file, topology = receipt(topology_receipt_path, "cargo-allow.topology-publish-receipt.v1")
+topology_file, topology, topology_digest = receipt(
+    topology_receipt_path, "cargo-allow.topology-publish-receipt.v1"
+)
 topology_file = topology_file.resolve()
+require_published = os.environ.get("REQUIRE_PUBLISHED_TOPOLOGY", "false")
+if require_published not in {"true", "false"}:
+    raise SystemExit("release-manifest: REQUIRE_PUBLISHED_TOPOLOGY must be true or false")
+expected_topology_digest = os.environ.get("EXPECTED_TOPOLOGY_RECEIPT_SHA256", "")
+if require_published == "true" and not expected_topology_digest:
+    raise SystemExit("release-manifest: public release requires the downloaded topology receipt digest")
+if expected_topology_digest and expected_topology_digest != topology_digest:
+    raise SystemExit("release-manifest: topology receipt digest differs from the downloaded evidence")
 if topology.get("commit") != commit or topology.get("tree") != tree:
     raise SystemExit("release-manifest: topology receipt identity disagrees with release")
 if topology.get("mode") != "cargo-allow" or topology.get("complete") is not True:
@@ -116,6 +129,8 @@ if not isinstance(raw_rows, list) or not raw_rows:
 publish = topology.get("publish")
 if not isinstance(publish, bool):
     raise SystemExit("release-manifest: topology receipt publish field must be a Boolean")
+if require_published == "true" and not publish:
+    raise SystemExit("release-manifest: public release requires published topology evidence")
 if publish:
     if topology.get("complete") is not True:
         raise SystemExit("release-manifest: published topology receipt is not complete")
@@ -195,6 +210,10 @@ if not valid_unprefixed_digest(topology.get("topology_sha256")):
     raise SystemExit("release-manifest: malformed topology digest")
 if not valid_unprefixed_digest(topology.get("cargo_lock_sha256")):
     raise SystemExit("release-manifest: malformed Cargo.lock digest")
+if require_published == "true":
+    authorization = os.environ.get("AUTHORIZATION_DIGEST", "")
+    if not valid_digest(authorization) or topology.get("authorization") != authorization:
+        raise SystemExit("release-manifest: publication authorization differs from the release gate")
 
 
 def artifact_reference(path):
@@ -254,6 +273,19 @@ for raw in raw_rows:
             raise SystemExit(
                 f"release-manifest: registry checksum disagrees with the candidate package for {name} ({raw.get('state')})"
             )
+        if require_published == "true":
+            # The publisher pins package_target_dir() to this checkout's target;
+            # ambient Cargo settings cannot select different evidence bytes.
+            package_directory = pathlib.Path("target/package").resolve()
+            crate_file = (package_directory / f"{name}-{raw['version']}.crate").resolve()
+            if crate_file.parent != package_directory:
+                raise SystemExit("release-manifest: invalid package archive identity")
+            try:
+                crate_digest = file_digest(crate_file)
+            except OSError as error:
+                raise SystemExit(f"release-manifest: package archive unavailable for {name}: {error}")
+            if crate_digest != registry_checksum:
+                raise SystemExit(f"release-manifest: package archive differs from publication for {name}")
         ready, classification = typed_publication_ready(
             "cargo_allow_candidate",
             raw.get("state", ""),
@@ -284,10 +316,10 @@ platforms = platforms_text.split()
 binary_assets = []
 binary_attestation_verified = True
 if package_path and install_path:
-    package_file, package = receipt(
+    package_file, package, package_receipt_digest = receipt(
         package_path, "cargo-allow.release-binary-package.v1"
     )
-    install_file, install = receipt(
+    install_file, install, install_receipt_digest = receipt(
         install_path, "cargo-allow.release-binary-install.v1"
     )
     fields = (
@@ -341,8 +373,8 @@ if package_path and install_path:
         "executable_sha256": package["executable_sha256"],
         "rust_toolchain": rust_toolchain,
         "runner": runner,
-        "candidate_receipt_digest": file_digest(package_file),
-        "installed_smoke_receipt_digest": file_digest(install_file),
+        "candidate_receipt_digest": package_receipt_digest,
+        "installed_smoke_receipt_digest": install_receipt_digest,
         "attestation_subject_sha256": archive_sha,
         "limitations": [
             "x86_64-unknown-linux-gnu proof only; no universal Linux or CPU compatibility claim",
@@ -354,7 +386,7 @@ consumed_evidence = [
     {
         "schema_id": topology.get("schema_id"),
         "path": artifact_reference(topology_file),
-        "sha256": file_digest(topology_file),
+        "sha256": topology_digest,
         "producer": "scripts/release-topology-publisher.py",
         "result_class": (
             "complete" if topology.get("complete") is True else "incomplete"
@@ -367,14 +399,14 @@ if package_path and install_path:
             {
                 "schema_id": package["schema_id"],
                 "path": artifact_reference(package_file),
-                "sha256": file_digest(package_file),
+                "sha256": package_receipt_digest,
                 "producer": "scripts/package-release-binary.sh",
                 "result_class": "verified",
             },
             {
                 "schema_id": install["schema_id"],
                 "path": artifact_reference(install_file),
-                "sha256": file_digest(install_file),
+                "sha256": install_receipt_digest,
                 "producer": "scripts/verify-release-binary.sh",
                 "result_class": (
                     "verified"
@@ -398,7 +430,7 @@ manifest = {
         "tree": tree,
         "cargo_lock_digest": "sha256:" + topology["cargo_lock_sha256"],
         "architecture_digest": "sha256:" + topology["topology_sha256"],
-        "candidate_digest": file_digest(topology_file),
+        "candidate_digest": topology_digest,
         "package_rows": rows,
         "authentication": "crates_io_api_token",
         "publication_posture": "published" if publish else "unpublished",

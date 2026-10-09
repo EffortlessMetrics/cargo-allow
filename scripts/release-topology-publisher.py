@@ -435,6 +435,82 @@ def load_recovery_receipt(
     return receipt
 
 
+def load_publication_rows(
+    path: Path,
+    *,
+    expected_digest: str,
+    topology: dict[str, Any],
+    topology_path: Path,
+    rows: list[dict[str, Any]],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """Bind local repackaging to preserved, exact publication row evidence."""
+    expected_digest = canonical_receipt_checksum(expected_digest, "publication receipt digest")
+    try:
+        data = path.read_bytes()
+        if f"sha256:{hashlib.sha256(data).hexdigest()}" != expected_digest:
+            fail("publication receipt digest differs from the downloaded evidence")
+        receipt = json.loads(data)
+    except (OSError, ValueError) as error:
+        fail(f"publication receipt is unreadable or malformed: {error}")
+    if not isinstance(receipt, dict):
+        fail("publication receipt must be a JSON object")
+    if (
+        receipt.get("schema_id") != "cargo-allow.topology-publish-receipt.v1"
+        or receipt.get("schema_version") != 1
+        or receipt.get("mode") != "cargo-allow"
+        or receipt.get("publish") is not True
+        or receipt.get("complete") is not True
+        or receipt.get("incident_state") != "none"
+        or type(receipt.get("first_irreversible_row")) is not int
+        or receipt["first_irreversible_row"] <= 0
+    ):
+        fail("publication receipt is not complete published evidence")
+    canonical_receipt_checksum(receipt.get("authorization"), "publication authorization")
+    expected_identity = {
+        "topology_id": topology["topology_id"],
+        "topology_sha256": sha256_text(topology_path),
+        "cargo_lock_sha256": sha256_text(ROOT / "Cargo.lock"),
+        "commit": git_identity("commit"),
+        "tree": git_identity("tree"),
+    }
+    for field, value in expected_identity.items():
+        if receipt.get(field) != value:
+            fail(f"publication receipt {field} differs from the selected candidate")
+    expected_rows = {
+        (row["cargo_package_name"], row["package_version"]): row
+        for row in rows if row["product_family"] == "cargo-allow"
+    }
+    raw_rows = receipt.get("rows")
+    if not isinstance(raw_rows, list):
+        fail("publication receipt has no package-row evidence")
+    result: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in raw_rows:
+        if not isinstance(row, dict) or not all(
+            isinstance(row.get(field), str) for field in ("name", "version")
+        ):
+            fail("publication receipt has a malformed package row")
+        key = (row["name"], row["version"])
+        if key not in expected_rows or key in result:
+            fail("publication package set differs from the selected topology")
+        expected = expected_rows[key]
+        if any(row.get(field) != value for field, value in {
+            "logical_id": expected["logical_id"],
+            "family": expected["product_family"],
+            "release_order": expected["release_order"],
+        }.items()):
+            fail("publication package identity differs from the selected topology")
+        local = canonical_receipt_checksum(row.get("local_checksum"), "published local checksum")
+        registry = canonical_receipt_checksum(row.get("registry_checksum"), "published registry checksum")
+        if local != registry:
+            fail(f"publication row checksum disagreement for {row['name']}")
+        if row.get("state") not in {"published_verified", "verified_existing"}:
+            fail(f"publication row {row['name']} is not registry-verified")
+        result[key] = row
+    if result.keys() != expected_rows.keys():
+        fail("publication package set differs from the selected topology")
+    return result
+
+
 def recovery_rows(receipt: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
     result: dict[tuple[str, str], dict[str, Any]] = {}
     for row in receipt["rows"]:
@@ -490,10 +566,30 @@ def main() -> int:
         type=Path,
         help="incomplete incident receipt from the exact candidate run",
     )
+    parser.add_argument(
+        "--publication-receipt",
+        type=Path,
+        help="preserved published receipt whose exact package bytes must be reproduced",
+    )
+    parser.add_argument(
+        "--publication-receipt-sha256",
+        default="",
+        help="canonical sha256 digest bound when the publication receipt was downloaded",
+    )
     args = parser.parse_args()
 
     if args.package_only and (args.publish or args.registry_preflight):
         fail("--package-only cannot be combined with --publish or --registry-preflight")
+    if bool(args.publication_receipt) != bool(args.publication_receipt_sha256):
+        fail("--publication-receipt and --publication-receipt-sha256 are required together")
+    if args.publication_receipt is not None:
+        if args.mode != "cargo-allow" or not args.package_only or args.list:
+            fail("publication evidence reconciliation requires --mode cargo-allow --package-only")
+        if args.receipt.resolve() == args.publication_receipt.resolve() or (
+            args.receipt.exists() and args.publication_receipt.exists()
+            and args.receipt.samefile(args.publication_receipt)
+        ):
+            fail("package receipt must not overwrite the publication receipt")
 
     topology_path = args.topology.resolve()
     topology, rows = load_rows(topology_path, args.mode)
@@ -524,6 +620,15 @@ def main() -> int:
             authorization=authorization,
         )
         prior_rows = recovery_rows(recovery_receipt)
+    publication_rows: dict[tuple[str, str], dict[str, Any]] = {}
+    if args.publication_receipt is not None:
+        publication_rows = load_publication_rows(
+            args.publication_receipt,
+            expected_digest=args.publication_receipt_sha256,
+            topology=topology,
+            topology_path=topology_path,
+            rows=rows,
+        )
 
     packages = cargo_packages()
     validate_rows(rows, packages)
@@ -598,6 +703,10 @@ def main() -> int:
                 write_receipt(args.receipt, receipt)
                 continue
         if args.package_only:
+            if publication_rows and (
+                local_receipt_checksum != publication_rows[(name, version)]["registry_checksum"]
+            ):
+                fail(f"repackaged bytes differ from publication for {name} {version}")
             receipt["rows"].append(
                 {
                     "logical_id": row["logical_id"],
@@ -688,6 +797,10 @@ def main() -> int:
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
 
+    if args.publication_receipt is not None and (
+        f"sha256:{sha256_file(args.publication_receipt)}" != args.publication_receipt_sha256
+    ):
+        fail("publication receipt changed during repackaging")
     receipt["complete"] = True
     write_receipt(args.receipt, receipt)
     print(json.dumps(receipt, indent=2, sort_keys=True))
