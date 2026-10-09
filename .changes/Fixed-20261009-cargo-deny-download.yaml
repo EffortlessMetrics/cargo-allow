@@ -1,0 +1,2 @@
+kind: Fixed
+body: Run the existing cargo-deny supply-chain audit with its checksum-pinned upstream binary directly, avoiding Docker Hub pull-rate failures while preserving the tool version and audit arguments.
