@@ -934,9 +934,14 @@ fn require_explain_projection(
             .map_err(|error| format!("read human explain {id} summary: {error}"))?,
     )
     .map_err(|error| format!("parse human explain {id} summary: {error}"))?;
+    let outcome_label = if status == "matched" {
+        "Outcome: satisfied".to_string()
+    } else {
+        format!("Outcome: {result_class} ({posture})")
+    };
     require(
         summary == human_summary
-            && human.contains(&format!("Outcome: {result_class} ({posture})"))
+            && human.contains(&outcome_label)
             && human.contains(&format!("current_status: {status}"))
             && human.contains(&format!("current_matches: {finding_count}"))
             && !human.contains("src/a_unrelated.rs"),
