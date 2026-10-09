@@ -302,6 +302,23 @@ pub struct CoreCommandSummaryV1 {
     pub claim_boundary: ClaimBoundaryV1,
 }
 
+/// Scan-surface follow-up argv with the subject root appended (#4393).
+///
+/// The scan commands (`check`, `worklist`, `doctor`, `explain`, `diff`, and the
+/// root-scoped policy writers) resolve their configuration under the source-tree
+/// root, so a suggested command executed from a scratch working directory would
+/// fail with `E0002` before scanning anything. Suggested argv therefore carries
+/// `--root <root>` explicitly, spelled in the portable forward-slash form that
+/// `allow_core::normalize_path` produces. `--root` goes last because it belongs
+/// to the subcommand, matching how the CLI test helpers append it.
+pub(crate) fn rooted_command_args(root: &str, args: &[String]) -> Vec<String> {
+    let mut argv = Vec::with_capacity(args.len() + 2);
+    argv.extend(args.iter().cloned());
+    argv.push("--root".to_string());
+    argv.push(root.to_string());
+    argv
+}
+
 pub fn build_core_command_summary(
     input: CoreCommandSummaryInputV1,
 ) -> Result<CoreCommandSummaryV1, String> {

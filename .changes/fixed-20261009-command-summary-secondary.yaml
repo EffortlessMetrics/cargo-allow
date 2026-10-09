@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Close the #4393 secondary command-summary observations: suggested scan-surface
+  Next commands now carry the subject root (--root, or git -C for the prune
+  recovery diff) so they execute from any working directory, the why receipt
+  decision discloses the live ledger write it directs instead of labeling itself
+  read_only, and a summary-supported command that exits on a hard error writes
+  its sidecar anyway with the typed E000x classification.

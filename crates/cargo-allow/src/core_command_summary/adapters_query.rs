@@ -23,8 +23,8 @@ use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, R
 
 use super::{
     CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
-    CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectV1,
-    build_core_command_summary,
+    CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreCommandWritePostureV1,
+    CoreSourceSubjectV1, build_core_command_summary,
 };
 
 /// Facts `explain` already holds about the single entry it explained.
@@ -32,6 +32,9 @@ use super::{
 pub struct ExplainSummaryFactsV1 {
     pub tool_version: String,
     pub subject: CoreSourceSubjectV1,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     pub allow_id: String,
@@ -52,6 +55,9 @@ pub struct ExplainSummaryFactsV1 {
 pub struct WhySummaryFactsV1 {
     pub tool_version: String,
     pub subject: CoreSourceSubjectV1,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     /// The exact queried location, `path:line`.
@@ -66,6 +72,10 @@ pub struct WhySummaryFactsV1 {
     /// Source-tree-relative path of the add-finding plan this run wrote, when
     /// `--plan` was requested.
     pub plan_path: Option<String>,
+    /// Source-tree-relative path of the policy ledger the ranked add-receipt
+    /// step would write, when the promoted next step directs a receipt (#4393).
+    /// `None` when the promoted step is not the add-receipt route.
+    pub receipt_ledger_path: Option<String>,
     /// Legacy calendar-expiry posture in effect for the queried policy
     /// (#4238): `true` re-blocks Expired summaries.
     pub calendar_expiry_blocks_no_new: bool,
@@ -89,6 +99,9 @@ pub struct WorklistSummaryItemV1 {
 pub struct WorklistSummaryFactsV1 {
     pub tool_version: String,
     pub subject: CoreSourceSubjectV1,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     /// The rendered queue, in the order `worklist` already ranked it.
@@ -113,6 +126,7 @@ pub fn core_command_summary_from_explain(
     let ExplainSummaryFactsV1 {
         tool_version,
         mut subject,
+        root_path,
         completeness,
         coverage_limitation,
         allow_id,
@@ -206,6 +220,7 @@ pub fn core_command_summary_from_explain(
             completeness,
             result_class,
             "explain",
+            &root_path,
             "explain describes one ledger entry and never evaluates the repository gate",
         ),
         artifacts: Vec::new(),
@@ -228,6 +243,7 @@ pub fn core_command_summary_from_why(
     let WhySummaryFactsV1 {
         tool_version,
         mut subject,
+        root_path,
         completeness,
         coverage_limitation,
         location,
@@ -236,6 +252,7 @@ pub fn core_command_summary_from_why(
         near_miss_candidate_count,
         suggested_actions,
         plan_path,
+        receipt_ledger_path,
         calendar_expiry_blocks_no_new,
         claim_boundary,
     } = facts;
@@ -271,12 +288,28 @@ pub fn core_command_summary_from_why(
             ),
         )
     } else {
-        ranked_judgment_action(
+        let mut action = ranked_judgment_action(
             &suggested_actions,
             "why.next_step",
             "the ranked next step for this finding is a repository judgment, so cargo-allow does not choose it",
             "the detailed why artifact lists every ranked step and its structured proof plans",
-        )
+        );
+        // #4393: the ranked add-receipt step directs `cargo-allow add`, a live
+        // ledger mutation. A decision that names it must not label itself
+        // read_only, so the posture carries the ledger path the receipt would
+        // write — the same policy-path-derived disclosure the adoption-plan
+        // projection applies to its MayWrite steps. `receipt_ledger_path` is
+        // supplied exactly when the promoted step is the receipt route, so its
+        // presence is the typed marker; inspection steps keep the read-only
+        // posture their argv describes.
+        if outcome_status == MatchStatus::New
+            && let Some(ledger_path) = receipt_ledger_path
+            && let Some(promoted) = action.as_mut()
+        {
+            promoted.write_posture = CoreCommandWritePostureV1::LiveMutation;
+            promoted.may_write_paths = vec![ledger_path];
+        }
+        action
     };
     let (additional_action_count, additional_actions_ref) = additional_actions(
         &suggested_actions,
@@ -323,6 +356,7 @@ pub fn core_command_summary_from_why(
             completeness,
             result_class,
             "why",
+            &root_path,
             "why explains one finding and never evaluates the repository gate",
         ),
         artifacts: Vec::new(),
@@ -421,6 +455,7 @@ pub fn core_command_summary_from_worklist(
     let WorklistSummaryFactsV1 {
         tool_version,
         mut subject,
+        root_path,
         completeness,
         coverage_limitation,
         items,
@@ -443,6 +478,7 @@ pub fn core_command_summary_from_worklist(
         filtered,
         &items,
         calendar_expiry_blocks_no_new,
+        &root_path,
     );
     // Every queue item beyond the promoted one stays retrievable in the
     // command's own artifact rather than being re-ranked here.
@@ -477,6 +513,7 @@ pub fn core_command_summary_from_worklist(
             completeness,
             result_class,
             "worklist",
+            &root_path,
             "the worklist is guidance and never evaluates the repository gate",
         ),
         artifacts: Vec::new(),
@@ -489,6 +526,7 @@ fn worklist_disposition(
     filtered: bool,
     items: &[WorklistSummaryItemV1],
     calendar_expiry_blocks_no_new: bool,
+    root_path: &str,
 ) -> (
     ResultClassV1,
     CoreCommandPostureV1,
@@ -524,11 +562,14 @@ fn worklist_disposition(
                         "worklist.list_unfiltered_queue",
                         "List the unfiltered work queue",
                         "cargo-allow",
-                        vec![
-                            "worklist".to_string(),
-                            "--format".to_string(),
-                            "json".to_string(),
-                        ],
+                        super::rooted_command_args(
+                            root_path,
+                            &[
+                                "worklist".to_string(),
+                                "--format".to_string(),
+                                "json".to_string(),
+                            ],
+                        ),
                     )
                     .with_contract(
                         "an empty filtered queue says nothing about work outside the selected filters",
@@ -655,6 +696,7 @@ fn enforcing_gate_proof(
     completeness: CompletenessV1,
     result_class: ResultClassV1,
     operation: &str,
+    root_path: &str,
     reason: &str,
 ) -> Option<CoreCommandActionV1> {
     (completeness == CompletenessV1::Complete
@@ -667,11 +709,14 @@ fn enforcing_gate_proof(
             format!("{operation}.full_no_new_check"),
             "Run the enforcing no-new check",
             "cargo-allow",
-            vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-            ],
+            super::rooted_command_args(
+                root_path,
+                &[
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            ),
         )
         .with_contract(
             reason,

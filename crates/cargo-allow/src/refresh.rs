@@ -1,5 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::validate_policy;
@@ -261,6 +262,7 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
                 input.inventory_facts.source.as_str()
             ),
             portable_identity: format!("worktree:refresh:{}:{}", policy_path, input.entry.id),
+            root_path: normalize_path(input.root),
             policy_path,
             allow_id: input.entry.id.clone(),
             write_requested: args.write,

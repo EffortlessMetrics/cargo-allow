@@ -114,6 +114,7 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
     let preview = core_command_summary_from_init(InitSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:init:policy/allow.toml".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         config_path: "policy/allow.toml".to_string(),
         dry_run: true,
         force: true,
@@ -125,7 +126,15 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
             && preview.primary_action.as_ref().is_some_and(|action| {
                 action.write_posture == CoreCommandWritePostureV1::LiveMutation
                     && action.may_write_paths == vec!["policy/allow.toml"]
-                    && action.args == vec!["init", "--config", "policy/allow.toml", "--force"]
+                    && action.args
+                        == vec![
+                            "init",
+                            "--config",
+                            "policy/allow.toml",
+                            "--force",
+                            "--root",
+                            "F:/fixture-root",
+                        ]
             }),
         "init preview must be advisory and keep the possible write explicit",
     )?;
@@ -133,6 +142,7 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
     let applied = core_command_summary_from_init(InitSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:init:policy/allow.toml".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         config_path: "policy/allow.toml".to_string(),
         dry_run: false,
         force: false,
@@ -141,10 +151,9 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
     ensure(
         applied.operation_effects.writes_repository
             && applied.operation_effects.write_paths == vec!["policy/allow.toml"]
-            && applied
-                .primary_action
-                .as_ref()
-                .is_some_and(|action| action.args == vec!["check", "--mode", "no-new"]),
+            && applied.primary_action.as_ref().is_some_and(|action| {
+                action.args == vec!["check", "--mode", "no-new", "--root", "F:/fixture-root"]
+            }),
         "init apply must name the written path and enforcing follow-up",
     )
 }
@@ -154,6 +163,7 @@ fn core_command_summary_propose_distinguishes_candidate_output_and_write() -> Re
     let stdout_candidate = core_command_summary_from_propose(ProposeSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:propose:stdout".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         write_path: None,
         force: false,
         completeness: CompletenessV1::Complete,
@@ -179,6 +189,7 @@ fn core_command_summary_propose_distinguishes_candidate_output_and_write() -> Re
     let written_candidate = core_command_summary_from_propose(ProposeSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:propose:policy/allow.proposed.toml".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         write_path: Some("policy/allow.proposed.toml".to_string()),
         force: true,
         completeness: CompletenessV1::Complete,
@@ -199,6 +210,8 @@ fn core_command_summary_propose_distinguishes_candidate_output_and_write() -> Re
                         "no-new",
                         "--config",
                         "policy/allow.proposed.toml",
+                        "--root",
+                        "F:/fixture-root",
                     ]
             }),
         "written proposal must name its target and targeted proof",
@@ -210,6 +223,7 @@ fn core_command_summary_add_distinguishes_preview_candidate_and_live_entry() -> 
     let candidate = core_command_summary_from_add(AddSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:add:policy/allow.proposed.toml".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         write_path: Some("policy/allow.proposed.toml".to_string()),
         live_update: false,
         candidate_write: true,
@@ -230,6 +244,7 @@ fn core_command_summary_add_distinguishes_preview_candidate_and_live_entry() -> 
     let live = core_command_summary_from_add(AddSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:add:policy/allow.toml".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         write_path: Some("policy/allow.toml".to_string()),
         live_update: true,
         candidate_write: false,
@@ -242,14 +257,12 @@ fn core_command_summary_add_distinguishes_preview_candidate_and_live_entry() -> 
     ensure(
         live.posture == CoreCommandPostureV1::Satisfied
             && live.operation_effects.writes_repository
-            && live
-                .primary_action
-                .as_ref()
-                .is_some_and(|action| action.args == vec!["explain", "allow-0001"])
-            && live
-                .next_proof
-                .as_ref()
-                .is_some_and(|action| action.args == vec!["check", "--mode", "no-new"]),
+            && live.primary_action.as_ref().is_some_and(|action| {
+                action.args == vec!["explain", "allow-0001", "--root", "F:/fixture-root"]
+            })
+            && live.next_proof.as_ref().is_some_and(|action| {
+                action.args == vec!["check", "--mode", "no-new", "--root", "F:/fixture-root"]
+            }),
         "live add must separate targeted entry inspection from full proof",
     )
 }
@@ -299,6 +312,7 @@ fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(),
     let preview = core_command_summary_from_refresh(RefreshSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:refresh:policy/allow.toml:allow-0001".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         policy_path: "policy/allow.toml".to_string(),
         allow_id: "allow-0001".to_string(),
         write_requested: false,
@@ -317,6 +331,8 @@ fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(),
                         "--config",
                         "policy/allow.toml",
                         "--write",
+                        "--root",
+                        "F:/fixture-root",
                     ])
             }),
         "refresh preview must remain advisory and name the live write target",
@@ -324,6 +340,7 @@ fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(),
     let live = core_command_summary_from_refresh(RefreshSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:refresh:policy/allow.toml:allow-0001".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         policy_path: "policy/allow.toml".to_string(),
         allow_id: "allow-0001".to_string(),
         write_requested: true,
@@ -334,10 +351,9 @@ fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(),
         live.posture == CoreCommandPostureV1::Satisfied
             && live.operation_effects.writes_repository
             && live.operation_effects.write_paths == vec!["policy/allow.toml"]
-            && live
-                .next_proof
-                .as_ref()
-                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+            && live.next_proof.as_ref().is_some_and(|action| {
+                action.args == strings(&["check", "--mode", "no-new", "--root", "F:/fixture-root"])
+            }),
         "live refresh must name its policy write and full proof",
     )
 }
@@ -347,6 +363,7 @@ fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(
     let preview = core_command_summary_from_prune(PruneSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:prune:policy/allow.toml:1".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         policy_path: "policy/allow.toml".to_string(),
         candidate_count: 1,
         allow_id: None,
@@ -366,6 +383,8 @@ fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(
                         "--config",
                         "policy/allow.toml",
                         "--write",
+                        "--root",
+                        "F:/fixture-root",
                     ])
             }),
         "prune preview must remain advisory and name the live write target",
@@ -373,6 +392,7 @@ fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(
     let live = core_command_summary_from_prune(PruneSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:prune:policy/allow.toml:1".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         policy_path: "policy/allow.toml".to_string(),
         candidate_count: 1,
         allow_id: None,
@@ -384,15 +404,15 @@ fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(
     ensure(
         live.posture == CoreCommandPostureV1::Satisfied
             && live.operation_effects.writes_repository
-            && live
-                .next_proof
-                .as_ref()
-                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+            && live.next_proof.as_ref().is_some_and(|action| {
+                action.args == strings(&["check", "--mode", "no-new", "--root", "F:/fixture-root"])
+            }),
         "prune write must name its policy mutation and full proof",
     )?;
     let noop = core_command_summary_from_prune(PruneSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:prune:policy/allow.toml:0".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         policy_path: "policy/allow.toml".to_string(),
         candidate_count: 0,
         allow_id: None,
@@ -507,6 +527,7 @@ fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Re
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "diff:base:head".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         base: "base".to_string(),
         head: Some("head".to_string()),
         result_class: ResultClassV1::Completed,
@@ -528,6 +549,7 @@ fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Re
     let partial = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "diff:base:current-worktree".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         base: "base".to_string(),
         head: None,
         result_class: ResultClassV1::PartialData,
@@ -548,13 +570,23 @@ fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Re
         .ok_or_else(|| "partial diff missing scanner-repair action".to_string())?;
     ensure(
         scanner_action.id == "diff.inspect_scanner_repair"
-            && scanner_action.args == ["diff", "--base", "base", "--format", "json"],
+            && scanner_action.args
+                == [
+                    "diff",
+                    "--base",
+                    "base",
+                    "--format",
+                    "json",
+                    "--root",
+                    "F:/fixture-root",
+                ],
         "partial diff must route scanner repair inspection with deterministic revision-relative argv",
     )?;
 
     let policy = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "diff:base:head".to_string(),
+        root_path: "F:/fixture-root".to_string(),
         base: "base".to_string(),
         head: Some("head".to_string()),
         result_class: ResultClassV1::Completed,
@@ -571,7 +603,15 @@ fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Re
         policy_action.id == "diff.inspect_policy_repairs"
             && policy_action.args
                 == [
-                    "diff", "--base", "base", "--head", "head", "--format", "json",
+                    "diff",
+                    "--base",
+                    "base",
+                    "--head",
+                    "head",
+                    "--format",
+                    "json",
+                    "--root",
+                    "F:/fixture-root",
                 ],
         "complete blocking diff must route policy repair separately and preserve the exact pair",
     )
@@ -868,6 +908,41 @@ fn error_adapter_maps_typed_kind_without_parsing_message_text() -> Result<(), St
 }
 
 #[test]
+fn error_adapter_classifies_a_usage_hard_error_as_malformed_input() -> Result<(), String> {
+    // The `why` hard-error route (#4393): no finding near the queried line
+    // exits with a typed usage error, and the sidecar must classify it.
+    let error = CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        "no current panic finding found near src/lib.rs:999",
+    );
+    let summary = core_command_summary_from_error(
+        "0.2.0",
+        "why",
+        CoreSourceSubjectV1::worktree(
+            "local-repository:current",
+            "worktree:git_tracked:current-unpinned",
+        ),
+        &error,
+        CoreCommandEffectsV1::read_only(Vec::new()),
+        None,
+        ClaimBoundaryV1::new("failure classification only"),
+    )?;
+    ensure(
+        summary.result_class == ResultClassV1::MalformedInput
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "a usage hard error must not render as a clean result",
+    )?;
+    ensure(
+        summary.reason.code == "E0001_USAGE" && summary.reason.message.contains("src/lib.rs:999"),
+        "the typed E000x code and reason must survive verbatim",
+    )?;
+    ensure(
+        summary.primary_action.is_none() && !summary.operation_effects.writes_repository,
+        "a failed run must not invent an action or claim a repository write",
+    )
+}
+
+#[test]
 fn human_renderer_sanitizes_repository_control_text() -> Result<(), String> {
     let mut input = base_input("check");
     input.subject.portable_identity = "repo:test\nforged".to_string();
@@ -921,6 +996,7 @@ fn doctor_facts() -> DoctorSummaryFactsV1 {
             "local-repository:sha256:v1:test",
             "worktree:git_tracked:current-unpinned",
         ),
+        root_path: "F:/fixture-root".to_string(),
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         config_present: true,
@@ -973,11 +1049,13 @@ fn doctor_adapter_reports_healthy_setup_without_claiming_the_gate() -> Result<()
     )?;
     ensure(
         summary.next_proof.as_ref().is_some_and(|action| {
-            action
-                .args
-                .iter()
-                .map(String::as_str)
-                .eq(["check", "--mode", "no-new"])
+            action.args.iter().map(String::as_str).eq([
+                "check",
+                "--mode",
+                "no-new",
+                "--root",
+                "F:/fixture-root",
+            ])
         }),
         "doctor must route to the enforcing gate rather than imply it already passed",
     )?;
@@ -1075,7 +1153,11 @@ fn doctor_adapter_routes_an_absent_policy_to_adoption() -> Result<(), String> {
     )?;
     ensure(
         summary.primary_action.as_ref().is_some_and(|action| {
-            action.args.iter().map(String::as_str).eq(["adopt"])
+            action
+                .args
+                .iter()
+                .map(String::as_str)
+                .eq(["adopt", "--root", "F:/fixture-root"])
                 && action.may_write_paths.is_empty()
         }),
         "the first-hour route from doctor is read-only adopt",
@@ -1128,6 +1210,7 @@ fn explain_facts() -> ExplainSummaryFactsV1 {
             paths: strings(&["src/lib.rs"]),
             limitations: Vec::new(),
         },
+        root_path: "F:/fixture-root".to_string(),
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         allow_id: "allow-0001".to_string(),
@@ -1152,6 +1235,7 @@ fn why_facts() -> WhySummaryFactsV1 {
             paths: strings(&["src/lib.rs:42"]),
             limitations: Vec::new(),
         },
+        root_path: "F:/fixture-root".to_string(),
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         location: "src/lib.rs:42".to_string(),
@@ -1160,6 +1244,7 @@ fn why_facts() -> WhySummaryFactsV1 {
         near_miss_candidate_count: 0,
         suggested_actions: Vec::new(),
         plan_path: None,
+        receipt_ledger_path: None,
         calendar_expiry_blocks_no_new: false,
         claim_boundary: ClaimBoundaryV1::new("one finding only"),
     }
@@ -1172,6 +1257,7 @@ fn worklist_facts() -> WorklistSummaryFactsV1 {
             "local-repository:sha256:v1:test",
             "worktree:git_tracked:current-unpinned",
         ),
+        root_path: "F:/fixture-root".to_string(),
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         items: Vec::new(),
@@ -1210,11 +1296,13 @@ fn explain_adapter_reports_a_receipted_entry_as_satisfied() -> Result<(), String
     )?;
     ensure(
         summary.next_proof.as_ref().is_some_and(|action| {
-            action
-                .args
-                .iter()
-                .map(String::as_str)
-                .eq(["check", "--mode", "no-new"])
+            action.args.iter().map(String::as_str).eq([
+                "check",
+                "--mode",
+                "no-new",
+                "--root",
+                "F:/fixture-root",
+            ])
         }),
         "one healthy entry must route to the gate rather than imply it already passed",
     )
@@ -1384,6 +1472,87 @@ fn why_adapter_never_promotes_a_near_miss_candidate_to_a_winner() -> Result<(), 
     )
 }
 
+/// #4393: the promoted add-receipt step directs `cargo-allow add`, a live
+/// ledger mutation. A decision that names it must not label itself read_only.
+#[test]
+fn why_receipt_decision_discloses_the_ledger_write_it_directs() -> Result<(), String> {
+    let mut facts = why_facts();
+    facts.outcome_status = MatchStatus::New;
+    facts.matched_allow_id = None;
+    facts.near_miss_candidate_count = 1;
+    facts.suggested_actions = strings(&[
+        "Receipt this occurrence with cargo-allow add.",
+        "Or repair the source so the finding disappears.",
+    ]);
+    facts.receipt_ledger_path = Some("policy/allow.toml".to_string());
+    let summary = core_command_summary_from_why(facts)?;
+    let action = summary
+        .primary_action
+        .as_ref()
+        .ok_or("the receipt route must promote a next step")?;
+    ensure(
+        action.kind == CoreCommandActionKindV1::Decision
+            && action.program.is_none()
+            && action.args.is_empty(),
+        "the receipt step stays a decision, never a chosen command",
+    )?;
+    ensure(
+        action.write_posture == CoreCommandWritePostureV1::LiveMutation
+            && action.may_write_paths == vec!["policy/allow.toml"],
+        "the receipt decision carries the ledger write posture and path",
+    )?;
+    // The why operation itself still wrote nothing; only the suggested step's
+    // possible write is disclosed.
+    ensure(
+        !summary.operation_effects.writes_repository,
+        "the why operation remains read-only without --plan",
+    )?;
+    let human = render_core_command_summary_human(&summary);
+    ensure(
+        human.contains("selected next action may write policy/allow.toml"),
+        format!("the human Writes line must disclose the receipt target: {human}"),
+    )
+}
+
+/// #4393: only the add-receipt route carries a write posture. Inspection and
+/// repair-promoting decisions keep the read-only posture their steps describe.
+#[test]
+fn why_inspection_and_repair_decisions_stay_read_only() -> Result<(), String> {
+    let mut ambiguous = why_facts();
+    ambiguous.outcome_status = MatchStatus::Ambiguous;
+    ambiguous.matched_allow_id = None;
+    ambiguous.suggested_actions = strings(&[
+        "Multiple allow entries compete for this finding. Inspect every candidate with cargo-allow explain.",
+    ]);
+    let ambiguous = core_command_summary_from_why(ambiguous)?;
+    ensure(
+        ambiguous.primary_action.as_ref().is_some_and(|action| {
+            action.kind == CoreCommandActionKindV1::Decision
+                && action.write_posture == CoreCommandWritePostureV1::ReadOnly
+                && action.may_write_paths.is_empty()
+        }),
+        "an inspection decision never claims a write",
+    )?;
+
+    // The skipped-target route promotes repair/re-run steps: a New status
+    // without a receipt ledger path must not invent a write posture.
+    let mut skipped_target = why_facts();
+    skipped_target.outcome_status = MatchStatus::New;
+    skipped_target.matched_allow_id = None;
+    skipped_target.suggested_actions = strings(&[
+        "Repair or reduce the target so the Rust scanner can inspect `src/lib.rs`.",
+        "Re-run cargo-allow why after the target scan is complete.",
+    ]);
+    let skipped_target = core_command_summary_from_why(skipped_target)?;
+    ensure(
+        skipped_target
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.write_posture == CoreCommandWritePostureV1::ReadOnly),
+        "the repair-first skipped-target route stays read-only",
+    )
+}
+
 #[test]
 fn why_adapter_reports_an_unattributable_match_as_not_proven() -> Result<(), String> {
     let mut facts = why_facts();
@@ -1545,11 +1714,13 @@ fn worklist_adapter_never_reads_an_empty_filtered_queue_as_a_clean_repository() 
     )?;
     ensure(
         summary.primary_action.as_ref().is_some_and(|action| {
-            action
-                .args
-                .iter()
-                .map(String::as_str)
-                .eq(["worklist", "--format", "json"])
+            action.args.iter().map(String::as_str).eq([
+                "worklist",
+                "--format",
+                "json",
+                "--root",
+                "F:/fixture-root",
+            ])
         }),
         "the deterministic safe route is to list the unfiltered queue",
     )?;

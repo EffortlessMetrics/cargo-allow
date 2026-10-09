@@ -6,7 +6,7 @@ use crate::{OutputFormat, RootArgs, parse_kind_filter_arg};
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct DiffArgs {
     #[command(flatten)]
-    pub(super) root: RootArgs,
+    pub(crate) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     pub(crate) config: Option<PathBuf>,

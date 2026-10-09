@@ -59,6 +59,7 @@ use worklist_types::WorkItemLedger;
 pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
 use worklist_types::{WorklistContext, WorklistFilters, WorklistPaging};
 
+use allow_core::normalize_path;
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
@@ -210,6 +211,7 @@ fn worklist_summary(
         crate::core_command_summary::WorklistSummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
+            root_path: normalize_path(root),
             completeness,
             coverage_limitation,
             items: items.iter().map(summary_item).collect(),

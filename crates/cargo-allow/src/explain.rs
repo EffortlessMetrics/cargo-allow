@@ -1,6 +1,6 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    MatchOutcome,
+    MatchOutcome, normalize_path,
 };
 use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
@@ -181,6 +181,7 @@ fn explain_summary(
         crate::core_command_summary::ExplainSummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
+            root_path: normalize_path(root),
             completeness,
             coverage_limitation,
             allow_id: facts.entry.id.clone(),

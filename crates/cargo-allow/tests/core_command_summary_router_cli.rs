@@ -1563,6 +1563,174 @@ fn one_human_screen_prints_the_result_word_once() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+/// #4393 secondary observation: the scan-surface Next commands a summary
+/// suggests resolve their configuration under the source-tree root, so as-
+/// printed execution from a scratch consumer cwd used to fail with `E0002`.
+/// The suggested argv carries `--root`, so a wrapper can chain it from any cwd.
+#[test]
+fn summary_next_commands_carry_the_root_and_run_from_a_foreign_cwd() -> Result<(), String> {
+    let root = temp_root("summary-rooted-next")?;
+    let scratch = temp_root("summary-scratch-cwd")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    // The consumer runs from a scratch cwd: the sidecar is requested with an
+    // absolute in-root path (#4363 containment) and the scan target with
+    // `--root`, exactly as a wrapper chaining one command to the next would.
+    let sidecar = root.join("check-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    // The suggested argv spells the root in the portable forward-slash form
+    // `normalize_path` produces, so compare against that spelling.
+    let root_text = root.to_string_lossy().replace('\\', "/");
+    let root_native = root.to_string_lossy().to_string();
+    let output = run_from(
+        &scratch,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "check",
+            "--mode",
+            "no-new",
+            "--root",
+            &root_native,
+        ],
+    )?;
+    require(
+        output.status.code() == Some(1),
+        format!(
+            "a blocking check must exit with the gate code 1, got {:?}",
+            output.status.code()
+        ),
+    )?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read check summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse check summary: {error}"))?;
+    let argv = field(&summary, &["primary_action", "args"])
+        .and_then(Value::as_array)
+        .ok_or_else(|| "a blocking check must route to the worklist".to_string())?;
+    require(
+        argv.first() == Some(&Value::from("worklist"))
+            && argv.last() == Some(&Value::from(root_text.as_str()))
+            && argv.iter().any(|arg| arg.as_str() == Some("--root")),
+        format!("the suggested next command must carry --root <root>: {argv:?}"),
+    )?;
+    // Executed as printed from the scratch cwd, the suggestion must reach the
+    // subject repository instead of failing config discovery (`E0002`, exit 2).
+    let next_argv: Vec<String> = argv
+        .iter()
+        .map(|arg| arg.as_str().unwrap_or_default().to_string())
+        .collect();
+    let next = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args(&next_argv)
+        .current_dir(&scratch)
+        .output()
+        .map_err(|error| format!("run suggested next from scratch cwd: {error}"))?;
+    require(
+        next.status.success(),
+        format!(
+            "the suggested next command must run from a scratch cwd: {}",
+            String::from_utf8_lossy(&next.stderr)
+        ),
+    )?;
+    // The human block carries the same executable suggestion.
+    let human = stdout(&output)?;
+    require(
+        human
+            .lines()
+            .next()
+            .is_some_and(|line| line.starts_with("Outcome: findings (blocking)")),
+        format!("check must open with the blocking Outcome line: {human}"),
+    )?;
+    require(
+        human.contains("--root"),
+        format!("the human Next line must carry --root: {human}"),
+    )?;
+
+    remove_temp_root(root)?;
+    remove_temp_root(scratch)
+}
+
+/// #4393: a summary-supported command that exits on a hard error still writes
+/// its configured sidecar, classified by the typed `E000x` code, so the
+/// failure direction is reachable without parsing stderr.
+#[test]
+fn a_hard_error_writes_the_e000x_classified_summary_sidecar() -> Result<(), String> {
+    let root = temp_root("summary-hard-error")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    // A tracked but clean file: `why` must scan it, find no matching finding,
+    // and exit on the typed usage error ("no current panic finding found").
+    fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
+    fs::write(root.join("src/other.rs"), "pub fn clean() {}\n")
+        .map_err(|error| error.to_string())?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    // `src/other.rs` has no finding, so `why` exits on a typed usage error.
+    let sidecar = root.join("why-error-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let output = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/other.rs",
+            "--line",
+            "1",
+        ],
+    )?;
+    require(
+        output.status.code() == Some(2),
+        format!(
+            "a usage hard error must exit 2, got {:?}",
+            output.status.code()
+        ),
+    )?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    require(
+        stderr.contains("E0001"),
+        format!("the typed usage error must reach stderr: {stderr}"),
+    )?;
+    require(
+        sidecar.exists(),
+        "the hard-error path must still write the configured sidecar",
+    )?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read error summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse error summary: {error}"))?;
+    require(
+        field(&summary, &["operation"]) == Some(&Value::from("why"))
+            && field(&summary, &["result_class"]) == Some(&Value::from("malformed_input"))
+            && field(&summary, &["posture"]) == Some(&Value::from("blocking"))
+            && field(&summary, &["reason", "code"]) == Some(&Value::from("E0001_USAGE")),
+        format!("the sidecar must classify the typed hard error: {summary}"),
+    )?;
+    require(
+        field(&summary, &["reason", "message"])
+            .and_then(Value::as_str)
+            .is_some_and(|message| message.contains("src/other.rs:1")),
+        format!("the failure reason must reach the sidecar: {summary}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+/// Run the real binary from an explicit working directory, without the
+/// implicit `--root` the [`run`] helper appends.
+fn run_from(cwd: &Path, args: &[&str]) -> Result<Output, String> {
+    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .map_err(|error| format!("run {args:?} from {}: {error}", cwd.display()))
+}
+
 /// Collect the lines of a human screen that claim the `Result:` label.
 fn result_lines(text: &str) -> Vec<&str> {
     text.lines()

@@ -68,6 +68,23 @@ fn missing_evaluation_outcome_error(path: &std::path::Path, line: u32) -> CargoA
     )
 }
 
+/// The policy path the ranked add-receipt step would write, when that step is
+/// the promoted next action (#4393).
+///
+/// The receipt route exists only for a `New` finding, and the scoped world
+/// already carries the policy identity in the root-relative normalized form
+/// the summary's write disclosures use. `None` for every other status leaves
+/// the promoted inspection decision read-only.
+fn receipt_ledger_path(
+    scoped_world: &crate::world::ScopedWorldContext,
+    status: MatchStatus,
+) -> Option<String> {
+    if status != MatchStatus::New {
+        return None;
+    }
+    scoped_world.2.clone()
+}
+
 pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     if let (Some(plan_path), Some(output_path)) = (args.plan.as_deref(), args.output.as_deref())
         && same_output_target(plan_path, output_path)?
@@ -312,6 +329,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             candidates: &candidates,
             queried_line: args.line,
             plan_path: written_plan_path,
+            receipt_ledger_path: receipt_ledger_path(&scoped_world, outcome.status),
             inventory_facts,
             calendar_expiry_blocks_no_new: cfg.requirements.calendar_expiry_blocks_no_new,
         },
@@ -353,6 +371,9 @@ struct WhyFindingFacts<'a> {
     queried_line: u32,
     /// Source-tree-relative path of the add-finding plan this run wrote.
     plan_path: Option<String>,
+    /// Source-tree-relative policy path the ranked add-receipt step would
+    /// write, when that step is the promoted next action (#4393).
+    receipt_ledger_path: Option<String>,
     inventory_facts: crate::InventoryFacts,
     /// Legacy calendar-expiry posture of the loaded policy (#4238).
     calendar_expiry_blocks_no_new: bool,
@@ -410,6 +431,7 @@ fn why_summary(
         crate::core_command_summary::WhySummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
+            root_path: normalize_path(root),
             completeness,
             coverage_limitation,
             location,
@@ -418,6 +440,7 @@ fn why_summary(
             near_miss_candidate_count: facts.candidates.len(),
             suggested_actions: next.suggested_actions,
             plan_path: facts.plan_path,
+            receipt_ledger_path: facts.receipt_ledger_path,
             calendar_expiry_blocks_no_new: facts.calendar_expiry_blocks_no_new,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow explained one source-tree finding against current source-exception ledger posture only",
@@ -479,6 +502,7 @@ fn why_target_summary(
         crate::core_command_summary::WhySummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
+            root_path: normalize_path(root),
             completeness,
             coverage_limitation: None,
             location,
@@ -487,6 +511,9 @@ fn why_target_summary(
             near_miss_candidate_count: 0,
             suggested_actions,
             plan_path: None,
+            // The skipped-target route promotes repair/re-run steps, never the
+            // add-receipt route, so no ledger write posture applies (#4393).
+            receipt_ledger_path: None,
             calendar_expiry_blocks_no_new: false,
             claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
                 "cargo-allow could not fully scan the selected source target, so no finding or add-finding plan was produced",

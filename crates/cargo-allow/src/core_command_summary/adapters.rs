@@ -11,6 +11,9 @@ use super::{
 pub struct InitSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub config_path: String,
     pub dry_run: bool,
     pub force: bool,
@@ -23,6 +26,7 @@ pub fn core_command_summary_from_init(
     let InitSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         config_path,
         dry_run,
         force,
@@ -49,6 +53,7 @@ pub fn core_command_summary_from_init(
     if force {
         apply_args.push("--force".to_string());
     }
+    let apply_args = super::rooted_command_args(&root_path, &apply_args);
     let (result_class, posture, effects, primary_action) = if dry_run {
         (
             ResultClassV1::Completed,
@@ -95,11 +100,14 @@ pub fn core_command_summary_from_init(
                     "init.full_no_new_check",
                     "Run the enforcing no-new check",
                     "cargo-allow",
-                    vec![
-                        "check".to_string(),
-                        "--mode".to_string(),
-                        "no-new".to_string(),
-                    ],
+                    super::rooted_command_args(
+                        &root_path,
+                        &[
+                            "check".to_string(),
+                            "--mode".to_string(),
+                            "no-new".to_string(),
+                        ],
+                    ),
                 )
                 .with_contract(
                     "initialization changes policy bytes but does not establish repository posture",
@@ -162,6 +170,9 @@ pub fn core_command_summary_from_init(
 pub struct ProposeSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub write_path: Option<String>,
     pub force: bool,
     pub completeness: CompletenessV1,
@@ -177,6 +188,7 @@ pub fn core_command_summary_from_propose(
     let ProposeSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         write_path,
         force,
         completeness,
@@ -203,13 +215,16 @@ pub fn core_command_summary_from_propose(
             "propose.targeted_no_new_check",
             "Run the no-new check against the candidate policy",
             "cargo-allow",
-            vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-                "--config".to_string(),
-                path,
-            ],
+            super::rooted_command_args(
+                &root_path,
+                &[
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                    "--config".to_string(),
+                    path,
+                ],
+            ),
         )
         .with_contract(
             "proposal generation and candidate review do not prove policy posture",
@@ -325,6 +340,9 @@ pub fn core_command_summary_from_propose(
 pub struct AddSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub write_path: Option<String>,
     pub live_update: bool,
     pub candidate_write: bool,
@@ -341,6 +359,7 @@ pub fn core_command_summary_from_add(
     let AddSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         write_path,
         live_update,
         candidate_write,
@@ -356,7 +375,7 @@ pub fn core_command_summary_from_add(
             "add.explain_entry",
             "Inspect the newly retained entry",
             "cargo-allow",
-            vec!["explain".to_string(), entry_id.clone()],
+            super::rooted_command_args(&root_path, &["explain".to_string(), entry_id.clone()]),
         )
         .with_contract(
             "add records the selected typed finding as one policy entry",
@@ -390,11 +409,14 @@ pub fn core_command_summary_from_add(
                 "add.full_no_new_check",
                 "Run the enforcing no-new check",
                 "cargo-allow",
-                vec![
-                    "check".to_string(),
-                    "--mode".to_string(),
-                    "no-new".to_string(),
-                ],
+                super::rooted_command_args(
+                    &root_path,
+                    &[
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                    ],
+                ),
             )
             .with_contract(
                 "entry inspection is targeted confirmation, not full repository proof",
@@ -408,13 +430,16 @@ pub fn core_command_summary_from_add(
                 "add.targeted_no_new_check",
                 "Run the no-new check against the candidate policy",
                 "cargo-allow",
-                vec![
-                    "check".to_string(),
-                    "--mode".to_string(),
-                    "no-new".to_string(),
-                    "--config".to_string(),
-                    path,
-                ],
+                super::rooted_command_args(
+                    &root_path,
+                    &[
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                        "--config".to_string(),
+                        path,
+                    ],
+                ),
             )
             .with_contract(
                 "candidate generation and review do not prove policy posture",
@@ -622,6 +647,9 @@ pub fn core_command_summary_from_add_plan(
 pub struct RefreshSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub policy_path: String,
     pub allow_id: String,
     pub write_requested: bool,
@@ -635,6 +663,7 @@ pub fn core_command_summary_from_refresh(
     let RefreshSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         policy_path,
         allow_id,
         write_requested,
@@ -645,14 +674,17 @@ pub fn core_command_summary_from_refresh(
         "refresh.apply",
         "Apply the reviewed location refresh",
         "cargo-allow",
-        vec![
-            "refresh".to_string(),
-            "--allow-id".to_string(),
-            allow_id.clone(),
-            "--config".to_string(),
-            policy_path.clone(),
-            "--write".to_string(),
-        ],
+        super::rooted_command_args(
+            &root_path,
+            &[
+                "refresh".to_string(),
+                "--allow-id".to_string(),
+                allow_id.clone(),
+                "--config".to_string(),
+                policy_path.clone(),
+                "--write".to_string(),
+            ],
+        ),
     )
     .with_write_posture(
         CoreCommandWritePostureV1::LiveMutation,
@@ -681,7 +713,10 @@ pub fn core_command_summary_from_refresh(
                     "refresh.inspect_entry",
                     "Inspect the refreshed entry",
                     "cargo-allow",
-                    vec!["explain".to_string(), allow_id.clone()],
+                    super::rooted_command_args(
+                        &root_path,
+                        &["explain".to_string(), allow_id.clone()],
+                    ),
                 )
                 .with_contract(
                     "refresh confirms one selected location-drift update",
@@ -704,11 +739,14 @@ pub fn core_command_summary_from_refresh(
                     "refresh.full_no_new_check",
                     "Run the enforcing no-new check",
                     "cargo-allow",
-                    vec![
-                        "check".to_string(),
-                        "--mode".to_string(),
-                        "no-new".to_string(),
-                    ],
+                    super::rooted_command_args(
+                        &root_path,
+                        &[
+                            "check".to_string(),
+                            "--mode".to_string(),
+                            "no-new".to_string(),
+                        ],
+                    ),
                 )
                 .with_contract(
                     "targeted entry inspection is not full repository proof",
@@ -794,6 +832,10 @@ pub fn core_command_summary_from_refresh(
 pub struct PruneSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` (or `git -C`) and stay executable from any working directory
+    /// (#4393).
+    pub root_path: String,
     pub policy_path: String,
     pub candidate_count: usize,
     pub allow_id: Option<String>,
@@ -809,6 +851,7 @@ pub fn core_command_summary_from_prune(
     let PruneSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         policy_path,
         candidate_count,
         allow_id,
@@ -825,7 +868,13 @@ pub fn core_command_summary_from_prune(
                 "prune.recover_diff",
                 "Inspect the policy diff for recovery",
                 "git",
-                vec!["diff".to_string(), "--".to_string(), policy_path.clone()],
+                vec![
+                    "-C".to_string(),
+                    root_path.clone(),
+                    "diff".to_string(),
+                    "--".to_string(),
+                    policy_path.clone(),
+                ],
             )
             .with_contract(
                 "prune removed only the selected stale policy entries",
@@ -847,6 +896,7 @@ pub fn core_command_summary_from_prune(
             args.push("--include-untracked".to_string());
         }
         args.push("--write".to_string());
+        let args = super::rooted_command_args(&root_path, &args);
         Some(
             CoreCommandActionV1::command(
                 "prune.apply",
@@ -901,11 +951,14 @@ pub fn core_command_summary_from_prune(
                 "prune.full_no_new_check",
                 "Run the enforcing no-new check",
                 "cargo-allow",
-                vec![
-                    "check".to_string(),
-                    "--mode".to_string(),
-                    "no-new".to_string(),
-                ],
+                super::rooted_command_args(
+                    &root_path,
+                    &[
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                    ],
+                ),
             )
             .with_contract(
                 "policy diff inspection is not full repository proof",
@@ -1168,6 +1221,9 @@ pub fn core_command_summary_from_migrate(
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub base: String,
     pub head: Option<String>,
     pub result_class: ResultClassV1,
@@ -1183,6 +1239,7 @@ pub fn core_command_summary_from_diff(
     let DiffSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         base,
         head,
         result_class,
@@ -1231,7 +1288,7 @@ pub fn core_command_summary_from_diff(
                 "diff.inspect_policy_repairs",
                 "Inspect the exact policy and finding repairs",
                 "cargo-allow",
-                exact_diff_args(&base, head.as_deref()),
+                super::rooted_command_args(&root_path, &exact_diff_args(&base, head.as_deref())),
             )
             .with_contract(
                 "the complete diff found policy or source-exception posture that blocks the gate",
@@ -1243,7 +1300,7 @@ pub fn core_command_summary_from_diff(
                 "diff.inspect_scanner_repair",
                 "Inspect revision scanner coverage before policy repair",
                 "cargo-allow",
-                exact_diff_args(&base, head.as_deref()),
+                super::rooted_command_args(&root_path, &exact_diff_args(&base, head.as_deref())),
             )
             .with_contract(
                 "one or both revision scans are partial, so apparent movement is not policy-repair evidence",
@@ -1255,7 +1312,7 @@ pub fn core_command_summary_from_diff(
                 "diff.inspect_incomplete_report",
                 "Inspect the incomplete revision comparison",
                 "cargo-allow",
-                exact_diff_args(&base, head.as_deref()),
+                super::rooted_command_args(&root_path, &exact_diff_args(&base, head.as_deref())),
             )
             .with_contract(
                 "the revision comparison did not produce complete posture evidence",
@@ -1269,11 +1326,14 @@ pub fn core_command_summary_from_diff(
             "diff.rerun_no_new",
             "Run the enforcing no-new check",
             "cargo-allow",
-            vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-            ],
+            super::rooted_command_args(
+                &root_path,
+                &[
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            ),
         )
         .with_contract(
             "diff is comparative evidence, not the repository enforcement gate",
@@ -1555,6 +1615,9 @@ fn is_unsubstituted_placeholder(argument: &str) -> bool {
 pub struct DoctorSummaryFactsV1 {
     pub tool_version: String,
     pub subject: CoreSourceSubjectV1,
+    /// Source-tree root in portable display form, so suggested argv can name
+    /// `--root` and stay executable from any working directory (#4393).
+    pub root_path: String,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     pub config_present: bool,
@@ -1592,11 +1655,14 @@ pub fn core_command_summary_from_doctor(
             "doctor.full_no_new_check",
             "Run the enforcing no-new check",
             "cargo-allow",
-            vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-            ],
+            super::rooted_command_args(
+                &facts.root_path,
+                &[
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            ),
         )
         .with_contract(
             "doctor diagnoses setup health and never enforces the source-exception gate",
@@ -1695,7 +1761,7 @@ fn doctor_disposition(
                     "doctor.plan_adoption",
                     "Plan repository adoption",
                     "cargo-allow",
-                    vec!["adopt".to_string()],
+                    super::rooted_command_args(&facts.root_path, &["adopt".to_string()]),
                 )
                 .with_contract(
                     "the repository has no exception ledger to diagnose yet",
@@ -1739,6 +1805,7 @@ fn doctor_disposition(
                 "Inspect unresolved evidence references",
                 "--broken-evidence",
                 "policy entries reference evidence that cannot be resolved in this source tree",
+                &facts.root_path,
             )),
         );
     }
@@ -1758,6 +1825,7 @@ fn doctor_disposition(
                 "Inspect weak evidence references",
                 "--weak-evidence",
                 "policy entries carry evidence references that do not durably identify their subject",
+                &facts.root_path,
             )),
         );
     }
@@ -1780,17 +1848,21 @@ fn evidence_worklist_action(
     title: &str,
     filter: &str,
     reason: &str,
+    root_path: &str,
 ) -> CoreCommandActionV1 {
     CoreCommandActionV1::command(
         id,
         title,
         "cargo-allow",
-        vec![
-            "worklist".to_string(),
-            filter.to_string(),
-            "--format".to_string(),
-            "json".to_string(),
-        ],
+        super::rooted_command_args(
+            root_path,
+            &[
+                "worklist".to_string(),
+                filter.to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ],
+        ),
     )
     .with_contract(
         reason,

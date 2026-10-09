@@ -117,14 +117,33 @@ Consumers should rely on these properties:
   currently per command, not per repository, and is **design-pending**
   (#4393): most commands derive the digest from their own rendered detail
   (equal for re-runs of the same command on the same content, from any
-  checkout location), while `init` and `diff` still emit the unresolved
+  checkout location), while `init` and `diff` — and the hard-error sidecars
+  below, which hold no rendered detail to digest — still emit the unresolved
   placeholder `local-repository:current`. Wrappers must not key one identity
-  across different commands, or across `init`/`diff`, until one
-  content-addressed cross-command format is designed and emitted uniformly.
+  across different commands, or across `init`/`diff` and the error path, until
+  one content-addressed cross-command format is designed and emitted uniformly.
 - `operation_effects` states the operation's own read/write posture, separately
   from any paths a suggested next action may write. The inspection commands
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
-  exception, and it names the exact candidate plan path it wrote.
+  exception, and it names the exact candidate plan path it wrote. A `decision`
+  action that directs a writing command — `why`'s add-receipt route — carries
+  the writing posture and the ledger path it would write, so a
+  `Receipt this occurrence with cargo-allow add.` decision is never labelled
+  `read_only` (#4393).
+- Suggested scan-surface command actions name their subject root: every
+  `check`, `worklist`, `doctor`, `explain`, `diff`, and root-scoped policy
+  follow-up argv carries `--root <root-path>` (the prune recovery diff uses
+  `git -C <root-path>`), spelled in the portable forward-slash form, so a
+  wrapper can execute the suggestion from any working directory instead of
+  failing config discovery with `E0002` (#4393).
+- A summary-supported command that exits on a hard error still writes the
+  configured sidecar, classified by its typed error code (`result_class`
+  `malformed_input`, `unsupported`, or `instrument_failure`, posture
+  `blocking`, with the `E000x` code in `reason.code`), so failure is
+  machine-readable without parsing stderr (#4393). When the root or the
+  sidecar path itself cannot be resolved or written, the error-sidecar write
+  is skipped and the command's own stderr remains the authoritative failure
+  channel.
 - A relative `<path>` resolves against the process working directory — the same
   base as `--output` on the working-directory commands (`adopt --output` and
   `migrate --out` resolve against the source-tree root instead) — on every
