@@ -1,0 +1,45 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4438,
+  "base_ref": "fix/4425-rehearsal-admission",
+  "base_sha": "1f61974258bdae3837569459f96068cdb608af8f",
+  "head_ref": "fix/4426-registry-freshness-admission",
+  "head_sha": "9be5bea9ab7f90bb232248ed5dc830f9667ac05d",
+  "merge_base": "1f61974258bdae3837569459f96068cdb608af8f",
+  "reviewed_diff_digest": "sha256:v1:71d5cbe81017e68636b0db87ea218eb3e370d750c8ebe1442ce5c2d5f754ea0e",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full registry source and consumer review; shared model family/session context disclosed; native formatter replacements supplied as evidence and applied by coordinating author; author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5475591891"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-3792-2501",
+      "severity": "advisory",
+      "owned_seam": "Independent current production registry context, clock, freshness window and final-subject qualification",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_command.rs",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp → #3792/#2501; independently assemble trusted production inputs and retain actual final-subject acceptance. #4426 remains open for complete acceptance proof.",
+      "claim_boundary": "The bounded unsafe-admission repair supplies no current production registry proof. None context, TestFixture provenance and residual ownership/publication-authority risk remain non-clean."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5475591891",
+    "Full eight-path implementation/governance review covered the typed evaluator, actual delivered observer, strict duplicate-key reader, required graph node, readiness, replay and specific-node regression assertions. Exact ordered 10+3 source/package bindings remain required. Missing evidence and non-clean provider/freshness states cannot disappear or become Complete. The independently executed actual Python observer bridge retains 23 controlled GETs and 13 rows without upgrading authority; it is fixture evidence, not a live registry or Rust result.",
+    "All nine inherited rehearsal formatter corrections and all 19 current native formatter hunks were verified. Prior 728,886 policy bytes are identical; exactly two file-scoped receipts, canonical fingerprints and revision-note records agree. No review threads were present. Synthetic d65c5c953f9e5501fc9e8004fa17a0d36855f9af matches exact base/head parents and source tree.",
+    "Current native formatting and actionlint pass; no-new/full Rust/platform/packaging proof was incomplete at observation. Cargo-deny failure is not waived. The record-only successor must pass typed bootstrap and every applicable current check before merge, with fresh feedback and the post-main source guard separately required."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4438",
+  "reviewed_at_utc": "2026-10-09T21:37:49Z"
+}
