@@ -647,4 +647,200 @@ if __name__ == "__main__":
     unittest.main(verbosity=2)
 PY_RECEIPT
 
+# Missing-interpreter refusal must precede disposable fixture allocation.
+# Restrict the child PATH independently of the Python running these controls.
+"${py}" - <<'PY_INTERPRETER_ALLOCATION'
+import contextlib
+import json
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+bash = shutil.which("bash")
+assert bash, "bash is required for interpreter-allocation controls"
+
+
+class InterpreterAllocationControls(unittest.TestCase):
+    @contextlib.contextmanager
+    def fixture(self, mode):
+        with tempfile.TemporaryDirectory(prefix="perf-python-allocation-") as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            owned = root / "target/cargo-allow-operator-latency.pre-existing"
+            owned.mkdir(parents=True)
+            (owned / "keep").write_text("unrelated fixture\n", encoding="utf-8")
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir()
+            candidate.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            candidate.chmod(0o755)
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(
+                bootstrap
+                + '\nprintf "bootstrap-ready:%s\\n" "$py"\n'
+                + '"${py}" -c \'import sys; assert sys.version_info[0] >= 3; print("selected-python3")\'\n',
+                encoding="utf-8",
+            )
+
+            tools = root / "controlled bin"
+            tools.mkdir()
+            for command in ("dirname", "mkdir", "rm", "uname", "sha256sum"):
+                resolved = shutil.which(command)
+                self.assertIsNotNone(resolved, command)
+                (tools / command).symlink_to(resolved)
+            mktemp = shutil.which("mktemp")
+            self.assertIsNotNone(mktemp)
+            allocator = tools / "mktemp"
+            allocator.write_text(
+                '#!/bin/sh\nprintf "allocated\\n" >> "$ALLOCATOR_LOG"\n'
+                + "exec " + shlex.quote(mktemp) + ' "$@"\n',
+                encoding="utf-8",
+            )
+            allocator.chmod(0o755)
+
+            preferred = "python3"
+            selected = None
+            if mode in ("default", "fallback", "custom"):
+                name = {"default": "python3", "fallback": "python",
+                        "custom": "preferred python"}[mode]
+                interpreter = tools / name
+                interpreter.write_text(
+                    '#!/bin/sh\nprintf "%s\\n" "$*" >> "$INTERPRETER_LOG"\n'
+                    + "exec " + shlex.quote(sys.executable) + ' "$@"\n',
+                    encoding="utf-8",
+                )
+                interpreter.chmod(0o755)
+                if mode == "custom":
+                    preferred = selected = str(interpreter)
+                elif mode == "fallback":
+                    preferred, selected = "missing-preferred-python", "python"
+                else:
+                    selected = "python3"
+            elif mode == "host":
+                preferred = selected = sys.executable
+            elif mode == "reject-fallback":
+                preferred = "missing-preferred-python"
+                interpreter = tools / "python"
+                interpreter.write_text(
+                    '#!/bin/sh\nprintf "%s\\n" "$*" >> "$INTERPRETER_LOG"\nexit 1\n',
+                    encoding="utf-8",
+                )
+                interpreter.chmod(0o755)
+            elif mode != "none":
+                self.fail("unknown interpreter fixture mode: " + mode)
+
+            yield {
+                "root": root, "probe": probe, "tools": tools,
+                "owned": owned, "preferred": preferred, "selected": selected,
+                "allocator_log": root / "allocator.calls",
+                "interpreter_log": root / "interpreter.calls",
+            }
+
+    def invoke(self, fixture, *, profile="debug"):
+        environment = os.environ.copy()
+        environment.update({
+            "PATH": str(fixture["tools"]),
+            "PYTHON3": fixture["preferred"],
+            "CARGO_ALLOW_BIN": "target/selected/cargo-allow",
+            "OUTPUT_DIR": str(fixture["root"] / "receipt"),
+            "PROFILE": profile,
+            "ALLOCATOR_LOG": str(fixture["allocator_log"]),
+            "INTERPRETER_LOG": str(fixture["interpreter_log"]),
+            "CDPATH": "",
+        })
+        return subprocess.run(
+            [bash, str(fixture["probe"])], cwd=fixture["root"],
+            env=environment, capture_output=True, text=True, timeout=20,
+        )
+
+    def calls(self, path):
+        return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+
+    def new_fixtures(self, fixture):
+        return sorted(path.name for path in (fixture["root"] / "target").glob(
+            "cargo-allow-operator-latency.*"
+        ) if path != fixture["owned"])
+
+    def assert_clean(self, fixture):
+        self.assertEqual(self.new_fixtures(fixture), [])
+        self.assertEqual(
+            (fixture["owned"] / "keep").read_text(encoding="utf-8"),
+            "unrelated fixture\n",
+        )
+
+    def test_missing_or_rejected_interpreter_never_allocates(self):
+        for mode in ("none", "reject-fallback"):
+            with self.fixture(mode) as fixture:
+                for repetition in range(2):
+                    with self.subTest(mode=mode, repetition=repetition):
+                        result = self.invoke(fixture)
+                        print(
+                            f"interpreter refusal {mode} repeat{repetition}: "
+                            f"exit={result.returncode} "
+                            f"allocations={len(self.calls(fixture['allocator_log']))} "
+                            f"new_fixtures={self.new_fixtures(fixture)}",
+                        )
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertIn(
+                            "a Python 3 interpreter is required to write the JSON receipt",
+                            result.stderr,
+                        )
+                        self.assertNotIn("bootstrap-ready:", result.stdout)
+                        self.assert_clean(fixture)
+                        self.assertEqual(self.calls(fixture["allocator_log"]), [])
+                        expected_calls = repetition + 1 if mode == "reject-fallback" else 0
+                        self.assertEqual(
+                            len(self.calls(fixture["interpreter_log"])), expected_calls,
+                        )
+
+    def test_usable_selection_allocates_and_cleans(self):
+        for mode in ("default", "custom", "fallback", "host"):
+            with self.fixture(mode) as fixture:
+                for repetition in range(2):
+                    with self.subTest(mode=mode, repetition=repetition):
+                        result = self.invoke(fixture)
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertEqual(
+                            result.stdout.splitlines(),
+                            ["bootstrap-ready:" + fixture["selected"], "selected-python3"],
+                        )
+                        self.assert_clean(fixture)
+                        self.assertEqual(
+                            len(self.calls(fixture["allocator_log"])), repetition + 1,
+                        )
+
+    def test_failure_after_setup_keeps_receipt_and_cleanup(self):
+        with self.fixture("host") as fixture:
+            for repetition in range(2):
+                with self.subTest(repetition=repetition):
+                    result = self.invoke(fixture, profile="invalid")
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn("PROFILE must be debug or release", result.stderr)
+                    self.assertNotIn("bootstrap-ready:", result.stdout)
+                    receipt = json.loads((fixture["root"] / "receipt" /
+                                          "operator-latency.receipt.json").read_text(
+                        encoding="utf-8",
+                    ))
+                    self.assertEqual(receipt["result"], "failed")
+                    self.assertEqual(receipt["failure"], {
+                        "kind": "instrument_failure",
+                        "message": "PROFILE must be debug or release",
+                    })
+                    self.assert_clean(fixture)
+                    self.assertEqual(
+                        len(self.calls(fixture["allocator_log"])), repetition + 1,
+                    )
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+PY_INTERPRETER_ALLOCATION
+
 printf 'ok operator-latency harness characterization\n'
