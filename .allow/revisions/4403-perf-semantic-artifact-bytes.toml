@@ -1,0 +1,17 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1058"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3c3d44d4473a86babbcf3bf8d14513b668d09f063cb0e1a2cfbaa05f8de4446c"
+
+
+reason = "operator-latency.v4 receipt schema for the #4403 item 6 follow-up: per-sample and per-composite-step semantic_payload_bytes recorded alongside artifact payload_bytes; v3 remains a historical compatibility schema"
+
+[[records]]
+allow_ids = ["allow-1059"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:25f38051fba1c46d0bf92ccb9796b76d210c496bcc7908a8c0719525218ec652"
+
+
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

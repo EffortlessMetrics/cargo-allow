@@ -13,18 +13,21 @@ It runs against a debug build locally and a release build in the hosted Linux
 
 The receipt (`target/perf-budget/operator-latency.receipt.json`) records the
 tested binary digest and profile, host/toolchain, repository fixture counts,
-ordered argv, per-sample elapsed milliseconds and payload byte sizes, artifact
-digests, and semantic result checks. The receipt follows
-[`cargo-allow.operator-latency.v3`](schemas/operator-latency.v3.schema.json), a
+ordered argv, per-sample elapsed milliseconds, artifact and semantic-artifact
+byte sizes, artifact digests, and semantic result checks. The receipt follows
+[`cargo-allow.operator-latency.v4`](schemas/operator-latency.v4.schema.json), a
 supporting harness contract rather than a governed cargo-allow command
 artifact. The generated command artifacts are uploaded with the receipt in
-CI. Per-sample payload byte sizes and the #4366 agentic-surface samples
-(`agent_loop` phase: the four-command repair composite plus paired `hooks
-run` overhead) are recorded under the same contract.
+CI. Per-sample payload byte sizes, semantic-artifact byte sizes, and the
+#4366 agentic-surface samples (`agent_loop` phase: the four-command repair
+composite plus paired `hooks run` overhead) are recorded under the same
+contract.
 
 The hosted receipt consumer requires nonnegative integer durations for samples,
-agent-loop steps and totals, and wrapped/bare hook timings. Derived hook
-overhead remains signed. These duration checks are targeted contract checks,
+agent-loop steps and totals, and wrapped/bare hook timings, and requires
+nonnegative per-sample artifact and semantic-artifact byte counts that match
+the byte size of the retained uploaded files. Derived hook overhead remains
+signed. These duration checks are targeted contract checks,
 not full JSON Schema validation.
 
 Run the local smoke with the default debug profile, or select release to match
@@ -98,7 +101,8 @@ guard its end-to-end cost at the self-hosted ledger's realistic denominator
 (~2,575 tracked files, ~1,049 policy entries, ~16,170 findings, ~158
 worklist items). The harness measures every surface below in its `agent_loop`
 phase against a disposable full-scale clone with a fresh unreceipted probe
-finding, and records `payload_bytes` for every sample.
+finding, and records `payload_bytes` and `semantic_payload_bytes` for every
+sample.
 
 ### Baseline caveat
 
