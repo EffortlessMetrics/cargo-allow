@@ -602,7 +602,9 @@ fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Resu
             MatchStatus::Ambiguous,
         ]
     {
-        return Err(format!("fixture lost ordered mixed attention: {outcomes:?}"));
+        return Err(format!(
+            "fixture lost ordered mixed attention: {outcomes:?}"
+        ));
     }
     let guidance =
         "resolve equal-strength competition among these allow entries: allow-a, allow-b, allow-c";
@@ -623,14 +625,18 @@ fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Resu
             .and_then(Value::as_str)
             != Some("new")
     {
-        return Err(format!("mixed attention lost guidance or changed status: {json}"));
+        return Err(format!(
+            "mixed attention lost guidance or changed status: {json}"
+        ));
     }
     let text = explain_entry_text(Path::new("."), &cfg, entry, &findings);
     if !text.contains(guidance)
         || !text.contains("current_status: new")
         || !text.contains("occurrence_limit exceeded")
     {
-        return Err(format!("human mixed attention lost its decision context: {text}"));
+        return Err(format!(
+            "human mixed attention lost its decision context: {text}"
+        ));
     }
     Ok(())
 }
