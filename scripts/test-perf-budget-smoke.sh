@@ -29,7 +29,8 @@ from pathlib import Path
 script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
 v1 = json.loads(Path("docs/schemas/operator-latency.schema.json").read_text(encoding="utf-8"))
 v2 = json.loads(Path("docs/schemas/operator-latency.v2.schema.json").read_text(encoding="utf-8"))
-schema = json.loads(Path("docs/schemas/operator-latency.v3.schema.json").read_text(encoding="utf-8"))
+v3 = json.loads(Path("docs/schemas/operator-latency.v3.schema.json").read_text(encoding="utf-8"))
+schema = json.loads(Path("docs/schemas/operator-latency.v4.schema.json").read_text(encoding="utf-8"))
 
 assert v1["$id"].endswith("operator-latency.v1.schema.json")
 assert v1["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v1"
@@ -41,22 +42,34 @@ assert "cache_mode_samples" in v2["$defs"]["sample_policy"]["required"]
 assert "cache_mode" in v2["$defs"]["sample"]["required"]
 assert set(v2["$defs"]["sample"]["properties"]["cache_mode"]["enum"]) == {"on", "off", "not_applicable"}
 assert "agent_loop" not in v2["properties"]
-assert schema["$id"].endswith("operator-latency.v3.schema.json")
-assert schema["properties"]["schema_version"]["const"] == 3
-assert schema["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v3"
+# v3 remains a historical compatibility schema after the v4 bump.
+assert v3["$id"].endswith("operator-latency.v3.schema.json")
+assert v3["properties"]["schema_version"]["const"] == 3
+assert v3["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v3"
+assert "semantic_payload_bytes" not in v3["$defs"]["sample"]["properties"]
+assert schema["$id"].endswith("operator-latency.v4.schema.json")
+assert schema["properties"]["schema_version"]["const"] == 4
+assert schema["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v4"
 assert "cache_mode_samples" in schema["$defs"]["sample_policy"]["required"]
 assert "cache_mode" in schema["$defs"]["sample"]["required"]
 assert "samples" in schema["required"]
-# v3 is an additive bump over v2: agent_loop phase, optional per-sample
-# payload_bytes, optional agent_loop sample count, and an optional
-# agent_loop budget object.
+# v4 is an additive bump over v3: per-sample and per-composite-step
+# semantic_payload_bytes recording the semantic artifact's byte count.
 assert set(schema["$defs"]["sample"]["properties"]["phase"]["enum"]) == {
     "cold", "warm", "targeted", "agent_loop",
 }
 assert "agent_loop_samples" in schema["$defs"]["sample_policy"]["properties"]
 assert "agent_loop_samples" not in schema["$defs"]["sample_policy"]["required"]
 assert schema["$defs"]["sample"]["properties"]["payload_bytes"]["type"] == ["integer", "null"]
+assert schema["$defs"]["sample"]["properties"]["semantic_payload_bytes"]["type"] == ["integer", "null"]
+assert schema["$defs"]["sample"]["properties"]["semantic_payload_bytes"]["minimum"] == 0
 assert "payload_bytes" not in schema["$defs"]["sample"]["required"]
+assert "semantic_payload_bytes" not in schema["$defs"]["sample"]["required"]
+composite_steps = (
+    schema["$defs"]["agent_loop"]["properties"]["composite"]["properties"]["steps"]["items"]
+)
+assert composite_steps["properties"]["semantic_payload_bytes"]["type"] == ["integer", "null"]
+assert composite_steps["properties"]["semantic_payload_bytes"]["minimum"] == 0
 assert "agent_loop" in schema["properties"]
 assert "agent_loop" not in schema["required"]
 agent_loop = schema["$defs"]["agent_loop"]
@@ -81,8 +94,9 @@ for marker in (
     "operator-latency.receipt.json",
     'write_receipt "pass" ""',
     # #4366 agentic-surface extension.
-    'schema_id": "cargo-allow.operator-latency.v3"',
+    'schema_id": "cargo-allow.operator-latency.v4"',
     "payload_bytes",
+    "semantic_payload_bytes",
     "agent_loop_worklist",
     "agent_loop_why_plan",
     "agent_loop_add",
@@ -384,10 +398,11 @@ PY_BINARY_SELECTION
 
 # The receipt consumer belongs to this same operator-harness contract.
 "${py}" - <<'PY_RECEIPT'
-"""Exercise the actual inline CI receipt consumer with synthetic v3 receipts.
+"""Exercise the actual inline CI receipt consumer with synthetic v4 receipts.
 
-These fixtures test duration admission, not latency or artifact integrity.
-No second runtime validator or third-party dependency is introduced.
+These fixtures test duration admission and byte-count admission, not latency
+or artifact integrity. No second runtime validator or third-party dependency
+is introduced.
 """
 import json
 import math
@@ -399,7 +414,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path.cwd()
-SCHEMA_PATH = "docs/schemas/operator-latency.v3.schema.json"
+SCHEMA_PATH = "docs/schemas/operator-latency.v4.schema.json"
 RECEIPT_PATH = "target/perf-budget/operator-latency.receipt.json"
 
 
@@ -413,6 +428,13 @@ def consumer_source():
     source, end, _ = body.partition("\n          PY")
     assert end, "missing CI consumer heredoc end"
     return textwrap.dedent(source) + "\n"
+
+
+def retained_sizes(index):
+    # Artifact and semantic files carry different known UTF-8 byte lengths
+    # so each recorded count is an independent control. Sizes depend only on
+    # the fixture index: mutating a receipt count cannot move its file.
+    return 16 + index, 64 + index
 
 
 def receipt_fixture():
@@ -435,18 +457,23 @@ def receipt_fixture():
         ("hooks_wrapped_check", "agent_loop", "not_applicable"),
         ("hooks_bare_check", "agent_loop", "not_applicable"),
     ]
-    samples = [
-        {
+    samples = []
+    for index, (name, phase, mode) in enumerate(names):
+        artifact_size, semantic_size = retained_sizes(index)
+        samples.append({
             "name": name, "phase": phase, "cache_mode": mode,
             "argv": ["cargo-allow", "check"], "elapsed_ms": 1,
-            "status": "passed", "payload_bytes": 0,
-            "artifact": {"path": f"{name}.json", "sha256": "0" * 64},
-            "semantic_artifact": {"path": f"{name}.semantic.json", "sha256": "0" * 64},
-        }
-        for name, phase, mode in names
-    ]
+            "status": "passed", "payload_bytes": artifact_size,
+            "semantic_payload_bytes": semantic_size,
+            "artifact": {
+                "path": f"{name}.json", "sha256": f"{index + 1:064x}",
+            },
+            "semantic_artifact": {
+                "path": f"{name}.semantic.json", "sha256": f"{index + 65:064x}",
+            },
+        })
     return {
-        "schema_version": 3, "schema_id": "cargo-allow.operator-latency.v3",
+        "schema_version": 4, "schema_id": "cargo-allow.operator-latency.v4",
         "tool": "cargo-allow", "command": "operator-latency", "result": "pass",
         "binary": {"path": "target/release/cargo-allow", "sha256": "0" * 64, "profile": "release"},
         "host": {"os": "Linux", "release": "fixture", "machine": "x86_64", "rustc": "fixture"},
@@ -464,11 +491,15 @@ def receipt_fixture():
             "composite": {
                 "name": "agent_loop", "added_allow_id": "fixture-allow",
                 "steps": [
-                    {"sample": name, "elapsed_ms": 1, "payload_bytes": 0}
-                    for name in (
+                    {
+                        "sample": name, "elapsed_ms": 1,
+                        "payload_bytes": 16 + index,
+                        "semantic_payload_bytes": 64 + index,
+                    }
+                    for index, name in enumerate((
                         "agent_loop_worklist", "agent_loop_why_plan",
                         "agent_loop_add", "agent_loop_check",
-                    )
+                    ))
                 ],
                 "total_elapsed_ms": 4,
             },
@@ -478,7 +509,7 @@ def receipt_fixture():
             },
         },
         "samples": samples,
-        "claim_boundary": ["synthetic receipt duration-admission fixture"],
+        "claim_boundary": ["synthetic receipt admission fixture"],
         "limitations": ["not a latency or artifact-integrity observation"],
     }
 
@@ -527,7 +558,7 @@ def duration_diagnostic(path):
     raise AssertionError(f"uncovered duration path: {path}")
 
 
-class ReceiptDurationControls(unittest.TestCase):
+class ReceiptAdmissionControls(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.source = consumer_source()
@@ -543,6 +574,18 @@ class ReceiptDurationControls(unittest.TestCase):
                 receipt_path = root / RECEIPT_PATH
                 receipt_path.parent.mkdir(parents=True)
                 receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+                # Retain one file per recorded digest at exactly the
+                # fixture's deterministic byte counts; mutated counts must
+                # not be able to pass by moving the files instead.
+                for index, sample in enumerate(receipt["samples"]):
+                    artifact_size, semantic_size = retained_sizes(index)
+                    for key, size, prefix in (
+                        ("artifact", artifact_size, b"a"),
+                        ("semantic_artifact", semantic_size, b"s"),
+                    ):
+                        retained = receipt_path.parent / sample[key]["path"]
+                        retained.parent.mkdir(parents=True, exist_ok=True)
+                        retained.write_bytes(prefix * size)
             return subprocess.run(
                 [sys.executable, "-"], input=self.source, cwd=root,
                 capture_output=True, text=True, timeout=20,
@@ -576,6 +619,61 @@ class ReceiptDurationControls(unittest.TestCase):
         for field in ("wrapped_elapsed_ms", "bare_elapsed_ms"):
             self.assertEqual(hooks[field], {"type": "integer", "minimum": 0})
         self.assertEqual(hooks["overhead_ms"], {"type": "integer"})
+
+    def test_schema_byte_count_contract(self):
+        schema = json.loads(self.schema_text)
+        sample = schema["$defs"]["sample"]
+        self.assertEqual(sample["properties"]["payload_bytes"], {"type": ["integer", "null"], "minimum": 0})
+        self.assertEqual(sample["properties"]["semantic_payload_bytes"], {"type": ["integer", "null"], "minimum": 0})
+        steps = schema["$defs"]["agent_loop"]["properties"]["composite"]["properties"]["steps"]["items"]["properties"]
+        self.assertEqual(steps["payload_bytes"], {"type": ["integer", "null"], "minimum": 0})
+        self.assertEqual(steps["semantic_payload_bytes"], {"type": ["integer", "null"], "minimum": 0})
+
+    def test_byte_counts_match_retained_files(self):
+        receipt = receipt_fixture()
+        for repetition in range(2):
+            with self.subTest(repetition=repetition):
+                self.assert_accepted(receipt)
+
+    def test_byte_count_admission_refusals(self):
+        sample_index = 3
+        cases = (
+            ("artifact_negative",
+             lambda r: r["samples"][sample_index].__setitem__("payload_bytes", -1),
+             "must be nonnegative integers"),
+            ("semantic_negative",
+             lambda r: r["samples"][sample_index].__setitem__("semantic_payload_bytes", -1),
+             "must be nonnegative integers"),
+            ("artifact_type",
+             lambda r: r["samples"][sample_index].__setitem__("payload_bytes", True),
+             "must be nonnegative integers"),
+            ("semantic_type",
+             lambda r: r["samples"][sample_index].__setitem__("semantic_payload_bytes", 1.5),
+             "must be nonnegative integers"),
+            ("semantic_null",
+             lambda r: r["samples"][sample_index].__setitem__("semantic_payload_bytes", None),
+             "must be nonnegative integers"),
+            ("artifact_file_mismatch",
+             lambda r: r["samples"][sample_index].__setitem__(
+                 "payload_bytes", r["samples"][sample_index]["payload_bytes"] + 1),
+             "must match the retained artifact size"),
+            ("semantic_file_mismatch",
+             lambda r: r["samples"][sample_index].__setitem__(
+                 "semantic_payload_bytes", r["samples"][sample_index]["semantic_payload_bytes"] + 1),
+             "must match the retained semantic artifact size"),
+            ("steps_semantic_negative",
+             lambda r: r["agent_loop"]["composite"]["steps"][1].__setitem__(
+                 "semantic_payload_bytes", -1),
+             "byte counts must be nonnegative integers"),
+            ("steps_semantic_missing",
+             lambda r: r["agent_loop"]["composite"]["steps"][1].pop("semantic_payload_bytes"),
+             "byte counts must be nonnegative integers"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                receipt = receipt_fixture()
+                mutate(receipt)
+                self.assert_rejected(receipt, label, diagnostic=diagnostic)
 
     def test_valid_duration_boundaries(self):
         for path in duration_paths():
@@ -613,7 +711,7 @@ class ReceiptDurationControls(unittest.TestCase):
 
     def test_existing_refusals(self):
         invalid = []
-        for field, value in (("schema_id", "wrong"), ("schema_version", 4), ("result", "failed")):
+        for field, value in (("schema_id", "wrong"), ("schema_version", 5), ("result", "failed")):
             receipt = receipt_fixture()
             receipt[field] = value
             invalid.append((field, receipt))
@@ -965,14 +1063,16 @@ class HookPayloadControls(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn("hooks-probe-complete", result.stdout)
                         fields = metrics.strip().split("\t")
-                        self.assertEqual(len(fields), 10)
+                        self.assertEqual(len(fields), 11)
                         self.assertEqual(fields[1], sample)
                         self.assertEqual(fields[7], "passed")
                         self.assertEqual(int(fields[9]), size)
+                        self.assertEqual(int(fields[10]), size)
                         self.assertEqual(fields[4], hashlib.sha256(artifact.read_bytes()).hexdigest())
                         self.assertEqual(fields[3:5], fields[5:7])
                         self.assertEqual(receipt["result"], "pass")
                         self.assertEqual(receipt["samples"][0]["payload_bytes"], size)
+                        self.assertEqual(receipt["samples"][0]["semantic_payload_bytes"], size)
                         print(f"hooks payload positive {sample}: {size}B accepted")
 
     def test_oversized_byte_payload_refuses_repeatedly(self):
