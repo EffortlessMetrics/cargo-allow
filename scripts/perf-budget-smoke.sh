@@ -210,9 +210,9 @@ def records():
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         fields = line.split("\t")
-        if len(fields) != 10:
+        if len(fields) != 11:
             continue
-        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status, argv_json, payload_bytes = fields
+        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status, argv_json, payload_bytes, semantic_payload_bytes = fields
         try:
             argv = json.loads(argv_json)
         except json.JSONDecodeError:
@@ -233,6 +233,9 @@ def records():
             "elapsed_ms": int(elapsed) if elapsed else None,
             "status": status,
             "payload_bytes": int(payload_bytes) if payload_bytes else None,
+            "semantic_payload_bytes": (
+                int(semantic_payload_bytes) if semantic_payload_bytes else None
+            ),
             "artifact": {"path": artifact, "sha256": digest} if artifact else None,
             "semantic_artifact": {
                 "path": semantic,
@@ -243,8 +246,8 @@ def records():
 
 sample_rows = records()
 payload = {
-    "schema_version": 3,
-    "schema_id": "cargo-allow.operator-latency.v3",
+    "schema_version": 4,
+    "schema_id": "cargo-allow.operator-latency.v4",
     "tool": "cargo-allow",
     "command": "operator-latency",
     "result": result,
@@ -288,6 +291,7 @@ payload = {
         "persistent_cache_phase_compared",
         "binary_and_profile_identified",
         "payload_bytes_recorded_per_sample",
+        "semantic_artifact_bytes_recorded_per_sample",
         "agent_loop_composite_steps_attributable",
     ],
     "limitations": [
@@ -377,8 +381,8 @@ record_skipped() {
   shift 2
   local argv_json
   argv_json="$(encode_argv "$@")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "${phase}" "${name}" "" "" "" "" "" "skipped" "${argv_json}" "" >>"${metrics}"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${phase}" "${name}" "" "" "" "" "" "skipped" "${argv_json}" "" "" >>"${metrics}"
 }
 
 measure() {
@@ -395,6 +399,7 @@ measure() {
   local stdout_path="${run_dir}/${name}.stdout"
   local stderr_path="${run_dir}/${name}.stderr"
   local start end elapsed digest semantic_digest payload_bytes argv_json
+  local semantic_payload_bytes
 
   rm -f "${artifact}" "${semantic}"
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
@@ -425,10 +430,11 @@ measure() {
   semantic_digest="$(sha256_file "${semantic}")"
   assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  semantic_payload_bytes="$(artifact_payload_bytes "${semantic}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${phase}" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
     "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" \
-    "${payload_bytes}" >>"${metrics}"
+    "${payload_bytes}" "${semantic_payload_bytes}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
 }
 
@@ -452,6 +458,7 @@ measure_agent_step() {
   local stdout_path="${run_dir}/${name}.stdout"
   local stderr_path="${run_dir}/${name}.stderr"
   local start end elapsed digest semantic_digest payload_bytes argv_json
+  local semantic_payload_bytes
 
   rm -f "${in_artifact}" "${in_semantic}" "${artifact}" "${semantic}"
   mkdir -p "${agent_loop_root}/.measurement" \
@@ -483,10 +490,11 @@ measure_agent_step() {
   semantic_digest="$(sha256_file "${semantic}")"
   assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  semantic_payload_bytes="$(artifact_payload_bytes "${semantic}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
     "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" \
-    "${payload_bytes}" >>"${metrics}"
+    "${payload_bytes}" "${semantic_payload_bytes}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
 }
 
@@ -499,6 +507,7 @@ measure_hooks_sample() {
   local artifact="${output_dir}/${artifact_rel}"
   local stderr_path="${run_dir}/${name}.stderr"
   local start end elapsed digest payload_bytes argv_json
+  local semantic_payload_bytes
 
   rm -f "${artifact}"
   mkdir -p "$(dirname "${artifact}")"
@@ -525,10 +534,13 @@ measure_hooks_sample() {
   digest="$(sha256_file "${artifact}")"
   assert_payload_ceilings "${name}" "${artifact}" "${artifact}"
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  # The paired hooks sample's machine artifact is also its semantic result,
+  # so both recorded byte counts describe the same retained file.
+  semantic_payload_bytes="${payload_bytes}"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
     "${artifact_rel}" "${digest}" "passed" "${argv_json}" \
-    "${payload_bytes}" >>"${metrics}"
+    "${payload_bytes}" "${semantic_payload_bytes}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
 }
 
@@ -567,6 +579,7 @@ measure_cache_phase() {
   local fixture_report_arg="$(native_path "${fixture_report}")"
   local fixture_receipt_arg="$(native_path "${fixture_receipt}")"
   local start end elapsed rc=0 digest semantic_digest payload_bytes argv_json
+  local semantic_payload_bytes
   local -a argv=(check --root "${fixture_root_arg}" --config policy/allow.toml
     --persistent-cache "${mode}" --format json --receipt "${fixture_receipt_arg}"
     --output "${fixture_report_arg}")
@@ -592,10 +605,11 @@ measure_cache_phase() {
   digest="$(sha256_file "${report}")"
   semantic_digest="$(sha256_file "${semantic_report}")"
   payload_bytes="$(artifact_payload_bytes "${report}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+  semantic_payload_bytes="$(artifact_payload_bytes "${semantic_report}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${phase}" "${name}" "${elapsed}" "${report_rel}" "${digest}" \
     "${semantic_report_rel}" "${semantic_digest}" "passed" "${argv_json}" \
-    "${payload_bytes}" >>"${metrics}"
+    "${payload_bytes}" "${semantic_payload_bytes}" >>"${metrics}"
 }
 
 cache_dir="${fixture_root}/target/cargo-allow/cache"
@@ -754,8 +768,9 @@ measure_hooks_sample "hooks_bare_check" "artifacts/hooks-bare-check.md" \
 log "recording agent-loop attribution rows"
 : >"${run_dir}/agent-loop.steps.tsv"
 for step in agent_loop_worklist agent_loop_why_plan agent_loop_add agent_loop_check; do
-  printf '%s\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\n' \
     "${step}" "$(sample_field "${step}" 3)" "$(sample_field "${step}" 10)" \
+    "$(sample_field "${step}" 11)" \
     >>"${run_dir}/agent-loop.steps.tsv"
 done
 added_allow_id="$("${py}" -c 'import json, sys; print(json.load(sys.stdin).get("added_allow_id") or "")' \
@@ -772,11 +787,12 @@ from pathlib import Path
 out_path, added_allow_id, total, wrapped, bare, steps_path = sys.argv[1:7]
 steps = []
 for line in Path(steps_path).read_text(encoding="utf-8").splitlines():
-    name, elapsed, payload = line.split("\t")
+    name, elapsed, payload, semantic_payload = line.split("\t")
     steps.append({
         "sample": name,
         "elapsed_ms": int(elapsed),
         "payload_bytes": int(payload) if payload else None,
+        "semantic_payload_bytes": int(semantic_payload) if semantic_payload else None,
     })
 wrapped_ms = int(wrapped)
 bare_ms = int(bare)
