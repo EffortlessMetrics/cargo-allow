@@ -24,6 +24,16 @@ PHASE_INSTRUMENT_FAILURE = "InstrumentFailure"
 CARGO_TOKEN_ENV = "CARGO_REGISTRY_TOKEN"
 
 
+def _selected_token_present() -> bool:
+    """Inspect names only; mapping membership/get may retrieve a value."""
+    return any(name == CARGO_TOKEN_ENV for name in os.environ)
+
+
+def _require_selected_token_absent() -> None:
+    if _selected_token_present():
+        raise ValueError("rehearsal does not accept a CARGO_REGISTRY_TOKEN environment entry")
+
+
 def compute_sha256(path: Path) -> str:
     """Return the repository's canonical SHA-256 text for one exact file."""
     digest = hashlib.sha256()
@@ -55,6 +65,7 @@ def resolve_commit(commit_ref: str) -> str:
     result = subprocess.run(
         ["git", "--no-replace-objects", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
         cwd=ROOT,
+        env=_sanitized_environment(),
         capture_output=True,
         text=True,
         timeout=15,
@@ -94,6 +105,7 @@ def require_supported_content_attributes(paths: list[bytes]) -> None:
                 "check-attr", "--stdin", "-z", *arguments,
             ],
             cwd=ROOT, input=b"".join(path + b"\0" for path in paths),
+            env=_sanitized_environment(),
             capture_output=True, timeout=15, check=False,
         )
         if result.returncode != 0:
@@ -148,7 +160,7 @@ def require_clean_checkout(commit_sha: str) -> None:
         raise ValueError("rehearsal commit does not match checkout HEAD")
     root = subprocess.run(
         ["git", "--no-replace-objects", "rev-parse", "--show-toplevel"],
-        cwd=ROOT, capture_output=True, timeout=15, check=False,
+        cwd=ROOT, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
     )
     if root.returncode != 0 or not root.stdout.strip():
         raise ValueError("could not inspect rehearsal checkout root")
@@ -160,7 +172,7 @@ def require_clean_checkout(commit_sha: str) -> None:
             "git", "--no-replace-objects", "config", "--type=bool", "--default=true",
             "--get", "core.trustctime",
         ],
-        cwd=ROOT, capture_output=True, timeout=15, check=False,
+        cwd=ROOT, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
     )
     if ctime.returncode != 0 or ctime.stdout.strip() != b"true":
         raise ValueError("rehearsal requires readable core.trustctime=true configuration")
@@ -170,6 +182,7 @@ def require_clean_checkout(commit_sha: str) -> None:
             "ls-files", "--cached", "-v", "-z",
         ],
         cwd=ROOT,
+        env=_sanitized_environment(),
         capture_output=True,
         timeout=15,
         check=False,
@@ -194,6 +207,7 @@ def require_clean_checkout(commit_sha: str) -> None:
             "--ignore-submodules=none",
         ],
         cwd=ROOT,
+        env=_sanitized_environment(),
         capture_output=True,
         timeout=15,
         check=False,
@@ -222,10 +236,12 @@ def _file_characterization(path: Path) -> str:
 
 
 def _sanitized_environment() -> dict[str, str]:
-    """Prevent child characterizations from receiving the registry secret."""
-    environment = dict(os.environ)
-    environment.pop(CARGO_TOKEN_ENV, None)
-    return environment
+    """Exclude the selected token before retrieving any environment values.
+
+    This is not isolation from alternate credential sources or proof of the
+    rehearsal's seven broader zero-mutation obligations.
+    """
+    return {name: os.environ[name] for name in os.environ if name != CARGO_TOKEN_ENV}
 
 
 def _run_characterization(command: list[str]) -> str:
@@ -607,17 +623,17 @@ AUTHORIZATION_SCHEMA = "cargo-allow.release-authorization.v1"
 
 
 def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
-    """Prove the token-free rehearsal posture and bind the checked
+    """Check the selected registry-token environment boundary and bind the checked
     authorization artifact's identity (#3751 phase: authorization boundary).
 
-    The rehearsal never consumes authorization: a publish token in the
-    environment is an instrument failure, and the checked
+    The rehearsal never consumes authorization: the selected token's environment
+    key is an instrument failure without reading its value, and the checked
     CargoAllowReleaseAuthorizationV1 artifact is read only to record which
     release identity would gate the authorized run. The phase deliberately
     stays Incomplete — only the authorized run (#3760/#2502) can claim
     authorization.
     """
-    if os.environ.get(CARGO_TOKEN_ENV):
+    if _selected_token_present():
         return PHASE_INSTRUMENT_FAILURE
     try:
         artifact = json.loads(
@@ -801,6 +817,7 @@ def _preflight_receipt_output(path: Path) -> Path:
             raise ValueError("repository receipt output must be inside target/")
         tracked = subprocess.run(
             ["git", "ls-files", "--cached", "-z"], cwd=root,
+            env=_sanitized_environment(),
             capture_output=True, timeout=15, check=False,
         )
         if tracked.returncode != 0:
@@ -813,7 +830,7 @@ def _preflight_receipt_output(path: Path) -> Path:
             raise ValueError("receipt output cannot replace a tracked source path")
         ignored = subprocess.run(
             ["git", "check-ignore", "-q", "--", path.relative_to(root).as_posix()],
-            cwd=root, capture_output=True, timeout=15, check=False,
+            cwd=root, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
         )
         if ignored.returncode != 0:
             raise ValueError("repository receipt output must be an ignored target artifact")
@@ -846,6 +863,7 @@ def build_rehearsal_receipt(
     candidate_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
+    _require_selected_token_absent()
     if (candidate_executable is None) != (candidate_sha256 is None):
         raise ValueError("candidate executable and SHA-256 must be supplied together")
     commit_sha = resolve_commit(commit_ref)
@@ -883,9 +901,11 @@ def build_rehearsal_receipt(
             "support-doc binding; the manifest/asset surface fixture matrix; "
             "the release workflow graph permission inventory). The "
             "authorization_boundary phase deliberately stays Incomplete: the "
-            "rehearsal proves the token-free posture and records the checked "
+            "rehearsal checks the selected CARGO_REGISTRY_TOKEN environment "
+            "entry without reading its value and records the checked "
             "authorization artifact's identity but never consumes "
-            "authorization, so the aggregate cannot satisfy a release gate."
+            "authorization. Other credential sources and whole-workflow mutation "
+            "prevention remain unproven, so the aggregate cannot satisfy a release gate."
         ),
     }
 
@@ -924,6 +944,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        _require_selected_token_absent()
         output_path = (_preflight_receipt_output(Path(args.output))
                        if args.output is not None else None)
         receipt = build_rehearsal_receipt(

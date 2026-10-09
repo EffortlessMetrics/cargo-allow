@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Mapping
 import importlib.util
 import io
 import json
@@ -36,6 +37,26 @@ REQUIRED_PHASES = (
 )
 
 
+class TokenValueTrap(Mapping[str, str]):
+    """Expose environment keys while failing any selected-token value read."""
+
+    def __init__(self, values: dict[str, str]) -> None:
+        self.values_by_name = values
+        self.value_reads: list[str] = []
+
+    def __iter__(self):
+        return iter(self.values_by_name)
+
+    def __len__(self) -> int:
+        return len(self.values_by_name)
+
+    def __getitem__(self, name: str) -> str:
+        self.value_reads.append(name)
+        if name == "CARGO_REGISTRY_TOKEN":
+            raise AssertionError("selected-token value was read")
+        return self.values_by_name[name]
+
+
 class TestReceiptOutput(unittest.TestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
@@ -65,6 +86,113 @@ class TestReceiptOutput(unittest.TestCase):
         ) as phases, contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             result = REHEARSAL.main()
         return result, stdout.getvalue(), stderr.getvalue(), phases
+
+    def test_selected_token_rejects_entry_points_before_any_work(self) -> None:
+        existing = self.sandbox / "existing.json"
+        existing.write_text("prior receipt", encoding="utf-8")
+        new_output = self.root / "target/not-created/receipt.json"
+        phase_functions = [
+            "run_phase_" + ("docs_and_support" if phase == "docs_and_support_identity" else phase)
+            for phase in REQUIRED_PHASES
+        ]
+        for token in ("", "synthetic-private-token"):
+            for entry in ("builder", "cli", "cli-new-output", "cli-existing-output"):
+                with self.subTest(token_empty=not token, entry=entry):
+                    environment = TokenValueTrap({"CARGO_REGISTRY_TOKEN": token})
+                    stdout, stderr = io.StringIO(), io.StringIO()
+                    argv = [str(REHEARSAL_PATH)]
+                    if entry.startswith("cli-"):
+                        argv += ["--output", str(new_output if entry == "cli-new-output" else existing)]
+                    with contextlib.ExitStack() as stack:
+                        stack.enter_context(mock.patch.object(REHEARSAL.os, "environ", environment))
+                        stack.enter_context(mock.patch.object(sys, "argv", argv))
+                        stack.enter_context(contextlib.redirect_stdout(stdout))
+                        stack.enter_context(contextlib.redirect_stderr(stderr))
+                        work = [stack.enter_context(mock.patch.object(
+                            REHEARSAL, name,
+                            side_effect=AssertionError(f"rehearsal work reached: {name}"),
+                        )) for name in (
+                            "resolve_commit", "require_clean_checkout", "compute_sha256",
+                            "_preflight_receipt_output", "_write_receipt", *phase_functions,
+                        )]
+                        work.append(stack.enter_context(mock.patch.object(REHEARSAL.subprocess, "run")))
+                        work.append(stack.enter_context(mock.patch.object(Path, "read_text")))
+                        if entry == "builder":
+                            with self.assertRaisesRegex(ValueError, "CARGO_REGISTRY_TOKEN"):
+                                REHEARSAL.build_rehearsal_receipt("HEAD")
+                        else:
+                            self.assertEqual(REHEARSAL.main(), 2)
+                            self.assertIn("CARGO_REGISTRY_TOKEN", stderr.getvalue())
+                        for operation in work:
+                            operation.assert_not_called()
+                    self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
+                    self.assertEqual(stdout.getvalue(), "")
+                    self.assertNotIn("synthetic-private-token", stderr.getvalue())
+                    self.assertFalse(new_output.parent.exists())
+                    self.assertEqual(existing.read_text(encoding="utf-8"), "prior receipt")
+
+    def test_child_environment_filters_selected_token_before_value_lookup(self) -> None:
+        environment = TokenValueTrap({
+            "CARGO_REGISTRY_TOKEN": "synthetic-private-token", "BENIGN": "retained",
+        })
+        with mock.patch.object(REHEARSAL.os, "environ", environment):
+            self.assertEqual(REHEARSAL._sanitized_environment(), {"BENIGN": "retained"})
+        self.assertEqual(environment.value_reads, ["BENIGN"])
+
+    def test_output_git_children_receive_filtered_environment(self) -> None:
+        environment = TokenValueTrap({
+            "CARGO_REGISTRY_TOKEN": "synthetic-private-token", "BENIGN": "retained",
+        })
+        with mock.patch.object(REHEARSAL.os, "environ", environment):
+            REHEARSAL._preflight_receipt_output(self.root / "target/new.json")
+        calls = REHEARSAL.subprocess.run.call_args_list
+        self.assertEqual(len(calls), 2)
+        for call in calls:
+            self.assertEqual(call.kwargs.get("env"), {"BENIGN": "retained"})
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
+
+    def test_late_authorization_token_detection_reads_no_value_or_artifact(self) -> None:
+        values = {"BENIGN": "retained"}
+        environment = TokenValueTrap(values)
+        with mock.patch.object(REHEARSAL.os, "environ", environment):
+            self.assertEqual(REHEARSAL._sanitized_environment(), values)
+            values["CARGO_REGISTRY_TOKEN"] = "synthetic-private-token"
+            receipt = {}
+            with mock.patch.object(Path, "read_text") as read:
+                self.assertEqual(REHEARSAL.run_phase_authorization_boundary(receipt), "InstrumentFailure")
+                read.assert_not_called()
+        self.assertEqual(receipt, {})
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
+
+    def test_token_appearing_during_rehearsal_stays_non_clean(self) -> None:
+        values = {"BENIGN": "retained"}
+        environment = TokenValueTrap(values)
+
+        def introduce_token(receipt, **kwargs):
+            values["CARGO_REGISTRY_TOKEN"] = "synthetic-private-token"
+            return "Complete"
+
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(REHEARSAL.os, "environ", environment))
+            stack.enter_context(mock.patch.object(REHEARSAL, "resolve_commit", return_value="a" * 40))
+            stack.enter_context(mock.patch.object(REHEARSAL, "require_clean_checkout"))
+            stack.enter_context(mock.patch.object(
+                REHEARSAL, "compute_sha256", return_value="sha256:v1:" + "b" * 64,
+            ))
+            read = stack.enter_context(mock.patch.object(Path, "read_text"))
+            for phase in REQUIRED_PHASES:
+                if phase == "authorization_boundary":
+                    continue
+                name = "run_phase_" + ("docs_and_support" if phase == "docs_and_support_identity" else phase)
+                operation = stack.enter_context(mock.patch.object(REHEARSAL, name, return_value="Complete"))
+                if phase == "release_identity":
+                    operation.side_effect = introduce_token
+            receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+            read.assert_not_called()
+        self.assertEqual(receipt["phases"]["authorization_boundary"], "InstrumentFailure")
+        self.assertEqual(receipt["aggregate_status"], "InstrumentFailure")
+        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
 
     def test_stdout_and_artifact_destinations_preserve_status_and_source(self) -> None:
         source = self.root / "Cargo.toml"
@@ -730,6 +858,8 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.assertTrue(run.call_args_list)
         for call in run.call_args_list:
             self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+            self.assertIsInstance(call.kwargs.get("env"), dict)
+            self.assertNotIn("CARGO_REGISTRY_TOKEN", call.kwargs["env"])
             if "status" in call.args[0]:
                 for setting in ("core.checkStat=default", "core.ignoreStat=false", "core.trustctime=true"):
                     self.assertIn(setting, call.args[0])
