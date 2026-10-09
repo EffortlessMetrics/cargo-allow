@@ -356,6 +356,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         style,
     );
     let summary = diff_summary(
+        &root,
         &base,
         args.head.as_deref(),
         result_class,
@@ -484,6 +485,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
 }
 
 fn diff_summary(
+    root: &Path,
     base: &str,
     head: Option<&str>,
     result_class: allow_diff::DiffResultClass,
@@ -524,6 +526,7 @@ fn diff_summary(
         crate::core_command_summary::DiffSummaryFactsV1 {
             repository_identity: "local-repository:current".to_string(),
             portable_identity: format!("diff:{base}:{}", head.unwrap_or("current-worktree")),
+            root_path: normalize_path(root),
             base: base.to_string(),
             head: head.map(str::to_string),
             result_class: result_class_v1,
@@ -1151,6 +1154,8 @@ mod policy_filter_tests;
 
 #[cfg(test)]
 mod summary_tests {
+    use std::path::Path;
+
     use super::{diff_summary, git_relative_config_path_for_diff};
     use allow_diff::DiffResultClass;
     use effortless_repo_protocol::ResultClassV1;
@@ -1169,8 +1174,15 @@ mod summary_tests {
                 ResultClassV1::InstrumentFailure,
             ),
         ] {
-            let summary = diff_summary("base", Some("head"), result_class, 1, true)
-                .map_err(|error| error.to_string())?;
+            let summary = diff_summary(
+                Path::new("F:/fixture-root"),
+                "base",
+                Some("head"),
+                result_class,
+                1,
+                true,
+            )
+            .map_err(|error| error.to_string())?;
             if summary.result_class != expected {
                 return Err(format!(
                     "{result_class:?} mapped to {:?}, expected {expected:?}",
@@ -1181,8 +1193,15 @@ mod summary_tests {
                 return Err(format!("{result_class:?} must remain blocking"));
             }
         }
-        let clean = diff_summary("base", Some("head"), DiffResultClass::Complete, 0, false)
-            .map_err(|error| error.to_string())?;
+        let clean = diff_summary(
+            Path::new("F:/fixture-root"),
+            "base",
+            Some("head"),
+            DiffResultClass::Complete,
+            0,
+            false,
+        )
+        .map_err(|error| error.to_string())?;
         if clean.result_class != ResultClassV1::Completed
             || clean.posture != crate::core_command_summary::CoreCommandPostureV1::Satisfied
         {

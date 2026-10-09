@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
 #[cfg(test)]
@@ -77,7 +77,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         } else {
             "create"
         };
-        let summary = init_summary(&display, args, path.exists())?;
+        let summary = init_summary(&root, &display, args, path.exists())?;
         crate::core_command_router::write_summary_artifact(&root, &summary)?;
         print!(
             "{}{}",
@@ -140,7 +140,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // an existing file, "created" for a new file.
     let action = if path_existed { "overwrote" } else { "created" };
     let display = created_path_display(&root, &path);
-    let summary = init_summary(&display, args, path_existed)?;
+    let summary = init_summary(&root, &display, args, path_existed)?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
     print!(
         "{}{}",
@@ -151,6 +151,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
 }
 
 fn init_summary(
+    root: &Path,
     config_path: &str,
     args: &InitArgs,
     path_existed: bool,
@@ -159,6 +160,7 @@ fn init_summary(
         crate::core_command_summary::InitSummaryFactsV1 {
             repository_identity: "local-repository:current".to_string(),
             portable_identity: format!("worktree:init:{config_path}"),
+            root_path: normalize_path(root),
             config_path: config_path.to_string(),
             dry_run: args.dry_run,
             force: args.force,

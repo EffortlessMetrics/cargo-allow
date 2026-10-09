@@ -43,10 +43,15 @@ impl Fixture {
         use clap::Parser;
         let mut argv = vec!["cargo-allow".to_owned()];
         argv.extend_from_slice(args);
-        argv.extend([
-            "--root".to_owned(),
-            self.root.to_string_lossy().into_owned(),
-        ]);
+        // The projected argv already carries the root its summary suggested
+        // (#4393), and these fixtures build that root from this fixture, so a
+        // second `--root` would be a duplicate argument, not an override.
+        if !args.iter().any(|arg| arg == "--root") {
+            argv.extend([
+                "--root".to_owned(),
+                self.root.to_string_lossy().into_owned(),
+            ]);
+        }
         let parsed = crate::CargoAllowCli::try_parse_from(argv)?;
         let Some(crate::CargoAllowCommand::Prune(args)) = parsed.command else {
             return Err("summary action did not parse as prune".into());
@@ -249,36 +254,41 @@ fn prune_selection_preview_limits_json_human_and_receipt() -> TestResult {
 #[test]
 fn prune_selection_summary_apply_command_retains_selected_id() -> TestResult {
     use crate::core_command_summary::{PruneSummaryFactsV1, core_command_summary_from_prune};
-    let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
-        repository_identity: "local-repository:test".to_owned(),
-        portable_identity: "worktree:prune:policy/allow.toml:1".to_owned(),
-        policy_path: "policy/allow.toml".to_owned(),
-        candidate_count: 1,
-        allow_id: Some("allow-stale-a".to_owned()),
-        include_untracked: false,
-        write_requested: false,
-        dry_run: true,
-        completeness: effortless_repo_protocol::CompletenessV1::Complete,
-    })?;
-    let action = summary.primary_action.ok_or("missing apply command")?;
-    require(
-        action.args
-            == [
-                "prune",
-                "--stale",
-                "--config",
-                "policy/allow.toml",
-                "--allow-id=allow-stale-a",
-                "--write",
-            ],
-        "summary apply command widened selected preview to bulk removal",
-    )?;
     with_fixture(|fixture| {
-        let mut expected = load_policy(&fixture.policy)?;
-        expected.allow.retain(|entry| entry.id != "allow-stale-a");
+        let root_path = fixture.root.to_string_lossy().into_owned();
+        let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
+            repository_identity: "local-repository:test".to_owned(),
+            portable_identity: "worktree:prune:policy/allow.toml:1".to_owned(),
+            root_path: root_path.clone(),
+            policy_path: "policy/allow.toml".to_owned(),
+            candidate_count: 1,
+            allow_id: Some("allow-stale-a".to_owned()),
+            include_untracked: false,
+            write_requested: false,
+            dry_run: true,
+            completeness: effortless_repo_protocol::CompletenessV1::Complete,
+        })?;
+        let action = summary.primary_action.ok_or("missing apply command")?;
+        let expected = vec![
+            "prune".to_owned(),
+            "--stale".to_owned(),
+            "--config".to_owned(),
+            "policy/allow.toml".to_owned(),
+            "--allow-id=allow-stale-a".to_owned(),
+            "--write".to_owned(),
+            // The suggested command names its root so it runs from any cwd (#4393).
+            "--root".to_owned(),
+            root_path,
+        ];
+        require(
+            action.args == expected,
+            "summary apply command widened selected preview to bulk removal",
+        )?;
+        let mut unselected = load_policy(&fixture.policy)?;
+        unselected.allow.retain(|entry| entry.id != "allow-stale-a");
         fixture.apply_action(&action.args)?;
         require(
-            load_policy(&fixture.policy)? == expected,
+            load_policy(&fixture.policy)? == unselected,
             "executing the summary action changed an unselected entry",
         )
     })
@@ -301,6 +311,7 @@ fn prune_summary_apply_preserves_hyphen_leading_id() -> TestResult {
         let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
             repository_identity: "local-repository:test".to_owned(),
             portable_identity: "worktree:prune:policy/allow.toml:1".to_owned(),
+            root_path: fixture.root.to_string_lossy().into_owned(),
             policy_path: "policy/allow.toml".to_owned(),
             candidate_count: 1,
             allow_id: Some("--write".to_owned()),
@@ -354,6 +365,7 @@ fn prune_summary_apply_preserves_untracked_inventory() -> TestResult {
         let summary = core_command_summary_from_prune(PruneSummaryFactsV1 {
             repository_identity: "local-repository:test".to_owned(),
             portable_identity: "worktree:prune:policy/allow.toml:2".to_owned(),
+            root_path: fixture.root.to_string_lossy().into_owned(),
             policy_path: "policy/allow.toml".to_owned(),
             candidate_count: 2,
             allow_id: None,

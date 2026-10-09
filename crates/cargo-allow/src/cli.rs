@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     add, adoption, audit, cadence, capabilities, changie, check, completions, diff, doctor,
@@ -257,75 +257,110 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         return Ok(());
     };
     configure_summary_output(cli.command_summary_output, &command)?;
-    match command {
-        CargoAllowCommand::Init(args) => init::cmd_init(&args),
-        CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(&args),
-        CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
-        CargoAllowCommand::Check(args) => check::cmd_check(&args),
-        CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(&args),
-        CargoAllowCommand::Diff(args) => diff::cmd_diff(&args),
-        CargoAllowCommand::List(args) => list::cmd_list(&args),
-        CargoAllowCommand::Explain(args) => explain::cmd_explain(&args),
-        CargoAllowCommand::Why(args) => why::cmd_why(&args),
-        CargoAllowCommand::Add(args) => add::cmd_add(&args),
-        CargoAllowCommand::Propose(args) => propose::cmd_propose(&args),
-        CargoAllowCommand::Worklist(args) => worklist::cmd_worklist(&args),
-        CargoAllowCommand::Cadence(args) => cadence::cmd_cadence(&args),
-        CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(&args),
-        CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(&args),
-        CargoAllowCommand::Prune(args) => prune::cmd_prune(&args),
-        CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(&args),
-        CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
-        CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
-        CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
-        CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
-        CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
-        CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(&args),
+    let result: CargoAllowResult<()> = match &command {
+        CargoAllowCommand::Init(args) => init::cmd_init(args),
+        CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(args),
+        CargoAllowCommand::Audit(args) => audit::cmd_audit(args),
+        CargoAllowCommand::Check(args) => check::cmd_check(args),
+        CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(args),
+        CargoAllowCommand::Diff(args) => diff::cmd_diff(args),
+        CargoAllowCommand::List(args) => list::cmd_list(args),
+        CargoAllowCommand::Explain(args) => explain::cmd_explain(args),
+        CargoAllowCommand::Why(args) => why::cmd_why(args),
+        CargoAllowCommand::Add(args) => add::cmd_add(args),
+        CargoAllowCommand::Propose(args) => propose::cmd_propose(args),
+        CargoAllowCommand::Worklist(args) => worklist::cmd_worklist(args),
+        CargoAllowCommand::Cadence(args) => cadence::cmd_cadence(args),
+        CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(args),
+        CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(args),
+        CargoAllowCommand::Prune(args) => prune::cmd_prune(args),
+        CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(args),
+        CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(args),
+        CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(args),
+        CargoAllowCommand::Completions(args) => completions::cmd_completions(args),
+        CargoAllowCommand::Reference(args) => reference::cmd_reference(args),
+        CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(args),
+        CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(args),
         CargoAllowCommand::Changie(args) => changie::cmd_changie(&args.clone()),
         CargoAllowCommand::ReconcilePackagePublication(args) => {
-            reconcile_package_publication_command::cmd_reconcile_package_publication(&args)
+            reconcile_package_publication_command::cmd_reconcile_package_publication(args)
         }
         CargoAllowCommand::ReleaseIdentity(args) => {
-            release_identity_command::cmd_release_identity(&args)
+            release_identity_command::cmd_release_identity(args)
         }
         CargoAllowCommand::ReleaseAuthorization(args) => {
-            release_authorization_command::cmd_release_authorization(&args)
+            release_authorization_command::cmd_release_authorization(args)
         }
         CargoAllowCommand::PrepCandidate(args) => {
-            candidate_preparation_command::cmd_prep_candidate(&args)
+            candidate_preparation_command::cmd_prep_candidate(args)
         }
-        CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(&args),
+        CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(args),
         CargoAllowCommand::FrozenSubjectLock(args) => {
-            frozen_subject_lock_command::cmd_frozen_subject_lock(&args)
+            frozen_subject_lock_command::cmd_frozen_subject_lock(args)
         }
         CargoAllowCommand::CampaignCloseout(args) => {
-            campaign_closeout_command::cmd_campaign_closeout(&args)
+            campaign_closeout_command::cmd_campaign_closeout(args)
         }
         CargoAllowCommand::ReviewDisposition(args) => {
-            review_disposition_command::cmd_review_disposition(&args)
+            review_disposition_command::cmd_review_disposition(args)
         }
         CargoAllowCommand::ReviewReadiness(args) => {
-            review_readiness_command::cmd_review_readiness(&args)
+            review_readiness_command::cmd_review_readiness(args)
         }
-        CargoAllowCommand::CiPregate(args) => ci_pregate_command::cmd_ci_pregate(&args),
+        CargoAllowCommand::CiPregate(args) => ci_pregate_command::cmd_ci_pregate(args),
         CargoAllowCommand::MinVersionDrift(args) => {
-            minimum_version_selection_command::cmd_min_version_drift(&args)
+            minimum_version_selection_command::cmd_min_version_drift(args)
         }
         CargoAllowCommand::WorkflowSyntax(args) => {
-            workflow_syntax_command::cmd_workflow_syntax(&args)
+            workflow_syntax_command::cmd_workflow_syntax(args)
         }
         CargoAllowCommand::WorkflowSecurity(args) => {
-            workflow_security_command::cmd_workflow_security(&args)
+            workflow_security_command::cmd_workflow_security(args)
         }
         CargoAllowCommand::WorkflowConstruction(args) => {
-            workflow_construction_command::cmd_workflow_construction(&args)
+            workflow_construction_command::cmd_workflow_construction(args)
         }
         CargoAllowCommand::DependencyGraphEvidence(args) => {
-            dependency_graph_evidence_command::cmd_dependency_graph_evidence(&args)
+            dependency_graph_evidence_command::cmd_dependency_graph_evidence(args)
         }
         CargoAllowCommand::DependencyGraphDelta(args) => {
-            dependency_graph_delta_command::cmd_dependency_graph_delta(&args)
+            dependency_graph_delta_command::cmd_dependency_graph_delta(args)
         }
+    };
+    // #4393: a summary-supported command that exits on a hard error still
+    // writes its `--command-summary-output` sidecar, classified by the typed
+    // error code, so the failure class is reachable through the sidecar.
+    if let Err(error) = result.as_ref() {
+        crate::core_command_router::write_error_summary_artifact(
+            summary_error_context(&command),
+            error,
+        );
+    }
+    result
+}
+
+/// The operation name and `--root` override a hard-error summary needs for
+/// each `--command-summary-output` command (#4393).
+///
+/// This mirrors the supported-set arms in [`configure_summary_output`]; a
+/// command outside the set has no sidecar to write, so the context is `None`.
+fn summary_error_context(command: &CargoAllowCommand) -> Option<(&'static str, Option<&Path>)> {
+    match command {
+        CargoAllowCommand::Adopt(args) => Some(("adopt", args.root.root.as_deref())),
+        CargoAllowCommand::Doctor(args) => Some(("doctor", args.root.root.as_deref())),
+        CargoAllowCommand::Audit(args) => Some(("audit", args.root.root.as_deref())),
+        CargoAllowCommand::Check(args) => Some(("check", args.root.root.as_deref())),
+        CargoAllowCommand::Diff(args) => Some(("diff", args.root.root.as_deref())),
+        CargoAllowCommand::Init(args) => Some(("init", args.root.root.as_deref())),
+        CargoAllowCommand::Propose(args) => Some(("propose", args.root.root.as_deref())),
+        CargoAllowCommand::Add(args) => Some(("add", args.root.root.as_deref())),
+        CargoAllowCommand::Refresh(args) => Some(("refresh", args.root.root.as_deref())),
+        CargoAllowCommand::Prune(args) => Some(("prune", args.root.root.as_deref())),
+        CargoAllowCommand::Migrate(args) => Some(("migrate", args.root.root.as_deref())),
+        CargoAllowCommand::Explain(args) => Some(("explain", args.root.root.as_deref())),
+        CargoAllowCommand::Why(args) => Some(("why", args.root.root.as_deref())),
+        CargoAllowCommand::Worklist(args) => Some(("worklist", args.root.root.as_deref())),
+        _ => None,
     }
 }
 

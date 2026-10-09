@@ -9,7 +9,7 @@ use super::worklist_types::WorklistFilters;
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct WorklistArgs {
     #[command(flatten)]
-    pub(super) root: RootArgs,
+    pub(crate) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
     pub(crate) config: Option<PathBuf>,

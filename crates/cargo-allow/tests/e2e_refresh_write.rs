@@ -387,7 +387,7 @@ fn byte_preservation_policy(strings: bool, hint: u32, line: u32, column: u32) ->
 }
 
 #[test]
-fn refresh_write_refuses_unsupported_source_forms_without_any_output_change()
+fn refresh_write_refusal_keeps_ledger_and_output_and_writes_error_sidecar()
 -> Result<(), Box<dyn std::error::Error>> {
     let fields = "id='allow-drift',kind='panic',family='unwrap',path='src/lib.rs',owner='core',classification='reviewed_exception',reason='Fixture',evidence=['test:refresh_write'],review_after='2099-01-01'";
     let selector = "selector={ast_kind='method_call',container='relocate',callee='unwrap'}";
@@ -446,7 +446,14 @@ fn refresh_write_refuses_unsupported_source_forms_without_any_output_change()
         assert_eq!(fs::read(&policy)?, before.as_bytes());
         assert_eq!(fs::metadata(&policy)?.modified()?, modified);
         assert_eq!(fs::read(&output)?, b"retained output");
-        assert_eq!(fs::read(&summary)?, b"retained summary");
+        // #4393 fix 5: the refusal writes an error-classified sidecar over
+        // the prior summary so agents read the failure machine-readably
+        // instead of a stale success-looking summary.
+        let sidecar = fs::read_to_string(&summary)?;
+        assert!(sidecar.contains("\"schema_id\": \"cargo-allow.core-command-summary.v1\""));
+        assert!(sidecar.contains("\"result_class\": \"malformed_input\""));
+        assert!(sidecar.contains("\"posture\": \"blocking\""));
+        assert!(sidecar.contains("\"operation\": \"refresh\""));
         assert_stdout_empty("unsupported refresh", &result, "refusal has no stdout");
         remove_temp_root(root);
     }

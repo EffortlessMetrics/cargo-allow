@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
@@ -245,6 +245,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         crate::core_command_summary::PruneSummaryFactsV1 {
             repository_identity: format!("local-repository:{}", inventory_facts.source.as_str()),
             portable_identity: format!("worktree:prune:{}:{}", policy_path, candidates.len()),
+            root_path: normalize_path(&root),
             policy_path,
             candidate_count: candidates.len(),
             allow_id: args.allow_id.clone(),

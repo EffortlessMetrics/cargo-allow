@@ -446,6 +446,7 @@ fn doctor_summary(
         crate::core_command_summary::DoctorSummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
+            root_path: normalize_path(root),
             completeness,
             coverage_limitation,
             config_present: setup.config_present,

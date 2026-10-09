@@ -8,7 +8,7 @@ use std::sync::OnceLock;
 use crate::core_command_summary::{
     CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
     CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1, CoreSourceSubjectV1,
-    build_core_command_summary, render_core_command_summary_human,
+    build_core_command_summary, core_command_summary_from_error, render_core_command_summary_human,
     render_core_command_summary_json,
 };
 use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
@@ -94,6 +94,66 @@ pub(crate) fn write_summary_artifact(
     summary: &CoreCommandSummaryV1,
 ) -> CargoAllowResult<()> {
     write_summary_artifact_with_config(root, summary, SUMMARY_OUTPUT.get())
+}
+
+/// Write the summary sidecar for a summary-supported command that exited on a
+/// hard error, classified by its typed `E000x` code (#4393).
+///
+/// The sidecar is advisory and best effort: when the operation name or root
+/// cannot be established, or the configured sidecar path itself cannot be
+/// validated or written, this returns without writing and the command's own
+/// error — reported on stderr with its exit code — remains the authoritative
+/// failure channel. A consumer reading the sidecar therefore gets either the
+/// success projection its command wrote or this typed failure classification,
+/// never a missing file for a configured run that failed.
+pub(crate) fn write_error_summary_artifact(
+    context: Option<(&'static str, Option<&Path>)>,
+    error: &CargoAllowError,
+) {
+    let Some((operation, root_override)) = context else {
+        return;
+    };
+    let Some(config) = SUMMARY_OUTPUT.get() else {
+        return;
+    };
+    let Ok(cwd) = std::env::current_dir() else {
+        return;
+    };
+    let Ok(root) = allow_inventory::resolve_source_tree_root(root_override, cwd) else {
+        return;
+    };
+    // The failure path holds no rendered detail artifact, so the subject keeps
+    // the same unresolved `local-repository:current` identity the `init` and
+    // `diff` summaries emit; the design-pending cross-command identity (#4393
+    // gap 4) owns a better format for every surface at once.
+    let inventory_source = if allow_inventory::git_worktree_metadata_present(&root) {
+        "git_tracked"
+    } else {
+        "filesystem_fallback"
+    };
+    let Ok(summary) = core_command_summary_from_error(
+        env!("CARGO_PKG_VERSION"),
+        operation,
+        CoreSourceSubjectV1::worktree(
+            "local-repository:current",
+            format!("worktree:{inventory_source}:current-unpinned"),
+        ),
+        error,
+        CoreCommandEffectsV1::read_only(vec![
+            "the failed run recorded no completed repository effect; any partial on-disk state is described by the command's error output, not this summary".to_string(),
+        ]),
+        None,
+        ClaimBoundaryV1::new(
+            "the failed command's typed error classification and reason only",
+        )
+        .with_limitations(vec![
+            "the source-syntax scan the command would have reported was not completed".to_string(),
+            "the failure classification does not establish, repair, or authorize any source exception".to_string(),
+        ]),
+    ) else {
+        return;
+    };
+    let _ = write_summary_artifact_with_config(&root, &summary, Some(config));
 }
 
 /// Reject a configured command-summary sidecar that aliases a mutation target.
@@ -198,13 +258,17 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
         )
     };
 
+    let root_path = allow_core::normalize_path(args.root);
     let primary_action = if completeness != CompletenessV1::Complete {
         Some(
             CoreCommandActionV1::command(
                 format!("{}.diagnose_coverage", args.command),
                 "Diagnose coverage",
                 "cargo-allow",
-                vec!["doctor".to_string()],
+                crate::core_command_summary::rooted_command_args(
+                    &root_path,
+                    &["doctor".to_string()],
+                ),
             )
             .with_contract(
                 "coverage limitations must be diagnosed before a clean result is possible",
@@ -218,11 +282,14 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
                 format!("{}.inspect_worklist", args.command),
                 "Inspect the worklist",
                 "cargo-allow",
-                vec![
-                    "worklist".to_string(),
-                    "--format".to_string(),
-                    "json".to_string(),
-                ],
+                crate::core_command_summary::rooted_command_args(
+                    &root_path,
+                    &[
+                        "worklist".to_string(),
+                        "--format".to_string(),
+                        "json".to_string(),
+                    ],
+                ),
             )
             .with_contract(
                 "the report contains one or more exact maintenance or repair outcomes",
@@ -240,11 +307,14 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
                 "audit.full_no_new_check",
                 "Run the enforcing no-new check",
                 "cargo-allow",
-                vec![
-                    "check".to_string(),
-                    "--mode".to_string(),
-                    "no-new".to_string(),
-                ],
+                crate::core_command_summary::rooted_command_args(
+                    &root_path,
+                    &[
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                    ],
+                ),
             )
             .with_contract(
                 "audit is informational even when its source inputs are complete",

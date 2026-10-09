@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    MatchOutcome, SimpleDate, json_escape,
+    MatchOutcome, SimpleDate, json_escape, normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -470,6 +470,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 "worktree:add:{}",
                 common_write_path.as_deref().unwrap_or("stdout")
             ),
+            root_path: normalize_path(&root),
             write_path: common_write_path,
             live_update: args.update,
             candidate_write: args.write.is_some(),

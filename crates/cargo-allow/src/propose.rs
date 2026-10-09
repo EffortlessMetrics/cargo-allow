@@ -5,7 +5,7 @@ use crate::{
     load_world_without_policy_after_selection, portable_relative_under_root,
     require_json_summary_output,
 };
-use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus, normalize_path};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{
     generated_entry_rejection, ledger_self_receipt, receipts_ledger_at, render_policy,
@@ -375,6 +375,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
                 "worktree:propose:{}",
                 write_path.as_deref().unwrap_or("stdout")
             ),
+            root_path: normalize_path(&root),
             write_path,
             force: args.force,
             completeness: crate::core_command_router::summary_completeness(&inventory_facts),

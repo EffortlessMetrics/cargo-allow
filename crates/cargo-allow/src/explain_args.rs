@@ -8,7 +8,7 @@ pub(crate) struct ExplainArgs {
     /// Allow entry ID.
     pub(super) id: String,
     #[command(flatten)]
-    pub(super) root: RootArgs,
+    pub(crate) root: RootArgs,
     /// Policy config path. With --profile spec-system, profile config path.
     #[arg(long)]
     pub(crate) config: Option<PathBuf>,
