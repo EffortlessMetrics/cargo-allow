@@ -11,6 +11,7 @@
 # Optional:
 #   OUTPUT_DIR=<path>          receipt output directory
 #   CARGO_ALLOW_BIN=<path>     use an already-built binary and skip the build
+#                             relative paths use the repository root
 #   HARD_CEILING_MS=<integer>  per-command catastrophic ceiling (default: 60000)
 set -euo pipefail
 
@@ -339,6 +340,15 @@ if [[ -e "${binary}.exe" ]]; then
   binary="${binary}.exe"
 fi
 [[ -e "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
+
+# Resolve the selected file before any sample changes directory. Normalize
+# Windows drive/backslash spelling before dirname when running under MSYS.
+if command -v cygpath >/dev/null 2>&1; then
+  binary="$(cygpath -u "${binary}")" || fail "cannot resolve cargo-allow binary path"
+fi
+binary_dir="$(CDPATH= cd -- "$(dirname -- "${binary}")" && pwd)" || \
+  fail "cannot resolve cargo-allow binary directory: ${binary}"
+binary="${binary_dir}/$(basename -- "${binary}")"
 
 PERF_BINARY_REL="$(relative_path "${binary}")"
 PERF_BINARY_SHA256="$(sha256_file "${binary}")"

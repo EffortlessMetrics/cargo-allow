@@ -20,6 +20,10 @@ fi
 bash -n scripts/perf-budget-smoke.sh
 "${py}" - <<'PY'
 import json
+import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
@@ -105,6 +109,86 @@ for marker in (
     "sample_field",
 ):
     assert marker in script, marker
+# Execute the production bootstrap, stopping before artifact measurements.
+# The marker executable and cwd are independent controls; no Cargo build or
+# latency observation is supplied by this fixture.
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+with tempfile.TemporaryDirectory(prefix="perf-binary-path-") as temporary:
+    root = Path(temporary)
+    (root / "scripts").mkdir()
+    clone = root / "fixture clone"
+    clone.mkdir()
+    probe = root / "scripts/perf-budget-smoke.sh"
+    probe.write_text(
+        bootstrap + '\ncd "$PROBE_CWD"\n"$binary"\n',
+        encoding="utf-8",
+    )
+    marker = "selected-perf-binary"
+    binaries = (
+        "target/release/cargo-allow",
+        "target/bin with spaces/cargo-allow",
+        "target/windows/cargo-allow.exe",
+    )
+    for relative in binaries:
+        executable = root / relative
+        executable.parent.mkdir(parents=True, exist_ok=True)
+        executable.write_text(
+            "#!/usr/bin/env bash\nprintf '%s\\n' 'selected-perf-binary'\n",
+            encoding="utf-8",
+        )
+        executable.chmod(0o755)
+
+    # A hostile CDPATH must not change which relative directory is selected.
+    decoy = root / "decoy"
+    decoy_binary = decoy / binaries[0]
+    decoy_binary.parent.mkdir(parents=True)
+    decoy_binary.write_text(
+        "#!/usr/bin/env bash\nprintf '%s\\n' 'wrong-perf-binary'\n",
+        encoding="utf-8",
+    )
+    decoy_binary.chmod(0o755)
+
+    def run_probe(override):
+        environment = os.environ.copy()
+        environment.update({
+            "CARGO_ALLOW_BIN": override,
+            "OUTPUT_DIR": str(root / "receipt"),
+            "PROFILE": "debug",
+            "PROBE_CWD": str(clone),
+            "PYTHON3": sys.executable,
+            "CDPATH": str(decoy),
+        })
+        return subprocess.run(
+            ["bash", str(probe)], cwd=clone, env=environment,
+            capture_output=True, text=True, timeout=20,
+        )
+
+    cases = (
+        "target/release/cargo-allow",
+        "./target/release/cargo-allow",
+        "target/bin with spaces/cargo-allow",
+        str(root / "target/release/cargo-allow"),
+        "target/windows/cargo-allow",
+        "target/windows/cargo-allow.exe",
+    )
+    for override in cases:
+        for _ in range(2):
+            result = run_probe(override)
+            assert result.returncode == 0, (
+                override, result.returncode, result.stdout, result.stderr,
+            )
+            assert result.stdout.strip() == marker, (override, result.stdout)
+            assert not list((root / "target").glob("cargo-allow-operator-latency.*"))
+        print(f"ok binary cwd control: {override}")
+
+    missing = run_probe("target/absent/cargo-allow")
+    assert missing.returncode == 1, (missing.stdout, missing.stderr)
+    assert "cargo-allow binary is not executable: target/absent/cargo-allow" in missing.stderr
+    assert marker not in missing.stdout
+    assert not list((root / "target").glob("cargo-allow-operator-latency.*"))
+    print("ok missing binary refuses before cwd probe")
+
 PY
 
 printf 'ok operator-latency harness characterization\n'
