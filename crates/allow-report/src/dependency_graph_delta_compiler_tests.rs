@@ -662,6 +662,76 @@ fn dependency_graph_delta_compiler_detects_build_metadata_only_version_change() 
 }
 
 #[test]
+fn dependency_graph_delta_compiler_pins_trailing_zero_version_string_identity() {
+    // #4359 disclosure pin (flagged for reviewer attention in the
+    // #4369 thread): a trailing-zero version-string change (`1.0` ->
+    // `1.0.0`) compares Equal under the documented lenient
+    // resolved-version behavior, but the lock version string is part
+    // of package identity, so both directions emit a
+    // SourceOrChecksumChanged row — never silence, never a guessed
+    // upgrade/downgrade polarity. Pinning this keeps a future
+    // relaxation from silently changing the classification.
+    use crate::artifacts::compare_versions;
+    use std::cmp::Ordering::Equal;
+
+    // Missing core segments compare as zero, so `1.0` and `1.0.0` are
+    // Equal — the lenient precedence is itself documented behavior.
+    assert_eq!(compare_versions("1.0", "1.0.0"), Equal);
+
+    let identity = default_identity();
+    let manifest = "[dependencies]\nserde = \"1\"\n";
+    let forward = compile_dependency_graph_delta(
+        &identity,
+        manifest,
+        manifest,
+        "[[package]]\nname = \"serde\"\nversion = \"1.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        forward.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::SourceOrChecksumChanged
+            && row.package_name == "serde"
+            && row.base_version == "1.0"
+            && row.head_version == "1.0.0"),
+        "the trailing-zero widening is an identity-string change: {:?}",
+        forward.rows
+    );
+    assert!(
+        !forward.rows.iter().any(|row| row.package_name == "serde"
+            && (row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded)),
+        "the trailing-zero widening is never a guessed polarity: {:?}",
+        forward.rows
+    );
+
+    let reverse = compile_dependency_graph_delta(
+        &identity,
+        manifest,
+        manifest,
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0\"\nsource = \"registry\"\nchecksum = \"aaa\"\n",
+    )
+    .expect("compilation succeeds");
+    assert!(
+        reverse.rows.iter().any(|row| row.kind
+            == DependencyGraphDeltaKindV1::SourceOrChecksumChanged
+            && row.package_name == "serde"
+            && row.base_version == "1.0.0"
+            && row.head_version == "1.0"),
+        "the trailing-zero narrowing is an identity-string change: {:?}",
+        reverse.rows
+    );
+    assert!(
+        !reverse.rows.iter().any(|row| row.package_name == "serde"
+            && (row.kind == DependencyGraphDeltaKindV1::PackageUpgraded
+                || row.kind == DependencyGraphDeltaKindV1::PackageDowngraded)),
+        "the trailing-zero narrowing is never a guessed polarity: {:?}",
+        reverse.rows
+    );
+}
+
+#[test]
 fn dependency_graph_delta_compiler_pure_add_or_remove_is_not_duplicate_movement() {
     // A name first entering the lock is only PackageAdded, and a name
     // leaving it is only PackageRemoved. DuplicateVersionMovement is
