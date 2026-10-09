@@ -6,15 +6,15 @@
   "base_ref": "main",
   "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
   "head_ref": "fix/4428-strict-revision-bytes",
-  "head_sha": "6f9e15e0f05bda67f30e3e25047f0ded0da106c0",
+  "head_sha": "5c5b64422cfc4204d8e2e517b4fd2fb4effe98d3",
   "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:5292edbb8fbc673988bb3f8e092e07b7813c659f51662936c9b19b6fdac0947f",
+  "reviewed_diff_digest": "sha256:v1:baeaadd01df7a0db72f48c7ba8415742956d3ef53c8326cf189574dd57d783d5",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring full source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475337599"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475708567"
     }
   },
   "claimed_verdict": "review_clean",
@@ -33,7 +33,8 @@
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475337599",
     "Independent review covered all eleven effective source/governance paths and production consumers. Strict bounded ordered Git reads preserve valid findings and per-file rejected status, subprocess completion and existing batching. Incomplete base/head evidence cannot earn false introduced/resolved claims. Real Git, CLI, human/JSON/Markdown, receipt, common summary and PR-adapter regressions are included. The four-file final transition exactly matches all 32 native Rust1.95 formatter hunks. Main integration and both exact policy/note fingerprints were independently verified.",
     "Threads4234372307/2340/2350/2359 are resolved RefutedWithEvidence: public ResolvedRevisionIdentity.commit exists; the opaque capability is a distinct type; mutable writer/Take/reader temporaries live through calls returning owned results. Current-head pregate114022949002 passed production compilation, formatting, enforcing no-new and typed ci-pregate. Full native test/platform/MSRV/package checks remain required; cargo-deny114022949086 is blocked before analysis by Docker Hub429.",
-    "Synthetic8aa7f35699e8cd007664c528df621d335de649ca matches exact source base/head parents and tree. This successor changes only the retained review JSON; every current applicable check, fresh feedback review and post-main source guard remain required."
+    "Synthetic8aa7f35699e8cd007664c528df621d335de649ca matches exact source base/head parents and tree. This successor changes only the retained review JSON; every current applicable check, fresh feedback review and post-main source guard remain required.",
+    "Current successor source review 5475708567 retains the full original source review and independently verifies the 72-line two-test correction. Staging only the intentional fixture deletion honors existing #2048 inventory semantics; the new real CLI/receipt regression protects unstaged missing-source Partial versus staged deletion Complete. Production/governance and all prior saved-artifact assertions are unchanged. Exact synthetic 268e7fa6453bffa6b620bb6504b307e52556b4c6 and live pair were verified. Native repaired-head tests and all current applicable checks remain required."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -41,5 +42,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4435",
-  "reviewed_at_utc": "2026-10-09T21:04:09Z"
+  "reviewed_at_utc": "2026-10-09T21:54:31.829Z"
 }
