@@ -691,10 +691,20 @@ class InterpreterAllocationControls(unittest.TestCase):
 
             tools = root / "controlled bin"
             tools.mkdir()
-            for command in ("dirname", "mkdir", "rm", "uname", "sha256sum"):
+            for command in ("dirname", "mkdir", "rm", "uname"):
                 resolved = shutil.which(command)
                 self.assertIsNotNone(resolved, command)
                 (tools / command).symlink_to(resolved)
+            # Match production admission on GNU and shasum-only hosts.
+            # The custom-path positive also exercises fallback admission.
+            hash_commands = ("shasum", "sha256sum") if mode == "custom" else (
+                "sha256sum", "shasum",
+            )
+            digest_tool = next(
+                (command for command in hash_commands if shutil.which(command)), None,
+            )
+            self.assertIsNotNone(digest_tool, "a SHA-256 utility is required")
+            (tools / digest_tool).symlink_to(shutil.which(digest_tool))
             mktemp = shutil.which("mktemp")
             self.assertIsNotNone(mktemp)
             allocator = tools / "mktemp"
@@ -739,6 +749,7 @@ class InterpreterAllocationControls(unittest.TestCase):
             yield {
                 "root": root, "probe": probe, "tools": tools,
                 "owned": owned, "preferred": preferred, "selected": selected,
+                "digest_tool": digest_tool,
                 "allocator_log": root / "allocator.calls",
                 "interpreter_log": root / "interpreter.calls",
             }
@@ -811,6 +822,8 @@ class InterpreterAllocationControls(unittest.TestCase):
                             result.stdout.splitlines(),
                             ["bootstrap-ready:" + fixture["selected"], "selected-python3"],
                         )
+                        print(f"usable interpreter {mode} repeat{repetition}: "
+                              f"hash_admission={fixture['digest_tool']}")
                         self.assert_clean(fixture)
                         self.assertEqual(
                             len(self.calls(fixture["allocator_log"])), repetition + 1,
