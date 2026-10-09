@@ -30,6 +30,14 @@ bash scripts/perf-budget-smoke.sh
 PROFILE=release bash scripts/perf-budget-smoke.sh
 ```
 
+For an already-built executable, `CARGO_ALLOW_BIN` skips the build. Relative
+overrides resolve against the repository root before the harness enters its
+fixture clone; absolute paths are also accepted.
+
+```bash
+PROFILE=release CARGO_ALLOW_BIN=target/release/cargo-allow bash scripts/perf-budget-smoke.sh
+```
+
 Each measured command must remain at or below the conservative 60,000 ms
 catastrophic-regression ceiling. Advisory product targets below are tracked
 separately and are not asserted by this harness. Per-sample payload byte

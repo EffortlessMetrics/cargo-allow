@@ -517,7 +517,7 @@ jobs:
       - name: Operator latency smoke (#2468)
         env:
           PROFILE: release
-          CARGO_ALLOW_BIN: ${{ github.workspace }}/target/release/cargo-allow
+          CARGO_ALLOW_BIN: target/release/cargo-allow
           HARD_CEILING_MS: "60000"
         run: bash scripts/perf-budget-smoke.sh
       - name: Validate operator latency receipt contract

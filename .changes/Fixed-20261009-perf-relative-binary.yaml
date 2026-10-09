@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  The operator-latency harness resolves relative CARGO_ALLOW_BIN overrides
+  before entering its fixture clone, so agent-loop and hooks samples use the
+  same selected executable as root-scoped measurements.
