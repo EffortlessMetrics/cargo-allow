@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Bind release-freeze Git discovery and subject reads to the selected worktree
+  despite inherited repository overrides.
+time: 2026-10-10T00:00:00Z

@@ -45,14 +45,16 @@ use allow_report::{
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value as Json;
 
-use crate::cli::candidate_preparation_command::git_root;
-
 #[path = "release_freeze_rehearsal.rs"]
 mod rehearsal;
 
 #[cfg(test)]
 #[path = "release_freeze_rehearsal_tests.rs"]
 mod rehearsal_tests;
+
+#[cfg(test)]
+#[path = "release_freeze_environment_tests.rs"]
+mod environment_tests;
 
 const REPOSITORY: &str = "EffortlessMetrics/cargo-allow";
 pub(crate) const WORKSPACE_MANIFEST_PATH: &str = "Cargo.toml";
@@ -1849,10 +1851,24 @@ fn read_repo_file(root: &Path, relative: &str) -> CargoAllowResult<String> {
     String::from_utf8(bytes).map_err(|error| instrument(format!("{relative}: {error}")))
 }
 
+/// Discover the selected worktree from cwd through the same isolated Git boundary.
+fn git_root() -> CargoAllowResult<PathBuf> {
+    let cwd = std::env::current_dir()
+        .map_err(|error| instrument(format!("read current directory: {error}")))?;
+    let root = git(&cwd, &["rev-parse", "--show-toplevel"])?;
+    Ok(PathBuf::from(root.trim()))
+}
+
 fn git(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
     let output = Command::new("git")
         .args(args)
         .current_dir(root)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_OBJECT_DIRECTORY")
+        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
         .output()
         .map_err(|error| instrument(format!("git {}: {error}", args.join(" "))))?;
     if !output.status.success() {
@@ -2607,19 +2623,23 @@ mod compose_fixture_tests {
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
-    fn git(root: &Path, args: &[&str]) -> String {
-        let output = Command::new("git")
-            .args(args)
-            .current_dir(root)
-            .output()
-            .expect("git runs");
-        assert!(
-            output.status.success(),
-            "git {:?} failed: {}",
-            args.join(" "),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        String::from_utf8_lossy(&output.stdout).to_string()
+    /// Setup and expected identities must not depend on the production Git helper.
+    pub(super) fn fixture_git(
+        root: &Path,
+        args: &[&str],
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut command = Command::new("git");
+        command.args(args).current_dir(root);
+        let output = crate::repository_environment::isolate_repository(&mut command).output()?;
+        if !output.status.success() {
+            return Err(format!(
+                "fixture git {} failed: {}",
+                args.join(" "),
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
     fn write(root: &Path, relative: &str, contents: &[u8]) -> PathBuf {
@@ -2709,7 +2729,7 @@ mod compose_fixture_tests {
     }
 
     /// Minimal committed subject with explicit checkout framing for its text inputs.
-    fn committed_subject_fixture() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub(super) fn committed_subject_fixture() -> Result<PathBuf, Box<dyn std::error::Error>> {
         static NONCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let nonce = NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let root =
@@ -2718,7 +2738,7 @@ mod compose_fixture_tests {
         std::fs::create_dir(&root)?;
         std::fs::create_dir(root.join("policy"))?;
 
-        super::git(&root, &["init"])?;
+        fixture_git(&root, &["init"])?;
         for (key, value) in [
             ("user.email", "freeze@example.invalid"),
             ("user.name", "freeze fixture"),
@@ -2726,7 +2746,7 @@ mod compose_fixture_tests {
             ("core.eol", "lf"),
             ("core.safecrlf", "false"),
         ] {
-            super::git(&root, &["config", key, value])?;
+            fixture_git(&root, &["config", key, value])?;
         }
         std::fs::write(
             root.join(".gitattributes"),
@@ -2741,18 +2761,18 @@ mod compose_fixture_tests {
             root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"shared\"\n",
         )?;
-        super::git(&root, &["add", "-A"])?;
-        super::git(&root, &["commit", "-m", "fixture subject"])?;
+        fixture_git(&root, &["add", "-A"])?;
+        fixture_git(&root, &["commit", "-m", "fixture subject"])?;
         Ok(root)
     }
 
     #[test]
     fn collect_accepts_a_genuinely_clean_subject() -> Result<(), Box<dyn std::error::Error>> {
         let root = committed_subject_fixture()?;
-        let commit = super::git(&root, &["rev-parse", "HEAD"])?
+        let commit = fixture_git(&root, &["rev-parse", "HEAD"])?
             .trim()
             .to_string();
-        let tree = super::git(&root, &["rev-parse", "HEAD^{tree}"])?
+        let tree = fixture_git(&root, &["rev-parse", "HEAD^{tree}"])?
             .trim()
             .to_string();
 
@@ -2775,9 +2795,9 @@ mod compose_fixture_tests {
         // Ordinary status is empty for this edit; the collector must
         // still reject it before pairing identity with bytes.
         let root = committed_subject_fixture()?;
-        super::git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"])?;
+        fixture_git(&root, &["update-index", "--assume-unchanged", "Cargo.lock"])?;
         std::fs::write(root.join("Cargo.lock"), b"hidden-lock-bytes\n")?;
-        if !super::git(&root, &["status", "--porcelain"])?
+        if !fixture_git(&root, &["status", "--porcelain"])?
             .trim()
             .is_empty()
         {
@@ -2804,7 +2824,7 @@ mod compose_fixture_tests {
     #[test]
     fn collect_rejects_a_skip_worktree_hidden_topology() -> Result<(), Box<dyn std::error::Error>> {
         let root = committed_subject_fixture()?;
-        super::git(
+        fixture_git(
             &root,
             &[
                 "update-index",
@@ -2816,7 +2836,7 @@ mod compose_fixture_tests {
             root.join("policy/product-package-topology-v2.toml"),
             b"[[package]]\ncargo_package_name = \"tampered\"\n",
         )?;
-        if !super::git(&root, &["status", "--porcelain"])?
+        if !fixture_git(&root, &["status", "--porcelain"])?
             .trim()
             .is_empty()
         {
@@ -2850,11 +2870,11 @@ mod compose_fixture_tests {
         std::fs::write(root.join("Cargo.lock"), b"fixture-lock-bytes\r\n")?;
         // Refresh the index stat information after changing checkout framing.
         // Text normalization must leave the staged blob identical to HEAD.
-        super::git(&root, &["add", "--", "Cargo.lock"])?;
-        super::git(&root, &["diff", "--cached", "--exit-code"])?;
+        fixture_git(&root, &["add", "--", "Cargo.lock"])?;
+        fixture_git(&root, &["diff", "--cached", "--exit-code"])?;
 
         let working = std::fs::read(root.join("Cargo.lock"))?;
-        let committed = super::git(&root, &["show", "HEAD:Cargo.lock"])?;
+        let committed = fixture_git(&root, &["show", "HEAD:Cargo.lock"])?;
         if !working.ends_with(b"\r\n")
             || committed.as_bytes() != b"fixture-lock-bytes\n"
             || working.as_slice() == committed.as_bytes()
@@ -2864,7 +2884,7 @@ mod compose_fixture_tests {
             )
             .into());
         }
-        let status = super::git(&root, &["status", "--porcelain"])?;
+        let status = fixture_git(&root, &["status", "--porcelain"])?;
         if !status.trim().is_empty() {
             return Err(format!("CRLF fixture is not a clean checkout: {status}").into());
         }
@@ -2924,9 +2944,9 @@ mod compose_fixture_tests {
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(&root)?;
 
-        git(&root, &["init"]);
-        git(&root, &["config", "user.email", "freeze@example.invalid"]);
-        git(&root, &["config", "user.name", "freeze fixture"]);
+        fixture_git(&root, &["init"])?;
+        fixture_git(&root, &["config", "user.email", "freeze@example.invalid"])?;
+        fixture_git(&root, &["config", "user.name", "freeze fixture"])?;
 
         write(
             &root,
@@ -2976,10 +2996,14 @@ mod compose_fixture_tests {
             b"{}",
         );
 
-        git(&root, &["add", "-A"]);
-        git(&root, &["commit", "-m", "fixture subject"]);
-        let commit = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
-        let tree = git(&root, &["rev-parse", "HEAD^{tree}"]).trim().to_string();
+        fixture_git(&root, &["add", "-A"])?;
+        fixture_git(&root, &["commit", "-m", "fixture subject"])?;
+        let commit = fixture_git(&root, &["rev-parse", "HEAD"])?
+            .trim()
+            .to_string();
+        let tree = fixture_git(&root, &["rev-parse", "HEAD^{tree}"])?
+            .trim()
+            .to_string();
         let cargo_lock_sha = digest_of(&root.join("Cargo.lock"));
         let topology_sha = digest_of(&root.join("policy/product-package-topology-v2.toml"));
 
