@@ -1,3 +1,5 @@
+#[path = "add_from_plan_apply/recovery.rs"]
+mod recovery;
 mod support;
 
 use std::fs;
@@ -602,8 +604,8 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
 
-    // Relative ASCII argv and per-command fixture cwd isolate the recorded-line
-    // lead from separate root/config/quoting recovery questions.
+    // Keep this moved-line control in the repository cwd. The separate recovery
+    // module exercises custom root/config paths and outside-cwd shell execution.
     let rejected = cargo_allow_command()
         .current_dir(&root)
         .args([
@@ -628,43 +630,13 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
 
-    // Parse the actual advertised command; do not rebuild or correct its line.
-    // This fixture uses no spaces, quoting, absolute paths, or shell syntax.
-    let (_, tail) = rejection_text
-        .split_once("; regenerate with ")
-        .ok_or("stale binding rejection lacked regeneration advice")?;
-    let (printed, _) = tail
-        .split_once(" (")
-        .ok_or("regeneration advice lacked its explanation boundary")?;
-    let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
-    assert_eq!(tokens.first().copied(), Some("cargo-allow"));
-    assert_eq!(tokens.get(1).copied(), Some("why"));
-    let retry_argument = tokens
-        .windows(2)
-        .find_map(|pair| match pair {
-            ["--plan", argument] => Some(*argument),
-            _ => None,
-        })
-        .ok_or("printed regeneration command lacked --plan")?;
-    assert!(Path::new(retry_argument).is_relative());
-    assert_eq!(
-        Path::new(retry_argument)
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str),
-        Some(retry_argument),
-        "this fixture's hint must use a relative sibling filename"
-    );
-    assert_ne!(retry_argument, "add-plan.json");
-    assert_ne!(retry_argument, "control-plan.json");
-    let retry_path = root.join(retry_argument);
+    // Execute the actual advertised shell command; do not rebuild its argv or
+    // correct its line. The regenerated output remains a fresh sibling plan.
+    let printed =
+        recovery::printed_regeneration_command(&rejection_text, Path::new("add-plan.json"))?;
+    let retry_path = root.join("add-plan.retry-1.json");
     assert!(!retry_path.exists(), "hint output must initially be fresh");
-
-    // The binary comes from the existing CARGO_BIN_EXE helper. Every printed
-    // argv token after cargo-allow is passed unchanged; no format flag is added.
-    let hinted = cargo_allow_command()
-        .current_dir(&root)
-        .args(tokens.iter().skip(1))
-        .output()?;
+    let hinted = recovery::run_printed_command(&root, printed)?;
     let hinted_stderr = String::from_utf8(hinted.stderr.clone())?;
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
@@ -743,10 +715,9 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
 
     let apply = cargo_allow_command()
         .current_dir(&root)
+        .args(["add", "--from-plan"])
+        .arg(&retry_path)
         .args([
-            "add",
-            "--from-plan",
-            retry_argument,
             "--owner",
             "fixture",
             "--reason",
@@ -797,10 +768,9 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
 
     let replay = cargo_allow_command()
         .current_dir(&root)
+        .args(["add", "--from-plan"])
+        .arg(&retry_path)
         .args([
-            "add",
-            "--from-plan",
-            retry_argument,
             "--owner",
             "fixture",
             "--reason",
@@ -936,32 +906,12 @@ fn replacement_finding_must_not_receive_recovery_hint(
 
     // Before the repair, execute the ACTUAL advertised command unchanged and
     // inspect its plan. This proves retargeting, rather than mere bad wording.
-    if let Some((_, tail)) = rejection.split_once("; regenerate with ") {
-        let (printed, _) = tail
-            .split_once(" (")
-            .ok_or("hint explanation boundary missing")?;
-        let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
-        assert_eq!(tokens.first().copied(), Some("cargo-allow"));
-        assert_eq!(tokens.get(1).copied(), Some("why"));
-        let retry_name = tokens
-            .windows(2)
-            .find_map(|pair| match pair {
-                ["--plan", value] => Some(*value),
-                _ => None,
-            })
-            .ok_or("hint plan argument missing")?;
-        assert_eq!(
-            Path::new(retry_name)
-                .file_name()
-                .and_then(std::ffi::OsStr::to_str),
-            Some(retry_name)
-        );
-        let retry_path = root.join(retry_name);
+    if rejection.contains("; regenerate with ") {
+        let printed =
+            recovery::printed_regeneration_command(&rejection, Path::new("add-plan.json"))?;
+        let retry_path = root.join("add-plan.retry-1.json");
         assert!(!retry_path.exists());
-        let hinted = cargo_allow_command()
-            .current_dir(&root)
-            .args(tokens.iter().skip(1))
-            .output()?;
+        let hinted = recovery::run_printed_command(&root, printed)?;
         assert_status("advertised different-target regeneration", &hinted, true);
         let hinted_plan: Value = serde_json::from_slice(&fs::read(&retry_path)?)?;
         assert_eq!(

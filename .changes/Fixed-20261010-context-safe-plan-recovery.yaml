@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Stale add-finding plan recovery commands now preserve the selected root,
+  policy and include-untracked mode, quote paths for the platform shell and
+  use an unused output beside the original plan regardless of the caller's
+  current directory. Occupied retry paths remain untouched, and paths that
+  cannot be safely pasted receive explicit manual guidance. Exact binding
+  checks, New-only application and semantic replacement refusal are unchanged.

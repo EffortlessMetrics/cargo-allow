@@ -125,7 +125,7 @@ fn join_paths(paths: &[String]) -> String {
         .join(", ")
 }
 
-pub(super) fn render_argv_for_display(program: &str, args: &[String]) -> String {
+pub(crate) fn render_argv_for_display(program: &str, args: &[String]) -> String {
     let parts = std::iter::once(program).chain(args.iter().map(String::as_str));
     if parts.clone().any(|part| part.chars().any(char::is_control)) {
         return "[use structured argv; command contains non-pasteable control text]".to_string();

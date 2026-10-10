@@ -31,6 +31,7 @@ use super::{
     select_add_finding,
 };
 use crate::command_support::select_mutation_policy;
+use crate::core_command_summary::render_argv_for_display;
 use crate::plan_bindings::{
     PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
 };
@@ -117,6 +118,8 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
 /// come from the already-selected live New finding's bindings so a moved finding
 /// is planned at its current line, rather than the stale recorded line. A nearby
 /// replacement must not be presented as recovery of the recorded finding.
+/// Root, selected policy and inventory mode come from the live scan. The caller
+/// anchors the output to its original cwd; shell quoting must preserve every arg.
 /// Call sites whose rejection leaves regeneration impossible (an already-receipted
 /// finding, a finding that can no longer be located at the plan's coordinates)
 /// must not attach this hint — the regeneration command would fail verbatim
@@ -126,35 +129,67 @@ fn enrich_with_regen_hint(
     plan_path: &Path,
     recorded_finding: &LoadedFinding,
     bindings: &PlanFindingBindings,
+    root: &Path,
+    policy_path: &Path,
+    include_untracked: bool,
 ) -> CargoAllowError {
-    if !same_semantic_finding(recorded_finding, bindings) {
+    let message = error.to_string();
+    if !message.contains("(policy unchanged)")
+        || message.contains("; regenerate with ")
+        || message.contains("; regenerate manually: ")
+        || !same_semantic_finding(recorded_finding, bindings)
+    {
         return error;
     }
-    let kind = &bindings.finding_kind;
-    let path = &bindings.finding_path;
-    let recorded = plan_path.display();
-    let hint = match (bindings.finding_line, fresh_plan_hint_path(plan_path)) {
-        (Some(line), Some(fresh)) => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line} \
-             ({recorded} already exists and add-finding plans are never overwritten)",
-            fresh.display()
-        ),
-        (None, Some(fresh)) => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} \
-             ({recorded} already exists and add-finding plans are never overwritten)",
-            fresh.display()
-        ),
-        (_, None) => format!(
-            "; regenerate with cargo-allow why --plan <fresh-path> --kind {kind} --path {path} \
-             ({recorded} already exists and add-finding plans are never overwritten)"
-        ),
+    let Some(fresh) = fresh_plan_hint_path(plan_path) else {
+        return manual_regen_hint(error, "no safe unused retry path was found beside the plan");
     };
-    let message = error.to_string();
-    if message.contains("(policy unchanged)") && !message.contains("regenerate with") {
-        error.with_message_suffix(hint)
-    } else {
-        error
+    let (Some(fresh_text), Some(root_text), Some(policy_text)) =
+        (fresh.to_str(), root.to_str(), policy_path.to_str())
+    else {
+        return manual_regen_hint(error, "a selected path cannot be displayed without data loss");
+    };
+    let mut args = vec![
+        "why".to_string(),
+        "--plan".to_string(),
+        fresh_text.to_string(),
+        "--kind".to_string(),
+        bindings.finding_kind.clone(),
+        "--path".to_string(),
+        bindings.finding_path.clone(),
+    ];
+    if let Some(line) = bindings.finding_line {
+        args.extend(["--line".to_string(), line.to_string()]);
     }
+    args.extend([
+        "--root".to_string(),
+        root_text.to_string(),
+        "--config".to_string(),
+        policy_text.to_string(),
+    ]);
+    if include_untracked {
+        args.push("--include-untracked".to_string());
+    }
+    let command = render_argv_for_display("cargo-allow", &args);
+    if !command.starts_with("cargo-allow ") {
+        return manual_regen_hint(
+            error,
+            "the selected paths are not safe to paste through the platform shell",
+        );
+    }
+    let recorded = allow_report::sanitize_terminal_text(&plan_path.display().to_string());
+    error.with_message_suffix(format!(
+        "; regenerate with {command}\n\
+         ({recorded} already exists and add-finding plans are never overwritten)"
+    ))
+}
+
+fn manual_regen_hint(error: CargoAllowError, reason: &str) -> CargoAllowError {
+    error.with_message_suffix(format!(
+        "; regenerate manually: {reason}. Run why --plan with an unused output path, \
+         the same root, selected policy and include-untracked setting, and the live finding \
+         coordinates; existing plans are never overwritten."
+    ))
 }
 
 /// Advice may follow a location-only move, but never a different target. Keep
@@ -187,10 +222,14 @@ fn same_semantic_finding(recorded: &LoadedFinding, live: &PlanFindingBindings) -
 /// regeneration hint is executable as printed. Bounded probe; `None` when no
 /// free candidate name could be found.
 fn fresh_plan_hint_path(plan_path: &Path) -> Option<PathBuf> {
-    let stem = plan_path.file_stem()?.to_string_lossy().into_owned();
+    let stem = plan_path.file_stem()?.to_str()?;
     (1..=99).find_map(|attempt| {
         let candidate = plan_path.with_file_name(format!("{stem}.retry-{attempt}.json"));
-        (!candidate.exists()).then_some(candidate)
+        matches!(
+            std::fs::symlink_metadata(&candidate),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound
+        )
+        .then_some(candidate)
     })
 }
 
@@ -268,8 +307,17 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         args.include_untracked,
         finding,
     )?;
-    verify_bindings(&plan, &bindings, source_context.source_tree_root())
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan.finding, &bindings))?;
+    verify_bindings(&plan, &bindings, source_context.source_tree_root()).map_err(|error| {
+        enrich_with_regen_hint(
+            error,
+            &cwd.join(plan_path),
+            &plan.finding,
+            &bindings,
+            &root,
+            &policy_path,
+            args.include_untracked,
+        )
+    })?;
 
     // Construct the entry canonically from the live finding plus operator
     // judgment. Approval metadata is never read from the plan.
