@@ -1,0 +1,48 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4431,
+  "base_ref": "main",
+  "base_sha": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
+  "head_ref": "fix/4350-explain-ambiguity",
+  "head_sha": "093248a56b5f36dceb9b65d3e4951e8e3849e64a",
+  "merge_base": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
+  "reviewed_diff_digest": "sha256:v1:4ad3e1e64eea0158ad7c55c26c4f27bffc5aa267d838988db7f8de61fd78449d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit separate nonauthoring full source, consumer, governance and integration review; authored none of this PR; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478695414"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-4237",
+      "severity": "advisory",
+      "owned_seam": "Existing explain human/JSON detailed-renderer date sampling",
+      "source_path": "crates/allow-report/src/explain_common.rs",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp in #4237: thread one explicit as-of date from the command boundary through both existing detail renderers and add controlled-date parity tests.",
+      "claim_boundary": "This PR reuses the already-rendered canonical status in its common summary and adds no third clock read. It does not claim complete global clock unification."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478695414",
+    "Complete twelve-path evaluator/projection/renderer/summary/router/test/schema/governance review. Full-ledger projection retains true assigned and tied outcomes, excludes weaker contextual candidates, remaps local indexes and preserves all competing IDs.",
+    "Summary parses already-rendered canonical current_status through the existing eleven-value MatchStatus vocabulary; malformed/missing/null/non-string/unknown data fails with typed Artifact error. Canonical lifecycle owns headline/reason while every raw finding retains blocking or decision posture, including later ties after earlier advisory outcomes.",
+    "All changed actual CLI, evaluator, renderer-reuse and adapter tests inspected. Existing child-only environment filters and real matched/stale controls are preserved. Schema structure, matcher ranking, lifecycle predicates, report shapes and dependencies remain unchanged.",
+    "All eleven prior owned nonpolicy modes/blobs match c14abe24; all 2636 main paths outside scope match c9616c3e. Policy is exact 735194-byte main prefix plus unchanged 1576-byte own tail, 1078 unique entries, with no scope/settings/date renewal.",
+    "Synthetic ed4fa36540bf63ff060f50e22e72df9b89f82cab has ordered [c9616c3e66cb31e51332da970acd18ad8b8fee0b,093248a56b5f36dceb9b65d3e4951e8e3849e64a] parents and source tree d8e4ee59320f5a8a54da2717584643a59fd88151. Four retained thread dispositions remain supported: 4234081930 NonBlocking, 4234117688 Fixed, 4234563547 NonBlocking/refuted, 4237082324 Fixed. No new source blocker.",
+    "Current pregate 114195085400/run38045841770 directly inspected: exact synthetic checkout, actionlint/fmt, enforcing zero new and typed Complete. Historical Ubuntu114185300072 explicitly passes six named lifecycle/ambiguity/status/adapter controls and remains prior-pair evidence. Local Cargo/rustc/rustfmt unavailable; no local compiled pass or all-gates claim."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38045841770/job/114195085400"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4431",
+  "reviewed_at_utc": "2026-10-10T10:56:02Z"
+}
