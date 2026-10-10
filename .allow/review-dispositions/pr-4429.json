@@ -4,32 +4,34 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4429,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "50d600e3391376a5649afe797807a481ade80ca2",
   "head_ref": "docs/3768-october-release-map",
-  "head_sha": "72d2979cc355ce3ba46cbc721920989a3f43c389",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:7b366721617187cce612267d41efa60119f826da15359746930cd4ba67585c6c",
+  "head_sha": "3385bef2d2bd137624597a88d2d245ff04f8e8d9",
+  "merge_base": "50d600e3391376a5649afe797807a481ade80ca2",
+  "reviewed_diff_digest": "sha256:v1:8859b4af94993d6f9148288b457ea23a2b474aeb902d6cfd52ed0e068f25193a",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/release_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full source, consumer, integration and governance review; authored none of this PR; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5475253458"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5478572009"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5475253458",
-    "The complete five-path effective patch, its unchanged campaign document/fragment, current child-controller ownership and closeout sequence were independently inspected. The historical closeout tail retains SHA256 ca773b694a9bba3fc4f20540ae3397b69c8de4e9d81b9fbd324b9e8d03c64e50. Every current-main policy entry is unchanged; only the two exact PR4429 evidence paths are added. allow-11345 is absent and main allow-11278 remains limit36. Both canonical entry fingerprints and revision notes were independently recomputed. Duplicate-selector feedback is repaired; editorial feedback remains NonBlocking. The stale-record finding is corrected by the following metadata-only refresh, which does not waive base currentness or CI.",
-    "Current synthetic merge 0b89f2207ccdf1fd099e8d6302eaf83f6f8bacb1; source/metadata identities remain distinct.",
-    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5478572009",
+    "Complete five-path campaign document, fragment, governance and policy review. Fresh #3768/#2045 and semantic-owner checks support the dated five-merge checkpoint, actual production adapter obligations, delivered foundations, selected pilot limitations and measured conditional 0.3 sequence.",
+    "Configuration and default recommendations under #3877/#3884 remain explicitly unratified. Existing SECURITY response/mitigation targets versus SUPPORT's undecided posture correctly require a real retain-or-replace ruling in #3777; #3795/#3796 project the accepted result. No maintainer capacity, new public promise, final qualification or release authority is inferred.",
+    "Independent campaign/agent-context contract, all seven local links, parsing, whitespace and scope/mode checks pass. All 2,640 incoming main paths outside campaign document and appended policy are unchanged. Entire 733,617-byte main policy prefix plus unchanged own tail yields 1,076 unique IDs. Canonical receipt fingerprints match; allow-11345 remains absent and allow-11278 limit remains 36.",
+    "Checked closeout contract remains unchanged with body SHA256 ca773b694a9bba3fc4f20540ae3397b69c8de4e9d81b9fbd324b9e8d03c64e50. Hosted tree exactly matches reviewed local source. Ordered source parents are de3b1209cdcde232d9badb074fe031d0edecf975 and main; synthetic 2e3384517dde129de395fce2d7bcc7337238c8c0 has exact ordered base/head parents and the same source tree.",
+    "Current PR body is accurate. Stale-record thread 4236669984 requires reconciliation after this record's independently verified bootstrap; no new source finding. CodeRabbit explicitly rate-limited the successor and covered only prior 73d209, so it is not current review proof. Independently read main pregate 114183800466 passed zero-new enforcement on the dated 50d checkpoint only. Cargo/Changie attempts exited 127; no local native or current-PR CI success is claimed."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, reconcile prior record feedback, require all applicable current native checks and fresh final pair/feedback, then retain exact post-main enforcing evidence before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
     "observation_ref": ""
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4429",
-  "reviewed_at_utc": "2026-10-09T20:53:13Z"
+  "reviewed_at_utc": "2026-10-10T10:08:49Z"
 }
