@@ -568,6 +568,13 @@ fn why_summary_keeps_a_skipped_target_partial_and_non_green() -> Result<(), Stri
 fn why_summary_preserves_ambiguous_candidates_and_read_only_posture() -> Result<(), String> {
     let root = temp_root("summary-why-ambiguous")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    // This unrelated finding precedes the explained one in the full inventory.
+    // Entry projection must exclude it and remap the retained finding's index.
+    fs::write(
+        root.join("src/a_unrelated.rs"),
+        "pub fn other(v: Option<u8>) -> u8 { v.expect(\"fixture\") }\n",
+    )
+    .map_err(|error| format!("write unrelated source: {error}"))?;
     run(&root, &["init"])?;
     fs::write(
         root.join("policy/allow.toml"),
@@ -598,7 +605,7 @@ classification = "reviewed_exception"
 reason = "First equally matching reviewed exception."
 evidence = ["test:tied_a"]
 created = "2026-01-01"
-review_after = "2027-01-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -614,7 +621,7 @@ classification = "reviewed_exception"
 reason = "Second equally matching reviewed exception."
 evidence = ["test:tied_b"]
 created = "2026-01-01"
-review_after = "2027-01-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -713,7 +720,414 @@ callee = "unwrap"
         format!("ambiguous why detail lost candidates or alternatives: {detailed}"),
     )?;
 
+    let check_output = run(
+        &root,
+        &[
+            "check", "--kind", "panic", "--mode", "no-new", "--format", "json",
+        ],
+    )?;
+    require(
+        check_output.status.code() == Some(1),
+        format!("ambiguous check must fail the gate: {check_output:?}"),
+    )?;
+    let check: Value = serde_json::from_str(&stdout(&check_output)?)
+        .map_err(|error| format!("parse ambiguous check: {error}"))?;
+    let ambiguous = check
+        .get("outcomes")
+        .and_then(Value::as_array)
+        .and_then(|outcomes| {
+            outcomes
+                .iter()
+                .find(|outcome| outcome.get("status").and_then(Value::as_str) == Some("ambiguous"))
+        })
+        .ok_or("check must retain the ambiguous finding")?;
+    require(
+        ambiguous.get("candidate_ids") == field(&detailed, &["outcome", "candidate_ids"])
+            && ambiguous.get("allow_id") == Some(&Value::Null)
+            && ambiguous
+                .get("finding_index")
+                .and_then(Value::as_u64)
+                .is_some_and(|index| index > 0),
+        format!("check/why must agree before entry-local index remapping: {ambiguous}"),
+    )?;
+    let worklist_output = run(
+        &root,
+        &["worklist", "--status", "ambiguous", "--format", "json"],
+    )?;
+    require(
+        worklist_output.status.success(),
+        format!("ambiguous worklist must remain inspectable: {worklist_output:?}"),
+    )?;
+    let worklist: Value = serde_json::from_str(&stdout(&worklist_output)?)
+        .map_err(|error| format!("parse ambiguous worklist: {error}"))?;
+    require(
+        worklist.pointer("/work_items/0/candidate_ids") == ambiguous.get("candidate_ids")
+            && worklist.pointer("/work_items/0/status") == ambiguous.get("status"),
+        format!("worklist/check must preserve the same ambiguity: {worklist}"),
+    )?;
+    for id in ["allow-tied-a", "allow-tied-b"] {
+        require_explain_projection(&root, id, ambiguous)?;
+    }
+
+    // Strengthen one existing candidate with the scanner's actual identity.
+    // The unique winner must stay matched; the weaker entry must not inherit
+    // that finding merely because it remains in the winner's candidate_ids.
+    let snippet_hash = detailed
+        .pointer("/finding/identity/normalized_snippet_hash")
+        .and_then(Value::as_str)
+        .ok_or("why must expose the scanned finding identity")?;
+    let policy_path = root.join("policy/allow.toml");
+    let policy =
+        fs::read_to_string(&policy_path).map_err(|error| format!("read tied policy: {error}"))?;
+    fs::write(
+        &policy_path,
+        policy.replacen(
+            "callee = \"unwrap\"",
+            &format!("callee = \"unwrap\"\nnormalized_snippet_hash = \"{snippet_hash}\""),
+            1,
+        ),
+    )
+    .map_err(|error| format!("strengthen first candidate: {error}"))?;
+    let stronger_output = run(
+        &root,
+        &[
+            "check", "--kind", "panic", "--mode", "no-new", "--format", "json",
+        ],
+    )?;
+    let stronger: Value = serde_json::from_str(&stdout(&stronger_output)?)
+        .map_err(|error| format!("parse unique-winner check: {error}"))?;
+    let stronger_outcomes = stronger
+        .get("outcomes")
+        .and_then(Value::as_array)
+        .ok_or("unique-winner check must retain evaluated outcomes")?;
+    for (id, status) in [("allow-tied-a", "matched"), ("allow-tied-b", "stale")] {
+        let outcome = stronger_outcomes
+            .iter()
+            .find(|outcome| outcome.get("allow_id").and_then(Value::as_str) == Some(id))
+            .ok_or_else(|| format!("unique-winner check omitted {id}"))?;
+        require(
+            outcome.get("status").and_then(Value::as_str) == Some(status),
+            format!("{id} must have canonical {status} state: {outcome}"),
+        )?;
+        if status == "matched" {
+            require(
+                outcome.get("candidate_ids") == ambiguous.get("candidate_ids"),
+                format!("unique winner must still compete with the weaker entry: {outcome}"),
+            )?;
+        }
+        require_explain_projection(&root, id, outcome)?;
+    }
+
     remove_temp_root(root)
+}
+
+#[test]
+fn explain_lifecycle_status_preserves_tied_finding_decisions() -> Result<(), String> {
+    for (lifecycle_field, entry_status) in [("expires", "expired"), ("review_after", "review_due")]
+    {
+        let root = temp_root(&format!("explain-{entry_status}-tie"))?;
+        write_source(&root, "pub fn tied(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+        fs::write(
+            root.join("src/a_unique.rs"),
+            "pub fn unique(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        )
+        .map_err(|error| format!("write earlier unique finding: {error}"))?;
+        fs::create_dir_all(root.join("policy"))
+            .map_err(|error| format!("create lifecycle policy directory: {error}"))?;
+        let mut policy = String::from(
+            "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n\n\
+             [requirements]\nevidence_required = false\n\
+             calendar_expiry_blocks_no_new = false\n",
+        );
+        for (id, scope) in [
+            ("allow-tied-a", "glob = \"src/*.rs\""),
+            ("allow-tied-b", "path = \"src/lib.rs\""),
+        ] {
+            policy.push_str(&format!(
+                "\n[[allow]]\nid = \"{id}\"\nkind = \"panic\"\nfamily = \"unwrap\"\n\
+                 {scope}\nowner = \"core\"\nclassification = \"reviewed_exception\"\n\
+                 reason = \"Retain lifecycle state and exact competing candidates.\"\n\
+                 evidence = [\"test:lifecycle_tie\"]\ncreated = \"1999-01-01\"\n\
+                 {lifecycle_field} = \"2000-01-01\"\n\n\
+                 [allow.selector]\nast_kind = \"method_call\"\ncallee = \"unwrap\"\n"
+            ));
+        }
+        fs::write(root.join("policy/allow.toml"), policy)
+            .map_err(|error| format!("write lifecycle policy: {error}"))?;
+        git_commit_fixture(&root)?;
+
+        let check_output = run(
+            &root,
+            &[
+                "check", "--kind", "panic", "--mode", "no-new", "--format", "json",
+            ],
+        )?;
+        require(
+            check_output.status.code() == Some(1),
+            format!("the tied finding must still block no-new: {check_output:?}"),
+        )?;
+        let check: Value = serde_json::from_str(&stdout(&check_output)?)
+            .map_err(|error| format!("parse lifecycle check: {error}"))?;
+        let outcomes = check
+            .get("outcomes")
+            .and_then(Value::as_array)
+            .ok_or("lifecycle check must contain outcomes")?;
+        let statuses = outcomes
+            .iter()
+            .filter_map(|outcome| outcome.get("status").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+        require(
+            statuses == [entry_status, "ambiguous"],
+            format!("fixture must retain an earlier lifecycle row before the tie: {outcomes:?}"),
+        )?;
+        for id in ["allow-tied-a", "allow-tied-b"] {
+            require_lifecycle_explain_projection(&root, id, entry_status, outcomes)?;
+        }
+        remove_temp_root(root)?;
+    }
+    Ok(())
+}
+
+fn require_lifecycle_explain_projection(
+    root: &Path,
+    id: &str,
+    entry_status: &str,
+    check_outcomes: &[Value],
+) -> Result<(), String> {
+    let expected = check_outcomes
+        .iter()
+        .filter(|outcome| {
+            outcome.get("allow_id").and_then(Value::as_str) == Some(id)
+                || outcome
+                    .get("candidate_ids")
+                    .and_then(Value::as_array)
+                    .is_some_and(|ids| ids.iter().any(|candidate| candidate.as_str() == Some(id)))
+        })
+        .cloned()
+        .enumerate()
+        .map(|(index, mut outcome)| {
+            if let Some(finding_index) = outcome.get_mut("finding_index") {
+                *finding_index = Value::from(index);
+            }
+            outcome
+        })
+        .collect::<Vec<_>>();
+    let sidecar = root.join(format!("explain-{id}-summary.json"));
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let output = run(
+        root,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "explain",
+            id,
+            "--format",
+            "json",
+        ],
+    )?;
+    require(
+        output.status.success(),
+        format!("explain JSON failed: {output:?}"),
+    )?;
+    let detail: Value = serde_json::from_str(&stdout(&output)?)
+        .map_err(|error| format!("parse lifecycle explain: {error}"))?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read lifecycle summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse lifecycle summary: {error}"))?;
+    require(
+        detail.pointer("/summary/current_status") == Some(&Value::from(entry_status))
+            && detail.get("match_outcomes") == Some(&Value::from(expected))
+            && summary.pointer("/reason/code")
+                == Some(&Value::from(format!("explain.{entry_status}")))
+            && summary.get("result_class") == Some(&Value::from("findings"))
+            && summary.get("posture") == Some(&Value::from("decision_required"))
+            && summary.pointer("/operation_effects/writes_repository") == Some(&Value::Bool(false)),
+        format!(
+            "entry lifecycle and blocking tie must remain distinct and consistent: {detail}\n{summary}"
+        ),
+    )?;
+    let action = detail
+        .pointer("/next/suggested_actions/0")
+        .and_then(Value::as_str)
+        .ok_or("tied lifecycle entry must retain its ambiguity decision")?;
+    require(
+        action.contains("allow-tied-a")
+            && action.contains("allow-tied-b")
+            && summary.pointer("/primary_action/title") == Some(&Value::from(action))
+            && summary.pointer("/primary_action/kind") == Some(&Value::from("decision"))
+            && summary
+                .pointer("/reason/message")
+                .and_then(Value::as_str)
+                .is_some_and(|message| message.contains("ambiguous")),
+        format!("lifecycle annotation must not hide the unresolved competitor: {summary}"),
+    )?;
+    let output = run(
+        root,
+        &["--command-summary-output", &sidecar_text, "explain", id],
+    )?;
+    require(
+        output.status.success(),
+        format!("explain human failed: {output:?}"),
+    )?;
+    let human = stdout(&output)?;
+    let human_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read human lifecycle summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse human lifecycle summary: {error}"))?;
+    require(
+        summary == human_summary
+            && human.contains("Outcome: findings (decision_required)")
+            && human.contains(&format!("current_status: {entry_status}"))
+            && human.contains("ambiguous")
+            && human.contains(&format!("Next: {action}")),
+        format!("human and JSON lifecycle/tie projections diverged: {human}"),
+    )
+}
+
+/// Compare the actual explain consumer with the canonical check outcome,
+/// including its human screen and common summary artifact (#4350).
+fn require_explain_projection(
+    root: &Path,
+    id: &str,
+    expected_outcome: &Value,
+) -> Result<(), String> {
+    let status = expected_outcome
+        .get("status")
+        .and_then(Value::as_str)
+        .ok_or("expected outcome must have a status")?;
+    let (result_class, posture, reason_code) = match status {
+        "ambiguous" => ("findings", "decision_required", "explain.ambiguous"),
+        "matched" => ("completed", "satisfied", "explain.entry_healthy"),
+        "stale" => ("findings", "advisory", "explain.stale"),
+        _ => return Err(format!("unsupported fixture outcome: {expected_outcome}")),
+    };
+    let has_finding = expected_outcome
+        .get("finding_index")
+        .and_then(Value::as_u64)
+        .is_some();
+    let finding_count = if has_finding { 1u64 } else { 0 };
+    let mut expected = expected_outcome.clone();
+    if has_finding {
+        let index = expected
+            .get_mut("finding_index")
+            .ok_or("finding-level outcome must carry an index")?;
+        *index = Value::from(0);
+    }
+    let sidecar = root.join(format!("explain-{id}-summary.json"));
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let json_output = run(
+        root,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "explain",
+            id,
+            "--format",
+            "json",
+        ],
+    )?;
+    require(
+        json_output.status.success(),
+        format!("explain {id} JSON must remain inspectable: {json_output:?}"),
+    )?;
+    let detail: Value = serde_json::from_str(&stdout(&json_output)?)
+        .map_err(|error| format!("parse explain {id}: {error}"))?;
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/explain.schema.json"))
+            .map_err(|error| format!("parse explain schema: {error}"))?;
+    jsonschema::validator_for(&schema)
+        .map_err(|error| format!("compile explain schema: {error}"))?
+        .validate(&detail)
+        .map_err(|error| format!("explain {id} must satisfy its schema: {error}"))?;
+    require(
+        field(&detail, &["allow_entry", "id"]) == Some(&Value::from(id))
+            && field(&detail, &["summary", "current_status"]) == Some(&Value::from(status))
+            && field(&detail, &["summary", "current_matches"]) == Some(&Value::from(finding_count))
+            && detail.get("match_outcomes") == Some(&Value::from(vec![expected]))
+            && detail
+                .get("current_findings")
+                .and_then(Value::as_array)
+                .is_some_and(|findings| findings.len() as u64 == finding_count),
+        format!("explain {id} must project only its canonical outcome: {detail}"),
+    )?;
+    if has_finding {
+        require(
+            detail.pointer("/current_findings/0/status") == Some(&Value::from(status))
+                && detail.pointer("/current_findings/0/path") == Some(&Value::from("src/lib.rs"))
+                && detail.pointer("/current_findings/0/line") == Some(&Value::from(1)),
+            format!("explain {id} must remap its finding without unrelated state: {detail}"),
+        )?;
+    }
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read explain {id} summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse explain {id} summary: {error}"))?;
+    require(
+        summary.get("result_class") == Some(&Value::from(result_class))
+            && summary.get("posture") == Some(&Value::from(posture))
+            && field(&summary, &["reason", "code"]) == Some(&Value::from(reason_code))
+            && field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false)),
+        format!("explain {id} summary must retain the evaluated posture: {summary}"),
+    )?;
+    if status == "ambiguous" {
+        let action = detail
+            .pointer("/next/suggested_actions/0")
+            .and_then(Value::as_str)
+            .ok_or("ambiguous explain must suggest a decision")?;
+        require(
+            action.contains("allow-tied-a")
+                && action.contains("allow-tied-b")
+                && field(&summary, &["primary_action", "title"]) == Some(&Value::from(action)),
+            format!("explain {id} detail and summary must name competing entries: {summary}"),
+        )?;
+    }
+    let human_output = run(
+        root,
+        &["--command-summary-output", &sidecar_text, "explain", id],
+    )?;
+    require(
+        human_output.status.success(),
+        format!("explain {id} human output must remain inspectable: {human_output:?}"),
+    )?;
+    let human = stdout(&human_output)?;
+    let human_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read human explain {id} summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse human explain {id} summary: {error}"))?;
+    let outcome_label = if status == "matched" {
+        "Outcome: satisfied".to_string()
+    } else {
+        format!("Outcome: {result_class} ({posture})")
+    };
+    require(
+        summary == human_summary
+            && human.contains(&outcome_label)
+            && human.contains(&format!("current_status: {status}"))
+            && human.contains(&format!("current_matches: {finding_count}"))
+            && !human.contains("src/a_unrelated.rs"),
+        format!("explain {id} text/JSON/common-summary parity failed: {human}"),
+    )?;
+    if status == "ambiguous" {
+        let message = expected_outcome
+            .get("message")
+            .and_then(Value::as_str)
+            .ok_or("ambiguous outcome must explain the tie")?;
+        let action = detail
+            .pointer("/next/suggested_actions/0")
+            .and_then(Value::as_str)
+            .ok_or("ambiguous explain must suggest a decision")?;
+        require(
+            human.contains(message) && human.contains(&format!("Next: {action}")),
+            format!("explain {id} must show competing IDs in attention and Next: {human}"),
+        )?;
+    }
+    Ok(())
 }
 
 #[test]
@@ -1734,7 +2148,7 @@ fn a_hard_error_writes_the_e000x_classified_summary_sidecar() -> Result<(), Stri
 /// Run the real binary from an explicit working directory, without the
 /// implicit `--root` the [`run`] helper appends.
 fn run_from(cwd: &Path, args: &[&str]) -> Result<Output, String> {
-    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    fixture_command(env!("CARGO_BIN_EXE_cargo-allow"))
         .args(args)
         .current_dir(cwd)
         .output()
@@ -1778,7 +2192,7 @@ fn field<'a>(value: &'a Value, path: &[&str]) -> Option<&'a Value> {
 /// Run the real binary. `args` carries any global flags plus the subcommand, in
 /// that order; `--root` is appended because it belongs to the subcommand.
 fn run(root: &Path, args: &[&str]) -> Result<Output, String> {
-    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    fixture_command(env!("CARGO_BIN_EXE_cargo-allow"))
         .args(args)
         .arg("--root")
         .arg(root)
@@ -1807,7 +2221,7 @@ fn git_commit_fixture(root: &Path) -> Result<(), String> {
             "fixture",
         ],
     ] {
-        let output = Command::new("git")
+        let output = fixture_command("git")
             .current_dir(root)
             .args(&args)
             .output()
@@ -1821,6 +2235,25 @@ fn git_commit_fixture(root: &Path) -> Result<(), String> {
         )?;
     }
     Ok(())
+}
+
+/// Fixture setup and CLI children must not inherit another repository's index
+/// or policy selection. Keep these overrides local to each child process.
+fn fixture_command(program: &str) -> Command {
+    let mut command = Command::new(program);
+    for key in [
+        "CARGO_ALLOW_ROOT",
+        "CARGO_ALLOW_CONFIG",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ] {
+        command.env_remove(key);
+    }
+    command
 }
 
 fn write_source(root: &Path, source: &str) -> Result<(), String> {
