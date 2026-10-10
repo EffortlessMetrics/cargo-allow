@@ -99,10 +99,16 @@ fn original_pair(
     let input = one(FreezeEvidenceRole::ReleaseExperienceInput)?;
     let receipt = one(FreezeEvidenceRole::ReleaseExperience)?;
     let input = serde_json::from_value(input.value.clone()).map_err(|error| {
-        Admission::issue(State::Malformed, format!("experience input contract: {error}"))
+        Admission::issue(
+            State::Malformed,
+            format!("experience input contract: {error}"),
+        )
     })?;
     let receipt = serde_json::from_value(receipt.value.clone()).map_err(|error| {
-        Admission::issue(State::Malformed, format!("experience result contract: {error}"))
+        Admission::issue(
+            State::Malformed,
+            format!("experience result contract: {error}"),
+        )
     })?;
     Ok((input, receipt))
 }
@@ -156,9 +162,12 @@ pub(super) fn reconcile(
     };
     let evaluated = evaluate_release_experience_v1(&input);
     admission.result = admission.result.min(evaluated.result);
-    admission
-        .notes
-        .extend(evaluated.findings.iter().map(|finding| finding.reason.clone()));
+    admission.notes.extend(
+        evaluated
+            .findings
+            .iter()
+            .map(|finding| finding.reason.clone()),
+    );
     if evaluated != retained {
         admission.record(
             State::Mismatch,
@@ -253,7 +262,9 @@ fn object_fields(
     label: &str,
 ) -> Result<(), Admission> {
     if let Some(fields) = value.as_object()
-        && let Some(field) = fields.keys().find(|field| !allowed.contains(&field.as_str()))
+        && let Some(field) = fields
+            .keys()
+            .find(|field| !allowed.contains(&field.as_str()))
     {
         return Err(Admission::issue(
             State::Malformed,
@@ -355,7 +366,10 @@ fn install_fields(value: &serde_json::Value) -> Result<(), Admission> {
         ],
         "isolated install",
     )?;
-    if let Some(rows) = value.get("package_rows").and_then(serde_json::Value::as_array) {
+    if let Some(rows) = value
+        .get("package_rows")
+        .and_then(serde_json::Value::as_array)
+    {
         for (index, row) in rows.iter().enumerate() {
             object_fields(
                 row,
@@ -414,7 +428,10 @@ fn journey_fields(value: &serde_json::Value) -> Result<(), Admission> {
         ],
         "exact candidate",
     )?;
-    if let Some(rows) = value.get("package_rows").and_then(serde_json::Value::as_array) {
+    if let Some(rows) = value
+        .get("package_rows")
+        .and_then(serde_json::Value::as_array)
+    {
         for (index, row) in rows.iter().enumerate() {
             object_fields(
                 row,
@@ -428,7 +445,10 @@ fn journey_fields(value: &serde_json::Value) -> Result<(), Admission> {
             )?;
         }
     }
-    if let Some(steps) = value.get("journey_steps").and_then(serde_json::Value::as_array) {
+    if let Some(steps) = value
+        .get("journey_steps")
+        .and_then(serde_json::Value::as_array)
+    {
         for (index, step) in steps.iter().enumerate() {
             object_fields(
                 step,
@@ -450,7 +470,10 @@ fn decode<T: DeserializeOwned>(
     })?;
     check_fields(&value)?;
     serde_json::from_value(value).map_err(|error| {
-        Admission::issue(State::Malformed, format!("{label} original contract: {error}"))
+        Admission::issue(
+            State::Malformed,
+            format!("{label} original contract: {error}"),
+        )
     })
 }
 
@@ -460,9 +483,21 @@ fn bind_references(
     input: &ReleaseExperienceInputV1,
     readback: &ReadbackInput,
 ) -> Result<(), Admission> {
-    let candidate_bytes = reference(readback, "experience:package-candidate", &input.candidate_digest)?;
-    let install_bytes = reference(readback, "experience:isolated-install", &input.install_digest)?;
-    let journey_bytes = reference(readback, "experience:exact-candidate", &input.journey_digest)?;
+    let candidate_bytes = reference(
+        readback,
+        "experience:package-candidate",
+        &input.candidate_digest,
+    )?;
+    let install_bytes = reference(
+        readback,
+        "experience:isolated-install",
+        &input.install_digest,
+    )?;
+    let journey_bytes = reference(
+        readback,
+        "experience:exact-candidate",
+        &input.journey_digest,
+    )?;
     let candidate: PackageCandidatePayloadV2 =
         decode(candidate_bytes, "package candidate", candidate_fields)?;
     let install: IsolatedInstallPayloadV2 =
@@ -472,7 +507,10 @@ fn bind_references(
     validate_predecessors(&candidate, &install, &journey)?;
     if !same_digest(&install.candidate_artifact_digest, &input.candidate_digest)
         || !same_digest(&journey.candidate_artifact_digest, &input.candidate_digest)
-        || !same_digest(&journey.isolated_install_receipt_digest, &input.install_digest)
+        || !same_digest(
+            &journey.isolated_install_receipt_digest,
+            &input.install_digest,
+        )
         || !same_digest(&install.installed_executable_digest, &input.binary_digest)
         || !same_digest(&journey.installed_executable_digest, &input.binary_digest)
     {
@@ -520,7 +558,11 @@ fn bind_references(
     }
     if let Some(pilot) = &input.clean_pilot {
         reference(readback, "experience:clean-pilot", &pilot.receipt_digest)?;
-        reference(readback, "experience:clean-pilot-friction", &pilot.friction_digest)?;
+        reference(
+            readback,
+            "experience:clean-pilot-friction",
+            &pilot.friction_digest,
+        )?;
     }
     if let Some(digest) = &input.brownfield_receipt_digest {
         reference(readback, "experience:brownfield-pilot", digest)?;

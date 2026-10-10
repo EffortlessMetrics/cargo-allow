@@ -315,23 +315,23 @@ fn exact_originals_keep_not_proven_and_the_three_owner_specific_locks() -> Exper
         let (_, member) = original.readback.member(id)?.ok_or("predecessor missing")?;
         let valid = match expected {
             "package" => {
-                validate_package_candidate_v2(
-                    &serde_json::from_slice::<PackageCandidatePayloadV2>(&member.bytes)?,
-                )
+                validate_package_candidate_v2(&serde_json::from_slice::<PackageCandidatePayloadV2>(
+                    &member.bytes,
+                )?)
                 .result
                     == PackageCandidateResultV2::Complete
             }
             "install" => {
-                validate_isolated_install_v2(
-                    &serde_json::from_slice::<IsolatedInstallPayloadV2>(&member.bytes)?,
-                )
+                validate_isolated_install_v2(&serde_json::from_slice::<IsolatedInstallPayloadV2>(
+                    &member.bytes,
+                )?)
                 .result
                     == IsolatedInstallResultV2::Complete
             }
             _ => {
-                validate_exact_candidate_v2(
-                    &serde_json::from_slice::<ExactCandidatePayloadV2>(&member.bytes)?,
-                )
+                validate_exact_candidate_v2(&serde_json::from_slice::<ExactCandidatePayloadV2>(
+                    &member.bytes,
+                )?)
                 .result
                     == ExactCandidateResultV2::Complete
             }
@@ -530,7 +530,9 @@ fn current_observation_rejects_expired_and_future_originals_without_rewriting_th
 -> ExperienceResult {
     for future in [false, true] {
         let mut original = bundle()?;
-        let now = original.readback.experience_observed_at(&original.subject)?;
+        let now = original
+            .readback
+            .experience_observed_at(&original.subject)?;
         let observed = if future { now + 1 } else { now - 1_000 };
         original.input.observed_at_unix_seconds = observed;
         original.input.evaluated_at_unix_seconds = observed;
@@ -741,8 +743,8 @@ fn serialized_replay_recomputes_an_experience_reference_digest() -> ExperienceRe
     let (custody, retained_artifacts) = original
         .readback
         .custody(&original.subject, "replay-experience")?;
-    let receipt = allow_report::CargoAllowFinalFreezeReceiptV1::new(
-        allow_report::FinalFreezeReceiptInitV1 {
+    let receipt =
+        allow_report::CargoAllowFinalFreezeReceiptV1::new(allow_report::FinalFreezeReceiptInitV1 {
             freeze_id: "synthetic-experience-replay".to_string(),
             frozen_custody_id: custody.custody_id.clone(),
             frozen_at_utc: original.readback.observed_at_utc.clone(),
@@ -768,8 +770,7 @@ fn serialized_replay_recomputes_an_experience_reference_digest() -> ExperienceRe
                 .iter()
                 .map(|operation| (*operation).to_string())
                 .collect(),
-        },
-    );
+        });
     let input = CargoAllowFinalFreezeReplayInputsV1 {
         custody,
         evidence_graph: graph,
@@ -899,7 +900,10 @@ fn predecessor_unknown_fields_are_refused_at_every_existing_object_shape() -> Ex
             .pointer_mut(pointer)
             .and_then(serde_json::Value::as_object_mut)
             .ok_or("selected predecessor object missing")?
-            .insert("unrecognized_observation".to_string(), serde_json::json!(true));
+            .insert(
+                "unrecognized_observation".to_string(),
+                serde_json::json!(true),
+            );
         original.reseal_predecessors(predecessors)?;
         original.readback.validate(&original.subject)?;
         assert_admission(
@@ -912,8 +916,8 @@ fn predecessor_unknown_fields_are_refused_at_every_existing_object_shape() -> Ex
 }
 
 #[test]
-fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics()
--> ExperienceResult {
+fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics() -> ExperienceResult
+{
     for explicit in [false, true] {
         let mut original = bundle()?;
         let mut predecessors = original.predecessors()?;
@@ -932,7 +936,9 @@ fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics()
                 object.remove(field);
             }
         }
-        let journey = predecessors[2].as_object_mut().ok_or("journey object missing")?;
+        let journey = predecessors[2]
+            .as_object_mut()
+            .ok_or("journey object missing")?;
         if explicit {
             journey.insert("not_included".to_string(), serde_json::json!([]));
         } else {
@@ -949,13 +955,14 @@ fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics()
             predecessors[1]["graph_comparison"][field] = serde_json::json!([]);
         }
         original.reseal_predecessors(predecessors)?;
-        let before = original.readback.custody(&original.subject, "optional-originals")?;
+        let before = original
+            .readback
+            .custody(&original.subject, "optional-originals")?;
         let admission = original.admission()?;
-        let after = original.readback.custody(&original.subject, "optional-originals")?;
-        if admission.result != State::NotProven
-            || admission.notes.len() != 3
-            || before != after
-        {
+        let after = original
+            .readback
+            .custody(&original.subject, "optional-originals")?;
+        if admission.result != State::NotProven || admission.notes.len() != 3 || before != after {
             return Err(format!(
                 "allowed optional values or original bytes changed: {:?}",
                 admission.notes
@@ -1073,7 +1080,10 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
                 if !node.required
                     || node.authority_scope
                         != allow_report::FinalEvidenceAuthorityScopeV1::FinalExact
-                    || !affected.required_node_ids.iter().any(|required| required == id)
+                    || !affected
+                        .required_node_ids
+                        .iter()
+                        .any(|required| required == id)
                     || node.result != admission.graph_result()
                     || node.currentness != expected_currentness
                     || (readback.is_some()
@@ -1083,9 +1093,10 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
                                     == allow_report::FinalReadinessRowKindV1::ProviderUnavailable
                         }))
                 {
-                    return Err(
-                        format!("required row acquired a false provider outage: {case}/{id}").into(),
-                    );
+                    return Err(format!(
+                        "required row acquired a false provider outage: {case}/{id}"
+                    )
+                    .into());
                 }
             }
             let input = readiness

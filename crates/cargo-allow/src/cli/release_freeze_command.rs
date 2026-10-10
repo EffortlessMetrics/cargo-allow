@@ -1179,7 +1179,9 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             // Original-pair, referenced-byte and producer admission is separate
             // from these legacy probes. Neither role may acquire Complete from
             // a version substring or an empty binding-note list.
-            notes.push("note:required installed-experience admission is evaluated separately".to_string());
+            notes.push(
+                "note:required installed-experience admission is evaluated separately".to_string(),
+            );
         }
         FreezeEvidenceRole::Controls => {
             let state = str_field(value, "state").unwrap_or_default();
@@ -1325,17 +1327,14 @@ fn build_evidence_graph(
     let mut nodes = Vec::new();
     let mut required_ids = Vec::new();
 
-    for input in evidence
-        .iter()
-        .filter(|input| {
-            !matches!(
-                input.role,
-                FreezeEvidenceRole::RegistryObservation
-                    | FreezeEvidenceRole::ReleaseExperienceInput
-                    | FreezeEvidenceRole::ReleaseExperience
-            )
-        })
-    {
+    for input in evidence.iter().filter(|input| {
+        !matches!(
+            input.role,
+            FreezeEvidenceRole::RegistryObservation
+                | FreezeEvidenceRole::ReleaseExperienceInput
+                | FreezeEvidenceRole::ReleaseExperience
+        )
+    }) {
         let (class, origin, id) = input.role.graph_shape();
         let result = if input.bound_ok() {
             FinalEvidenceNodeResultV1::Complete
