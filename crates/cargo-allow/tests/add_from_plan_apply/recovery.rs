@@ -558,6 +558,31 @@ fn included_retry_filename_requires_manual_safe_placement() -> TestResult {
                 && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
             &format!("included sibling must not receive a self-staling command: {rejection}"),
         )?;
+        #[cfg(unix)]
+        {
+            // A spelling outside the root may alias an eligible directory
+            // inside it. The containment check must use the existing parent.
+            let alias = fixture.caller.join("source plan alias");
+            let parent = fixture
+                .plan_path
+                .parent()
+                .ok_or("original plan lacks parent")?;
+            std::os::unix::fs::symlink(parent, &alias)?;
+            let alias_plan = alias.join("original plan.json");
+            let aliased = fixture.add(&alias_plan, &refused_receipt)?;
+            let aliased_text = String::from_utf8(aliased.stderr)?;
+            require(
+                aliased.status.code() == Some(2)
+                    && aliased_text.contains("; regenerate manually: ")
+                    && aliased_text.contains("cannot be proved excluded")
+                    && !aliased_text.contains("; regenerate with ")
+                    && !retry_path.exists()
+                    && std::fs::read_link(&alias)? == parent
+                    && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+                "an outside alias must not advertise an eligible in-root retry",
+            )?;
+            fixture.require_preserved()?;
+        }
         // Follow the manual guidance from the second caller, retaining the
         // selected context and using a fresh location outside the inventory.
         let safe_plan = fixture.caller.join("saved plans/manual safe recovery.json");
@@ -571,6 +596,47 @@ fn included_retry_filename_requires_manual_safe_placement() -> TestResult {
         fixture.apply_and_replay(&safe_plan)?;
         remove_temp_root(fixture.container);
     }
+    Ok(())
+}
+
+#[test]
+fn missing_tracked_retry_candidate_requires_manual_guidance() -> TestResult {
+    let mut fixture =
+        RecoveryFixture::with_placement(false, Path::new(SOURCE_PATH), PlanPlacement::Visible)?;
+    let candidate = fixture
+        .plan_path
+        .with_file_name("original plan.retry-3.json");
+    fs::write(&candidate, "tracked candidate before deletion")?;
+    git(
+        &fixture.root,
+        &[OsStr::new("add"), OsStr::new("--"), candidate.as_os_str()],
+    )?;
+    fs::remove_file(&candidate)?;
+    // The deliberate staging above is fixture setup. Capture the resulting
+    // index bytes before the operation whose no-mutation promise is tested.
+    let index_path = fixture.root.join(".git/index");
+    for (path, before) in &mut fixture.protected {
+        if path == &index_path {
+            *before = fs::read(&index_path)?;
+        }
+    }
+    let refused_receipt = fixture.caller.join("refused must not exist.json");
+    let refused = fixture.add(&fixture.plan_path, &refused_receipt)?;
+    let rejection = String::from_utf8(refused.stderr)?;
+    fixture.require_preserved()?;
+    require(
+        refused.status.code() == Some(2)
+            && rejection.contains("(policy unchanged)")
+            && rejection.contains("; regenerate manually: ")
+            && !rejection.contains("; regenerate with ")
+            && !candidate.exists()
+            && !refused_receipt.exists()
+            && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+        &format!(
+            "a deleted tracked retry must not be mistaken for an untracked output: {rejection}"
+        ),
+    )?;
+    remove_temp_root(fixture.container);
     Ok(())
 }
 

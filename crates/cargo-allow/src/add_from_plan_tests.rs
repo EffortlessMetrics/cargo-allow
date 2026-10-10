@@ -819,10 +819,25 @@ fn retry_output_requires_effective_exclusion_or_complete_tracked_inventory()
         retry_output_is_outside_inventory(&fresh, &context),
         "a complete tracked inventory must keep an absent untracked retry usable",
     )?;
-    for completeness in [
-        InventoryCompleteness::Fallback,
-        InventoryCompleteness::Partial,
+    for (source, include_untracked, completeness) in [
+        (
+            InventorySource::FilesystemFallback,
+            false,
+            InventoryCompleteness::Fallback,
+        ),
+        (
+            InventorySource::FilesystemIncludeUntracked,
+            true,
+            InventoryCompleteness::Fallback,
+        ),
+        (
+            InventorySource::GitTracked,
+            false,
+            InventoryCompleteness::Partial,
+        ),
     ] {
+        context.inventory_facts.source = source;
+        context.include_untracked = include_untracked;
         context.inventory_facts.completeness = completeness;
         require_regen_contract(
             !retry_output_is_outside_inventory(&fresh, &context),
