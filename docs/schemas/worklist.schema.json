@@ -593,6 +593,18 @@
           ],
           "description": "Source-tree path for source-backed work items, or a local evidence path for broken_evidence_link items. Null means the item is not tied to a source-tree path, including weak_evidence_reference items whose evidence target is not locally validated."
         },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "description": "Optional one-based source line for review/navigation only; omitted when unavailable and excluded from stable finding identity."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "description": "Optional one-based source character column for review/navigation only; omitted when unavailable and excluded from stable finding identity."
+        },
         "evidence_reference": {
           "$ref": "#/$defs/evidence_reference",
           "description": "Structured evidence diagnostic for broken_evidence_link and weak_evidence_reference work items. Absent for work items that are not tied to a specific evidence reference."
