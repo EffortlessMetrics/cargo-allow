@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Create the Windows release-rehearsal junction fixture with bounded native
+  cmd.exe mklink instead of PowerShell (#4439). Preserve the dangling-reparse
+  metadata and both pre-phase rejection controls, exercise paths with spaces,
+  and clean up the junction entry even when fixture construction fails.
