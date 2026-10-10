@@ -1450,7 +1450,7 @@ fn replay_stored(request: &Request, inputs: &Inputs) -> Checked<Option<Stored>> 
     add_event(
         inputs,
         &mut canonical_events,
-        classes[0],
+        CargoAllowReleaseOperationEventClassV1::OperationSelected,
         RELEASE_OPERATION_IDENTITY_SCHEMA_ID,
         operation_digest(&inputs.identity)?,
         None,
@@ -1463,7 +1463,7 @@ fn replay_stored(request: &Request, inputs: &Inputs) -> Checked<Option<Stored>> 
     add_event(
         inputs,
         &mut canonical_events,
-        classes[1],
+        CargoAllowReleaseOperationEventClassV1::AuthorizationSelected,
         RELEASE_AUTHORIZATION_SCHEMA_ID,
         inputs.identity.authorization_digest.clone(),
         None,

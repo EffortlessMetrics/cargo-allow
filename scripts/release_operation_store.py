@@ -66,6 +66,14 @@ def _same_integer(value: Any, expected: int) -> bool:
     return _integer(value) and value == expected
 
 
+def _selected_job_id(value: Any) -> int:
+    # Match the existing provider JSON-number resource ceiling before parsing.
+    _require(isinstance(value, str) and 1 <= len(value) <= 128
+             and bool(re.fullmatch(r"[1-9][0-9]*", value)),
+             "invalid_input", "selected numeric provider job ID required")
+    return int(value)
+
+
 def _sha(value: Any) -> str:
     _require(isinstance(value, str) and bool(_SHA.fullmatch(value)),
              "invalid_input", "expected a canonical GitHub SHA-1 object identity")
@@ -787,11 +795,8 @@ class GitHubReleaseStore:
             raise StoreError("instrument_failure", "malformed artifact archive") from None
         return MappingProxyType(files)
 
-    def _attempt_job(self, producer: Mapping[str, Any]) -> dict[str, Any]:
+    def _attempt_job(self, producer: Mapping[str, Any], job_id: int) -> dict[str, Any]:
         run_id, attempt = producer["run_id"], producer["run_attempt"]
-        job_id = producer.get("job_id")
-        _require(isinstance(job_id, str) and bool(re.fullmatch(r"[1-9][0-9]*", job_id)),
-                 "invalid_input", "selected numeric provider job ID required")
         found: dict[str, Any] | None = None
         seen: set[int] = set()
         expected_total: int | None = None
@@ -810,7 +815,7 @@ class GitHubReleaseStore:
                          and job["id"] not in seen,
                          "instrument_failure", "duplicate or invalid provider job")
                 seen.add(job["id"])
-                if job["id"] == int(job_id):
+                if job["id"] == job_id:
                     found = job
             if len(seen) == count:
                 break
@@ -881,6 +886,7 @@ class GitHubReleaseStore:
                  "invalid_input", "unsupported selected producer identity")
         _sha(producer.get("commit_sha"))
         _sha(producer.get("tree_sha"))
+        job_id = _selected_job_id(producer.get("job_id"))
         inventory = self._inventory(transfer)
         self._repository()
         metadata = self._artifact_metadata(artifact_id, transfer, producer)
@@ -911,7 +917,7 @@ class GitHubReleaseStore:
                  and isinstance(commit.get("tree"), dict)
                  and commit["tree"].get("sha") == producer["tree_sha"],
                  "mismatch", "producer commit/tree differs")
-        job = self._attempt_job(producer)
+        job = self._attempt_job(producer, job_id)
         created = _utc(metadata.get("created_at"))
         completed = job.get("completed_at")
         _require(_utc(job.get("started_at")) <= created

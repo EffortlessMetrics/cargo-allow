@@ -736,6 +736,64 @@ class ReadbackTests(unittest.TestCase):
         self.assertIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
         self.assertIn(BASE + "/git/commits/" + ANCHOR, paths)
 
+    def test_selected_job_id_refuses_malformed_input_before_provider_io(self):
+        for value in (None, True, 303, b"303", [], "", "0", "00", "01", "-1", "+1",
+                      "1 ", " 1", "1\n", "1.0", "1e2", "\u0661", "\uff11",
+                      "9" * 129, "9" * 10000):
+            with self.subTest(value_type=type(value).__name__,
+                              length=len(value) if isinstance(value, str) else None):
+                provider = Provider()
+                client = provider.client()
+                selected = {**producer(), "job_id": value}
+                transfer = {**provider.transfer(), "producer": selected}
+                with mock.patch.object(client, "_credential", side_effect=AssertionError(
+                        "malformed job ID reached credential lookup")) as credential, \
+                        mock.patch.object(client, "_transport", side_effect=AssertionError(
+                            "malformed job ID reached transport")) as transport:
+                    with self.assertRaises(STORE.StoreError) as error:
+                        client.read_artifact(transfer, artifact_id=505,
+                                             expected_producer=selected)
+                    self.assertEqual(error.exception.kind, "invalid_input")
+                    self.assertEqual(str(error.exception),
+                                     "release operation store: invalid_input: "
+                                     "selected numeric provider job ID required")
+                    credential.assert_not_called()
+                    transport.assert_not_called()
+                self.assertEqual(provider.calls, [])
+                self.assertEqual(provider.mutations(), [])
+
+    def test_selected_job_id_bound_preserves_exact_reader_identity(self):
+        for value in ("1", "303", "9" * 128):
+            with self.subTest(value=value):
+                provider = Provider()
+                selected = {**producer(), "job_id": value}
+                transfer = {**provider.transfer(), "producer": selected}
+                provider.jobs[0]["id"] = int(value)
+                files = provider.client().read_artifact(
+                    transfer, artifact_id=505, expected_producer=selected)
+                self.assertEqual(dict(files), provider.artifact_files)
+                paths = [urlsplit(call[1]).path for call in provider.calls]
+                self.assertEqual(paths.count(BASE + "/actions/artifacts/505"), 2)
+                self.assertIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
+                self.assertIn(BASE + "/actions/artifacts/505/zip", paths)
+                self.assertIn(urlsplit(provider.download_url).path, paths)
+                self.assertEqual(provider.mutations(), [])
+
+        provider = Provider()
+        selected = {**producer(), "job_id": "304"}
+        transfer = {**provider.transfer(), "producer": selected}
+        with self.assertRaises(STORE.StoreError) as error:
+            provider.client().read_artifact(transfer, artifact_id=505,
+                                            expected_producer=selected)
+        self.assertEqual(error.exception.kind, "mismatch")
+        self.assertEqual(str(error.exception),
+                         "release operation store: mismatch: "
+                         "selected job is absent from the selected attempt")
+        paths = [urlsplit(call[1]).path for call in provider.calls]
+        self.assertIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
+        self.assertNotIn(BASE + "/actions/artifacts/505/zip", paths)
+        self.assertEqual(provider.mutations(), [])
+
     def test_selected_workflow_path_accepts_exact_bare_full_and_short_refs(self):
         workflow = ".github/workflows/release.yml"
         for git_ref, short_ref, event, trust in (
