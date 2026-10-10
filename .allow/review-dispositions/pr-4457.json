@@ -1,0 +1,30 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4457,
+  "base_ref": "main",
+  "base_sha": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "head_ref": "fix/3761-publication-state-evidence",
+  "head_sha": "b8dc09a87cdcd6813d5fc3c515ec9c6cea54f68f",
+  "merge_base": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "reviewed_diff_digest": "sha256:v1:f7b9b8ba2020fe374de3060613db2dc1a6049d40dbc5cc9297f8430881336b6f",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT /root/campaign_audit, author preparing source and retained metadata for the coordinating maintainer. This is author preparation only, not an independent review or a clean verdict.",
+  "independent_review": {
+    "not_proven": {
+      "reason": "Awaiting a separately retained independent review of the final integrated source and governance diff for PR #4457. Preliminary discussion does not supply the formal final-pair review, review URL, or review time."
+    }
+  },
+  "claimed_verdict": "partial",
+  "findings": [],
+  "threads_inspected": [],
+  "required_ci": {
+    "owner": "Coordinating maintainer: obtain independent review of the complete final source and governance diff, then separately verify any own-record-only successor, all applicable current native checks, current substantive feedback, and the exact live head/base/merge-base before normal head-pinned merge. Retain the exact new-main enforcing guard. This pending record supplies no CI, merge, or release authority.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4457",
+  "reviewed_at_utc": ""
+}
