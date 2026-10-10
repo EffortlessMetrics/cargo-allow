@@ -44,7 +44,7 @@ pub(crate) struct CheckArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
     /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
-    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    #[arg(long, value_name = "FORMATS")]
     pub(crate) emit: Option<String>,
     /// Check mode [possible values: no-new, audit, strict, release].
     ///   no-new   Fail on new/expired/ambiguous/invalid_selector/

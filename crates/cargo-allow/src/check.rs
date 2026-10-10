@@ -392,7 +392,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             allow_report::EvaluationResultClassV2::Passed
         };
-        artifact_emit::emit_artifact_set(
+        let artifacts = artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "check",
@@ -410,6 +410,33 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 format!("artifact emit: {error}"),
             )
         })?;
+        let validation = artifacts.validate();
+        if !matches!(
+            validation.result,
+            allow_report::EvaluationArtifactSetResultV2::Complete
+                | allow_report::EvaluationArtifactSetResultV2::SemanticNonGreen
+        ) {
+            // Keep the emitted manifest's semantic result and completed members.
+            // Required rendering failure changes this invocation's output result.
+            let details = validation
+                .gaps
+                .into_iter()
+                .chain(
+                    artifacts
+                        .artifacts
+                        .iter()
+                        .flat_map(|artifact| artifact.render_errors.iter().cloned()),
+                )
+                .collect::<Vec<_>>();
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!(
+                    "artifact emit {:?}: {}",
+                    validation.result,
+                    details.join("; ")
+                ),
+            ));
+        }
     }
     if failed {
         process::exit(1);

@@ -8,3 +8,6 @@ body: >-
   Invalid check --emit formats now return the standard usage exit code 2.
   Late artifact-write failures return exit code 1 with a typed error summary,
   replace the evaluated receipt with an error receipt, and remove stale reports.
+  Check emission retains every comma-separated renderer request and reports
+  failed renderers through the same typed error path, preserving the manifest's
+  original policy result and any successfully completed artifacts.
