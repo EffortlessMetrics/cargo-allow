@@ -482,8 +482,8 @@ disposition = "historical-fixture-only"
 owner = "#2501"
 marker_classes = ["workspace-reader", "prerelease-posture"]
 exact_counts = [
-  { class = "workspace-reader", count = 1 },
+  { class = "workspace-reader", count = 2 },
   { class = "prerelease-posture", count = 1 },
 ]
-sites = ["def rehearsal(subject):", "def native_controls(binary):"]
-claim_boundary = "The test writes a synthetic workspace manifest and supplies one explicit stable release-identity fixture to the intercepted rehearsal producer. It does not parse a caller-selected release version or infer a release channel. The production qualifier and native consumers retain their existing typed identity and incomplete-authority boundaries; these fixtures grant no live provider, custody, authorization or release proof."
+sites = ["def rehearsal(subject):", "def experience_native_controls(binary):", "def native_controls(binary):"]
+claim_boundary = "The two native fixture builders write synthetic workspace manifests; the intercepted rehearsal producer receives one explicit stable release-identity fixture. It does not parse a caller-selected release version or infer a release channel. The production qualifier and native consumers retain their existing typed identity and incomplete-authority boundaries; these fixtures grant no live provider, custody, authorization or release proof."
