@@ -823,8 +823,7 @@ callee = "unwrap"
 
 #[test]
 fn explain_lifecycle_status_preserves_tied_finding_decisions() -> Result<(), String> {
-    for (lifecycle_field, entry_status) in
-        [("expires", "expired"), ("review_after", "review_due")]
+    for (lifecycle_field, entry_status) in [("expires", "expired"), ("review_after", "review_due")]
     {
         let root = temp_root(&format!("explain-{entry_status}-tie"))?;
         write_source(&root, "pub fn tied(v: Option<u8>) -> u8 { v.unwrap() }\n")?;

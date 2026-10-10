@@ -281,7 +281,12 @@ fn explain_summary_reuses_the_rendered_status() -> Result<(), String> {
     let mut entry = test_entry("allow-rendered-status", FindingKind::Panic);
     entry.lifecycle.expires = None;
     entry.lifecycle.review_after = None;
-    let finding = test_finding(FindingKind::Panic, Some("unwrap"), "src/lib.rs", "method_call");
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    );
     let outcomes = vec![MatchOutcome {
         status: MatchStatus::Ambiguous,
         allow_id: None,
@@ -326,7 +331,9 @@ fn explain_summary_reuses_the_rendered_status() -> Result<(), String> {
     if summary.reason.code != "explain.ambiguous"
         || summary.posture != crate::core_command_summary::CoreCommandPostureV1::DecisionRequired
     {
-        return Err(format!("summary replaced the rendered entry status: {summary:?}"));
+        return Err(format!(
+            "summary replaced the rendered entry status: {summary:?}"
+        ));
     }
     Ok(())
 }
@@ -338,10 +345,12 @@ fn rendered_explain_status_accepts_the_vocabulary_and_rejects_unknown_data() -> 
             "{{\"summary\":{{\"current_status\":\"{}\"}}}}",
             expected.as_str()
         );
-        let actual = super::rendered_explain_current_status(&detail)
-            .map_err(|error| error.to_string())?;
+        let actual =
+            super::rendered_explain_current_status(&detail).map_err(|error| error.to_string())?;
         if actual != *expected {
-            return Err(format!("rendered status changed from {expected:?} to {actual:?}"));
+            return Err(format!(
+                "rendered status changed from {expected:?} to {actual:?}"
+            ));
         }
     }
     for detail in [
@@ -357,7 +366,9 @@ fn rendered_explain_status_accepts_the_vocabulary_and_rejects_unknown_data() -> 
         match super::rendered_explain_current_status(detail) {
             Err(error) if error.kind() == CargoAllowErrorKind::Artifact => {}
             result => {
-                return Err(format!("invalid rendered status must fail as Artifact: {result:?}"));
+                return Err(format!(
+                    "invalid rendered status must fail as Artifact: {result:?}"
+                ));
             }
         }
     }
