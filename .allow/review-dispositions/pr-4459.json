@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4459,
+  "base_ref": "main",
+  "base_sha": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "head_ref": "fix/3792-rehearsal-selected-invocations-20261010",
+  "head_sha": "d65689488263c2c76a84d991a5c0bb6fe6c5ee35",
+  "merge_base": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "reviewed_diff_digest": "sha256:v1:c2147a9f373885569d46130609b367e9c75b8385988ecf31a24f4775a5e4de60",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT /root/release_audit, author preparing source and pending retained metadata for the coordinating maintainer. This is author preparation only, not an independent review or a clean verdict.",
+  "independent_review": {
+    "not_proven": {
+      "reason": "This pending record binds only the historical initial six-path source d65689488263c2c76a84d991a5c0bb6fe6c5ee35 and its actual native readiness digest. Independent precheck IB-F1 identified a standalone docs-helper regression there. The unreferenced repair 5ffcf6aa4bc67491f55e19b86f4d4cd88b602a1a and subsequent governance files are excluded from that initial digest and have no retained full-pair independent review or runtime acceptance yet. A fresh final-source-and-governance review, actual native digest, Review URL and review time are still required."
+    }
+  },
+  "claimed_verdict": "partial",
+  "findings": [
+    {
+      "id": "IB-F1",
+      "severity": "blocking",
+      "owned_seam": "#3792: standalone nonpublishing publisher helpers used by the final-package documentation producer",
+      "source_path": "scripts/release-topology-publisher.py",
+      "source_line": 113,
+      "repair_route": "The author proposes helper-local metadata and exact-package scopes plus an actual final-package-docs caller regression in 5ffcf6aa4bc67491f55e19b86f4d4cd88b602a1a. The coordinating maintainer must obtain independent affected/full-current-pair review and actual hosted validation before retaining a Fixed disposition.",
+      "claim_boundary": "Historical initial source d65689488263c2c76a84d991a5c0bb6fe6c5ee35. No clean review, repaired-source acceptance, publication authority or prevention-flag upgrade is claimed."
+    }
+  ],
+  "threads_inspected": [],
+  "required_ci": {
+    "owner": "Coordinating maintainer: independently review the complete repaired source and governance diff, bind its actual native digest and final live pair, then separately verify any own-record-only successor, substantive feedback and every applicable current native check before normal head-pinned merge. Retain the exact new-main enforcing guard. The linked neutral check is only the initial d656 source observation; this pending record supplies no CI bypass, merge or release authority.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114315919636"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4459",
+  "reviewed_at_utc": ""
+}
