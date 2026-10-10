@@ -21,6 +21,7 @@ mod reconcile_package_publication_command;
 pub(crate) mod release_authorization_command;
 mod release_final_tag_bridge;
 pub(crate) mod release_freeze_command;
+mod release_freeze_rehearsal;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;

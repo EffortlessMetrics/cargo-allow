@@ -11,8 +11,7 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 
-#[path = "release_freeze_rehearsal.rs"]
-mod rehearsal;
+use super::release_freeze_rehearsal as rehearsal;
 
 const MAX_TRANSPORT_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_FILES: usize = 64;
@@ -143,6 +142,24 @@ struct Inputs {
     identity: CargoAllowReleaseOperationIdentityV1,
     producer: CargoAllowReleaseOperationProducerV1,
     input_digests: BTreeMap<String, String>,
+}
+
+/// Existing phase values borrowed from either a fresh request or its retained
+/// preparation. This grouping is private and is never serialized.
+struct PhaseContext<'a> {
+    phase: Phase,
+    at: u64,
+    raw_object: &'a [u8],
+    object_id: &'a str,
+    remote: Option<&'a FinalTagRemoteObservationV1>,
+    provider_at: Option<u64>,
+}
+
+struct PlannedEvents {
+    events: Vec<CargoAllowReleaseOperationEventV1>,
+    head: CargoAllowReleaseOperationHeadV1,
+    tag_birth: Option<CargoAllowFinalTagTransactionV1>,
+    tag_object: Vec<u8>,
 }
 
 fn bytes<T: Serialize + ?Sized>(value: &T) -> Checked<Vec<u8>> {
@@ -1658,19 +1675,17 @@ fn replay_stored(request: &Request, inputs: &Inputs) -> Checked<Option<Stored>> 
 fn planned_events(
     inputs: &Inputs,
     state: Option<&Stored>,
-    phase: Phase,
-    at: u64,
-    raw_object: &[u8],
-    object_id: &str,
-    remote: Option<&FinalTagRemoteObservationV1>,
-    provider_at: Option<u64>,
-) -> Checked<(
-    Vec<CargoAllowReleaseOperationEventV1>,
-    CargoAllowReleaseOperationHeadV1,
-    Option<CargoAllowFinalTagTransactionV1>,
-    Vec<u8>,
-)> {
+    context: PhaseContext<'_>,
+) -> Checked<PlannedEvents> {
     use CargoAllowReleaseOperationEventClassV1 as Event;
+    let PhaseContext {
+        phase,
+        at,
+        raw_object,
+        object_id,
+        remote,
+        provider_at,
+    } = context;
     let mut events = state.map_or_else(Vec::new, |state| state.events.clone());
     let mut tag_birth = state.and_then(|state| state.tag_birth.clone());
     let mut tag_object = state.map_or_else(Vec::new, |state| state.tag_object.clone());
@@ -1824,34 +1839,49 @@ fn planned_events(
         }
     }
     let head = compile_release_operation_head_v1(&inputs.identity, &events, at)?;
-    Ok((events, head, tag_birth, tag_object))
+    Ok(PlannedEvents {
+        events,
+        head,
+        tag_birth,
+        tag_object,
+    })
 }
 fn prepare(
     request: &Request,
     inputs: &Inputs,
     state: Option<&Stored>,
-    phase: Phase,
-    at: u64,
-    raw: &[u8],
-    oid: &str,
-    remote: Option<FinalTagRemoteObservationV1>,
-    provider_at: Option<u64>,
+    context: PhaseContext<'_>,
 ) -> Checked<Prepared> {
+    let PhaseContext {
+        phase,
+        at,
+        raw_object: raw,
+        object_id: oid,
+        remote,
+        provider_at,
+    } = context;
     if at > request.now_unix_seconds
         || request.now_unix_seconds.saturating_sub(at) > MAX_PREPARED_AGE
         || at < inputs.original_context.evaluated_at_unix_seconds
     {
         return Err("prepared phase timestamp is stale or future-dated");
     }
-    let (events, head, tag_birth, tag_object) = planned_events(
+    let PlannedEvents {
+        events,
+        head,
+        tag_birth,
+        tag_object,
+    } = planned_events(
         inputs,
         state,
-        phase,
-        at,
-        raw,
-        oid,
-        remote.as_ref(),
-        provider_at,
+        PhaseContext {
+            phase,
+            at,
+            raw_object: raw,
+            object_id: oid,
+            remote,
+            provider_at,
+        },
     )?;
     let checkpoint_files = make_files(
         &inputs.identity,
@@ -1874,7 +1904,7 @@ fn prepare(
         } else {
             String::new()
         },
-        remote,
+        remote: remote.cloned(),
         provider_observed_at_unix_seconds: provider_at,
         checkpoint_files,
     })
@@ -1891,12 +1921,14 @@ fn finalize(request: &Request, inputs: &Inputs, state: Option<Stored>) -> Checke
         request,
         inputs,
         state.as_ref(),
-        prepared.phase,
-        prepared.at_unix_seconds,
-        &prepared.tag_object,
-        &prepared.tag_object_id,
-        prepared.remote.clone(),
-        prepared.provider_observed_at_unix_seconds,
+        PhaseContext {
+            phase: prepared.phase,
+            at: prepared.at_unix_seconds,
+            raw_object: &prepared.tag_object,
+            object_id: &prepared.tag_object_id,
+            remote: prepared.remote.as_ref(),
+            provider_at: prepared.provider_observed_at_unix_seconds,
+        },
     )?;
     if &expected != prepared {
         return Err("prepared checkpoint or previous state changed");
@@ -1939,15 +1971,22 @@ fn finalize(request: &Request, inputs: &Inputs, state: Option<Stored>) -> Checke
         .checkpoint
         .as_ref()
         .ok_or("finalized numeric artifact readback is missing")?;
-    let (events, head, tag_birth, tag_object) = planned_events(
+    let PlannedEvents {
+        events,
+        head,
+        tag_birth,
+        tag_object,
+    } = planned_events(
         inputs,
         state.as_ref(),
-        prepared.phase,
-        prepared.at_unix_seconds,
-        &prepared.tag_object,
-        &prepared.tag_object_id,
-        prepared.remote.as_ref(),
-        prepared.provider_observed_at_unix_seconds,
+        PhaseContext {
+            phase: prepared.phase,
+            at: prepared.at_unix_seconds,
+            raw_object: &prepared.tag_object,
+            object_id: &prepared.tag_object_id,
+            remote: prepared.remote.as_ref(),
+            provider_at: prepared.provider_observed_at_unix_seconds,
+        },
     )?;
     check_checkpoint(
         inputs,
@@ -2087,12 +2126,14 @@ fn handle(request: Request) -> Checked<Response> {
                 &request,
                 &inputs,
                 state.as_ref(),
-                request.phase.ok_or("phase missing")?,
-                request.now_unix_seconds,
-                &request.tag_object,
-                &request.tag_object_id,
-                request.remote.clone(),
-                request.provider_observed_at_unix_seconds,
+                PhaseContext {
+                    phase: request.phase.ok_or("phase missing")?,
+                    at: request.now_unix_seconds,
+                    raw_object: &request.tag_object,
+                    object_id: &request.tag_object_id,
+                    remote: request.remote.as_ref(),
+                    provider_at: request.provider_observed_at_unix_seconds,
+                },
             )?);
         }
         Action::Finalize => {
