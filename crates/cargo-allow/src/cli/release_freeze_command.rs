@@ -287,6 +287,17 @@ pub(super) fn cmd_release_freeze(args: &ReleaseFreezeArgs) -> CargoAllowResult<(
 }
 
 fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
+    compose_with_registry_context(root, args, None)
+}
+
+/// Reuse the composition pipeline with the existing registry authority port.
+/// Production has no independent context producer and therefore passes None;
+/// tests can select context/time without copying the retained input's authority.
+fn compose_with_registry_context(
+    root: &Path,
+    args: &ReleaseFreezeComposeArgs,
+    registry_expected: Option<(&allow_report::FinalRegistryContextV1, u64, u64)>,
+) -> CargoAllowResult<()> {
     let subject = SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
     let selection = load_selection(root, &subject)?;
     let shared = load_shared_prerequisites(root)?;
@@ -299,7 +310,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     // #3792/#2501 must supply independently verified current registry context,
     // evaluation time, and a selected freshness window. Retained input fields
     // cannot fill this authority gap or make the production freeze Current.
-    let registry = registry::reconcile(&subject, &package_rows, &evidence, None);
+    let registry = registry::reconcile(&subject, &package_rows, &evidence, registry_expected);
     let graph = build_evidence_graph(
         &subject,
         &selection,

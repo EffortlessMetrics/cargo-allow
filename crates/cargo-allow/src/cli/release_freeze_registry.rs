@@ -103,8 +103,8 @@ pub(super) fn reconcile(
     }
 
     // Without independently assembled authority, reconciliation can retain
-    // negative diagnostics but cannot promote a clean caller-supplied context
-    // and age window to Current. With authority, re-evaluate every observation
+    // negative diagnostics but cannot promote a caller-supplied context and
+    // age window to Current. With authority, re-evaluate every observation
     // against those independently selected values, including future timestamps.
     if let Some((context, now, maximum_age)) = expected {
         input.current_context = context.clone();
@@ -160,8 +160,10 @@ pub(super) fn reconcile(
     if fixture {
         detail.push_str("; TestFixture provenance is not production provider proof");
     }
-    if result == FinalEvidenceNodeResultV1::Complete && (expected.is_none() || fixture) {
-        result = FinalEvidenceNodeResultV1::NotProven;
+    if freshness == ObservationFreshnessV1::Current && (expected.is_none() || fixture) {
+        if result == FinalEvidenceNodeResultV1::Complete {
+            result = FinalEvidenceNodeResultV1::NotProven;
+        }
         freshness = ObservationFreshnessV1::ProviderUnavailable;
     }
     reading(result, freshness, observed_at, detail)
@@ -278,10 +280,8 @@ fn outcome(
     use ObservationFreshnessV1 as Freshness;
     match result {
         Preflight::Complete => (Node::Complete, Freshness::Current),
-        Preflight::CompleteWithResidualAuthorityRisk => {
-            (Node::NotProven, Freshness::ProviderUnavailable)
-        }
-        Preflight::Incomplete => (Node::Incomplete, Freshness::ProviderUnavailable),
+        Preflight::CompleteWithResidualAuthorityRisk => (Node::NotProven, Freshness::Current),
+        Preflight::Incomplete => (Node::Incomplete, Freshness::Current),
         Preflight::Stale => (Node::Stale, Freshness::Stale),
         Preflight::Conflict => (Node::Conflict, Freshness::Mismatch),
         Preflight::ProviderUnavailable => {
