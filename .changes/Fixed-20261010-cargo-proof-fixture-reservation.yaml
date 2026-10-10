@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Reserve cargo-proof subprocess fixture directories with an atomic sequence
+  and bounded exclusive creation, preserving occupied paths and surfacing
+  other allocation errors immediately. The existing dispatch, copy/spawn,
+  timeout, reaping, and cleanup controls remain unchanged.
