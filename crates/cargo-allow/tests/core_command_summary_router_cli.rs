@@ -2435,12 +2435,27 @@ fn check_emit_directory_failure_replaces_evaluated_outputs() -> Result<(), Strin
 
 #[test]
 fn check_emit_write_failure_replaces_evaluated_outputs() -> Result<(), String> {
-    check_emit_route_controls(&["write"])
+    check_emit_route_controls(&["write", "single-write"])
 }
 
 #[test]
 fn check_emit_preserves_success_and_evaluated_gate_failure() -> Result<(), String> {
     check_emit_route_controls(&["pass", "gate"])
+}
+
+#[test]
+fn check_emit_retains_every_requested_renderer() -> Result<(), String> {
+    check_emit_route_controls(&["multi-pass", "multi-gate"])
+}
+
+#[test]
+fn check_emit_renderer_failures_replace_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&[
+        "render",
+        "mixed-render",
+        "reverse-render",
+        "gate-mixed-render",
+    ])
 }
 
 /// Exercise every report route even when an earlier route exposes a regression.
@@ -2459,7 +2474,9 @@ fn check_emit_route_controls(scenarios: &[&str]) -> Result<(), String> {
 fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
     let root = summary_outcome_fixture(&format!("summary-emit-{scenario}-{route}"), false)?;
     let result = (|| -> Result<(), String> {
-        if scenario == "gate" {
+        let gate_failed = matches!(scenario, "gate" | "multi-gate" | "gate-mixed-render");
+        let render_failed = scenario.contains("render");
+        if gate_failed {
             // This tracked edit introduces a genuine unreceipted finding after init.
             write_source(
                 &root,
@@ -2493,7 +2510,7 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                 preserved_paths.push(artifacts.clone());
                 "json"
             }
-            "write" => {
+            "write" | "single-write" => {
                 // Markdown succeeds first; a nonempty directory blocks JSON.
                 // The invocation must fail even after an earlier member was written.
                 let occupied = artifacts.join("check-json.json");
@@ -2502,8 +2519,16 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                 fs::write(&owner, b"prior owner of the JSON member\n")
                     .map_err(|error| error.to_string())?;
                 preserved_paths.push(owner);
-                "markdown,json"
+                if scenario == "write" {
+                    "markdown,json"
+                } else {
+                    "json"
+                }
             }
+            "multi-pass" | "multi-gate" => "markdown,json",
+            "render" => "human",
+            "mixed-render" | "gate-mixed-render" => "json,human",
+            "reverse-render" => "human,json",
             _ => "json",
         };
         let preserved = preserved_paths
@@ -2580,8 +2605,76 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                 && field(&summary, &["sentinel"]).is_none(),
             format!("the final sidecar must describe this check invocation: {summary}"),
         )?;
-        if matches!(scenario, "pass" | "gate") {
-            let failed = scenario == "gate";
+        if matches!(scenario, "pass" | "gate" | "multi-pass" | "multi-gate") || render_failed {
+            let manifest = read_summary_json(&artifacts.join("check-artifact_set_manifest.json"))?;
+            let requested: Vec<_> = emit
+                .split(',')
+                .map(|format| {
+                    if format == "human" {
+                        "human_summary"
+                    } else {
+                        format
+                    }
+                })
+                .collect();
+            require(
+                field(&manifest, &["requested_formats"]) == Some(&serde_json::json!(requested))
+                    && field(&manifest, &["blocking"]) == Some(&Value::Bool(gate_failed))
+                    && field(&manifest, &["result_class"])
+                        == Some(&Value::from(if gate_failed {
+                            "blocking"
+                        } else {
+                            "passed"
+                        })),
+                format!(
+                    "the manifest must retain every requested format and the semantic result: {manifest}"
+                ),
+            )?;
+            let entries = field(&manifest, &["artifacts"])
+                .and_then(Value::as_array)
+                .ok_or_else(|| "manifest artifact entries are missing".to_string())?;
+            require(
+                entries.len() == requested.len(),
+                "every requested renderer needs an entry",
+            )?;
+            for (entry, format) in entries.iter().zip(requested) {
+                let failed = format == "human_summary";
+                require(
+                    field(entry, &["format"]) == Some(&Value::from(format))
+                        && field(entry, &["status"])
+                            == Some(&Value::from(if failed {
+                                "RenderFailed"
+                            } else {
+                                "Written"
+                            })),
+                    format!("the actual renderer outcome must be retained: {entry}"),
+                )?;
+                if failed {
+                    require(
+                        field(entry, &["render_errors"])
+                            .and_then(Value::as_array)
+                            .is_some_and(|errors| {
+                                errors.iter().any(|error| {
+                                    error
+                                        .as_str()
+                                        .is_some_and(|text| text.contains("not a report renderer"))
+                                })
+                            }),
+                        format!("the failed renderer must retain its real diagnostic: {entry}"),
+                    )?;
+                } else {
+                    let name = field(entry, &["file_name"])
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| "written artifact filename is missing".to_string())?;
+                    require(
+                        artifacts.join(name).is_file(),
+                        "successfully rendered members must survive",
+                    )?;
+                }
+            }
+        }
+        if matches!(scenario, "pass" | "gate" | "multi-pass" | "multi-gate") {
+            let failed = gate_failed;
             require(
                 output.status.code() == Some(i32::from(failed))
                     && field(&receipt_value, &["status"])
@@ -2605,11 +2698,6 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                 ),
             )?;
             read_summary_json(&artifacts.join("check-json.json"))?;
-            let manifest = read_summary_json(&artifacts.join("check-artifact_set_manifest.json"))?;
-            require(
-                field(&manifest, &["blocking"]) == Some(&Value::Bool(failed)),
-                format!("the artifact manifest must retain the gate posture: {manifest}"),
-            )?;
             require(
                 report.is_file() == (route == "output"),
                 "successful output routing changed",
@@ -2650,9 +2738,25 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                 "late emit failure must remove the stale detail file",
             )?;
             require(
-                !artifacts.join("check-artifact_set_manifest.json").exists(),
-                "these failed emissions must not claim a completed artifact manifest",
+                artifacts.join("check-artifact_set_manifest.json").is_file() == render_failed,
+                "renderer failures must retain their manifest; I/O failure must not fabricate one",
             )?;
+            if render_failed {
+                require(
+                    field(&summary, &["reason", "message"])
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| message.contains("not a report renderer")),
+                    "the invocation error must explain the actual renderer failure",
+                )?;
+            }
+            if matches!(scenario, "write" | "single-write") {
+                require(
+                    field(&summary, &["reason", "message"])
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| message.contains("check-json.json")),
+                    "the write-failure control must reach the blocked JSON member",
+                )?;
+            }
             if scenario == "write" {
                 require(
                     artifacts.join("check-markdown.md").is_file(),
