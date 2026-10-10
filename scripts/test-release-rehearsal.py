@@ -194,6 +194,91 @@ class TestReceiptOutput(unittest.TestCase):
         self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
         self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
 
+    def test_final_token_observation_controls_builder_and_written_receipt(self) -> None:
+        authorization = self.root / REHEARSAL.AUTHORIZATION_ARTIFACT
+        authorization.parent.mkdir(parents=True)
+        authorization.write_bytes((ROOT / REHEARSAL.AUTHORIZATION_ARTIFACT).read_bytes())
+        output = self.sandbox / "final-receipt.json"
+
+        for boundary in ("workflow", "checkout"):
+            for workflow_status in ("Complete", "Mismatch"):
+                for entry in ("builder", "cli"):
+                    for token_value in (None, "", "synthetic-private-token"):
+                        with self.subTest(boundary=boundary, workflow_status=workflow_status,
+                                          entry=entry, token_value=token_value):
+                            values = {"BENIGN": "retained"}
+                            environment = TokenValueTrap(values)
+                            checkout_calls = 0
+
+                            def introduce_token() -> None:
+                                if token_value is not None:
+                                    values["CARGO_REGISTRY_TOKEN"] = token_value
+
+                            def workflow(receipt) -> str:
+                                self.assertEqual(
+                                    receipt["phases"]["authorization_boundary"], "Incomplete",
+                                )
+                                self.assertIs(receipt["authorization_boundary"]["token_present"], False)
+                                if boundary == "workflow":
+                                    introduce_token()
+                                return workflow_status
+
+                            def checkout(commit_sha) -> None:
+                                nonlocal checkout_calls
+                                checkout_calls += 1
+                                if checkout_calls == 2 and boundary == "checkout":
+                                    introduce_token()
+
+                            stdout, stderr = io.StringIO(), io.StringIO()
+                            with contextlib.ExitStack() as stack:
+                                stack.enter_context(mock.patch.object(REHEARSAL.os, "environ", environment))
+                                stack.enter_context(mock.patch.object(REHEARSAL, "resolve_commit", return_value="a" * 40))
+                                stack.enter_context(mock.patch.object(REHEARSAL, "require_clean_checkout", side_effect=checkout))
+                                stack.enter_context(mock.patch.object(
+                                    REHEARSAL, "compute_sha256", return_value="sha256:v1:" + "b" * 64,
+                                ))
+                                authorize = stack.enter_context(mock.patch.object(
+                                    REHEARSAL, "run_phase_authorization_boundary",
+                                    wraps=REHEARSAL.run_phase_authorization_boundary,
+                                ))
+                                for phase in REQUIRED_PHASES:
+                                    if phase in {"authorization_boundary", "workflow_graph_permissions"}:
+                                        continue
+                                    name = "run_phase_" + ("docs_and_support" if phase == "docs_and_support_identity" else phase)
+                                    stack.enter_context(mock.patch.object(REHEARSAL, name, return_value="Complete"))
+                                stack.enter_context(mock.patch.object(
+                                    REHEARSAL, "run_phase_workflow_graph_permissions", side_effect=workflow,
+                                ))
+                                stack.enter_context(contextlib.redirect_stdout(stdout))
+                                stack.enter_context(contextlib.redirect_stderr(stderr))
+                                if entry == "builder":
+                                    receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+                                else:
+                                    stack.enter_context(mock.patch.object(
+                                        sys, "argv", ["release-rehearsal", "--output", str(output)],
+                                    ))
+                                    self.assertEqual(REHEARSAL.main(), 1)
+                                    receipt = json.loads(output.read_text(encoding="utf-8"))
+                                authorize.assert_called_once()
+
+                            self.assertEqual(checkout_calls, 2)
+                            self.assertEqual(set(receipt["phases"]), set(REQUIRED_PHASES))
+                            self.assertEqual(receipt["phases"]["workflow_graph_permissions"], workflow_status)
+                            self.assertEqual(len(receipt["zero_mutation_proof"]), 7)
+                            self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+                            self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
+                            self.assertNotIn("synthetic-private-token", stdout.getvalue() + stderr.getvalue())
+                            self.assertEqual(stderr.getvalue(), "")
+                            if token_value is None:
+                                expected = "Incomplete" if workflow_status == "Complete" else "Mismatch"
+                                self.assertEqual(receipt["aggregate_status"], expected)
+                                self.assertEqual(receipt["phases"]["authorization_boundary"], "Incomplete")
+                                self.assertIs(receipt["authorization_boundary"]["token_present"], False)
+                            else:
+                                self.assertEqual(receipt["aggregate_status"], "InstrumentFailure")
+                                self.assertEqual(receipt["phases"]["authorization_boundary"], "InstrumentFailure")
+                                self.assertNotIn("authorization_boundary", receipt)
+
     def test_stdout_and_artifact_destinations_preserve_status_and_source(self) -> None:
         source = self.root / "Cargo.toml"
         source.write_text("source sentinel", encoding="utf-8")

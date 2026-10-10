@@ -927,6 +927,10 @@ def build_rehearsal_receipt(
         receipt["phases"][phase_name] = runner(receipt)
 
     require_clean_checkout(commit_sha)
+    if _selected_token_present():
+        receipt["phases"]["authorization_boundary"] = PHASE_INSTRUMENT_FAILURE
+        # The final refusal supersedes the earlier token-absence detail.
+        receipt.pop("authorization_boundary", None)
     receipt["aggregate_status"] = _aggregate_phase_status(receipt["phases"])
     return receipt
 
