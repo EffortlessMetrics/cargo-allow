@@ -4,40 +4,34 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4433,
   "base_ref": "main",
-  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "base_sha": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
   "head_ref": "fix/4351-expiry-day-coherence",
-  "head_sha": "63f4b228e40dfc8658ef8ee91b825c0a31aa7e03",
-  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
-  "reviewed_diff_digest": "sha256:v1:0b460bfd041e57223bca94ddf7f0748c3703334fff3b9ceba26e4a2dd42ef0ca",
+  "head_sha": "e4ed7f69dbdcdf22e96abac07a75d20296ac94c8",
+  "merge_base": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "reviewed_diff_digest": "sha256:v1:83af1e5cc5f7413e6109b16188e4e1dfa793023b1d88722c7d03cfd89e6ae409",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full source, consumer, governance and integration review; authored none of this PR; shared model family/inherited campaign context disclosed; coordinating account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthoring full source, consumer and integration reviewer. Authored none of this PR. Shared model family and inherited campaign context disclosed; coordinating account transports the review.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5478894819"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480573599"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5478894819",
-    "Independently fetched63f4 source and275a796 synthetic, verified ordered parents, uniquea611 merge base, exactfcbb916b tree and complete1055-line15-path diff. Full current source/governance recheck retains prior complete expiry/allocator reviews and independently rechecks every affected incoming explain consumer.",
-    "SimpleDate::policy_expiry_has_passed is the single strict parsed policy-entry date law. Matcher and read-model entry_lifecycle_status use it; cadence already reused matcher and retains its behavior. Yesterday expires, expiry day remains current/expiring with zero days, tomorrow is current. Inclusive review-after and federation drain helpers are unchanged.",
-    "Missing/never/unparseable date handling remains caller-owned. Actual policy loader failures and programmatic MissingRequiredField control remain fail-closed; parsed helper does not replace malformed policy defects with advisory expiry. Existing raw New preservation, ledger row details/occurrence counts and calendar_expiry_blocks_no_new posture remain unchanged.",
-    "Incoming4431 interaction checked in full current production: explain_entry_state evaluates the complete ledger before selecting allow_id or tied candidate_ids and remapping finding indices; render_explain_report feeds detailed current_status through the now-strict canonical read model; rendered_explain_current_status reads that exact artifact without resampling time. Common summary retains all raw statuses, so a lifecycle headline cannot conceal a later Ambiguous decision or New blocking row.",
-    "Incoming lifecycle/tie regression uses fixed2000 expiry/review dates, both tied entries and an earlier advisory lifecycle row before the tie. It compares exact check outcomes to explain detail, human/JSON sidecar equality, canonical reason, decision posture and competing-ID primary action. The seven adapter controls retain calendar false/true and raw New blocking. These consumers are unchanged by the expiry integration and pass on current native Ubuntu.",
-    "Read the entire539-line current lifecycle_boundary.rs and shared102-line repository environment helper. All eight expiry/review cases cross actual check/list/worklist/explain/cadence, with both calendar gate settings, specific malformed loader errors and fixed-date projection checks. Ambient-day CLI test retries once across midnight rather than skipping; broader command-boundary as-of unification stays4237.",
-    "Allocator ownership remains exclusive create_dir, with process-local AtomicUsize selecting candidates, AlreadyExists-only retry,128-attempt exhaustion, immediate RAII ownership before setup and cleanup only for successfully reserved roots. Four barrier-synchronized independent counters deliberately contend against a prior owner; all four live roots remain distinct and prior canary survives drops. Exhaustion and non-directory-parent controls preserve existing objects.",
-    "Actual named-test child wrapper applies hostile index-only and all-six repository variables without process-wide mutation. Every fixture Git/CLI child filters them; caller index/rawHEAD remain exact and the child must name the requested successful test, so an empty filter cannot pass. Formatter-only prior child retained the expected d755e90fe7ceba1f44aa0325b680f3019a33db89 lifecycle fixture blob.",
-    "All14 prior owned nonpolicy blobs, all11 incoming main blobs and2638 outside-scope main paths preserve exact modes/blobs. Policy is exact736770-byte main prefix plus unchanged1577-byte own suffix,738347 total,1080 unique IDs. All prior/main entry data/settings/dates and allow11278 limit36 remain; both note fingerprints independently reproduce. Existing own JSON is stale historical evidence, awaiting a fresh native review and sole-record bootstrap.",
-    "Fresh current PR body bindsactual source/base/MB/tree/digest/synthetic, labels predecessor observations historical and retains current native requirements.4351 still carries old4b683/c961 checkpoint; updating that owner after current evidence does not require changing source or scope.",
-    "Actual current Ubuntu proves all six lifecycle/allocator tests and the incoming explain tie/status control. The prior macOS fixture failure is source-remedied; actual corrected Intel macOS acceptance and all other current gates remain required, without waiver."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480573599",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#discussion_r4236062610",
+    "Fresh complete 14-path review covers strict policy-entry expiry, unchanged inclusive review/drain deadlines, raw New/Ambiguous posture, shared CLI/explain consumers, all lifecycle/allocator/hostile-Git-environment controls and the existing #4237 follow-up.",
+    "Independently verified hosted e4ed source and actual e381 synthetic commit objects, ordered parents, unique eb6 merge base, ba497 tree, full 44846-byte diff, all 2662 outside main entries and 13 owned nonpolicy entries.",
+    "Policy is the exact 747595-byte main prefix plus unchanged 1577-byte own suffix; 1093 unique IDs. Both exact-file revision-note fingerprints reproduce. The prior inline record-currentness thread is resolved and outdated.",
+    "Actual current pregate passes actionlint, formatting and enforcing no-new with zero new unreceipted findings and typed Complete. Broader native checks were running at review; they remain independent required gates."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38050177078/job/114207547017"
+    "owner": "Coordinator must independently verify the own-record-only successor, all applicable current native checks, final live pair and substantive feedback, then exact post-merge main guard. Source review and metadata do not waive pending, failed, stale, skipped or unavailable evidence.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38080954875/job/114297582566"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4433",
-  "reviewed_at_utc": "2026-10-10T12:14:54Z"
+  "reviewed_at_utc": "2026-10-10T19:47:35Z"
 }
