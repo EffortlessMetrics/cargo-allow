@@ -848,17 +848,27 @@ impl OriginalBundle {
             "ExperienceReference",
             bytes(&candidate)?,
         )?;
-        install["candidate_artifact_digest"] =
-            serde_json::Value::String(self.input.candidate_digest.clone());
+        install
+            .as_object_mut()
+            .ok_or("install object missing")?
+            .insert(
+                "candidate_artifact_digest".to_string(),
+                serde_json::Value::String(self.input.candidate_digest.clone()),
+            );
         self.input.install_digest = self.put(
             "experience:isolated-install",
             "ExperienceReference",
             bytes(&install)?,
         )?;
-        journey["candidate_artifact_digest"] =
-            serde_json::Value::String(self.input.candidate_digest.clone());
-        journey["isolated_install_receipt_digest"] =
-            serde_json::Value::String(self.input.install_digest.clone());
+        let journey_object = journey.as_object_mut().ok_or("journey object missing")?;
+        journey_object.insert(
+            "candidate_artifact_digest".to_string(),
+            serde_json::Value::String(self.input.candidate_digest.clone()),
+        );
+        journey_object.insert(
+            "isolated_install_receipt_digest".to_string(),
+            serde_json::Value::String(self.input.install_digest.clone()),
+        );
         self.input.journey_digest = self.put(
             "experience:exact-candidate",
             "ExperienceReference",
@@ -887,17 +897,28 @@ fn predecessor_unknown_fields_are_refused_at_every_existing_object_shape() -> Ex
     ] {
         let mut original = bundle()?;
         let mut predecessors = original.predecessors()?;
-        predecessors[0]["rows"][0]["expected_dependency_rows"] = serde_json::json!([{
-            "package_name": "serde", "package_version": "1", "dependency_kind": "external"
-        }]);
+        let candidate_row = predecessors
+            .get_mut(0)
+            .and_then(|candidate| candidate.get_mut("rows"))
+            .and_then(serde_json::Value::as_array_mut)
+            .and_then(|rows| rows.first_mut())
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("selected candidate row object missing")?;
+        candidate_row.insert(
+            "expected_dependency_rows".to_string(),
+            serde_json::json!([{
+                "package_name": "serde", "package_version": "1", "dependency_kind": "external"
+            }]),
+        );
         original.reseal_predecessors(predecessors)?;
         let before = original.admission()?;
         if before.result != State::NotProven || before.notes.len() != 3 {
             return Err(format!("valid field-control baseline failed: {:?}", before.notes).into());
         }
         let mut predecessors = original.predecessors()?;
-        predecessors[predecessor]
-            .pointer_mut(pointer)
+        predecessors
+            .get_mut(predecessor)
+            .and_then(|value| value.pointer_mut(pointer))
             .and_then(serde_json::Value::as_object_mut)
             .ok_or("selected predecessor object missing")?
             .insert(
@@ -926,8 +947,9 @@ fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics() 
             (1, "/package_rows/0", "resolved_version"),
             (2, "/journey_steps/0", "artifact_schema_id"),
         ] {
-            let object = predecessors[predecessor]
-                .pointer_mut(pointer)
+            let object = predecessors
+                .get_mut(predecessor)
+                .and_then(|value| value.pointer_mut(pointer))
                 .and_then(serde_json::Value::as_object_mut)
                 .ok_or("selected optional-field object missing")?;
             if explicit {
@@ -936,8 +958,9 @@ fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics() 
                 object.remove(field);
             }
         }
-        let journey = predecessors[2]
-            .as_object_mut()
+        let journey = predecessors
+            .get_mut(2)
+            .and_then(serde_json::Value::as_object_mut)
             .ok_or("journey object missing")?;
         if explicit {
             journey.insert("not_included".to_string(), serde_json::json!([]));
@@ -946,13 +969,18 @@ fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics() 
         }
         // These existing graph arrays allow empty values but have no serde
         // default. Keep them present; omission is not an accepted alternative.
+        let graph = predecessors
+            .get_mut(1)
+            .and_then(|install| install.get_mut("graph_comparison"))
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("install graph comparison object missing")?;
         for field in [
             "unexpected_packages",
             "missing_packages",
             "version_mismatches",
             "path_sources",
         ] {
-            predecessors[1]["graph_comparison"][field] = serde_json::json!([]);
+            graph.insert(field.to_string(), serde_json::json!([]));
         }
         original.reseal_predecessors(predecessors)?;
         let before = original
@@ -1006,7 +1034,13 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
         let mut original = bundle()?;
         if case == "malformed" {
             let mut input = serde_json::to_value(&original.input)?;
-            input["maximum_age_seconds"] = serde_json::json!("not an integer");
+            input
+                .as_object_mut()
+                .ok_or("experience input object missing")?
+                .insert(
+                    "maximum_age_seconds".to_string(),
+                    serde_json::json!("not an integer"),
+                );
             original.put(
                 "evidence:experience-input",
                 "Evidence:experience-input",
