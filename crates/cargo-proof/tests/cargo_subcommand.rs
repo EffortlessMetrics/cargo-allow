@@ -10,6 +10,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -26,6 +27,42 @@ const HANG_CHILD_ENV: &str = "CARGO_DISPATCH_HANG_CHILD";
 // (rust-lang/rust#114554). Never hold this while
 // waiting for a child: the independent deadline/reaping paths remain parallel.
 static COPY_SPAWN_ADMISSION: Mutex<()> = Mutex::new(());
+
+const FIXTURE_RESERVATION_ATTEMPTS: usize = 128;
+static FIXTURE_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+
+/// Reserve an exclusively created directory before granting cleanup ownership.
+/// A repeated clock stamp or occupied name never admits another owner's path.
+fn reserve_fixture_root(
+    parent: &Path,
+    stamp: u128,
+    sequence: &AtomicUsize,
+) -> std::io::Result<PathBuf> {
+    for _ in 0..FIXTURE_RESERVATION_ATTEMPTS {
+        let serial = sequence.fetch_add(1, Ordering::Relaxed);
+        let root = parent.join(format!(
+            "cargo-proof-dispatch-{}-{stamp}-{serial}",
+            std::process::id()
+        ));
+        match fs::create_dir(&root) {
+            Ok(()) => return Ok(root),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(std::io::Error::new(
+                    error.kind(),
+                    format!("reserve fixture directory {}: {error}", root.display()),
+                ));
+            }
+        }
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        format!(
+            "fixture directory reservation exhausted {FIXTURE_RESERVATION_ATTEMPTS} occupied candidates under {}",
+            parent.display()
+        ),
+    ))
+}
 
 fn copy_fixture_executable(source: impl AsRef<Path>, destination: &Path) -> TestResult {
     let _admission = COPY_SPAWN_ADMISSION
@@ -44,11 +81,7 @@ struct Fixture {
 impl Fixture {
     fn new() -> Result<Self, Box<dyn Error>> {
         let nonce = SystemTime::now().duration_since(UNIX_EPOCH)?.as_nanos();
-        let root = std::env::temp_dir().join(format!(
-            "cargo-proof-dispatch-{}-{nonce}",
-            std::process::id()
-        ));
-        fs::create_dir(&root)?;
+        let root = reserve_fixture_root(&std::env::temp_dir(), nonce, &FIXTURE_SEQUENCE)?;
         let cargo_home = root.join("cargo-home");
         let binary = cargo_home
             .join("bin")
@@ -391,4 +424,190 @@ fn cleanup_reports_a_deterministic_removal_failure() -> TestResult {
     );
     let _ = fs::remove_dir_all(&root);
     Ok(())
+}
+
+#[test]
+fn fixture_reservation_distinguishes_repeated_stamps() -> TestResult {
+    hang_here_if_selected();
+    let fixture = Fixture::new()?;
+    let sequence = AtomicUsize::new(0);
+    let first = reserve_fixture_root(&fixture.root, 7, &sequence)?;
+    let second = reserve_fixture_root(&fixture.root, 7, &sequence)?;
+    if first == second || !first.is_dir() || !second.is_dir() {
+        return Err("repeated stamps must reserve distinct directories".into());
+    }
+    if sequence.load(Ordering::Relaxed) != 2 {
+        return Err("unoccupied reservations must each consume one sequence value".into());
+    }
+    fs::write(first.join("owner"), b"first owner")?;
+    fs::write(second.join("owner"), b"second owner")?;
+    if fs::read(first.join("owner"))? != b"first owner"
+        || fs::read(second.join("owner"))? != b"second owner"
+    {
+        return Err("each reservation must retain its private bytes".into());
+    }
+    fixture.cleanup()
+}
+
+#[test]
+fn fixture_reservation_preserves_occupied_canaries() -> TestResult {
+    hang_here_if_selected();
+    let fixture = Fixture::new()?;
+    let seed = AtomicUsize::new(0);
+    let occupied_directory = reserve_fixture_root(&fixture.root, 11, &seed)?;
+    fs::write(occupied_directory.join("canary"), b"directory owner")?;
+    let occupied_file = reserve_fixture_root(&fixture.root, 11, &seed)?;
+    fs::remove_dir(&occupied_file)?;
+    fs::write(&occupied_file, b"file owner")?;
+
+    let sequence = AtomicUsize::new(0);
+    let reserved = reserve_fixture_root(&fixture.root, 11, &sequence)?;
+    if reserved == occupied_directory || reserved == occupied_file || !reserved.is_dir() {
+        return Err("an occupied file or directory cannot become a fixture root".into());
+    }
+    if sequence.load(Ordering::Relaxed) != 3 {
+        return Err("reservation must skip exactly the two occupied candidates".into());
+    }
+    if fs::read(occupied_directory.join("canary"))? != b"directory owner"
+        || fs::read(&occupied_file)? != b"file owner"
+    {
+        return Err("occupied candidates must retain their owner's bytes".into());
+    }
+    fixture.cleanup()
+}
+
+#[test]
+fn concurrent_fixture_reservations_keep_private_ownership() -> TestResult {
+    hang_here_if_selected();
+    let fixture = Fixture::new()?;
+    let seed = AtomicUsize::new(0);
+    let occupied = reserve_fixture_root(&fixture.root, 13, &seed)?;
+    fs::write(occupied.join("canary"), b"existing owner")?;
+    let sequence = AtomicUsize::new(0);
+
+    let roots = std::thread::scope(|scope| -> Result<Vec<PathBuf>, String> {
+        let mut workers = Vec::new();
+        let mut starts = Vec::new();
+        for _ in 0..8 {
+            let (start, ready) = std::sync::mpsc::channel::<()>();
+            let parent = &fixture.root;
+            let sequence = &sequence;
+            workers.push(
+                std::thread::Builder::new()
+                    .spawn_scoped(scope, move || -> Result<PathBuf, String> {
+                        ready.recv().map_err(|error| error.to_string())?;
+                        reserve_fixture_root(parent, 13, sequence)
+                            .map_err(|error| error.to_string())
+                    })
+                    .map_err(|error| error.to_string())?,
+            );
+            starts.push(start);
+        }
+        // Release only after all workers were spawned. If spawning fails,
+        // dropping the senders releases earlier workers with a channel error.
+        for start in starts {
+            start.send(()).map_err(|error| error.to_string())?;
+        }
+        let mut roots = Vec::new();
+        for worker in workers {
+            roots.push(
+                worker
+                    .join()
+                    .map_err(|_| "fixture reservation worker panicked".to_string())??,
+            );
+        }
+        Ok(roots)
+    })?;
+
+    let unique = roots.iter().collect::<std::collections::BTreeSet<_>>();
+    if roots.len() != 8 || unique.len() != 8 || sequence.load(Ordering::Relaxed) != 9 {
+        return Err(
+            "concurrent reservations must skip the canary and own eight unique roots".into(),
+        );
+    }
+    for (owner, root) in roots.iter().enumerate() {
+        if root == &occupied || !root.is_dir() {
+            return Err("each concurrent fixture must own a newly created directory".into());
+        }
+        fs::write(root.join("owner"), owner.to_string())?;
+    }
+    for (owner, root) in roots.iter().enumerate() {
+        if fs::read_to_string(root.join("owner"))? != owner.to_string() {
+            return Err("concurrent fixture bytes must remain private".into());
+        }
+    }
+    if fs::read(occupied.join("canary"))? != b"existing owner" {
+        return Err("concurrent reservations must preserve the occupied canary".into());
+    }
+    fixture.cleanup()
+}
+
+#[test]
+fn fixture_reservation_exhaustion_is_bounded() -> TestResult {
+    hang_here_if_selected();
+    let fixture = Fixture::new()?;
+    let seed = AtomicUsize::new(0);
+    let mut occupied = Vec::new();
+    for _ in 0..FIXTURE_RESERVATION_ATTEMPTS {
+        let root = reserve_fixture_root(&fixture.root, 17, &seed)?;
+        fs::write(root.join("canary"), b"existing owner")?;
+        occupied.push(root);
+    }
+    let before = fs::read_dir(&fixture.root)?.collect::<Result<Vec<_>, _>>()?;
+    let sequence = AtomicUsize::new(0);
+    let error = match reserve_fixture_root(&fixture.root, 17, &sequence) {
+        Ok(_) => return Err("exhausted reservation must not acquire another directory".into()),
+        Err(error) => error,
+    };
+    if error.kind() != std::io::ErrorKind::AlreadyExists
+        || sequence.load(Ordering::Relaxed) != FIXTURE_RESERVATION_ATTEMPTS
+    {
+        return Err("occupied reservation must stop at its exact attempt bound".into());
+    }
+    let message = error.to_string();
+    if !message.contains(&format!("exhausted {FIXTURE_RESERVATION_ATTEMPTS}"))
+        || !message.contains(&fixture.root.display().to_string())
+    {
+        return Err(format!("exhaustion must identify its bound and parent: {message}").into());
+    }
+    let after = fs::read_dir(&fixture.root)?.collect::<Result<Vec<_>, _>>()?;
+    if before.len() != after.len() {
+        return Err("exhausted reservation must leave the parent inventory unchanged".into());
+    }
+    for root in occupied {
+        if fs::read(root.join("canary"))? != b"existing owner" {
+            return Err("exhausted reservation must preserve every occupied canary".into());
+        }
+    }
+    fixture.cleanup()
+}
+
+#[test]
+fn fixture_reservation_reports_other_errors_immediately() -> TestResult {
+    hang_here_if_selected();
+    let fixture = Fixture::new()?;
+    let parent = fixture.root.join("not-a-directory");
+    fs::write(&parent, b"parent canary")?;
+    let before = fs::read_dir(&fixture.root)?.collect::<Result<Vec<_>, _>>()?;
+    let sequence = AtomicUsize::new(0);
+    let error = match reserve_fixture_root(&parent, 19, &sequence) {
+        Ok(_) => return Err("a regular file cannot admit a child fixture directory".into()),
+        Err(error) => error,
+    };
+    if error.kind() == std::io::ErrorKind::AlreadyExists || sequence.load(Ordering::Relaxed) != 1 {
+        return Err("non-collision errors must return after the first attempt".into());
+    }
+    let message = error.to_string();
+    if !message.contains("reserve fixture directory")
+        || !message.contains(&parent.display().to_string())
+    {
+        return Err(format!("reservation errors must identify their candidate: {message}").into());
+    }
+    let after = fs::read_dir(&fixture.root)?.collect::<Result<Vec<_>, _>>()?;
+    if before.len() != after.len() || fs::read(&parent)? != b"parent canary" {
+        return Err(
+            "failed reservation must preserve the existing parent bytes and inventory".into(),
+        );
+    }
+    fixture.cleanup()
 }
