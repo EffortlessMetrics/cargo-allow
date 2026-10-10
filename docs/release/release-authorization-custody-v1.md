@@ -157,3 +157,27 @@ git diff --check
 The evidence inventory retains authorization custody as typed model
 validation. Custody models and observes authority; it does not authenticate,
 grant, select, or execute it.
+
+## Authenticated provider boundary and remaining mint binding
+
+The [release operation store](release-operation-store-v1.md) reads an exact
+IssueComment source and a finalized GitHub Actions artifact using an explicit
+provider credential callback. It verifies the separately approved numeric
+actor/login, exact source body bytes, artifact identity, selected producer
+receipt, run/attempt/job observations, archive inventory and independent
+readback. It transports the existing custody and consumption JSON without
+introducing another authorization envelope or making a mint decision.
+
+The real mint owner must still bind that authenticated source to the exact
+selected authorization subject and nonce, after Complete #2501, and construct
+trusted expected context independently of the decision. Artifact metadata
+identifies the producing run, not an individual job; the separately selected
+producer receipt must bind the finalized artifact ID to its producer.
+The provider assigns that ID after upload, so the finalized transfer envelope
+stays outside the immutable payload it describes.
+
+#3930 will compose these reads, the existing custody/compiler reducers and
+the durable operation store in the actual same-run driver. A local record or
+synthetic provider response cannot satisfy the real source-authentication,
+custody-storage, one-use selection or publication acceptance rows. #3927
+remains open for that production composition and separately authorized mint.
