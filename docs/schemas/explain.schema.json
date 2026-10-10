@@ -63,7 +63,7 @@
       "properties": {
         "current_status": {
           "$ref": "#/$defs/match_status",
-          "description": "Entry state projected from evaluation of the complete effective ledger, including unresolved competition with other entries."
+          "description": "Canonical entry read status, including lifecycle precedence. Full-ledger finding states and unresolved competition remain in current_findings and match_outcomes."
         },
         "current_matches": {
           "type": "integer",
