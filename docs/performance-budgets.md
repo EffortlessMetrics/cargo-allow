@@ -38,14 +38,23 @@ The current hosted matrix requires 18 samples: 2 cold, 4 warm, 6 targeted and
 retains `artifacts/full-check.json` as the measured report and
 `artifacts/full-check.receipt.json` as its separate semantic artifact.
 
-Before recording that row as passed, the harness parses both JSON files,
+Before recording that row as passed, the harness parses the report and receipt,
 rejects duplicate keys and malformed JSON, checks the report's array lengths
 and outcome counts against its summary and receipt, and checks their shared
 inventory and source context. It compares the entire receipt with the preceding
 Markdown `warm_check` receipt after removing only `run_id` and `started_at`.
-Missing output, inconsistent results or an exceeded ceiling produce an
-instrument-failure receipt. These checks and artifact hashing occur after the
-timed child exits; the sample measures command execution and output production.
+
+Counts alone cannot prove that report details survived. The harness also uses
+the already retained `first-audit.json` as a full-content control. Finding and
+outcome objects in both reports must preserve the required fields and field
+types from the existing report schema. The complete check report must then
+match the audit report after excluding the command name and the audit-only
+remediation roadmap; no finding/outcome fields, array order, links, messages or
+scanner context are discarded for comparison. This adds no command invocation
+or sample row. Missing controls, malformed details, substituted content or an
+exceeded ceiling produce an instrument-failure receipt. These checks and
+artifact hashing occur after the timed child exits; the sample measures command
+execution and output production.
 
 Run the local smoke with the default debug profile, or select release to match
 the hosted profile:

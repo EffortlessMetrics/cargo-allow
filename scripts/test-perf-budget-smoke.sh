@@ -1212,6 +1212,7 @@ STATUSES = (
     "matched", "new", "expired", "review_due", "location_drift", "stale",
     "ambiguous", "invalid_selector", "evidence_missing", "missing_required_field", "baseline_debt",
 )
+REPORT_SCHEMA = Path("docs/schemas/report.schema.json").read_bytes()
 
 
 def command_artifacts():
@@ -1262,7 +1263,9 @@ def command_artifacts():
     })
     reference = copy.deepcopy(receipt)
     reference.update(run_id="markdown-run", started_at="2026-10-10T00:00:00Z")
-    return report, receipt, reference
+    audit = copy.deepcopy(report)
+    audit.update(command="audit", audit_remediation_roadmap=[])
+    return report, receipt, reference, audit
 
 
 def encoded(value):
@@ -1272,7 +1275,8 @@ def encoded(value):
 class FullCheckJsonControls(unittest.TestCase):
     def invoke(self, artifacts=None, *, raw=None, missing=(), sizes=None, status=0, clock="normal"):
         values = command_artifacts() if artifacts is None else artifacts
-        inputs = dict(zip(("report", "receipt", "reference"), map(encoded, values)))
+        self.assertEqual(len(values), 4, "the audit control must be supplied independently of mutated check detail")
+        inputs = dict(zip(("report", "receipt", "reference", "audit"), map(encoded, values)))
         inputs.update(raw or {})
         for key, size in (sizes or {}).items():
             self.assertGreaterEqual(size, len(inputs[key]))
@@ -1280,6 +1284,8 @@ class FullCheckJsonControls(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="perf-full-json-") as directory:
             root = Path(directory)
             (root / "scripts").mkdir()
+            (root / "docs/schemas").mkdir(parents=True)
+            (root / "docs/schemas/report.schema.json").write_bytes(REPORT_SCHEMA)
             (root / "input").mkdir()
             (root / "outside caller").mkdir()
             output = root / "receipt/artifacts"
@@ -1289,6 +1295,8 @@ class FullCheckJsonControls(unittest.TestCase):
                     (root / "input" / key).write_bytes(inputs[key])
             if "reference" not in missing:
                 (output / "warm-check.receipt.json").write_bytes(inputs["reference"])
+            if "audit" not in missing:
+                (output / "first-audit.json").write_bytes(inputs["audit"])
             # Missing output cannot reuse an artifact left by an earlier sample.
             for name in ("full-check.json", "full-check.receipt.json"):
                 (output / name).write_text("stale output", encoding="utf-8")
@@ -1377,9 +1385,9 @@ class FullCheckJsonControls(unittest.TestCase):
 
     def test_missing_truncated_duplicate_and_non_json_artifacts_refuse(self):
         values = command_artifacts()
-        for index, key in enumerate(("report", "receipt", "reference")):
+        for index, key in enumerate(("report", "receipt", "reference", "audit")):
             with self.subTest(key=key, mutation="missing"):
-                diagnostic = "did not produce" if key != "reference" else "report/receipt validation failed"
+                diagnostic = "did not produce" if key in ("report", "receipt") else "report/receipt validation failed"
                 self.assert_refused(diagnostic, missing=(key,))
             for label, data, diagnostic in (
                 ("truncated", encoded(values[index])[:-2], "report/receipt validation failed"),
@@ -1409,8 +1417,68 @@ class FullCheckJsonControls(unittest.TestCase):
         for label, mutate, diagnostic in cases:
             with self.subTest(label=label):
                 values = command_artifacts()
-                mutate(*values)
+                mutate(*values[:3])
                 self.assert_refused(diagnostic, values)
+
+    def test_full_report_detail_mutations_refuse_against_unchanged_audit(self):
+        cases = (
+            ("empty_findings", lambda r: r.__setitem__("findings", [{} for _ in r["findings"]]),
+             "missing required detail field"),
+            ("duplicated_finding", lambda r: r.__setitem__("findings", [copy.deepcopy(r["findings"][0]) for _ in r["findings"]]),
+             "first_audit semantic content"),
+            ("erased_outcome_fields", lambda r: r.__setitem__("outcomes", [{key: item[key] for key in ("status", "finding_index")} for item in r["outcomes"]]),
+             "missing required detail field"),
+            ("null_links", lambda r: [item.__setitem__("finding_index", None) for item in r["outcomes"]],
+             "first_audit semantic content"),
+            ("reordered_findings", lambda r: r["findings"].reverse(), "first_audit semantic content"),
+            ("changed_path", lambda r: r["findings"][0].__setitem__("path", "docs/other.md"), "first_audit semantic content"),
+            ("changed_message", lambda r: r["outcomes"][0].__setitem__("message", "substitute"), "first_audit semantic content"),
+            ("changed_allow_id", lambda r: r["outcomes"][0].__setitem__("allow_id", "substitute"), "first_audit semantic content"),
+            ("changed_candidates", lambda r: r["outcomes"][0].__setitem__("candidate_ids", ["substitute"]), "first_audit semantic content"),
+            ("changed_scanner", lambda r: r["rust_scanner"].__setitem__("files_scanned", 0), "first_audit semantic content"),
+            ("bool_scanner_count", lambda r: r["rust_scanner"].__setitem__("files_scanned", True), "first_audit semantic content"),
+            ("audit_field_on_check", lambda r: r.__setitem__("audit_remediation_roadmap", []), "first_audit semantic content"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                retained_controls = [encoded(value) for value in values[1:]]
+                mutate(values[0])
+                self.assertEqual([encoded(value) for value in values[1:]], retained_controls)
+                self.assert_refused(diagnostic, values)
+
+    def test_shared_invalid_detail_fields_refuse_before_content_parity(self):
+        # Even a matching malformed audit cannot bless erased or ill-typed
+        # detail. Field rules come from the existing report schema.
+        cases = (
+            ("missing_path", lambda r: r["findings"][0].pop("path"), "missing required detail field"),
+            ("empty_path", lambda r: r["findings"][0].__setitem__("path", ""), "invalid detail field length"),
+            ("line_bool", lambda r: r["findings"][1].__setitem__("line", True), "invalid detail field type"),
+            ("line_zero", lambda r: r["findings"][1].__setitem__("line", 0), "invalid detail field minimum"),
+            ("unknown_kind", lambda r: r["findings"][0].__setitem__("kind", "invented"), "invalid detail field value"),
+            ("missing_message", lambda r: r["outcomes"][0].pop("message"), "missing required detail field"),
+            ("score_float", lambda r: r["outcomes"][0].__setitem__("score", 0.0), "invalid detail field type"),
+            ("candidate_type", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [None]), "invalid detail field type"),
+            ("candidate_empty", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [""]), "invalid detail field length"),
+            ("unknown_field", lambda r: r["findings"][0].__setitem__("omitted_detail", True), "unknown detail field"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                mutate(values[0])
+                mutate(values[3])
+                self.assert_refused(diagnostic, values)
+
+    def test_audit_control_identity_and_presence_refuse(self):
+        values = command_artifacts()
+        values[3]["command"] = "check"
+        self.assert_refused("expected a cargo-allow audit artifact", values)
+        values = command_artifacts()
+        values[3].pop("rust_scanner")
+        self.assert_refused("missing required report field: first_audit", values)
+        values = command_artifacts()
+        values[3]["findings"][0]["path"] = "docs/other.md"
+        self.assert_refused("first_audit semantic content", values)
 
     def test_payload_and_existing_command_gates_refuse(self):
         self.assert_refused("8388608B catastrophic payload ceiling", sizes={"report": REPORT_LIMIT + 1})
