@@ -586,22 +586,32 @@ fn original_numeric_multi_member_envelopes_replay_after_serialization() -> Resul
 fn provider_member_coverage_rejects_independent_path_identity_trust_and_inventory_changes() -> Result<(), io::Error> {
     for change in 0..12 {
         let mut inputs = provider_members_fixture()?;
+        let transfer = inputs.retained_transfers.first_mut().ok_or_else(|| io::Error::other("fixture transfer absent"))?;
         match change {
-            0 => { inputs.retained_transfers[0].files.pop(); }
-            1 => inputs.retained_transfers[0].files[1].path = "different-path".to_string(),
-            2 => inputs.retained_transfers[0].files[1].sha256 = digest(999),
-            3 => inputs.retained_transfers[0].files[1].size_bytes += 1,
-            4 => inputs.retained_transfers[0].stable_artifact_id = "507".to_string(),
-            5 => inputs.retained_transfers[0].producer.job_id = "0303".to_string(),
-            6 => inputs.retained_transfers[0].trust_class = TrustClassV1::Fork,
-            7 => inputs.retained_transfers[0].schema_version = 99,
-            8 => inputs.retained_transfers[0].producer.tree_sha = "e".repeat(40),
-            9 => {
-                let extra = inputs.custody.items[0].files[0].clone();
-                inputs.custody.items[1].files.push(extra);
+            0 => { transfer.files.pop(); }
+            1..=3 => {
+                let second = transfer.files.get_mut(1).ok_or_else(|| io::Error::other("fixture second file absent"))?;
+                match change {
+                    1 => second.path = "different-path".to_string(),
+                    2 => second.sha256 = digest(999),
+                    _ => second.size_bytes += 1,
+                }
             }
-            10 => inputs.custody.items[1].storage_locator = inputs.custody.items[0].storage_locator.clone(),
-            _ => inputs.retained_artifacts[1].role = "different-role".to_string(),
+            4 => transfer.stable_artifact_id = "507".to_string(),
+            5 => transfer.producer.job_id = "0303".to_string(),
+            6 => transfer.trust_class = TrustClassV1::Fork,
+            7 => transfer.schema_version = 99,
+            8 => transfer.producer.tree_sha = "e".repeat(40),
+            9 => {
+                let extra = inputs.custody.items.first().and_then(|item| item.files.first())
+                    .ok_or_else(|| io::Error::other("fixture first custody file absent"))?.clone();
+                inputs.custody.items.get_mut(1).ok_or_else(|| io::Error::other("fixture second custody item absent"))?.files.push(extra);
+            }
+            10 => {
+                let locator = inputs.custody.items.first().ok_or_else(|| io::Error::other("fixture first custody item absent"))?.storage_locator.clone();
+                inputs.custody.items.get_mut(1).ok_or_else(|| io::Error::other("fixture second custody item absent"))?.storage_locator = locator;
+            }
+            _ => inputs.retained_artifacts.get_mut(1).ok_or_else(|| io::Error::other("fixture second retained artifact absent"))?.role = "different-role".to_string(),
         }
         let replay = replay_final_freeze(&inputs, &FixtureAdapter::current());
         require(replay.result != FinalFreezeReplayResultV1::CompleteEquivalent && !replay.retained_bytes_verified,

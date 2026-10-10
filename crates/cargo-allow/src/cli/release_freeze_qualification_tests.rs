@@ -63,12 +63,13 @@ fn fixture() -> CargoAllowResult<(SubjectIdentity, ReadbackInput)> {
 fn actual_typed_qualification_and_singleton_custody_keep_original_envelope() -> TestResult {
     let (subject, input) = fixture()?;
     input.validate(&subject)?;
-    let before = serde_json::to_vec(&input.artifacts[0].transfer)?;
+    let original = input.artifacts.first().ok_or("fixture artifact absent")?;
+    let before = serde_json::to_vec(&original.transfer)?;
     let (custody, retained) = input.custody(&subject, "selected-custody")?;
     if custody.evaluate_custody(&subject.commit, &subject.version, &input.observed_at_utc) != CustodyDispositionV1::Complete
         || retained.len() != 2 || custody.items.len() != 2 || custody.items.iter().any(|item| item.files.len() != 1)
-        || custody.items[0].storage_locator == custody.items[1].storage_locator
-        || before != serde_json::to_vec(&input.artifacts[0].transfer)?
+        || custody.items.iter().map(|item| &item.storage_locator).collect::<BTreeSet<_>>().len() != 2
+        || before != serde_json::to_vec(&original.transfer)?
     { return Err("member mapping changed original envelope identity or lost exact custody".into()); }
     Ok(())
 }
@@ -77,13 +78,19 @@ fn actual_typed_qualification_and_singleton_custody_keep_original_envelope() -> 
 fn second_member_and_context_controls_cannot_hide_behind_registry_hold() -> TestResult {
     for change in 0..11 {
         let (subject, mut input) = fixture()?;
+        let artifact = input.artifacts.first_mut().ok_or("fixture artifact absent")?;
         match change {
-            0 => { input.artifacts[0].members.pop(); }
-            1 => input.artifacts[0].members[1].bytes.push(0),
-            2 => input.artifacts[0].members[1].path = "first.json".to_string(),
-            3 => input.artifacts[0].members[1].logical_id = "first".to_string(),
-            4 => input.artifacts[0].transfer.producer.job_id = "304".to_string(),
-            5 => input.artifacts[0].retention_expiry_utc = input.observed_at_utc.clone(),
+            0 => { artifact.members.pop(); }
+            1..=3 => {
+                let second = artifact.members.get_mut(1).ok_or("fixture second member absent")?;
+                match change {
+                    1 => second.bytes.push(0),
+                    2 => second.path = "first.json".to_string(),
+                    _ => second.logical_id = "first".to_string(),
+                }
+            }
+            4 => artifact.transfer.producer.job_id = "304".to_string(),
+            5 => artifact.retention_expiry_utc = input.observed_at_utc.clone(),
             6 => input.qualification.required_rerun_set.push("release-rehearsal".to_string()),
             7 => input.qualification.preserved_evidence_nodes.clear(),
             8 => input.qualification.reviewed.tree_sha = "d".repeat(40),

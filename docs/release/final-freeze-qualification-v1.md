@@ -81,8 +81,13 @@ creation time. This binds the selected qualification context; it does not
 replace the repository's independent-review and release-authorization laws.
 
 Provider `Date`, explicit evaluation clock and the independently selected
-maximum observation age bound mutable reads. Missing, malformed, future,
-stale or cached observations refuse. The authorization window must be a
+maximum observation age bound every authenticated read, including the source
+comment, before/after artifact metadata, attempt/job inventory and signed
+download redirect. Missing, malformed, future, stale or cached observations
+refuse before their returned data is used. Each wall-clock sample must follow
+the previous sample, and an independent monotonic clock bounds total elapsed
+time. Start, computation and final observation times must remain ordered.
+The authorization window must be a
 canonical UTC value strictly later than evaluation. Actual artifact metadata
 provides creation and retention expiry. Custody expiring at or before the
 window's end produces the existing `custody_expiring` readiness row.
@@ -165,7 +170,11 @@ Qualified output retains the compact unchanged receipt, evidence graph,
 existing qualification, custody and transfer JSON, full
 `final-freeze.replay-inputs.json`, replay JSON/Markdown, readiness, composition
 diagnostics, the exact original transfer source files, reviewed graph/source
-and native review readbacks, and the private computational input bytes. The
+and native review readbacks, and the private computational input bytes.
+Before returning the composition result, Rust reads the actual persisted
+replay-input file with an exact-size bound, compares its raw bytes, deserializes
+it and reruns the existing replay evaluator. Its typed inputs and replay result
+must equal the original computation. The
 final provider observation file describes that invocation only. Deserializing
 it, or a previously successful replay, cannot restore provider currentness.
 Every later operation must repeat its own required authenticated reads.
@@ -174,7 +183,8 @@ The plain local `release-freeze compose` command remains diagnostic. Without
 trusted observations it emits `Incomplete`, `null` full readiness, and named
 existing blocking rows in `final-freeze.readiness-rows.json`. It preserves the
 graph and replay inputs for inspection. Local custody has no provider locator,
-expiry or verified readback, and it emits no fabricated transfer/producer
+expiry or verified readback; its claim list explicitly preserves those missing
+observations. It emits no fabricated transfer/producer
 records. Unknown facts do not become “main moved,” “expired,” or factual false
 Booleans. Actual registry/rehearsal denials remain visible in the graph/replay.
 
@@ -190,7 +200,7 @@ python3 -I -B -W error scripts/test-release-operation-store.py
 python3 -I -B -W error scripts/test-qualify-release-freeze.py
 cargo test -p cargo-allow --locked --test core_release_freeze_qualification_cli -- --nocapture
 cargo test -p cargo-allow --locked --test final_freeze_replay
-cargo test -p cargo-allow --locked --lib release_freeze_qualification
+cargo test -p cargo-allow --locked --bins release_freeze_qualification
 python3 scripts/verify-evidence-surface-inventory.py
 cargo fmt --all --check
 ```

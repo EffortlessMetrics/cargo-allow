@@ -1620,7 +1620,7 @@ fn build_custody(
             confidentiality_class: ConfidentialityClassV1::Public,
         });
     }
-    Ok(CargoAllowFrozenCandidateCustodyV1::new(
+    let mut custody = CargoAllowFrozenCandidateCustodyV1::new(
         CandidateCustodyInitV1 {
             custody_id: format!("candidate-custody-{}-final", subject.version),
             candidate_version: subject.version.clone(),
@@ -1629,7 +1629,14 @@ fn build_custody(
             items,
             created_at_utc: subject.frozen_at_utc.clone(),
         },
-    ))
+    );
+    custody.claim_boundary = vec![
+        "local_diagnostic_bytes_only".to_string(),
+        "provider_retention_not_established".to_string(),
+        "independent_readback_not_verified".to_string(),
+        "release_authorization_not_granted".to_string(),
+    ];
+    Ok(custody)
 }
 
 fn build_retained_artifacts(

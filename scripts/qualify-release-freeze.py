@@ -70,15 +70,39 @@ def read_json(path: Path) -> tuple[bytes, dict[str, Any]]:
     return raw, store._object(raw)
 
 
+class _ObservedReadStore(store.GitHubReleaseStore):
+    """Apply this invocation's observation checks to every authenticated read."""
+
+    def __init__(self, *, observe: Callable[[store.HttpResponse], None], **kwargs):
+        super().__init__(**kwargs)
+        self._observe = observe
+
+    def _exchange(self, method: str, url: str, *, body: bytes | None = None,
+                  authenticated: bool = True, limit: int | None = None) -> store.HttpResponse:
+        require(method == "GET" and body is None,
+                "qualification permits read-only provider requests")
+        response = super()._exchange(method, url, body=body,
+                                     authenticated=authenticated, limit=limit)
+        if authenticated:
+            self._observe(response)
+        return response
+
+
 class Qualifier:
     """One fresh read sequence. No retained flag can skip its provider reads."""
 
     def __init__(self, selection: Mapping[str, Any], *, selection_dir: Path,
                  credential: Callable[[], str], transport=store.https_transport,
-                 clock: Callable[[], float] = time.time):
+                 clock: Callable[[], float] = time.time,
+                 monotonic: Callable[[], float] = time.monotonic):
         self.selection = store._object(store._json_bytes(dict(selection)))
         self.directory = selection_dir.resolve()
         self.clock = clock
+        self.monotonic = monotonic
+        self.started: float | None = None
+        self._started_tick: float | None = None
+        self._last_wall: float | None = None
+        self._last_tick: float | None = None
         selected = obj(self.selection, {
             "repository_id", "anchor_commit", "anchor_tree", "download_hosts",
             "qualification_source", "qualification_actor", "native_review",
@@ -104,18 +128,35 @@ class Qualifier:
                 "selected review actor required")
         require(isinstance(selected["artifacts"], list) and 1 <= len(selected["artifacts"]) <= 64,
                 "bounded original artifact selection required")
-        self.client = store.GitHubReleaseStore(
+        self.client = _ObservedReadStore(
+            observe=self.observe,
             repository_id=selected["repository_id"], anchor_commit=selected["anchor_commit"],
             anchor_tree=selected["anchor_tree"], control_prefix="refs/heads/release-control/",
             credential=credential, download_hosts=frozenset(selected["download_hosts"]),
-            transport=transport, clock=clock)
-        self.started: float | None = None
+            transport=transport, clock=self.sample_time, monotonic=monotonic)
         self.retained_controls: dict[str, bytes] = {}
 
-    def get(self, suffix: str) -> Any:
-        response, body = self.client._api("GET", suffix)
+    def sample_time(self) -> float:
         now = self.clock()
         date_at(now)
+        tick = self.monotonic()
+        require(type(tick) in (int, float) and math.isfinite(tick),
+                "monotonic observation clock unavailable", "instrument_failure")
+        require((self._last_wall is None or now >= self._last_wall)
+                and (self._last_tick is None or tick >= self._last_tick),
+                "qualification observation clock moved backward", "provider_unavailable")
+        if self._started_tick is None:
+            self._started_tick = tick
+        age = self.selection["maximum_observation_age_seconds"]
+        require(tick - self._started_tick <= age
+                and (self.started is None or now - self.started <= age)
+                and date_at(now) < self.selection["authorization_window_end_utc"],
+                "qualification observation window elapsed", "provider_unavailable")
+        self._last_wall, self._last_tick = now, tick
+        return now
+
+    def observe(self, response: store.HttpResponse) -> None:
+        now = self.sample_time()
         try:
             observed = parsedate_to_datetime(response.headers["date"])
             stamp = observed.timestamp()
@@ -125,6 +166,9 @@ class Qualifier:
                 and 0 <= now - stamp <= self.selection["maximum_observation_age_seconds"]
                 and response.headers.get("age", "0") == "0",
                 "current provider observation is stale, future or cached", "provider_unavailable")
+
+    def get(self, suffix: str) -> Any:
+        _, body = self.client._api("GET", suffix)
         return body
 
     def current_main(self) -> None:
@@ -216,7 +260,7 @@ class Qualifier:
         require(store.sha256(review_bytes) == selected_review["body_digest"],
                 "selected native review body changed", "mismatch")
         canonical_utc(review.get("submitted_at"))
-        require(review["submitted_at"] <= canonical_utc(record.get("created_at_utc")) <= date_at(self.clock()),
+        require(review["submitted_at"] <= canonical_utc(record.get("created_at_utc")) <= date_at(self.sample_time()),
                 "qualification/review chronology differs", "mismatch")
         self.retained_controls["final-freeze.native-review.json"] = store._json_bytes(review)
         self.current_main()
@@ -246,8 +290,8 @@ class Qualifier:
             members[member["logical_id"]] = (member["role"], member["path"])
         result = self.client.read_artifact_members(transfer, artifact_id=selected["artifact_id"],
                                                   expected_producer=expected, members=members)
-        require(canonical_utc(result.created_at_utc) <= date_at(self.clock())
-                and canonical_utc(result.retention_expiry_utc) > date_at(self.clock()),
+        require(canonical_utc(result.created_at_utc) <= date_at(self.sample_time())
+                and canonical_utc(result.retention_expiry_utc) > date_at(self.sample_time()),
                 "artifact readback interval is not current", "mismatch")
         # A prepared payload may be retained/read in its still-running job.
         # Original semantic evidence and reviewed evidence require completed
@@ -256,7 +300,7 @@ class Qualifier:
         if reviewed or set(members) != prepared_ids:
             job = self.client._attempt_job(expected, store._selected_job_id(expected.get("job_id")))
             require(job.get("status") == "completed" and job.get("conclusion") == "success"
-                    and canonical_utc(job.get("completed_at")) <= date_at(self.clock()),
+                    and canonical_utc(job.get("completed_at")) <= date_at(self.sample_time()),
                     "original evidence producer job is not complete", "mismatch")
         self.retained_controls[f'original-transfer-{selected["artifact_id"]}.json'] = raw
         return transfer, result
@@ -270,7 +314,8 @@ class Qualifier:
         except OSError:
             raise store.StoreError("invalid_input", "a fresh writable output directory is required") from None
         self.retained_controls = {}
-        self.started = self.clock()
+        self.started = self._started_tick = self._last_wall = self._last_tick = None
+        self.started = self.sample_time()
         now = date_at(self.started)
         require(self.selection["authorization_window_end_utc"] > now,
                 "selected authorization window has ended", "mismatch")
@@ -326,7 +371,8 @@ class Qualifier:
                     or (phase == "qualify" and prepared_ids.issubset(ids)),
                     "phase does not select its exact prepared payload")
             self.current_main()
-            wire = {"observed_at_utc":date_at(self.clock()),
+            observed = self.sample_time()
+            wire = {"observed_at_utc":date_at(observed),
                     "authorization_window_end_utc":self.selection["authorization_window_end_utc"],
                     "qualification":qualification, "reviewed_evidence_graph":reviewed_graph,
                     "artifacts":objects}
@@ -335,8 +381,9 @@ class Qualifier:
                 "prepared" if phase == "prepare" else "qualified-computation"),
                 "typed consumer did not return its selected stage", "instrument_failure")
             self.current_main()
-            ended = self.clock()
-            require(self.started <= ended and ended - self.started <= self.selection["maximum_observation_age_seconds"]
+            ended = self.sample_time()
+            require(self.started <= observed <= ended
+                    and ended - self.started <= self.selection["maximum_observation_age_seconds"]
                     and date_at(ended) < self.selection["authorization_window_end_utc"],
                     "qualification observation window elapsed", "provider_unavailable")
             for name, data in self.retained_controls.items():

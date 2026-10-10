@@ -64,6 +64,16 @@ pub(super) fn write_json<T: Serialize + ?Sized>(path: &Path, value: &T) -> Cargo
     std::fs::write(path, bytes).map_err(|error| instrument(format!("write retained input: {error}")))
 }
 
+fn read_persisted_replay(path: &Path, expected: &[u8]) -> CargoAllowResult<CargoAllowFinalFreezeReplayInputsV1> {
+    use std::io::Read as _;
+    let file = std::fs::File::open(path).map_err(|error| instrument(format!("persisted replay input: {error}")))?;
+    let mut actual = Vec::new();
+    file.take(expected.len() as u64 + 1).read_to_end(&mut actual)
+        .map_err(|error| instrument(format!("persisted replay read: {error}")))?;
+    if actual != expected { return Err(instrument("persisted replay input differs from the exact computed bytes")); }
+    serde_json::from_slice(&actual).map_err(|error| instrument(format!("persisted replay contract: {error}")))
+}
+
 fn read_input(path: &Path) -> CargoAllowResult<ReadbackInput> {
     use std::io::Read as _;
     let file = std::fs::File::open(path).map_err(|error| instrument(format!("readback input: {error}")))?;
@@ -76,15 +86,18 @@ fn read_input(path: &Path) -> CargoAllowResult<ReadbackInput> {
 }
 
 fn utc(value: &str) -> CargoAllowResult<&str> {
-    if value.len() != 20 || !value.is_ascii() || &value[10..11] != "T"
-        || &value[13..14] != ":" || &value[16..17] != ":" || &value[19..] != "Z"
+    if value.len() != 20 || !value.is_ascii()
     { return Err(instrument("canonical UTC evaluation/retention time is required")); }
-    let date = SimpleDate::parse(&value[..10]).ok_or_else(|| instrument("invalid UTC date"))?;
-    let time = [&value[11..13], &value[14..16], &value[17..19]];
-    let values = time.iter().map(|part| part.parse::<u32>()).collect::<Result<Vec<_>, _>>()
-        .map_err(|_| instrument("invalid UTC time"))?;
-    if format!("{date}") != value[..10] || values[0] > 23 || values[1] > 59 || values[2] > 59
-        || !time.iter().all(|part| part.bytes().all(|byte| byte.is_ascii_digit()))
+    let (date_text, time_text) = value.split_once('T')
+        .ok_or_else(|| instrument("canonical UTC separator is required"))?;
+    let date = SimpleDate::parse(date_text).ok_or_else(|| instrument("invalid UTC date"))?;
+    let time_text = time_text.strip_suffix('Z').ok_or_else(|| instrument("canonical UTC suffix is required"))?;
+    let fields = time_text.split(':').collect::<Vec<_>>();
+    if format!("{date}") != date_text || fields.len() != 3
+        || fields.iter().zip([23, 59, 59]).any(|(part, maximum)| {
+            part.len() != 2 || !part.bytes().all(|byte| byte.is_ascii_digit())
+                || !part.parse::<u32>().is_ok_and(|number| number <= maximum)
+        })
     { return Err(instrument("invalid canonical UTC time")); }
     Ok(value)
 }
@@ -308,14 +321,15 @@ pub(super) fn qualify(root: &Path, args: &ReleaseFreezeComposeArgs, input_path: 
         retained_artifacts, observations: super::observation_set(&prepared.evidence, prepared.registry.1),
         replayed_at_utc: readback.observed_at_utc.clone(),
     };
-    // Exercise the actual persisted representation before producing completion.
+    // Check serialization now and reread the written file before completion.
     let wire = serde_json::to_vec(&input).map_err(|error| instrument(format!("replay input render: {error}")))?;
     let replay_input: CargoAllowFinalFreezeReplayInputsV1 = serde_json::from_slice(&wire)
         .map_err(|error| instrument(format!("replay input roundtrip: {error}")))?;
     if input != replay_input { return Err(instrument("serialized replay input changed its typed meaning")); }
-    let replay = replay_final_freeze(&replay_input, &FreezeObservationAdapter {
+    let observation_adapter = FreezeObservationAdapter {
         source_current: false, registry_reading: prepared.registry.2,
-    });
+    };
+    let replay = replay_final_freeze(&replay_input, &observation_adapter);
     let post_merge = FinalReadinessPostMergePostureV1 {
         merge_commit: readback.qualification.merged.merge_commit_sha.clone(),
         merge_subject_current: readback.qualification.merged.current_main_commit_sha == prepared.subject.commit
@@ -332,6 +346,10 @@ pub(super) fn qualify(root: &Path, args: &ReleaseFreezeComposeArgs, input_path: 
         &prepared.evidence, Some(post_merge), Some(posture));
     let readiness = decisions.map(|inputs| aggregate_final_readiness(&replay_input.evidence_graph, &inputs));
     super::write_outputs(args, root, &replay_input, &receipt_member.bytes, &replay, &readiness)?;
+    let persisted = read_persisted_replay(&out.join("final-freeze.replay-inputs.json"), &wire)?;
+    if persisted != replay_input || replay_final_freeze(&persisted, &observation_adapter) != replay {
+        return Err(instrument("persisted replay changed the typed inputs or replay result"));
+    }
     write_json(&out.join("final-freeze.qualification.json"), &readback.qualification)?;
     write_json(&out.join("final-freeze.reviewed-evidence-graph.json"), &readback.reviewed_evidence_graph)?;
     let complete = readiness.as_ref().is_ok_and(|value| value.verdict == FinalReadinessVerdictV1::ReadyForFreeze)
@@ -340,6 +358,7 @@ pub(super) fn qualify(root: &Path, args: &ReleaseFreezeComposeArgs, input_path: 
         "stage":"qualified-computation", "freeze_state":if complete { "Complete" } else { "Incomplete" },
         "post_merge_qualification":readback.qualification.evaluate_verdict(),
         "custody_disposition":custody_disposition, "replay_retained_bytes_verified":replay.retained_bytes_verified,
+        "persisted_replay_verified":true,
         "receipt_sha256":sha256_v1_bytes(&receipt_member.bytes), "replay_result":replay.result,
         "readiness":readiness.as_ref().ok(), "blocking_rows":super::readiness_rows(&readiness),
         "claim_boundary":"computed from freshly supplied records and bytes; this output is not provider authentication or release authorization"

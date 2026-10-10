@@ -161,7 +161,10 @@ class World(BASE_FIXTURE.Provider):
             tail = path.removeprefix("/actions/artifacts/").split("/")
             object_id = int(tail[0])
             if len(tail) == 2 and tail[1] == "zip":
-                return STORE.HttpResponse(302, {"Location":f"https://artifacts.example.test/{object_id}.zip?sig=synthetic"}, b"{}")
+                return STORE.HttpResponse(302, {
+                    "Location":f"https://artifacts.example.test/{object_id}.zip?sig=synthetic",
+                    "Date":format_datetime(datetime.fromtimestamp(NOW, timezone.utc), usegmt=True),
+                }, b"{}")
             value = self.objects[object_id]["metadata"]
         elif path.startswith("/actions/runs/"):
             run = int(path.split("/")[3])
@@ -176,9 +179,9 @@ class World(BASE_FIXTURE.Provider):
             return STORE.HttpResponse(original.status, {**original.headers, "Date":format_datetime(datetime.fromtimestamp(NOW, timezone.utc), usegmt=True)}, original.body)
         return BASE_FIXTURE.response(200, value, {"Date":format_datetime(datetime.fromtimestamp(NOW, timezone.utc), usegmt=True)})
 
-    def qualifier(self, *, clock=lambda: NOW):
+    def qualifier(self, *, clock=lambda: NOW, **kwargs):
         return DRIVER.Qualifier(self.selection, selection_dir=self.directory,
-                                credential=lambda:BASE_FIXTURE.FAKE_CREDENTIAL, transport=self, clock=clock)
+                                credential=lambda:BASE_FIXTURE.FAKE_CREDENTIAL, transport=self, clock=clock, **kwargs)
 
 
 class ProtocolTests(unittest.TestCase):
@@ -285,6 +288,112 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(self.world.calls), calls)
         self.assertEqual((out / "final-freeze.provider-observation.json").read_bytes(), before)
 
+    def test_each_authenticated_nested_read_requires_fresh_uncached_provider_time(self):
+        targets = (
+            ("main", lambda url: url.endswith("/git/ref/heads/main"), 1),
+            ("repository", lambda url: url == STORE.API + API_BASE, 1),
+            ("source", lambda url: "/issues/comments/" in url, 1),
+            ("metadata-before", lambda url: url.endswith("/actions/artifacts/505"), 1),
+            ("metadata-after", lambda url: url.endswith("/actions/artifacts/505"), 2),
+            ("attempt", lambda url: url.endswith("/actions/runs/101/attempts/1"), 1),
+            ("job-before", lambda url: "/actions/runs/101/attempts/1/jobs?" in url, 1),
+            ("job-completed", lambda url: "/actions/runs/101/attempts/1/jobs?" in url, 2),
+            ("download-redirect", lambda url: url.endswith("/actions/artifacts/505/zip"), 1),
+        )
+        for label, matches, occurrence in targets:
+            for defect in ("valid", "missing", "malformed", "stale", "future", "cached"):
+                with self.subTest(route=label, defect=defect):
+                    self.world = World(self.root)
+                    self.bridge_calls = []
+                    seen = []
+                    injected = []
+
+                    def change_selected_response(request, response):
+                        if not matches(request[1]):
+                            return response
+                        seen.append(request[1])
+                        if len(seen) != occurrence:
+                            return response
+                        injected.append(True)
+                        if defect == "valid":
+                            return response
+                        headers = {key:value for key, value in response.headers.items()
+                                   if key.lower() not in {"date", "age"}}
+                        if defect == "malformed":
+                            headers["Date"] = "not a provider date"
+                        elif defect == "stale":
+                            headers["Date"] = "Thu, 01 Jan 1970 00:00:00 GMT"
+                        elif defect == "future":
+                            headers["Date"] = format_datetime(datetime.fromtimestamp(NOW + 10, timezone.utc), usegmt=True)
+                        elif defect == "cached":
+                            headers["Date"] = format_datetime(datetime.fromtimestamp(NOW, timezone.utc), usegmt=True)
+                            headers["Age"] = "86400"
+                        return STORE.HttpResponse(response.status, headers, response.body)
+
+                    self.world.after = change_selected_response
+                    out = self.root / (label + "-" + defect)
+                    if defect == "valid":
+                        result = self.world.qualifier().run("prepare", out, self.bridge_probe)
+                        self.assertEqual(result["freeze_state"], "Incomplete")
+                        self.assertEqual(len(self.bridge_calls), 1)
+                        self.assertTrue((out / "final-freeze.provider-observation.json").is_file())
+                    else:
+                        with self.assertRaises(STORE.StoreError) as failure:
+                            self.world.qualifier().run("prepare", out, self.bridge_probe)
+                        self.assertEqual(failure.exception.kind, "instrument_failure" if defect in {"missing", "malformed"} else "provider_unavailable")
+                        self.assertEqual(self.bridge_calls, [])
+                        self.assertFalse((out / "final-freeze.provider-observation.json").exists())
+                    self.assertEqual(injected, [True])
+                    self.assertEqual(self.world.unexpected, [])
+                    self.assertTrue(all(call[0] == "GET" for call in self.world.calls))
+
+    def test_computation_and_final_observations_reject_clock_rollback_and_elapsed_time(self):
+        for defect in ("forward", "wall-rollback", "monotonic-elapsed", "monotonic-rollback", "window-ended",
+                       "wall-unavailable", "monotonic-unavailable"):
+            with self.subTest(defect=defect):
+                self.world = World(self.root)
+                self.bridge_calls = []
+                state = {"wall":NOW, "tick":10.0, "main_reads":0}
+
+                def advance_before_computation(request):
+                    if request[1].endswith("/git/ref/heads/main"):
+                        state["main_reads"] += 1
+                        if state["main_reads"] == 3:
+                            state["wall"] = NOW + 100
+
+                def after_computation(phase, wire, evidence, out):
+                    result = self.bridge_probe(phase, wire, evidence, out)
+                    self.assertEqual(wire["observed_at_utc"], BASE_FIXTURE.date(NOW + 100))
+                    if defect == "forward": state["wall"] = NOW + 101
+                    elif defect == "wall-rollback": state["wall"] = NOW + 5
+                    elif defect == "monotonic-elapsed": state["tick"] = 611.0
+                    elif defect == "monotonic-rollback": state["tick"] = 9.0
+                    elif defect == "window-ended": state["wall"] = NOW + 300
+                    elif defect == "wall-unavailable": state["wall"] = float("nan")
+                    else: state["tick"] = float("nan")
+                    return result
+
+                self.world.before = advance_before_computation
+                qualifier = self.world.qualifier(clock=lambda:state["wall"], monotonic=lambda:state["tick"])
+                out = self.root / defect
+                if defect == "forward":
+                    result = qualifier.run("prepare", out, after_computation)
+                    self.assertEqual(result["provider_observed_at_utc"], BASE_FIXTURE.date(NOW + 101))
+                else:
+                    with self.assertRaises(STORE.StoreError):
+                        qualifier.run("prepare", out, after_computation)
+                    self.assertFalse((out / "final-freeze.provider-observation.json").exists())
+                self.assertEqual(len(self.bridge_calls), 1)
+                self.assertEqual(self.world.unexpected, [])
+                self.assertTrue(all(call[0] == "GET" for call in self.world.calls))
+
+    def test_qualifier_provider_rejects_mutating_methods_before_transport(self):
+        qualifier = self.world.qualifier()
+        for method in ("POST", "PATCH", "DELETE"):
+            with self.subTest(method=method), self.assertRaises(STORE.StoreError):
+                qualifier.client._api(method, "/git/refs", {"ref":"refs/heads/forbidden"})
+        self.assertEqual(self.world.calls, [])
+
 
 def git(root, *args, input=None):
     clean = {key:value for key, value in os.environ.items() if key not in {
@@ -372,6 +481,9 @@ def compose_diagnostic(binary, root, files, members, out):
     custody = json.loads((out / "final-freeze.custody.json").read_bytes())
     if any(item["readback_verified"] or item["retention_expiry_utc"] or item["storage_locator"] for item in custody["items"]):
         raise AssertionError("local diagnostic bytes acquired provider custody")
+    if custody["claim_boundary"] != ["local_diagnostic_bytes_only", "provider_retention_not_established",
+                                     "independent_readback_not_verified", "release_authorization_not_granted"]:
+        raise AssertionError("local diagnostic claims acquired provider custody or verified readback")
     return json.loads((out / "final-freeze.evidence-graph.json").read_bytes()), json.loads((out / "final-freeze.receipt.json").read_bytes())
 
 
@@ -422,6 +534,7 @@ def native_controls(binary):
         readiness = json.loads((qualified / "final-freeze.readiness.json").read_bytes())
         replay_inputs = json.loads((qualified / "final-freeze.replay-inputs.json").read_bytes())
         if result["post_merge_qualification"] != "EquivalentTree" or result["custody_disposition"] != "Complete" \
+                or result.get("persisted_replay_verified") is not True \
                 or readiness["post_merge_qualification"] != "current" or not readiness["custody_replay_feasible"] \
                 or readiness["custody_expires_before_authorization_window"]:
             raise AssertionError("the actual positive qualification/custody boundary did not pass independently of remaining holds")
