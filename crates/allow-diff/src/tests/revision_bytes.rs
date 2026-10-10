@@ -259,7 +259,9 @@ fn optional_manifest_context_retains_the_cap_boundary() -> Result<(), String> {
         .err()
         .ok_or_else(|| "the strict single-file reader accepted an over-cap manifest".to_string())?;
     if error.kind() != CargoAllowErrorKind::Scan || !error.to_string().contains("8388609 bytes") {
-        return Err(format!("the source cap was weakened for manifests: {error}"));
+        return Err(format!(
+            "the source cap was weakened for manifests: {error}"
+        ));
     }
     Ok(())
 }
