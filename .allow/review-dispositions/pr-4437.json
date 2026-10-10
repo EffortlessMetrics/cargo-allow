@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4437,
+  "base_ref": "main",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "head_ref": "fix/3839-cargo-deny-download",
+  "head_sha": "0a36d3a804e3055470db062dbd37e00150986362",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:5eaa104e216676b335cbbf22b3dc4442a4c19e749eab03f4f43943fb61198d40",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring full source review; shared model family/session context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4437#pullrequestreview-5475689971"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4437#pullrequestreview-5475689971",
+    "Independently inspected every effective workflow, fragment, policy and revision-note change, the official cargo-deny 0.20.2 archive/checksum and upstream action/Docker invocation. Version, workspace scope and audit arguments remain identical. Hash verification precedes extraction; only the expected member is extracted and invoked by explicit path. Direct rustup stable installation and the explicit stable audit environment preserve execution requirements without triggering the unchanged numeric MSRV-reference validator. Eight actual shell controls, the unchanged MSRV guard with 19 existing tests, and actionlint using the repository's existing flags pass. All 727,309 prior policy bytes are preserved, with exactly two independently checked fingerprints. No blocking finding. The actual hosted dependency audit and pregate have passed on this source; other current platform checks remain separately required. This is no claim that broad #3839 routing work is finished.",
+    "No inline review threads were present at exact-source review. Broad CI routing and aggregator work in #3839 remains open."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4437",
+  "reviewed_at_utc": "2026-10-09T21:52:05.320Z"
+}
