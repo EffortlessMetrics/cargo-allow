@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4446,
   "base_ref": "main",
-  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
   "head_ref": "fix/4334-context-safe-recovery",
-  "head_sha": "1625ae8b2ce6f877d8051645c23b0f6072badd1a",
-  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
-  "reviewed_diff_digest": "sha256:v1:2f5ca9be00468da905dfe0c932fb6835878912607c7e4311b916258e9e6a307f",
+  "head_sha": "307c173703b992d5342713808223c2fbab547d1a",
+  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "reviewed_diff_digest": "sha256:v1:62cbf57528cf562608074543b9f1377755e61153c44e141a946487f52fd0789f",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/release_audit separate nonauthor full current source, consumer, integration and governance review; authored none of this PR; shared model/campaign context and analogous isolation-pattern familiarity disclosed; coordinating account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478933992"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5480708390"
     }
   },
   "claimed_verdict": "review_clean",
@@ -24,29 +24,35 @@
       "severity": "advisory",
       "owned_seam": "Include-untracked plan output within its own inventory binding",
       "source_path": "crates/cargo-allow/src/add_from_plan.rs",
-      "source_line": 241,
-      "repair_route": "Existing #4334 retains plan-in-inventory binding/layout qualification; investigate actual inventory eligibility and generate/apply behavior before changing path selection or closing the broader issue.",
-      "claim_boundary": "The reviewed regeneration fixtures put plans outside included inventory. This review does not qualify every plan layout or close the broader #4334 controller."
+      "source_line": 240,
+      "repair_route": "AcceptedFollowUp under existing #4334: investigate actual inventory eligibility and generate/apply behavior before changing retry placement or claiming broader layout qualification.",
+      "claim_boundary": "The reviewed regeneration fixtures put plans outside included inventory. An unignored retry inside an include-untracked inventory can stale its own binding; this bounded repair does not close #4334."
+    },
+    {
+      "id": "follow-up-4334-drive-relative-plan",
+      "severity": "advisory",
+      "owned_seam": "Windows drive-relative plan arguments and changed working directories",
+      "source_path": "crates/cargo-allow/src/add_from_plan.rs",
+      "source_line": 329,
+      "repair_route": "AcceptedFollowUp under existing #4334: resolve the actual original plan location or provide honest manual fallback, then exercise native Windows drive-relative controls from different working directories before qualifying that layout.",
+      "claim_boundary": "Source-level inference from cwd.join(plan_path) and documented Rust Windows prefix-without-root semantics, not a native Windows reproduction. Ordinary relative/absolute layouts are exercised; C:plan.json remains unqualified. Final no-overwrite and binding checks are preserved."
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478933992",
-    "RegenHintContext reuses the already selected live root/policy/finding and inventory mode. The command uses the raw Finding path joined to the actual root; normalized plan identity remains comparison authority and is never rendered as an executable filename. The actual caller cwd anchors the retry path before it is printed.",
-    "Unique-New admission and same_semantic_finding precede advice; all exact repository/inventory/policy/finding/selector bindings still reject before mutation. The patch does not deserialize operator approval or introduce another authorization/type schema; explicit owner/reason/evidence remain CLI input.",
-    "The one existing platform-aware renderer is reused through crate visibility/reexport only. Lossy UTF-8, controls and the existing Windows unsafe-percent/exclamation rule produce manual Usage guidance, not an executable placeholder. POSIX sh and cmd.exe are the tested shells; PowerShell/general shell representability is not claimed.",
-    "Retry probing is bounded1..99, uses symlink_metadata so dangling entries are occupied, and only NotFound counts as available. Final why --plan write still uses existing no-overwrite create_new behavior; diagnosis does not reserve or overwrite an output and races remain refused at write.",
-    "The new actual CLI controls execute the printed string unchanged from a second unrelated cwd. An independently invoked exact live-line control proves the fixture is plannable before checking the advertised-command result. Repository, inventory, policy, finding and outcome bindings must equal the explicit control; both policies, old plan, occupied file/directory, source, untracked canary and HEAD are protected.",
-    "Raw leading-dash, decomposed-Unicode and Unix literal-backslash filenames have actual current-native positive controls. The Linux non-UTF-8 actual-file control first proves raw-path plannability, then requires manual guidance/no replacement character/no receipt/output/mutation. Valid regenerated plans apply to selected policy and match the original finding; replay and semantic replacement remain refused.",
-    "Every owned Git/CLI/shell child uses command-local removal of six Git repository-location variables plus CARGO_ALLOW_ROOT/CARGO_ALLOW_CONFIG/ENV/BASH_ENV as applicable. No process-global environment is mutated. The real named-child wrapper checks both index-only/full-hostile setups, external index/HEAD bytes and a literal successful named test, rejecting an empty test filter.",
-    "The current a611 explain/summary changes are preserved. The only production renderer change here is visibility; existing render behavior and all unrelated main source remain exact.",
-    "AcceptedFollowUp #4334 from outside-diff review5478772142 remains explicitly retained. No inline threads at initial/final current pair inspection; no new substantive blocker. Current source Ubuntu14/Windows12/Intel macOS13 native recovery cases pass at exact7337734 synthetic; current pregate114207534165 passes formatter, enforcing zero-new and typedComplete.",
-    "Full current eleven-path governance review preserves exact736770-byte main prefix plus1577-byte tail/1080 unique entries, both note fingerprints, and all nonowned modes/blobs. This own-record successor changes only its JSON; final bootstrap and every current native gate remain separate."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5480708390",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478772142",
+    "Complete current source and consumers preserve selected root/policy/inventory, raw finding path, Unique-New and semantic admission, all exact repository/inventory/policy/finding/selector bindings, explicit operator inputs, no-overwrite creation, apply locking and replay refusal.",
+    "The existing platform renderer is reused through visibility/reexport only. Nonrepresentable input yields manual guidance. Bounded retry probing treats occupied files/directories/dangling symlinks as occupied and only accepts NotFound; final create_new remains the race authority.",
+    "Actual printed-command controls use another unrelated cwd, an independently plannable exact live-line control and protected policies/plan/source/occupied paths/canaries/HEAD. Raw filenames, non-UTF8 manual fallback, application/replay and named hostile-child controls remain intact. POSIX sh and cmd.exe are exercised; PowerShell and general layouts remain unqualified.",
+    "Independent full-tree verification preserves all 10 historical owned nonpolicy entries and 2669 unrelated main entries. The shared repository-environment helper is already main-identical. Policy is exact 749172-byte main prefix plus unchanged 1577-byte suffix: 750749 bytes and 1095 unique IDs. Actual governed diff verifies both exact-file note fingerprints with no policy weakening.",
+    "Both explicit #4334 layout advisories remain AcceptedFollowUp; no blocking source finding. There are no inline threads or new substantive source blockers at final pair inspection. Broader #4335 first-hour guidance remains open.",
+    "Reviewer independently reran all 14 CLI controls and exact afa6/307c governed diff: passed, Complete and zero new. Author formatter/default-guard receipt binds the tested local equivalent and identical tree. Actual hosted pregate passes on synthetic 169537 with exact 307c/afa6 binding; broader current native jobs remained pending."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38050172916/job/114207534165"
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38083381609/job/114304722140"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4446",
-  "reviewed_at_utc": "2026-10-10T12:26:22Z"
+  "reviewed_at_utc": "2026-10-10T20:30:23Z"
 }
