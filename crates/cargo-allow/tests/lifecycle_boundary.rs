@@ -368,11 +368,12 @@ fn row<'a>(document: &'a Value, array: &str, id_field: &str) -> Result<&'a Value
 
 fn run(root: &Path, args: &[&str]) -> Result<Output, String> {
     let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-allow"));
-    command
-        .args(args)
-        .arg("--root")
-        .arg(root)
-        .args(["--config", "policy/allow.toml", "--format", "json"]);
+    command.args(args).arg("--root").arg(root).args([
+        "--config",
+        "policy/allow.toml",
+        "--format",
+        "json",
+    ]);
     isolate_repository(&mut command)
         .output()
         .map_err(|error| format!("run {args:?}: {error}"))
