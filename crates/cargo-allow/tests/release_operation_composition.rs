@@ -411,10 +411,16 @@ fn one_canonical_operation_across_journal_checkpoint_lease_and_tag() -> Result<(
         &custody,
         &lease,
         &allow_report::CargoAllowReleaseOperationProducerV1 {
-            tool: "cargo-allow".to_string(), schema: allow_report::RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(),
-            generation: 1, repository: identity.repository.clone(), workflow: "release.yml".to_string(),
-            workflow_ref: "refs/heads/frozen-final".to_string(), run: "101".to_string(),
-            attempt: 1, job: "publish".to_string(), commit: custody.freeze.commit.clone(),
+            tool: "cargo-allow".to_string(),
+            schema: allow_report::RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(),
+            generation: 1,
+            repository: identity.repository.clone(),
+            workflow: "release.yml".to_string(),
+            workflow_ref: "refs/heads/frozen-final".to_string(),
+            run: "101".to_string(),
+            attempt: 1,
+            job: "publish".to_string(),
+            commit: custody.freeze.commit.clone(),
         },
         FinalTagTransactionInitV1 {
             transaction_id: "tag-tx-0-2-0-001".to_string(),
@@ -1204,62 +1210,125 @@ fn composed_custody(
     identity: Option<&CargoAllowReleaseOperationIdentityV1>,
 ) -> Result<allow_report::CargoAllowReleaseAuthorizationCustodyV1, Box<dyn Error>> {
     use allow_report::*;
-    let packages = RELEASE_AUTHORIZATION_SELECTION.iter().filter(|row| !row.3).enumerate()
+    let packages = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|row| !row.3)
+        .enumerate()
         .map(|(index, row)| ReleaseAuthorizationPackageRowV1 {
-            logical_id: row.0.to_string(), package_name: row.1.to_string(), package_version: row.2.to_string(),
-            package_digest: digest(100 + index as u64), package_size_bytes: 100,
-        }).collect();
-    let shared_prerequisites = RELEASE_AUTHORIZATION_SELECTION.iter().filter(|row| row.3).enumerate()
+            logical_id: row.0.to_string(),
+            package_name: row.1.to_string(),
+            package_version: row.2.to_string(),
+            package_digest: digest(100 + index as u64),
+            package_size_bytes: 100,
+        })
+        .collect();
+    let shared_prerequisites = RELEASE_AUTHORIZATION_SELECTION
+        .iter()
+        .filter(|row| row.3)
+        .enumerate()
         .map(|(index, row)| ReleaseAuthorizationSharedRowV1 {
-            logical_id: row.0.to_string(), package_name: row.1.to_string(), package_version: row.2.to_string(),
-            expected_checksum: digest(300 + index as u64), authority_digest: digest(400 + index as u64),
-        }).collect();
+            logical_id: row.0.to_string(),
+            package_name: row.1.to_string(),
+            package_version: row.2.to_string(),
+            expected_checksum: digest(300 + index as u64),
+            authority_digest: digest(400 + index as u64),
+        })
+        .collect();
     let mut freeze = ReleaseAuthorizationFreezeV1 {
-        receipt_digest: digest(1), candidate_digest: digest(20), denominator_digest: String::new(),
-        commit: "a".repeat(40), tree: "b".repeat(40), lock_digest: digest(6),
-        topology_id: "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001".to_string(), packages, shared_prerequisites,
+        receipt_digest: digest(1),
+        candidate_digest: digest(20),
+        denominator_digest: String::new(),
+        commit: "a".repeat(40),
+        tree: "b".repeat(40),
+        lock_digest: digest(6),
+        topology_id: "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001".to_string(),
+        packages,
+        shared_prerequisites,
     };
     freeze.denominator_digest = release_authorization_denominator_binding_v1(&freeze)?;
     let decision = ReleaseAuthorizationInputV1 {
-        schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(), schema_version: RELEASE_AUTHORIZATION_SCHEMA_VERSION,
+        schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(),
+        schema_version: RELEASE_AUTHORIZATION_SCHEMA_VERSION,
         operation: ReleaseAuthorizationOperationV1 {
-            name: RELEASE_AUTHORIZATION_FINAL_OPERATION.to_string(), version: "0.2.0".to_string(), tag: "v0.2.0".to_string(),
-            channel: "stable".to_string(), github_prerelease: false, authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
+            name: RELEASE_AUTHORIZATION_FINAL_OPERATION.to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
         },
         freeze,
         evidence: ReleaseAuthorizationEvidenceV1 {
-            package_docs_digest: digest(30), preflight_result: FinalRegistryPreflightResultV1::Complete,
-            preflight_evaluated_at_unix_seconds: CREATED_AT, preflight_maximum_age_seconds: 3600,
-            support_digest: digest(8), manifest_digest: digest(31), rehearsal_complete_except_authorization: true,
-            rehearsal_digest: digest(32), source_controls_digest: digest(33), live_controls_digest: digest(12),
-            workflow_digest: digest(10), action_inventory_digest: digest(11), observed_context_digest: digest(34), current_context_digest: digest(34),
+            package_docs_digest: digest(30),
+            preflight_result: FinalRegistryPreflightResultV1::Complete,
+            preflight_evaluated_at_unix_seconds: CREATED_AT,
+            preflight_maximum_age_seconds: 3600,
+            support_digest: digest(8),
+            manifest_digest: digest(31),
+            rehearsal_complete_except_authorization: true,
+            rehearsal_digest: digest(32),
+            source_controls_digest: digest(33),
+            live_controls_digest: digest(12),
+            workflow_digest: digest(10),
+            action_inventory_digest: digest(11),
+            observed_context_digest: digest(34),
+            current_context_digest: digest(34),
         },
         authority: ReleaseAuthorizationAuthorityV1 {
-            selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(), maintainer_actor: "synthetic-maintainer".to_string(),
-            maintainer_role: "maintainer".to_string(), source: ReleaseAuthorizationSourceV1 {
-                kind: ReleaseAuthorizationSourceKindV1::IssueComment, repository: RELEASE_AUTHORIZATION_REPOSITORY.to_string(),
-                reference: "issue:3930#comment:1".to_string(), author: "synthetic-maintainer".to_string(),
-                body_digest: digest(35), statement: RELEASE_AUTHORIZATION_EXACT_STATEMENT.to_string(),
+            selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(),
+            maintainer_actor: "synthetic-maintainer".to_string(),
+            maintainer_role: "maintainer".to_string(),
+            source: ReleaseAuthorizationSourceV1 {
+                kind: ReleaseAuthorizationSourceKindV1::IssueComment,
+                repository: RELEASE_AUTHORIZATION_REPOSITORY.to_string(),
+                reference: "issue:3930#comment:1".to_string(),
+                author: "synthetic-maintainer".to_string(),
+                body_digest: digest(35),
+                statement: RELEASE_AUTHORIZATION_EXACT_STATEMENT.to_string(),
             },
-            created_at_unix_seconds: CREATED_AT, expires_at_unix_seconds: 1_800_000_000,
-            one_run_scope: true, nonce: "synthetic-composed-authorization".to_string(),
+            created_at_unix_seconds: CREATED_AT,
+            expires_at_unix_seconds: 1_800_000_000,
+            one_run_scope: true,
+            nonce: "synthetic-composed-authorization".to_string(),
         },
     };
     let mut record = mint_authorization_custody_v1(AuthorizationCustodyMintInitV1 {
-        authorization_id: "synthetic-composed-custody".to_string(), decision,
-        freeze_receipt_digest: digest(1), replay_digest: digest(4), replay_result: "CompleteEquivalent".to_string(),
-        candidate_custody_digest: digest(3), freeze_complete: true, replay_complete: true,
-        storage_locator: "https://example.invalid/synthetic-custody".to_string(), repository_root: String::new(),
-        storage_access_policy: "synthetic-only".to_string(), storage_retention_expiry_unix_seconds: 1_800_001_000,
-        storage_provider_available: true, valid_from_unix_seconds: CREATED_AT, expires_at_unix_seconds: 1_800_000_000,
-        minted_by: "synthetic-maintainer".to_string(), minted_at_unix_seconds: CREATED_AT,
-    }).map_err(io::Error::other)?;
+        authorization_id: "synthetic-composed-custody".to_string(),
+        decision,
+        freeze_receipt_digest: digest(1),
+        replay_digest: digest(4),
+        replay_result: "CompleteEquivalent".to_string(),
+        candidate_custody_digest: digest(3),
+        freeze_complete: true,
+        replay_complete: true,
+        storage_locator: "https://example.invalid/synthetic-custody".to_string(),
+        repository_root: String::new(),
+        storage_access_policy: "synthetic-only".to_string(),
+        storage_retention_expiry_unix_seconds: 1_800_001_000,
+        storage_provider_available: true,
+        valid_from_unix_seconds: CREATED_AT,
+        expires_at_unix_seconds: 1_800_000_000,
+        minted_by: "synthetic-maintainer".to_string(),
+        minted_at_unix_seconds: CREATED_AT,
+    })
+    .map_err(io::Error::other)?;
     let bytes = serde_json::to_vec(&record)?;
-    require(note_custody_readback_v1(&mut record, &bytes) == CustodyReadbackV1::Match, "synthetic custody readback failed")?;
+    require(
+        note_custody_readback_v1(&mut record, &bytes) == CustodyReadbackV1::Match,
+        "synthetic custody readback failed",
+    )?;
     if let Some(identity) = identity {
         let nonce = record.nonce.clone();
         let evidence = record.evidence_digest.clone();
-        select_authorization_for_operation_v1(identity, &mut record, &nonce, CREATED_AT, &evidence, true).map_err(io::Error::other)?;
+        select_authorization_for_operation_v1(
+            identity,
+            &mut record,
+            &nonce,
+            CREATED_AT,
+            &evidence,
+            true,
+        )
+        .map_err(io::Error::other)?;
     }
     Ok(record)
 }
@@ -1269,47 +1338,117 @@ fn composed_tag_refuses_individually_moved_release_subjects() -> Result<(), Box<
     use allow_report::*;
     let identity = canonical_identity("composed-subject-controls")?;
     let custody = composed_custody(Some(&identity))?;
-    let lease = acquire_operation_lease_for_operation_v1(&identity, OperationLeaseAcquireInitV1 {
-        lease_id: "subject-controls".to_string(), class: OperationLeaseClassV1::Clean,
-        key: OperationLeaseKeyV1 {
-            operation: FINAL_TAG_OPERATION.to_string(), operation_identity_digest: digest(0), version: "0.2.0".to_string(),
-            tag: "v0.2.0".to_string(), commit: custody.freeze.commit.clone(), tree: custody.freeze.tree.clone(),
-            denominator_digest: custody.freeze.denominator_digest.clone(),
+    let lease = acquire_operation_lease_for_operation_v1(
+        &identity,
+        OperationLeaseAcquireInitV1 {
+            lease_id: "subject-controls".to_string(),
+            class: OperationLeaseClassV1::Clean,
+            key: OperationLeaseKeyV1 {
+                operation: FINAL_TAG_OPERATION.to_string(),
+                operation_identity_digest: digest(0),
+                version: "0.2.0".to_string(),
+                tag: "v0.2.0".to_string(),
+                commit: custody.freeze.commit.clone(),
+                tree: custody.freeze.tree.clone(),
+                denominator_digest: custody.freeze.denominator_digest.clone(),
+            },
+            holder_workflow: "release.yml".to_string(),
+            holder_run: "101".to_string(),
+            holder_attempt: "1".to_string(),
+            holder_job: "tag".to_string(),
+            journal_head_digest: digest(90),
+            checkpoint_head_digest: digest(91),
+            max_renewals: 0,
+            acquired_at_unix_seconds: CREATED_AT,
+            expires_at_unix_seconds: CREATED_AT + 3600,
+            storage_provider_available: true,
         },
-        holder_workflow: "release.yml".to_string(), holder_run: "101".to_string(), holder_attempt: "1".to_string(), holder_job: "tag".to_string(),
-        journal_head_digest: digest(90), checkpoint_head_digest: digest(91), max_renewals: 0,
-        acquired_at_unix_seconds: CREATED_AT, expires_at_unix_seconds: CREATED_AT + 3600, storage_provider_available: true,
-    }, None, NOW).map_err(io::Error::other)?;
+        None,
+        NOW,
+    )
+    .map_err(io::Error::other)?;
     let producer = CargoAllowReleaseOperationProducerV1 {
-        tool: "cargo-allow".to_string(), schema: RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(), generation: 1,
-        repository: identity.repository.clone(), workflow: "release.yml".to_string(), workflow_ref: "refs/heads/frozen-final".to_string(),
-        run: "101".to_string(), attempt: 1, job: "tag".to_string(), commit: custody.freeze.commit.clone(),
+        tool: "cargo-allow".to_string(),
+        schema: RELEASE_OPERATION_EVENT_SCHEMA_ID.to_string(),
+        generation: 1,
+        repository: identity.repository.clone(),
+        workflow: "release.yml".to_string(),
+        workflow_ref: "refs/heads/frozen-final".to_string(),
+        run: "101".to_string(),
+        attempt: 1,
+        job: "tag".to_string(),
+        commit: custody.freeze.commit.clone(),
     };
     let init = FinalTagTransactionInitV1 {
-        transaction_id: "subject-controls".to_string(), operation_identity_digest: release_operation_identity_digest_v1(&identity)?,
-        authorization_digest: identity.authorization_digest.clone(), authorization_observed_state: FINAL_TAG_REQUIRED_AUTHORIZATION_STATE.to_string(),
-        lease_key_digest: lease.key_digest.clone(), lease_observed_state: FINAL_TAG_REQUIRED_LEASE_STATE.to_string(), lease_holder_generation: 1,
-        custody_commit: custody.freeze.commit.clone(), custody_tree: custody.freeze.tree.clone(),
-        freeze_digest: identity.freeze_digest.clone(), custody_digest: identity.custody_digest.clone(), replay_digest: identity.replay_digest.clone(),
-        evidence_digest: custody.evidence_digest.clone(), tag: FinalTagIdentityV1 {
-            version: "0.2.0".to_string(), tag: "v0.2.0".to_string(), channel: "stable".to_string(), github_prerelease: false,
-            commit: custody.freeze.commit.clone(), tree: custody.freeze.tree.clone(), tag_object_id: "e".repeat(40),
-            tagger_digest: digest(92), message_digest: digest(93),
+        transaction_id: "subject-controls".to_string(),
+        operation_identity_digest: release_operation_identity_digest_v1(&identity)?,
+        authorization_digest: identity.authorization_digest.clone(),
+        authorization_observed_state: FINAL_TAG_REQUIRED_AUTHORIZATION_STATE.to_string(),
+        lease_key_digest: lease.key_digest.clone(),
+        lease_observed_state: FINAL_TAG_REQUIRED_LEASE_STATE.to_string(),
+        lease_holder_generation: 1,
+        custody_commit: custody.freeze.commit.clone(),
+        custody_tree: custody.freeze.tree.clone(),
+        freeze_digest: identity.freeze_digest.clone(),
+        custody_digest: identity.custody_digest.clone(),
+        replay_digest: identity.replay_digest.clone(),
+        evidence_digest: custody.evidence_digest.clone(),
+        tag: FinalTagIdentityV1 {
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            commit: custody.freeze.commit.clone(),
+            tree: custody.freeze.tree.clone(),
+            tag_object_id: "e".repeat(40),
+            tagger_digest: digest(92),
+            message_digest: digest(93),
         },
-        remote_repository: identity.repository.clone(), remote_ref: "refs/tags/v0.2.0".to_string(), journal_prefix: "synthetic-subject-controls".to_string(),
-        workflow: producer.workflow.clone(), run: producer.run.clone(), attempt: "1".to_string(), job: producer.job.clone(),
-        remote_preflight: FinalTagRemoteObservationV1 { provider_reachable: true, ref_exists: false, remote_is_annotated: false,
-            remote_object_id: String::new(), remote_peeled_commit: String::new(), remote_peeled_tree: String::new() },
+        remote_repository: identity.repository.clone(),
+        remote_ref: "refs/tags/v0.2.0".to_string(),
+        journal_prefix: "synthetic-subject-controls".to_string(),
+        workflow: producer.workflow.clone(),
+        run: producer.run.clone(),
+        attempt: "1".to_string(),
+        job: producer.job.clone(),
+        remote_preflight: FinalTagRemoteObservationV1 {
+            provider_reachable: true,
+            ref_exists: false,
+            remote_is_annotated: false,
+            remote_object_id: String::new(),
+            remote_peeled_commit: String::new(),
+            remote_peeled_tree: String::new(),
+        },
         created_at_unix_seconds: NOW,
     };
-    begin_tag_transaction_for_authorized_operation_v1(&identity, &custody, &lease, &producer, init.clone()).map_err(io::Error::other)?;
-    for control in ["old-c-d-subject", "denominator", "holder", "freeze", "nonce", "producer", "remote-ref", "evidence", "version"] {
+    begin_tag_transaction_for_authorized_operation_v1(
+        &identity,
+        &custody,
+        &lease,
+        &producer,
+        init.clone(),
+    )
+    .map_err(io::Error::other)?;
+    for control in [
+        "old-c-d-subject",
+        "denominator",
+        "holder",
+        "freeze",
+        "nonce",
+        "producer",
+        "remote-ref",
+        "evidence",
+        "version",
+    ] {
         let mut current_lease = lease.clone();
         let mut current_custody = custody.clone();
         let mut current_producer = producer.clone();
         let mut current_init = init.clone();
         match control {
-            "old-c-d-subject" => { current_lease.key.commit = "c".repeat(40); current_lease.key.tree = "d".repeat(40); }
+            "old-c-d-subject" => {
+                current_lease.key.commit = "c".repeat(40);
+                current_lease.key.tree = "d".repeat(40);
+            }
             "denominator" => current_lease.key.denominator_digest = digest(999),
             "holder" => current_lease.holder.generation += 1,
             "freeze" => current_custody.freeze.receipt_digest = digest(999),
@@ -1325,8 +1464,17 @@ fn composed_tag_refuses_individually_moved_release_subjects() -> Result<(), Box<
         current_lease.key_digest = operation_lease_key_digest_v1(&current_lease.key)?;
         current_lease.subject_digest = operation_lease_subject_digest_v1(&current_lease.key)?;
         current_init.lease_key_digest = current_lease.key_digest.clone();
-        require(begin_tag_transaction_for_authorized_operation_v1(&identity, &current_custody, &current_lease, &current_producer, current_init).is_err(),
-            format!("{control} passed the composed tag boundary"))?;
+        require(
+            begin_tag_transaction_for_authorized_operation_v1(
+                &identity,
+                &current_custody,
+                &current_lease,
+                &current_producer,
+                current_init,
+            )
+            .is_err(),
+            format!("{control} passed the composed tag boundary"),
+        )?;
     }
     Ok(())
 }

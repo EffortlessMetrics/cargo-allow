@@ -10,16 +10,22 @@ from __future__ import annotations
 
 import argparse
 import copy
+from contextlib import redirect_stdout
 from datetime import datetime, timezone
 from email.utils import formatdate
 import importlib.util
+import hashlib
+import io
 import json
 import math
 import os
 from pathlib import Path
 import pickle
+import select
 import shutil
+import signal
 import stat
+import subprocess
 import sys
 import tempfile
 import threading
@@ -86,6 +92,15 @@ class DriverProvider(PROVIDER.Provider):
         self.artifacts = {}
         self.date_header = True
         self.next_artifact = 600
+        self.default_branch = "main"
+        self.main_rules = [{"type": kind, "ruleset_id": 4242, "ruleset_source_type": "Repository",
+                            "ruleset_source": STORE.REPOSITORY, **({"parameters": {
+                                "require_extra_approval_for_unattributed_changes": True}} if kind == "pull_request" else {})}
+                           for kind in ("deletion", "non_fast_forward", "pull_request")]
+        self.rulesets = {4242: {"id": 4242, "name": "Synthetic é 🚀 main controls", "target": "branch",
+                               "enforcement": "active", "source_type": "Repository", "source": STORE.REPOSITORY,
+                               "rules": [{key: value for key, value in rule.items() if key in ("type", "parameters")}
+                                         for rule in self.main_rules]}}
         self.trees[TREE] = []
         self.jobs[0].update(status="in_progress", conclusion=None,
                             started_at=PROVIDER.date(NOW - 3600), completed_at=None)
@@ -108,6 +123,21 @@ class DriverProvider(PROVIDER.Provider):
         oid = STORE._git_oid("tag", raw)
         self.objects[oid] = tag_record(raw)
         self.tag = {"ref": DRIVER.TAG_REF, "object": {"type": "tag", "sha": oid}}
+
+    def retained_controls(self):
+        """Exact synthetic prior producer receipt; no currentness decision."""
+        details = [{"ruleset_id": 4242, "name": "Synthetic é 🚀 main controls", "target": "branch",
+                    "enforcement": "active", "rule_types": ["deletion", "non_fast_forward", "pull_request"]}] * 3
+        result = {"schema": "cargo-allow.live-release-controls-observation.v1", "generated_at_utc": PROVIDER.date(NOW),
+                  "repository": STORE.REPOSITORY, "commit": ANCHOR, "tree": TREE, "default_branch": "main",
+                  "checks": {name: True for name in ("main_deletion_denied", "main_force_push_denied",
+                      "main_pull_request_rule_present", "main_is_default_branch",
+                      "main_extra_approval_for_unattributed_changes", "ruleset_details_retrieved")},
+                  "main_rule_types": ["deletion", "non_fast_forward", "pull_request"], "ruleset_ids": [4242] * 3,
+                  "ruleset_details": details}
+        result["observation_digest"] = "sha256:v1:" + hashlib.sha256(json.dumps(result, sort_keys=True).encode()).hexdigest()
+        result["state"] = "Feasible"
+        return PROVIDER.encode(result)
 
     def retain(self, files, name, *, artifact_id=None):
         """Intercept the pinned action's checkpoint upload and assign its ID."""
@@ -146,6 +176,20 @@ class DriverProvider(PROVIDER.Provider):
         if parsed.hostname == "api.github.com" and method == "GET":
             if headers.get("Authorization") != "Bearer " + SECRET:
                 raise AssertionError("fixture authentication is missing")
+            if path == BASE:
+                result = super().route(request)
+                data = json.loads(result.body)
+                data["default_branch"] = self.default_branch
+                return PROVIDER.response(result.status, data, result.headers)
+            if path == BASE + "/rules/branches/main":
+                if parsed.query != "per_page=100&page=1":
+                    raise AssertionError("effective rule pagination selection changed")
+                return PROVIDER.response(200, self.main_rules)
+            if path.startswith(BASE + "/rulesets/"):
+                if parsed.query != "includes_parents=false":
+                    raise AssertionError("independently selected repository ruleset scope changed")
+                ruleset_id = int(path.rsplit("/", 1)[-1])
+                return PROVIDER.response(200, self.rulesets[ruleset_id]) if ruleset_id in self.rulesets else PROVIDER.response(404, {})
             if path == BASE + "/git/ref/tags/v0.2.0":
                 return PROVIDER.response(404, {}) if self.tag is None else PROVIDER.response(200, self.tag)
             if path.startswith(BASE + "/git/tags/"):
@@ -248,6 +292,147 @@ class IoContracts(unittest.TestCase):
         self.assertEqual(result.observed_at_unix_seconds, NOW)
         refs = [call for call in self.provider.calls if urlsplit(call[1]).path.endswith("/git/ref/tags/v0.2.0")]
         self.assertEqual(len(refs), 2)
+
+    def test_current_controls_require_repeated_authenticated_mutable_readback(self):
+        retained = self.provider.retained_controls()
+        self.provider.now += 10
+        observed = self.client.observe_controls(retained)
+        actual = json.loads(bytes(observed["receipt"]))
+        self.assertEqual(actual["generated_at_utc"], PROVIDER.date(self.provider.now))
+        self.assertEqual(observed["provider_observed_at_unix_seconds"], self.provider.now)
+        self.assertEqual(actual["ruleset_ids"], [4242, 4242, 4242])
+        paths = [urlsplit(call[1]).path for call in self.provider.calls]
+        self.assertEqual(paths.count(BASE + "/rules/branches/main"), 2)
+        self.assertEqual(paths.count(BASE + "/rulesets/4242"), 2)
+
+    def test_control_projection_and_digest_match_the_existing_observer(self):
+        # Execute the actual existing producer's Python block with only its
+        # gh I/O intercepted. This tests its six checks and serialization.
+        source = (HERE / "observe-live-release-controls.sh").read_text().split("python3 - <<'PY'\n", 1)[1]
+        source = source.rsplit("\nPY", 1)[0]
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls.fromtimestamp(NOW, tz)
+        calls = []
+        def gh(arguments, **kwargs):
+            calls.append(arguments)
+            self.assertEqual(arguments, ["gh", "api", "repos/" + STORE.REPOSITORY + "/rulesets/4242"])
+            return subprocess.CompletedProcess(arguments, 0, json.dumps(self.provider.rulesets[4242]), "")
+        with tempfile.TemporaryDirectory(prefix="control-producer-") as directory:
+            path = Path(directory) / "receipt.json"
+            environment = {"REPO": STORE.REPOSITORY, "commit": ANCHOR, "tree": TREE,
+                           "main_rules": json.dumps(self.provider.main_rules), "rulesets_json": "[]",
+                           "default_branch": "main", "output": str(path)}
+            with mock.patch.dict(os.environ, environment), mock.patch("subprocess.run", gh), \
+                 mock.patch("datetime.datetime", Clock), redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as exited:
+                    exec(compile(source, "observe-live-release-controls.sh:producer", "exec"), {})
+            self.assertEqual(exited.exception.code, 0)
+            self.assertEqual(json.loads(path.read_bytes()), json.loads(self.provider.retained_controls()))
+            self.assertEqual(len(calls), 3)
+            current = self.client.observe_controls(path.read_bytes())
+            self.assertEqual(json.loads(bytes(current["receipt"])), json.loads(path.read_bytes()))
+
+    def test_immutable_controls_cannot_hide_current_rule_or_identity_changes(self):
+        changes = [lambda p: setattr(p, "default_branch", "moved"),
+                   lambda p: p.main_rules.pop(),
+                   lambda p: p.main_rules[-1]["parameters"].update(require_extra_approval_for_unattributed_changes=False),
+                   lambda p: p.rulesets[4242].update(enforcement="disabled"),
+                   lambda p: p.rulesets[4242].update(id=4243),
+                   lambda p: p.rulesets[4242].update(name="Moved rule metadata"),
+                   lambda p: p.rulesets.pop(4242)]
+        for index, mutate in enumerate(changes):
+            with self.subTest(index=index):
+                provider = DriverProvider()
+                retained = provider.retained_controls()
+                mutate(provider)
+                self.expect_error(lambda: provider.client().observe_controls(retained))
+                self.assertEqual(provider.unexpected, [])
+                self.assertEqual(provider.mutations(), [])
+
+    def test_control_receipt_unknown_missing_duplicate_time_and_digest_refuse_before_provider_io(self):
+        original = json.loads(self.provider.retained_controls())
+        changes = [lambda value: value["checks"].pop("main_deletion_denied"),
+                   lambda value: value["checks"].update(unknown=True),
+                   lambda value: value["checks"].update(main_deletion_denied=1),
+                   lambda value: value.update(observation_digest="sha256:v1:" + "0" * 64),
+                   lambda value: value.update(generated_at_utc=PROVIDER.date(NOW + 1)),
+                   lambda value: value.update(generated_at_utc="not-a-date"),
+                   lambda value: value.update(extra=True)]
+        for index, mutate in enumerate(changes):
+            with self.subTest(index=index):
+                value = copy.deepcopy(original)
+                mutate(value)
+                self.expect_error(lambda: self.client.observe_controls(PROVIDER.encode(value)))
+                self.assertEqual(self.provider.calls, [])
+        duplicate = self.provider.retained_controls().replace(b'"state":', b'"state":"Mismatch","state":', 1)
+        self.expect_error(lambda: self.client.observe_controls(duplicate), "instrument_failure")
+        self.assertEqual(self.provider.calls, [])
+
+    def test_control_stability_pagination_duplicates_and_measured_time_are_required(self):
+        cases = ("moving", "pagination", "duplicate", "stale", "future", "missing-date", "unavailable", "oversized")
+        for case in cases:
+            with self.subTest(case=case):
+                provider = DriverProvider()
+                count = 0
+                def after(request, response):
+                    nonlocal count
+                    if case in ("stale", "future", "missing-date"):
+                        response = STORE.HttpResponse(response.status, {"Date": formatdate(NOW, usegmt=True)}, response.body)
+                    if urlsplit(request[1]).path != BASE + "/rules/branches/main":
+                        return response
+                    count += 1
+                    if case == "moving" and count == 1:
+                        provider.main_rules[-1]["parameters"]["unrelated_parameter"] = "changed"
+                    if case == "pagination":
+                        return STORE.HttpResponse(200, {"Link": '<https://api.github.com/next>; rel="next"'}, response.body)
+                    if case == "duplicate":
+                        return PROVIDER.response(200, provider.main_rules + [provider.main_rules[0]])
+                    if case in ("stale", "future"):
+                        return STORE.HttpResponse(200, {"Date": formatdate(NOW + (-1 if case == "stale" else 1), usegmt=True)}, response.body)
+                    if case == "missing-date":
+                        return STORE.HttpResponse(200, {}, response.body)
+                    if case == "unavailable":
+                        return PROVIDER.response(503, {})
+                    if case == "oversized":
+                        return PROVIDER.response(200, provider.main_rules * 34)
+                    return response
+                provider.date_header = case not in ("stale", "future", "missing-date")
+                provider.after = after
+                expected = {"moving": "conflict", "stale": "stale", "future": "stale", "unavailable": "provider_unavailable"}.get(case, "instrument_failure")
+                self.expect_error(lambda: provider.client().observe_controls(provider.retained_controls()), expected)
+                self.assertEqual(provider.unexpected, [])
+                self.assertEqual(provider.mutations(), [])
+
+    def test_expired_control_read_window_stops_before_any_following_request(self):
+        for suffix, occurrence in (("/git/commits/" + ANCHOR, 1), ("", 2),
+                                   ("/rules/branches/main", 1), ("/rulesets/4242", 1)):
+            with self.subTest(suffix=suffix):
+                provider = DriverProvider()
+                seen = 0
+                expired_at = None
+                def after(request, response):
+                    nonlocal seen, expired_at
+                    if urlsplit(request[1]).path == BASE + suffix:
+                        seen += 1
+                        if seen == occurrence:
+                            provider.now += 61
+                            expired_at = len(provider.calls)
+                    return response
+                provider.after = after
+                self.expect_error(lambda: provider.client().observe_controls(provider.retained_controls()), "stale")
+                self.assertIsNotNone(expired_at)
+                self.assertEqual(len(provider.calls), expired_at)
+                self.assertEqual(provider.unexpected, [])
+                self.assertEqual(provider.mutations(), [])
+
+    def test_unsupported_host_refuses_before_child_or_credential_access(self):
+        with mock.patch.object(os, "name", "nt"), mock.patch.object(subprocess, "Popen") as child:
+            self.expect_error(lambda: DRIVER.bounded_run(["unused"], cwd=HERE, environment={}), "invalid_input")
+            self.expect_error(lambda: DRIVER._credential_fd(3), "invalid_input")
+            self.expect_error(lambda: DRIVER.GitTagRequest(GIT, lambda: SECRET), "invalid_input")
+            child.assert_not_called()
 
     def test_exact_annotated_raw_object_commit_tree_and_ref_are_read(self):
         raw = raw_tag()
@@ -387,6 +572,45 @@ class IoContracts(unittest.TestCase):
             self.expect_error(lambda: DRIVER.bounded_run([sys.executable, "-c", "import time;time.sleep(1)"],
                 cwd=Path(directory), environment=DRIVER._child_environment(), timeout=0.05), "uncertain")
 
+    def test_deadline_kills_pipe_holder_after_its_session_leader_exited(self):
+        # The FIFO writer is held only by this owned descendant. EOF proves it
+        # exited even on hosts where kill(pid, 0) still sees an orphan zombie.
+        with tempfile.TemporaryDirectory(prefix="tag-pipes-") as directory:
+            root = Path(directory)
+            child_pid = None
+            os.mkfifo(root / "held.pipe", 0o600)
+            read_fd = os.open(root / "held.pipe", os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+            with os.fdopen(read_fd, "rb", buffering=0) as reader:
+                code = """import os, pathlib, time
+write_fd = os.open('held.pipe', os.O_WRONLY)
+child = os.fork()
+if child:
+    pathlib.Path('leader-exited').write_text(str(child))
+    os._exit(0)
+os.write(write_fd, (str(os.getpid()) + '\\n').encode())
+while True:
+    time.sleep(10)
+"""
+                try:
+                    self.expect_error(lambda: DRIVER.bounded_run([sys.executable, "-c", code],
+                        cwd=root, environment=DRIVER._child_environment(), timeout=0.25,
+                        output_limit=1000), "uncertain")
+                    child_pid = int((root / "leader-exited").read_text())
+                    received = reader.read(128)
+                    self.assertTrue(received, "owned descendant must identify itself before timeout")
+                    self.assertEqual(int(received), child_pid)
+                    self.assertTrue(select.select([read_fd], [], [], 2)[0],
+                        "exited leader must not leave its pipe-holding descendant alive")
+                    self.assertEqual(reader.read(1), b"")
+                finally:
+                    if child_pid is None and (root / "leader-exited").exists():
+                        child_pid = int((root / "leader-exited").read_text())
+                    if child_pid is not None:
+                        try:
+                            os.kill(child_pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+
     def test_no_follow_input_and_exact_file_creation_controls(self):
         with tempfile.TemporaryDirectory(prefix="final-tag-files-") as directory:
             root = Path(directory)
@@ -424,6 +648,151 @@ class IoContracts(unittest.TestCase):
         finally:
             os.close(read_fd)
             os.close(write_fd)
+
+
+class NativeBridgeContracts(unittest.TestCase):
+    """The actual compiled pure consumer runs on every native test platform."""
+    def setUp(self):
+        self.provider = DriverProvider()
+        self.provider.now = FULL_FIXTURE["now_unix_seconds"]
+        config = FULL_FIXTURE["configuration"]
+        self.request = {"action": "inspect", "phase": None, "selected": copy.deepcopy(FULL_FIXTURE["selected"]),
+            "source_bytes": FULL_FIXTURE["source_bytes"], "producer": config["producer"],
+            "operation_nonce": config["operation_nonce"], "expires_at_unix_seconds": config["expires_at_unix_seconds"],
+            "now_unix_seconds": self.provider.now, "now_utc": PROVIDER.date(self.provider.now), "stored": {},
+            "retained_checkpoints": [], "prepared": None, "checkpoint": None, "tag_object": [], "tag_object_id": "",
+            "remote": None, "provider_observed_at_unix_seconds": None, "response_observed": None,
+            "live_control_readback": self.provider.client().observe_controls(bytes(FULL_FIXTURE["selected"]["live-controls.json"]))}
+
+    def tearDown(self):
+        self.assertEqual(self.provider.unexpected, [])
+        self.assertEqual(self.provider.mutations(), [])
+
+    def run_bridge(self, request):
+        # This is the pure Rust consumer, not a replacement production Git
+        # runner. It spawns no provider/physical-release subprocesses.
+        environment = {key: value for key, value in os.environ.items()
+                       if key.lower() in ("path", "systemroot", "windir", "temp", "tmp")}
+        result = subprocess.run([str(FULL_BRIDGE), "--color", "never", "release-final-tag-bridge"],
+            input=STORE._json_bytes(request), capture_output=True, timeout=30, cwd=HERE.parent, env=environment)
+        self.assertLessEqual(len(result.stdout) + len(result.stderr), DRIVER.MAX_BRIDGE)
+        self.assertNotIn(SECRET.encode(), result.stdout + result.stderr)
+        return result
+
+    def refuse(self, request, detail):
+        result = self.run_bridge(request)
+        self.assertEqual(result.returncode, 1, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, b"")
+        self.assertIn(detail, result.stderr.decode(errors="replace"))
+
+    def test_actual_typed_fixture_and_canonical_control_unicode_digest_are_admitted(self):
+        result = self.run_bridge(self.request)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        response = json.loads(result.stdout)
+        self.assertFalse(response["gate_open"])
+        self.assertIsNone(response["push_object_id"])
+        self.assertEqual(response["files"], {})
+        self.assertEqual(len(response), 9)
+
+    def test_canonical_rehearsal_schema_closed_phases_boundary_and_proofs_are_required(self):
+        changes = [lambda value: value.pop("schema_version"),
+                   lambda value: value.update(schema_version="2.0"),
+                   lambda value: value.update(aggregate_status="Complete"),
+                   lambda value: value["phases"].pop("release_identity"),
+                   lambda value: value["phases"].update(unknown="Complete"),
+                   lambda value: value["phases"].update(authorization_boundary="Complete"),
+                   lambda value: value.pop("authorization_boundary"),
+                   lambda value: value["authorization_boundary"].update(token_present=True),
+                   lambda value: value["authorization_boundary"].update(candidate_commit="bad"),
+                   lambda value: value["authorization_boundary"].update(unknown=False),
+                   lambda value: value.pop("zero_mutation_proof"),
+                   lambda value: value["zero_mutation_proof"].update(tag_mutation_prevented=False),
+                   lambda value: value["zero_mutation_proof"].update(unknown=True),
+                   lambda value: value["release_identity"].update(version="0.3.0")]
+        for index, mutate in enumerate(changes):
+            with self.subTest(index=index):
+                request = copy.deepcopy(self.request)
+                value = json.loads(bytes(request["selected"]["rehearsal.json"]))
+                mutate(value)
+                request["selected"]["rehearsal.json"] = list(STORE._json_bytes(value))
+                self.refuse(request, "canonical rehearsal schema, phase, boundary, proof or release identity is ineligible")
+        request = copy.deepcopy(self.request)
+        raw = bytes(request["selected"]["rehearsal.json"])
+        request["selected"]["rehearsal.json"] = list(raw.replace(b'"aggregate_status":', b'"aggregate_status":"Failed","aggregate_status":', 1))
+        self.refuse(request, "rehearsal is malformed or has duplicate keys")
+
+    def test_rehearsal_subject_and_exact_required_graph_relation_are_not_optional(self):
+        for field in ("subject_lockfile_digest", "subject_topology_digest"):
+            request = copy.deepcopy(self.request)
+            value = json.loads(bytes(request["selected"]["rehearsal.json"]))
+            value[field] = "sha256:" + "0" * 64
+            request["selected"]["rehearsal.json"] = list(STORE._json_bytes(value))
+            self.refuse(request, "canonical rehearsal subject digest differs")
+        changes = [lambda graph, node: graph["nodes"].remove(node),
+                   lambda graph, node: graph["required_node_ids"].remove("release-rehearsal"),
+                   lambda graph, node: node.update(required=False),
+                   lambda graph, node: node.update(authority_scope="historical_incident"),
+                   lambda graph, node: node.update(result="mismatch"),
+                   lambda graph, node: node.update(currentness="stale"),
+                   lambda graph, node: node.update(semantic_digest="sha256:" + "0" * 64),
+                   lambda graph, node: node.pop("expected_semantic_digest")]
+        for index, mutate in enumerate(changes):
+            with self.subTest(index=index):
+                request = copy.deepcopy(self.request)
+                value = json.loads(bytes(request["selected"]["freeze-inputs.json"]))
+                graph = value["evidence_graph"]
+                node = next(node for node in graph["nodes"] if node["evidence_id"] == "release-rehearsal")
+                mutate(graph, node)
+                request["selected"]["freeze-inputs.json"] = list(STORE._json_bytes(value))
+                self.refuse(request, "required rehearsal graph node is missing" if index == 0
+                            else "required exact rehearsal graph node differs")
+
+    def test_current_control_readback_cannot_be_missing_stale_or_replaced_by_immutable_bytes(self):
+        for key in ("started_at_unix_seconds", "completed_at_unix_seconds", "provider_observed_at_unix_seconds"):
+            request = copy.deepcopy(self.request)
+            request["live_control_readback"][key] = self.provider.now + 1
+            self.refuse(request, "current control readback is outside its measured provider window")
+        request = copy.deepcopy(self.request)
+        request["live_control_readback"] = None
+        self.refuse(request, "independent current live-control readback is missing")
+        request = copy.deepcopy(self.request)
+        request["live_control_readback"]["started_at_unix_seconds"] -= 61
+        self.refuse(request, "current control readback is outside its measured provider window")
+        request = copy.deepcopy(self.request)
+        request["now_unix_seconds"] += 1
+        request["now_utc"] = PROVIDER.date(request["now_unix_seconds"])
+        for key in ("started_at_unix_seconds", "completed_at_unix_seconds", "provider_observed_at_unix_seconds"):
+            request["live_control_readback"][key] += 1
+        request["live_control_readback"]["receipt"] = request["selected"]["live-controls.json"]
+        self.refuse(request, "current controls differ from the independently frozen projection")
+
+    def test_control_receipt_requires_the_existing_six_keys_and_its_actual_digest(self):
+        changes = [(lambda value: value["checks"].pop("main_force_push_denied"), "canonical six-control receipt"),
+                   (lambda value: value["checks"].update(unknown=True), "canonical six-control receipt"),
+                   (lambda value: value["checks"].update(main_force_push_denied=1), "canonical six-control receipt"),
+                   (lambda value: value.update(observation_digest="sha256:v1:" + "0" * 64), "control observation digest differs"),
+                   (lambda value: value.update(generated_at_utc="not-a-date"), "canonical six-control receipt")]
+        for target in ("retained", "current"):
+            for index, (mutate, detail) in enumerate(changes):
+                with self.subTest(target=target, index=index):
+                    request = copy.deepcopy(self.request)
+                    container, key = (request["selected"], "live-controls.json") if target == "retained" else (request["live_control_readback"], "receipt")
+                    value = json.loads(bytes(container[key]))
+                    mutate(value)
+                    container[key] = list(STORE._json_bytes(value))
+                    self.refuse(request, detail)
+
+
+class UnsupportedHostContracts(unittest.TestCase):
+    def test_actual_driver_refuses_unsupported_host_before_input_or_credential_access(self):
+        self.assertNotEqual(os.name, "posix")
+        result = subprocess.run([sys.executable, "-B", str(HERE / "release-final-tag.py"),
+            "--config", "unopened-configuration.json", "--bridge", str(FULL_BRIDGE),
+            "--bridge-sha256", "unopened", "--git", str(GIT), "--credential-fd", "0", "continuation"],
+            capture_output=True, timeout=10, cwd=HERE.parent)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, b"")
+        self.assertIn(b"final-tag driver requires a POSIX execution host", result.stderr)
 
 
 class FullContracts(unittest.TestCase):
@@ -712,13 +1081,24 @@ def main():
         parser.error("full lifecycle is not run without --bridge and --fixture; --io-only is an explicit narrower scope")
     if not GIT.is_file():
         parser.error("native Git hashing oracle is required")
-    suite = unittest.defaultTestLoader.loadTestsFromTestCase(IoContracts)
+    if arguments.io_only and os.name != "posix":
+        parser.error("the production I/O-only scope requires a POSIX host; full mode runs native bridge and unsupported-host contracts here")
+    suite = unittest.TestSuite()
+    if os.name == "posix":
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(IoContracts))
     if not arguments.io_only:
         FULL_BRIDGE = arguments.bridge.resolve()
         FULL_FIXTURE = json.loads(arguments.fixture.read_bytes())
-        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(FullContracts))
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(NativeBridgeContracts))
+        if os.name == "posix":
+            suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(FullContracts))
+        else:
+            suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(UnsupportedHostContracts))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    print("Scope: intercepted production I/O only; native typed lifecycle " + ("not run" if arguments.io_only else "included"))
+    scope = "intercepted POSIX I/O only; native typed consumer not run" if arguments.io_only else (
+        "actual native bridge and intercepted POSIX lifecycle" if os.name == "posix" else
+        "actual native bridge and actual unsupported-host refusal; POSIX lifecycle is not supported on this host")
+    print("Scope: " + scope)
     return 0 if result.wasSuccessful() else 1
 
 

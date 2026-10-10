@@ -42,10 +42,20 @@ MAX_PLAN = 8 * 1024 * 1024
 MAX_TAG = 32768
 PHASES = ("bootstrap", "lease", "intent", "started", "observation")
 _CONTROL_STATE = "state.json"
+_CONTROL_CHECKS = ("main_deletion_denied", "main_force_push_denied", "main_pull_request_rule_present",
+                   "main_is_default_branch", "main_extra_approval_for_unattributed_changes",
+                   "ruleset_details_retrieved")
+_CONTROL_FIELDS = {"schema", "generated_at_utc", "repository", "commit", "tree", "default_branch",
+                   "checks", "main_rule_types", "ruleset_ids", "ruleset_details", "observation_digest", "state"}
 
 
 def _fail(kind: str, detail: str) -> None:
     raise StoreError(kind, detail)
+
+
+def _supported_host() -> None:
+    _require(os.name == "posix", "invalid_input",
+             "final-tag driver requires a POSIX execution host")
 
 
 def _date(seconds: int) -> str:
@@ -76,10 +86,12 @@ def bounded_run(argv: list[str], *, input_bytes: bytes = b"", cwd: Path,
                 environment: Mapping[str, str], timeout: float = 60,
                 output_limit: int = MAX_BRIDGE) -> ChildResult:
     """One POSIX child, bounded stdin/stdout/stderr and an entire-process deadline."""
-    _require(os.name == "posix" and isinstance(argv, list) and argv
+    _supported_host()
+    _require(isinstance(argv, list) and argv
              and 0 < timeout <= 60 and 0 < output_limit <= MAX_BRIDGE,
              "invalid_input", "unsupported bounded child invocation")
     process = None
+    settled = False
     streams = selectors.DefaultSelector()
     output: dict[str, bytearray] = {"stdout": bytearray(), "stderr": bytearray()}
     sent = 0
@@ -123,6 +135,7 @@ def bounded_run(argv: list[str], *, input_bytes: bytes = b"", cwd: Path,
         remaining = deadline - time.monotonic()
         _require(remaining > 0, "uncertain", "child exceeded its deadline")
         status = process.wait(timeout=remaining)
+        settled = True
         return ChildResult(status, bytes(output["stdout"]), bytes(output["stderr"]))
     except StoreError:
         raise
@@ -131,15 +144,26 @@ def bounded_run(argv: list[str], *, input_bytes: bytes = b"", cwd: Path,
     finally:
         streams.close()
         if process is not None:
-            if process.poll() is None:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                process.wait()
-            for pipe in (process.stdin, process.stdout, process.stderr):
-                if pipe is not None and not pipe.closed:
-                    pipe.close()
+            try:
+                if not settled:
+                    # The session leader can exit while a descendant retains a
+                    # pipe or network request. Do not poll/reap that leader before
+                    # killing its owned group: its unreaped PID still anchors the
+                    # group identity, even when the leader has already exited.
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    except OSError:
+                        _fail("uncertain", "owned child group cleanup failed")
+                    try:
+                        process.wait(timeout=1)
+                    except (OSError, subprocess.SubprocessError):
+                        _fail("uncertain", "owned child cleanup did not settle")
+            finally:
+                for pipe in (process.stdin, process.stdout, process.stderr):
+                    if pipe is not None and not pipe.closed:
+                        pipe.close()
 
 
 def _child_environment() -> dict[str, str]:
@@ -190,6 +214,7 @@ class RustBridge:
             _fail("instrument_failure", "compiled bridge is unavailable")
 
     def call(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        _supported_host()
         raw = _json_bytes(request)
         _require(len(raw) <= MAX_BRIDGE, "invalid_input", "bridge input exceeds its bound")
         self._verify()
@@ -244,6 +269,57 @@ def _provider_time(response: HttpResponse, before: int, after: int) -> int:
     return timestamp
 
 
+def _control_digest(receipt: Mapping[str, Any]) -> str:
+    # Preserve observe-live-release-controls.sh's existing v1 serialization:
+    # its digest is computed before observation_digest and state are added.
+    payload = {key: value for key, value in receipt.items() if key not in ("observation_digest", "state")}
+    return "sha256:v1:" + hashlib.sha256(json.dumps(payload, sort_keys=True, allow_nan=False).encode()).hexdigest()
+
+
+def _rule_types(value: Any) -> list[str]:
+    _require(isinstance(value, list) and len(value) <= 100
+             and all(isinstance(item, dict) and isinstance(item.get("type"), str)
+                     and bool(re.fullmatch(r"[a-z][a-z0-9_]{0,100}", item["type"])) for item in value),
+             "instrument_failure", "bounded provider rule objects are required")
+    return sorted(item["type"] for item in value)
+
+
+def _control_semantics(receipt: Any, *, commit: str, tree: str, now: int) -> dict[str, Any]:
+    _require(isinstance(receipt, dict) and set(receipt) == _CONTROL_FIELDS
+             and receipt.get("schema") == "cargo-allow.live-release-controls-observation.v1"
+             and receipt.get("state") == "Feasible" and receipt.get("repository") == REPOSITORY
+             and receipt.get("commit") == commit and receipt.get("tree") == tree
+             and receipt.get("default_branch") == "main"
+             and isinstance(receipt.get("checks"), dict) and set(receipt["checks"]) == set(_CONTROL_CHECKS)
+             and all(value is True for value in receipt["checks"].values()),
+             "ineligible", "canonical six-control receipt is incomplete or foreign")
+    _require(_utc(receipt["generated_at_utc"]) <= now
+             and receipt["observation_digest"] == _control_digest(receipt),
+             "mismatch", "retained control observation time or digest differs")
+    kinds, ids, details = receipt["main_rule_types"], receipt["ruleset_ids"], receipt["ruleset_details"]
+    _require(isinstance(kinds, list) and 0 < len(kinds) <= 100
+             and all(isinstance(kind, str) and bool(re.fullmatch(r"[a-z][a-z0-9_]{0,100}", kind)) for kind in kinds)
+             and kinds == sorted(kinds) and {"deletion", "non_fast_forward", "pull_request"}.issubset(kinds)
+             and isinstance(ids, list) and 0 < len(ids) <= 100 and all(_integer(item) for item in ids)
+             and ids == sorted(ids) and isinstance(details, list) and len(details) == len(ids),
+             "instrument_failure", "retained control inventory is malformed")
+    seen = {}
+    for ruleset_id, detail in zip(ids, details):
+        _require(isinstance(detail, dict)
+                 and set(detail) == {"ruleset_id", "name", "target", "enforcement", "rule_types"}
+                 and type(detail["ruleset_id"]) is int and detail["ruleset_id"] == ruleset_id
+                 and isinstance(detail["name"], str) and 0 < len(detail["name"]) <= 1000
+                 and detail["target"] == "branch" and detail["enforcement"] == "active"
+                 and isinstance(detail["rule_types"], list) and 0 < len(detail["rule_types"]) <= 100
+                 and all(isinstance(kind, str) and bool(re.fullmatch(r"[a-z][a-z0-9_]{0,100}", kind))
+                         for kind in detail["rule_types"])
+                 and detail["rule_types"] == sorted(detail["rule_types"])
+                 and (ruleset_id not in seen or seen[ruleset_id] == detail),
+                 "instrument_failure", "retained ruleset detail is malformed or conflicting")
+        seen[ruleset_id] = detail
+    return {key: value for key, value in receipt.items() if key not in ("generated_at_utc", "observation_digest")}
+
+
 def tag_object_bytes(commit: str, name: str, email: str, at: int, message: str) -> bytes:
     _sha(commit)
     _require(isinstance(name, str) and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 ._-]{0,99}", name))
@@ -259,7 +335,100 @@ def tag_object_bytes(commit: str, name: str, email: str, at: int, message: str) 
 
 
 class TagStore(GitHubReleaseStore):
-    """Read-only tag observation through the reviewed authenticated HTTP seam."""
+    """Current control and tag observations through the authenticated HTTP seam."""
+    def _control_window(self, before: int) -> None:
+        _require(0 <= _now(self._clock) - before <= 60,
+                 "stale", "current control readback exceeded its measured window")
+
+    def _control_list(self, suffix: str, before: int) -> tuple[HttpResponse, list[dict[str, Any]]]:
+        self._control_window(before)
+        response = self._exchange("GET", API + self._base + suffix)
+        self._control_window(before)
+        _require(response.status == 200, "provider_unavailable", "effective rules are unavailable")
+        _require("link" not in response.headers, "instrument_failure", "effective rule pagination is incomplete")
+        rows = _json(response.body)
+        _rule_types(rows)
+        return response, rows
+
+    def _control_snapshot(self, expected_ids: list[int], before: int) -> tuple[dict[str, Any], dict[str, Any], list[HttpResponse]]:
+        responses = []
+        self._control_window(before)
+        response, repository = self._api("GET", "")
+        self._control_window(before)
+        responses.append(response)
+        _require(type(repository.get("id")) is int and repository["id"] == self._repository_id
+                 and repository.get("full_name") == REPOSITORY and repository.get("default_branch") == "main",
+                 "mismatch", "current repository or default branch differs")
+        response, rules = self._control_list("/rules/branches/main?per_page=100&page=1", before)
+        responses.append(response)
+        identities = set()
+        for rule in rules:
+            _require(_integer(rule.get("ruleset_id"))
+                     and rule.get("ruleset_source_type") in ("Repository", "Organization", "Enterprise")
+                     and isinstance(rule.get("ruleset_source"), str) and rule["ruleset_source"]
+                     and (rule["ruleset_source_type"] != "Repository" or rule["ruleset_source"] == REPOSITORY),
+                     "instrument_failure", "effective rule identity is missing or foreign")
+            identity = (rule["ruleset_source_type"], rule["ruleset_source"], rule["ruleset_id"], rule["type"])
+            _require(identity not in identities, "instrument_failure", "duplicate effective rule identity")
+            identities.add(identity)
+        ids = sorted(rule["ruleset_id"] for rule in rules if rule["ruleset_source_type"] == "Repository")
+        _require(ids == expected_ids, "mismatch", "current effective ruleset selection moved")
+        details = {}
+        projected = {}
+        for ruleset_id in sorted(set(expected_ids)):
+            self._control_window(before)
+            response, detail = self._api("GET", "/rulesets/" + str(ruleset_id) + "?includes_parents=false")
+            self._control_window(before)
+            responses.append(response)
+            _require(type(detail.get("id")) is int and detail["id"] == ruleset_id
+                     and detail.get("source_type") == "Repository" and detail.get("source") == REPOSITORY
+                     and detail.get("target") == "branch" and detail.get("enforcement") == "active"
+                     and isinstance(detail.get("name"), str) and 0 < len(detail["name"]) <= 1000,
+                     "mismatch", "current ruleset identity or enforcement differs")
+            kinds = _rule_types(detail.get("rules"))
+            _require(len(kinds) == len(set(kinds)), "instrument_failure", "duplicate ruleset rule identity")
+            details[ruleset_id] = detail
+            projected[ruleset_id] = {"ruleset_id": ruleset_id, "name": detail["name"], "target": detail["target"],
+                                     "enforcement": detail["enforcement"], "rule_types": kinds}
+        kinds = _rule_types(rules)
+        pr_rules = [rule for rule in rules if rule["type"] == "pull_request"]
+        checks = dict(zip(_CONTROL_CHECKS, (
+            "deletion" in kinds, "non_fast_forward" in kinds, bool(pr_rules), True,
+            bool(pr_rules) and all(isinstance(rule.get("parameters"), dict)
+                and rule["parameters"].get("require_extra_approval_for_unattributed_changes") is True for rule in pr_rules),
+            bool(details),
+        )))
+        projected_receipt = {"schema": "cargo-allow.live-release-controls-observation.v1", "repository": REPOSITORY,
+            "commit": self._anchor_commit, "tree": self._anchor_tree, "default_branch": "main", "checks": checks,
+            "main_rule_types": kinds, "ruleset_ids": ids, "ruleset_details": [projected[item] for item in ids],
+            "state": "Feasible" if all(checks.values()) else "Mismatch"}
+        # Compare every effective rule parameter and every returned selected
+        # ruleset field across independent reads, not only their projection.
+        stable = {"repository": {key: repository[key] for key in ("id", "full_name", "default_branch")},
+                  "rules": rules, "details": details}
+        return stable, projected_receipt, responses
+
+    def observe_controls(self, retained_raw: bytes) -> dict[str, Any]:
+        """Re-read mutable controls; an immutable receipt alone is never Current."""
+        before = _now(self._clock)
+        retained = _object(retained_raw)
+        expected = _control_semantics(retained, commit=self._anchor_commit, tree=self._anchor_tree, now=before)
+        self._repository()
+        self._control_window(before)
+        first, first_receipt, first_responses = self._control_snapshot(retained["ruleset_ids"], before)
+        second, current, last_responses = self._control_snapshot(retained["ruleset_ids"], before)
+        _require(first == second and first_receipt == current, "conflict", "live controls moved during readback")
+        after = _now(self._clock)
+        times = [_provider_time(response, before, after) for response in first_responses + last_responses]
+        _require(times == sorted(times), "stale", "provider control times moved backwards")
+        observed_at = times[-1]
+        current["generated_at_utc"] = _date(observed_at)
+        current["observation_digest"] = _control_digest(current)
+        observed = _control_semantics(current, commit=self._anchor_commit, tree=self._anchor_tree, now=after)
+        _require(observed == expected, "mismatch", "live control semantics differ from the frozen observation")
+        return {"receipt": list(_json_bytes(current)), "started_at_unix_seconds": before,
+                "completed_at_unix_seconds": after, "provider_observed_at_unix_seconds": observed_at}
+
     def _tag_ref(self) -> tuple[HttpResponse, dict[str, Any] | None]:
         response, record = self._api("GET", "/git/ref/tags/v0.2.0", statuses=(200, 404))
         if response.status == 404:
@@ -315,6 +484,7 @@ class TagStore(GitHubReleaseStore):
 class GitTagRequest:
     """Isolated local object store, one fixed nonforced OID-to-tag request."""
     def __init__(self, git: Path, credential: Callable[[], str], *, runner=bounded_run):
+        _supported_host()
         _require(git.is_absolute(), "invalid_input", "explicit absolute Git executable required")
         self._git, self._credential, self._runner = git, credential, runner
         self._temporary = None
@@ -486,6 +656,7 @@ class FinalTagDriver:
     """Real provider/bridge/atomic-store sequence with explicit injectable I/O."""
     def __init__(self, configuration: Mapping[str, Any], store: TagStore, bridge: RustBridge,
                  credential: Callable[[], str], git_factory: Callable[[], GitTagRequest], *, clock=time.time):
+        _supported_host()
         self.config = dict(configuration)
         required = {"repository_id", "anchor_commit", "anchor_tree", "control_prefix", "download_hosts", "producer",
                     "operation_nonce", "expires_at_unix_seconds", "approved_actor_id", "approved_actor_login",
@@ -535,6 +706,14 @@ class FinalTagDriver:
                 "tag_object_id": "", "remote": None, "provider_observed_at_unix_seconds": None, "response_observed": None}
 
     def _call(self, request: Mapping[str, Any]) -> dict[str, Any]:
+        # Every semantic invocation obtains current mutable controls through
+        # the actual authenticated port. The selected immutable receipt stays
+        # unchanged and supplies only the frozen identity/expected projection.
+        request = dict(request)
+        selected = _byte_map(request["selected"])
+        request["live_control_readback"] = self.store.observe_controls(selected.get("live-controls.json", b""))
+        now = _now(self.clock)
+        request.update(now_unix_seconds=now, now_utc=_date(now))
         _secret_free(_json_bytes(request), self.credential)
         result = self.bridge.call(request)
         _secret_free(_json_bytes(result), self.credential)
@@ -758,6 +937,7 @@ class FinalTagDriver:
 
 
 def _credential_fd(fd: int, *, timeout: float = 10) -> Callable[[], str]:
+    _supported_host()
     _require(type(fd) is int and fd >= 3, "invalid_input", "explicit nonstandard credential descriptor required")
     _require(0 < timeout <= 10, "invalid_input", "credential read deadline is invalid")
     chunks = bytearray()
@@ -802,6 +982,7 @@ def main() -> int:
     reconcile_parser.add_argument("--subject-digest", required=True)
     arguments = parser.parse_args()
     try:
+        _supported_host()
         configuration = _object(_regular_bytes(arguments.config, MAX_PLAN))
         credential = _credential_fd(arguments.credential_fd)
         store = TagStore(repository_id=configuration["repository_id"], anchor_commit=configuration["anchor_commit"],

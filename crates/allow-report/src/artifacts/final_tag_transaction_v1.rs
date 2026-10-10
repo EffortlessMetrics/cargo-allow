@@ -387,7 +387,8 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
     producer: &CargoAllowReleaseOperationProducerV1,
     init: FinalTagTransactionInitV1,
 ) -> Result<CargoAllowFinalTagTransactionV1, &'static str> {
-    let operation_digest = release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?;
+    let operation_digest = release_operation_identity_digest_v1(identity)
+        .map_err(|_| "operation identity digest failed")?;
     let freeze = &custody.freeze;
     let at = init.created_at_unix_seconds;
     if custody.state != ReleaseAuthorizationConsumptionV1::SelectedForRun
@@ -400,7 +401,9 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
         || custody.operation.github_prerelease != identity.github_prerelease
         || freeze.receipt_digest != identity.freeze_digest
         || freeze.lock_digest != identity.cargo_lock_digest
-        || freeze.denominator_digest != release_authorization_denominator_binding_v1(freeze).map_err(|_| "freeze denominator digest failed")?
+        || freeze.denominator_digest
+            != release_authorization_denominator_binding_v1(freeze)
+                .map_err(|_| "freeze denominator digest failed")?
         || custody.mint.freeze_receipt_digest != identity.freeze_digest
         || custody.mint.candidate_custody_digest != identity.custody_digest
         || custody.mint.replay_digest != identity.replay_digest
@@ -410,7 +413,10 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
         || !custody.readback_verified
         || custody.consumed_nonces.as_slice() != [custody.nonce.clone()]
         || custody.transitions.len() != 1
-        || custody.transitions.last().is_none_or(|last| last.at_unix_seconds > at)
+        || custody
+            .transitions
+            .last()
+            .is_none_or(|last| last.at_unix_seconds > at)
         || at < custody.valid_from_unix_seconds
         || at > custody.expires_at_unix_seconds
         || at > identity.expires_at_unix_seconds
@@ -428,12 +434,16 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
         return Err("tag transaction subject differs from the selected authorization custody");
     }
     if identity.packages.len() != freeze.packages.len()
-        || !identity.packages.iter().zip(&freeze.packages).all(|(actual, expected)| {
-            actual.logical_id == expected.logical_id
-                && actual.package_name == expected.package_name
-                && actual.package_version == expected.package_version
-                && actual.package_digest == expected.package_digest
-        })
+        || !identity
+            .packages
+            .iter()
+            .zip(&freeze.packages)
+            .all(|(actual, expected)| {
+                actual.logical_id == expected.logical_id
+                    && actual.package_name == expected.package_name
+                    && actual.package_version == expected.package_version
+                    && actual.package_digest == expected.package_digest
+            })
     {
         return Err("tag operation packages differ from the authorized frozen denominator");
     }
@@ -447,8 +457,11 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
         || lease.key.commit != freeze.commit
         || lease.key.tree != freeze.tree
         || lease.key.denominator_digest != freeze.denominator_digest
-        || lease.key_digest != operation_lease_key_digest_v1(&lease.key).map_err(|_| "lease key digest failed")?
-        || lease.subject_digest != operation_lease_subject_digest_v1(&lease.key).map_err(|_| "lease subject digest failed")?
+        || lease.key_digest
+            != operation_lease_key_digest_v1(&lease.key).map_err(|_| "lease key digest failed")?
+        || lease.subject_digest
+            != operation_lease_subject_digest_v1(&lease.key)
+                .map_err(|_| "lease subject digest failed")?
         || lease.key_digest != init.lease_key_digest
         || lease.holder.generation != init.lease_holder_generation
         || lease.holder.lease_id != lease.lease_id
@@ -458,7 +471,10 @@ pub fn begin_tag_transaction_for_authorized_operation_v1(
         || lease.holder.job != producer.job
         || at < lease.acquired_at_unix_seconds
         || at > lease.expires_at_unix_seconds
-        || lease.transitions.last().is_none_or(|last| last.at_unix_seconds > at)
+        || lease
+            .transitions
+            .last()
+            .is_none_or(|last| last.at_unix_seconds > at)
         || producer.repository != identity.repository
         || producer.commit != freeze.commit
         || init.workflow != producer.workflow

@@ -778,9 +778,11 @@ pub fn validate_release_authorization_continuation_v1(
     use ReleaseAuthorizationConsumptionV1 as Consumption;
 
     let original: ReleaseAuthorizationExpectedContextV1 =
-        serde_json::from_slice(original_expected_json).map_err(|_| "original context is malformed")?;
+        serde_json::from_slice(original_expected_json)
+            .map_err(|_| "original context is malformed")?;
     let current: ReleaseAuthorizationExpectedContextV1 =
-        serde_json::from_slice(current_expected_json).map_err(|_| "current context is malformed")?;
+        serde_json::from_slice(current_expected_json)
+            .map_err(|_| "current context is malformed")?;
     let initial_receipt = compile_with_context(input, &original, true);
     if initial_receipt.result != ResultState::Complete
         || compile_with_context(input, &current, false).result != ResultState::Complete
@@ -793,7 +795,8 @@ pub fn validate_release_authorization_continuation_v1(
         return Err("continuation requires original eligibility and current independent evidence");
     }
     validate_release_operation_identity_v1(identity)?;
-    let operation_digest = release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?;
+    let operation_digest = release_operation_identity_digest_v1(identity)
+        .map_err(|_| "operation identity digest failed")?;
     let evidence_digest = authorization_evidence_digest_v1(&input.evidence)
         .map_err(|_| "authorization evidence digest failed")?;
     if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication
@@ -821,7 +824,8 @@ pub fn validate_release_authorization_continuation_v1(
         || birth.freeze != input.freeze
         || birth.evidence_digest != evidence_digest
         || birth.mint.freeze_receipt_digest != input.freeze.receipt_digest
-        || !AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS.contains(&birth.mint.replay_result.as_str())
+        || !AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS
+            .contains(&birth.mint.replay_result.as_str())
         || birth.mint.minted_by != input.authority.maintainer_actor
         || birth.mint.minted_at_unix_seconds < input.authority.created_at_unix_seconds
         || birth.mint.minted_at_unix_seconds > original.evaluated_at_unix_seconds
@@ -834,7 +838,10 @@ pub fn validate_release_authorization_continuation_v1(
         || !birth.one_run_scope
         || !birth.redacted
         || !birth.readback_verified
-        || birth.readback_digest.as_deref().is_none_or(|value| !digest(value))
+        || birth
+            .readback_digest
+            .as_deref()
+            .is_none_or(|value| !digest(value))
         || birth.nonce != input.authority.nonce
         || birth.state != Consumption::Available
         || birth.selected_operation_identity_digest.is_some()
@@ -846,21 +853,31 @@ pub fn validate_release_authorization_continuation_v1(
         || current.use_observation.consumed_nonces != custody.consumed_nonces
         || custody.selected_operation_identity_digest.as_deref() != Some(operation_digest.as_str())
         || custody.consumed_nonces.as_slice() != [input.authority.nonce.clone()]
-        || !matches!(custody.state, Consumption::SelectedForRun | Consumption::IrreversibleOperationStarted)
+        || !matches!(
+            custody.state,
+            Consumption::SelectedForRun | Consumption::IrreversibleOperationStarted
+        )
     {
         return Err("continuation requires exact original custody and the selected live operation");
     }
     if identity.packages.len() != input.freeze.packages.len()
-        || !identity.packages.iter().zip(&input.freeze.packages).all(|(actual, expected)| {
-            actual.logical_id == expected.logical_id
-                && actual.package_name == expected.package_name
-                && actual.package_version == expected.package_version
-                && actual.package_digest == expected.package_digest
-        })
+        || !identity
+            .packages
+            .iter()
+            .zip(&input.freeze.packages)
+            .all(|(actual, expected)| {
+                actual.logical_id == expected.logical_id
+                    && actual.package_name == expected.package_name
+                    && actual.package_version == expected.package_version
+                    && actual.package_digest == expected.package_digest
+            })
     {
         return Err("continuation package denominator differs from the authorized freeze");
     }
-    let selected = custody.transitions.first().ok_or("selection transition is missing")?;
+    let selected = custody
+        .transitions
+        .first()
+        .ok_or("selection transition is missing")?;
     if selected.at_unix_seconds < original.evaluated_at_unix_seconds
         || selected.at_unix_seconds > current.evaluated_at_unix_seconds
     {
@@ -876,7 +893,10 @@ pub fn validate_release_authorization_continuation_v1(
         true,
     )?;
     if custody.state == Consumption::IrreversibleOperationStarted {
-        let started = custody.transitions.get(1).ok_or("start transition is missing")?;
+        let started = custody
+            .transitions
+            .get(1)
+            .ok_or("start transition is missing")?;
         if started.at_unix_seconds > current.evaluated_at_unix_seconds {
             return Err("irreversible start is future-dated");
         }

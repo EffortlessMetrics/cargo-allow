@@ -4,7 +4,11 @@ body: >-
   inputs with the existing typed authorization, operation, lease and tag
   reducers. It advances real journal/checkpoint bindings, retains immutable
   intent and Started bytes before one fixed nonforced tag request, and uses
-  independent readback for same-run continuation. Intercepted consumer tests
-  cover lost responses, restart refusal and mismatched subjects. Actual workflow
+  independent readback for same-run continuation. It admits the canonical
+  rehearsal receipt, independently refreshes the existing six live controls,
+  and bounds POSIX process-group cleanup even after the leader exits.
+  Intercepted consumer tests cover lost responses, restart refusal, malformed
+  evidence and mismatched subjects; unsupported physical-driver hosts refuse
+  explicitly while the pure typed bridge is tested natively. Actual workflow
   wiring, final frozen inputs, asset retrieval qualification and separately
   minted release authority remain required before release execution.

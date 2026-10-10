@@ -173,8 +173,8 @@ fn edge(from: &str, to: &str, kind: FinalEvidenceEdgeKindV1) -> FinalEvidenceEdg
     }
 }
 
-fn evidence_graph() -> FinalEvidenceGraphV1 {
-    let nodes = vec![
+fn evidence_graph(rehearsal_digest: &str) -> FinalEvidenceGraphV1 {
+    let mut nodes = vec![
         node(
             "package-archive",
             FinalEvidenceNodeClassV1::PackageArchive,
@@ -211,6 +211,18 @@ fn evidence_graph() -> FinalEvidenceGraphV1 {
             false,
         ),
     ];
+    let mut rehearsal = node(
+        "release-rehearsal",
+        FinalEvidenceNodeClassV1::ReleaseRehearsal,
+        FinalEvidenceOriginV1::WorkflowArtifact,
+        FinalEvidenceAuthorityScopeV1::FinalExact,
+        true,
+    );
+    rehearsal.semantic_digest = rehearsal_digest.to_string();
+    rehearsal.expected_semantic_digest = Some(rehearsal_digest.to_string());
+    rehearsal.artifact_digest = None;
+    rehearsal.expected_artifact_digest = None;
+    nodes.push(rehearsal);
     let required = nodes
         .iter()
         .filter(|node| node.required)
@@ -235,6 +247,16 @@ fn evidence_graph() -> FinalEvidenceGraphV1 {
         required_node_ids: required,
         nodes,
         edges: vec![
+            edge(
+                "package-archive",
+                "release-rehearsal",
+                FinalEvidenceEdgeKindV1::ProducedFrom,
+            ),
+            edge(
+                "release-rehearsal",
+                "manifest-result",
+                FinalEvidenceEdgeKindV1::RequiresCurrent,
+            ),
             edge(
                 "package-archive",
                 "installed-journey",
@@ -452,9 +474,6 @@ fn fixture_with(
     })
 }
 
-
-
-
 fn canonical(value: &str) -> String {
     value.replacen("sha256:v1:", "sha256:", 1)
 }
@@ -603,9 +622,10 @@ fn preflight_fixture() -> Result<FinalRegistryPreflightInputV1, Box<dyn std::err
     })
 }
 
-/// This test producer calls the same domain ports as a retained freeze
-/// producer. Freshness is derived from selected bytes and the real preflight
-/// evaluator; it is not an alternate release eligibility model.
+/// This adapter supplies the synthetic historical freeze readings to the real
+/// domain owner. It makes no present-provider claim. The production driver's
+/// separate authenticated control readback must still execute in every full
+/// consumer test before any Current reading can be admitted by the bridge.
 struct FixtureReadings<'a> {
     controls_digest: &'a str,
     preflight: &'a FinalRegistryPreflightInputV1,
@@ -636,7 +656,10 @@ impl RefreshableObservationAdapterV1 for FixtureReadings<'_> {
 }
 
 fn selected<'a>(files: &'a BTreeMap<String, Vec<u8>>, path: &str) -> TestResult<&'a [u8]> {
-    files.get(path).map(Vec::as_slice).ok_or_else(|| io::Error::other("selected fixture file missing").into())
+    files
+        .get(path)
+        .map(Vec::as_slice)
+        .ok_or_else(|| io::Error::other("selected fixture file missing").into())
 }
 
 fn current_producer() -> ProducerIdentityV1 {
@@ -658,12 +681,37 @@ fn current_producer() -> ProducerIdentityV1 {
 
 fn typed_fixture() -> TestResult<serde_json::Value> {
     let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+    let ruleset_detail = serde_json::json!({
+        "ruleset_id": 4242, "name": "Synthetic é 🚀 main controls", "target": "branch",
+        "enforcement": "active", "rule_types": ["deletion", "non_fast_forward", "pull_request"]
+    });
     let controls = serde_json::json!({
         "schema": "cargo-allow.live-release-controls-observation.v1", "state": "Feasible",
+        "generated_at_utc": REPLAYED_AT, "default_branch": "main",
         "repository": REPOSITORY, "commit": COMMIT, "tree": TREE,
-        "checks": {"synthetic_intercepted_readback": true}
+        "checks": {"main_deletion_denied": true, "main_force_push_denied": true,
+            "main_pull_request_rule_present": true, "main_is_default_branch": true,
+            "main_extra_approval_for_unattributed_changes": true, "ruleset_details_retrieved": true},
+        "main_rule_types": ["deletion", "non_fast_forward", "pull_request"],
+        "ruleset_ids": [4242, 4242, 4242],
+        "ruleset_details": [ruleset_detail.clone(), ruleset_detail.clone(), ruleset_detail],
+        // Golden bytes from the existing observer's actual json.dumps digest.
+        // The Python control executes that producer block and compares them;
+        // the real Rust bridge independently verifies Unicode/surrogate bytes.
+        "observation_digest": "sha256:v1:168608fcb9325abb504a7028d85d066e9ee732e1b6046f56162050b3a28e6cbe"
     });
-    let rehearsal = serde_json::json!({"commit_sha": COMMIT, "phases": {
+    let rehearsal = serde_json::json!({"schema_version": "1.0", "aggregate_status": "Incomplete",
+        "release_identity": release_identity(), "commit_sha": COMMIT,
+        "subject_lockfile_digest": digest(1), "subject_topology_digest": digest(2),
+        "authorization_boundary": {"authorization_artifact": "release/authorize-v0.2.0.json",
+            "schema": "cargo-allow.release-authorization.v1", "named_release": TAG,
+            "candidate_commit": "dddddddddddddddddddddddddddddddddddddddd",
+            "token_present": false, "phase_status_note": "Synthetic unconsumed historical boundary; no release authority."},
+        "zero_mutation_proof": {"tag_mutation_prevented": true, "token_read_prevented": true,
+            "cargo_publish_prevented": true, "registry_mutation_prevented": true,
+            "github_release_mutation_prevented": true, "live_setting_mutation_prevented": true,
+            "external_repository_mutation_prevented": true},
+        "phases": {
         "release_identity": "Complete", "candidate_package_set": "Complete",
         "shared_prerequisites": "Complete", "publisher_state_machine": "Complete",
         "docs_and_support_identity": "Complete", "manifest_and_assets": "Complete",
@@ -671,12 +719,30 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
     }});
     files.insert("live-controls.json".to_string(), json_bytes(&controls)?);
     files.insert("rehearsal.json".to_string(), json_bytes(&rehearsal)?);
-    files.insert("package-docs.json".to_string(), br#"{"synthetic_docs_result":"Complete"}"#.to_vec());
-    files.insert("support.toml".to_string(), b"schema = 'intercepted-support-fixture'\n".to_vec());
-    files.insert("source-controls.json".to_string(), br#"{"synthetic_source_controls":true}"#.to_vec());
-    files.insert("workflow.yml".to_string(), b"name: synthetic-intercepted-workflow\non: workflow_dispatch\n".to_vec());
-    files.insert("action-inventory.json".to_string(), br#"{"synthetic_pinned_actions":[]}"#.to_vec());
-    files.insert("channel.json".to_string(), br#"{"channel":"stable","synthetic":true}"#.to_vec());
+    files.insert(
+        "package-docs.json".to_string(),
+        br#"{"synthetic_docs_result":"Complete"}"#.to_vec(),
+    );
+    files.insert(
+        "support.toml".to_string(),
+        b"schema = 'intercepted-support-fixture'\n".to_vec(),
+    );
+    files.insert(
+        "source-controls.json".to_string(),
+        br#"{"synthetic_source_controls":true}"#.to_vec(),
+    );
+    files.insert(
+        "workflow.yml".to_string(),
+        b"name: synthetic-intercepted-workflow\non: workflow_dispatch\n".to_vec(),
+    );
+    files.insert(
+        "action-inventory.json".to_string(),
+        br#"{"synthetic_pinned_actions":[]}"#.to_vec(),
+    );
+    files.insert(
+        "channel.json".to_string(),
+        br#"{"channel":"stable","synthetic":true}"#.to_vec(),
+    );
     for (_, asset_name) in RELEASE_OPERATION_ASSET_SELECTION {
         let raw = if asset_name == "release-manifest-v2.json" {
             manifest_bytes()
@@ -690,48 +756,78 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
     let preflight = preflight_fixture()?;
     let preflight_result = evaluate_final_registry_preflight_v1(&preflight);
     require(
-        preflight_result.result == FinalRegistryPreflightResultV1::CompleteWithResidualAuthorityRisk,
+        preflight_result.result
+            == FinalRegistryPreflightResultV1::CompleteWithResidualAuthorityRisk,
         "actual fixture preflight must preserve residual permission risk",
     )?;
-    let mut inputs = fixture_with(evidence_graph(), |_| {})?;
+    let rehearsal_digest = sha256_v1_bytes(selected(&files, "rehearsal.json")?);
+    let mut inputs = fixture_with(evidence_graph(&rehearsal_digest), |_| {})?;
     let controls_digest = raw_digest(selected(&files, "live-controls.json")?);
     for observation in &mut inputs.observations {
         if observation.kind == RefreshableObservationKindV1::SourceLiveControl {
             observation.observed_at_utc = controls_digest.clone();
         }
     }
-    let replay = replay_final_freeze(&inputs, &FixtureReadings {
-        controls_digest: &controls_digest,
-        preflight: &preflight,
-    });
-    require(replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
-        && replay.retained_bytes_verified, "actual retained freeze fixture must replay completely")?;
+    let replay = replay_final_freeze(
+        &inputs,
+        &FixtureReadings {
+            controls_digest: &controls_digest,
+            preflight: &preflight,
+        },
+    );
+    require(
+        replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
+            && replay.retained_bytes_verified,
+        "actual retained freeze fixture must replay completely",
+    )?;
     files.insert("freeze-inputs.json".to_string(), json_bytes(&inputs)?);
-    files.insert("freeze-receipt.json".to_string(), json_bytes(&inputs.freeze_receipt)?);
-    files.insert("candidate-custody.json".to_string(), json_bytes(&inputs.custody)?);
+    files.insert(
+        "freeze-receipt.json".to_string(),
+        json_bytes(&inputs.freeze_receipt)?,
+    );
+    files.insert(
+        "candidate-custody.json".to_string(),
+        json_bytes(&inputs.custody)?,
+    );
     files.insert("freeze-replay.json".to_string(), json_bytes(&replay)?);
     files.insert("preflight-inputs.json".to_string(), json_bytes(&preflight)?);
 
-    let (candidate_digest, _) = final_registry_bindings_v1(&preflight.candidate, &preflight.shared_authorities)?;
+    let (candidate_digest, _) =
+        final_registry_bindings_v1(&preflight.candidate, &preflight.shared_authorities)?;
     let mut freeze = ReleaseAuthorizationFreezeV1 {
         receipt_digest: raw_digest(selected(&files, "freeze-receipt.json")?),
         candidate_digest,
         denominator_digest: String::new(),
-        commit: COMMIT.to_string(), tree: TREE.to_string(), lock_digest: plain_digest(1),
-        topology_id: preflight.candidate.topology_id.clone(), packages: Vec::new(), shared_prerequisites: Vec::new(),
+        commit: COMMIT.to_string(),
+        tree: TREE.to_string(),
+        lock_digest: plain_digest(1),
+        topology_id: preflight.candidate.topology_id.clone(),
+        packages: Vec::new(),
+        shared_prerequisites: Vec::new(),
     };
     for (logical, package, version, shared) in RELEASE_AUTHORIZATION_SELECTION {
         if shared {
-            let authority = preflight.shared_authorities.iter().find(|row| row.package_name == package)
+            let authority = preflight
+                .shared_authorities
+                .iter()
+                .find(|row| row.package_name == package)
                 .ok_or_else(|| io::Error::other("fixture shared authority missing"))?;
-            freeze.shared_prerequisites.push(ReleaseAuthorizationSharedRowV1 {
-                logical_id: logical.to_string(), package_name: package.to_string(), package_version: version.to_string(),
-                expected_checksum: authority.expected_checksum.clone(), authority_digest: authority.authority_digest.clone(),
-            });
+            freeze
+                .shared_prerequisites
+                .push(ReleaseAuthorizationSharedRowV1 {
+                    logical_id: logical.to_string(),
+                    package_name: package.to_string(),
+                    package_version: version.to_string(),
+                    expected_checksum: authority.expected_checksum.clone(),
+                    authority_digest: authority.authority_digest.clone(),
+                });
         } else {
             freeze.packages.push(ReleaseAuthorizationPackageRowV1 {
-                logical_id: logical.to_string(), package_name: package.to_string(), package_version: version.to_string(),
-                package_digest: canonical(&archive_digest(package)), package_size_bytes: archive_bytes(package).len() as u64,
+                logical_id: logical.to_string(),
+                package_name: package.to_string(),
+                package_version: version.to_string(),
+                package_digest: canonical(&archive_digest(package)),
+                package_size_bytes: archive_bytes(package).len() as u64,
             });
         }
     }
@@ -754,50 +850,90 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
     };
     // Synthetic frozen-tree inventory produced independently of the decision.
     let frozen_file_digests: Vec<String> = files.values().map(|raw| raw_digest(raw)).collect();
-    files.insert("frozen-file-digests.json".to_string(), json_bytes(&frozen_file_digests)?);
+    files.insert(
+        "frozen-file-digests.json".to_string(),
+        json_bytes(&frozen_file_digests)?,
+    );
     let expected = ReleaseAuthorizationExpectedContextV1 {
-        schema_id: RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID.to_string(), schema_version: 1,
-        repository: REPOSITORY.to_string(), freeze: freeze.clone(), evidence: evidence.clone(),
-        secret_availability: ReleaseAuthorizationSecretAvailabilityV1 { redacted: true, state: ReleaseAuthorizationSecretStateV1::Unknown },
-        use_observation: ReleaseAuthorizationUseObservationV1 { state: ReleaseAuthorizationConsumptionV1::Available, consumed_nonces: Vec::new() },
-        frozen_file_digests, evaluated_at_unix_seconds: NOW,
+        schema_id: RELEASE_AUTHORIZATION_EXPECTED_CONTEXT_SCHEMA_ID.to_string(),
+        schema_version: 1,
+        repository: REPOSITORY.to_string(),
+        freeze: freeze.clone(),
+        evidence: evidence.clone(),
+        secret_availability: ReleaseAuthorizationSecretAvailabilityV1 {
+            redacted: true,
+            state: ReleaseAuthorizationSecretStateV1::Unknown,
+        },
+        use_observation: ReleaseAuthorizationUseObservationV1 {
+            state: ReleaseAuthorizationConsumptionV1::Available,
+            consumed_nonces: Vec::new(),
+        },
+        frozen_file_digests,
+        evaluated_at_unix_seconds: NOW,
     };
     let source = ReleaseAuthorizationSourceV1 {
-        kind: ReleaseAuthorizationSourceKindV1::IssueComment, repository: REPOSITORY.to_string(),
-        reference: "issue:3760#comment:202".to_string(), author: "release-operator".to_string(),
+        kind: ReleaseAuthorizationSourceKindV1::IssueComment,
+        repository: REPOSITORY.to_string(),
+        reference: "issue:3760#comment:202".to_string(),
+        author: "release-operator".to_string(),
         body_digest: raw_digest(RELEASE_AUTHORIZATION_EXACT_STATEMENT.as_bytes()),
         statement: RELEASE_AUTHORIZATION_EXACT_STATEMENT.to_string(),
     };
     let decision = ReleaseAuthorizationInputV1 {
-        schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(), schema_version: 1,
+        schema_id: RELEASE_AUTHORIZATION_SCHEMA_ID.to_string(),
+        schema_version: 1,
         operation: ReleaseAuthorizationOperationV1 {
-            name: RELEASE_AUTHORIZATION_FINAL_OPERATION.to_string(), version: VERSION.to_string(), tag: TAG.to_string(),
-            channel: "stable".to_string(), github_prerelease: false, authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
+            name: RELEASE_AUTHORIZATION_FINAL_OPERATION.to_string(),
+            version: VERSION.to_string(),
+            tag: TAG.to_string(),
+            channel: "stable".to_string(),
+            github_prerelease: false,
+            authority_kind: ReleaseAuthorizationAuthorityKindV1::Clean,
         },
-        freeze, evidence,
+        freeze,
+        evidence,
         authority: ReleaseAuthorizationAuthorityV1 {
-            selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(), maintainer_actor: "release-operator".to_string(),
-            maintainer_role: "release-maintainer".to_string(), source: source.clone(),
-            created_at_unix_seconds: NOW - 30, expires_at_unix_seconds: NOW + 3600,
-            one_run_scope: true, nonce: "synthetic-final-tag-authorization-0001".to_string(),
+            selected_auth_class: RELEASE_AUTHORIZATION_AUTH_CLASS.to_string(),
+            maintainer_actor: "release-operator".to_string(),
+            maintainer_role: "release-maintainer".to_string(),
+            source: source.clone(),
+            created_at_unix_seconds: NOW - 30,
+            expires_at_unix_seconds: NOW + 3600,
+            one_run_scope: true,
+            nonce: "synthetic-final-tag-authorization-0001".to_string(),
         },
     };
     let authorization = compile_release_authorization_v1(&decision, &json_bytes(&expected)?);
-    require(authorization.result == ReleaseAuthorizationResultV1::Complete,
-        "actual independently assembled expected context must compile in the synthetic fixture")?;
+    require(
+        authorization.result == ReleaseAuthorizationResultV1::Complete,
+        "actual independently assembled expected context must compile in the synthetic fixture",
+    )?;
     let birth = mint_authorization_custody_v1(AuthorizationCustodyMintInitV1 {
-        authorization_id: "intercepted-final-tag-mint".to_string(), decision: decision.clone(),
-        freeze_receipt_digest: decision.freeze.receipt_digest.clone(), replay_digest: raw_digest(selected(&files, "freeze-replay.json")?),
-        replay_result: "CompleteEquivalent".to_string(), candidate_custody_digest: raw_digest(selected(&files, "candidate-custody.json")?),
-        freeze_complete: replay.retained_bytes_verified, replay_complete: replay.result == FinalFreezeReplayResultV1::CompleteEquivalent,
-        storage_locator: "https://fixture.invalid/independent-mint".to_string(), repository_root: "/synthetic/frozen/tree".to_string(),
-        storage_access_policy: "synthetic-intercepted-operator".to_string(), storage_retention_expiry_unix_seconds: NOW + 7200,
-        storage_provider_available: true, valid_from_unix_seconds: NOW - 20, expires_at_unix_seconds: NOW + 3600,
-        minted_by: "release-operator".to_string(), minted_at_unix_seconds: NOW - 10,
-    }).map_err(io::Error::other)?;
+        authorization_id: "intercepted-final-tag-mint".to_string(),
+        decision: decision.clone(),
+        freeze_receipt_digest: decision.freeze.receipt_digest.clone(),
+        replay_digest: raw_digest(selected(&files, "freeze-replay.json")?),
+        replay_result: "CompleteEquivalent".to_string(),
+        candidate_custody_digest: raw_digest(selected(&files, "candidate-custody.json")?),
+        freeze_complete: replay.retained_bytes_verified,
+        replay_complete: replay.result == FinalFreezeReplayResultV1::CompleteEquivalent,
+        storage_locator: "https://fixture.invalid/independent-mint".to_string(),
+        repository_root: "/synthetic/frozen/tree".to_string(),
+        storage_access_policy: "synthetic-intercepted-operator".to_string(),
+        storage_retention_expiry_unix_seconds: NOW + 7200,
+        storage_provider_available: true,
+        valid_from_unix_seconds: NOW - 20,
+        expires_at_unix_seconds: NOW + 3600,
+        minted_by: "release-operator".to_string(),
+        minted_at_unix_seconds: NOW - 10,
+    })
+    .map_err(io::Error::other)?;
     files.insert("expected-context.json".to_string(), json_bytes(&expected)?);
     files.insert("authorization.json".to_string(), json_bytes(&decision)?);
-    files.insert("authorization-custody.json".to_string(), json_bytes(&birth)?);
+    files.insert(
+        "authorization-custody.json".to_string(),
+        json_bytes(&birth)?,
+    );
     let configuration = serde_json::json!({
         "repository_id": 41, "anchor_commit": COMMIT, "anchor_tree": TREE,
         "control_prefix": "refs/heads/cargo-allow-release-control/", "download_hosts": ["artifacts.example.test"],
@@ -806,29 +942,48 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
         "source": source, "artifacts": [], "tagger_name": "Release Fixture",
         "tagger_email": "release@example.invalid", "tag_message": "Synthetic intercepted final-tag fixture.\n"
     });
-    Ok(serde_json::json!({"configuration": configuration, "selected": files,
-        "source_bytes": RELEASE_AUTHORIZATION_EXACT_STATEMENT.as_bytes(), "now_unix_seconds": NOW}))
+    Ok(
+        serde_json::json!({"configuration": configuration, "selected": files,
+        "source_bytes": RELEASE_AUTHORIZATION_EXACT_STATEMENT.as_bytes(), "now_unix_seconds": NOW}),
+    )
 }
 
 #[test]
 fn final_tag_driver_executes_real_typed_bridge_with_intercepted_provider_io() -> TestResult {
     let fixture = typed_fixture()?;
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let directory = std::env::temp_dir().join(format!("cargo-allow-final-tag-driver-{}", std::process::id()));
+    let directory = std::env::temp_dir().join(format!(
+        "cargo-allow-final-tag-driver-{}",
+        std::process::id()
+    ));
     fs::create_dir(&directory)?;
     let fixture_path = directory.join("typed-fixture.json");
     fs::write(&fixture_path, json_bytes(&fixture)?)?;
-    require(fs::read(&fixture_path)? == json_bytes(&fixture)?,
-        "exact typed fixture bytes must reach the intercepted production consumer")?;
+    require(
+        fs::read(&fixture_path)? == json_bytes(&fixture)?,
+        "exact typed fixture bytes must reach the intercepted production consumer",
+    )?;
     let output = Command::new("python3")
-        .args(["-B", "scripts/test-release-final-tag.py", "--bridge", env!("CARGO_BIN_EXE_cargo-allow"), "--fixture"])
+        .args([
+            "-B",
+            "scripts/test-release-final-tag.py",
+            "--bridge",
+            env!("CARGO_BIN_EXE_cargo-allow"),
+            "--fixture",
+        ])
         .arg(&fixture_path)
         .current_dir(&root)
         .env_remove("CARGO_ALLOW_ROOT")
         .env_remove("CARGO_ALLOW_CONFIG")
         .output()?;
     fs::remove_dir_all(&directory)?;
-    require(output.status.success(), &format!("intercepted actual typed driver failed:\n{}\n{}",
-        String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr)))?;
+    require(
+        output.status.success(),
+        &format!(
+            "intercepted actual typed driver failed:\n{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
     Ok(())
 }

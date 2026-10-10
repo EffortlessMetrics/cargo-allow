@@ -521,7 +521,10 @@ pub fn validate_operation_lease_checkpoint_v1(
         readback.head,
     )?;
     let transfer = readback.transfer;
-    let first = readback.history.first().ok_or("checkpoint history is empty")?;
+    let first = readback
+        .history
+        .first()
+        .ok_or("checkpoint history is empty")?;
     if transfer.producer != *producer
         || producer.repository != identity.repository
         || producer.repository != first.producer.repository
@@ -544,7 +547,11 @@ pub fn validate_operation_lease_checkpoint_v1(
         || transfer.provider_artifact_name.is_empty()
         || transfer.stable_artifact_id.is_empty()
         || transfer.semantic_payload_digest.as_deref()
-            != Some(release_operation_head_digest_v1(readback.head).map_err(|_| "operation head digest failed")?.as_str())
+            != Some(
+                release_operation_head_digest_v1(readback.head)
+                    .map_err(|_| "operation head digest failed")?
+                    .as_str(),
+            )
     {
         return Err("checkpoint requires the exact operation, producer and retained head");
     }
@@ -623,9 +630,14 @@ pub fn advance_operation_lease_heads_v1(
         || identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication
         || record.class != OperationLeaseClassV1::Clean
         || record.key.operation != OPERATION_LEASE_FINAL_OPERATION
-        || record.key_digest != operation_lease_key_digest_v1(&record.key).map_err(|_| "key digest failed")?
-        || record.subject_digest != operation_lease_subject_digest_v1(&record.key).map_err(|_| "subject digest failed")?
-        || record.key.operation_identity_digest != release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?
+        || record.key_digest
+            != operation_lease_key_digest_v1(&record.key).map_err(|_| "key digest failed")?
+        || record.subject_digest
+            != operation_lease_subject_digest_v1(&record.key)
+                .map_err(|_| "subject digest failed")?
+        || record.key.operation_identity_digest
+            != release_operation_identity_digest_v1(identity)
+                .map_err(|_| "operation identity digest failed")?
         || record.key.version != identity.version
         || record.key.tag != identity.tag
         || record.key.commit != producer.commit_sha
@@ -638,26 +650,39 @@ pub fn advance_operation_lease_heads_v1(
         || record.holder.attempt != producer.run_attempt.to_string()
         || record.holder.job != producer.job_id
         || !record.redacted
-        || !matches!(record.state, State::HeldPreIrreversible | State::HeldIrreversible)
+        || !matches!(
+            record.state,
+            State::HeldPreIrreversible | State::HeldIrreversible
+        )
         || record.first_irreversible_started != (record.state == State::HeldIrreversible)
         || record.first_irreversible_started != old.head.first_irreversible_event_digest.is_some()
         || now < record.acquired_at_unix_seconds
         || now > record.expires_at_unix_seconds
         || now > identity.expires_at_unix_seconds
-        || record.transitions.last().is_none_or(|last| now < last.at_unix_seconds)
+        || record
+            .transitions
+            .last()
+            .is_none_or(|last| now < last.at_unix_seconds)
         || verify_lease_readback_v1(record, advance.observed_lease_json) != LeaseReadbackV1::Match
     {
-        return Err("head advance requires the exact live holder and independently read-back lease");
+        return Err(
+            "head advance requires the exact live holder and independently read-back lease",
+        );
     }
     validate_operation_lease_checkpoint_v1(identity, producer, old)?;
     validate_operation_lease_checkpoint_v1(identity, producer, next)?;
-    if record.journal_head_digest != release_operation_head_digest_v1(old.head).map_err(|_| "operation head digest failed")?
-        || record.checkpoint_head_digest != content_digest(old.transfer).map_err(|_| "checkpoint digest failed")?
+    if record.journal_head_digest
+        != release_operation_head_digest_v1(old.head).map_err(|_| "operation head digest failed")?
+        || record.checkpoint_head_digest
+            != content_digest(old.transfer).map_err(|_| "checkpoint digest failed")?
         || next.history.len() <= old.history.len()
         || !next.history.starts_with(old.history)
         || next.head.evaluated_at_unix_seconds < old.head.evaluated_at_unix_seconds
         || next.head.evaluated_at_unix_seconds > now
-        || next.history.last().is_none_or(|last| last.observed_at_unix_seconds > now)
+        || next
+            .history
+            .last()
+            .is_none_or(|last| last.observed_at_unix_seconds > now)
         || next.transfer == old.transfer
         || next.history.iter().skip(old.history.len()).any(|event| {
             event.producer.repository != producer.repository
@@ -669,13 +694,18 @@ pub fn advance_operation_lease_heads_v1(
                 || event.producer.commit != producer.commit_sha
                 || event.producer.tool != producer.tool_name
                 || u64::from(event.producer.generation) != producer.producer_generation
-                || old.history.first().is_none_or(|first| event.producer.schema != first.producer.schema)
+                || old
+                    .history
+                    .first()
+                    .is_none_or(|first| event.producer.schema != first.producer.schema)
         })
     {
         return Err("lease heads require an exact strict append and its new checkpoint");
     }
-    let journal_head_digest = release_operation_head_digest_v1(next.head).map_err(|_| "operation head digest failed")?;
-    let checkpoint_head_digest = content_digest(next.transfer).map_err(|_| "checkpoint digest failed")?;
+    let journal_head_digest =
+        release_operation_head_digest_v1(next.head).map_err(|_| "operation head digest failed")?;
+    let checkpoint_head_digest =
+        content_digest(next.transfer).map_err(|_| "checkpoint digest failed")?;
     record.transitions.push(OperationLeaseTransitionV1 {
         from: record.state,
         to: record.state,

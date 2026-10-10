@@ -107,6 +107,15 @@ value. Native Git runs in a fresh private bare repository with an explicit
 temporary askpass helper, isolated Git configuration, disabled hooks and a
 fixed HTTPS repository URL. Its credential files are removed on exit.
 
+The physical driver requires a POSIX execution host with process groups,
+nonblocking pipes, no-follow file opens, native Git and `/usr/bin/python3` for
+its private askpass helper. Unsupported hosts refuse before reading input files
+or a credential descriptor. The pure Rust bridge remains platform independent.
+On a child timeout or error, cleanup kills the owned process group before
+polling or reaping its leader, including when that leader already exited and
+a descendant retains its pipes. Reaping has a separate bounded cleanup cap;
+cleanup cannot convert an uncertain physical request into a retry.
+
 The private configuration has these exact keys:
 
 | Keys | Independently selected meaning |
@@ -135,6 +144,34 @@ by copying the decision's own assertions. Selected artifact metadata binds a
 run, so the independent producer receipt remains necessary to bind a job and
 finalized artifact ID. A provenance enum or local JSON file alone does not
 prove a provider call.
+
+Rehearsal admission uses the same unique-key decoder and canonical validator as
+the production freeze composer: schema 1.0, the exact eight phases, the
+Incomplete aggregate and unconsumed authorization boundary, and all seven
+zero-mutation flags. Receipt version, commit, lock and topology must match.
+Its required `release-rehearsal` graph node must be Current, Complete,
+WorkflowArtifact and FinalExact, with the exact selected receipt digest in its
+semantic and expected-semantic bindings. The existing Production replay checks
+that node's complete subject, including its tree. The current characterization
+producer's false prevention flags cannot qualify through this driver.
+
+The immutable live-control receipt supplies the frozen expected observation;
+it cannot establish present currentness. Before each semantic bridge call the
+driver authenticates repository/default-branch identity, reads every effective
+main rule within its bounded unpaginated selection, and reads the independently
+selected repository rulesets. It repeats these reads and requires stable full
+rule parameters and ruleset data. Missing, inaccessible, paginated, malformed,
+duplicate, stale or moving readback refuses. The observation time comes from
+HTTP Date within the same measured provider window already used by tag readback.
+
+The retained and current receipts follow the existing six-control observer and
+its exact digest serialization. They must agree in every projected field
+except `generated_at_utc` and the corresponding `observation_digest`. Per-rule
+repeated ruleset IDs remain part of that existing representation. The digest
+stored in the replay input's `observed_at_utc` field remains a historical byte
+binding; the bridge's Current reading additionally requires the independently
+read current controls. This verifies the six existing controls and their
+recorded projection, not every possible GitHub release or tag rule.
 
 ### Prepare, upload, finalize
 
@@ -220,7 +257,11 @@ git diff --check
 The Python I/O-only scope exercises the real transport/native-command boundary
 with intercepted responses and a native read-only Git hashing oracle. The Rust
 integration test builds existing typed fixture inputs and runs the same Python
-consumer against the actual compiled bridge. Supplying no compiled bridge to
+consumer against the actual compiled bridge. Every native host executes the
+pure compiled bridge's positive and malformed-admission controls. POSIX hosts
+also execute the full intercepted I/O/lifecycle suite; Windows executes the
+actual unsupported-host refusal instead of invoking fork/POSIX-only code.
+This does not claim Windows physical-driver support. Supplying no compiled bridge to
 the full suite is an error, never a successful skip or a Python eligibility
 fallback. These tests perform no live credential, ref, tag, mint, upload or
 publication operation. A source packet must state separately which commands
@@ -230,8 +271,15 @@ This slice does not complete #3930 or make 0.2.0 ready to cut. Its remaining
 composition dependencies stay with their existing owners:
 
 - #3761/#2501 must select all seven immutable assets, separating the frozen
-  manifest subject from the later publication envelope. A placeholder manifest
-  or post-publication rewrite is not accepted by this driver.
+  manifest subject from the later publication envelope. This driver verifies
+  the selected manifest's exact bytes against the frozen digest and rejects
+  missing or moved bytes. It does not validate the manifest's internal fields;
+  the actual semantically valid producer and frozen subject remain those
+  owners' prerequisites. Minimal synthetic manifest bytes in protocol tests
+  cannot qualify a release.
+- #2284/#2501 must qualify the actual current six-control observation and any
+  separately selected wider effective-control requirements. The intercepted
+  provider tests make no claim about the repository's live settings.
 - #2501 must actually retain and upload the existing typed freeze replay-input
   set; receipts alone cannot authenticate or reconstruct it. Its independently
   produced frozen-tree inventory and finalized producer receipts are required.
