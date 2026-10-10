@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4445,
+  "base_ref": "main",
+  "base_sha": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "head_ref": "fix/4345-malformed-policy-discovery",
+  "head_sha": "827181714910cc05383488a9468189a5d2f4857a",
+  "merge_base": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "reviewed_diff_digest": "sha256:v1:108dfe884f3b09f64b09f5736a9383c9ba87deeea2ef03861ce8b2fb10a68d2b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full eight-path source, consumer and governance review; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4445#pullrequestreview-5478415412"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4445#pullrequestreview-5478415412",
+    "Full eight-path review plus parser/discovery/containment/selection, optional-audit, error metadata, human/JSON summary and failed-receipt consumers. Malformed selected policies reach the canonical InvalidPolicy/E0003 parser; valid foreign skip and higher-priority selection remain intact.",
+    "Eight real-CLI integration tests encode 24 discriminating invocations; full native execution remains separately required. Production/parser blobs preserve the earlier source; test delta is exactly the three native formatter corrections.",
+    "All 732,040 main-policy bytes and 1,072 entries/settings, including allow-11278 limit36, are unchanged. Two exact-path records produce 1,074 unique IDs; independent canonical fingerprints eae00fa3aba06b827c3ae4ca43d1ce629b5f00cacca7d23e3d3afe18a64d7111 and 129dfdb309a469970e8e5e64a68c5eed78d8a335576122411e455ae6d99f75af match the revision note/reasons. Only new records use Oct10/Jan8 dates.",
+    "Source synthetic7969ec57ae718b91039a48eb9b4470b5b3cd88a5 has the exact ordered base/head parents and matching tree. Fresh PR body and feedback are accurate, no actionable source/governance finding remains; CodeRabbit quota is not clean review.",
+    "Native pregate114177800706 on run38039874109 passed pinned formatting and actual enforcing no-new with zero new findings; artifact11664679338 retains the result. Old formatter failure/no-new skip and stale initial-record readiness failures remain historical. No local Rust success or final native-matrix success is claimed."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, all applicable current native checks and substantive feedback, the final exact pair and post-main enforcing guard. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38039874109/job/114177800706"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4445",
+  "reviewed_at_utc": "2026-10-10T09:08:12Z"
+}
