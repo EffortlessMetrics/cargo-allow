@@ -709,7 +709,7 @@ def exercise_publication_handoff() -> None:
         ],
     }
     shim = textwrap.dedent("""
-        import importlib.util, json, os, pathlib, subprocess, sys
+        import hashlib, importlib.util, json, os, pathlib, subprocess, sys
         assert not os.environ.get("CARGO_REGISTRY_TOKEN")
         def record(value):
             with pathlib.Path("instrument-calls.jsonl").open("a", encoding="utf-8") as out:
@@ -743,6 +743,19 @@ def exercise_publication_handoff() -> None:
             publisher.crate_api = forbidden
             publisher.registry_checksum = forbidden
             publisher.urlopen = forbidden
+            if os.environ.get("PUBLISH_EXISTING") == "true":
+                # Exercise the real publisher with read-only registry instruments.
+                # Any attempted Cargo upload still reaches forbidden().
+                os.environ["CARGO_REGISTRY_TOKEN"] = "fixture-token"
+                by_name = {row["cargo_package_name"]: row for row in rows}
+                def existing_checksum(name, version):
+                    record(["registry", name, version])
+                    row = by_name[name]
+                    assert version == row["package_version"]
+                    if row["product_family"] == "shared":
+                        return row["expected_registry_checksum"].removeprefix("sha256:")
+                    return hashlib.sha256(("fixture package " + name + "\\n").encode()).hexdigest()
+                publisher.registry_checksum = existing_checksum
             sys.argv = command
             raise SystemExit(publisher.main())
         if command[0] == "-c":
@@ -876,6 +889,84 @@ def exercise_publication_handoff() -> None:
             row["registry_checksum"] for row in published["rows"]
         ]
         scenarios += 1
+
+        # Seed a second handoff with an actual completed publisher receipt.
+        # Every immutable row already exists exactly, so no upload marker exists.
+        directory, receipt, context = fixture("all-verified-existing")
+        package_script = scripts[names[1]]
+        scripts[names[1]] = (
+            "python3 scripts/release-topology-publisher.py --mode cargo-allow "
+            "--publish --authorization " + authorization
+            + " --receipt target/cargo-allow/topology-publish.receipt.json\n"
+        )
+        try:
+            result = invoke(directory, context, names[1], PUBLISH_EXISTING="true")
+        finally:
+            scripts[names[1]] = package_script
+        assert result.returncode == 0, result.stdout + result.stderr
+        observed = json.loads(receipt.read_text())
+        assert observed["publish"] is True and observed["complete"] is True
+        assert observed["incident_state"] == "none"
+        assert observed["first_irreversible_row"] is None
+        assert all(row["state"] == "verified_existing" for row in observed["rows"])
+        original = receipt.read_bytes()
+        bind(directory, context)
+        for name in names[1:]:
+            result = invoke(directory, context, name)
+            assert result.returncode == 0, result.stdout + result.stderr
+        assert receipt.read_bytes() == original
+        manifest = json.loads((directory / "target/cargo-allow/release-manifest-v2.json").read_text())
+        assert manifest["payload"]["publication_posture"] == "published"
+        assert manifest["payload"]["candidate_digest"] == digest(original)
+        assert [row["registry_checksum"] for row in manifest["payload"]["package_rows"]] == [
+            row["registry_checksum"] for row in observed["rows"]
+        ]
+        scenarios += 1
+
+        directory, receipt, context = fixture("mixed-existing-and-published")
+        value = json.loads(receipt.read_text())
+        value["rows"][0]["state"] = "verified_existing"
+        value["first_irreversible_row"] = value["rows"][1]["release_order"]
+        receipt.write_text(json.dumps(value), encoding="utf-8")
+        original = receipt.read_bytes()
+        bind(directory, context)
+        for name in names[1:]:
+            result = invoke(directory, context, name)
+            assert result.returncode == 0, result.stdout + result.stderr
+        assert receipt.read_bytes() == original
+        scenarios += 1
+
+        # Both consumers must reject absent or malformed markers; explicit null
+        # is meaningful only when every validated row was already present.
+        for name, mutate in (
+            ("null-marker-with-upload", lambda value: value.update(first_irreversible_row=None)),
+            ("null-marker-mixed", lambda value: (
+                value.update(first_irreversible_row=None),
+                value["rows"][0].update(state="verified_existing"),
+            )),
+            ("missing-marker", lambda value: value.pop("first_irreversible_row")),
+            ("zero-marker", lambda value: value.update(first_irreversible_row=0)),
+            ("negative-marker", lambda value: value.update(first_irreversible_row=-1)),
+            ("boolean-marker", lambda value: value.update(first_irreversible_row=True)),
+            ("false-marker", lambda value: value.update(first_irreversible_row=False)),
+            ("float-marker", lambda value: value.update(first_irreversible_row=1.0)),
+            ("string-marker", lambda value: value.update(first_irreversible_row="100")),
+            ("existing-missing-marker", lambda value: (
+                value.pop("first_irreversible_row"),
+                [row.update(state="verified_existing") for row in value["rows"]],
+            )),
+        ):
+            directory, receipt, context = fixture(name)
+            value = json.loads(receipt.read_text())
+            mutate(value)
+            receipt.write_text(json.dumps(value), encoding="utf-8")
+            original = receipt.read_bytes()
+            bind(directory, context)
+            for consumer in names[1:]:
+                fail_at(directory, context, consumer, "irreversible-row marker")
+                assert receipt.read_bytes() == original
+                assert not (directory / "instrument-calls.jsonl").exists()
+                scenarios += 1
 
         directory, receipt, context = fixture("ambient-target")
         original = receipt.read_bytes()
