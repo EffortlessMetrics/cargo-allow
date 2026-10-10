@@ -123,24 +123,31 @@ class TestReceiptOutput(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "Windows junction metadata control")
     def test_dangling_junction_rejects_before_phases(self) -> None:
-        target = self.sandbox / "junction-target"
-        link = self.sandbox / "junction"
+        target = self.sandbox / "junction target with spaces"
+        link = self.sandbox / "junction with spaces"
         target.mkdir()
-        # -Command <string> rather than -Command - with piped stdin:
-        # stdin mode never observes EOF on Windows (host and hosted
-        # runners alike, #4346) and hangs the 15-second timeout.
+
+        def remove_junction() -> None:
+            if os.path.lexists(link):
+                # Remove the reparse entry itself, including a dangling one.
+                link.rmdir()
+
+        # Register before setup so a failed or timed-out creator is cleaned up.
+        self.addCleanup(remove_junction)
+        # Avoid PowerShell setup timeouts (#4439) and its old stdin hang (#4346).
+        # Keep this a raw Windows command line: list2cmdline would backslash-escape
+        # the quotes, which cmd.exe does not use as its quote-escaping convention.
+        # /d suppresses AutoRun, /v:off preserves literal ! in inherited paths,
+        # and quoted environment values keep temporary paths out of command text.
         result = self.real_run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-             "New-Item -ItemType Junction -Path $env:REHEARSAL_TEST_LINK "
-             "-Target $env:REHEARSAL_TEST_TARGET -ErrorAction Stop | Out-Null"],
+            'cmd.exe /d /v:off /c mklink /J '
+            '"%REHEARSAL_TEST_LINK%" "%REHEARSAL_TEST_TARGET%"',
             env={**os.environ, "REHEARSAL_TEST_LINK": str(link),
                  "REHEARSAL_TEST_TARGET": str(target)},
             capture_output=True, text=True, timeout=15, check=False,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        # Remove the reparse entry itself before TemporaryDirectory cleanup.
-        self.addCleanup(link.rmdir)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         target.rmdir()
         self.assertFalse(link.exists())
         self.assertTrue(link.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
@@ -151,6 +158,8 @@ class TestReceiptOutput(unittest.TestCase):
                 self.assertIn("filesystem alias", stderr)
                 phases.assert_not_called()
         self.assertFalse(target.exists())
+        remove_junction()
+        self.assertFalse(os.path.lexists(link))
 
     def test_unignored_artifact_and_git_failure_reject_before_phases(self) -> None:
         for failed_command in ("ls-files", "check-ignore"):
