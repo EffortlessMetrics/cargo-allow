@@ -888,6 +888,7 @@ class GitHubReleaseStore:
         _, run = self._api("GET", f"/actions/runs/{run_id}/attempts/{attempt}")
         path = run.get("path")
         expected_path = producer["workflow_path"]
+        expected_short_ref = producer["git_ref"].split("/", 2)[-1]
         event = run.get("event")
         tag_push = event == "push" and producer["git_ref"].startswith("refs/tags/")
         supported_event = event == "workflow_dispatch" or tag_push
@@ -898,11 +899,12 @@ class GitHubReleaseStore:
                  and _same_integer(run["repository"].get("id"), self._repository_id)
                  and isinstance(run.get("head_repository"), dict)
                  and _same_integer(run["head_repository"].get("id"), self._repository_id)
-                 and path in (expected_path, expected_path + "@" + producer["git_ref"])
+                 and path in (expected_path, expected_path + "@" + producer["git_ref"],
+                              expected_path + "@" + expected_short_ref)
                  and supported_event
                  and (transfer["trust_class"] != "ManualDispatch" or event == "workflow_dispatch")
                  and (transfer["trust_class"] != "TagWorkflow" or tag_push)
-                 and run.get("head_branch") == producer["git_ref"].split("/", 2)[-1],
+                 and run.get("head_branch") == expected_short_ref,
                  "mismatch", "workflow attempt provenance differs")
         _, commit = self._api("GET", "/git/commits/" + producer["commit_sha"])
         _require(commit.get("sha") == producer["commit_sha"]

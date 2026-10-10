@@ -736,6 +736,67 @@ class ReadbackTests(unittest.TestCase):
         self.assertIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
         self.assertIn(BASE + "/git/commits/" + ANCHOR, paths)
 
+    def test_selected_workflow_path_accepts_exact_bare_full_and_short_refs(self):
+        workflow = ".github/workflows/release.yml"
+        for git_ref, short_ref, event, trust in (
+            ("refs/heads/main", "main", "workflow_dispatch", "ManualDispatch"),
+            ("refs/heads/release/0.2.0", "release/0.2.0", "workflow_dispatch", "ManualDispatch"),
+            ("refs/tags/v0.2.0", "v0.2.0", "push", "TagWorkflow"),
+        ):
+            for path in (workflow, workflow + "@" + git_ref, workflow + "@" + short_ref):
+                with self.subTest(git_ref=git_ref, path=path):
+                    provider = Provider()
+                    selected = {**producer(), "git_ref": git_ref}
+                    transfer = {**provider.transfer(), "producer": selected, "trust_class": trust}
+                    provider.run.update({"path": path, "head_branch": short_ref, "event": event})
+                    files = provider.client().read_artifact(
+                        transfer, artifact_id=505, expected_producer=selected)
+                    self.assertEqual(dict(files), provider.artifact_files)
+                    self.assertEqual(provider.mutations(), [])
+                    paths = [urlsplit(call[1]).path for call in provider.calls]
+                    self.assertEqual(paths.count(BASE + "/actions/artifacts/505"), 2)
+                    self.assertIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
+                    self.assertIn(BASE + "/git/commits/" + ANCHOR, paths)
+                    self.assertIn(BASE + "/actions/artifacts/505/zip", paths)
+                    self.assertIn(urlsplit(provider.download_url).path, paths)
+
+    def test_short_workflow_ref_keeps_exact_path_ref_and_event_binding(self):
+        workflow = ".github/workflows/release.yml"
+        for git_ref, short_ref, event, trust in (
+            ("refs/heads/main", "main", "workflow_dispatch", "ManualDispatch"),
+            ("refs/heads/release/0.2.0", "release/0.2.0", "workflow_dispatch", "ManualDispatch"),
+            ("refs/tags/v0.2.0", "v0.2.0", "push", "TagWorkflow"),
+        ):
+            for update in (
+                {"path": workflow + "@other"},
+                {"path": workflow + "@refs/heads/other"},
+                {"path": workflow + "@refs/tags/other"},
+                {"path": ".github/workflows/foreign.yml@" + short_ref},
+                {"path": "foreign/repository/" + workflow + "@" + short_ref},
+                {"path": workflow + "@" + short_ref + "@other"},
+                {"head_branch": "other"},
+                {"event": "pull_request"},
+                {"event": "workflow_dispatch" if event == "push" else "push"},
+            ):
+                with self.subTest(git_ref=git_ref, update=update):
+                    provider = Provider()
+                    selected = {**producer(), "git_ref": git_ref}
+                    transfer = {**provider.transfer(), "producer": selected, "trust_class": trust}
+                    provider.run.update({"path": workflow + "@" + short_ref,
+                                         "head_branch": short_ref, "event": event, **update})
+                    with self.assertRaises(STORE.StoreError) as error:
+                        provider.client().read_artifact(
+                            transfer, artifact_id=505, expected_producer=selected)
+                    self.assertEqual(error.exception.kind, "mismatch")
+                    self.assertEqual(str(error.exception),
+                                     "release operation store: mismatch: workflow attempt provenance differs")
+                    self.assertEqual(provider.mutations(), [])
+                    paths = [urlsplit(call[1]).path for call in provider.calls]
+                    self.assertIn(BASE + "/actions/runs/101/attempts/1", paths)
+                    self.assertNotIn(BASE + "/actions/runs/101/attempts/1/jobs", paths)
+                    self.assertNotIn(BASE + "/actions/artifacts/505/zip", paths)
+                    self.assertNotIn(urlsplit(provider.download_url).path, paths)
+
     def test_selected_artifact_and_producer_cannot_be_replaced_by_downloaded_claims(self):
         for key, value in (
             ("stable_artifact_id", "506"), ("provider_id", "other-provider"),
