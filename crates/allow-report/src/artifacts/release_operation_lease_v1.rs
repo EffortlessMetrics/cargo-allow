@@ -14,9 +14,16 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::release_artifact_transfer_v1::{
+    ActualDownloadedFileV1, ArtifactTransferDispositionV1, CargoAllowReleaseArtifactTransferV1,
+    ConsumerContextV1, ProducerIdentityV1, TrustClassV1, UntrustedInputPostureV1,
+};
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
-    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityV1,
+    RELEASE_OPERATION_HEAD_SCHEMA_ID, release_operation_head_digest_v1,
+    release_operation_identity_digest_v1, validate_release_operation_head_v1,
+    validate_release_operation_identity_v1,
 };
 
 pub const OPERATION_LEASE_SCHEMA_ID: &str = "cargo-allow.release-operation-lease.v1";
@@ -28,6 +35,28 @@ pub const OPERATION_LEASE_FINAL_OPERATION: &str = "publish_cargo_allow_final_0_2
 pub const OPERATION_LEASE_RECOVERY_OPERATION: &str = "publish_cargo_allow_recovery_0_2_0";
 pub const OPERATION_LEASE_FINAL_VERSION: &str = "0.2.0";
 pub const OPERATION_LEASE_FINAL_TAG: &str = "v0.2.0";
+pub const OPERATION_LEASE_CHECKPOINT_ROLE: &str = "release-operation-checkpoint";
+
+/// Borrowed inputs to the pure checkpoint validator, not a stored authority or
+/// provider receipt. The caller must obtain `downloaded_files` through its
+/// authenticated transport before this byte/subject comparison is meaningful.
+pub struct OperationLeaseCheckpointReadbackV1<'a> {
+    pub history: &'a [CargoAllowReleaseOperationEventV1],
+    pub head: &'a CargoAllowReleaseOperationHeadV1,
+    pub transfer: &'a CargoAllowReleaseArtifactTransferV1,
+    pub downloaded_files: &'a [ActualDownloadedFileV1],
+}
+
+/// Inputs for one checked head advance. This borrowed value cannot be
+/// serialized or used as a provider proof or one-use request permit.
+pub struct OperationLeaseHeadAdvanceV1<'a> {
+    pub holder: &'a OperationLeaseHolderV1,
+    pub producer: &'a ProducerIdentityV1,
+    pub observed_lease_json: &'a [u8],
+    pub previous: OperationLeaseCheckpointReadbackV1<'a>,
+    pub next: OperationLeaseCheckpointReadbackV1<'a>,
+    pub now_unix_seconds: u64,
+}
 
 /// Operation classes serialized against each other for one subject.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -474,6 +503,188 @@ pub fn verify_lease_readback_v1(
     } else {
         LeaseReadbackV1::Mismatch
     }
+}
+
+/// Validate an acyclic operation checkpoint. Its three mandatory files contain
+/// the canonical identity, history and retained-time head. Optional request
+/// files are checked by the tag owner; neither a mutable lease nor this
+/// finalized transfer is embedded in the bytes whose digest it names.
+pub fn validate_operation_lease_checkpoint_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    producer: &ProducerIdentityV1,
+    readback: &OperationLeaseCheckpointReadbackV1<'_>,
+) -> Result<(), &'static str> {
+    validate_release_operation_head_v1(
+        identity,
+        readback.history,
+        readback.head.evaluated_at_unix_seconds,
+        readback.head,
+    )?;
+    let transfer = readback.transfer;
+    let first = readback.history.first().ok_or("checkpoint history is empty")?;
+    if transfer.producer != *producer
+        || producer.repository != identity.repository
+        || producer.repository != first.producer.repository
+        || producer.workflow_path != first.producer.workflow
+        || producer.git_ref != first.producer.workflow_ref
+        || producer.run_id.to_string() != first.producer.run
+        || producer.run_attempt != u64::from(first.producer.attempt)
+        || producer.job_id != first.producer.job
+        || producer.commit_sha != first.producer.commit
+        || producer.release_version != identity.version
+        || producer.tool_name != first.producer.tool
+        || producer.schema_id != RELEASE_OPERATION_HEAD_SCHEMA_ID
+        || producer.producer_generation != u64::from(first.producer.generation)
+        || !git_sha_shape(&producer.tree_sha)
+        || producer.job_id.trim().is_empty()
+        || transfer.role != OPERATION_LEASE_CHECKPOINT_ROLE
+        || transfer.trust_class != TrustClassV1::ManualDispatch
+        || transfer.untrusted_input_posture != UntrustedInputPostureV1::StrictByteMatch
+        || transfer.provider_id.is_empty()
+        || transfer.provider_artifact_name.is_empty()
+        || transfer.stable_artifact_id.is_empty()
+        || transfer.semantic_payload_digest.as_deref()
+            != Some(release_operation_head_digest_v1(readback.head).map_err(|_| "operation head digest failed")?.as_str())
+    {
+        return Err("checkpoint requires the exact operation, producer and retained head");
+    }
+    let mut paths = std::collections::BTreeSet::new();
+    for file in &transfer.files {
+        if !paths.insert(file.path.as_str())
+            || !matches!(
+                file.path.as_str(),
+                "identity.json" | "events.json" | "head.json" | "request.json" | "tag-object"
+            )
+        {
+            return Err("checkpoint file inventory is duplicate or unsupported");
+        }
+    }
+    if paths.contains("request.json") != paths.contains("tag-object") {
+        return Err("checkpoint request and annotated object must travel together");
+    }
+    let mut downloaded_paths = std::collections::BTreeSet::new();
+    if readback
+        .downloaded_files
+        .iter()
+        .any(|file| !downloaded_paths.insert(file.path.as_str()))
+    {
+        return Err("checkpoint downloaded inventory contains duplicate files");
+    }
+    let consumer = ConsumerContextV1 {
+        workflow_path: producer.workflow_path.clone(),
+        run_id: producer.run_id,
+        job_id: producer.job_id.clone(),
+        requested_role: OPERATION_LEASE_CHECKPOINT_ROLE.to_string(),
+        is_credential_bearing: true,
+    };
+    if transfer.evaluate_transfer(
+        &consumer,
+        &producer.commit_sha,
+        &identity.version,
+        readback.downloaded_files,
+    ) != ArtifactTransferDispositionV1::Complete
+    {
+        return Err("checkpoint downloaded files differ from the selected transfer");
+    }
+    let canonical_files = [
+        ("identity.json", serde_json::to_vec(identity)),
+        ("events.json", serde_json::to_vec(readback.history)),
+        ("head.json", serde_json::to_vec(readback.head)),
+    ];
+    for (path, result) in canonical_files {
+        let bytes = result.map_err(|_| "checkpoint canonical serialization failed")?;
+        let digest = allow_core::sha256_v1_bytes(&bytes).replacen("sha256:v1:", "sha256:", 1);
+        if !readback.downloaded_files.iter().any(|file| {
+            file.path == path && file.size_bytes == bytes.len() as u64 && file.sha256 == digest
+        }) {
+            return Err("checkpoint does not retain the exact canonical operation files");
+        }
+    }
+    Ok(())
+}
+
+/// Advance both durable heads only for an exact, authenticated strict append.
+/// This reducer grants no provider authority: readback I/O and atomic storage
+/// remain the caller's responsibility. Renewal, holder generation, expiry and
+/// irreversible posture are unchanged. Every rejection leaves `record` intact.
+pub fn advance_operation_lease_heads_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    record: &mut CargoAllowReleaseOperationLeaseV1,
+    advance: OperationLeaseHeadAdvanceV1<'_>,
+) -> Result<(), &'static str> {
+    use OperationLeaseStateV1 as State;
+    validate_lease_key(&record.key, record.class)?;
+    let old = &advance.previous;
+    let next = &advance.next;
+    let producer = advance.producer;
+    let now = advance.now_unix_seconds;
+    if record.schema_id != OPERATION_LEASE_SCHEMA_ID
+        || record.schema_version != OPERATION_LEASE_SCHEMA_VERSION
+        || identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication
+        || record.class != OperationLeaseClassV1::Clean
+        || record.key.operation != OPERATION_LEASE_FINAL_OPERATION
+        || record.key_digest != operation_lease_key_digest_v1(&record.key).map_err(|_| "key digest failed")?
+        || record.subject_digest != operation_lease_subject_digest_v1(&record.key).map_err(|_| "subject digest failed")?
+        || record.key.operation_identity_digest != release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?
+        || record.key.version != identity.version
+        || record.key.tag != identity.tag
+        || record.key.commit != producer.commit_sha
+        || record.key.tree != producer.tree_sha
+        || record.holder != *advance.holder
+        || record.lease_id != record.holder.lease_id
+        || record.holder.generation == 0
+        || record.holder.workflow != producer.workflow_path
+        || record.holder.run != producer.run_id.to_string()
+        || record.holder.attempt != producer.run_attempt.to_string()
+        || record.holder.job != producer.job_id
+        || !record.redacted
+        || !matches!(record.state, State::HeldPreIrreversible | State::HeldIrreversible)
+        || record.first_irreversible_started != (record.state == State::HeldIrreversible)
+        || record.first_irreversible_started != old.head.first_irreversible_event_digest.is_some()
+        || now < record.acquired_at_unix_seconds
+        || now > record.expires_at_unix_seconds
+        || now > identity.expires_at_unix_seconds
+        || record.transitions.last().is_none_or(|last| now < last.at_unix_seconds)
+        || verify_lease_readback_v1(record, advance.observed_lease_json) != LeaseReadbackV1::Match
+    {
+        return Err("head advance requires the exact live holder and independently read-back lease");
+    }
+    validate_operation_lease_checkpoint_v1(identity, producer, old)?;
+    validate_operation_lease_checkpoint_v1(identity, producer, next)?;
+    if record.journal_head_digest != release_operation_head_digest_v1(old.head).map_err(|_| "operation head digest failed")?
+        || record.checkpoint_head_digest != content_digest(old.transfer).map_err(|_| "checkpoint digest failed")?
+        || next.history.len() <= old.history.len()
+        || !next.history.starts_with(old.history)
+        || next.head.evaluated_at_unix_seconds < old.head.evaluated_at_unix_seconds
+        || next.head.evaluated_at_unix_seconds > now
+        || next.history.last().is_none_or(|last| last.observed_at_unix_seconds > now)
+        || next.transfer == old.transfer
+        || next.history.iter().skip(old.history.len()).any(|event| {
+            event.producer.repository != producer.repository
+                || event.producer.workflow != producer.workflow_path
+                || event.producer.workflow_ref != producer.git_ref
+                || event.producer.run != producer.run_id.to_string()
+                || u64::from(event.producer.attempt) != producer.run_attempt
+                || event.producer.job != producer.job_id
+                || event.producer.commit != producer.commit_sha
+                || event.producer.tool != producer.tool_name
+                || u64::from(event.producer.generation) != producer.producer_generation
+                || old.history.first().is_none_or(|first| event.producer.schema != first.producer.schema)
+        })
+    {
+        return Err("lease heads require an exact strict append and its new checkpoint");
+    }
+    let journal_head_digest = release_operation_head_digest_v1(next.head).map_err(|_| "operation head digest failed")?;
+    let checkpoint_head_digest = content_digest(next.transfer).map_err(|_| "checkpoint digest failed")?;
+    record.transitions.push(OperationLeaseTransitionV1 {
+        from: record.state,
+        to: record.state,
+        at_unix_seconds: now,
+        reason: "heads-advanced".to_string(),
+    });
+    record.journal_head_digest = journal_head_digest;
+    record.checkpoint_head_digest = checkpoint_head_digest;
+    Ok(())
 }
 
 /// Bounded renewal: extends the window without rewriting holder, key, or

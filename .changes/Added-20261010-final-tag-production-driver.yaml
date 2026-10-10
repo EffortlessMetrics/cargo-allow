@@ -1,0 +1,10 @@
+kind: Added
+body: >-
+  Add an executable final-tag driver that composes authenticated retained
+  inputs with the existing typed authorization, operation, lease and tag
+  reducers. It advances real journal/checkpoint bindings, retains immutable
+  intent and Started bytes before one fixed nonforced tag request, and uses
+  independent readback for same-run continuation. Intercepted consumer tests
+  cover lost responses, restart refusal and mismatched subjects. Actual workflow
+  wiring, final frozen inputs, asset retrieval qualification and separately
+  minted release authority remain required before release execution.

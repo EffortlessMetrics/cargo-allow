@@ -20,6 +20,7 @@ mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
 pub(crate) mod release_authorization_command;
 pub(crate) mod release_freeze_command;
+mod release_final_tag_bridge;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;
@@ -156,6 +157,9 @@ pub(crate) enum CargoAllowCommand {
     /// Compose and replay the final release freeze from retained evidence.
     #[command(hide = true)]
     ReleaseFreeze(release_freeze_command::ReleaseFreezeArgs),
+    /// Apply typed final-tag driver reducers to bounded process input.
+    #[command(hide = true)]
+    ReleaseFinalTagBridge(release_final_tag_bridge::ReleaseFinalTagBridgeArgs),
     /// Evaluate the frozen-subject lock against ordinary mutation.
     #[command(hide = true)]
     FrozenSubjectLock(frozen_subject_lock_command::FrozenSubjectLockArgs),
@@ -295,6 +299,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
             candidate_preparation_command::cmd_prep_candidate(args)
         }
         CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(args),
+        CargoAllowCommand::ReleaseFinalTagBridge(args) => {
+            release_final_tag_bridge::cmd_release_final_tag_bridge(args)
+        }
         CargoAllowCommand::FrozenSubjectLock(args) => {
             frozen_subject_lock_command::cmd_frozen_subject_lock(args)
         }
@@ -564,6 +571,7 @@ impl CargoAllowCommand {
         "reconcile-package-publication",
         "prep-candidate",
         "release-freeze",
+        "release-final-tag-bridge",
         "frozen-subject-lock",
         "campaign-closeout",
         "review-disposition",

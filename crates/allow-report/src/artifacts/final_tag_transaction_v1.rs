@@ -16,9 +16,18 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::release_authorization_custody_v1::CargoAllowReleaseAuthorizationCustodyV1;
+use super::release_authorization_v1::{
+    ReleaseAuthorizationConsumptionV1, release_authorization_denominator_binding_v1,
+};
 use super::release_operation_authority_v1::{
     CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationIdentityV1,
-    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationProducerV1, release_operation_identity_digest_v1,
+    validate_release_operation_identity_v1,
+};
+use super::release_operation_lease_v1::{
+    CargoAllowReleaseOperationLeaseV1, OperationLeaseClassV1, OperationLeaseStateV1,
+    operation_lease_key_digest_v1, operation_lease_subject_digest_v1,
 };
 
 pub const FINAL_TAG_TRANSACTION_SCHEMA_ID: &str = "cargo-allow.final-tag-transaction.v1";
@@ -365,6 +374,101 @@ pub fn begin_tag_transaction_for_operation_v1(
     init.operation_identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     begin_tag_transaction_v1(init)
+}
+
+/// Compose the actual selected custody and held lease with the final tag
+/// subject. Shape-valid digest/state strings alone cannot substitute for these
+/// owner records. The driver separately authenticates their storage and
+/// replays their histories before invoking this pure constructor.
+pub fn begin_tag_transaction_for_authorized_operation_v1(
+    identity: &CargoAllowReleaseOperationIdentityV1,
+    custody: &CargoAllowReleaseAuthorizationCustodyV1,
+    lease: &CargoAllowReleaseOperationLeaseV1,
+    producer: &CargoAllowReleaseOperationProducerV1,
+    init: FinalTagTransactionInitV1,
+) -> Result<CargoAllowFinalTagTransactionV1, &'static str> {
+    let operation_digest = release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?;
+    let freeze = &custody.freeze;
+    let at = init.created_at_unix_seconds;
+    if custody.state != ReleaseAuthorizationConsumptionV1::SelectedForRun
+        || custody.selected_operation_identity_digest.as_deref() != Some(operation_digest.as_str())
+        || custody.authorization_digest != identity.authorization_digest
+        || custody.operation.name != FINAL_TAG_OPERATION
+        || custody.operation.version != identity.version
+        || custody.operation.tag != identity.tag
+        || custody.operation.channel != identity.channel
+        || custody.operation.github_prerelease != identity.github_prerelease
+        || freeze.receipt_digest != identity.freeze_digest
+        || freeze.lock_digest != identity.cargo_lock_digest
+        || freeze.denominator_digest != release_authorization_denominator_binding_v1(freeze).map_err(|_| "freeze denominator digest failed")?
+        || custody.mint.freeze_receipt_digest != identity.freeze_digest
+        || custody.mint.candidate_custody_digest != identity.custody_digest
+        || custody.mint.replay_digest != identity.replay_digest
+        || custody.evidence_digest != init.evidence_digest
+        || !custody.one_run_scope
+        || !custody.redacted
+        || !custody.readback_verified
+        || custody.consumed_nonces.as_slice() != [custody.nonce.clone()]
+        || custody.transitions.len() != 1
+        || custody.transitions.last().is_none_or(|last| last.at_unix_seconds > at)
+        || at < custody.valid_from_unix_seconds
+        || at > custody.expires_at_unix_seconds
+        || at > identity.expires_at_unix_seconds
+        || init.custody_commit != freeze.commit
+        || init.custody_tree != freeze.tree
+        || init.tag.commit != freeze.commit
+        || init.tag.tree != freeze.tree
+        || init.tag.version != identity.version
+        || init.tag.tag != identity.tag
+        || init.tag.channel != identity.channel
+        || init.tag.github_prerelease != identity.github_prerelease
+        || init.remote_repository != identity.repository
+        || init.remote_ref != format!("refs/tags/{}", identity.tag)
+    {
+        return Err("tag transaction subject differs from the selected authorization custody");
+    }
+    if identity.packages.len() != freeze.packages.len()
+        || !identity.packages.iter().zip(&freeze.packages).all(|(actual, expected)| {
+            actual.logical_id == expected.logical_id
+                && actual.package_name == expected.package_name
+                && actual.package_version == expected.package_version
+                && actual.package_digest == expected.package_digest
+        })
+    {
+        return Err("tag operation packages differ from the authorized frozen denominator");
+    }
+    if lease.class != OperationLeaseClassV1::Clean
+        || lease.state != OperationLeaseStateV1::HeldPreIrreversible
+        || lease.first_irreversible_started
+        || lease.key.operation != custody.operation.name
+        || lease.key.operation_identity_digest != operation_digest
+        || lease.key.version != identity.version
+        || lease.key.tag != identity.tag
+        || lease.key.commit != freeze.commit
+        || lease.key.tree != freeze.tree
+        || lease.key.denominator_digest != freeze.denominator_digest
+        || lease.key_digest != operation_lease_key_digest_v1(&lease.key).map_err(|_| "lease key digest failed")?
+        || lease.subject_digest != operation_lease_subject_digest_v1(&lease.key).map_err(|_| "lease subject digest failed")?
+        || lease.key_digest != init.lease_key_digest
+        || lease.holder.generation != init.lease_holder_generation
+        || lease.holder.lease_id != lease.lease_id
+        || lease.holder.workflow != producer.workflow
+        || lease.holder.run != producer.run
+        || lease.holder.attempt != producer.attempt.to_string()
+        || lease.holder.job != producer.job
+        || at < lease.acquired_at_unix_seconds
+        || at > lease.expires_at_unix_seconds
+        || lease.transitions.last().is_none_or(|last| last.at_unix_seconds > at)
+        || producer.repository != identity.repository
+        || producer.commit != freeze.commit
+        || init.workflow != producer.workflow
+        || init.run != producer.run
+        || init.attempt != producer.attempt.to_string()
+        || init.job != producer.job
+    {
+        return Err("tag transaction subject or producer differs from the exact held lease");
+    }
+    begin_tag_transaction_for_operation_v1(identity, init)
 }
 
 fn advance_tag_state(

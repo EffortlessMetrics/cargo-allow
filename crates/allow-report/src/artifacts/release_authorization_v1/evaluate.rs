@@ -585,12 +585,13 @@ pub fn compile_release_authorization_v1(
                 );
             }
         };
-    compile_with_context(input, &expected)
+    compile_with_context(input, &expected, true)
 }
 
 fn compile_with_context(
     input: &ReleaseAuthorizationInputV1,
     expected: &ReleaseAuthorizationExpectedContextV1,
+    require_available: bool,
 ) -> CargoAllowReleaseAuthorizationV1 {
     let mut findings = Vec::new();
     let mut caveats = Vec::new();
@@ -685,7 +686,9 @@ fn compile_with_context(
                 .to_string(),
         );
     }
-    validate_use_observation(&input.authority, &expected.use_observation, &mut findings);
+    if require_available {
+        validate_use_observation(&input.authority, &expected.use_observation, &mut findings);
+    }
 
     let authorization_digest = match authorization_statement_digest(input) {
         Ok(value) => value,
@@ -749,4 +752,138 @@ fn compile_with_context(
         evaluated_at_unix_seconds: expected.evaluated_at_unix_seconds,
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     }
+}
+
+/// Revalidate an already selected operation without creating fresh authority.
+/// The original independently assembled context must still compile as an
+/// Available decision, and all non-use eligibility checks run against the
+/// current independent context. Mutable custody is replayed from its retained
+/// Available birth; neither the record nor its consumed nonce is reset.
+/// Provider authentication and byte custody belong to the caller's transport.
+pub fn validate_release_authorization_continuation_v1(
+    input: &ReleaseAuthorizationInputV1,
+    original_expected_json: &[u8],
+    current_expected_json: &[u8],
+    identity: &crate::CargoAllowReleaseOperationIdentityV1,
+    birth: &crate::CargoAllowReleaseAuthorizationCustodyV1,
+    custody: &crate::CargoAllowReleaseAuthorizationCustodyV1,
+) -> Result<(), &'static str> {
+    use crate::{
+        AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS, AUTHORIZATION_CUSTODY_SCHEMA_ID,
+        AUTHORIZATION_CUSTODY_SCHEMA_VERSION, CargoAllowReleaseOperationClassV1,
+        authorization_evidence_digest_v1, note_irreversible_start_v1,
+        release_operation_identity_digest_v1, select_authorization_for_operation_v1,
+        validate_release_operation_identity_v1,
+    };
+    use ReleaseAuthorizationConsumptionV1 as Consumption;
+
+    let original: ReleaseAuthorizationExpectedContextV1 =
+        serde_json::from_slice(original_expected_json).map_err(|_| "original context is malformed")?;
+    let current: ReleaseAuthorizationExpectedContextV1 =
+        serde_json::from_slice(current_expected_json).map_err(|_| "current context is malformed")?;
+    let initial_receipt = compile_with_context(input, &original, true);
+    if initial_receipt.result != ResultState::Complete
+        || compile_with_context(input, &current, false).result != ResultState::Complete
+        || current.evaluated_at_unix_seconds < original.evaluated_at_unix_seconds
+        || current.repository != original.repository
+        || current.freeze != original.freeze
+        || current.evidence != original.evidence
+        || current.frozen_file_digests != original.frozen_file_digests
+    {
+        return Err("continuation requires original eligibility and current independent evidence");
+    }
+    validate_release_operation_identity_v1(identity)?;
+    let operation_digest = release_operation_identity_digest_v1(identity).map_err(|_| "operation identity digest failed")?;
+    let evidence_digest = authorization_evidence_digest_v1(&input.evidence)
+        .map_err(|_| "authorization evidence digest failed")?;
+    if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication
+        || identity.authorization_digest != initial_receipt.authorization_digest
+        || identity.freeze_digest != input.freeze.receipt_digest
+        || identity.custody_digest != birth.mint.candidate_custody_digest
+        || identity.replay_digest != birth.mint.replay_digest
+        || identity.cargo_lock_digest != input.freeze.lock_digest
+        || identity.support_digest != input.evidence.support_digest
+        || identity.workflow_digest != input.evidence.workflow_digest
+        || identity.action_inventory_digest != input.evidence.action_inventory_digest
+        || identity.live_controls_digest != input.evidence.live_controls_digest
+        || identity.version != input.operation.version
+        || identity.tag != input.operation.tag
+        || identity.channel != input.operation.channel
+        || identity.github_prerelease != input.operation.github_prerelease
+        || !identity.one_run_scope
+        || identity.expires_at_unix_seconds > birth.expires_at_unix_seconds
+        || current.evaluated_at_unix_seconds > identity.expires_at_unix_seconds
+        || birth.schema_id != AUTHORIZATION_CUSTODY_SCHEMA_ID
+        || birth.schema_version != AUTHORIZATION_CUSTODY_SCHEMA_VERSION
+        || birth.authorization_id.trim().is_empty()
+        || birth.authorization_digest != initial_receipt.authorization_digest
+        || birth.operation != input.operation
+        || birth.freeze != input.freeze
+        || birth.evidence_digest != evidence_digest
+        || birth.mint.freeze_receipt_digest != input.freeze.receipt_digest
+        || !AUTHORIZATION_CUSTODY_COMPLETE_REPLAY_RESULTS.contains(&birth.mint.replay_result.as_str())
+        || birth.mint.minted_by != input.authority.maintainer_actor
+        || birth.mint.minted_at_unix_seconds < input.authority.created_at_unix_seconds
+        || birth.mint.minted_at_unix_seconds > original.evaluated_at_unix_seconds
+        || birth.storage.retention_expiry_unix_seconds < birth.expires_at_unix_seconds
+        || birth.valid_from_unix_seconds < input.authority.created_at_unix_seconds
+        || birth.expires_at_unix_seconds > input.authority.expires_at_unix_seconds
+        || birth.valid_from_unix_seconds >= birth.expires_at_unix_seconds
+        || current.evaluated_at_unix_seconds < birth.valid_from_unix_seconds
+        || current.evaluated_at_unix_seconds > birth.expires_at_unix_seconds
+        || !birth.one_run_scope
+        || !birth.redacted
+        || !birth.readback_verified
+        || birth.readback_digest.as_deref().is_none_or(|value| !digest(value))
+        || birth.nonce != input.authority.nonce
+        || birth.state != Consumption::Available
+        || birth.selected_operation_identity_digest.is_some()
+        || !birth.consumed_nonces.is_empty()
+        || !birth.transitions.is_empty()
+        || original.use_observation.state != birth.state
+        || original.use_observation.consumed_nonces != birth.consumed_nonces
+        || current.use_observation.state != custody.state
+        || current.use_observation.consumed_nonces != custody.consumed_nonces
+        || custody.selected_operation_identity_digest.as_deref() != Some(operation_digest.as_str())
+        || custody.consumed_nonces.as_slice() != [input.authority.nonce.clone()]
+        || !matches!(custody.state, Consumption::SelectedForRun | Consumption::IrreversibleOperationStarted)
+    {
+        return Err("continuation requires exact original custody and the selected live operation");
+    }
+    if identity.packages.len() != input.freeze.packages.len()
+        || !identity.packages.iter().zip(&input.freeze.packages).all(|(actual, expected)| {
+            actual.logical_id == expected.logical_id
+                && actual.package_name == expected.package_name
+                && actual.package_version == expected.package_version
+                && actual.package_digest == expected.package_digest
+        })
+    {
+        return Err("continuation package denominator differs from the authorized freeze");
+    }
+    let selected = custody.transitions.first().ok_or("selection transition is missing")?;
+    if selected.at_unix_seconds < original.evaluated_at_unix_seconds
+        || selected.at_unix_seconds > current.evaluated_at_unix_seconds
+    {
+        return Err("selection is outside the independently observed context window");
+    }
+    let mut replayed = birth.clone();
+    select_authorization_for_operation_v1(
+        identity,
+        &mut replayed,
+        &input.authority.nonce,
+        selected.at_unix_seconds,
+        &evidence_digest,
+        true,
+    )?;
+    if custody.state == Consumption::IrreversibleOperationStarted {
+        let started = custody.transitions.get(1).ok_or("start transition is missing")?;
+        if started.at_unix_seconds > current.evaluated_at_unix_seconds {
+            return Err("irreversible start is future-dated");
+        }
+        note_irreversible_start_v1(&mut replayed, started.at_unix_seconds)?;
+    }
+    if &replayed != custody {
+        return Err("mutable custody differs from its exact reducer replay");
+    }
+    Ok(())
 }
