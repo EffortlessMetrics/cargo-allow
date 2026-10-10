@@ -313,6 +313,33 @@ class Qualifier:
             out.mkdir(parents=True, exist_ok=False)
         except OSError:
             raise store.StoreError("invalid_input", "a fresh writable output directory is required") from None
+        published = False
+        try:
+            # Keep the selected destination empty until all observations and
+            # writes succeed. A sibling staging directory permits a complete
+            # directory rename on the same filesystem, including on Windows.
+            with tempfile.TemporaryDirectory(prefix=".cargo-allow-freeze-output-", dir=out.parent,
+                                             ignore_cleanup_errors=True) as directory:
+                staged = Path(directory) / "output"
+                staged.mkdir()
+                result = self._run_staged(phase, staged, bridge)
+                # Remove only our empty reservation. If anything appeared in
+                # it, refuse publication without deleting those other bytes.
+                out.rmdir()
+                staged.rename(out)
+                published = True
+                return result
+        except OSError:
+            raise store.StoreError("instrument_failure", "qualified output could not be published") from None
+        finally:
+            if not published:
+                try:
+                    out.rmdir()
+                except OSError:
+                    pass
+
+    def _run_staged(self, phase: str, out: Path,
+                    bridge: Callable[[str, dict[str, Any], list[str], Path], dict[str, Any]]) -> dict[str, Any]:
         self.retained_controls = {}
         self.started = self._started_tick = self._last_wall = self._last_tick = None
         self.started = self.sample_time()

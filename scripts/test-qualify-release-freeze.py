@@ -288,6 +288,88 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(len(self.world.calls), calls)
         self.assertEqual((out / "final-freeze.provider-observation.json").read_bytes(), before)
 
+    def test_native_bridge_outputs_publish_only_as_a_validated_complete_set(self):
+        for phase in ("prepare", "qualify"):
+            for defect in ("positive", "main", "window", "child", "stage", "write", "collision"):
+                with self.subTest(phase=phase, defect=defect):
+                    self.world = World(self.root)
+                    if phase == "qualify":
+                        prepared = self.world.add_object(507, {
+                            "final-freeze.receipt.json": b'{"protocol_probe":true}',
+                            "final-freeze.evidence-graph.json": b'{"protocol_probe":true}',
+                        }, [
+                            {"logical_id":"final-freeze-receipt", "role":"FreezeReceipt", "path":"final-freeze.receipt.json"},
+                            {"logical_id":"final-freeze-evidence-graph", "role":"EvidenceGraph", "path":"final-freeze.evidence-graph.json"},
+                        ], run=103, job=305, prepared=True)
+                        self.world.selection["artifacts"].append(prepared)
+                    out = self.root / ("publish-" + phase + "-" + defect)
+                    names = ["final-freeze.receipt.json", "final-freeze.evidence-graph.json"]
+                    if phase == "qualify":
+                        names += ["final-freeze.composition.json", "final-freeze.custody.json", "final-freeze.replay-inputs.json"]
+                    # The actual native_bridge invokes this Python interpreter
+                    # as its selected executable. Its first argument names this
+                    # real child script on every supported host. These payloads
+                    # are explicitly Incomplete probes, not native Rust proof.
+                    child = '''import json
+from pathlib import Path
+import sys
+phase = sys.argv[1]
+out = Path(sys.argv[sys.argv.index("--out-dir") + 1])
+out.mkdir(parents=True, exist_ok=True)
+result = {"stage":"prepared" if phase == "prepare" else "qualified-computation",
+          "freeze_state":"Incomplete", "protocol_probe":True}
+'''
+                    child += "names = " + repr(names) + "\n"
+                    child += "defect = " + repr(defect) + "\n"
+                    child += '''if defect == "stage":
+    result["stage"] = "unexpected"
+for name in names:
+    (out / name).write_text(json.dumps(result) + "\\n")
+if defect == "write":
+    (out / "final-freeze.provider-observation.json").mkdir()
+print(json.dumps(result))
+raise SystemExit(1 if defect == "child" else 0)
+'''
+                    (self.root / "release-freeze").write_text(child)
+                    invoke = DRIVER.native_bridge(Path(sys.executable), self.root)
+                    clock = {"wall":NOW, "tick":10.0}
+                    invocations = []
+
+                    def bridge(selected_phase, wire, evidence, private_out):
+                        invocations.append(private_out)
+                        self.assertEqual(list(out.iterdir()), [])
+                        result = invoke(selected_phase, wire, evidence, private_out)
+                        self.assertTrue(all((private_out / name).is_file() for name in names))
+                        self.assertEqual(list(out.iterdir()), [])
+                        if defect == "main":
+                            self.world.refs["refs/heads/main"] = "e" * 40
+                        elif defect == "window":
+                            clock.update(wall=NOW + 300, tick=310.0)
+                        elif defect == "collision":
+                            (out / "reservation-owner.txt").write_bytes(b"preserve unrelated bytes")
+                        return result
+
+                    qualifier = self.world.qualifier(clock=lambda:clock["wall"], monotonic=lambda:clock["tick"])
+                    if defect == "positive":
+                        result = qualifier.run(phase, out, bridge)
+                        self.assertEqual(result["freeze_state"], "Incomplete")
+                        self.assertTrue(all((out / name).is_file() for name in names))
+                        self.assertEqual(json.loads((out / "final-freeze.provider-observation.json").read_bytes()), result)
+                        self.assertTrue((out / "final-freeze.readback-input.json").is_file())
+                    else:
+                        with self.assertRaises(STORE.StoreError):
+                            qualifier.run(phase, out, bridge)
+                        self.assertFalse(any((out / name).exists() for name in names))
+                        self.assertFalse((out / "final-freeze.provider-observation.json").exists())
+                        if defect == "collision":
+                            self.assertEqual((out / "reservation-owner.txt").read_bytes(), b"preserve unrelated bytes")
+                        else:
+                            self.assertFalse(out.exists())
+                    self.assertEqual(len(invocations), 1)
+                    self.assertEqual(list(self.root.glob(".cargo-allow-freeze-output-*")), [])
+                    self.assertEqual(self.world.unexpected, [])
+                    self.assertTrue(all(call[0] == "GET" for call in self.world.calls))
+
     def test_each_authenticated_nested_read_requires_fresh_uncached_provider_time(self):
         targets = (
             ("main", lambda url: url.endswith("/git/ref/heads/main"), 1),

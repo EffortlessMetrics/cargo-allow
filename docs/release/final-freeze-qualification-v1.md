@@ -166,6 +166,14 @@ finalized envelope, use `qualify` with the updated selection and another new
 output directory. Each invocation requires a fresh output directory. A failed
 rerun cannot reuse an earlier successful observation file.
 
+Consumer files and retained observation inputs are written to a private sibling
+staging directory. The selected destination remains empty while the final
+main and time-window checks run and all output files are written. Only then
+does the driver rename the complete staged directory into the destination.
+A refused readback, child failure or output-write failure publishes no consumer
+files there. A successful computation may still report `Incomplete`; staging
+does not change its readiness verdict or grant release authority.
+
 Qualified output retains the compact unchanged receipt, evidence graph,
 existing qualification, custody and transfer JSON, full
 `final-freeze.replay-inputs.json`, replay JSON/Markdown, readiness, composition
@@ -200,7 +208,7 @@ python3 -I -B -W error scripts/test-release-operation-store.py
 python3 -I -B -W error scripts/test-qualify-release-freeze.py
 cargo test -p cargo-allow --locked --test core_release_freeze_qualification_cli -- --nocapture
 cargo test -p cargo-allow --locked --test final_freeze_replay
-cargo test -p cargo-allow --locked --bins release_freeze_qualification
+cargo test -p cargo-allow --locked --bin cargo-allow cli::release_freeze_command::qualification::tests
 python3 scripts/verify-evidence-surface-inventory.py
 cargo fmt --all --check
 ```
