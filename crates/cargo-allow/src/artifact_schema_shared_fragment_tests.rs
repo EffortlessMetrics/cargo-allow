@@ -19,6 +19,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "canonical_evidence_prefix",
         "claim_boundary_flag",
         "counts",
+        "coverage_movement",
         "current_finding",
         "diff",
         "diff_analysis",
@@ -145,6 +146,7 @@ fn artifact_local_fragments_match_common_wire_shapes() {
     );
 
     for fragment in [
+        "coverage_movement",
         "diff",
         "diff_movement_counts",
         "diff_posture_delta_counts",

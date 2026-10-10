@@ -329,9 +329,11 @@ fn classify_candidate(path: &Path, native: bool) -> CandidateClass {
     let header = match toml::from_str::<PolicyHeaderProbe>(&text) {
         Ok(header) => header,
         Err(_) => {
-            return CandidateClass::Skip(
-                "not cargo-allow dialect (policy header could not be parsed)".to_string(),
-            );
+            // A malformed candidate is not evidence of a foreign dialect.
+            // Keep its discovery precedence and let the normal policy loader
+            // report InvalidPolicy with the selected path and parser span.
+            // Falling through here could silently select another ledger.
+            return CandidateClass::Accept;
         }
     };
     if !supported_schema_version(header.schema_version.as_deref()) {
