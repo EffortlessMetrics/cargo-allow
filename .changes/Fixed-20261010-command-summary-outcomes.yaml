@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Adoption and doctor command summaries retain evaluated invalid-policy and
+  partial-inventory outcomes when those outcomes cause a nonzero exit, while
+  later output failures still receive typed error summaries. Human receipt-only
+  checks now write a requested command-summary sidecar without changing their
+  quiet stdout or receipt behavior.

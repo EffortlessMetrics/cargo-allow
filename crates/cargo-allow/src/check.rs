@@ -279,30 +279,32 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
         || source_coupling_failed;
+    let report_args = ReportRenderArgs {
+        command: "check",
+        format: effective_format,
+        baseline_debt_entries,
+        evidence,
+        findings: &findings,
+        outcomes: &projected_outcomes,
+        failed,
+        output: args.output.as_deref(),
+        root: &root,
+        inventory_facts,
+        inventory_source_identity: None,
+        enforcement: Some(if mode.is_advisory() {
+            RECEIPT_ENFORCEMENT_ADVISORY
+        } else {
+            RECEIPT_ENFORCEMENT_ENFORCING
+        }),
+    };
     if should_emit_report_stdout(
         args.output.as_deref(),
         args.receipt.as_deref(),
         effective_format,
     ) {
-        print_report(ReportRenderArgs {
-            command: "check",
-            format: effective_format,
-            baseline_debt_entries,
-            evidence,
-            findings: &findings,
-            outcomes: &projected_outcomes,
-            failed,
-            output: args.output.as_deref(),
-            root: &root,
-            inventory_facts,
-            inventory_source_identity: None,
-            enforcement: Some(if mode.is_advisory() {
-                RECEIPT_ENFORCEMENT_ADVISORY
-            } else {
-                RECEIPT_ENFORCEMENT_ENFORCING
-            }),
-        })?;
+        print_report(report_args)?;
     } else if args.format == crate::OutputFormat::Human && args.receipt.is_some() {
+        crate::core_command_router::write_report_summary_artifact(&report_args)?;
         // When only --receipt is given (no --output), the full human report is
         // suppressed to keep stdout clean for CI scripts. But the operator still
         // needs a pass/fail signal — emit a brief summary to stderr (#3190).
