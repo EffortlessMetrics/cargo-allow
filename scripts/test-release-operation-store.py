@@ -944,16 +944,28 @@ class ReadbackTests(unittest.TestCase):
 
 
 class HttpTests(unittest.TestCase):
-    def native_source_headers(self, header_lines, *, denied=False):
+    def native_source_headers(self, header_lines, *, denied=False, raw_header_items=False):
         provider = Provider()
         native_responses = []
+
+        class RawHeaderItems:
+            def __init__(self, lines):
+                self.lines = list(lines)
+
+            def items(self):
+                return list(self.lines)
 
         class NativeResponse:
             def __init__(self, result):
                 self.status = result.status
-                self.headers = Message()
-                for name, value in header_lines(result):
-                    self.headers.add_header(name, value)
+                if raw_header_items:
+                    # Malformed fixtures must reach the transport's header parser;
+                    # newer email policies reject them during Message construction.
+                    self.headers = RawHeaderItems(header_lines(result))
+                else:
+                    self.headers = Message()
+                    for name, value in header_lines(result):
+                        self.headers.add_header(name, value)
                 self.stream = io.BytesIO(result.body)
                 self.reads = 0
 
@@ -981,7 +993,8 @@ class HttpTests(unittest.TestCase):
             repository_id=41, anchor_commit=ANCHOR, anchor_tree=ANCHOR_TREE,
             control_prefix=PREFIX, credential=lambda: FAKE_CREDENTIAL,
             transport=STORE.https_transport)
-        with mock.patch.object(STORE, "build_opener", return_value=opener):
+        with mock.patch.object(STORE, "build_opener", return_value=opener), \
+                mock.patch.object(STORE, "_headers", wraps=STORE._headers) as normalize:
             if denied:
                 with self.assertRaises(STORE.StoreError) as error:
                     store.read_source(provider.source_input(), approved_actor_id=404,
@@ -991,6 +1004,7 @@ class HttpTests(unittest.TestCase):
                                  "release operation store: instrument_failure: provider exchange failed")
                 self.assertNotIn(FAKE_CREDENTIAL, str(error.exception))
                 self.assertEqual([item.reads for item in native_responses], [0])
+                self.assertEqual(normalize.call_count, 1)
             else:
                 data = store.read_source(provider.source_input(), approved_actor_id=404,
                                          approved_actor_login="release-operator")
@@ -1047,8 +1061,11 @@ class HttpTests(unittest.TestCase):
                          ("vary", "Accept\x01" + FAKE_CREDENTIAL),
                          ("vary", "non-ascii-\u00e9" + FAKE_CREDENTIAL)]:
             with self.subTest(header=bad_line[0]):
-                self.native_source_headers(
-                    lambda _result: [("Vary", "Accept-Encoding"), bad_line], denied=True)
+                with mock.patch.object(Message, "add_header", side_effect=AssertionError(
+                        "malformed fixtures must preserve raw response-header items")):
+                    self.native_source_headers(
+                        lambda _result: [("Vary", "Accept-Encoding"), bad_line],
+                        denied=True, raw_header_items=True)
 
     def test_import_and_constructor_do_not_read_environment_or_credentials(self):
         class NoEnvironment(dict):
