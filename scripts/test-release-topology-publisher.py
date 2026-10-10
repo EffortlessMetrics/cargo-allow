@@ -706,8 +706,231 @@ def workflow_run_step(workflow: str, name: str) -> str:
     return "\n".join(script) + "\n"
 
 
+def workflow_expression(
+    expression: str, context: Mapping[str, Any], selected_secret: Mapping[str, str],
+    *, step_if: bool = False,
+) -> Any:
+    """Evaluate the bounded string/Boolean subset used by these env/if fields."""
+    # actions/runner@397b032cbf865e9c3ddfab89d533ec19325e1273 evaluates
+    # StepEnv before StepIf. Its step-env schema permits job, but not success().
+    # Keep lazy operand values and ASCII case-insensitive string equality.
+    # Reject other syntax/types rather than silently approximating the runner.
+    assert len(expression) <= 4096
+    pattern = re.compile(r"&&|\|\||==|!=|[!()]|'(?:[^']|'')*'|[A-Za-z_][A-Za-z0-9_.]*")
+    remaining = expression.strip()
+    tokens = []
+    while remaining:
+        match = pattern.match(remaining)
+        assert match is not None, f"unsupported workflow expression: {remaining}"
+        tokens.append(match.group())
+        assert len(tokens) <= 256
+        remaining = remaining[match.end():].lstrip()
+    position = 0
+
+    def peek():
+        return tokens[position] if position < len(tokens) else None
+
+    def take():
+        nonlocal position
+        assert position < len(tokens), "incomplete workflow expression"
+        token = tokens[position]
+        position += 1
+        return token
+
+    def atom():
+        token = take()
+        if token == "(":
+            node = disjunction()
+            assert take() == ")"
+            return node
+        if token.startswith("'"):
+            return ("value", token[1:-1].replace("''", "'"))
+        if token in ("true", "false", "null"):
+            return ("value", {"true": True, "false": False, "null": None}[token])
+        assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*", token)
+        if peek() == "(":
+            assert step_if and token == "success", "unsupported workflow function context"
+            take()
+            assert take() == ")"
+            return ("success",)
+        return ("name", token)
+
+    def unary():
+        if peek() == "!":
+            take()
+            return ("!", unary())
+        return atom()
+
+    def equality():
+        node = unary()
+        while peek() in ("==", "!="):
+            node = (take(), node, unary())
+        return node
+
+    def conjunction():
+        node = equality()
+        while peek() == "&&":
+            node = (take(), node, equality())
+        return node
+
+    def disjunction():
+        node = conjunction()
+        while peek() == "||":
+            node = (take(), node, conjunction())
+        return node
+
+    def truthy(value):
+        assert value is None or type(value) in (bool, str), "unsupported workflow value"
+        return value is not None and value is not False and value != ""
+
+    def evaluate(node):
+        operation = node[0]
+        if operation == "value":
+            return node[1]
+        if operation == "name":
+            if node[1] == "secrets.CARGO_REGISTRY_TOKEN":
+                return selected_secret.get(TOKEN_KEY, "")
+            assert node[1] in context, f"unselected workflow context: {node[1]}"
+            value = context[node[1]]
+            assert value is None or type(value) in (bool, str), "unsupported workflow value"
+            return value
+        if operation == "success":
+            # These are job-level steps; use the job status visible now.
+            return context["job.status"] == "success"
+        if operation == "!":
+            return not truthy(evaluate(node[1]))
+        left = evaluate(node[1])
+        if operation == "&&":
+            return evaluate(node[2]) if truthy(left) else left
+        if operation == "||":
+            return left if truthy(left) else evaluate(node[2])
+        right = evaluate(node[2])
+        assert type(left) is type(right), "cross-type workflow comparison is outside this oracle"
+        if isinstance(left, str):
+            assert left.isascii() and right.isascii(), "non-ASCII workflow comparison is outside this oracle"
+            equal = left.lower() == right.lower()
+        else:
+            equal = left == right
+        return equal if operation == "==" else not equal
+
+    tree = disjunction()
+    assert position == len(tokens), "trailing workflow expression tokens"
+    return evaluate(tree)
+
+
+def workflow_step_token(
+    workflow: str, name: str, context: Mapping[str, Any], selected_secret: Mapping[str, str],
+) -> tuple[str, bool]:
+    """Read the checked-in env expression, evaluate it, then evaluate step if."""
+    marker = f"      - name: {name}\n"
+    assert workflow.count(marker) == 1
+    block = workflow.split(marker, 1)[1].split("\n      - ", 1)[0]
+    env = [
+        line.removeprefix("          CARGO_REGISTRY_TOKEN: ")
+        for line in block.splitlines() if line.startswith("          CARGO_REGISTRY_TOKEN: ")
+    ]
+    gates = [line.removeprefix("        if: ") for line in block.splitlines() if line.startswith("        if: ")]
+    assert len(env) == len(gates) == 1
+    prefix = "$" + "{{ "
+    assert env[0].startswith(prefix) and env[0].endswith(" }}")
+    value = workflow_expression(env[0][len(prefix):-3], context, selected_secret)
+    gate = workflow_expression(gates[0], context, selected_secret, step_if=True)
+    assert type(value) is str and type(gate) is bool
+    return value, gate
+
+
+def exercise_workflow_environment_boundary(workflow: str) -> None:
+    """Trap selected-secret reads before any execution gate can hide them."""
+    token_name = "Require crates.io API token for publication"
+    publish_name = "Publish cargo-allow topology rows in dependency order"
+    trap = TokenBoundaryEnvironment()
+    for expression, expected in (
+        ("false && secrets.CARGO_REGISTRY_TOKEN", False),
+        ("true || secrets.CARGO_REGISTRY_TOKEN", True),
+        ("false || true && 'selected'", "selected"),
+        ("(false || true) && 'selected' || 'fallback'", "selected"),
+        ("!false && 'selected' || ''", "selected"),
+        ("'false' && 'selected'", "selected"),
+        ("'' || 'fallback'", "fallback"),
+        ("'TRUE' == 'true'", True),
+        ("'it''s literal' != 'different'", True),
+    ):
+        assert workflow_expression(expression, {}, trap) == expected
+    assert workflow_expression("success()", {"job.status": "success"}, trap, step_if=True) is True
+    assert workflow_expression("success()", {"job.status": "cancelled"}, trap, step_if=True) is False
+    for expression in ("success()", "true &&", "unknown.context", "always()", "true false", "1 == 1"):
+        try:
+            workflow_expression(expression, {}, trap)
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError(f"unsupported expression was accepted: {expression}")
+    assert trap.reads == 0
+
+    def probe(candidate):
+        count = 0
+        for event, valid, recovery, requested, authority in (
+            ("push", "true", "false", False, True),
+            ("workflow_dispatch", "false", "true", True, True),
+            ("workflow_dispatch", "false", "false", False, False),
+            ("push", "false", "false", False, False),
+            ("workflow_dispatch", "false", "false", True, False),
+            ("push", "", "", False, False),
+            ("workflow_dispatch", "true", "false", False, False),
+            ("workflow_dispatch", "true", "false", True, False),
+            ("workflow_dispatch", "false", "true", False, False),
+            ("push", "false", "true", False, False),
+        ):
+            # Status is the value visible at env evaluation. A cancellation
+            # arriving after this point is not an earlier zero-read proof.
+            for status in ("success", "failure", "cancelled", ""):
+                for preflight in ("success", "failure", "skipped", "cancelled", ""):
+                    context = {
+                        "job.status": status,
+                        "steps.shared_registry_preflight.outcome": preflight,
+                        "github.event_name": event,
+                        "needs.authorize.outputs.valid": valid,
+                        "needs.authorize.outputs.recovery": recovery,
+                        "inputs.publish_recovery": requested,
+                    }
+                    successful = status == preflight == "success"
+                    selected = successful and authority
+                    for name in (token_name, publish_name):
+                        secret = TokenBoundaryEnvironment(allow_token=selected)
+                        value, gate = workflow_step_token(candidate, name, context, secret)
+                        assert secret.reads == int(selected), (name, context)
+                        assert value == ("fixture-publication-token" if selected else ""), (name, context)
+                        expected_gate = successful and (name == publish_name or valid == "true" or recovery == "true")
+                        assert gate == expected_gate, (name, context)
+                        count += 1
+        return count
+
+    count = probe(workflow)
+    # Each old env is an independent mutation control. The failure must be
+    # the value trap before step-if, not a parser or source-shape rejection.
+    for name, old_expression in (
+        (token_name, "secrets.CARGO_REGISTRY_TOKEN"),
+        (publish_name, "((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || ''"),
+    ):
+        start = workflow.index(f"      - name: {name}\n")
+        end = workflow.index("\n      - ", start + 1)
+        block = workflow[start:end]
+        lines = [line for line in block.splitlines() if line.startswith("          CARGO_REGISTRY_TOKEN: ")]
+        assert len(lines) == 1
+        replacement = "          CARGO_REGISTRY_TOKEN: $" + "{{ " + old_expression + " }}"
+        mutant = workflow[:start] + block.replace(lines[0], replacement, 1) + workflow[end:]
+        assert mutant != workflow
+        try:
+            probe(mutant)
+        except AssertionError as error:
+            assert str(error) == "selected token value was retrieved before an upload", str(error)
+        else:
+            raise AssertionError(f"old selected-secret expression escaped the oracle: {name}")
+    print(f"release env-before-if boundary: {count} cases and 2 old-expression controls passed")
+
+
 def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
-    """Check runner gates and execute the real strict preflight shell block."""
+    """Check env before runner gates and execute the real strict preflight."""
     if workflow is None:
         workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     job = workflow.split("\n  publish:\n", 1)[1].split("\n  build:", 1)[0]
@@ -717,8 +940,8 @@ def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
     token_name = "Require crates.io API token for publication"
     publish_name = "Publish cargo-allow topology rows in dependency order"
     assert job.index(preflight_name) < job.index(token_name) < job.index(publish_name)
-    # An explicit successful outcome also denies a skipped preflight. Keep
-    # success() so failed/cancelled earlier steps cannot select a secret step.
+    # Keep both execution gates. They run after env evaluation and do not
+    # themselves prevent selection of the secret into a skipped step's env.
     gate = "if: success() && steps.shared_registry_preflight.outcome == 'success'"
     for name in (token_name, publish_name):
         block = job.split(f"      - name: {name}\n", 1)[1].split("\n      - ", 1)[0]
@@ -734,6 +957,7 @@ def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
     # in any earlier step. Later unrelated jobs are outside this assertion.
     assert "secrets.CARGO_REGISTRY_TOKEN" not in workflow.split(f"      - name: {preflight_name}\n", 1)[0]
     assert "CARGO_REGISTRY_TOKEN" not in preflight_block
+    exercise_workflow_environment_boundary(workflow)
     preflight = workflow_run_step(workflow, preflight_name)
     require = workflow_run_step(workflow, token_name)
     bash = shutil.which("bash")
@@ -777,16 +1001,29 @@ def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
                 cwd=temporary, env=environment, capture_output=True, text=True, timeout=10,
             )
             assert (result.returncode == 0) == (name in {"authorized", "dispatch"}), result.stdout + result.stderr
-            if result.returncode == 0 and authorized:
-                # Materialization happens only after the actual gate returned
-                # successfully; native Actions still owns scheduling semantics.
-                environment[TOKEN_KEY] = selected_secret[TOKEN_KEY]
+            context = {
+                "job.status": "success" if result.returncode == 0 else "failure",
+                "steps.shared_registry_preflight.outcome": "success" if result.returncode == 0 else "failure",
+                "github.event_name": "push" if authorized else "workflow_dispatch",
+                "needs.authorize.outputs.valid": "true" if authorized else "false",
+                "needs.authorize.outputs.recovery": "false",
+                "inputs.publish_recovery": False,
+            }
+            token, should_require = workflow_step_token(workflow, token_name, context, selected_secret)
+            assert should_require == (result.returncode == 0 and authorized)
+            if should_require:
+                environment[TOKEN_KEY] = token
                 required = subprocess.run(
                     [bash, "--noprofile", "--norc", "-c", require],
                     cwd=temporary, env=environment, capture_output=True, text=True, timeout=10,
                 )
                 assert required.returncode == 0, required.stdout + required.stderr
             assert selected_secret.reads == int(name == "authorized")
+            publish_secret = TokenBoundaryEnvironment(allow_token=name == "authorized")
+            token, should_publish = workflow_step_token(workflow, publish_name, context, publish_secret)
+            assert should_publish == (result.returncode == 0)
+            assert publish_secret.reads == int(name == "authorized")
+            assert token == ("fixture-publication-token" if name == "authorized" else "")
             scenarios += 1
     print(f"release workflow pre-token boundary: {scenarios} scenarios passed")
 

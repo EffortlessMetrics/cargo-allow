@@ -329,6 +329,13 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
 fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    let selected_token_env = concat!(
+        "CARGO_REGISTRY_TOKEN: ${{ job.status == 'success' && ",
+        "steps.shared_registry_preflight.outcome == 'success' && ",
+        "((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || ",
+        "(inputs.publish_recovery && needs.authorize.outputs.recovery == 'true')) && ",
+        "secrets.CARGO_REGISTRY_TOKEN || '' }}",
+    );
     let token_step = workflow
         .split("      - name: Resolve crates.io API token")
         .nth(1)
@@ -371,6 +378,9 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
                 line.trim()
                     == "if: success() && steps.shared_registry_preflight.outcome == 'success' && (needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true')"
             })
+            && require_token_step
+                .lines()
+                .any(|line| line.trim() == selected_token_env)
             && !require_token_step.contains("continue-on-error:")
             && workflow
                 .find("      - name: Prove shared registry preflight before upload")
@@ -393,6 +403,9 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
                 line.trim()
                     == "if: success() && steps.shared_registry_preflight.outcome == 'success'"
             })
+            && publish_step
+                .lines()
+                .any(|line| line.trim() == selected_token_env)
             && !publish_step.contains("continue-on-error:")
             && publish_step.contains("needs.authorize.outputs.valid == 'true'"),
         "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish after successful shared-registry preflight"

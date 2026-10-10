@@ -360,14 +360,13 @@ jobs:
             --registry-preflight \
             --receipt target/cargo-allow/shared-registry-preflight.receipt.json
       - name: Require crates.io API token for publication
-        # #3790: reachable only when the authorize gate compiled Complete
-        # (valid) or when the incident-owned recovery path applies, and the
-        # strict shared registry preflight has succeeded. A skipped
-        # or failed authorize job skips this job via needs semantics, and an
-        # explicit false output keeps the token unread.
+        # #3790: the runner evaluates env before if. Both secret expressions
+        # require the job's currently visible successful status, successful
+        # strict shared preflight and matching normal/recovery authority.
+        # A skipped or failed authorize job still skips this job via needs.
         if: success() && steps.shared_registry_preflight.outcome == 'success' && (needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true')
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ job.status == 'success' && steps.shared_registry_preflight.outcome == 'success' && ((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || (inputs.publish_recovery && needs.authorize.outputs.recovery == 'true')) && secrets.CARGO_REGISTRY_TOKEN || '' }}
         run: |
           set -euo pipefail
           if [ -z "${CARGO_REGISTRY_TOKEN}" ]; then
@@ -377,7 +376,7 @@ jobs:
       - name: Publish cargo-allow topology rows in dependency order
         if: success() && steps.shared_registry_preflight.outcome == 'success'
         env:
-          CARGO_REGISTRY_TOKEN: ${{ ((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || '' }}
+          CARGO_REGISTRY_TOKEN: ${{ job.status == 'success' && steps.shared_registry_preflight.outcome == 'success' && ((github.event_name != 'workflow_dispatch' && needs.authorize.outputs.valid == 'true') || (inputs.publish_recovery && needs.authorize.outputs.recovery == 'true')) && secrets.CARGO_REGISTRY_TOKEN || '' }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
           RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
           RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
