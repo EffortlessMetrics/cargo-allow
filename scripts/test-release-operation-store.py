@@ -677,6 +677,61 @@ class ReadbackTests(unittest.TestCase):
         return self.store.read_artifact(self.provider.transfer() if transfer is None else transfer,
                                        artifact_id=505, expected_producer=producer())
 
+    def test_member_readback_keeps_numeric_object_and_complete_distinct_paths(self):
+        self.provider.artifact_files = {"one.json": b"same", "two.json": b"same"}
+        self.provider.artifact_zip = archive(self.provider.artifact_files)
+        transfer = self.provider.transfer()
+        original = copy.deepcopy(transfer)
+        result = self.store.read_artifact_members(
+            transfer, artifact_id=505, expected_producer=producer(),
+            members={"first": ("Evidence:package-docs", "one.json"),
+                     "second": ("Evidence:install-journey", "two.json")})
+        self.assertEqual(transfer, original)
+        self.assertEqual(json.loads(result.transfer_bytes), original)
+        self.assertEqual(result.artifact_id, 505)
+        self.assertEqual(result.retention_expiry_utc, self.provider.artifact["expires_at"])
+        self.assertEqual([(item.logical_id, item.path, item.data) for item in result.members],
+                         [("first", "one.json", b"same"), ("second", "two.json", b"same")])
+        self.assertEqual([item.storage_locator for item in result.members], [
+            "github-actions-artifact://EffortlessMetrics/cargo-allow/505/one.json",
+            "github-actions-artifact://EffortlessMetrics/cargo-allow/505/two.json"])
+        self.assertEqual(self.provider.mutations(), [])
+
+    def test_member_mapping_cannot_omit_alias_escape_or_rekey_provider_inventory(self):
+        self.provider.artifact_files = {"one.json": b"same", "two.json": b"same"}
+        self.provider.artifact_zip = archive(self.provider.artifact_files)
+        for members in (
+            {"first": ("Evidence", "one.json")},
+            {"first": ("Evidence", "one.json"), "second": ("Evidence", "one.json")},
+            {"first": ("Evidence", "one.json"), "second": ("Evidence", "other.json")},
+            {"first": ("Evidence", "../one.json"), "second": ("Evidence", "two.json")},
+            {"first": ("Evidence", "one.json#alias"), "second": ("Evidence", "two.json")},
+            {"bad\nidentity": ("Evidence", "one.json"), "second": ("Evidence", "two.json")},
+        ):
+            with self.subTest(members=members), self.assertRaises(STORE.StoreError):
+                self.store.read_artifact_members(
+                    self.provider.transfer(), artifact_id=505,
+                    expected_producer=producer(), members=members)
+        self.assertEqual(self.provider.calls, [])
+
+    def test_member_readback_still_checks_exact_producer_bytes_and_expiry(self):
+        for change in ("producer", "bytes", "expiry"):
+            with self.subTest(change=change):
+                provider = Provider()
+                store = provider.client()
+                transfer = provider.transfer()
+                if change == "producer":
+                    transfer["producer"]["job_id"] = "0303"
+                elif change == "bytes":
+                    provider.artifact_zip = archive({"authorization.json": b"changed"})
+                else:
+                    provider.artifact["expires_at"] = date(NOW)
+                with self.assertRaises(STORE.StoreError):
+                    store.read_artifact_members(
+                        transfer, artifact_id=505, expected_producer=producer(),
+                        members={"selected": ("Evidence", "authorization.json")})
+                self.assertEqual(provider.mutations(), [])
+
     def test_exact_source_and_approved_actor_are_observed(self):
         self.assertEqual(self.read_source(), self.provider.source_body)
         self.assertEqual(self.provider.mutations(), [])

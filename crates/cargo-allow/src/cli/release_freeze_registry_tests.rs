@@ -718,7 +718,7 @@ pub(super) fn require_noncomplete_composition(
 ) -> TestResult {
     use allow_report::{
         CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalFreezeReplayResultV1,
-        FinalReadinessVerdictV1,
+        FinalEvidenceGraphV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
@@ -770,14 +770,17 @@ pub(super) fn require_noncomplete_composition(
         if !error.to_string().contains("state=Incomplete") {
             return Err(format!("registry fixture failed outside composition: {error}").into());
         }
-        let readiness: CargoAllowFinalReadinessV1 = serde_json::from_slice(&std::fs::read(
+        let readiness: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(&std::fs::read(
             args.out_dir.join("final-freeze.readiness.json"),
         )?)?;
         let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
             args.out_dir.join("final-freeze.replay.json"),
         )?)?;
-        let row = readiness
-            .required_evidence
+        let graph: FinalEvidenceGraphV1 = serde_json::from_slice(&std::fs::read(
+            args.out_dir.join("final-freeze.evidence-graph.json"),
+        )?)?;
+        let row = graph
+            .nodes
             .iter()
             .find(|row| row.evidence_id == "registry-observation")
             .ok_or("required registry row absent")?;
@@ -786,13 +789,13 @@ pub(super) fn require_noncomplete_composition(
             .iter()
             .find(|row| row.observation_id == "obs:registry-feasibility")
             .ok_or("registry replay reading absent")?;
-        if row.result != expected
+        if row.result != expected || !row.required
             || reading.freshness == ObservationFreshnessV1::Current
             || !reading.authoritative
             || !reading
                 .detail
                 .contains(&allow_core::sha256_v1_bytes(&bytes))
-            || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
+            || readiness.is_some()
             || replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
         {
             return Err(format!(

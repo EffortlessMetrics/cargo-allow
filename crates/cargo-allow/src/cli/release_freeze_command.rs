@@ -20,10 +20,10 @@ use std::process::Command;
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use allow_report::{
-    ArtifactTransferFileV1, ArtifactTransferInitV1, CandidateCustodyInitV1,
+    CandidateCustodyInitV1,
     CandidatePreparationReceiptV1, CandidatePreparationStateV1, CargoAllowFinalFreezeReceiptV1,
     CargoAllowFinalFreezeReplayInputsV1, CargoAllowFrozenCandidateCustodyV1,
-    CargoAllowReleaseArtifactTransferV1, ConfidentialityClassV1, CustodyFileV1,
+    ConfidentialityClassV1, CustodyFileV1,
     FinalEvidenceAuthorityScopeV1, FinalEvidenceCurrentnessV1, FinalEvidenceEdgeKindV1,
     FinalEvidenceEdgeV1, FinalEvidenceGraphModeV1, FinalEvidenceGraphV1,
     FinalEvidenceInvalidationDimensionV1, FinalEvidenceNodeClassV1, FinalEvidenceNodeResultV1,
@@ -32,13 +32,13 @@ use allow_report::{
     FinalEvidenceSelectedSubjectV1, FinalEvidenceSubjectBindingV1, FinalFreezeManifestBindingV1,
     FinalFreezeManifestResultV1, FinalFreezeReceiptInitV1, FinalFreezeReplayResultV1,
     FinalReadinessCustodyPostureV1, FinalReadinessDecisionInputsV1, FinalReadinessDecisionStateV1,
-    FinalReadinessPostMergePostureV1, FinalReadinessQualificationPostureV1,
+    FinalReadinessPostMergePostureV1,
     FinalReadinessRootDecisionV1, FinalReadinessSupportedLimitationV1, FinalReadinessVerdictV1,
     FinalSelectionDispositionV1, FinalSupportSelectionV1, ObservationFreshnessV1,
-    ObservationReadingV1, ProducerIdentityV1, RefreshableObservationAdapterV1,
+    ObservationReadingV1, RefreshableObservationAdapterV1,
     RefreshableObservationKindV1, RefreshableObservationV1, ReleaseChannelV1, ReleaseVersionV1,
-    RetainedArtifactBytesV1, RetainedCustodyItemV1, RetainedExactArtifactV1, TrustClassV1,
-    UntrustedInputPostureV1, aggregate_final_readiness, evaluate_final_evidence_graph,
+    RetainedArtifactBytesV1, RetainedCustodyItemV1, RetainedExactArtifactV1,
+    FinalReadinessRowKindV1, FinalReadinessRowV1, aggregate_final_readiness, evaluate_final_evidence_graph,
     final_evidence_graph_digest, render_final_freeze_replay_json,
     render_final_freeze_replay_markdown, render_final_readiness_json, replay_final_freeze,
 };
@@ -50,6 +50,9 @@ mod rehearsal;
 
 #[path = "release_freeze_registry.rs"]
 mod registry;
+
+#[path = "release_freeze_qualification.rs"]
+mod qualification;
 
 #[cfg(test)]
 #[path = "release_freeze_rehearsal_tests.rs"]
@@ -92,6 +95,21 @@ pub(crate) struct ReleaseFreezeArgs {
 pub(crate) enum ReleaseFreezeSubcommand {
     /// Compose the final freeze receipt from retained evidence and replay it.
     Compose(ReleaseFreezeComposeArgs),
+    /// Prepare immutable receipt/graph bytes from checked original inputs.
+    Prepare {
+        #[command(flatten)]
+        args: ReleaseFreezeComposeArgs,
+        #[arg(long)]
+        readback_input: PathBuf,
+    },
+    /// Compute qualification/custody/replay over a freshly read provider set.
+    /// This hidden computation is not a provider attestation.
+    Qualify {
+        #[command(flatten)]
+        args: ReleaseFreezeComposeArgs,
+        #[arg(long)]
+        readback_input: PathBuf,
+    },
 }
 
 /// One retained evidence input, `role=relative-or-absolute-path`.
@@ -283,11 +301,20 @@ pub(super) fn cmd_release_freeze(args: &ReleaseFreezeArgs) -> CargoAllowResult<(
     })?;
     match &args.command {
         ReleaseFreezeSubcommand::Compose(compose) => cmd_compose(&root, compose),
+        ReleaseFreezeSubcommand::Prepare { args, readback_input } => qualification::prepare(&root, args, readback_input),
+        ReleaseFreezeSubcommand::Qualify { args, readback_input } => qualification::qualify(&root, args, readback_input),
     }
 }
 
-fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
-    let subject = SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
+fn prepare_inputs(
+    root: &Path,
+    args: &ReleaseFreezeComposeArgs,
+    readback: Option<&qualification::ReadbackInput>,
+) -> CargoAllowResult<PreparedInputs> {
+    let mut subject = SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
+    if let Some(readback) = readback {
+        subject.frozen_at_utc = readback.preparation_time()?;
+    }
     let selection = load_selection(root, &subject)?;
     let shared = load_shared_prerequisites(root)?;
     let evidence = collect_evidence(root, args, &subject)?;
@@ -300,7 +327,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     // evaluation time, and a selected freshness window. Retained input fields
     // cannot fill this authority gap or make the production freeze Current.
     let registry = registry::reconcile(&subject, &package_rows, &evidence, None);
-    let graph = build_evidence_graph(
+    let mut graph = build_evidence_graph(
         &subject,
         &selection,
         &evidence,
@@ -308,9 +335,9 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         incident_digest.as_deref(),
         (registry.0, &registry.2),
     );
-    let evaluation = evaluate_final_evidence_graph(&graph);
-    let decision_inputs = readiness_decision_inputs(&subject, &selection, &evidence);
-    let readiness = aggregate_final_readiness(&graph, &decision_inputs);
+    if let Some(readback) = readback {
+        readback.bind_original_evidence(&subject, &evidence, &mut graph)?;
+    }
     let graph_digest = final_evidence_graph_digest(&graph)
         .map_err(|reason| instrument(format!("evidence graph digest: {reason}")))?;
 
@@ -352,6 +379,29 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     let receipt_bytes = serde_json::to_vec(&receipt)
         .map_err(|error| instrument(format!("receipt serialization: {error}")))?;
 
+    Ok(PreparedInputs { subject, selection, evidence, graph, package_rows, archives,
+        manifest_bytes, receipt, receipt_bytes, registry })
+}
+
+struct PreparedInputs {
+    subject: SubjectIdentity,
+    selection: FinalSupportSelectionV1,
+    evidence: Vec<EvidenceInput>,
+    graph: FinalEvidenceGraphV1,
+    package_rows: Vec<FinalEvidencePackageSubjectV1>,
+    archives: ArchiveSet,
+    manifest_bytes: Option<Vec<u8>>,
+    receipt: CargoAllowFinalFreezeReceiptV1,
+    receipt_bytes: Vec<u8>,
+    registry: (FinalEvidenceNodeResultV1, RefreshableObservationV1, ObservationReadingV1),
+}
+
+fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
+    let PreparedInputs { subject, selection, evidence, graph, package_rows, archives,
+        manifest_bytes, receipt, receipt_bytes, registry } = prepare_inputs(root, args, None)?;
+    let evaluation = evaluate_final_evidence_graph(&graph);
+    let readiness = readiness_decision_inputs_observed(&subject, &selection, &evidence, None, None)
+        .map(|inputs| aggregate_final_readiness(&graph, &inputs));
     let custody = build_custody(
         &subject,
         &package_rows,
@@ -359,13 +409,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         &receipt_bytes,
         manifest_bytes.as_deref(),
     )?;
-    let transfers = build_transfers(
-        &subject,
-        &package_rows,
-        &archives,
-        &receipt_bytes,
-        manifest_bytes.as_deref(),
-    )?;
+    let transfers = Vec::new();
     let retained_artifacts =
         build_retained_artifacts(&archives, &receipt_bytes, manifest_bytes.as_deref());
 
@@ -381,9 +425,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     let replayed = replay_final_freeze(
         &replay_inputs,
         &FreezeObservationAdapter {
-            source_current: evidence_role(&evidence, FreezeEvidenceRole::Controls)
-                .map(EvidenceInput::bound_ok)
-                .unwrap_or(false),
+            source_current: false,
             registry_reading: registry.2,
         },
     );
@@ -392,7 +434,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
     let graph_complete =
         evaluation.findings.is_empty() && evidence.iter().all(EvidenceInput::bound_ok);
     let complete = graph_complete
-        && readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
+        && readiness.as_ref().is_ok_and(|value| value.verdict == FinalReadinessVerdictV1::ReadyForFreeze)
         && replayed.result == FinalFreezeReplayResultV1::CompleteEquivalent;
 
     write_outputs(
@@ -416,7 +458,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         freeze_state: freeze_state.to_string(),
         replay_result: format!("{:?}", replayed.result),
         replay_retained_bytes_verified: replayed.retained_bytes_verified,
-        readiness_verdict: format!("{:?}", readiness.verdict),
+        readiness_verdict: readiness.as_ref().map(|value| format!("{:?}", value.verdict)).unwrap_or_else(|_| "Incomplete".to_string()),
         selection_digest: selection.selection_digest.clone(),
         package_rows: EXPECTED_UPLOAD_ROWS,
         shared_rows: EXPECTED_SHARED_ROWS,
@@ -444,6 +486,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
                     .iter()
                     .map(|finding| finding.message.clone()),
             )
+            .chain(readiness_rows(&readiness).iter().map(|row| row.message.clone()))
             .collect(),
     };
     let rendered = serde_json::to_string_pretty(&summary)
@@ -457,7 +500,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
             CargoAllowErrorKind::InstrumentFailure,
             format!(
                 "the freeze did not reach a verified Complete replay: state={freeze_state} replay={:?} readiness={:?} retained_bytes_verified={}",
-                replayed.result, readiness.verdict, replayed.retained_bytes_verified
+                replayed.result, summary.readiness_verdict, replayed.retained_bytes_verified
             ),
         ))
     }
@@ -563,7 +606,10 @@ impl SubjectIdentity {
         let cargo_lock_digest =
             sha256_v1_bytes(verified_subject_input(&verified, CARGO_LOCK_PATH)?);
         let topology_digest = sha256_v1_bytes(verified_subject_input(&verified, TOPOLOGY_PATH)?);
-        let frozen_at_utc = inputs.git(&["log", "-1", "--format=%cI"])?;
+        // No evaluation or retention clock can be derived from a source
+        // commit's historical author/committer time. The checked producer
+        // supplies preparation time explicitly; local diagnosis leaves it absent.
+        let frozen_at_utc = String::new();
         // The subject must not move while it is being collected.
         let commit_now = inputs.git(&["rev-parse", "HEAD"])?;
         let tree_now = inputs.git(&["rev-parse", "HEAD^{tree}"])?;
@@ -1242,7 +1288,7 @@ fn build_evidence_graph(
         FinalEvidenceInvalidationDimensionV1::ProviderObservation,
         FinalEvidenceInvalidationDimensionV1::LiveControls,
     ];
-    registry_node.limitations.push(registry.1.detail.clone());
+    // Provider diagnostics belong to observation/readiness rows, not support limitations.
     required_ids.push(registry_node.evidence_id.clone());
     nodes.push(registry_node);
 
@@ -1410,10 +1456,56 @@ fn node_for(
 /// The explicit campaign decisions recorded by the #3737 final selection and
 /// the #3768 train: the pilots stay NotProven/NotIncluded, rc.2 is not
 /// selected, and publication authorization stays outside the freeze.
+#[cfg(test)]
 fn readiness_decision_inputs(
     subject: &SubjectIdentity,
     selection: &FinalSupportSelectionV1,
     evidence: &[EvidenceInput],
+) -> FinalReadinessDecisionInputsV1 {
+    readiness_decision_inputs_known(selection, evidence,
+        FinalReadinessPostMergePostureV1 { merge_commit: subject.commit.clone(),
+            merge_subject_current: true, qualification: allow_report::FinalReadinessQualificationPostureV1::Current,
+            owner: "explicit-unit-fixture".to_string() },
+        FinalReadinessCustodyPostureV1 { replay_feasible: true,
+            expires_before_authorization_window: false, owner: "explicit-unit-fixture".to_string() })
+}
+
+fn missing_observation(id: &str, message: &str) -> FinalReadinessRowV1 {
+    FinalReadinessRowV1 { kind: FinalReadinessRowKindV1::MissingEvidence,
+        evidence_id: Some(id.to_string()), message: message.to_string(),
+        owner: "#2501".to_string(), next_action: "run the selected authenticated freeze qualifier and retain its exact inputs".to_string() }
+}
+
+fn readiness_decision_inputs_observed(
+    subject: &SubjectIdentity,
+    selection: &FinalSupportSelectionV1,
+    evidence: &[EvidenceInput],
+    post_merge: Option<FinalReadinessPostMergePostureV1>,
+    custody: Option<FinalReadinessCustodyPostureV1>,
+) -> Result<FinalReadinessDecisionInputsV1, Vec<FinalReadinessRowV1>> {
+    let mut missing = Vec::new();
+    if post_merge.is_none() {
+        missing.push(missing_observation("post-merge-qualification", "independent reviewed/merged qualification and current main readback are absent"));
+    }
+    if custody.is_none() {
+        for (id, message) in [
+            ("custody-readback", "independent immutable artifact readback is absent"),
+            ("evaluation-clock", "the provider-checked evaluation clock is absent"),
+            ("authorization-window", "the independently selected authorization window is absent"),
+        ] { missing.push(missing_observation(id, message)); }
+    }
+    let (Some(post_merge), Some(custody)) = (post_merge, custody) else { return Err(missing); };
+    if post_merge.merge_commit != subject.commit {
+        return Err(vec![missing_observation("post-merge-subject", "qualification does not select this exact committed subject")]);
+    }
+    Ok(readiness_decision_inputs_known(selection, evidence, post_merge, custody))
+}
+
+fn readiness_decision_inputs_known(
+    selection: &FinalSupportSelectionV1,
+    evidence: &[EvidenceInput],
+    post_merge: FinalReadinessPostMergePostureV1,
+    custody: FinalReadinessCustodyPostureV1,
 ) -> FinalReadinessDecisionInputsV1 {
     let decided = |decision_id: &str, owner: &str| FinalReadinessRootDecisionV1 {
         decision_id: decision_id.to_string(),
@@ -1452,18 +1544,14 @@ fn readiness_decision_inputs(
         root_decisions,
         supported_limitations,
         permitted_claim_narrowings: Vec::new(),
-        post_merge: FinalReadinessPostMergePostureV1 {
-            merge_commit: subject.commit.clone(),
-            merge_subject_current: true,
-            qualification: FinalReadinessQualificationPostureV1::Current,
-            owner: "core/release".to_string(),
-        },
-        custody: FinalReadinessCustodyPostureV1 {
-            replay_feasible: true,
-            expires_before_authorization_window: false,
-            owner: "core/release".to_string(),
-        },
-        remaining_reversible_work: Vec::new(),
+        post_merge,
+        custody,
+        remaining_reversible_work: evidence.iter().filter(|input| !input.bound_ok())
+            .map(|input| format!("repair exact {} evidence: {}", input.role.label(), input.binding_notes.join("; ")))
+            .chain([
+                "#3792: obtain independently qualified current registry context and observations".to_string(),
+                "#2284: refresh current source/live-control observations through their production owner".to_string(),
+            ]).collect(),
         remaining_irreversible_operations: REMAINING_IRREVERSIBLE_OPERATIONS
             .iter()
             .map(|operation| (*operation).to_string())
@@ -1493,10 +1581,10 @@ fn build_custody(
                 size_bytes: bytes.len() as u64,
                 sha256: sha256.clone(),
             }],
-            storage_locator: format!("local:freeze-{}/{}", subject.version, row.package_name),
-            retention_expiry_utc: "2027-12-31T00:00:00Z".to_string(),
-            readback_verified: true,
-            readback_sha256: Some(sha256),
+            storage_locator: String::new(),
+            retention_expiry_utc: String::new(),
+            readback_verified: false,
+            readback_sha256: None,
             confidentiality_class: ConfidentialityClassV1::Public,
         });
     }
@@ -1509,10 +1597,10 @@ fn build_custody(
             size_bytes: receipt_bytes.len() as u64,
             sha256: receipt_sha256.clone(),
         }],
-        storage_locator: format!("local:freeze-{}/final-freeze-receipt", subject.version),
-        retention_expiry_utc: "2027-12-31T00:00:00Z".to_string(),
-        readback_verified: true,
-        readback_sha256: Some(receipt_sha256),
+        storage_locator: String::new(),
+        retention_expiry_utc: String::new(),
+        readback_verified: false,
+        readback_sha256: None,
         confidentiality_class: ConfidentialityClassV1::Public,
     });
     if let Some(manifest) = manifest_bytes {
@@ -1525,10 +1613,10 @@ fn build_custody(
                 size_bytes: manifest.len() as u64,
                 sha256: manifest_sha256.clone(),
             }],
-            storage_locator: format!("local:freeze-{}/release-manifest-v2", subject.version),
-            retention_expiry_utc: "2027-12-31T00:00:00Z".to_string(),
-            readback_verified: true,
-            readback_sha256: Some(manifest_sha256),
+            storage_locator: String::new(),
+            retention_expiry_utc: String::new(),
+            readback_verified: false,
+            readback_sha256: None,
             confidentiality_class: ConfidentialityClassV1::Public,
         });
     }
@@ -1542,125 +1630,6 @@ fn build_custody(
             created_at_utc: subject.frozen_at_utc.clone(),
         },
     ))
-}
-
-fn build_transfers(
-    subject: &SubjectIdentity,
-    rows: &[FinalEvidencePackageSubjectV1],
-    archives: &ArchiveSet,
-    receipt_bytes: &[u8],
-    manifest_bytes: Option<&[u8]>,
-) -> CargoAllowResult<Vec<CargoAllowReleaseArtifactTransferV1>> {
-    let mut transfers = Vec::new();
-    for row in rows.iter().take(EXPECTED_UPLOAD_ROWS as usize) {
-        let bytes = archives
-            .archives
-            .get(&row.package_name)
-            .ok_or_else(|| instrument(format!("no archive bytes for {}", row.package_name)))?;
-        transfers.push(CargoAllowReleaseArtifactTransferV1::new(
-            ArtifactTransferInitV1 {
-                transfer_id: format!("transfer:{}", row.package_name),
-                role: "PackageArchive".to_string(),
-                stable_artifact_id: row.package_name.clone(),
-                producer: ProducerIdentityV1 {
-                    repository: REPOSITORY.to_string(),
-                    workflow_path: "scripts/exact-candidate-package-set.sh".to_string(),
-                    git_ref: format!("commit/{}", subject.commit),
-                    run_id: 0,
-                    run_attempt: 1,
-                    job_id: format!("job:{}", row.package_name),
-                    commit_sha: subject.commit.clone(),
-                    tree_sha: subject.tree.clone(),
-                    release_version: subject.version.clone(),
-                    tool_name: "cargo-allow".to_string(),
-                    schema_id: "cargo-allow.release-artifact-transfer.v1".to_string(),
-                    producer_generation: 1,
-                },
-                provider_id: "local-freeze".to_string(),
-                provider_artifact_name: row.package_name.clone(),
-                files: vec![ArtifactTransferFileV1 {
-                    path: format!("{}-{}.crate", row.package_name, row.version),
-                    size_bytes: bytes.len() as u64,
-                    sha256: sha256_v1_bytes(bytes),
-                }],
-                semantic_payload_digest: None,
-                trust_class: TrustClassV1::ManualDispatch,
-                untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
-                created_at_utc: subject.frozen_at_utc.clone(),
-            },
-        ));
-    }
-    let control_rows: [(&str, &str, &[u8]); 1] =
-        [("FreezeReceipt", "final-freeze-receipt", receipt_bytes)];
-    for (role, artifact_id, bytes) in control_rows {
-        transfers.push(CargoAllowReleaseArtifactTransferV1::new(
-            ArtifactTransferInitV1 {
-                transfer_id: format!("transfer:{artifact_id}"),
-                role: role.to_string(),
-                stable_artifact_id: artifact_id.to_string(),
-                producer: ProducerIdentityV1 {
-                    repository: REPOSITORY.to_string(),
-                    workflow_path: "scripts/exact-candidate-package-set.sh".to_string(),
-                    git_ref: format!("commit/{}", subject.commit),
-                    run_id: 0,
-                    run_attempt: 1,
-                    job_id: format!("job:{artifact_id}"),
-                    commit_sha: subject.commit.clone(),
-                    tree_sha: subject.tree.clone(),
-                    release_version: subject.version.clone(),
-                    tool_name: "cargo-allow".to_string(),
-                    schema_id: "cargo-allow.release-artifact-transfer.v1".to_string(),
-                    producer_generation: 1,
-                },
-                provider_id: "local-freeze".to_string(),
-                provider_artifact_name: artifact_id.to_string(),
-                files: vec![ArtifactTransferFileV1 {
-                    path: format!("{artifact_id}.json"),
-                    size_bytes: bytes.len() as u64,
-                    sha256: sha256_v1_bytes(bytes),
-                }],
-                semantic_payload_digest: None,
-                trust_class: TrustClassV1::ManualDispatch,
-                untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
-                created_at_utc: subject.frozen_at_utc.clone(),
-            },
-        ));
-    }
-    if let Some(manifest) = manifest_bytes {
-        transfers.push(CargoAllowReleaseArtifactTransferV1::new(
-            ArtifactTransferInitV1 {
-                transfer_id: "transfer:release-manifest-v2".to_string(),
-                role: "ReleaseManifest".to_string(),
-                stable_artifact_id: "release-manifest-v2".to_string(),
-                producer: ProducerIdentityV1 {
-                    repository: REPOSITORY.to_string(),
-                    workflow_path: "scripts/generate-release-manifest.sh".to_string(),
-                    git_ref: format!("commit/{}", subject.commit),
-                    run_id: 0,
-                    run_attempt: 1,
-                    job_id: "job:release-manifest-v2".to_string(),
-                    commit_sha: subject.commit.clone(),
-                    tree_sha: subject.tree.clone(),
-                    release_version: subject.version.clone(),
-                    tool_name: "cargo-allow".to_string(),
-                    schema_id: "cargo-allow.release-artifact-transfer.v1".to_string(),
-                    producer_generation: 1,
-                },
-                provider_id: "local-freeze".to_string(),
-                provider_artifact_name: "release-manifest-v2".to_string(),
-                files: vec![ArtifactTransferFileV1 {
-                    path: "release-manifest-v2.json".to_string(),
-                    size_bytes: manifest.len() as u64,
-                    sha256: sha256_v1_bytes(manifest),
-                }],
-                semantic_payload_digest: None,
-                trust_class: TrustClassV1::ManualDispatch,
-                untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
-                created_at_utc: subject.frozen_at_utc.clone(),
-            },
-        ));
-    }
-    Ok(transfers)
 }
 
 fn build_retained_artifacts(
@@ -1727,11 +1696,11 @@ impl RefreshableObservationAdapterV1 for FreezeObservationAdapter {
         let freshness = if current {
             ObservationFreshnessV1::Current
         } else {
-            ObservationFreshnessV1::Stale
+            ObservationFreshnessV1::ProviderUnavailable
         };
         ObservationReadingV1 {
             freshness,
-            detail: "freeze-composition observation reading".to_string(),
+            detail: "source live-control readback remains independently required (#2284); ambient cache is non-authoritative".to_string(),
         }
     }
 }
@@ -1763,7 +1732,7 @@ fn write_outputs(
     replay_inputs: &CargoAllowFinalFreezeReplayInputsV1,
     receipt_bytes: &[u8],
     replayed: &allow_report::CargoAllowFinalFreezeReplayV1,
-    readiness: &allow_report::CargoAllowFinalReadinessV1,
+    readiness: &Result<allow_report::CargoAllowFinalReadinessV1, Vec<FinalReadinessRowV1>>,
 ) -> CargoAllowResult<()> {
     let out = if args.out_dir.is_absolute() {
         args.out_dir.clone()
@@ -1783,12 +1752,22 @@ fn write_outputs(
         render_final_freeze_replay_markdown(replayed),
     )
     .map_err(|error| instrument(format!("replay markdown write: {error}")))?;
-    let readiness_json = render_final_readiness_json(readiness)
-        .map_err(|error| instrument(format!("readiness render: {error}")))?;
+    let readiness_json = match readiness {
+        Ok(value) => render_final_readiness_json(value),
+        Err(_) => serde_json::to_string(&Option::<allow_report::CargoAllowFinalReadinessV1>::None),
+    }.map_err(|error| instrument(format!("readiness render: {error}")))?;
     std::fs::write(out.join("final-freeze.readiness.json"), readiness_json)
         .map_err(|error| instrument(format!("readiness write: {error}")))?;
-    let _ = replay_inputs;
+    qualification::write_json(&out.join("final-freeze.readiness-rows.json"), readiness_rows(readiness))?;
+    qualification::write_json(&out.join("final-freeze.replay-inputs.json"), replay_inputs)?;
+    qualification::write_json(&out.join("final-freeze.evidence-graph.json"), &replay_inputs.evidence_graph)?;
+    qualification::write_json(&out.join("final-freeze.custody.json"), &replay_inputs.custody)?;
+    qualification::write_json(&out.join("final-freeze.transfers.json"), &replay_inputs.retained_transfers)?;
     Ok(())
+}
+
+fn readiness_rows(readiness: &Result<allow_report::CargoAllowFinalReadinessV1, Vec<FinalReadinessRowV1>>) -> &[FinalReadinessRowV1] {
+    match readiness { Ok(value) => &value.rows, Err(rows) => rows }
 }
 
 fn load_incident_handoff(root: &Path) -> Option<String> {
@@ -2313,7 +2292,7 @@ expected_registry_checksum = "sha256:cccc"
         );
     }
 
-    fn selection() -> FinalSupportSelectionV1 {
+    pub(super) fn selection() -> FinalSupportSelectionV1 {
         let row = |dimension: &str, subject: &str, disposition: FinalSelectionDispositionV1| {
             FinalSelectionRowV1 {
                 dimension: dimension.to_string(),

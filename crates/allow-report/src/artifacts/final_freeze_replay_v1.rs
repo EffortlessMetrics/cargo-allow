@@ -19,7 +19,10 @@ use super::final_evidence_graph_v1::{
 use super::frozen_candidate_custody_v1::{
     CargoAllowFrozenCandidateCustodyV1, CustodyDispositionV1, RetainedCustodyItemV1,
 };
-use super::release_artifact_transfer_v1::CargoAllowReleaseArtifactTransferV1;
+use super::release_artifact_transfer_v1::{
+    ActualDownloadedFileV1, ArtifactTransferDispositionV1, CargoAllowReleaseArtifactTransferV1,
+    ConsumerContextV1, TrustClassV1, UntrustedInputPostureV1,
+};
 use super::release_identity_v1::{ReleaseChannelV1, ReleaseIdentityV1, ReleaseVersionV1};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -41,7 +44,7 @@ const PACKAGE_ARCHIVE_ROLE: &str = "PackageArchive";
 
 const REPLAY_CLAIM_BOUNDARY: &str = "This replay reconstructs the final-freeze verdict from retained immutable inputs plus explicitly refreshable observations and recomputes every semantic and exact-artifact digest from retained bytes. It reads nothing outside its retained input set, cannot strengthen Incomplete, NotProven, Unsupported, ProviderUnavailable, or incident facts, and never tags, uploads, publishes, authorizes, mints release state, reads a secret, or mutates any live setting.";
 
-const RECEIPT_CLAIM_BOUNDARY: &str = "The final-freeze receipt records the completed #2501 candidate freeze: the bound custody aggregate, the exact evidence graph digest, the selected 10+3 denominator, the prepublication manifest result, the RC.1 exclusion with its incident handoff, and the remaining irreversible operations. It records a completed freeze; it does not authorize publication.";
+const RECEIPT_CLAIM_BOUNDARY: &str = "The final-freeze receipt fixes the selected #2501 candidate inputs: the custody identifier, exact evidence graph digest, selected 10+3 denominator, prepublication manifest result, RC.1 exclusion with its incident handoff, and remaining irreversible operations. Completion requires separate current qualification, verified custody, readiness and replay; these immutable prepared bytes do not assert completion or authorize publication.";
 
 /// Closed replay result vocabulary for the reconstructed final freeze.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1204,6 +1207,18 @@ fn replay_transfer_coverage(
     digests: &BTreeMap<String, String>,
     rows: &mut Vec<FinalFreezeReplayRowV1>,
 ) {
+    // Provider object identity and a logical member identity are distinct.
+    // Keep original numeric envelopes; bind their entire inventory through
+    // singleton custody locators. Historical non-provider replay inputs keep
+    // their existing representation, but cannot mix it into this boundary.
+    if inputs.retained_transfers.iter().any(|envelope| {
+        envelope.provider_id == "github-actions-artifact"
+    }) || inputs.custody.items.iter().any(|item| {
+        item.storage_locator.starts_with("github-actions-artifact://")
+    }) {
+        replay_provider_member_coverage(inputs, digests, rows);
+        return;
+    }
     for envelope in &inputs.retained_transfers {
         if envelope.producer.release_version != inputs.freeze_receipt.release_identity.version {
             push_row(
@@ -1291,6 +1306,108 @@ fn replay_transfer_coverage(
             );
         }
     }
+}
+
+fn replay_provider_member_coverage(
+    inputs: &CargoAllowFinalFreezeReplayInputsV1,
+    digests: &BTreeMap<String, String>,
+    rows: &mut Vec<FinalFreezeReplayRowV1>,
+) {
+    let receipt = &inputs.freeze_receipt;
+    let prefix = format!("github-actions-artifact://{}/", receipt.repository);
+    let mut selected = BTreeMap::new();
+    for item in &inputs.custody.items {
+        let parsed = item.storage_locator.strip_prefix(&prefix)
+            .and_then(|tail| tail.split_once('/'));
+        let Some((object_id, path)) = parsed else {
+            push_row(rows, FinalFreezeReplayRowKindV1::Mismatch,
+                Some(item.artifact_id.clone()), "custody member has no exact provider object/path locator");
+            continue;
+        };
+        let valid_id = !object_id.is_empty() && object_id.len() <= 128
+            && !object_id.starts_with('0') && object_id.bytes().all(|byte| byte.is_ascii_digit());
+        let valid_path = !path.is_empty() && !path.starts_with('/')
+            && path.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._-/".contains(&byte))
+            && path.split('/').all(|part| !part.is_empty() && part != "." && part != "..");
+        let artifact = inputs.retained_artifacts.iter().find(|artifact| artifact.artifact_id == item.artifact_id);
+        let bound = artifact.zip(item.files.first()).is_some_and(|(artifact, file)| {
+            item.files.len() == 1 && artifact.role == item.role && file.path == path
+                && file.size_bytes == artifact.bytes.size_bytes()
+                && digests.get(&artifact.artifact_id) == Some(&file.sha256)
+        });
+        if !valid_id || !valid_path || !bound
+            || selected.insert((object_id.to_string(), path.to_string()), item.artifact_id.clone()).is_some()
+        {
+            push_row(rows, FinalFreezeReplayRowKindV1::Mismatch,
+                Some(item.artifact_id.clone()), "provider member mapping is malformed, duplicated, or differs from retained bytes");
+        }
+    }
+    let mut objects = BTreeSet::new();
+    let mut covered = BTreeSet::new();
+    for envelope in &inputs.retained_transfers {
+        let producer = &envelope.producer;
+        let mut paths = BTreeSet::new();
+        let mut downloaded = Vec::new();
+        let exact_producer = envelope.provider_id == "github-actions-artifact"
+            && objects.insert(envelope.stable_artifact_id.clone())
+            && producer.repository == receipt.repository && producer.commit_sha == receipt.commit
+            && producer.tree_sha == receipt.tree && producer.release_version == receipt.release_identity.version
+            && producer.run_id > 0 && producer.run_attempt > 0 && producer.producer_generation > 0
+            && !producer.workflow_path.is_empty() && !producer.tool_name.is_empty()
+            && !producer.schema_id.is_empty() && !producer.git_ref.is_empty()
+            && !producer.job_id.is_empty() && producer.job_id.len() <= 128
+            && !producer.job_id.starts_with('0') && producer.job_id.bytes().all(|byte| byte.is_ascii_digit())
+            && matches!(envelope.trust_class, TrustClassV1::ManualDispatch | TrustClassV1::TagWorkflow | TrustClassV1::CleanRelease)
+            && envelope.untrusted_input_posture == UntrustedInputPostureV1::StrictByteMatch;
+        for file in &envelope.files {
+            let key = (envelope.stable_artifact_id.clone(), file.path.clone());
+            let member = selected.get(&key).and_then(|id| inputs.retained_artifacts.iter().find(|artifact| &artifact.artifact_id == id));
+            let Some(member) = member else {
+                push_row(rows, FinalFreezeReplayRowKindV1::MissingArtifact,
+                    Some(envelope.transfer_id.clone()), "a provider inventory member has no retained logical member");
+                continue;
+            };
+            if !paths.insert(file.path.clone()) || !covered.insert(key)
+                || member.bytes.size_bytes() != file.size_bytes
+                || !same_sha256(&member.bytes.recomputed_digest(), &file.sha256)
+            {
+                push_row(rows, FinalFreezeReplayRowKindV1::Mismatch,
+                    Some(member.artifact_id.clone()), "provider inventory path, size or digest differs from its exact retained member");
+                continue;
+            }
+            // Preserve the original envelope's digest spelling. Equality was
+            // established against the actual bytes before this projection.
+            downloaded.push(ActualDownloadedFileV1 {
+                path: file.path.clone(), size_bytes: member.bytes.size_bytes(), sha256: file.sha256.clone(),
+            });
+        }
+        let consumer = ConsumerContextV1 {
+            workflow_path: "release-freeze/replay".to_string(), run_id: 0,
+            job_id: "pure-computation".to_string(), requested_role: envelope.role.clone(),
+            is_credential_bearing: true,
+        };
+        if !exact_producer || envelope.files.is_empty()
+            || envelope.evaluate_transfer(&consumer, &receipt.commit, &receipt.release_identity.version, &downloaded)
+                != ArtifactTransferDispositionV1::Complete
+        {
+            push_row(rows, FinalFreezeReplayRowKindV1::Mismatch,
+                Some(envelope.transfer_id.clone()), "original provider transfer failed its complete subject, trust, provenance or inventory contract");
+        }
+    }
+    for (key, artifact_id) in selected {
+        if !covered.contains(&key) {
+            push_row(rows, FinalFreezeReplayRowKindV1::MissingArtifact,
+                Some(artifact_id), "retained logical member is absent from the selected original provider envelope");
+        }
+    }
+}
+
+fn same_sha256(left: &str, right: &str) -> bool {
+    fn hex(value: &str) -> Option<&str> {
+        let value = value.strip_prefix("sha256:v1:").or_else(|| value.strip_prefix("sha256:"))?;
+        (value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))).then_some(value)
+    }
+    matches!((hex(left), hex(right)), (Some(left), Some(right)) if left == right)
 }
 
 /// Reconstruct the prepublication manifest result: the receipt must record an

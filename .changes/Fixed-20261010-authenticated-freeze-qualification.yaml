@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Prepare fixed final-freeze receipt and graph bytes, then qualify them through
+  authenticated original-artifact readback, existing typed post-merge and
+  custody contracts, and serialized replay inputs. Preserve numeric provider
+  envelopes while binding every logical member to its exact inventory path.
+  Missing current observations now produce named incomplete diagnostics
+  without fabricated readiness, local custody, producer identities or expiry.
+  Registry, rehearsal, manifest and release authorization requirements remain
+  with their existing proof owners.
+time: 2026-10-10T00:00:00Z
