@@ -284,10 +284,10 @@ class CollectionEnvironmentContracts(unittest.TestCase):
     def test_pure_bridge_profile_destination_is_optional_and_does_not_open_ambient_environment(self):
         for profile in (None, "collector path/profile-%p-%m.profraw"):
             with self.subTest(profile=profile):
-                ambient = {"PATH": os.defpath, "SystemRoot": "selected-system-root", "TEMP": "selected-temp",
+                ambient = {"PATH": os.defpath, "SYSTEMROOT": "selected-system-root", "TEMP": "selected-temp",
                            "GH_TOKEN": SECRET, "GITHUB_TOKEN": SECRET, "CARGO_REGISTRY_TOKEN": SECRET,
                            "GIT_DIR": "unselected-git-dir", "RUST_LOG": "unselected-log-filter"}
-                expected = {key: ambient[key] for key in ("PATH", "SystemRoot", "TEMP")}
+                expected = {key: ambient[key] for key in ("PATH", "SYSTEMROOT", "TEMP")}
                 if profile is not None:
                     ambient["LLVM_PROFILE_FILE"] = profile
                     expected["LLVM_PROFILE_FILE"] = profile
