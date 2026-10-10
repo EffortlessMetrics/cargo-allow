@@ -531,13 +531,23 @@ fn provider_members_fixture() -> Result<CargoAllowFinalFreezeReplayInputsV1, io:
     let mut inputs = fixture()?;
     for id in ["same-first", "same-second"] {
         let bytes = b"same exact bytes under distinct selected paths";
-        inputs.custody.items.push(custody_item("EvidenceData", id, &format!("{id}.json"), bytes));
+        inputs.custody.items.push(custody_item(
+            "EvidenceData",
+            id,
+            &format!("{id}.json"),
+            bytes,
+        ));
         inputs.retained_artifacts.push(RetainedExactArtifactV1 {
-            role: "EvidenceData".to_string(), artifact_id: id.to_string(),
-            declared_sha256: sha256_v1_bytes(bytes), bytes: RetainedArtifactBytesV1::new(bytes.to_vec()),
+            role: "EvidenceData".to_string(),
+            artifact_id: id.to_string(),
+            declared_sha256: sha256_v1_bytes(bytes),
+            bytes: RetainedArtifactBytesV1::new(bytes.to_vec()),
         });
     }
-    let template = inputs.retained_transfers.first().cloned()
+    let template = inputs
+        .retained_transfers
+        .first()
+        .cloned()
         .ok_or_else(|| io::Error::other("fixture transfer is absent"))?;
     inputs.retained_transfers.clear();
     for (group, object_id) in ["505", "506"].into_iter().enumerate() {
@@ -557,11 +567,22 @@ fn provider_members_fixture() -> Result<CargoAllowFinalFreezeReplayInputsV1, io:
         envelope.untrusted_input_posture = UntrustedInputPostureV1::StrictByteMatch;
         envelope.files.clear();
         for (index, item) in inputs.custody.items.iter_mut().enumerate() {
-            if index % 2 != group { continue; }
-            let file = item.files.first().ok_or_else(|| io::Error::other("fixture custody file is absent"))?;
-            item.storage_locator = format!("github-actions-artifact://{REPOSITORY}/{object_id}/{}", file.path);
-            envelope.files.push(ArtifactTransferFileV1 { path: file.path.clone(), size_bytes: file.size_bytes,
-                sha256: file.sha256.replacen("sha256:v1:", "sha256:", 1) });
+            if index % 2 != group {
+                continue;
+            }
+            let file = item
+                .files
+                .first()
+                .ok_or_else(|| io::Error::other("fixture custody file is absent"))?;
+            item.storage_locator = format!(
+                "github-actions-artifact://{REPOSITORY}/{object_id}/{}",
+                file.path
+            );
+            envelope.files.push(ArtifactTransferFileV1 {
+                path: file.path.clone(),
+                size_bytes: file.size_bytes,
+                sha256: file.sha256.replacen("sha256:v1:", "sha256:", 1),
+            });
         }
         inputs.retained_transfers.push(envelope);
     }
@@ -573,24 +594,39 @@ fn original_numeric_multi_member_envelopes_replay_after_serialization() -> Resul
     let inputs = provider_members_fixture()?;
     let original = inputs.retained_transfers.clone();
     let bytes = serde_json::to_vec(&inputs).map_err(io::Error::other)?;
-    let parsed: CargoAllowFinalFreezeReplayInputsV1 = serde_json::from_slice(&bytes).map_err(io::Error::other)?;
+    let parsed: CargoAllowFinalFreezeReplayInputsV1 =
+        serde_json::from_slice(&bytes).map_err(io::Error::other)?;
     let replay = replay_final_freeze(&parsed, &FixtureAdapter::current());
-    require(replay.result == FinalFreezeReplayResultV1::CompleteEquivalent && replay.retained_bytes_verified,
-        "complete numeric provider-object/member coverage must replay CompleteEquivalent")?;
-    require(parsed.retained_transfers == original && parsed.custody.items.len() == 14,
-        "serialized replay must preserve original numeric envelopes and all distinct members")?;
+    require(
+        replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
+            && replay.retained_bytes_verified,
+        "complete numeric provider-object/member coverage must replay CompleteEquivalent",
+    )?;
+    require(
+        parsed.retained_transfers == original && parsed.custody.items.len() == 14,
+        "serialized replay must preserve original numeric envelopes and all distinct members",
+    )?;
     Ok(())
 }
 
 #[test]
-fn provider_member_coverage_rejects_independent_path_identity_trust_and_inventory_changes() -> Result<(), io::Error> {
+fn provider_member_coverage_rejects_independent_path_identity_trust_and_inventory_changes()
+-> Result<(), io::Error> {
     for change in 0..12 {
         let mut inputs = provider_members_fixture()?;
-        let transfer = inputs.retained_transfers.first_mut().ok_or_else(|| io::Error::other("fixture transfer absent"))?;
+        let transfer = inputs
+            .retained_transfers
+            .first_mut()
+            .ok_or_else(|| io::Error::other("fixture transfer absent"))?;
         match change {
-            0 => { transfer.files.pop(); }
+            0 => {
+                transfer.files.pop();
+            }
             1..=3 => {
-                let second = transfer.files.get_mut(1).ok_or_else(|| io::Error::other("fixture second file absent"))?;
+                let second = transfer
+                    .files
+                    .get_mut(1)
+                    .ok_or_else(|| io::Error::other("fixture second file absent"))?;
                 match change {
                     1 => second.path = "different-path".to_string(),
                     2 => second.sha256 = digest(999),
@@ -603,19 +639,50 @@ fn provider_member_coverage_rejects_independent_path_identity_trust_and_inventor
             7 => transfer.schema_version = 99,
             8 => transfer.producer.tree_sha = "e".repeat(40),
             9 => {
-                let extra = inputs.custody.items.first().and_then(|item| item.files.first())
-                    .ok_or_else(|| io::Error::other("fixture first custody file absent"))?.clone();
-                inputs.custody.items.get_mut(1).ok_or_else(|| io::Error::other("fixture second custody item absent"))?.files.push(extra);
+                let extra = inputs
+                    .custody
+                    .items
+                    .first()
+                    .and_then(|item| item.files.first())
+                    .ok_or_else(|| io::Error::other("fixture first custody file absent"))?
+                    .clone();
+                inputs
+                    .custody
+                    .items
+                    .get_mut(1)
+                    .ok_or_else(|| io::Error::other("fixture second custody item absent"))?
+                    .files
+                    .push(extra);
             }
             10 => {
-                let locator = inputs.custody.items.first().ok_or_else(|| io::Error::other("fixture first custody item absent"))?.storage_locator.clone();
-                inputs.custody.items.get_mut(1).ok_or_else(|| io::Error::other("fixture second custody item absent"))?.storage_locator = locator;
+                let locator = inputs
+                    .custody
+                    .items
+                    .first()
+                    .ok_or_else(|| io::Error::other("fixture first custody item absent"))?
+                    .storage_locator
+                    .clone();
+                inputs
+                    .custody
+                    .items
+                    .get_mut(1)
+                    .ok_or_else(|| io::Error::other("fixture second custody item absent"))?
+                    .storage_locator = locator;
             }
-            _ => inputs.retained_artifacts.get_mut(1).ok_or_else(|| io::Error::other("fixture second retained artifact absent"))?.role = "different-role".to_string(),
+            _ => {
+                inputs
+                    .retained_artifacts
+                    .get_mut(1)
+                    .ok_or_else(|| io::Error::other("fixture second retained artifact absent"))?
+                    .role = "different-role".to_string()
+            }
         }
         let replay = replay_final_freeze(&inputs, &FixtureAdapter::current());
-        require(replay.result != FinalFreezeReplayResultV1::CompleteEquivalent && !replay.retained_bytes_verified,
-            "changed provider member mapping must not be masked by unrelated evidence")?;
+        require(
+            replay.result != FinalFreezeReplayResultV1::CompleteEquivalent
+                && !replay.retained_bytes_verified,
+            "changed provider member mapping must not be masked by unrelated evidence",
+        )?;
     }
     Ok(())
 }

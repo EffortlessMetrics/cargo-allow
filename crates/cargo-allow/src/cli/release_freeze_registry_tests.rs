@@ -717,8 +717,8 @@ pub(super) fn require_noncomplete_composition(
     subject: &SubjectIdentity,
 ) -> TestResult {
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalFreezeReplayResultV1,
-        FinalEvidenceGraphV1,
+        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceGraphV1,
+        FinalFreezeReplayResultV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
@@ -770,9 +770,9 @@ pub(super) fn require_noncomplete_composition(
         if !error.to_string().contains("state=Incomplete") {
             return Err(format!("registry fixture failed outside composition: {error}").into());
         }
-        let readiness: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(&std::fs::read(
-            args.out_dir.join("final-freeze.readiness.json"),
-        )?)?;
+        let readiness: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(
+            &std::fs::read(args.out_dir.join("final-freeze.readiness.json"))?,
+        )?;
         let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
             args.out_dir.join("final-freeze.replay.json"),
         )?)?;
@@ -789,7 +789,8 @@ pub(super) fn require_noncomplete_composition(
             .iter()
             .find(|row| row.observation_id == "obs:registry-feasibility")
             .ok_or("registry replay reading absent")?;
-        if row.result != expected || !row.required
+        if row.result != expected
+            || !row.required
             || reading.freshness == ObservationFreshnessV1::Current
             || !reading.authoritative
             || !reading

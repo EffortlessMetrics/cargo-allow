@@ -123,8 +123,8 @@ pub(super) fn require_noncomplete_composition(
     diagnostic: &str,
 ) -> Result<(), Box<dyn Error>> {
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceNodeResultV1,
-        FinalFreezeReplayResultV1, FinalEvidenceGraphV1,
+        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceGraphV1,
+        FinalEvidenceNodeResultV1, FinalFreezeReplayResultV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
@@ -206,7 +206,8 @@ pub(super) fn require_noncomplete_composition(
         || readiness.is_some()
         || !graph.nodes.iter().any(|row| {
             row.evidence_id == "release-rehearsal"
-                && row.required && row.result == FinalEvidenceNodeResultV1::Mismatch
+                && row.required
+                && row.result == FinalEvidenceNodeResultV1::Mismatch
         })
     {
         return Err(format!(
