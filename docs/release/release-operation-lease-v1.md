@@ -91,7 +91,7 @@ rendered artifact is scanned for secret markers in tests).
 The evidence inventory retains the lease as typed model validation. The
 lease serializes authority; it does not grant it.
 
-## Authenticated provider boundary and remaining driver
+## Authenticated provider boundary and checked head advancement
 
 The [release operation store](release-operation-store-v1.md) now supplies a
 reusable authenticated readback and atomic, nonforced Git-ref append boundary
@@ -102,11 +102,31 @@ single process-local witness only after an exact provider response and
 independent immutable-object readback. An unchanged SHA, ambiguous response,
 later observation or restarted process cannot recover that witness.
 
-The actual #3930 driver remains unwired. It must compare the lease subject
-with the independently selected authorization and tag commit/tree/denominator
-and enforce canonical operation history before consuming any witness.
-`renew_operation_lease_v1` preserves journal/checkpoint head bindings; it does
-not provide the checked head-rebinding transition needed by the full driver.
-The provider fixture exercises an ordinary renewal with those bindings fixed.
-Its production transport behavior is tested with intercepted responses and
-does not establish a live lease or satisfy a release gate.
+`advance_operation_lease_heads_v1` supplies a separate checked transition for
+the [final-tag driver](final-tag-transaction-v1.md#production-driver-boundary).
+It consumes the exact observed lease, holder, producer, old and new canonical
+history/head pairs, and both independently downloaded ArtifactTransfer file
+sets. Each stored head is validated at its retained evaluation time: evaluating
+the same history at a later time would produce a different digest. The new
+history must strictly extend the old prefix, use the same operation and
+producer, and remain inside the live lease window. All checks finish before
+either head binding changes.
+
+The transition preserves the holder, generation, class, expiry, renewal count
+and irreversible posture. It adds a `heads-advanced` transition without
+renewing the lease. The driver advances to its retained Started checkpoint,
+then applies the existing irreversible-start reducer and atomically retains
+both changes. `renew_operation_lease_v1` continues to preserve both heads.
+
+The driver's first acquisition binds a real, uploaded and independently
+downloaded bootstrap checkpoint containing the OperationSelected and
+AuthorizationSelected prefix. It does not acquire against placeholder
+digests. Later checkpoint bytes contain canonical identity/events/head and,
+after intent, the immutable request birth and raw annotated object. They do
+not contain the mutable lease or their own finalized transfer envelope.
+
+The new consumer compares the lease subject with selected authorization
+custody and tag commit/tree/denominator before use. Its intercepted provider
+tests do not establish a live lease or satisfy a release gate. Workflow
+integration, the actual Complete freeze and separate exact mint remain
+prerequisites under #3930/#2501/#3927.

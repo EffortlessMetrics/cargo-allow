@@ -683,3 +683,20 @@ required_stronger_owner = "#3930 actual driver composition; #3925 checked subjec
 may_satisfy_release_gate = false
 last_reconciled_commit = "c9616c3e66cb31e51332da970acd18ad8b8fee0b"
 claim_boundary = "The actual adapter is exercised with intercepted HTTP, not a local eligibility replacement. No live credential, authenticated external observation, control/tag ref, authorization mint or publication occurs. Rust compilation and native gates require separate evidence. Lease/tag subject comparison, checked journal/checkpoint head rebinding and real workflow integration remain with the named owners."
+
+[[surfaces]]
+id = "final-tag-production-driver"
+owner_issue = 3930
+semantic_authority = "existing final-tag, canonical-operation, lease and authorization owners composed at the real provider boundary"
+path = "crates/cargo-allow/tests/release_final_tag_driver.rs"
+subject = "scripts/release-final-tag.py and the compiled release-final-tag-bridge command"
+producer = "existing typed freeze/preflight/authorization/custody constructors plus intercepted production HTTP and native Git command interfaces"
+consumer = "#3930 actual workflow composition and #2502 same-run release execution"
+claimed_acceptance_row = "independent expected-context compilation, canonical rehearsal admission, current six-control readback, subject agreement, checked durable head advancement, immutable tag intent/start/response/readback and no duplicate push permit"
+assertion_mechanism = "actual compiled pure Rust bridge on every native test host; Python production driver on POSIX with exact-byte artifact/control interception, native Git hash oracle, owned process cleanup and hostile ambiguity/restart/expiry/subject controls; actual early physical-driver refusal on unsupported hosts"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded executable consumer with synthetic provider exchanges"
+required_stronger_owner = "#3930 workflow and same-run publisher wiring; #3761 frozen manifest; #2501 emitted replay inputs and actual Complete freeze; #3925 asset-size feasibility; #2284/#2501 actual control qualification; #3927 exact separate mint"
+may_satisfy_release_gate = false
+last_reconciled_commit = "05f887971e5874077dc1b2aa42789f8bdd8b093b"
+claim_boundary = "Every native test host requires the actual compiled bridge and typed fixture; no Python eligibility model or successful missing-native skip exists. POSIX additionally runs the physical-driver lifecycle; unsupported hosts run the actual early refusal. I/O-only tests are a separately reported narrower scope. Rehearsal and control positives are synthetic, and manifest semantics remain with the actual frozen-input producer. No live credential, provider observation, control/tag ref, upload, mint or publication occurs; native results must be recorded separately from authored source."

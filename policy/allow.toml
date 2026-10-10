@@ -23509,3 +23509,94 @@ glob = ".allow/revisions/4457-retained-review-record.toml"
 line = 1
 column = 1
 
+
+[[allow]]
+id = "allow-release-3930-final-tag-driver"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-final-tag.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intentional executable final-tag I/O consumer under #3930/#3925. It composes the existing typed bridge and authenticated store, retains intent and Started before one nonforced request, and cannot derive release authority from local JSON or synthetic validation."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-final-tag.py"
+target_fingerprint = "py"
+glob = "scripts/release-final-tag.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-release-3930-final-tag-driver-tests"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-final-tag.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intercepted production consumer tests for the final-tag driver. Full lifecycle controls require the actual compiled Rust bridge and existing typed fixture; I/O-only validation is a separate narrower scope and no test authorizes a live tag, mint or publication."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-final-tag.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-final-tag.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-release-3930-final-tag-driver-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3930-final-tag-driver.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Authored revision note for these exact #3930 source-inventory entries and this note, under the acknowledged reversible implementation scope. It does not grant merge, CI bypass, release readiness or irreversible-operation authority."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3930-final-tag-driver.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3930-final-tag-driver.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4448-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4448.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4448 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4448", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4448.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4448.json"
+
+[allow.last_seen]
+line = 1
+column = 1

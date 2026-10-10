@@ -1,0 +1,30 @@
+# #3930: exact final-tag driver source-inventory receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-release-3930-final-tag-driver"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ba7756c4b114b7f6cc19a1d912e47ccf50fe60dac366f7fd4dcab3ba27b09b02"
+reason = "Intentional executable final-tag I/O consumer under #3930/#3925. It composes the existing typed bridge and authenticated store, retains intent and Started before one nonforced request, and cannot derive release authority from local JSON or synthetic validation."
+
+[[records]]
+allow_ids = ["allow-release-3930-final-tag-driver-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:52afb60830a89d3919987214fbaf42d7eaddb93bb068799cfd215812ee2a3d97"
+reason = "Intercepted production consumer tests for the final-tag driver. Full lifecycle controls require the actual compiled Rust bridge and existing typed fixture; I/O-only validation is a separate narrower scope and no test authorizes a live tag, mint or publication."
+
+[[records]]
+allow_ids = ["allow-release-3930-final-tag-driver-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2fea95fa7893e57d7ce001973027176f52f6dd1d8808d12074924a63ca1ae39b"
+reason = "Authored revision note for these exact #3930 source-inventory entries and this note, under the acknowledged reversible implementation scope. It does not grant merge, CI bypass, release readiness or irreversible-operation authority."
+
+# PR #4448: exact retained-review path admitted under the acknowledged repair scope.
+
+[[records]]
+allow_ids = ["allow-review-4448-record"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0e029b548957d5d55f9ef56334d68c1e14af74cd146e9a1ff8c711d10e669893"
+reason = "Retained structured review evidence for PR #4448 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
