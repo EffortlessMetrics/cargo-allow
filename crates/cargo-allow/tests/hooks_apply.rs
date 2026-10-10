@@ -523,7 +523,10 @@ fn hooks_run_inherits_fixture_root_from_the_outer_process() -> TestResult {
     )?;
     init_fixture_policy(&fixture.path)?;
     fs::create_dir_all(fixture.path.join("src"))?;
-    fs::write(fixture.path.join("src/lib.rs"), "pub fn clean() -> u32 { 1 }\n")?;
+    fs::write(
+        fixture.path.join("src/lib.rs"),
+        "pub fn clean() -> u32 { 1 }\n",
+    )?;
     git_add(&fixture.path, "policy/allow.toml")?;
     git_add(&fixture.path, "src/lib.rs")?;
 
