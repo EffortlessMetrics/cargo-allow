@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+from contextvars import ContextVar
 import hashlib
 import json
 import os
+from os import name as _PLATFORM_NAME, pathsep as _PATH_SEPARATOR
 from pathlib import Path
 import shutil
 import stat
@@ -32,6 +34,155 @@ def _selected_token_present() -> bool:
 def _require_selected_token_absent() -> None:
     if _selected_token_present():
         raise ValueError("rehearsal does not accept a CARGO_REGISTRY_TOKEN environment entry")
+
+
+class _Invocation:
+    """Private selected-call context, not a sandbox or prevention receipt."""
+
+    def __init__(self) -> None:
+        self.root = ROOT.resolve()
+        self.python = str(Path(sys.executable).absolute())
+        search_path = _PATH_SEPARATOR.join(
+            str(path if path.is_absolute() else self.root / path)
+            for value in os.environ.get("PATH", "").split(_PATH_SEPARATOR)
+            if value
+            for path in [Path(value)]
+        )
+        # Freeze lookup now, including platform lookup inputs. An unused,
+        # unavailable tool does not fail a phase that never invokes it.
+        self.tools = {name: _select_tool(name, search_path) for name in ("git", "cargo")}
+
+    def executable(self, name: str) -> str:
+        if name == "python":
+            return self.python
+        selected = self.tools.get(name)
+        if selected is None:
+            raise OSError("rehearsal selected executable is unavailable")
+        return selected
+
+
+def _select_tool(name: str, search_path: str) -> str | None:
+    """Resolve only within captured lookup roots; preserve shim argv[0]."""
+    found = shutil.which(name, path=search_path)
+    if found is None:
+        return None
+    selected = Path(found).absolute()
+    roots = {Path(value).absolute() for value in search_path.split(_PATH_SEPARATOR) if value}
+    if selected.parent not in roots:
+        return None
+    if _PLATFORM_NAME == "nt" and selected.suffix.lower() not in {".exe", ".com"}:
+        return None
+    return str(selected)
+
+
+_INVOCATION: ContextVar[_Invocation | None] = ContextVar("rehearsal_invocation", default=None)
+
+
+@contextlib.contextmanager
+def _invocation_scope():
+    current = _INVOCATION.get()
+    token = _INVOCATION.set(_Invocation()) if current is None else None
+    try:
+        yield _INVOCATION.get()
+    finally:
+        if token is not None:
+            _INVOCATION.reset(token)
+
+
+def _invocation_command(context: _Invocation, operation: str, selected: Any) -> tuple[list[str], str]:
+    git = ["git", "--no-replace-objects"]
+    inspection = git + ["--no-optional-locks", "-c", "core.fsmonitor=false"]
+    fixed = {
+        "checkout-root": (git + ["rev-parse", "--show-toplevel"], "git"),
+        "checkout-ctime": (git + ["config", "--type=bool", "--default=true", "--get", "core.trustctime"], "git"),
+        "checkout-index": (inspection + ["ls-files", "--cached", "-v", "-z"], "git"),
+        "checkout-status": (git + [
+            "--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
+            "-c", "core.checkStat=default", "-c", "core.ignoreStat=false", "-c", "core.trustctime=true",
+            "status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignored=matching",
+            "--ignore-submodules=none",
+        ], "git"),
+        "output-tracked": (["git", "ls-files", "--cached", "-z"], "git"),
+        "publisher-proof": ([context.python, str(context.root / "scripts/test-release-topology-publisher.py")], "python"),
+        "history-proof": ([context.python, str(context.root / "scripts/generate-changie-history.py"), "--check"], "python"),
+        "manifest-proof": ([context.python, str(context.root / "scripts/test-final-packaged-surface.py")], "python"),
+    }
+    if operation in fixed and selected is None:
+        return fixed[operation]
+    if operation == "resolve-commit" and isinstance(selected, str) and selected and (
+        not selected.startswith("-") and not any(char in selected for char in "\r\n\0")
+    ):
+        return git + ["rev-parse", "--verify", f"{selected}^{{commit}}"], "git"
+    if operation == "content-attributes" and isinstance(selected, tuple) and selected in (
+        ("filter", "ident", "working-tree-encoding"), ("--all",),
+    ):
+        return inspection + ["check-attr", "--stdin", "-z", *selected], "git"
+    if operation == "output-ignored" and isinstance(selected, Path) and (
+        selected.is_relative_to(context.root / "target") and selected != context.root / "target"
+    ):
+        return ["git", "check-ignore", "-q", "--", selected.relative_to(context.root).as_posix()], "git"
+    if operation in {"candidate-package", "shared-preflight"} and selected is None:
+        package = operation == "candidate-package"
+        receipt_name = "rehearsal-candidate-package-set.json" if package else "rehearsal-shared-preflight.json"
+        return [
+            context.python, (context.root / "scripts/release-topology-publisher.py").as_posix(),
+            "--mode", "cargo-allow", "--package-only" if package else "--registry-preflight",
+            "--receipt", str(context.root / "target/cargo-allow" / receipt_name),
+        ], "python"
+    if operation == "release-identity" and isinstance(selected, tuple) and len(selected) == 2:
+        version, candidate = selected
+        if isinstance(version, str) and (
+            candidate is None or isinstance(candidate, Path) and candidate.is_absolute()
+        ):
+            prefix = ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--"]
+            tool = "cargo"
+            if candidate is not None:
+                prefix, tool = [str(candidate)], str(candidate)
+            return prefix + ["release-identity", "--version", version], tool
+    raise OSError("rehearsal subprocess operation is not selected")
+
+
+def _run_process(command: list[str], *, operation: str, selected: Any = None, **options: Any):
+    """Deny unselected argv/root/options before reaching the process adapter."""
+    context = _INVOCATION.get()
+    if context is None:
+        with _invocation_scope():
+            return _run_process(command, operation=operation, selected=selected, **options)
+    expected, tool = _invocation_command(context, operation, selected)
+    text_operations = {
+        "resolve-commit", "release-identity", "candidate-package", "shared-preflight",
+        "publisher-proof", "history-proof", "manifest-proof",
+    }
+    timeout = 15 if tool == "git" else 300
+    if (
+        ROOT.resolve() != context.root
+        or not isinstance(options.get("cwd"), (str, Path))
+        or Path(options["cwd"]).resolve() != context.root
+        or command != expected
+        or set(options) - {"cwd", "env", "capture_output", "text", "timeout", "check", "input"}
+        or options.get("capture_output") is not True
+        or options.get("check") is not False
+        or options.get("timeout") != timeout
+        or options.get("text", False) is not (operation in text_operations)
+        or ("input" in options) != (operation == "content-attributes")
+        or operation == "content-attributes" and not isinstance(options.get("input"), bytes)
+        or options.get("env") is None
+    ):
+        raise OSError("rehearsal subprocess invocation is not selected")
+    executable = tool if Path(tool).is_absolute() else context.executable(tool)
+    if (
+        not isinstance(executable, str) or not executable
+        or any(char in executable for char in "\r\n\0")
+        or not Path(executable).is_absolute()
+        or _PLATFORM_NAME == "nt" and Path(executable).suffix.lower() not in {".exe", ".com"}
+    ):
+        raise OSError("rehearsal selected executable form is not supported")
+    # Keep the original argv[0] for Cargo/rustup, while bypassing a later PATH lookup.
+    return subprocess.run(
+        expected, **dict(options, cwd=context.root,
+                        env={name: options["env"][name] for name in options["env"] if name != CARGO_TOKEN_ENV}),
+        executable=executable,
+    )
 
 
 def compute_sha256(path: Path) -> str:
@@ -62,8 +213,9 @@ def resolve_commit(commit_ref: str) -> str:
         or any(char in commit_ref for char in "\r\n\0")
     ):
         raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
-    result = subprocess.run(
+    result = _run_process(
         ["git", "--no-replace-objects", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
+        operation="resolve-commit", selected=commit_ref,
         cwd=ROOT,
         env=_sanitized_environment(),
         capture_output=True,
@@ -99,11 +251,12 @@ def require_supported_content_attributes(paths: list[bytes]) -> None:
     attributes = (b"filter", b"ident", b"working-tree-encoding")
 
     def query(arguments: list[str]) -> bytes:
-        result = subprocess.run(
+        result = _run_process(
             [
                 "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
                 "check-attr", "--stdin", "-z", *arguments,
             ],
+            operation="content-attributes", selected=tuple(arguments),
             cwd=ROOT, input=b"".join(path + b"\0" for path in paths),
             env=_sanitized_environment(),
             capture_output=True, timeout=15, check=False,
@@ -158,8 +311,9 @@ def require_clean_checkout(commit_sha: str) -> None:
     """
     if resolve_commit("HEAD") != commit_sha:
         raise ValueError("rehearsal commit does not match checkout HEAD")
-    root = subprocess.run(
+    root = _run_process(
         ["git", "--no-replace-objects", "rev-parse", "--show-toplevel"],
+        operation="checkout-root",
         cwd=ROOT, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
     )
     if root.returncode != 0 or not root.stdout.strip():
@@ -167,20 +321,22 @@ def require_clean_checkout(commit_sha: str) -> None:
     discovered_root = Path(os.fsdecode(root.stdout.rstrip(b"\r\n")))
     if not discovered_root.is_absolute() or discovered_root.resolve() != ROOT.resolve():
         raise ValueError("rehearsal checkout root does not match source root")
-    ctime = subprocess.run(
+    ctime = _run_process(
         [
             "git", "--no-replace-objects", "config", "--type=bool", "--default=true",
             "--get", "core.trustctime",
         ],
+        operation="checkout-ctime",
         cwd=ROOT, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
     )
     if ctime.returncode != 0 or ctime.stdout.strip() != b"true":
         raise ValueError("rehearsal requires readable core.trustctime=true configuration")
-    index = subprocess.run(
+    index = _run_process(
         [
             "git", "--no-replace-objects", "--no-optional-locks", "-c", "core.fsmonitor=false",
             "ls-files", "--cached", "-v", "-z",
         ],
+        operation="checkout-index",
         cwd=ROOT,
         env=_sanitized_environment(),
         capture_output=True,
@@ -196,7 +352,7 @@ def require_clean_checkout(commit_sha: str) -> None:
     require_supported_content_attributes([
         entry.removeprefix(b"H ") for entry in index.stdout.split(b"\0") if entry
     ])
-    result = subprocess.run(
+    result = _run_process(
         [
             "git", "--no-replace-objects", "--no-optional-locks",
             "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false",
@@ -206,6 +362,7 @@ def require_clean_checkout(commit_sha: str) -> None:
             "--ignored=matching",
             "--ignore-submodules=none",
         ],
+        operation="checkout-status",
         cwd=ROOT,
         env=_sanitized_environment(),
         capture_output=True,
@@ -247,8 +404,8 @@ def _sanitized_environment() -> dict[str, str]:
 def _run_characterization(command: list[str]) -> str:
     """Run a bounded characterization without treating exit zero as Complete."""
     try:
-        result = subprocess.run(
-            command,
+        result = _run_process(
+            command, operation="characterization",
             cwd=ROOT,
             env=_sanitized_environment(),
             capture_output=True,
@@ -326,8 +483,10 @@ def run_phase_release_identity(
                 if compute_sha256(snapshot) != candidate_sha256:
                     return _identity_failure(PHASE_MISMATCH, "candidate_digest_mismatch")
                 command = [str(snapshot)]
-            result = subprocess.run(
+            result = _run_process(
                 command + ["release-identity", "--version", version],
+                operation="release-identity",
+                selected=(version, snapshot if candidate_executable is not None else None),
                 cwd=ROOT,
                 env=_sanitized_environment(),
                 capture_output=True,
@@ -404,7 +563,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
     preflight_path = ROOT / "target/cargo-allow/rehearsal-candidate-package-set.json"
     try:
         preflight_path.parent.mkdir(parents=True, exist_ok=True)
-        result = subprocess.run(
+        result = _run_process(
             [
                 sys.executable,
                 (ROOT / "scripts/release-topology-publisher.py").as_posix(),
@@ -412,6 +571,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
                 "--package-only",
                 "--receipt", str(preflight_path),
             ],
+            operation="candidate-package",
             cwd=ROOT,
             env=_sanitized_environment(),
             capture_output=True,
@@ -472,7 +632,7 @@ def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
     preflight_path = ROOT / "target/cargo-allow/rehearsal-shared-preflight.json"
     try:
         preflight_path.parent.mkdir(parents=True, exist_ok=True)
-        result = subprocess.run(
+        result = _run_process(
             [
                 sys.executable,
                 (ROOT / "scripts/release-topology-publisher.py").as_posix(),
@@ -480,6 +640,7 @@ def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
                 "--registry-preflight",
                 "--receipt", str(preflight_path),
             ],
+            operation="shared-preflight",
             cwd=ROOT,
             env=_sanitized_environment(),
             capture_output=True,
@@ -514,11 +675,11 @@ def run_phase_shared_prerequisites(receipt: dict[str, Any]) -> str:
     return PHASE_COMPLETE
 
 
-def _run_proof(command: list[str]) -> str:
+def _run_proof(command: list[str], *, operation: str) -> str:
     """Run a bounded fixture proof: exit zero proves, nonzero mismatches."""
     try:
-        result = subprocess.run(
-            command,
+        result = _run_process(
+            command, operation=operation,
             cwd=ROOT,
             env=_sanitized_environment(),
             capture_output=True,
@@ -545,7 +706,8 @@ def run_phase_publisher_state_machine(receipt: dict[str, Any]) -> str:
         "fixture_matrix": "scripts/test-release-topology-publisher.py"
     }
     return _run_proof(
-        [sys.executable, str(ROOT / "scripts/test-release-topology-publisher.py")]
+        [sys.executable, str(ROOT / "scripts/test-release-topology-publisher.py")],
+        operation="publisher-proof",
     )
 
 
@@ -559,7 +721,8 @@ def run_phase_docs_and_support(receipt: dict[str, Any]) -> str:
     changie-contract CI lane; this phase proves the identity binding.
     """
     history_check = _run_proof(
-        [sys.executable, str(ROOT / "scripts/generate-changie-history.py"), "--check"]
+        [sys.executable, str(ROOT / "scripts/generate-changie-history.py"), "--check"],
+        operation="history-proof",
     )
     if history_check != PHASE_COMPLETE:
         return history_check
@@ -614,7 +777,8 @@ def run_phase_manifest_and_assets(receipt: dict[str, Any]) -> str:
         "fixture_matrix": "scripts/test-final-packaged-surface.py"
     }
     return _run_proof(
-        [sys.executable, str(ROOT / "scripts/test-final-packaged-surface.py")]
+        [sys.executable, str(ROOT / "scripts/test-final-packaged-surface.py")],
+        operation="manifest-proof",
     )
 
 
@@ -815,8 +979,8 @@ def _preflight_receipt_output(path: Path) -> Path:
     if path.is_relative_to(root):
         if not path.is_relative_to(root / "target") or path == root / "target":
             raise ValueError("repository receipt output must be inside target/")
-        tracked = subprocess.run(
-            ["git", "ls-files", "--cached", "-z"], cwd=root,
+        tracked = _run_process(
+            ["git", "ls-files", "--cached", "-z"], operation="output-tracked", cwd=root,
             env=_sanitized_environment(),
             capture_output=True, timeout=15, check=False,
         )
@@ -828,8 +992,9 @@ def _preflight_receipt_output(path: Path) -> Path:
         if any(relative == entry or relative.startswith(entry + os.sep)
                or entry.startswith(relative + os.sep) for entry in entries):
             raise ValueError("receipt output cannot replace a tracked source path")
-        ignored = subprocess.run(
+        ignored = _run_process(
             ["git", "check-ignore", "-q", "--", path.relative_to(root).as_posix()],
+            operation="output-ignored", selected=path,
             cwd=root, env=_sanitized_environment(), capture_output=True, timeout=15, check=False,
         )
         if ignored.returncode != 0:
@@ -864,6 +1029,17 @@ def build_rehearsal_receipt(
 ) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
     _require_selected_token_absent()
+    with _invocation_scope():
+        return _build_rehearsal_receipt(
+            commit_ref, candidate_executable=candidate_executable,
+            candidate_sha256=candidate_sha256,
+        )
+
+
+def _build_rehearsal_receipt(
+    commit_ref: str, *, candidate_executable: Path | None,
+    candidate_sha256: str | None,
+) -> dict[str, Any]:
     if (candidate_executable is None) != (candidate_sha256 is None):
         raise ValueError("candidate executable and SHA-256 must be supplied together")
     commit_sha = resolve_commit(commit_ref)
@@ -949,18 +1125,19 @@ def main() -> int:
 
     try:
         _require_selected_token_absent()
-        output_path = (_preflight_receipt_output(Path(args.output))
-                       if args.output is not None else None)
-        receipt = build_rehearsal_receipt(
-            args.commit, candidate_executable=args.candidate_executable,
-            candidate_sha256=args.candidate_sha256,
-        )
-        json_text = json.dumps(receipt, indent=2, sort_keys=True)
-        if output_path is not None:
-            _write_receipt(output_path, json_text)
-            print(f"Receipt written to {output_path}")
-        else:
-            print(json_text)
+        with _invocation_scope():
+            output_path = (_preflight_receipt_output(Path(args.output))
+                           if args.output is not None else None)
+            receipt = build_rehearsal_receipt(
+                args.commit, candidate_executable=args.candidate_executable,
+                candidate_sha256=args.candidate_sha256,
+            )
+            json_text = json.dumps(receipt, indent=2, sort_keys=True)
+            if output_path is not None:
+                _write_receipt(output_path, json_text)
+                print(f"Receipt written to {output_path}")
+            else:
+                print(json_text)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f"release rehearsal instrumentation failed: {error}", file=sys.stderr)
         return 2

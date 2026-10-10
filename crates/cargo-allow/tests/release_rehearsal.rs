@@ -342,6 +342,7 @@ fn rehearsal_candidate_selection_controls() -> Result<(), Box<dyn Error>> {
         .arg(root.join("scripts/test-release-rehearsal.py"))
         .arg("TestCandidateIdentity")
         .arg("TestReceiptOutput")
+        .arg("TestInvocationBoundary")
         .arg("-q")
         .current_dir(&root)
         .output()?;
