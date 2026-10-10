@@ -3,37 +3,38 @@
   "schema_version": 1,
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4448,
-  "base_ref": "release/3925-provider-adapter",
-  "base_sha": "a57055b835bc6c3c85081158734157467ebc780b",
+  "base_ref": "main",
+  "base_sha": "5c42baee156a5be079a74df97dcd4b858a0334aa",
   "head_ref": "release/3930-final-tag-driver",
-  "head_sha": "db79709a7003a25db1d505fa26b3121a7a18c023",
-  "merge_base": "a57055b835bc6c3c85081158734157467ebc780b",
-  "reviewed_diff_digest": "sha256:v1:7e9509c077587e9e2e3b64c27bc8d3854153a4659fda75323e84ceeab94f4f65",
+  "head_sha": "cf53514a5cb3b9d6a2076e51cfc04119a7178c9b",
+  "merge_base": "5c42baee156a5be079a74df97dcd4b858a0334aa",
+  "reviewed_diff_digest": "sha256:v1:85c86d7e9294c2ecc8032a1fe947b85da964137500ac795bb63541cfae5c2d5c",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of R7, R8 and the Windows correction, with shared model family and campaign context disclosed. Historical authorship of the unchanged canonical rehearsal helper is disclosed and is not independently reapproved by this review. The coordinating maintainer retained the actual independent model result; no independent human review is claimed. The same agent is now preparing this new JSON, which was absent from the historical reviewed source and has not itself been independently reviewed.",
+  "reviewer_identity": "ChatGPT /root/driver_review, separate pure nonauthor of the complete source, repairs, integration, retained JSON, policy and canonical rehearsal helper. Shared model family and inherited campaign context are disclosed. This is an actual independently submitted model COMMENT Review, not independent human approval. The coordinating maintainer writes this own-record-only successor and is not counted as the independent reviewer.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5479891575"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5481046636"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5479891575",
-    "Historical source/native scope only: db79709a7003a25db1d505fa26b3121a7a18c023, tree 720a598e6dae3f8866e2c8cd6a6e8e0e7771dd1d, reviewed base and unique merge base a57055b835bc6c3c85081158734157467ebc780b. The actual retained Review binds the complete 21-path, 358934-byte native diff 7e9509c077587e9e2e3b64c27bc8d3854153a4659fda75323e84ceeab94f4f65 and synthetic dfd96b096b5c4f5a2e3a947fa71992e7c4ad2d90 with exact [base,head] parents and the same tree.",
-    "The retained Review identifies the full source/native packet as 97313 bytes, SHA256 f2da52adbcc9dd5f9049b7b649334cfe2b816b9e124d8eaf2ea9c210a921aa9c. This metadata preparation reads the actual native Review and preserves that historical result; it does not represent a new execution or an independent re-review of the new JSON.",
-    "R7 is Fixed in that Review: one canonical helper, private argument/result grouping, unchanged historical Prepared reconstruction and fresh Request validation. The actual release-set Clippy -D warnings step passed. R8 is Fixed with actual measured collection and Windows evidence: 1287/1361 bridge lines, 63461/74438 overall lines (85.25%), and Codecov patch 95.01160% against the unchanged 85.02% threshold. No threshold, production exclusion or denominator was waived.",
-    "The retained Review records successful actual Ubuntu, ARM macOS, Intel macOS and Windows consumers using the inspected 42-test Unix and eight-test Windows selections, plus downloaded proof ZIPs and the exact-source pregate artifact. It explicitly reported full test pending at its packet cutoff and did not claim merge readiness. Later job completion is separate evidence and cannot silently expand the review to a changed source/base pair.",
-    "Currentness limitation at metadata preparation: raw source ref still names db79709a7003a25db1d505fa26b3121a7a18c023, but raw provider base ref now names 9cf153f099594578011818a3886efd6738dfe4fa while the PR API retains cached a570. This record intentionally preserves the historical reviewed base a570; it does not claim that a570 remains the live base. Actual guarded-main integration, retargeting and fresh full-current-pair review remain required.",
-    "This JSON is the sole added path and makes the effective scope 22 paths. The existing allow-review-4448-record policy entry and its existing added_allow note in .allow/revisions/3930-final-tag-driver.toml already carry fingerprint sha256:v1:0e029b548957d5d55f9ef56334d68c1e14af74cd146e9a1ff8c711d10e669893; neither file is changed. Independent review must inspect this new JSON and the complete current source/governance pair, then verify any applicable own-record-only bootstrap.",
-    "The historical source review claims no actual qualification/custody, seven-flag prevention, authorization, selected publication credential, final tag, package upload, public Release or live-setting operation. The metadata file supplies none of those authorities."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5481046636",
+    "Actual full-source Review5481046636 was submitted at 2026-10-10T22:32:30Z on cf53514a5cb3b9d6a2076e51cfc04119a7178c9b against main/base/unique merge base 5c42baee156a5be079a74df97dcd4b858a0334aa. Its 13017-byte body was fetched and SHA256-verified as 013d37a8053705e2ff1ec804841b838885fc476cf761b8ef888ea97ea2287d7b. It independently covers all 22 effective source/governance paths and relevant owners, consumers, source invariants, test oracles, platform/release boundaries, policy and current feedback.",
+    "The source tree is 2246fff6726816c36137aee46ea938ef246d5a98. Actual synthetic 13e26ef873fe021f1cd263bf2f06d3c2fefe5ae7 has exact ordered [5c42baee156a5be079a74df97dcd4b858a0334aa, cf53514a5cb3b9d6a2076e51cfc04119a7178c9b] parents and the same tree. Native readiness114328928058 emits the complete canonical 22-path digest retained above; it is not an API-hunk or file-manifest reconstruction.",
+    "Comment4239394057 / thread PRRT_kwDOSnyN3s6rIObB is DuplicateOrSuperseded by inspected current source: cf535 contains the exact 5382-byte historical record under its existing receipt. The full Review inspected that record and its policy/note; absence is no longer a source blocker. Its old db797/a570 binding remains historical. This new current record and its permitted-only successor still need independent bootstrap and current readiness verification.",
+    "The review verifies 2665 unchanged main leaves outside scope, all retained driver code/test blobs, and an exact 752326-byte main policy prefix plus unchanged 3624-byte driver suffix: 755950 bytes, 1101 unique IDs, SHA256 6bee11358e6cfc20d028748bceaa6eaa05562baf4faf2711a154e0aed3a62296. All four entry fingerprints match existing revision notes. This successor changes no policy, revision note, source or test.",
+    "Actual pregate114328650577 in run38091484503 passed at 22:30:11Z: verified synthetic, actionlint, formatting, enforcing no-new/new0/2687 files and typed Complete. The review cutoff was 22:32:10Z: current platform/coverage/proof jobs remained incomplete and the historical record correctly failed readiness. No current full-test, Clippy, measured coverage or archive-unpack success is invented by this record. Prior db797/a570 results remain historical.",
+    "The reviewer inspected the complete driver/bridge, nine states, available versus continuation authority, durable append/Started witness, exact custody/lease/subject, no repeated push after ambiguous response, read-only reconciliation, canonical eight rehearsal phases/seven prevention flags, process cleanup and relevant incoming provider/publisher/rehearsal/hook/CI consumers. No actionable source finding remained.",
+    "The generic #3844 canonical rendering/ancestor recomputation gap stays open. The #4443 premerge stale-record/gate exception remains historical; this record does not endorse it or select a merge slot. Existing Graphite/Gemini/CodeRabbit skipped or unavailable model evidence is not treated as a clean review.",
+    "No actual provider fit/qualification, seven-flag prevention, installed experience, immutable candidate custody, final manifest decision, selected publication credential, authority mint, final tag, upload, public Release or live-setting operation is established. Ordinary nonforced append with a nonce is not expected-old-OID CAS. The actual independent Review grants no release authority."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer: integrate the actual guarded main and retarget through normal history, obtain separate nonauthor review of the full resulting source/governance pair including this new JSON, and independently verify any own-record-only bootstrap before retaining current readiness. Require every applicable current native gate and substantive-feedback disposition, verify exact live head/base/ref/unique merge base and synthetic tree, then use a head-pinned normal merge and retain the exact new-main enforcing guard. Historical native success and this JSON do not authorize merge or release; pending, skipped, stale and neutral evidence is not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38066232843"
+    "owner": "Coordinating maintainer: independently verify the sole-own-record successor and current native readiness, disposition substantive feedback, retain exact live main/base/head/unique merge base/synthetic binding, and require every applicable latest current-pair gate before Ready or merge. Preserve the coordinated merge order; a normal head-pinned merge requires an exact resulting-main enforcing guard and issue reconciliation. Pending, stale, skipped, malformed, neutral or unavailable required evidence is not green. This record and source Review do not waive any gate or authorize publication.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38091484503"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4448",
-  "reviewed_at_utc": "2026-10-10T16:35:41Z"
+  "reviewed_at_utc": "2026-10-10T22:32:30Z"
 }
