@@ -290,7 +290,10 @@ fn require_fixture_absent(root: &Path) -> Result<(), io::Error> {
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(io::Error::new(
             error.kind(),
-            format!("verify rehearsal fixture absence {}: {error}", root.display()),
+            format!(
+                "verify rehearsal fixture absence {}: {error}",
+                root.display()
+            ),
         )),
         Ok(_) => Err(io::Error::other(format!(
             "rehearsal fixture {} remains after cleanup: {}",
@@ -324,7 +327,10 @@ impl Drop for FixtureOwner {
             )
         {
             // A failed stderr write must not cause a second panic on unwind.
-            let _ = writeln!(io::stderr().lock(), "rehearsal fixture cleanup failed: {error}");
+            let _ = writeln!(
+                io::stderr().lock(),
+                "rehearsal fixture cleanup failed: {error}"
+            );
         }
     }
 }
@@ -1107,9 +1113,10 @@ fn rehearsal_fixture_reservation_keeps_occupied_paths() -> Result<(), Box<dyn Er
         for _ in 0..4 {
             let parent = &parent;
             let sequence = &sequence;
-            handles.push(std::thread::Builder::new().spawn_scoped(scope, move || {
-                FixtureOwner::reserve(parent, sequence)
-            })?);
+            handles.push(
+                std::thread::Builder::new()
+                    .spawn_scoped(scope, move || FixtureOwner::reserve(parent, sequence))?,
+            );
         }
         handles
             .into_iter()
@@ -1185,7 +1192,9 @@ fn rehearsal_fixture_early_construction_error_cleans_root() -> Result<(), Box<dy
     let sequence = AtomicUsize::new(0);
     let error = rehearsal_fixture_in(&source, &allocations, &sequence, FixtureTopology::Committed)
         .err()
-        .ok_or_else(|| io::Error::other("the missing second governed file must fail construction"))?;
+        .ok_or_else(|| {
+            io::Error::other("the missing second governed file must fail construction")
+        })?;
     require(
         error
             .downcast_ref::<io::Error>()
@@ -1219,7 +1228,10 @@ fn rehearsal_fixture_cleanup_retries_only_transient_errors() -> Result<(), Box<d
     #[cfg(windows)]
     let errors = errors
         .into_iter()
-        .chain([io::Error::from_raw_os_error(32), io::Error::from_raw_os_error(33)])
+        .chain([
+            io::Error::from_raw_os_error(32),
+            io::Error::from_raw_os_error(33),
+        ])
         .collect::<Vec<_>>();
     for error in errors {
         let owner = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
@@ -1292,7 +1304,9 @@ fn rehearsal_fixture_cleanup_reports_persistent_errors() -> Result<(), Box<dyn E
         require(
             attempts == expected_attempts
                 && waits.len() + 1 == expected_attempts
-                && waits.iter().all(|delay| *delay == FIXTURE_CLEANUP_RETRY_DELAY),
+                && waits
+                    .iter()
+                    .all(|delay| *delay == FIXTURE_CLEANUP_RETRY_DELAY),
             "cleanup must preserve its one bounded budget and avoid retrying access denial",
         )?;
         let diagnostic = error.to_string();
@@ -1303,7 +1317,9 @@ fn rehearsal_fixture_cleanup_reports_persistent_errors() -> Result<(), Box<dyn E
                 && diagnostic.contains(&format!("{expected_attempts} attempt(s)"))
                 && diagnostic.contains("remaining-canary")
                 && std::fs::read(&canary)? == b"still owned",
-            &format!("terminal cleanup must expose cause, root, attempts and remaining entries: {error}"),
+            &format!(
+                "terminal cleanup must expose cause, root, attempts and remaining entries: {error}"
+            ),
         )?;
     }
     parent.cleanup()?;
@@ -1315,10 +1331,17 @@ fn rehearsal_fixture_git_commands_disable_automatic_maintenance() -> Result<(), 
     let root = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
     let traces = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
     git_in(&root, &["init"])?;
-    git_in(&root, &["config", "user.name", "fixture maintenance control"])?;
     git_in(
         &root,
-        &["config", "user.email", "fixture-maintenance@example.invalid"],
+        &["config", "user.name", "fixture maintenance control"],
+    )?;
+    git_in(
+        &root,
+        &[
+            "config",
+            "user.email",
+            "fixture-maintenance@example.invalid",
+        ],
     )?;
     let config = fixture_git_command()
         .env("GIT_CONFIG_COUNT", "1")
@@ -1340,7 +1363,12 @@ fn rehearsal_fixture_git_commands_disable_automatic_maintenance() -> Result<(), 
         .env("GIT_CONFIG_KEY_0", "maintenance.auto")
         .env("GIT_CONFIG_VALUE_0", "true")
         .env("GIT_TRACE2_EVENT", &trace_path)
-        .args(["commit", "--allow-empty", "-m", "fixture maintenance control"])
+        .args([
+            "commit",
+            "--allow-empty",
+            "-m",
+            "fixture maintenance control",
+        ])
         .current_dir(&root)
         .output()?;
     require(
