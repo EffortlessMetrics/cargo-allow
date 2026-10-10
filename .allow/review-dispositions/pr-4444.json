@@ -4,33 +4,39 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4444,
   "base_ref": "main",
-  "base_sha": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
+  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
   "head_ref": "fix/3790-pretoken-registry-gate",
-  "head_sha": "e170d4a29cdcf8560ff57931cf21bae9cbf5ebda",
-  "merge_base": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
-  "reviewed_diff_digest": "sha256:v1:72915d4684ba444a94da81aee7f4efe64c39d37d95ec6a77ebb7219af5a08430",
+  "head_sha": "72bdf8a870c03b08702e42ea39b83630c5f5e71a",
+  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "reviewed_diff_digest": "sha256:v1:80323814d8951921a875f2c8c1a0fef5bd032398aef755fdf440a582dcd3a101",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full current-source, consumer, test and governance reviewer; shared model family and campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthor full source, consumer, governance and current integration review; authored none of this PR's source, tests, repairs or integration; shared model family/prior campaign context disclosed; coordinating account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478768520"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478957161"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478768520",
-    "Complete eight-path source and actual workflow/publisher/recovery/manifest consumers reviewed. Strict successful registry preflight precedes selected-secret lookup; default Git/Cargo/dry-run children filter the selected key before reading values. Missing-token denial stays nonincident and recovery-loader-rejected; failed-dry-run incident classification and merged4432 null-marker semantics remain exact. The prior Rust textual consumer is strengthened to match the production gate and passes actual current Ubuntu/MSRV.",
-    "Independent 37 token, seven workflow, 11 dispatch and44 handoff scenarios plus checksum pass. Pinned actionlint passes with shellcheck disabled. Current native pregate114198663760 executes exact synthetic caf6789, formatter and enforcing zero-new; repaired test passes Ubuntu114199021222 and MSRV114199021187.",
-    "Exact source tree/synthetic ordered parents/full effective digest and all out-of-scope modes/blobs independently verified. Exact735194-byte main policy prefix plus unchanged1577-byte own suffix,1078 unique entries, both canonical fingerprints, existing settings/dates/limit36 and own note retained. Fresh feedback has no unresolved blocker. Quota/skipped bot output is not independent evidence.",
-    "This successor changes only the PR's own retained JSON. The source review remains bound to its reviewed source identity; own-record-only bootstrap, exact live pair, every current applicable gate and fresh feedback must be independently verified before merge, with exact enforcing post-main guard before bounded closeout. No local compiled Rust or broader release eligibility, selected credential, provider mutation, final tag or publication claimed."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478957161",
+    "Reviewed the complete current eight-path effective source against independently fetched actuala611 main/head/synthetic. Fresh full source/governance and consumer review retains the earlier full094f/e170 investigation, rechecks both changed test seams and confirms that all production/workflow/revision-note/policy/old-JSON modes and bytes are exactly preserved. The actual current source is72bdf8a8, with one9085 parent, uniquea611 MB and syntheticd8a65cf7 matching the complete tree.",
+    "Production remains strict: shared-registry preflight is required for publishing; unsupported preflight family/mode combinations refuse before effects; the selected token key is filtered before retrieving environment values, and Git/Cargo/package/dry-run children receive explicit token-free environments. Actual token retrieval and absence refusal occur after successful Cargo dry-run and outside its incident handler. The upload alone receives the selected token; existing dry-run failure/real-upload incident progression is retained.",
+    "The current workflow gates selected-token access on success(), successful shared_registry_preflight outcome and grouped valid-or-recovery authorization. Publication separately requires success plus actual preflight success; neither step permits continue-on-error. Dispatch rehearsal remains token-free. The unchanged current Rust consumer retains these stronger actual auth/preflight/order assertions, without weakening to the earlier condition.",
+    "The original missing-token oracle gap is independently confirmed fixed: exact9085 actual full Python execution passed37 token,7 workflow,11 dispatch and checksum controls; all current Python blobs and mode100755 are identical. In-memory key-only early denial before the per-row loop still passes predecessor37 but fails the corrected harness at missing Cargo dry-run. Actual corrected37 passes. The added assertions require nonempty package/dry-run command lists, every packaging call before the first dry-run, and nonempty receipt rows while preserving exact incident/recovery-loader/token-read behavior.",
+    "The newly discovered Windows LF/CRLF source defect is now fixed by exactly two per-line comparisons in the existing Rust consumer. Independently verified the entire successor source equals the previous full Rust file with only those two predicates replaced. Exact indentation/name/id remain required. Native read-only Git core.autocrlf filtering of the current workflow reproduces CRLF without modifying a worktree; both LF and CRLF positive controls pass. Missing/wrong name/id, missing preflight flag, introduced continue-on-error and introduced selected-token exposure all fail the applicable controls.",
+    "The original Windows failure is preserved as actual predecessor evidence: job114210819867/run38051187234 checked synthetic25e17825,1651pass/1fail atrelease_prep_tests.rs342, artifact11669658578/ZIP48c9c4ed. This review closes its source cause only. Current corrected native Windows execution remains an explicit gate; no local Rust run, retry-only waiver or all-platform pass is inferred.",
+    "Merged4432 publication-receipt/null-marker and actual manifest consumers remain exact. The seven broader rehearsal/prevention flags remain false; trusted registry context/clock/window, custody and same-run publication composition are still owned work. This PR does not create real publication authority, a qualified Complete freeze or an uploaded/visible registry artifact.",
+    "All2650 other predecessor paths and2643 main paths outside scope preserve modes/blobs. All11 previously inspected incoming main nonpolicy blobs remain exact; explain-only changes do not alter token/workflow/manifest consumers. Policy remains exact736770-byte main prefix plus unchanged1577-byte tail,738347bytes/1080unique IDs, unchanged settings/lifecycle/allow11278limit36 and both canonical note fingerprints. The existing own JSON is intentionally historical and must be refreshed only after this new native source review.",
+    "Fresh PR body now binds72bdf8a8/treebfe5d55d/basea611/full80323814/syntheticd8a65cf7, accurately distinguishes corrected source from previous native failure and current pending Windows acceptance, and retains remaining release producers. Both existing inline threads are resolved; the original incident issue remains fixed and the ordering thread is now source-proved rather than accepted solely from bot resolution. Current bot summary remains in-progress for094f..9085 and is not claimed as current approval. No new actionable feedback is present.",
+    "Both inline source findings are independently ConfirmedAndFixed; the Windows LF predicate source cause is fixed. Current pregate114213305190 passes; actual corrected compiled Windows acceptance remains independently required. No local Rust execution or all-gates pass is claimed."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify exact resulting base/head, own-record-only bootstrap, every applicable current native check, new feedback and exact post-main enforcing guard. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38052161886/job/114213305190"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4444",
-  "reviewed_at_utc": "2026-10-10T11:24:08Z"
+  "reviewed_at_utc": "2026-10-10T12:36:00Z"
 }
