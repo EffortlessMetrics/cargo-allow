@@ -4,35 +4,37 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4447,
   "base_ref": "main",
-  "base_sha": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
+  "base_sha": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
   "head_ref": "release/3925-provider-adapter",
-  "head_sha": "ba5aaab24a7f6951c406982d31067d4a0def7696",
-  "merge_base": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
-  "reviewed_diff_digest": "sha256:v1:16877ad21984f1b612581b47a15d323029eb8f3619a6c39d10d230d20eddae0a",
+  "head_sha": "7a8e9839eb4dd6ff00e4af8aa91a704e1919dc4a",
+  "merge_base": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
+  "reviewed_diff_digest": "sha256:v1:7f5b366ec54f800794e1a133be19c42c5a585f54d1af9075d5f949bc7f6365b5",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of this lane's source, current corrections, main integration, governance and this metadata; shared model family/campaign context disclosed. Coordinating account transports this actual independent model result; no independent human-review claim. Earlier #4434 canonical rehearsal foundation authorship is disclosed and not independently reapproved by this provider review.",
+  "reviewer_identity": "ChatGPT /root/source_review, separate read-only nonauthor of all eleven changed source, test, documentation, inventory, policy and retained-governance paths, their foundation, repairs and main integration. Shared model family and campaign context are disclosed. The coordinating account retains this actual model review and authors the subsequent record; no independent human approval or metadata self-review is claimed.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5479479656"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5480036014"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5479479656",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5480036014",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#discussion_r4238051964",
-    "Full current source/consumer/governance review retained in pr4447-release-audit-source-review-ba5aaab2.json, SHA256 c844750ea0f1ff56aca87969113cb44f611fb12e1e9f7bcecaab07f7bb76958a. Source head ba5aaab24a7f6951c406982d31067d4a0def7696, actual main/ref/unique merge base 90a2426c4d998d6ccc31d3264a0d5a0d3b468cba, full plain diff sha256:v1:16877ad21984f1b612581b47a15d323029eb8f3619a6c39d10d230d20eddae0a, tree 12c1e176ef652d9961fd2d1c06639cede1885802.",
-    "The complete effective provider/consumer/docs/inventory/governance scope is renewed after exact source preservation, R5 source and actual-reader regression review, incoming-main inspection and exact policy union. The reviewer authored none of the provider, R5 repair, integration or record; earlier authorship of the canonical #4434 rehearsal foundation is disclosed and is not represented as independent review of that foundation.",
-    "R5 comment4237900055 is Fixed and resolved in reply4238051964. Canonical ASCII positive job IDs are length-bounded before regex/int and before inventory/repository/credential/HTTP access. A single validated integer enters the selected-attempt loop. All 53 actual Python tests pass with warnings as errors; 51 old method bodies are exact. Twenty actual-reader malformed cases fail on the pinned parent and refuse precisely on current bytes with zero credential/transport calls; three full boundary positives and an in-bound wrong-job mismatch preserve exact identity semantics. R2/R3 Vary/physical-header corrections, R4 exact bare/full/short workflow paths, corrupt-deflate sanitization and secret-bearing callback protection remain intact.",
-    "Full review covers explicit construction context, fixed authenticated origin, credential/transport sanitization, bounded headers/JSON, independently selected run/attempt/job/ref/tree/trust/time, exact artifact inventory and bytes, storage-host credential separation, archive/path/decompression bounds, nonforced append/nonce/immutable readback and process-lifetime witness restrictions. No unsupported GitHub exact-old-OID CAS or fixture-to-authority claim is introduced. The exact 739,924-byte main policy plus unchanged 4,517-byte suffix contains 1,087 IDs; 2,655 unrelated main paths and 2,661 parent entries outside the incoming delta are exact. Current synthetic659675035f101ecf30ffe40859b80038f4eb65bc matches [base,head]/tree. Pregate114239594178 passes formatter, enforcing no-new and typed Complete. Actual seven-asset sizing, provider qualification, retained custody and exact authorization remain separate prerequisites.",
-    "The current own JSON intentionally bound its earlier reviewed pair before this metadata-only refresh. This record binds the actual source parent and actual native review time; independent bootstrap must verify the one-file child, exact full diff and all preserved source modes/blobs. No source author independently certifies their own changes."
+    "Full current eleven-path source and consumer/governance review is retained in pr4447-source-review-current-7a8e9839.json, 49,963 bytes, SHA-256 6df01a6b297178323adb89df101fd14344f98cb442b318cb6c08c85b7a128bc4. Complete explicit-eight-character diff: 190,064 bytes, SHA-256 7f5b366ec54f800794e1a133be19c42c5a585f54d1af9075d5f949bc7f6365b5. Actual synthetic 84a71e0c610fccd949da3059c99f279a9870d9c7 has exact [base, head] parents and tree 896bd59c1065b6b8bb111fd47f96339e21e0e111, verified through API and native Git.",
+    "All six existing feedback threads are resolved. Current context selection, repeated Vary and physical-header repairs, exact workflow short refs, bounded selected job IDs, corrupt-deflate sanitization and callback-error sanitization remain intact. The corrected PR body was independently reread and accurately identifies Draft 7a/30ac and the historical own-review record.",
+    "Review covers explicitly selected credentials and origin; independent actor/login and source bytes; exact artifact, producer, run, attempt, job, ref, commit, tree, event and time bindings; bounded physical headers/JSON; download credential separation; Git object readback; fresh-nonce nonforced append; one-process witness; ambiguous-write and restart refusal. No expected-old-OID CAS or alternate release-authority model is claimed.",
+    "All 53 intercepted provider tests pass independently with warnings treated as errors. A separate actual-reader callback StoreError control returns the fixed sanitized diagnostic and makes zero HTTP calls. The 40-row evidence inventory verifier passes. Actual verified CLI diff --require-change-note accepts all five scoped notes with zero new findings. Existing 108 drift, 8 review-due, 22 stale and 5 weak-evidence advisories are disclosed. No local native Rust toolchain execution is claimed.",
+    "Normal main integration preserves all ten owned nonpolicy entries, six incoming main entries and 2,658 other main entries. Policy is the exact 741,501-byte main prefix plus the original 4,517-byte tail: 746,018 bytes / 1,089 unique IDs; SHA-256 e821f1ea68705bf5324a5f0d1364abf5938f69c9b79b203b513cdc5607321704. Historical predecessor review ID/time and full explicit-eight diff were independently recomputed rather than relabeled.",
+    "Current source pregate 114265413135 passes formatting, actionlint, compiled enforcing no-new and typed Complete. Downloaded artifact 11676373077 is 642 bytes with ZIP SHA-256 30cc5f53a2c8d5b043be48f34b0d6e56f1e4dbd196f835337de6b65a445da134; sole pregate-result.json SHA-256 eefa45aa5615f8bfd2972ace949d2b6b4e4680e50e4f2f3747cf5b68cb82ddf1 binds the exact 7a/30ac pair and three passed checks. Full current native completion remains a merge gate.",
+    "This record binds the actual reviewed source parent and actual native submission time. A separate reviewer must bootstrap the JSON-only successor and independently recompute the ancestor source digest. Real provider qualification, selected payload fit, durable custody, selected prevention, Complete freeze/replay and exact release authorization remain separate unfulfilled obligations."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: independently bootstrap this own-record-only successor, require every applicable current deterministic native gate and substantive feedback disposition, recheck exact head/base/ref/unique merge base, then head-pin the normal merge and retain the exact new-main enforcing guard. Pending, skipped, stale and neutral evidence is not green; optional model review is informational and never inferred clean.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38061180464/job/114239594178"
+    "owner": "Coordinating maintainer account: independently bootstrap this JSON-only successor; require current applicable native gates and substantive feedback disposition; refresh head/base/direct refs/unique merge base/synthetic before a head-pinned normal merge; then retain the downloaded exact new-main enforcing guard. A successful edit-only publisher no-op does not supersede a failed readiness projection. Optional model review is informational and never inferred clean.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38070043383/job/114265413135"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4447",
-  "reviewed_at_utc": "2026-10-10T15:03:26Z"
+  "reviewed_at_utc": "2026-10-10T17:13:44Z"
 }
