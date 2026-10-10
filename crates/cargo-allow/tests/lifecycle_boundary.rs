@@ -8,6 +8,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[path = "support/repository_environment.rs"]
+mod repository_environment;
+
+use repository_environment::isolate_repository;
+
 const TARGET_ID: &str = "allow-boundary";
 const SOURCE: &str = "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n";
 
@@ -176,6 +181,13 @@ fn lifecycle_boundary_cli_surfaces_and_calendar_postures_agree() -> Result<(), S
         }
     }
     Err("UTC day changed during both attempts to inspect lifecycle boundaries".to_string())
+}
+
+#[test]
+fn lifecycle_fixture_children_ignore_repository_environment() -> Result<(), String> {
+    repository_environment::require_isolated_fixture_test(
+        "lifecycle_boundary_cli_surfaces_and_calendar_postures_agree",
+    )
 }
 
 fn check_cli_cases(root: &Path, cases: &[BoundaryCase], today: SimpleDate) -> Result<(), String> {
@@ -355,11 +367,13 @@ fn row<'a>(document: &'a Value, array: &str, id_field: &str) -> Result<&'a Value
 }
 
 fn run(root: &Path, args: &[&str]) -> Result<Output, String> {
-    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+    let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-allow"));
+    command
         .args(args)
         .arg("--root")
         .arg(root)
-        .args(["--config", "policy/allow.toml", "--format", "json"])
+        .args(["--config", "policy/allow.toml", "--format", "json"]);
+    isolate_repository(&mut command)
         .output()
         .map_err(|error| format!("run {args:?}: {error}"))
 }
@@ -410,9 +424,9 @@ impl Fixture {
                 "fixture",
             ],
         ] {
-            let output = Command::new("git")
-                .current_dir(&root)
-                .args(&args)
+            let mut command = Command::new("git");
+            command.current_dir(&root).args(&args);
+            let output = isolate_repository(&mut command)
                 .output()
                 .map_err(|error| format!("git {args:?}: {error}"))?;
             require(
