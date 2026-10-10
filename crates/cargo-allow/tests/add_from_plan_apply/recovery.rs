@@ -440,7 +440,11 @@ fn context_recovery_at_placement(
     source_path: &Path,
     placement: PlanPlacement,
 ) -> TestResult {
-    let fixture = RecoveryFixture::with_placement(include_untracked, source_path, placement)?;
+    let fixture = if matches!(placement, PlanPlacement::Outside) {
+        RecoveryFixture::new(include_untracked, source_path)?
+    } else {
+        RecoveryFixture::with_placement(include_untracked, source_path, placement)?
+    };
     let refused_receipt = fixture.caller.join("refused must not exist.json");
     let plan_argument = if matches!(placement, PlanPlacement::Outside) {
         Path::new(RECORDED_PLAN)
