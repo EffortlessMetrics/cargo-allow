@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Reject legacy row-count claims of current registry feasibility during final
+  freeze composition. Reconcile the existing typed final-registry input against
+  the exact selected source and package bytes, preserve provider and freshness
+  failures through required readiness evidence and replay, and keep missing
+  independently selected context, time, and age-window authority NotProven.
+time: 2026-10-09T00:00:00Z

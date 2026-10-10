@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Preserve current negative registry observations as incomplete evidence or
+  unproven authority, so freeze readiness and replay do not misreport them as
+  provider outages (#4426). Missing independent context or fixture provenance
+  still prevents currentness; actual provider failures remain unavailable.

@@ -57,6 +57,41 @@ new exact-subject qualification and freeze
 historical freezes are unchanged; selected rehearsal and freeze qualification
 must be rerun after the repair is integrated.
 
+### Registry admission to the final freeze
+
+`registry-observation=path` selects the existing
+[`FinalRegistryPreflightInputV1`](final-registry-preflight-v1.md), including
+the observations emitted by the
+[credential-free observer](final-registry-observation-v1.md). A rendered
+preflight result, legacy three-row shared preflight, or rehearsal row count
+cannot establish current final registry feasibility. The composer re-evaluates
+the exact ordered 10+3 denominator, version/checksum/yank state, and separate
+version, owner, and publication-authority provenance. It additionally binds
+the candidate commit, tree, lockfile, topology, and all selected package
+checksums to the freeze subject. Duplicate keys and duplicate selected inputs
+are rejected.
+
+Registry admission is a required evidence-graph and readiness row even when
+the input is absent. Typed malformed, conflicting, stale, incomplete,
+provider-unavailable, and instrument-failure results remain non-Complete in
+readiness and replay. The replay reading records the input path and digest,
+provider-state digest, observation time, evaluation time, and age window;
+the observation timestamp is no longer replaced by an artifact digest.
+
+A retained input cannot establish its own current context, evaluation clock,
+or acceptable age. Production composition still lacks an independently
+assembled pre-freeze context and selected freshness window under
+[#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792) and
+[#2501](https://github.com/EffortlessMetrics/cargo-allow/issues/2501). Until
+those inputs are wired, a semantically clean retained preflight remains
+`NotProven`; its recorded context and times serve only as diagnostics.
+The existing public observer also leaves ownership and publication authority
+unproven. Neither residual authority risk nor test-fixture provenance is
+promoted to a current production reading. The bounded
+[#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426) admission
+repair supplies no new observer, authority policy, or qualifying producer
+evidence, and does not make the release ready to freeze or publish.
+
 ## 0.2.0 release rails
 
 The namespace publication and the cargo-allow tag release are distinct,
