@@ -6,6 +6,39 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
+fn qualifier_protocol_controls_run_in_ci() -> Result<(), Box<dyn std::error::Error>> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .ok_or("repository root is unavailable")?;
+    let output = Command::new("python")
+        .args(["-I", "-B", "-W", "error"])
+        .arg(root.join("scripts/test-qualify-release-freeze.py"))
+        .arg("-v")
+        .env_remove("GH_TOKEN")
+        .env_remove("GITHUB_TOKEN")
+        .env_remove("CARGO_REGISTRY_TOKEN")
+        .output()?;
+    let stderr = String::from_utf8(output.stderr)?;
+    if !output.status.success() {
+        return Err(format!(
+            "qualifier protocol suite failed: {}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        )
+        .into());
+    }
+    let staging_control_ran = stderr.lines().any(|line| {
+        line.starts_with("test_native_bridge_outputs_publish_only_as_a_validated_complete_set")
+            && line.ends_with(" ... ok")
+    });
+    if !staging_control_ran {
+        return Err("qualifier protocol suite did not run the child-output staging controls".into());
+    }
+    Ok(())
+}
+
+#[test]
 fn actual_qualifier_prepares_reads_back_composes_and_replays()
 -> Result<(), Box<dyn std::error::Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
