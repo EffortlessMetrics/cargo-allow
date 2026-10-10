@@ -1,6 +1,90 @@
 use super::test_support::{test_entry, test_finding, test_outcome};
 use super::*;
 use allow_core::{AllowConfig, FindingKind, MatchStatus};
+use serde_json::{Value, json};
+
+#[test]
+fn rendered_worklist_locations_validate_against_schema() -> Result<(), String> {
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/worklist.schema.json"))
+            .map_err(|error| format!("worklist schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("worklist schema compilation: {error}"))?;
+    let cfg = AllowConfig::empty();
+
+    // Run the real outcome-to-work-item projection and renderer at both
+    // one-based location bounds and with no span. None must omit the fields.
+    for coordinate in [Some(1), Some(u32::MAX), None] {
+        let mut finding = test_finding(
+            FindingKind::Panic,
+            Some("unwrap"),
+            "src/lib.rs",
+            "method_call",
+        );
+        finding.span = coordinate.map(|coordinate| allow_core::Span {
+            line: coordinate,
+            column: coordinate,
+        });
+        let outcomes = [test_outcome(
+            MatchStatus::New,
+            None,
+            Some(0),
+            "unreceipted panic.unwrap in src/lib.rs",
+        )];
+        let items = work_items_from_outcomes(&cfg, &[finding], &outcomes);
+        if items.len() != 1 {
+            return Err("worklist fixture must produce one source-backed item".to_string());
+        }
+        let rendered = render_worklist_json_with_context(&items, WorklistContext::default());
+        let artifact: Value = serde_json::from_str(&rendered)
+            .map_err(|error| format!("rendered worklist JSON: {error}"))?;
+        let row = artifact
+            .pointer("/work_items/0")
+            .and_then(Value::as_object)
+            .ok_or_else(|| "rendered worklist must contain its source-backed item".to_string())?;
+        for field in ["line", "column"] {
+            match (coordinate, row.get(field)) {
+                (Some(expected), Some(value)) if value.as_u64() == Some(u64::from(expected)) => {}
+                (None, None) => {}
+                _ => return Err(format!("worklist {field} did not preserve {coordinate:?}")),
+            }
+        }
+        validator
+            .validate(&artifact)
+            .map_err(|error| format!("rendered worklist violates schema: {error}"))?;
+
+        for field in ["line", "column"] {
+            for invalid in [
+                json!(0),
+                json!(-1),
+                json!(1.5),
+                json!("1"),
+                Value::Null,
+                json!(u64::from(u32::MAX) + 1),
+            ] {
+                let mut invalid_location = artifact.clone();
+                invalid_location
+                    .pointer_mut("/work_items/0")
+                    .and_then(Value::as_object_mut)
+                    .ok_or_else(|| "missing worklist negative-control row".to_string())?
+                    .insert(field.to_string(), invalid.clone());
+                if validator.validate(&invalid_location).is_ok() {
+                    return Err(format!("worklist schema must reject {field} {invalid}"));
+                }
+            }
+        }
+        let mut unknown_field = artifact.clone();
+        unknown_field
+            .pointer_mut("/work_items/0")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| "missing worklist negative-control row".to_string())?
+            .insert("unexpected_field".to_string(), json!(true));
+        if validator.validate(&unknown_field).is_ok() {
+            return Err("worklist schema must reject undeclared item fields".to_string());
+        }
+    }
+    Ok(())
+}
 
 #[test]
 fn worklist_json_emits_stale_allow_actions() {
