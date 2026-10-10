@@ -344,8 +344,12 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
             && token_step.contains("if [ \"${DRY_RUN:-false}\" = \"true\" ]")
             && token_step.contains("token lookup skipped")
             && token_step.contains("source=crates_io_api_token")
-            && token_step.contains("      - name: Prove shared registry preflight before upload\n")
-            && token_step.contains("        id: shared_registry_preflight\n")
+            && token_step
+                .lines()
+                .any(|line| line == "      - name: Prove shared registry preflight before upload")
+            && token_step
+                .lines()
+                .any(|line| line == "        id: shared_registry_preflight")
             && token_step.contains("--registry-preflight")
             && !token_step.contains("continue-on-error:")
             && !token_step.contains("CARGO_REGISTRY_TOKEN"),
