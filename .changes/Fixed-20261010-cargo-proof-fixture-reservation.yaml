@@ -4,3 +4,5 @@ body: >-
   and bounded exclusive creation, preserving occupied paths and surfacing
   other allocation errors immediately. The existing dispatch, copy/spawn,
   timeout, reaping, and cleanup controls remain unchanged.
+  Run the proof CI lane on Linux and Windows, covering all ten applicable
+  subprocess tests on Linux and all nine on Windows.
