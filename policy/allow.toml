@@ -22999,6 +22999,49 @@ glob = ".allow/revisions/4432-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-review-4431-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4431.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4431 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4431", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4431.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4431.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4431-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4431-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4431 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4431", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4431-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4431-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
 
 [[allow]]
 id = "allow-review-4433-record"

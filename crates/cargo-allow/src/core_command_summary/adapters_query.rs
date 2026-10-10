@@ -38,9 +38,11 @@ pub struct ExplainSummaryFactsV1 {
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     pub allow_id: String,
-    /// Status of the first outcome for this entry that is not `Matched`.
-    /// `None` means every finding this entry matches is receipted.
-    pub attention_status: Option<MatchStatus>,
+    /// Canonical entry status from the detailed explain read model, including
+    /// its lifecycle precedence. This is distinct from each finding's state.
+    pub current_status: MatchStatus,
+    /// Unmodified full-ledger outcome statuses projected onto this entry.
+    pub outcome_statuses: Vec<MatchStatus>,
     pub matching_finding_count: usize,
     /// Ordered next steps from `explain_steps::explain_next_steps`, unmodified.
     pub suggested_actions: Vec<String>,
@@ -117,9 +119,9 @@ pub struct WorklistSummaryFactsV1 {
 
 /// Project `explain` onto the common operator summary.
 ///
-/// The subject is the explained ledger entry. Posture comes from the entry's
-/// own outcome status through the gate's severity ranking, so `explain` cannot
-/// call an entry healthy that `check` would fail on.
+/// The subject and reason use the canonical entry read status. Posture also
+/// retains every projected outcome through the gate's severity law, so an
+/// advisory lifecycle annotation cannot conceal a blocking finding or tie.
 pub fn core_command_summary_from_explain(
     facts: ExplainSummaryFactsV1,
 ) -> Result<CoreCommandSummaryV1, String> {
@@ -130,7 +132,8 @@ pub fn core_command_summary_from_explain(
         completeness,
         coverage_limitation,
         allow_id,
-        attention_status,
+        current_status,
+        outcome_statuses,
         matching_finding_count,
         suggested_actions,
         calendar_expiry_blocks_no_new,
@@ -139,6 +142,28 @@ pub fn core_command_summary_from_explain(
     if let Some(limitation) = coverage_limitation {
         subject.limitations.push(limitation);
     }
+
+    // Preserve outcome order within the existing gate postures, but inspect
+    // every row before accepting an advisory result. The lifecycle headline
+    // must not turn a later ambiguous or re-raised New finding advisory.
+    let attention_status = outcome_statuses
+        .iter()
+        .copied()
+        .find(|status| {
+            matches!(
+                status_posture(*status, calendar_expiry_blocks_no_new),
+                CoreCommandPostureV1::Blocking | CoreCommandPostureV1::DecisionRequired
+            )
+        })
+        .or_else(|| {
+            outcome_statuses
+                .iter()
+                .copied()
+                .find(|status| *status != MatchStatus::Matched)
+        });
+    let entry_status = (current_status != MatchStatus::Matched)
+        .then_some(current_status)
+        .or(attention_status);
 
     let (result_class, posture, reason) = if completeness != CompletenessV1::Complete {
         (
@@ -151,16 +176,25 @@ pub fn core_command_summary_from_explain(
                 ),
             },
         )
-    } else if let Some(status) = attention_status {
+    } else if let Some(status) = entry_status {
+        let outcome_status = attention_status.unwrap_or(status);
         (
             ResultClassV1::Findings,
-            status_posture(status, calendar_expiry_blocks_no_new),
+            status_posture(outcome_status, calendar_expiry_blocks_no_new),
             CoreCommandReasonV1 {
                 code: format!("explain.{}", status.as_str()),
-                message: format!(
-                    "allow entry `{allow_id}` carries a `{}` match outcome",
-                    status.as_str()
-                ),
+                message: if status == outcome_status {
+                    format!(
+                        "allow entry `{allow_id}` has current status `{}`",
+                        status.as_str()
+                    )
+                } else {
+                    format!(
+                        "allow entry `{allow_id}` has current status `{}`; a projected finding remains `{}`",
+                        status.as_str(),
+                        outcome_status.as_str()
+                    )
+                },
             },
         )
     } else if suggested_actions.is_empty() {
