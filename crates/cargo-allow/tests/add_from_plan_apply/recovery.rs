@@ -341,9 +341,9 @@ impl RecoveryFixture {
         Ok(serde_json::from_slice(&fs::read(path)?)?)
     }
 
-    fn add(&self, plan_path: &Path, receipt_path: &Path) -> TestResult<Output> {
-        Ok(self
-            .command("add")
+    fn add_command(&self, plan_path: &Path, receipt_path: &Path) -> Command {
+        let mut command = self.command("add");
+        command
             .arg("--from-plan")
             .arg(plan_path)
             .args([
@@ -356,8 +356,12 @@ impl RecoveryFixture {
                 "json",
                 "--summary-output",
             ])
-            .arg(receipt_path)
-            .output()?)
+            .arg(receipt_path);
+        command
+    }
+
+    fn add(&self, plan_path: &Path, receipt_path: &Path) -> TestResult<Output> {
+        Ok(self.add_command(plan_path, receipt_path).output()?)
     }
 
     fn require_preserved(&self) -> TestResult {
@@ -533,6 +537,82 @@ fn safe_retry_placements_generate_and_apply_from_another_cwd() -> TestResult {
         (true, PlanPlacement::PolicyIgnored),
     ] {
         context_recovery_at_placement(include_untracked, Path::new(SOURCE_PATH), placement)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn inherited_git_index_only_prevents_git_ignore_qualification() -> TestResult {
+    for placement in [
+        PlanPlacement::IgnoredDirectory,
+        PlanPlacement::Outside,
+        PlanPlacement::PolicyIgnored,
+    ] {
+        let fixture = RecoveryFixture::with_placement(true, Path::new(SOURCE_PATH), placement)?;
+        let candidate = fixture
+            .plan_path
+            .with_file_name("original plan.retry-3.json");
+        let receipt = fixture.caller.join("selector refusal must not exist.json");
+        let ordinary = fixture.add(&fixture.plan_path, &receipt)?;
+        let ordinary_text = String::from_utf8(ordinary.stderr)?;
+        let ordinary_command =
+            printed_regeneration_command(&ordinary_text, &fixture.plan_path)?.to_owned();
+        require(
+            ordinary.status.code() == Some(2)
+                && ordinary_text.contains("source inventory changed since the plan was generated")
+                && !receipt.exists()
+                && !candidate.exists()
+                && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+            "ordinary selected inventory must provide a safe hint without mutation",
+        )?;
+        fixture.require_preserved()?;
+
+        // Override only this child, after isolation, with the actual valid
+        // fixture index. Inventory acquisition must still reach the same stale
+        // binding check; this is not a broken-Git fallback control.
+        let selected = fixture
+            .add_command(&fixture.plan_path, &receipt)
+            .env("GIT_INDEX_FILE", fixture.root.join(".git/index"))
+            .output()?;
+        let selected_text = String::from_utf8(selected.stderr)?;
+        fixture.require_preserved()?;
+        require(
+            selected.status.code() == Some(2)
+                && selected_text.contains("E0001_USAGE")
+                && selected_text.contains("(policy unchanged)")
+                && selected_text.contains("source inventory changed since the plan was generated")
+                && !receipt.exists()
+                && !candidate.exists()
+                && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+            &format!(
+                "valid selected index must reach stale refusal without mutation: {selected_text}"
+            ),
+        )?;
+        eprintln!(
+            "selector control placement={placement:?}; valid fixture index; original policy, index, HEAD and occupied retry canaries unchanged; diagnostic={selected_text:?}",
+        );
+        if matches!(placement, PlanPlacement::IgnoredDirectory) {
+            require(
+                selected_text.contains("; regenerate manually: ")
+                    && selected_text.contains("cannot be proved excluded")
+                    && !selected_text.contains("; regenerate with "),
+                "selector-sensitive Git ignore qualification needs manual guidance",
+            )?;
+            let safe = fixture.caller.join("selector manual recovery.json");
+            fixture.generate_plan_from(&fixture.paste_cwd, 3, &safe)?;
+            fixture.apply_and_replay(&safe)?;
+        } else {
+            let selected_command =
+                printed_regeneration_command(&selected_text, &fixture.plan_path)?;
+            require(
+                selected_command == ordinary_command,
+                "outside-root and selected-policy exclusions must retain their safe command",
+            )?;
+            let generated = run_printed_command(&fixture.paste_cwd, selected_command)?;
+            require_success("selector-independent recovery command", &generated)?;
+            fixture.apply_and_replay(&candidate)?;
+        }
+        remove_temp_root(fixture.container);
     }
     Ok(())
 }
