@@ -366,13 +366,11 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
-            Ok(formats) => formats,
-            Err(error) => {
-                eprintln!("cargo-allow check: {error}");
-                process::exit(1);
-            }
-        };
+        // Return late output errors so the wrapper can replace an evaluated
+        // receipt, remove the stale report and let the CLI replace its summary.
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         let mut artifact_context = source_context.report(Some(baseline_debt_entries));
         evidence.apply_to(&mut artifact_context);
         artifact_context.mode = Some(mode.as_str());
@@ -394,7 +392,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             allow_report::EvaluationResultClassV2::Passed
         };
-        if let Err(error) = artifact_emit::emit_artifact_set(
+        artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "check",
@@ -405,10 +403,13 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 source_subject: &source_subj,
             },
             &emit_ctx,
-        ) {
-            eprintln!("cargo-allow check: artifact emit: {error}");
-            process::exit(1);
-        }
+        )
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!("artifact emit: {error}"),
+            )
+        })?;
     }
     if failed {
         process::exit(1);

@@ -2623,7 +2623,11 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
             require(
                 output.status.code() == Some(exit)
                     && String::from_utf8_lossy(&output.stderr).contains(code),
-                format!("late emit failure must return its typed error: {output:?}"),
+                format!(
+                    "late emit failure must return {code}: exit {:?}; stderr {}",
+                    output.status.code(),
+                    String::from_utf8_lossy(&output.stderr),
+                ),
             )?;
             require(
                 field(&summary, &["result_class"]) == Some(&Value::from(class))
@@ -2635,9 +2639,10 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
             require(
                 field(&receipt_value, &["status"]) == Some(&Value::from("error"))
                     && field(&receipt_value, &["failed"]) == Some(&Value::Bool(true))
+                    // Error receipts retain the plain diagnostic, while the
+                    // command summary carries the stable typed error code.
                     && field(&receipt_value, &["diagnostic"])
-                        .and_then(Value::as_str)
-                        .is_some_and(|diagnostic| diagnostic.contains(code)),
+                        == field(&summary, &["reason", "message"]),
                 format!("late emit failure must replace the passing receipt: {receipt_value}"),
             )?;
             require(
