@@ -666,3 +666,20 @@ required_stronger_owner = "#3940"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove local cross-child binding only; no workflow transport, provider readback, tag, credential, or publication operation occurs."
+
+[[surfaces]]
+id = "authenticated-release-operation-store"
+owner_issue = 3925
+semantic_authority = "#3925 durable lease store and #3927 authenticated custody readback"
+path = "crates/cargo-allow/tests/release_operation_store.rs"
+subject = "scripts/release_operation_store.py"
+producer = "actual standard-library provider adapter with intercepted HTTP and existing Rust domain records"
+consumer = "#3930 future same-run pre-tag driver under #3790/#2502"
+claimed_acceptance_row = "bounded authenticated source/artifact reads, exact Git object bytes and one fresh witness per changed nonforced append"
+assertion_mechanism = "intercepted production exchanges, native read-only Git object hash oracles, existing Rust reducer/byte roundtrip and hostile contention/ambiguity/archive controls"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded provider-adapter behavior with synthetic responses"
+required_stronger_owner = "#3930 actual driver composition; #3925 checked subject/head binding; #3927 real source/mint and finalized producer receipt"
+may_satisfy_release_gate = false
+last_reconciled_commit = "c9616c3e66cb31e51332da970acd18ad8b8fee0b"
+claim_boundary = "The actual adapter is exercised with intercepted HTTP, not a local eligibility replacement. No live credential, authenticated external observation, control/tag ref, authorization mint or publication occurs. Rust compilation and native gates require separate evidence. Lease/tag subject comparison, checked journal/checkpoint head rebinding and real workflow integration remain with the named owners."
