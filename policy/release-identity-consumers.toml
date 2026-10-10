@@ -473,3 +473,17 @@ sites = [
   "def test_skip_worktree_manifest_is_rejected_before_cargo(self):",
 ]
 claim_boundary = "The two workspace markers construct temporary Git fixture manifests for original-source admission and hidden-manifest rejection. These controls do not parse release versions, infer tags or channels, or decide prerelease posture."
+
+[[consumers]]
+id = "qualification-provider-native-fixtures"
+path = "scripts/test-qualify-release-freeze.py"
+role = "intercepted provider and native qualifier test fixtures"
+disposition = "historical-fixture-only"
+owner = "#2501"
+marker_classes = ["workspace-reader", "prerelease-posture"]
+exact_counts = [
+  { class = "workspace-reader", count = 1 },
+  { class = "prerelease-posture", count = 1 },
+]
+sites = ["def rehearsal(subject):", "def native_controls(binary):"]
+claim_boundary = "The test writes a synthetic workspace manifest and supplies one explicit stable release-identity fixture to the intercepted rehearsal producer. It does not parse a caller-selected release version or infer a release channel. The production qualifier and native consumers retain their existing typed identity and incomplete-authority boundaries; these fixtures grant no live provider, custody, authorization or release proof."
