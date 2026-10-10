@@ -4,34 +4,45 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4431,
   "base_ref": "main",
-  "base_sha": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "base_sha": "50d600e3391376a5649afe797807a481ade80ca2",
   "head_ref": "fix/4350-explain-ambiguity",
-  "head_sha": "3a2233aa30d72cbec2c758a95ebad4a183af54ff",
-  "merge_base": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
-  "reviewed_diff_digest": "sha256:v1:754dccdde421f45fd2f86998a993f18f939a30b7a80148aaf453d1a07459cde0",
+  "head_sha": "791663f3c3716e481b5355105a5efda682f88794",
+  "merge_base": "50d600e3391376a5649afe797807a481ade80ca2",
+  "reviewed_diff_digest": "sha256:v1:f158a18e91a422e00df06d562e7a3a542225ad18f20e449815e2020b95c277a5",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring current-source, integration and consumer review; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/publication_review separate nonauthoring full source, integration and consumer review; authored none of this PR; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478349359"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478531835"
     }
   },
   "claimed_verdict": "review_clean",
-  "findings": [],
+  "findings": [
+    {
+      "id": "follow-up-4237",
+      "severity": "advisory",
+      "owned_seam": "Existing explain human/JSON detailed-renderer date sampling",
+      "source_path": "crates/allow-report/src/explain_common.rs",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp in #4237: thread one explicit as-of date from the command boundary through both existing detail renderers and add controlled-date parity tests.",
+      "claim_boundary": "This PR reuses the already-rendered canonical status in its common summary and adds no third clock read. It does not claim complete global clock unification."
+    }
+  ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478349359",
-    "Fresh full ten-path source/evaluator/renderer/summary/test/schema/governance review: evaluate the complete ledger, retain genuine assigned/tied outcomes and maintenance state, preserve candidate/status/score/message, and remap indexes without assigning weaker contextual candidates a unique winner's finding.",
-    "Actual CLI compares check/why/worklist/explain for both ties, unrelated-finding exclusion/index remapping, scanner-identity stronger winner/stale loser, full schema validity and human/JSON/common summary parity. Actual evaluator regression requires Matched/New/Ambiguous/Ambiguous and all competing IDs while preserving first-attention context and two-action bound.",
-    "All nine explain nonpolicy blobs/modes match preceding source; all nine incoming schema nonpolicy blobs/modes match actual main. Full 732,040-byte main policy prefix/1,072 entries plus unchanged 1,576-byte explain receipt block produce 1,074 unique entries; existing settings, allow-11278 limit 36, and all four canonical fingerprints preserved.",
-    "Synthetic cc1e58dacf9019486990b54424930feb823590b4 has exact ordered base/head parents and the source tree. All three prior threads remain resolved with current-source evidence. The six-file PR-body claim is corrected; no new actionable finding. Paused automatic review and historical native success are not this pair's proof.",
-    "Diff whitespace, JSON/schema structural equality and policy/blob preservation controls pass. No local Rust execution claimed. Own-record-only bootstrap and every current applicable terminal native gate, fresh feedback and eventual post-main guard remain independently required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478531835",
+    "Complete twelve-path source/evaluator/renderer/summary/router/test/schema/governance review. Full-ledger projection preserves genuine assigned and tied outcomes, excludes weaker contextual candidates, remaps indexes and retains all competing IDs even after earlier attention-owning outcomes.",
+    "Summary parses canonical /summary/current_status from the already-rendered detail JSON using the existing MatchStatus vocabulary. Canonical lifecycle owns headline/reason; all raw outcomes determine blocking or decision posture. Missing/malformed/null/non-string/unknown status fails with typed Artifact error. Existing partial coverage and status_posture behavior remain intact.",
+    "Tests cover lifecycle/check/explain parity for both tied IDs, stronger-winner/stale-weaker and index remapping, all eleven known statuses and eight invalid inputs, render-then-change-lifecycle reuse, seven adapter postures and read-only action parity. run, run_from and git_commit_fixture share child-only filtering of two cargo-allow and six Git override variables. Independent native Git RED/GREEN control passed; no global environment mutation.",
+    "All eleven prior nonpolicy blobs/modes match formatted source 1ff2e745; all seven incoming #4445 nonpolicy entries match main 50d600e3. Full 733,617-byte main policy prefix plus unchanged 1,576-byte own tail produces 735,193 bytes and 1,076 unique IDs. Schema structure, matcher strength/order, report lifecycle precedence, dependencies and strict policy-day law remain unchanged.",
+    "Synthetic c037309f3e99071baaa1a60894a95dd6d5774bcc has exact ordered base/head parents and source tree 244e1213d6968c611ae26b85fdbf46d864221338. Lifecycle thread 4237082324 is Fixed and resolved with this source review and native proof. Three prior resolved dispositions remain supported; no new actionable inline finding. Pre-existing renderer date sampling remains owned by #4237.",
+    "Current source pregate 114185010092 / run 38042374479 passes formatting, enforcing no-new with zero new findings and typed Complete. Artifact 11666248065 has ZIP SHA256 96f4df437b05bb4726027ede762ddfdc60b54f4dced316d1e7cdff5517ecc92a. Exact-synthetic Ubuntu job 114185300072 passes the release-set suite with explicit new lifecycle, ambiguity, rendered-status and posture controls. No local compiled-Rust pass or all-gates-complete claim."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain the exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38042374479/job/114185010092"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4431",
-  "reviewed_at_utc": "2026-10-10T08:41:16.791Z"
+  "reviewed_at_utc": "2026-10-10T09:55:15Z"
 }
