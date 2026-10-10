@@ -136,10 +136,19 @@ if publish:
         raise SystemExit("release-manifest: published topology receipt is not complete")
     if topology.get("incident_state") != "none":
         raise SystemExit("release-manifest: published topology receipt records an incident")
-    first_irreversible_row = topology.get("first_irreversible_row")
-    if not isinstance(first_irreversible_row, int) or first_irreversible_row <= 0:
+    if "first_irreversible_row" not in topology:
         raise SystemExit(
             "release-manifest: published topology receipt lacks an irreversible-row marker"
+        )
+    first_irreversible_row = topology["first_irreversible_row"]
+    if first_irreversible_row is None:
+        if not all(isinstance(row, dict) and row.get("state") == "verified_existing" for row in raw_rows):
+            raise SystemExit(
+                "release-manifest: newly published rows require an irreversible-row marker"
+            )
+    elif type(first_irreversible_row) is not int or first_irreversible_row <= 0:
+        raise SystemExit(
+            "release-manifest: published topology receipt has an invalid irreversible-row marker"
         )
 
 

@@ -471,8 +471,6 @@ def load_publication_rows(
         or receipt.get("publish") is not True
         or receipt.get("complete") is not True
         or receipt.get("incident_state") != "none"
-        or type(receipt.get("first_irreversible_row")) is not int
-        or receipt["first_irreversible_row"] <= 0
     ):
         fail("publication receipt is not complete published evidence")
     canonical_receipt_checksum(receipt.get("authorization"), "publication authorization")
@@ -518,6 +516,14 @@ def load_publication_rows(
         result[key] = row
     if result.keys() != expected_rows.keys():
         fail("publication package set differs from the selected topology")
+    if "first_irreversible_row" not in receipt:
+        fail("publication receipt lacks an irreversible-row marker")
+    first_irreversible = receipt["first_irreversible_row"]
+    if first_irreversible is None:
+        if any(row["state"] != "verified_existing" for row in result.values()):
+            fail("publication receipt lacks an irreversible-row marker for newly published rows")
+    elif type(first_irreversible) is not int or first_irreversible <= 0:
+        fail("publication receipt has an invalid irreversible-row marker")
     return result
 
 

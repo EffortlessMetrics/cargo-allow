@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4432,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "50d600e3391376a5649afe797807a481ade80ca2",
   "head_ref": "fix/4427-preserve-publish-receipt",
-  "head_sha": "073c057fc301e6f9c04041459fe54e65494c61ea",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:4250c15995a1ec0af36f82ea19c773078c1c13f815cb18fe3f119be2bd1ac9c5",
+  "head_sha": "5971da21f06f6e1a40671b0edc555d24d613ac71",
+  "merge_base": "50d600e3391376a5649afe797807a481ade80ca2",
+  "reviewed_diff_digest": "sha256:v1:b282c120da0fb6d721e3758739f64ff89f6c27a462a38ba6c9666b1b67ee1e31",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full current-source and consumer review; shared model family/campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/publication_review separate nonauthoring full source, affected integration, consumer and governance review; authored none of this PR; shared model family/campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5478513255"
     }
   },
   "claimed_verdict": "review_clean",
@@ -30,16 +30,18 @@
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013",
-    "A separate nonauthoring reviewer /root/product_audit inspected all nine effective paths, the workflow/download/manifest/attestation ordering and unchanged typed publication consumers. Current source is a tree-identical normal merge of former head56da00b2 with main1d9c9148. The reviewer independently passed 22 actual workflow→publisher→manifest handoff scenarios, 11 dispatch scenarios and checksum contracts, with Cargo/provider/Git instruments explicitly local. Exact receipt bytes, authorization/digest, ten-row membership and local/registry/rebuilt/archive checksums remain bound; pinned ROOT/target lookup matches the publisher despite ambient CARGO_TARGET_DIR. Candidate/public routes and alias/incident rejection remain distinct. Both exact policy fingerprints and revision notes were independently recomputed. Current hosted pregate114019224313 passed actionlint, formatting, no-new and its typed gate; full native release/package/MSRV/platform checks remain pending. Cargo-deny114019224466 failed before execution due Docker Hub429, an unfulfilled infrastructure gate.",
-    "Thread4234236848 is resolved as AcceptedFollowUp under #2509/#3761. Current incident/recovered publication is not declared Complete; this retained advisory is not an authority waiver.",
-    "The metadata successor changes only this record; every current applicable gate and post-main source guard remains required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5478513255",
+    "Full nine-path source and affected integration review plus complete publisher/package-only/manifest/workflow/typed publication consumers. Downloaded receipt bytes/digest/authorization, distinct output paths, exact archives, fixed target directory, membership and checksum bindings are preserved; incomplete or incident evidence remains refused.",
+    "Both reviewer and coordinator reran 44 executable handoff scenarios, 11 dispatch scenarios and publisher checksum contracts on the current integration. Reviewer also passed Bash syntax, parsing, whitespace and policy/tree controls. Explicit null requires all validated rows verified_existing; newly published rows need a positive integer. Missing, Boolean/string/float/nonpositive markers remain invalid. Historical old-publisher/old-manifest/old-workflow RED controls remain bounded to unchanged source; current negative controls pass. Provider/Cargo/Git instruments remain local.",
+    "All eight prior nonpolicy blobs/modes equal 3613 and all seven incoming #4445 nonpolicy blobs/modes equal main 50d. The entire 733,617-byte/1,074-entry main policy prefix plus unchanged 1,577-byte own tail yields 735,194 bytes/1,076 unique entries. All existing settings, entries, reasons and dates remain unchanged. Canonical fingerprints 28edc525062599c89a4bb4a067bed36b7164b2978acce5130994b06eb96b5e13 and3fa53775734c152cb8604774bf942718ca391905ec006da9f39ac8571892093d match the revision note.",
+    "Synthetic 8edcf27cf100bc67952e3dc992171180274cd9da has exact ordered [50d600e3391376a5649afe797807a481ade80ca2,5971da21f06f6e1a40671b0edc555d24d613ac71] parents and matching tree79efefada6e238bf4dfa61b39db5d6d56c272438. Threads 4236442300 and4237092666 remain Fixed/resolved;4234236848 remains AcceptedFollowUp under #2509/#3761. Fresh feedback adds no actionable source finding; quota-limited reviewers are not approval.",
+    "Current source pregate 114184605660/run 38042235399 passes pinned formatting, actionlint and enforcing no-new with new=0, typed Complete; artifact 11666122955 ZIP SHA256fc4264f773e920e9d14bc82f748096359e6d1b6aac64a9315d1441617b92f76c. Other native tests/checks remain pending and the old retained record correctly failed currentness. No local Rust, all-check completion, release or provider-authority claim."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, all applicable current native checks, fresh substantive feedback and the final exact pair; retain the exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38042235399/job/114184605660"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4432",
-  "reviewed_at_utc": "2026-10-09T20:54:45Z"
+  "reviewed_at_utc": "2026-10-10T09:47:32Z"
 }
