@@ -62,7 +62,7 @@ def bounded_reference(value: str, field: str) -> str:
 
 
 class _Invocation:
-    """Private CLI selection for owned processes; not publication authority."""
+    """Private selection for owned processes; not publication authority."""
 
     def __init__(self, args: argparse.Namespace | None) -> None:
         self.root = ROOT.resolve()
@@ -74,6 +74,7 @@ class _Invocation:
         )
         self.tools = {name: _select_tool(name, search_path) for name in ("git", "cargo")}
         self.mode = args.mode if args is not None else None
+        self.metadata_allowed = self.mode is not None
         self.list_only = args.list if args is not None else False
         self.publish = bool(args is not None and args.publish and not args.registry_preflight and not args.package_only)
         self.authorization = ""
@@ -117,7 +118,7 @@ def _checked_invocation(command: list[str]) -> tuple[str, bool]:
     upload = False
     if command in (["git", "rev-parse", "HEAD^{commit}"], ["git", "rev-parse", "HEAD^{tree}"]):
         tool = "git"
-    elif context.mode is not None and command == [
+    elif context.metadata_allowed and command == [
         "cargo", "metadata", "--format-version", "1", "--no-deps", "--locked",
     ]:
         tool = "cargo"
@@ -233,7 +234,13 @@ def load_rows(topology_path: Path, mode: str) -> tuple[dict[str, Any], list[dict
 
 
 def cargo_packages() -> dict[str, dict[str, Any]]:
-    metadata = json.loads(run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]))
+    current = _INVOCATION.get()
+    with _invocation_scope() as invocation:
+        # Direct readers get only this helper's nonpublishing operation.
+        # An active selection must already allow metadata; never widen it.
+        if current is None:
+            invocation.metadata_allowed = True
+        metadata = json.loads(run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]))
     return {package["name"]: package for package in metadata["packages"]}
 
 
@@ -399,7 +406,13 @@ def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -
     ]
     for name in sorted(packages.keys() - selected):
         command.extend(["--exclude", name])
-    run(command)
+    current = _INVOCATION.get()
+    with _invocation_scope() as invocation:
+        # The docs receipt producer also calls this helper without the CLI.
+        # Preserve an active selection instead of blessing a changed command.
+        if current is None:
+            invocation.package_command = list(command)
+        run(command)
 
 
 def package_crate(name: str, version: str) -> tuple[Path, str]:
