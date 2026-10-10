@@ -39,21 +39,19 @@ use allow_report::{
     ReleaseAuthorizationAuthorityKindV1, ReleaseAuthorizationAuthorityV1,
     ReleaseAuthorizationConsumptionV1, ReleaseAuthorizationEvidenceV1,
     ReleaseAuthorizationExpectedContextV1, ReleaseAuthorizationFreezeV1,
-    ReleaseAuthorizationInputV1, ReleaseAuthorizationOperationV1,
-    ReleaseAuthorizationPackageRowV1, ReleaseAuthorizationResultV1,
-    ReleaseAuthorizationSecretAvailabilityV1, ReleaseAuthorizationSecretStateV1,
-    ReleaseAuthorizationSharedRowV1, ReleaseAuthorizationSourceKindV1,
-    ReleaseAuthorizationSourceV1, ReleaseAuthorizationUseObservationV1, TrustClassV1,
-    UntrustedInputPostureV1, acquire_operation_lease_for_operation_v1,
-    append_release_operation_event_v1, authorization_evidence_digest_v1,
-    build_release_operation_identity_v1, compile_release_authorization_v1,
-    compile_release_operation_head_v1, mint_authorization_custody_v1,
-    note_custody_readback_v1, operation_lease_subject_digest_v1,
-    release_authorization_denominator_binding_v1,
-    release_operation_identity_digest_v1, renew_operation_lease_v1,
-    select_authorization_for_operation_v1, validate_release_operation_head_v1,
-    validate_release_operation_history_v1, validate_release_operation_identity_v1,
-    verify_custody_readback_v1, verify_lease_readback_v1,
+    ReleaseAuthorizationInputV1, ReleaseAuthorizationOperationV1, ReleaseAuthorizationPackageRowV1,
+    ReleaseAuthorizationResultV1, ReleaseAuthorizationSecretAvailabilityV1,
+    ReleaseAuthorizationSecretStateV1, ReleaseAuthorizationSharedRowV1,
+    ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
+    ReleaseAuthorizationUseObservationV1, TrustClassV1, UntrustedInputPostureV1,
+    acquire_operation_lease_for_operation_v1, append_release_operation_event_v1,
+    authorization_evidence_digest_v1, build_release_operation_identity_v1,
+    compile_release_authorization_v1, compile_release_operation_head_v1,
+    mint_authorization_custody_v1, note_custody_readback_v1, operation_lease_subject_digest_v1,
+    release_authorization_denominator_binding_v1, release_operation_identity_digest_v1,
+    renew_operation_lease_v1, select_authorization_for_operation_v1,
+    validate_release_operation_head_v1, validate_release_operation_history_v1,
+    validate_release_operation_identity_v1, verify_custody_readback_v1, verify_lease_readback_v1,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -63,7 +61,8 @@ const WORKFLOW: &str = ".github/workflows/release.yml";
 const NOW: u64 = 1_786_000_200;
 const HEAD_AT: u64 = NOW - 40;
 const NONCE: &str = "synthetic-provider-roundtrip-authorization";
-const SOURCE_BODY: &[u8] = b"Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.\nSynthetic exact freeze source.\n";
+const SOURCE_BODY: &[u8] =
+    b"Authorize publish_cargo_allow_final_0_2_0 for v0.2.0.\nSynthetic exact freeze source.\n";
 
 fn digest(n: u64) -> String {
     format!("sha256:{n:064x}")
@@ -422,7 +421,10 @@ fn release_operation_store_preserves_existing_domain_bytes() -> Result<(), Box<d
     let compiled = compile_release_authorization_v1(&decision, &expected_bytes);
     require(
         compiled.result == ReleaseAuthorizationResultV1::Complete,
-        format!("synthetic authorization fixture differs: {:?}", compiled.findings),
+        format!(
+            "synthetic authorization fixture differs: {:?}",
+            compiled.findings
+        ),
     )?;
     let identity = operation(&expected, &compiled.authorization_digest)?;
     let operation_digest = release_operation_identity_digest_v1(&identity)?;
@@ -506,8 +508,8 @@ fn release_operation_store_preserves_existing_domain_bytes() -> Result<(), Box<d
         "existing lease subject differs from its preselected logical locator",
     )?;
     let events = history(&identity, &lease)?;
-    let head = compile_release_operation_head_v1(&identity, &events, HEAD_AT)
-        .map_err(io::Error::other)?;
+    let head =
+        compile_release_operation_head_v1(&identity, &events, HEAD_AT).map_err(io::Error::other)?;
     let before = BTreeMap::from([
         ("authorization.json".to_string(), json_bytes(&decision)?),
         ("custody-mint.json".to_string(), minted_bytes),
@@ -552,7 +554,10 @@ fn release_operation_store_preserves_existing_domain_bytes() -> Result<(), Box<d
     // The finalized artifact-ID envelope stays outside its own payload.
     fs::write(input.join("transfer.json"), json_bytes(&transfer)?)?;
     fs::write(input.join("producer.json"), json_bytes(&producer)?)?;
-    fs::write(input.join("source.json"), json_bytes(&decision.authority.source)?)?;
+    fs::write(
+        input.join("source.json"),
+        json_bytes(&decision.authority.source)?,
+    )?;
     fs::write(input.join("source.body"), SOURCE_BODY)?;
     fs::write(input.join("subject.txt"), &lease.subject_digest)?;
     fs::write(input.join("operation.txt"), &operation_digest)?;

@@ -859,6 +859,34 @@ class ReadbackTests(unittest.TestCase):
                     self.read_artifact()
         self.provider.artifact_zip = original
 
+    def test_corrupt_deflated_member_is_a_sanitized_instrument_failure(self):
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as result:
+            for name, data in self.provider.artifact_files.items():
+                result.writestr(name, data)
+        compressed = output.getvalue()
+        with zipfile.ZipFile(io.BytesIO(compressed)) as result:
+            member = result.getinfo("authorization.json")
+            self.assertEqual(member.compress_type, zipfile.ZIP_DEFLATED)
+            self.assertGreater(member.compress_size, 1)
+            payload_start = member.header_offset + len(member.FileHeader())
+        self.provider.artifact_zip = compressed
+        self.assertEqual(dict(self.read_artifact()), self.provider.artifact_files)
+
+        corrupt = bytearray(compressed)
+        # Preserve the selected archive framing but make the first deflate
+        # block's BTYPE bits 11 (reserved), exercising the real decompressor.
+        corrupt[payload_start] = (corrupt[payload_start] & ~0x06) | 0x06
+        self.provider.artifact_zip = bytes(corrupt)
+        with self.assertRaises(STORE.StoreError) as error:
+            self.read_artifact()
+        self.assertEqual(error.exception.kind, "instrument_failure")
+        self.assertEqual(str(error.exception),
+                         "release operation store: instrument_failure: malformed artifact archive")
+        self.assertIsNone(error.exception.__cause__)
+        self.assertTrue(error.exception.__suppress_context__)
+        self.assertEqual(self.provider.mutations(), [])
+
     def test_inventory_case_collision_and_oversize_cannot_escape_bounds(self):
         transfer = self.provider.transfer()
         transfer["files"] = transfer["files"] * 2

@@ -30,6 +30,7 @@ from urllib.request import (
     HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener,
 )
 import zipfile
+import zlib
 
 
 REPOSITORY = "EffortlessMetrics/cargo-allow"
@@ -778,7 +779,8 @@ class GitHubReleaseStore:
                     folded.add(entry.filename.casefold())
         except StoreError:
             raise
-        except (OSError, ValueError, zipfile.BadZipFile, RuntimeError, NotImplementedError):
+        except (OSError, EOFError, ValueError, zipfile.BadZipFile, zlib.error,
+                RuntimeError, NotImplementedError):
             raise StoreError("instrument_failure", "malformed artifact archive") from None
         return MappingProxyType(files)
 
