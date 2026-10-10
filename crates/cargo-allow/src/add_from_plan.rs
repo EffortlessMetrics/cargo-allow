@@ -159,8 +159,7 @@ fn enrich_with_regen_hint(
         context.root.to_str(),
         context.policy_path.to_str(),
         finding_path.to_str(),
-    )
-    else {
+    ) else {
         return manual_regen_hint(
             error,
             "a selected path cannot be displayed without data loss",
