@@ -256,6 +256,21 @@ fn retry_output_is_outside_inventory(fresh: &Path, context: &RegenHintContext<'_
         // A missing tracked path would make the live inventory partial above.
         (InventorySource::GitTracked, false) => true,
         (InventorySource::FilesystemIncludeUntracked, true) => {
+            // Inventory facts do not bind inherited repository selectors. Do
+            // not qualify a path with an unverified Git directory or index.
+            if [
+                "GIT_DIR",
+                "GIT_WORK_TREE",
+                "GIT_INDEX_FILE",
+                "GIT_COMMON_DIR",
+                "GIT_OBJECT_DIRECTORY",
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            ]
+            .iter()
+            .any(|name| std::env::var_os(name).is_some())
+            {
+                return false;
+            }
             // This source label also covers a raw filesystem fallback, which
             // the completeness gate above rejects. In the successful Git case,
             // ask Git about the absent candidate, including filename-specific

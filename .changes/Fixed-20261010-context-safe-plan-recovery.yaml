@@ -6,5 +6,7 @@ body: >-
   the original plan regardless of the caller's current directory. Occupied retry
   paths remain untouched. Retry outputs that could change their own bound
   inventory, still-relative paths and paths that cannot be displayed losslessly
-  and safely pasted receive explicit manual guidance. Exact binding checks,
+  and safely pasted receive explicit manual guidance. Inherited Git repository
+  selection also requires manual guidance when Git ignore rules would qualify
+  the retry output. Exact binding checks,
   New-only application and semantic replacement refusal are unchanged.
