@@ -3,18 +3,18 @@
   "schema_version": 1,
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4438,
-  "base_ref": "fix/4425-rehearsal-admission",
-  "base_sha": "1f61974258bdae3837569459f96068cdb608af8f",
+  "base_ref": "main",
+  "base_sha": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
   "head_ref": "fix/4426-registry-freshness-admission",
-  "head_sha": "9be5bea9ab7f90bb232248ed5dc830f9667ac05d",
-  "merge_base": "1f61974258bdae3837569459f96068cdb608af8f",
-  "reviewed_diff_digest": "sha256:v1:71d5cbe81017e68636b0db87ea218eb3e370d750c8ebe1442ce5c2d5f754ea0e",
+  "head_sha": "ea7ba0f20e3587144385540b15fb76e911778c58",
+  "merge_base": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
+  "reviewed_diff_digest": "sha256:v1:3d4580cc6cc5b15ca0b3f4a3907b5a2d2d9423f776c48f69d34d4e9992726ec8",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full registry source and consumer review; shared model family/session context disclosed; native formatter replacements supplied as evidence and applied by coordinating author; author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/product_audit, separate nonauthor of this lane's source, current corrections, main integration, governance and this metadata; shared model family/campaign context disclosed. Coordinating account transports this actual independent model result; no independent human-review claim.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5475591891"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5479479563"
     }
   },
   "claimed_verdict": "review_clean",
@@ -30,16 +30,19 @@
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5475591891",
-    "Full eight-path implementation/governance review covered the typed evaluator, actual delivered observer, strict duplicate-key reader, required graph node, readiness, replay and specific-node regression assertions. Exact ordered 10+3 source/package bindings remain required. Missing evidence and non-clean provider/freshness states cannot disappear or become Complete. The independently executed actual Python observer bridge retains 23 controlled GETs and 13 rows without upgrading authority; it is fixture evidence, not a live registry or Rust result.",
-    "All nine inherited rehearsal formatter corrections and all 19 current native formatter hunks were verified. Prior 728,886 policy bytes are identical; exactly two file-scoped receipts, canonical fingerprints and revision-note records agree. No review threads were present. Synthetic d65c5c953f9e5501fc9e8004fa17a0d36855f9af matches exact base/head parents and source tree.",
-    "Current native formatting and actionlint pass; no-new/full Rust/platform/packaging proof was incomplete at observation. Cargo-deny failure is not waived. The record-only successor must pass typed bootstrap and every applicable current check before merge, with fresh feedback and the post-main source guard separately required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#pullrequestreview-5479479563",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4438#discussion_r4238051865",
+    "Full current source/consumer/governance review retained in pr4438-independent-current-source-review-ea7ba0f2.json, SHA256 0a9dcc7bcc905d25a8c3b5bf9e49b8e87f90ac8b46ffd88120f135205386ab69. Source head ea7ba0f20e3587144385540b15fb76e911778c58, actual main/ref/unique merge base 90a2426c4d998d6ccc31d3264a0d5a0d3b468cba, full plain diff sha256:v1:3d4580cc6cc5b15ca0b3f4a3907b5a2d2d9423f776c48f69d34d4e9992726ec8, tree 023b60edd1c04a3a01ac4258d0b6c5fbc786a6f6.",
+    "The complete registry source, real producer/composer consumers, typed evaluator, graph/readiness/replay, all changed tests/docs/fragment/governance, incoming main fixture correction and exact policy union were reviewed. Strict duplicate-key and selected-input admission binds the exact ordered 10 final plus 3 shared rows and every subject/package/digest/provenance dimension. Missing context, fixture origin, malformed/stale/future data and residual ownership/publication risk remain non-complete. The required registry graph row cannot disappear. Production still supplies no trusted registry context: #3792/#2501 and complete #4426 acceptance remain open.",
+    "All eight nonpolicy lane diffs are exactly preserved, as are 2,655 unrelated main paths and 2,659 parent paths outside the incoming delta. Policy is the exact 739,924-byte main prefix plus unchanged 1,576-byte suffix, 1,084 unique IDs. No dates, limits, fingerprints or settings broadened. Actual current synthetic e791606298abfaf28eebacef7ece309ace5d917d has exact [base,head] parents and matching tree. Pregate114239582513 passes formatter/actionlint/enforcing no-new; downloaded artifact11673167271, ZIP SHA25626fe87e3a5cef0c31000f9a67e5790650c8b029432719d67b60ced9f720a5a4e, contains exact current-head/base typed Complete. Prior native Linux/macOS observer/composer successes are historical behavior evidence, not current all-green status.",
+    "Comment4237938890 is NonBlocking, acknowledged/resolved in reply4238051865: the test currently requires `python`, matching existing related tests; a shared portable launcher is separate test-infrastructure improvement. No universal launcher availability is claimed.",
+    "The current own JSON intentionally bound its earlier reviewed pair before this metadata-only refresh. This record binds the actual source parent and actual native review time; independent bootstrap must verify the one-file child, exact full diff and all preserved source modes/blobs. No source author independently certifies their own changes."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently bootstrap this own-record-only successor, require every applicable current deterministic native gate and substantive feedback disposition, recheck exact head/base/ref/unique merge base, then head-pin the normal merge and retain the exact new-main enforcing guard. Pending, skipped, stale and neutral evidence is not green; optional model review is informational and never inferred clean.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38061175771/job/114239582513"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4438",
-  "reviewed_at_utc": "2026-10-09T21:37:49Z"
+  "reviewed_at_utc": "2026-10-10T15:03:25Z"
 }
