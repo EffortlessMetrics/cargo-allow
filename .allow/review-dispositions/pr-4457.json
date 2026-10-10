@@ -4,27 +4,38 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4457,
   "base_ref": "main",
-  "base_sha": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
   "head_ref": "fix/3761-publication-state-evidence",
-  "head_sha": "b8dc09a87cdcd6813d5fc3c515ec9c6cea54f68f",
-  "merge_base": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
-  "reviewed_diff_digest": "sha256:v1:f7b9b8ba2020fe374de3060613db2dc1a6049d40dbc5cc9297f8430881336b6f",
+  "head_sha": "9d87049aa6a36ff330290258c7d61f71d6b7e152",
+  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "reviewed_diff_digest": "sha256:v1:1b4d9125acabe2547c6adfae125baa4c43091802efb36ddd815955d70d331c50",
   "review_protocol": "review-current-head-gen1",
-  "actor_class": "same_maintainer",
-  "reviewer_identity": "ChatGPT /root/campaign_audit, author preparing source and retained metadata for the coordinating maintainer. This is author preparation only, not an independent review or a clean verdict.",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit, separate nonauthoring complete source, consumer, provenance and governance reviewer. Authored none of PR #4457. Shared model family, session history and workspace disclosed; the coordinating account transports the actual independent model review, not a human review.",
   "independent_review": {
-    "not_proven": {
-      "reason": "Awaiting a separately retained independent review of the final integrated source and governance diff for PR #4457. Preliminary discussion does not supply the formal final-pair review, review URL, or review time."
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4457#pullrequestreview-5480724516"
     }
   },
-  "claimed_verdict": "partial",
+  "claimed_verdict": "review_clean",
   "findings": [],
-  "threads_inspected": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4457#pullrequestreview-5480724516",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4457#discussion_r4239111842",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4457#discussion_r4239116891",
+    "Read all six effective paths, complete classifier and integration targets, direct row/batch consumers, hidden CLI parsing/dispatch, shell generator, downstream V2 validation, #3761 scope and fresh feedback. The guard preserves malformed-checksum and absent-observation precedence, confirming-state success and candidate-stale/shared-conflict distinctions while keeping Missing/ProviderUnavailable non-exact.",
+    "Independently verified current head/base/unique merge base, synthetic d8c336 ordered parents and identical tree, complete 15921-byte diff, all 2672 unrelated main entries and all five owned nonpolicy entries. Policy is exact 749172-byte main prefix plus unchanged 1633-byte CLI suffix: 750805 bytes and 1095 unique IDs.",
+    "Both genuine sequential why/add admissions have exact New-before/Matched-after identities, contiguous byte ranges and matching before/after policy digest continuity. Independent canonical AllowEntry serialization reproduces both existing revision-note fingerprints. No policy selector or lifetime was broadened.",
+    "CodeRabbit thread PRRT_kwDOSnyN3s6rHjMm combines valid pending record-currentness with a contradicted fingerprint claim. Note fingerprints derive from canonical policy entries, not admitted file contents or review head/base strings. Actual governed diff succeeds. This child retains the actual source review; independent metadata bootstrap and final thread resolution remain separate.",
+    "The PR body correctly attributes eight actual JSON cases to hidden CLI projection and direct manifest_row/manifest_rows_from_reconciled refusal to the classifier unit suite. A style warning is advisory; quota-limited sensors and historical Codecov output provide no current clean verdict.",
+    "Directly inspected current Linux core job 114305830145 on exact synthetic d8c336/9d/afa: all nine classifier tests and all three manifest integration tests pass, including eight actual CLI cases. Current pregate 114305353099 passes formatter, actionlint, default no-new and typed Complete. Local RED/GREEN and tree-equivalent governed/default receipts were independently inspected as separately scoped evidence; broader native gates remain pending.",
+    "Broader #3761 frozen-manifest role, prepublication/public Complete distinctions, authority/workflow cycle and real qualification remain open. No release, publication, CI-bypass or external-mutation authority is supplied."
+  ],
   "required_ci": {
-    "owner": "Coordinating maintainer: obtain independent review of the complete final source and governance diff, then separately verify any own-record-only successor, all applicable current native checks, current substantive feedback, and the exact live head/base/merge-base before normal head-pinned merge. Retain the exact new-main enforcing guard. This pending record supplies no CI, merge, or release authority.",
-    "observation_ref": ""
+    "owner": "Coordinator must independently verify this own-JSON-only successor against the actual source review, resolve substantive feedback with current evidence, finish every applicable current native gate, recheck the exact live pair, use the normal head-pinned merge path and retain the exact resulting-main enforcing guard. Source review and metadata do not waive pending, failed, stale, skipped or unavailable evidence.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38083592576/job/114305353099"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4457",
-  "reviewed_at_utc": ""
+  "reviewed_at_utc": "2026-10-10T20:36:38Z"
 }
