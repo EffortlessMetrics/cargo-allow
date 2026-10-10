@@ -7,4 +7,6 @@ body: >-
   proofs; duplicate JSON keys fail before decoding can discard a failed result.
   Current characterization receipts retain their false proof flags and remain
   non-Complete through the production graph, readiness, and replay.
+  Init test fixtures use exclusive bounded allocation so equal timestamps cannot
+  delete or share another active fixture during native release validation.
 time: 2026-10-09T00:00:00Z

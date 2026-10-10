@@ -60,10 +60,7 @@ pub(crate) fn parse_policy_toml_at(
             "policy file{location} is empty; an accidentally emptied or truncated ledger parses as a permissive state"
         )));
     }
-    // Strip leading UTF-8 BOM so Windows-saved policy files parse correctly.
-    // The toml crate treats \u{FEFF} as part of the first bare key, making
-    // schema_version unparseable and causing the file to be skipped as a
-    // foreign dialect during discovery (#2003).
+    // Strip leading UTF-8 BOM so Windows-saved policy files parse correctly (#2003).
     let input = input.strip_prefix('\u{feff}').unwrap_or(input);
     let raw = toml::from_str::<PolicyToml>(input).map_err(|e| {
         let message = match path {
@@ -72,6 +69,9 @@ pub(crate) fn parse_policy_toml_at(
         };
         CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::InvalidPolicy, message)
             .with_toml_span(path, input, e.span())
+            .with_message_suffix(
+                "\nNext: repair the policy TOML at the reported location and retry.",
+            )
     })?;
     raw.into_config()
 }
@@ -320,7 +320,12 @@ mode = "shadow"
         };
 
         assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
-        assert_eq!(err.message(), format!("failed to parse policy TOML: {e}"));
+        assert_eq!(
+            err.message(),
+            format!(
+                "failed to parse policy TOML: {e}\nNext: repair the policy TOML at the reported location and retry."
+            )
+        );
         let location = err
             .location()
             .ok_or_else(|| "parse error should preserve TOML location".to_string())?;
