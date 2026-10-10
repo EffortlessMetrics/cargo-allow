@@ -4,37 +4,38 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4433,
   "base_ref": "main",
-  "base_sha": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "base_sha": "5c42baee156a5be079a74df97dcd4b858a0334aa",
   "head_ref": "fix/4351-expiry-day-coherence",
-  "head_sha": "4b222e9d49c634d1a7bff1caf34920970db19d87",
-  "merge_base": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
-  "reviewed_diff_digest": "sha256:v1:0afca5fc871d2c64edefe1f9b9ec674fecef4c4419827a0ee2eb1dbcd151fa82",
+  "head_sha": "e6c3d463954ecc6b29fcc773f6e80c93770d72de",
+  "merge_base": "5c42baee156a5be079a74df97dcd4b858a0334aa",
+  "reviewed_diff_digest": "sha256:v1:4f5879cc790ddd2096efb2067149a453682a6cf953e958f4bc9fca545b8d8504",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthoring full source, consumer and integration reviewer. Authored none of this PR, including the fixture repair or retained records. Shared model family, inherited campaign context and prior familiarity disclosed; coordinating account transports the independent model review.",
+  "reviewer_identity": "ChatGPT /root/release_audit; separate nonauthor of this expiry proposal, inventory-fixture repair, integrations, policy entries and retained records. Shared model family and inherited campaign context disclosed. Prior hooks authorship is in the unchanged incoming main base, outside this PR's effective delta. Coordinating account transports this model COMMENT; no independent human approval is claimed.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480900884"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5481027614"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480900884",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5481027614",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#discussion_r4236062610",
-    "Fresh complete 15-path review covers strict policy-entry expiry, unchanged inclusive review/drain deadlines, raw New/Ambiguous posture, full-ledger explain and all shared consumers. Existing command-wide clock-sampling work remains AcceptedFollowUp under #4237.",
-    "Independently verified actual hosted 4b222 source, sole parent 29157213, actual a7e038 synthetic with ordered [edb7, 4b222] parents, exact 3fcfc6e8 tree and unique edb7 merge base. Full 55235-byte source digest agrees with both local unqualified Git diff and actual native readiness 114319012259.",
-    "The test-only inventory allocator reserves directories exclusively, retries only AlreadyExists and bounds allocation at 128 attempts. Three ownership controls cover concurrent collisions, occupied files, immediate other errors and exhaustion. All eight original semantic tests and 27 assertions are preserved. The observed macOS missing-file failure is distinct from its inferred original collision/interleaving.",
-    "All 2681 other parent entries and 2667 unrelated main entries retain exact modes/blobs. Incoming #4442 rehearsal changes are preserved. Policy is the exact 750749-byte main prefix plus unchanged 1577-byte own suffix, with 1097 unique IDs; both revision-note AllowEntry fingerprints reproduce.",
-    "Independently read and rehashed all 24 author proof files. Eleven targeted tests passed on parent 291 plus the exact subsequently committed patch; local ab725 has the exact hosted tree. Formatter, Complete governed diff and actual ab725 default enforcing no-new passed with new=0, 2682 files and 16679 findings.",
-    "Fresh native source pregate 114318546272 passes on actual synthetic a7e038 with Rust 1.95, actionlint, formatting, enforcing no-new and typed Complete for 4b222/edb7. This is provider/log evidence, not an independent source-artifact ZIP download. Current source readiness fails only the historical record; remaining platform and aggregate checks are separate gates.",
-    "The prior inline record-currentness thread remains resolved/outdated. Fresh submissions and top-level feedback contain no new actionable source finding. Prior afa6 and parent-291 source reviews remain history; no stale/advisory output is substituted for current independent review."
+    "Fresh complete 15-path source review covers the strict policy-entry expiry rule, preserved inclusive review-after and federation drain deadlines, raw New/Ambiguous posture, full-ledger explain, staged and normal checks, shared projections and malformed-date refusal. Existing command-wide clock sampling remains AcceptedFollowUp under #4237.",
+    "Independently fetched and rehashed actual hosted e6c3 source, ordered parents [5f58, 5c42], actual synthetic 4d545bff with ordered [5c42, e6c3] parents, exact 1b28f5dd tree and unique 5c42 merge base. The complete 56583-byte default Git diff matches explicit eight-character serialization and actual native readiness 114327785111 for this pair.",
+    "All 14 owned nonpolicy entries and 2669 unrelated main entries retain exact modes/blobs. Policy is the exact 752326-byte current-main prefix plus unchanged 1577-byte expiry suffix, totaling 753903 bytes and 1099 unique IDs. Existing exact review-record/note selectors, dates, bounds, reasons and canonical fingerprints remain unchanged.",
+    "The inventory allocator reserves directories exclusively, retries only AlreadyExists and bounds attempts at 128. Three deterministic ownership controls preserve prior/peer canaries, handle occupied files and immediate noncollision errors, and prove exhaustion. Independent normalization preserves all eight original test bodies and 27 assertion macros. The observed macOS missing file is distinct from the inferred original collision/interleaving.",
+    "Independently rehashed all 23 raw fixture proof members plus the 15677-byte report. The actual 11-test run began on uncommitted 29157213 plus the exact subsequently committed patch; preserved source bytes do not relabel that run as execution on e6c3. Prior date and lifecycle test results remain historical. This reviewer ran no Rust build or tests.",
+    "Current tree-equivalent local 69f has clean identical head/tree before and after governed diff and no-new. Governed diff with required notes is Complete with zero current/policy failures. Final default guard is passed/enforcing, new=0, 2684 files and 16681 findings; its 9149-byte receipt hashes to 4145656ca183b331133cad3831f1d9ac1630d0a066d04ecc69e77a94034d4284.",
+    "Actual source pregate 114327359604 passes on synthetic 4d545bff with actionlint, formatting, enforcing no-new and typed Complete for e6c3/5c42. This is provider/log evidence, not an independent source ZIP download. Explicit Rust +1.95 setup/version probing does not alone prove compiler selection for unqualified Cargo commands.",
+    "Fresh current feedback has one resolved/outdated historical record thread and no new actionable source finding. Previous actual reviews 5480900884 and 5480928185 remain historical; readiness correctly rejects their old retained identity. Broader native CI and the new metadata bootstrap remain required. The earlier main merge's stale-record exception is not endorsed."
   ],
   "required_ci": {
-    "owner": "Coordinator must independently verify the own-JSON-only successor, all other source modes/blobs, actual readiness bootstrap, every applicable current native gate including the repaired macOS ARM path, final live pair and substantive feedback, then the exact resulting-main enforcing guard. Source review and metadata do not waive pending, failed, stale, skipped or unavailable evidence.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38088032039/job/114318546272"
+    "owner": "Coordinator must independently verify this own-JSON-only successor, all other source modes/blobs, actual native readiness bootstrap, every applicable current native gate, final live pair and substantive feedback, then the exact resulting-main enforcing guard. Source review and metadata waive no pending, failed, stale, skipped or unavailable evidence and confer no release qualification or authority.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38091042524/job/114327359604"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4433",
-  "reviewed_at_utc": "2026-10-10T21:41:13Z"
+  "reviewed_at_utc": "2026-10-10T22:27:17Z"
 }
