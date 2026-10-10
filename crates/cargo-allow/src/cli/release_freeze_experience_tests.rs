@@ -1091,10 +1091,13 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
             node.result = FinalEvidenceNodeResultV1::Complete;
             node.currentness = FinalEvidenceCurrentnessV1::Current;
         }
-        if aggregate_final_readiness(&graph, &decisions).verdict
-            != FinalReadinessVerdictV1::ReadyForFreeze
-        {
-            return Err("diagnostic unrelated-gate baseline was not ready".into());
+        let baseline = aggregate_final_readiness(&graph, &decisions);
+        if baseline.verdict != FinalReadinessVerdictV1::ReadyForFreeze {
+            return Err(format!(
+                "diagnostic unrelated-gate baseline was not ready: {:?}",
+                baseline.rows
+            )
+            .into());
         }
         for readback in [Some(&original.readback), None] {
             let admission = command::experience::reconcile(
