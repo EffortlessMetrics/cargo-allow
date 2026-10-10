@@ -1,0 +1,2 @@
+kind: Fixed
+body: Keep malformed selected policy files in discovery precedence and report the existing invalid-policy error with its parser location and a repair action, instead of skipping them as foreign or suggesting initialization of a missing ledger.
