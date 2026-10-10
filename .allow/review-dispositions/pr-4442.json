@@ -3,34 +3,38 @@
   "schema_version": 1,
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4442,
-  "base_ref": "fix/4439-windows-junction-fixture",
-  "base_sha": "30a1e2eaff8c6fb1c97292454af247139ce282de",
+  "base_ref": "main",
+  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
   "head_ref": "fix/4441-rehearsal-token-boundary",
-  "head_sha": "7baadfa9f5b51443aeffdd15cc56f7529746a113",
-  "merge_base": "30a1e2eaff8c6fb1c97292454af247139ce282de",
-  "reviewed_diff_digest": "sha256:v1:623d8d9958b099c1ace7749f671434a73e278bb4edb5e0f6c221bf4380558f71",
+  "head_sha": "bf626ef78585159bad635ffee998e95dee8d1e73",
+  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "reviewed_diff_digest": "sha256:v1:a0d78d718590def169c9dcca93f62d9a2f3584eb43188a22d75fc1dc71aa146b",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source/governance review; shared model family/session context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthor full source, consumer, governance and current integration review; authored none of this PR's source, tests, repairs or integration; shared model family/prior campaign context disclosed; coordinating account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5475837469"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5478957137"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5475837469",
-    "Full five-path review verifies selected-key-only early admission at CLI and direct builder, filter-before-value child environments on all 13 owned processes, late InstrumentFailure and bounded receipt claims. All seven broader prevention flags remain false; phase set/schema/aggregate denial unchanged. #3792/#2501 remain open for actual full qualification.",
-    "The composed test AST preserves all original token tests and the exact #4440 native junction fixture. Independently rerun targeted suite: 66 pass and one existing Windows-only skip. Five new controls yield 12 expected failures against original producer bytes and five passes against repaired bytes. These are local Python results, not Cargo or native Windows proof.",
-    "All 728,886 base policy bytes and 1,068 entries are unchanged, with exactly two file-scoped receipts and independently verified canonical fingerprints. Exact synthetic 2c022b34daaeb807693ddf49cae0d97ef403123d matches the live pair and tree. No actionable thread; bot quota/nondefault-base skips supply no review evidence.",
-    "Current cargo-deny and workflow checks passed while pregate/full native validation were running. Own-record bootstrap, every applicable current check and the eventual retargeted main pair remain required; no pending or stale result is treated as green."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5478957137",
+    "Complete six-path source, test, Changie, exact-path policy/revision-note and historical disposition diff inspected.",
+    "Both public entry points reject selected CARGO_REGISTRY_TOKEN key, including empty value, before subject resolution, output validation, phase/process work or receipt construction; admission iterates names without selected-value lookup.",
+    "Environment comprehension filters the selected key before accessing any permitted values, preserving benign values; AST and complete source audit verify all thirteen owned subprocess.run calls use this explicit environment.",
+    "Late selected-token appearance is still InstrumentFailure; canonical phase set, authorization Incomplete posture, aggregate denial, receipt schema and all seven false zero-mutation flags remain unchanged.",
+    "Tests demand no phase/child/artifact read/output mutation and untouched existing receipt for early denial. Value-trapping mappings catch get/membership/copy retrieval. Current native Rust test wrapper consumes actual producer and checks the seven false flags; no fixture proof is promoted to provider authorization.",
+    "Native Windows junction fixture AST is unchanged from main; current-source/old-source regression controls were run only through Python with mocked processes and owned temporary Git repositories.",
+    "Current a611 integration independently verified: 5 owned nonpolicy blobs remain identical to the full independently reviewed c961 predecessor; no runtime/test/doc/own-record alteration. Exact 736770-byte main policy prefix plus original 1577-byte own tail;1080 unique IDs; prior entries and lifecycle dates identical;allow-11278 occurrence_limit=36. Both own notes/entries preserve previously independently reconstructed canonical fingerprints. All 2645 outside-scope main paths exact. Incoming explain slice has no source overlap with this PR, and actual affected consumers remain coherent.",
+    "Documentation claim Fixed by current body readback: late selected-key appearance remains InstrumentFailure, any returned receipt remains non-clean, all seven broader prevention flags stay false. No inline threads. Current source native checks pass; prior record readiness/publisher failures remain before this correction."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38050184947/job/114207573651"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4442",
-  "reviewed_at_utc": "2026-10-09T22:13:46.724Z"
+  "reviewed_at_utc": "2026-10-10T12:36:00Z"
 }
