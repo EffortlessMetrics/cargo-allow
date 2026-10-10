@@ -944,6 +944,112 @@ class ReadbackTests(unittest.TestCase):
 
 
 class HttpTests(unittest.TestCase):
+    def native_source_headers(self, header_lines, *, denied=False):
+        provider = Provider()
+        native_responses = []
+
+        class NativeResponse:
+            def __init__(self, result):
+                self.status = result.status
+                self.headers = Message()
+                for name, value in header_lines(result):
+                    self.headers.add_header(name, value)
+                self.stream = io.BytesIO(result.body)
+                self.reads = 0
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def read1(self, count):
+                self.reads += 1
+                return self.stream.read1(count)
+
+        def open_response(request, timeout):
+            result = provider(request.get_method(), request.full_url,
+                              dict(request.header_items()), request.data,
+                              timeout, 4 * 1024 * 1024)
+            native = NativeResponse(result)
+            native_responses.append(native)
+            return native
+
+        opener = mock.Mock()
+        opener.open.side_effect = open_response
+        store = STORE.GitHubReleaseStore(
+            repository_id=41, anchor_commit=ANCHOR, anchor_tree=ANCHOR_TREE,
+            control_prefix=PREFIX, credential=lambda: FAKE_CREDENTIAL,
+            transport=STORE.https_transport)
+        with mock.patch.object(STORE, "build_opener", return_value=opener):
+            if denied:
+                with self.assertRaises(STORE.StoreError) as error:
+                    store.read_source(provider.source_input(), approved_actor_id=404,
+                                      approved_actor_login="release-operator")
+                self.assertEqual(error.exception.kind, "instrument_failure")
+                self.assertEqual(str(error.exception),
+                                 "release operation store: instrument_failure: provider exchange failed")
+                self.assertNotIn(FAKE_CREDENTIAL, str(error.exception))
+                self.assertEqual([item.reads for item in native_responses], [0])
+            else:
+                data = store.read_source(provider.source_input(), approved_actor_id=404,
+                                         approved_actor_login="release-operator")
+                self.assertEqual(data, provider.source_body)
+        calls = 1 if denied else 3
+        self.assertEqual(opener.open.call_count, calls)
+        self.assertEqual([call[0] for call in provider.calls], ["GET"] * calls)
+        self.assertEqual(provider.unexpected, [])
+        self.assertEqual((provider.refs, provider.blobs, provider.trees, provider.commits),
+                         ({}, {}, {}, {}))
+
+    def test_native_source_accepts_repeated_vary_in_received_order(self):
+        combined = [("Vary", "Accept, Accept-Encoding, X-Selected"), ("X-Trace", "bounded")]
+        repeated = [("vArY", "Accept"), ("X-Trace", "bounded"),
+                    ("VARY", "Accept-Encoding"), ("vary", "X-Selected")]
+        for lines in (combined, repeated):
+            with self.subTest(lines=lines):
+                self.native_source_headers(lambda _result: lines)
+        self.assertEqual(STORE._headers(iter(repeated)), STORE._headers(iter(combined)))
+        self.assertEqual(STORE._headers(iter(repeated))["vary"],
+                         "Accept, Accept-Encoding, X-Selected")
+
+    def test_native_source_rejects_every_other_repeated_header(self):
+        for name, value in [
+            ("Content-Length", None), ("Location", "https://artifacts.example.test/selected"),
+            ("Content-Encoding", "identity"), ("Date", "Sat, 10 Oct 2026 12:00:00 GMT"),
+            ("Transfer-Encoding", "chunked"), ("Content-Type", "application/json"),
+            ("X-Trace", FAKE_CREDENTIAL),
+        ]:
+            def single(result):
+                return [(name, str(len(result.body)) if value is None else value)]
+
+            def repeated(result):
+                headers = single(result)
+                return headers + [(name.swapcase(), headers[0][1])]
+
+            with self.subTest(header=name):
+                self.native_source_headers(single)
+                self.native_source_headers(repeated, denied=True)
+
+    def test_native_source_repeated_vary_keeps_physical_header_bounds(self):
+        for label, lines, denied in [
+            ("128-lines", [("Vary", "Accept")] * 128, False),
+            ("129-lines", [("Vary", "Accept")] * 129, True),
+            ("65536-characters", [("Vary", "x" * 32764), ("vary", "y" * 32764)], False),
+            ("65537-characters", [("Vary", "x" * 32764), ("vary", "y" * 32765)], True),
+        ]:
+            with self.subTest(bound=label):
+                self.native_source_headers(lambda _result: lines, denied=denied)
+
+    def test_native_source_repeated_vary_keeps_malformed_headers_sanitized(self):
+        for bad_line in [("Bad Header", FAKE_CREDENTIAL),
+                         ("vary", "Accept\n" + FAKE_CREDENTIAL),
+                         ("vary", "Accept\x01" + FAKE_CREDENTIAL),
+                         ("vary", "non-ascii-\u00e9" + FAKE_CREDENTIAL)]:
+            with self.subTest(header=bad_line[0]):
+                self.native_source_headers(
+                    lambda _result: [("Vary", "Accept-Encoding"), bad_line], denied=True)
+
     def test_import_and_constructor_do_not_read_environment_or_credentials(self):
         class NoEnvironment(dict):
             def refused(self, *_args, **_kwargs):

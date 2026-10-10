@@ -199,16 +199,19 @@ class _NoRedirect(HTTPRedirectHandler):
 def _headers(items: Any) -> dict[str, str]:
     checked: dict[str, str] = {}
     size = 0
-    for key, value in items:
+    for count, (key, value) in enumerate(items, start=1):
         _require(isinstance(key, str) and isinstance(value, str)
                  and bool(re.fullmatch(r"[A-Za-z0-9!#$%&'*+.^_\x60|~-]+", key))
                  and all(32 <= ord(c) <= 126 or c == "\t" for c in value),
                  "instrument_failure", "malformed HTTP headers")
         lower = key.lower()
         size += len(key) + len(value)
-        _require(lower not in checked and len(checked) < 128 and size <= 65536,
+        # Bound physical lines and characters before combining only Vary.
+        # Routing, framing, encoding and all other duplicates remain errors.
+        _require((lower not in checked or lower == "vary")
+                 and count <= 128 and size <= 65536,
                  "instrument_failure", "ambiguous or oversized HTTP headers")
-        checked[lower] = value
+        checked[lower] = checked[lower] + ", " + value if lower in checked else value
     return checked
 
 
