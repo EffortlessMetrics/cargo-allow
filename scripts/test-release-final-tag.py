@@ -60,6 +60,15 @@ FULL_BRIDGE = None
 FULL_FIXTURE = None
 
 
+def collector_environment(environment):
+    """Retain only the collector's profile destination in native test children."""
+    selected = dict(environment)
+    profile = os.environ.get("LLVM_PROFILE_FILE")
+    if profile is not None:
+        selected["LLVM_PROFILE_FILE"] = profile
+    return selected
+
+
 def producer():
     result = PROVIDER.producer()
     result["schema_id"] = "cargo-allow.release-operation-head.v1"
@@ -268,6 +277,49 @@ class GitRunner:
                 raise STORE.StoreError("uncertain", "intercepted lost process response")
             return DRIVER.ChildResult(0 if self.outcome in ("exact", "known_absent") else 1, b"", b"")
         raise AssertionError("unexpected native Git command")
+
+
+class CollectionEnvironmentContracts(unittest.TestCase):
+    """Check actual harness dispatch without claiming native eligibility or coverage."""
+    def test_pure_bridge_profile_destination_is_optional_and_does_not_open_ambient_environment(self):
+        for profile in (None, "collector path/profile-%p-%m.profraw"):
+            with self.subTest(profile=profile):
+                ambient = {"PATH": os.defpath, "SystemRoot": "selected-system-root", "TEMP": "selected-temp",
+                           "GH_TOKEN": SECRET, "GITHUB_TOKEN": SECRET, "CARGO_REGISTRY_TOKEN": SECRET,
+                           "GIT_DIR": "unselected-git-dir", "RUST_LOG": "unselected-log-filter"}
+                expected = {key: ambient[key] for key in ("PATH", "SystemRoot", "TEMP")}
+                if profile is not None:
+                    ambient["LLVM_PROFILE_FILE"] = profile
+                    expected["LLVM_PROFILE_FILE"] = profile
+                with mock.patch.dict(os.environ, ambient, clear=True), \
+                     mock.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0, b"", b"")) as child:
+                    NativeBridgeContracts.run_bridge(self, {})
+                self.assertEqual(child.call_count, 1)
+                self.assertEqual(child.call_args.kwargs["env"], expected)
+                self.assertEqual(child.call_args.kwargs["input"], b"{}")
+
+    def test_compiled_lifecycle_runner_adds_only_the_collector_key_without_mutating_production_environment(self):
+        for profile in (None, "collector path/profile-%p-%m.profraw"):
+            with self.subTest(profile=profile):
+                production = DRIVER._child_environment()
+                before = dict(production)
+                ambient = {"LLVM_PROFILE_FILE": profile} if profile is not None else {}
+                ambient.update({"PATH": "unselected-path", "GH_TOKEN": SECRET, "GITHUB_TOKEN": SECRET,
+                                "CARGO_REGISTRY_TOKEN": SECRET, "GIT_DIR": "unselected-git-dir"})
+                expected = {**before, **({"LLVM_PROFILE_FILE": profile} if profile is not None else {})}
+                result = DRIVER.ChildResult(0, b"", b"test-only child stderr")
+                with mock.patch.dict(os.environ, ambient, clear=True), \
+                     mock.patch.object(DRIVER, "bounded_run", return_value=result) as child:
+                    actual = FullContracts.compiled_child(self, ["selected-compiled-bridge"], input_bytes=b"{}",
+                        cwd=HERE.parent, environment=production, output_limit=DRIVER.MAX_BRIDGE)
+                    self.assertEqual(DRIVER._child_environment(), before)
+                self.assertIs(actual, result)
+                self.assertEqual(self.last_bridge_stderr, result.stderr)
+                self.assertEqual(child.call_count, 1)
+                self.assertEqual(child.call_args.args, (["selected-compiled-bridge"],))
+                self.assertEqual(child.call_args.kwargs, {"input_bytes": b"{}", "cwd": HERE.parent,
+                    "environment": expected, "output_limit": DRIVER.MAX_BRIDGE})
+                self.assertEqual(production, before)
 
 
 class IoContracts(unittest.TestCase):
@@ -674,7 +726,8 @@ class NativeBridgeContracts(unittest.TestCase):
         environment = {key: value for key, value in os.environ.items()
                        if key.lower() in ("path", "systemroot", "windir", "temp", "tmp")}
         result = subprocess.run([str(FULL_BRIDGE), "--color", "never", "release-final-tag-bridge"],
-            input=STORE._json_bytes(request), capture_output=True, timeout=30, cwd=HERE.parent, env=environment)
+            input=STORE._json_bytes(request), capture_output=True, timeout=30, cwd=HERE.parent,
+            env=collector_environment(environment))
         self.assertLessEqual(len(result.stdout) + len(result.stderr), DRIVER.MAX_BRIDGE)
         self.assertNotIn(SECRET.encode(), result.stdout + result.stderr)
         return result
@@ -812,17 +865,19 @@ class FullContracts(unittest.TestCase):
         self.client = self.provider.client()
         self.git_runner = GitRunner(self.provider)
         self.last_bridge_stderr = b""
-        def compiled_child(*args, **kwargs):
-            result = DRIVER.bounded_run(*args, **kwargs)
-            self.last_bridge_stderr = result.stderr
-            return result
-        self.bridge = DRIVER.RustBridge(FULL_BRIDGE, STORE.sha256(FULL_BRIDGE.read_bytes()), runner=compiled_child)
+        self.bridge = DRIVER.RustBridge(FULL_BRIDGE, STORE.sha256(FULL_BRIDGE.read_bytes()), runner=self.compiled_child)
         self.driver = DRIVER.FinalTagDriver(self.configuration, self.client, self.bridge, lambda: SECRET,
             lambda: DRIVER.GitTagRequest(GIT, lambda: SECRET, runner=self.git_runner), clock=lambda: self.provider.now)
         self.temporary = tempfile.TemporaryDirectory(prefix="final-tag-intercepted-")
         self.root = Path(self.temporary.name)
         self.counter = 0
         self.subject = None
+
+    def compiled_child(self, *args, **kwargs):
+        kwargs["environment"] = collector_environment(kwargs["environment"])
+        result = DRIVER.bounded_run(*args, **kwargs)
+        self.last_bridge_stderr = result.stderr
+        return result
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -1099,6 +1154,7 @@ def main():
     if arguments.io_only and os.name != "posix":
         parser.error("the production I/O-only scope requires a POSIX host; full mode runs native bridge and unsupported-host contracts here")
     suite = unittest.TestSuite()
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(CollectionEnvironmentContracts))
     if os.name == "posix":
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(IoContracts))
     if not arguments.io_only:
