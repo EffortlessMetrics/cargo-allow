@@ -33,7 +33,9 @@ fn qualifier_protocol_controls_run_in_ci() -> Result<(), Box<dyn std::error::Err
             && line.ends_with(" ... ok")
     });
     if !staging_control_ran {
-        return Err("qualifier protocol suite did not run the child-output staging controls".into());
+        return Err(
+            "qualifier protocol suite did not run the child-output staging controls".into(),
+        );
     }
     Ok(())
 }
