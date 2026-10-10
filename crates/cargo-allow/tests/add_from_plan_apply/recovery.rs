@@ -22,6 +22,19 @@ const SOURCE_PATH: &str = if cfg!(windows) {
     "src/source ' $(touch SHELL-INJECTION) ;.rs"
 };
 
+#[derive(Clone, Copy, Debug)]
+enum PlanPlacement {
+    Outside,
+    Visible,
+    IgnoredDirectory,
+    IgnoredOriginal,
+    NegatedRetry,
+    PolicyIgnored,
+}
+
+static RECOVERY_FIXTURE_COUNTER: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
 fn require(condition: bool, message: &str) -> TestResult {
     if condition {
         Ok(())
@@ -116,6 +129,20 @@ fn init_repository(root: &Path, source_path: &Path, include_untracked: bool) -> 
     // Keep the raw filename oracle independent of macOS Git's Unicode rewriting.
     git(root, &["config", "core.precomposeUnicode", "false"])?;
     git(root, &["config", "core.hooksPath", ".git/no-hooks"])?;
+    // The placement controls exercise these explicit rules, independently of
+    // a user's global excludes file or repository template.
+    let excludes = root.join(".git/fixture-excludes");
+    fs::write(&excludes, "")?;
+    fs::create_dir_all(root.join(".git/info"))?;
+    fs::write(root.join(".git/info/exclude"), "")?;
+    git(
+        root,
+        &[
+            OsStr::new("config"),
+            OsStr::new("core.excludesFile"),
+            excludes.as_os_str(),
+        ],
+    )?;
     for policy in [DEFAULT_POLICY, SELECTED_POLICY] {
         let init = cargo_allow_command()
             .args(["init", "--root"])
@@ -148,6 +175,7 @@ struct RecoveryFixture {
     caller: PathBuf,
     paste_cwd: PathBuf,
     source_path: PathBuf,
+    plan_path: PathBuf,
     include_untracked: bool,
     policy_before: Vec<u8>,
     head_before: Vec<u8>,
@@ -156,7 +184,16 @@ struct RecoveryFixture {
 
 impl RecoveryFixture {
     fn new(include_untracked: bool, source_path: &Path) -> TestResult<Self> {
-        let container = temp_root("add-plan-shell-recovery");
+        Self::with_placement(include_untracked, source_path, PlanPlacement::Outside)
+    }
+
+    fn with_placement(
+        include_untracked: bool,
+        source_path: &Path,
+        placement: PlanPlacement,
+    ) -> TestResult<Self> {
+        let sequence = RECOVERY_FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let container = temp_root(&format!("add-plan-shell-recovery-{sequence}"));
         let root = container.join("selected repo ' & (literal)");
         let caller = container.join("original caller outside repo");
         let paste_cwd = container.join("paste caller outside repo");
@@ -178,6 +215,20 @@ impl RecoveryFixture {
             )?;
         }
         init_repository(&root, source_path, include_untracked)?;
+        let plan_path = match placement {
+            PlanPlacement::Outside => caller.join(RECORDED_PLAN),
+            PlanPlacement::PolicyIgnored => root.join("target/cargo-allow/original plan.json"),
+            _ => root.join(RECORDED_PLAN),
+        };
+        let ignore = match placement {
+            PlanPlacement::IgnoredDirectory => "saved plans/\n",
+            PlanPlacement::IgnoredOriginal => "saved plans/original plan.json\n",
+            PlanPlacement::NegatedRetry => "saved plans/*.json\n!saved plans/*.retry-*.json\n",
+            _ => "",
+        };
+        fs::write(root.join(".gitignore"), ignore)?;
+        git(&root, &["add", "--", ".gitignore"])?;
+        fs::create_dir_all(plan_path.parent().ok_or("fixture plan has no parent")?)?;
         let tracked = git(&root, &["ls-files", "-z"])?;
         let source_is_tracked = tracked
             .stdout
@@ -195,10 +246,11 @@ impl RecoveryFixture {
             caller,
             paste_cwd,
             source_path: source_path.to_path_buf(),
+            plan_path,
             include_untracked,
             protected: Vec::new(),
         };
-        let original = fixture.generate_plan(1, &fixture.caller.join(RECORDED_PLAN))?;
+        let original = fixture.generate_plan(1, &fixture.plan_path)?;
         require(
             original.pointer("/finding/line").and_then(Value::as_u64) == Some(1)
                 && original.pointer("/outcome/status").and_then(Value::as_str) == Some("new")
@@ -206,12 +258,22 @@ impl RecoveryFixture {
                     == Some(SELECTED_POLICY),
             "original plan must bind the selected policy and New line-1 target",
         )?;
+        let control = fixture.generate_plan(1, &fixture.caller.join("initial control.json"))?;
+        require(
+            original.pointer("/inventory_basis_identity")
+                == control.pointer("/inventory_basis_identity")
+                && original
+                    .pointer("/inventory_basis_identity")
+                    .and_then(Value::as_str)
+                    .is_some_and(|identity| identity.starts_with("sha256:v1:")),
+            "writing the original plan must not already stale its inventory binding",
+        )?;
         let first = fixture
-            .caller
-            .join("saved plans/original plan.retry-1.json");
+            .plan_path
+            .with_file_name("original plan.retry-1.json");
         let second = fixture
-            .caller
-            .join("saved plans/original plan.retry-2.json");
+            .plan_path
+            .with_file_name("original plan.retry-2.json");
         fs::write(&first, "occupied retry one")?;
         fs::create_dir(&second)?;
         let directory_canary = second.join("keep.txt");
@@ -234,9 +296,12 @@ impl RecoveryFixture {
             fixture.root.join(DEFAULT_POLICY),
             fixture.root.join(&fixture.source_path),
             fixture.root.join("untracked note.txt"),
-            fixture.caller.join(RECORDED_PLAN),
+            fixture.plan_path.clone(),
             first,
             directory_canary,
+            fixture.root.join(".gitignore"),
+            fixture.root.join(".git/index"),
+            fixture.root.join(".git/HEAD"),
         ] {
             fixture.protected.push((path.clone(), fs::read(path)?));
         }
@@ -258,8 +323,13 @@ impl RecoveryFixture {
     }
 
     fn generate_plan(&self, line: usize, path: &Path) -> TestResult<Value> {
+        self.generate_plan_from(&self.caller, line, path)
+    }
+
+    fn generate_plan_from(&self, cwd: &Path, line: usize, path: &Path) -> TestResult<Value> {
         let output = self
             .command("why")
+            .current_dir(cwd)
             .args(["--kind", "panic", "--path"])
             .arg(self.root.join(&self.source_path))
             .arg("--line")
@@ -362,9 +432,22 @@ impl RecoveryFixture {
 }
 
 fn context_recovery_runs_verbatim(include_untracked: bool, source_path: &Path) -> TestResult {
-    let fixture = RecoveryFixture::new(include_untracked, source_path)?;
+    context_recovery_at_placement(include_untracked, source_path, PlanPlacement::Outside)
+}
+
+fn context_recovery_at_placement(
+    include_untracked: bool,
+    source_path: &Path,
+    placement: PlanPlacement,
+) -> TestResult {
+    let fixture = RecoveryFixture::with_placement(include_untracked, source_path, placement)?;
     let refused_receipt = fixture.caller.join("refused must not exist.json");
-    let refused = fixture.add(Path::new(RECORDED_PLAN), &refused_receipt)?;
+    let plan_argument = if matches!(placement, PlanPlacement::Outside) {
+        Path::new(RECORDED_PLAN)
+    } else {
+        fixture.plan_path.as_path()
+    };
+    let refused = fixture.add(plan_argument, &refused_receipt)?;
     let rejection = String::from_utf8(refused.stderr)?;
     require(
         refused.status.code() == Some(2)
@@ -379,10 +462,10 @@ fn context_recovery_runs_verbatim(include_untracked: bool, source_path: &Path) -
         fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
         "stale refusal changed the selected policy",
     )?;
-    let printed = printed_regeneration_command(&rejection, Path::new(RECORDED_PLAN))?;
+    let printed = printed_regeneration_command(&rejection, plan_argument)?;
     let retry_path = fixture
-        .caller
-        .join("saved plans/original plan.retry-3.json");
+        .plan_path
+        .with_file_name("original plan.retry-3.json");
     require(
         !retry_path.exists(),
         "third retry path must initially be unused",
@@ -403,7 +486,7 @@ fn context_recovery_runs_verbatim(include_untracked: bool, source_path: &Path) -
     // Keep the positive control above the expected-red assertion so failures
     // distinguish a broken printed command from an unplannable source fixture.
     eprintln!(
-        "include_untracked={include_untracked}; explicit selected-context line-3 control succeeded; protected bytes unchanged; printed={printed:?}; hint_status={}; hint_stderr={:?}",
+        "include_untracked={include_untracked}; placement={placement:?}; explicit selected-context line-3 control succeeded; protected bytes unchanged; printed={printed:?}; hint_status={}; hint_stderr={:?}",
         hinted.status,
         String::from_utf8_lossy(&hinted.stderr),
     );
@@ -435,6 +518,105 @@ fn tracked_stale_plan_recovery_preserves_context_through_shell() -> TestResult {
 #[test]
 fn untracked_stale_plan_recovery_preserves_context_through_shell() -> TestResult {
     context_recovery_runs_verbatim(true, Path::new(SOURCE_PATH))
+}
+
+#[test]
+fn safe_retry_placements_generate_and_apply_from_another_cwd() -> TestResult {
+    for (include_untracked, placement) in [
+        (false, PlanPlacement::Visible),
+        (true, PlanPlacement::Outside),
+        (true, PlanPlacement::IgnoredDirectory),
+        (true, PlanPlacement::PolicyIgnored),
+    ] {
+        context_recovery_at_placement(include_untracked, Path::new(SOURCE_PATH), placement)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn included_retry_filename_requires_manual_safe_placement() -> TestResult {
+    for placement in [PlanPlacement::IgnoredOriginal, PlanPlacement::NegatedRetry] {
+        let fixture = RecoveryFixture::with_placement(true, Path::new(SOURCE_PATH), placement)?;
+        let retry_path = fixture
+            .plan_path
+            .with_file_name("original plan.retry-3.json");
+        let refused_receipt = fixture.caller.join("refused must not exist.json");
+        let refused = fixture.add(&fixture.plan_path, &refused_receipt)?;
+        let rejection = String::from_utf8(refused.stderr)?;
+        fixture.require_preserved()?;
+        require(
+            refused.status.code() == Some(2)
+                && rejection.contains("E0001_USAGE")
+                && rejection.contains("(policy unchanged)")
+                && rejection.contains("source inventory changed since the plan was generated")
+                && rejection.contains("; regenerate manually: ")
+                && rejection.contains("outside the selected source-tree inventory")
+                && rejection.contains("same root, selected policy and include-untracked setting")
+                && !rejection.contains("; regenerate with ")
+                && !retry_path.exists()
+                && !refused_receipt.exists()
+                && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+            &format!("included sibling must not receive a self-staling command: {rejection}"),
+        )?;
+        // Follow the manual guidance from the second caller, retaining the
+        // selected context and using a fresh location outside the inventory.
+        let safe_plan = fixture.caller.join("saved plans/manual safe recovery.json");
+        let regenerated = fixture.generate_plan_from(&fixture.paste_cwd, 3, &safe_plan)?;
+        require(
+            regenerated.pointer("/finding/line").and_then(Value::as_u64) == Some(3)
+                && regenerated.pointer("/policy/path").and_then(Value::as_str)
+                    == Some(SELECTED_POLICY),
+            "manual recovery must keep the selected policy and live finding",
+        )?;
+        fixture.apply_and_replay(&safe_plan)?;
+        remove_temp_root(fixture.container);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn drive_relative_plan_recovery_is_manual_before_cross_cwd_regeneration() -> TestResult {
+    use std::path::{Component, Prefix};
+
+    let fixture = RecoveryFixture::new(false, Path::new(SOURCE_PATH))?;
+    let drive = fixture
+        .caller
+        .components()
+        .find_map(|component| match component {
+            Component::Prefix(prefix) => match prefix.kind() {
+                Prefix::Disk(drive) | Prefix::VerbatimDisk(drive) => Some(char::from(drive)),
+                _ => None,
+            },
+            _ => None,
+        })
+        .ok_or("the native Windows fixture needs a drive-letter caller directory")?;
+    let drive_relative = PathBuf::from(format!("{drive}:{RECORDED_PLAN}"));
+    let refused_receipt = fixture.caller.join("refused must not exist.json");
+    let refused = fixture.add(&drive_relative, &refused_receipt)?;
+    let rejection = String::from_utf8(refused.stderr)?;
+    fixture.require_preserved()?;
+    require(
+        refused.status.code() == Some(2)
+            && rejection.contains("(policy unchanged)")
+            && rejection.contains("; regenerate manually: ")
+            && rejection.contains("not anchored absolutely")
+            && !rejection.contains("; regenerate with ")
+            && !refused_receipt.exists()
+            && !fixture
+                .plan_path
+                .with_file_name("original plan.retry-3.json")
+                .exists()
+            && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+        &format!("drive-relative recovery must not advertise an unstable path: {rejection}"),
+    )?;
+    let safe_plan = fixture
+        .caller
+        .join("saved plans/absolute manual recovery.json");
+    fixture.generate_plan_from(&fixture.paste_cwd, 3, &safe_plan)?;
+    fixture.apply_and_replay(&safe_plan)?;
+    remove_temp_root(fixture.container);
+    Ok(())
 }
 
 #[test]

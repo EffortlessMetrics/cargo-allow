@@ -9,6 +9,15 @@ const DIGEST_A: &str = "sha256:v1:0000000000000000000000000000000000000000000000
 const DIGEST_B: &str = "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111";
 type FlagCase = (&'static str, fn(&mut AddArgs), &'static str);
 
+fn complete_hint_inventory(include_untracked: bool) -> InventoryFacts {
+    let source = if include_untracked {
+        InventorySource::FilesystemIncludeUntracked
+    } else {
+        InventorySource::GitTracked
+    };
+    InventoryFacts::scanned(source, 1).with_completeness(InventoryCompleteness::Scoped)
+}
+
 fn base_from_plan_args() -> AddArgs {
     AddArgs {
         root: crate::RootArgs { root: None },
@@ -338,22 +347,29 @@ fn full_check_argv_carries_root_config_and_optional_untracked() {
 }
 
 #[test]
-fn enrich_with_regen_hint_appends_plan_regeneration_command() {
+fn enrich_with_regen_hint_appends_plan_regeneration_command()
+-> Result<(), Box<dyn std::error::Error>> {
+    let dir = from_plan_fixture_dir();
+    let root = dir.join("repo");
+    std::fs::create_dir(&root)?;
     let (plan, mut bindings) = matching_plan_and_bindings();
     bindings.finding_line = Some(3);
     assert!(verify_bindings(&plan, &bindings, "/repo").is_err());
-    let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
+    let plan_path = dir.join("add-finding-plan.json");
+    std::fs::write(&plan_path, "original plan")?;
     let error = stale("finding location changed since the plan was generated");
     let enriched = enrich_with_regen_hint(
         error,
-        plan_path,
+        &plan_path,
         &plan.finding,
         &bindings,
         RegenHintContext {
-            root: Path::new("/repo"),
-            policy_path: Path::new("/repo/policy/allow.toml"),
+            root: &root,
+            policy_path: &root.join("policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: false,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(false),
         },
     );
 
@@ -365,7 +381,7 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
     );
     assert!(
         message.contains("--kind panic --path ")
-            && message.contains(&Path::new("/repo").join("src/lib.rs").display().to_string())
+            && message.contains(&root.join("src/lib.rs").display().to_string())
             && message.contains("--line 3"),
         "enriched error should include live finding coordinates: {message}"
     );
@@ -379,16 +395,20 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
         message.contains("already exists and add-finding plans are never overwritten"),
         "regeneration hint should state why a fresh path is required: {message}"
     );
+    std::fs::remove_dir_all(dir)?;
+    Ok(())
 }
 
 #[test]
-fn enrich_with_regen_hint_is_idempotent() {
+fn enrich_with_regen_hint_is_idempotent() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = from_plan_fixture_dir();
     let (plan, bindings) = matching_plan_and_bindings();
-    let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
+    let plan_path = dir.join("add-finding-plan.json");
+    std::fs::write(&plan_path, "original plan")?;
     let error = stale("finding path changed since the plan was generated");
     let enriched_once = enrich_with_regen_hint(
         error,
-        plan_path,
+        &plan_path,
         &plan.finding,
         &bindings,
         RegenHintContext {
@@ -396,11 +416,13 @@ fn enrich_with_regen_hint_is_idempotent() {
             policy_path: Path::new("/repo/policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: false,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(false),
         },
     );
     let enriched_twice = enrich_with_regen_hint(
         enriched_once,
-        plan_path,
+        &plan_path,
         &plan.finding,
         &bindings,
         RegenHintContext {
@@ -408,6 +430,8 @@ fn enrich_with_regen_hint_is_idempotent() {
             policy_path: Path::new("/repo/policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: false,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(false),
         },
     );
 
@@ -419,10 +443,16 @@ fn enrich_with_regen_hint_is_idempotent() {
         hint_count, 1,
         "enrich should not duplicate the hint on re-application"
     );
+    std::fs::remove_dir_all(dir)?;
+    Ok(())
 }
 
 #[test]
-fn recovery_hint_ignores_location_and_source_drift_only_for_advice() {
+fn recovery_hint_ignores_location_and_source_drift_only_for_advice()
+-> Result<(), Box<dyn std::error::Error>> {
+    let dir = from_plan_fixture_dir();
+    let plan_path = dir.join("plan.json");
+    std::fs::write(&plan_path, "original plan")?;
     let (mut plan, mut bindings) = matching_plan_and_bindings();
     plan.finding.identity.insert("line_hint".into(), json!(1));
     plan.finding
@@ -446,7 +476,7 @@ fn recovery_hint_ignores_location_and_source_drift_only_for_advice() {
         .expect_err("a moved finding's stale plan must still refuse application");
     let enriched = enrich_with_regen_hint(
         error,
-        Path::new("plan.json"),
+        &plan_path,
         &plan.finding,
         &bindings,
         RegenHintContext {
@@ -454,9 +484,13 @@ fn recovery_hint_ignores_location_and_source_drift_only_for_advice() {
             policy_path: Path::new("/repo/policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: false,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(false),
         },
     );
     assert!(enriched.to_string().contains("--line 3"));
+    std::fs::remove_dir_all(dir)?;
+    Ok(())
 }
 
 #[test]
@@ -482,6 +516,8 @@ fn recovery_hint_refuses_each_semantic_binding_drift() {
                 policy_path: Path::new("/repo/policy/allow.toml"),
                 finding_path: Path::new("src/lib.rs"),
                 include_untracked: false,
+                ignored: &[],
+                inventory_facts: complete_hint_inventory(false),
             },
         );
         assert_eq!(enriched.to_string(), before, "{label} must not get advice");
@@ -593,6 +629,8 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
             policy_path: Path::new("/repo/policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: true,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(true),
         },
     );
     let manual = enrich_with_regen_hint(
@@ -605,6 +643,8 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
             policy_path: Path::new("/repo/policy/allow.toml"),
             finding_path: Path::new("src/lib.rs"),
             include_untracked: true,
+            ignored: &[],
+            inventory_facts: complete_hint_inventory(true),
         },
     );
     require_regen_contract(
@@ -648,6 +688,8 @@ fn require_regen_contract(
 #[test]
 fn recovery_hint_uses_manual_guidance_for_nonpasteable_paths()
 -> Result<(), Box<dyn std::error::Error>> {
+    let dir = from_plan_fixture_dir();
+    let plan_path = dir.join("plan.json");
     let (plan, bindings) = matching_plan_and_bindings();
     let mut paths = vec!["/repo\nforged command", "/repo\u{1b}[31m"];
     if cfg!(windows) {
@@ -657,7 +699,7 @@ fn recovery_hint_uses_manual_guidance_for_nonpasteable_paths()
         for (root, finding_path) in [(path, "src/lib.rs"), ("/repo", path)] {
             let error = enrich_with_regen_hint(
                 stale("source inventory changed since the plan was generated"),
-                Path::new("plan.json"),
+                &plan_path,
                 &plan.finding,
                 &bindings,
                 RegenHintContext {
@@ -665,6 +707,8 @@ fn recovery_hint_uses_manual_guidance_for_nonpasteable_paths()
                     policy_path: Path::new("/repo/policy/allow.toml"),
                     finding_path: Path::new(finding_path),
                     include_untracked: true,
+                    ignored: &[],
+                    inventory_facts: complete_hint_inventory(true),
                 },
             );
             let message = error.to_string();
@@ -678,6 +722,7 @@ fn recovery_hint_uses_manual_guidance_for_nonpasteable_paths()
             )?;
         }
     }
+    std::fs::remove_dir_all(dir)?;
     Ok(())
 }
 
@@ -687,18 +732,20 @@ fn recovery_hint_does_not_lossily_display_paths() -> Result<(), Box<dyn std::err
     use std::os::unix::ffi::OsStrExt;
 
     let (plan, bindings) = matching_plan_and_bindings();
+    let dir = from_plan_fixture_dir();
+    let ordinary_plan = dir.join("plan.json");
     let non_utf8 = Path::new(std::ffi::OsStr::from_bytes(b"/repo-\xff"));
     for (root, policy_path, plan_path, finding_path) in [
         (
             non_utf8,
             Path::new("policy.toml"),
-            Path::new("plan.json"),
+            ordinary_plan.as_path(),
             Path::new("src/lib.rs"),
         ),
         (
             Path::new("/repo"),
             non_utf8,
-            Path::new("plan.json"),
+            ordinary_plan.as_path(),
             Path::new("src/lib.rs"),
         ),
         (
@@ -710,7 +757,7 @@ fn recovery_hint_does_not_lossily_display_paths() -> Result<(), Box<dyn std::err
         (
             Path::new("/repo"),
             Path::new("policy.toml"),
-            Path::new("plan.json"),
+            ordinary_plan.as_path(),
             non_utf8,
         ),
     ] {
@@ -724,12 +771,106 @@ fn recovery_hint_does_not_lossily_display_paths() -> Result<(), Box<dyn std::err
                 policy_path,
                 finding_path,
                 include_untracked: false,
+                ignored: &[],
+                inventory_facts: complete_hint_inventory(false),
             },
         );
         require_regen_contract(
             error.to_string().contains("; regenerate manually: ")
                 && !error.to_string().contains("regenerate with"),
             "non-UTF-8 paths must not produce a lossy executable command",
+        )?;
+    }
+    std::fs::remove_dir_all(dir)?;
+    Ok(())
+}
+
+#[test]
+fn retry_output_requires_effective_exclusion_or_complete_tracked_inventory()
+-> Result<(), Box<dyn std::error::Error>> {
+    let dir = from_plan_fixture_dir();
+    let root = dir.join("plain source tree");
+    std::fs::create_dir_all(root.join("plans"))?;
+    let root = root.canonicalize()?;
+    let fresh = root.join("plans/plan.retry-1.json");
+    let policy_path = root.join("policy.toml");
+    let mut context = RegenHintContext {
+        root: &root,
+        policy_path: &policy_path,
+        finding_path: Path::new("src/lib.rs"),
+        include_untracked: true,
+        ignored: &[],
+        inventory_facts: complete_hint_inventory(true),
+    };
+    require_regen_contract(
+        !retry_output_is_outside_inventory(&fresh, &context) && !fresh.exists(),
+        "an unavailable Git exclusion query must not advertise or create a retry",
+    )?;
+    let ignored = vec!["plans/**".to_string()];
+    context.ignored = &ignored;
+    require_regen_contract(
+        retry_output_is_outside_inventory(&fresh, &context),
+        "selected policy exclusion must qualify the actual prospective filename",
+    )?;
+    context.ignored = &[];
+    context.include_untracked = false;
+    context.inventory_facts = complete_hint_inventory(false);
+    require_regen_contract(
+        retry_output_is_outside_inventory(&fresh, &context),
+        "a complete tracked inventory must keep an absent untracked retry usable",
+    )?;
+    for completeness in [
+        InventoryCompleteness::Fallback,
+        InventoryCompleteness::Partial,
+    ] {
+        context.inventory_facts.completeness = completeness;
+        require_regen_contract(
+            !retry_output_is_outside_inventory(&fresh, &context),
+            "the include-untracked flag alone must not qualify a fallback or partial inventory",
+        )?;
+    }
+    context.inventory_facts = complete_hint_inventory(true);
+    context.include_untracked = true;
+    require_regen_contract(
+        retry_output_is_outside_inventory(&dir.join("outside.retry-1.json"), &context)
+            && !retry_output_is_outside_inventory(
+                &dir.join("missing parent/outside.retry-1.json"),
+                &context,
+            ),
+        "outside placement requires an existing resolvable parent",
+    )?;
+    std::fs::remove_dir_all(dir)?;
+    Ok(())
+}
+
+#[cfg(windows)]
+#[test]
+fn drive_relative_recovery_base_requires_manual_guidance() -> Result<(), Box<dyn std::error::Error>>
+{
+    let (plan, bindings) = matching_plan_and_bindings();
+    for relative in ["C:plan.json", "C:plans\\plan.json"] {
+        let anchored = Path::new("C:\\original caller").join(relative);
+        let error = enrich_with_regen_hint(
+            stale("source inventory changed since the plan was generated"),
+            &anchored,
+            &plan.finding,
+            &bindings,
+            RegenHintContext {
+                root: Path::new("C:\\selected repo"),
+                policy_path: Path::new("C:\\selected repo\\policy.toml"),
+                finding_path: Path::new("src\\lib.rs"),
+                include_untracked: false,
+                ignored: &[],
+                inventory_facts: complete_hint_inventory(false),
+            },
+        );
+        require_regen_contract(
+            !anchored.is_absolute()
+                && error.kind() == CargoAllowErrorKind::Usage
+                && error.to_string().contains("; regenerate manually: ")
+                && error.to_string().contains("not anchored absolutely")
+                && !error.to_string().contains("; regenerate with "),
+            "drive-relative input must not become a cross-cwd executable suggestion",
         )?;
     }
     Ok(())

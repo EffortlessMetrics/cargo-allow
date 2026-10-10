@@ -14,8 +14,10 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
+use allow_inventory::{InventoryCompleteness, InventorySource};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::validate_policy;
 use allow_report::{
@@ -37,7 +39,7 @@ use crate::plan_bindings::{
 };
 use crate::policy_config::{EvidenceValidationMode, load_policy_at_path_with_digest};
 use crate::{
-    MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
+    InventoryFacts, MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -117,6 +119,8 @@ struct RegenHintContext<'a> {
     policy_path: &'a Path,
     finding_path: &'a Path,
     include_untracked: bool,
+    ignored: &'a [String],
+    inventory_facts: InventoryFacts,
 }
 
 /// Append a plan-regeneration hint to a stale add --from-plan rejection. The
@@ -148,6 +152,12 @@ fn enrich_with_regen_hint(
     {
         return error;
     }
+    // On Windows, joining a drive-relative path such as C:plan.json to the
+    // caller's cwd still leaves it drive-relative. Do not advertise a path
+    // whose meaning can change when the operator pastes it from another cwd.
+    if !plan_path.is_absolute() {
+        return manual_regen_hint(error, "the recorded plan path is not anchored absolutely");
+    }
     let Some(fresh) = fresh_plan_hint_path(plan_path) else {
         return manual_regen_hint(error, "no safe unused retry path was found beside the plan");
     };
@@ -165,6 +175,12 @@ fn enrich_with_regen_hint(
             "a selected path cannot be displayed without data loss",
         );
     };
+    if !retry_output_is_outside_inventory(&fresh, &context) {
+        return manual_regen_hint(
+            error,
+            "the retry output cannot be proved excluded from the bound source inventory",
+        );
+    }
     let mut args = vec![
         "why".to_string(),
         "--plan".to_string(),
@@ -202,10 +218,62 @@ fn enrich_with_regen_hint(
 
 fn manual_regen_hint(error: CargoAllowError, reason: &str) -> CargoAllowError {
     error.with_message_suffix(format!(
-        "; regenerate manually: {reason}. Run why --plan with an unused output path, \
+        "; regenerate manually: {reason}. Run why --plan with an unused output path \
+         outside the selected source-tree inventory or excluded by its effective rules, \
          the same root, selected policy and include-untracked setting, and the live finding \
          coordinates; existing plans are never overwritten."
     ))
+}
+
+/// Creating an eligible output after computing a plan's inventory binding
+/// makes that plan stale immediately. Qualify the proposed filename, not the
+/// recorded plan's name: an exact .gitignore rule need not cover its retry.
+/// These are read-only diagnostic checks; application still verifies all exact
+/// bindings and the plan writer still owns the final no-overwrite decision.
+fn retry_output_is_outside_inventory(fresh: &Path, context: &RegenHintContext<'_>) -> bool {
+    if !matches!(
+        context.inventory_facts.completeness,
+        InventoryCompleteness::Complete | InventoryCompleteness::Scoped
+    ) {
+        return false;
+    }
+    let (Some(parent), Some(name)) = (fresh.parent(), fresh.file_name()) else {
+        return false;
+    };
+    // Resolve only the existing parent for containment. Keep the chosen path's
+    // original spelling in the displayed command; do not retarget a plan alias.
+    let Ok(parent) = parent.canonicalize() else {
+        return false;
+    };
+    let resolved = parent.join(name);
+    let Ok(relative) = resolved.strip_prefix(context.root) else {
+        return true;
+    };
+    if allow_core::source_tree_path_is_ignored(relative, context.ignored) {
+        return true;
+    }
+    match (context.inventory_facts.source, context.include_untracked) {
+        // A missing tracked path would make the live inventory partial above.
+        (InventorySource::GitTracked, false) => true,
+        (InventorySource::FilesystemIncludeUntracked, true) => {
+            // This source label also covers a raw filesystem fallback, which
+            // the completeness gate above rejects. In the successful Git case,
+            // ask Git about the absent candidate, including filename-specific
+            // rules and negations. Keep its index check: tracked files are not
+            // excluded merely because an ignore pattern happens to match.
+            Command::new("git")
+                .arg("-C")
+                .arg(context.root)
+                .args(["check-ignore", "--quiet", "--"])
+                .arg(relative)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
+        }
+        _ => false,
+    }
 }
 
 /// Advice may follow a location-only move, but never a different target. Keep
@@ -334,6 +402,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
                 policy_path: &policy_path,
                 finding_path: &finding.path,
                 include_untracked: args.include_untracked,
+                ignored: &cfg.workspace.ignored,
+                inventory_facts,
             },
         )
     })?;
