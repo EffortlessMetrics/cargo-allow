@@ -1,0 +1,16 @@
+# PR #4440: exact retained-review evidence and this note.
+# These receipts do not authorize merge, CI bypass, or release.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-review-4440-record"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:23e5afc5b865c36e65096ef78fc8fc83c749047513db32899cbcef66d68dee9d"
+reason = "Retained structured review evidence for PR #4440 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+
+[[records]]
+allow_ids = ["allow-review-4440-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:615aaf6a837b98ff81e7df42861ffba79aaaa3608d839976b8f83df14ec5cd40"
+reason = "Authored revision note for the exact retained PR #4440 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."

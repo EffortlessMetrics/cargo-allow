@@ -1072,7 +1072,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
-        with:
-          arguments: --workspace
-          command: check
+      - name: Install stable Rust for the dependency audit
+        run: rustup toolchain install stable --profile minimal --no-self-update
+      - name: Check supply chain (cargo-deny, pinned)
+        env:
+          # Preserve the binary selected by cargo-deny-action v2.1.1
+          # (3c6349835b2b7b196a839186cb8b78e02f7b5f25), without its
+          # Docker Hub base-image pull. Version and asset digest move together.
+          CARGO_DENY_VERSION: "0.20.2"
+          CARGO_DENY_SHA256: "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+          CARGO_TERM_COLOR: always
+          RUSTUP_TOOLCHAIN: stable
+        run: |
+          set -euo pipefail
+          cargo_deny_dir="${RUNNER_TEMP}/cargo-deny"
+          cargo_deny_asset="cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl"
+          mkdir -p "${cargo_deny_dir}"
+          curl --proto '=https' --tlsv1.2 --silent --show-error --fail --location \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/${cargo_deny_asset}.tar.gz" \
+            -o "${cargo_deny_dir}/cargo-deny.tar.gz"
+          echo "${CARGO_DENY_SHA256}  ${cargo_deny_dir}/cargo-deny.tar.gz" | sha256sum --check --strict
+          tar -xzf "${cargo_deny_dir}/cargo-deny.tar.gz" --no-same-owner \
+            -C "${cargo_deny_dir}" --strip-components=1 "${cargo_deny_asset}/cargo-deny"
+          "${cargo_deny_dir}/cargo-deny" --version
+          "${cargo_deny_dir}/cargo-deny" --log-level warn --manifest-path ./Cargo.toml --workspace check
