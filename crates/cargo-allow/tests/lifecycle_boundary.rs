@@ -4,9 +4,12 @@
 use allow_core::{MatchStatus, SimpleDate};
 use allow_match::{CheckMode, evaluate};
 use serde_json::Value;
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::sync::Barrier;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[path = "support/repository_environment.rs"]
 mod repository_environment;
@@ -187,6 +190,68 @@ fn lifecycle_boundary_cli_surfaces_and_calendar_postures_agree() -> Result<(), S
 fn lifecycle_fixture_children_ignore_repository_environment() -> Result<(), String> {
     repository_environment::require_isolated_fixture_test(
         "lifecycle_boundary_cli_surfaces_and_calendar_postures_agree",
+    )
+}
+
+#[test]
+fn lifecycle_fixture_allocator_reserves_distinct_roots_under_collision() -> Result<(), String> {
+    let parent = Fixture::reserve(&std::env::temp_dir(), &FIXTURE_SEQUENCE)?;
+    let prior = Fixture::reserve(&parent.root, &AtomicUsize::new(0))?;
+    let canary = prior.root.join("owner");
+    fs::write(&canary, b"prior owner").map_err(|error| error.to_string())?;
+    let start = Barrier::new(4);
+    let fixtures = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..4)
+            .map(|_| {
+                scope.spawn(|| {
+                    // Every contender starts with the occupied name, so the
+                    // actual allocator must handle collisions without clocks.
+                    let sequence = AtomicUsize::new(0);
+                    start.wait();
+                    Fixture::reserve(&parent.root, &sequence)
+                })
+            })
+            .collect();
+        let mut fixtures = Vec::new();
+        for handle in handles {
+            fixtures.push(
+                handle
+                    .join()
+                    .map_err(|_| "fixture allocator thread panicked".to_string())??,
+            );
+        }
+        Ok::<_, String>(fixtures)
+    })?;
+    let roots: BTreeSet<_> = fixtures.iter().map(|fixture| fixture.root.clone()).collect();
+    require(
+        roots.len() == 4 && !roots.contains(&prior.root),
+        "each concurrent allocator must exclusively own a different directory",
+    )?;
+    drop(fixtures);
+    require(
+        fs::read(&canary).map_err(|error| error.to_string())? == b"prior owner",
+        "allocating and dropping competing fixtures must preserve the prior owner",
+    )
+}
+
+#[test]
+fn lifecycle_fixture_allocator_exhaustion_preserves_existing_roots() -> Result<(), String> {
+    let parent = Fixture::reserve(&std::env::temp_dir(), &FIXTURE_SEQUENCE)?;
+    let sequence = AtomicUsize::new(0);
+    let owners = (0..FIXTURE_ALLOCATION_ATTEMPTS)
+        .map(|_| Fixture::reserve(&parent.root, &sequence))
+        .collect::<Result<Vec<_>, _>>()?;
+    require(
+        Fixture::reserve(&parent.root, &AtomicUsize::new(0)).is_err()
+            && owners.iter().all(|owner| owner.root.is_dir()),
+        "an exhausted collision budget must fail without claiming or deleting an existing root",
+    )?;
+    let blocked_parent = parent.root.join("not-a-directory");
+    fs::write(&blocked_parent, b"parent canary").map_err(|error| error.to_string())?;
+    require(
+        Fixture::reserve(&blocked_parent, &AtomicUsize::new(0)).is_err()
+            && fs::read(&blocked_parent).map_err(|error| error.to_string())? == b"parent canary",
+        "a non-directory parent must fail without replacing the existing file",
     )
 }
 
@@ -392,20 +457,37 @@ fn successful_json(root: &Path, args: &[&str]) -> Result<Value, String> {
     json(&output)
 }
 
+const FIXTURE_ALLOCATION_ATTEMPTS: usize = 128;
+static FIXTURE_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+
 struct Fixture {
     root: PathBuf,
 }
 
 impl Fixture {
+    fn reserve(parent: &Path, sequence: &AtomicUsize) -> Result<Self, String> {
+        for _ in 0..FIXTURE_ALLOCATION_ATTEMPTS {
+            let unique = sequence.fetch_add(1, Ordering::Relaxed);
+            let root = parent.join(format!(
+                "cargo-allow-lifecycle-boundary-{}-{unique}",
+                std::process::id()
+            ));
+            // The counter chooses candidates; only atomic creation grants
+            // ownership. Never reuse or remove an occupied candidate.
+            match fs::create_dir(&root) {
+                Ok(()) => return Ok(Self { root }),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(error) => return Err(format!("create fixture directory: {error}")),
+            }
+        }
+        Err(format!(
+            "exhausted {FIXTURE_ALLOCATION_ATTEMPTS} fixture directory candidates"
+        ))
+    }
+
     fn new(policy: &str) -> Result<Self, String> {
-        let stamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|error| format!("fixture clock: {error}"))?
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!(
-            "cargo-allow-lifecycle-boundary-{}-{stamp}",
-            std::process::id()
-        ));
+        let fixture = Self::reserve(&std::env::temp_dir(), &FIXTURE_SEQUENCE)?;
+        let root = &fixture.root;
         fs::create_dir_all(root.join("src")).map_err(|error| error.to_string())?;
         fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
         fs::write(root.join("src/lib.rs"), SOURCE).map_err(|error| error.to_string())?;
@@ -426,7 +508,7 @@ impl Fixture {
             ],
         ] {
             let mut command = Command::new("git");
-            command.current_dir(&root).args(&args);
+            command.current_dir(root).args(&args);
             let output = isolate_repository(&mut command)
                 .output()
                 .map_err(|error| format!("git {args:?}: {error}"))?;
@@ -435,7 +517,7 @@ impl Fixture {
                 format!("git {args:?} failed: {output:?}"),
             )?;
         }
-        Ok(Self { root })
+        Ok(fixture)
     }
 }
 
