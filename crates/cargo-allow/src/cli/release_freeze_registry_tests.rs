@@ -826,9 +826,9 @@ fn require_negative_outcomes_composition(
     input: &FinalRegistryPreflightInputV1,
     selected_context: &FinalRegistryContextV1,
 ) -> TestResult {
-    use allow_report::FinalRegistryNextActionV1 as Action;
     use FinalRegistryPreflightResultV1 as Preflight;
     use ObservationFreshnessV1 as Freshness;
+    use allow_report::FinalRegistryNextActionV1 as Action;
 
     for (scenario, semantic, node, action) in [
         (
@@ -965,13 +965,13 @@ fn require_outcome_composition(
     authority: Option<(&FinalRegistryContextV1, u64, u64)>,
     expected: (Node, ObservationFreshnessV1),
 ) -> TestResult {
+    use ObservationFreshnessV1 as Freshness;
     use allow_report::{
         CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1,
         FinalEvidenceCurrentnessV1 as Currentness, FinalFreezeReplayResultV1,
         FinalFreezeReplayRowKindV1, FinalReadinessRowKindV1 as RowKind, FinalReadinessVerdictV1,
         RefreshableObservationKindV1,
     };
-    use ObservationFreshnessV1 as Freshness;
 
     let bytes = serde_json::to_vec(input)?;
     let path = root.join("target/freeze-evidence/registry-observation.input.json");
@@ -990,7 +990,9 @@ fn require_outcome_composition(
         .err()
         .ok_or("negative registry outcome became Complete")?;
     if !error.to_string().contains("state=Incomplete") {
-        return Err(format!("negative registry fixture failed outside composition: {error}").into());
+        return Err(
+            format!("negative registry fixture failed outside composition: {error}").into(),
+        );
     }
     let readiness: CargoAllowFinalReadinessV1 = serde_json::from_slice(&std::fs::read(
         args.out_dir.join("final-freeze.readiness.json"),
@@ -1047,7 +1049,9 @@ fn require_outcome_composition(
         || reading.freshness != expected.1
         || !reading.authoritative
         || reading.detail != reconciled.2.detail
-        || !reading.detail.contains(&allow_core::sha256_v1_bytes(&bytes))
+        || !reading
+            .detail
+            .contains(&allow_core::sha256_v1_bytes(&bytes))
         || readiness.graph_digest != replay.evidence_graph_digest
         || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
         || replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
