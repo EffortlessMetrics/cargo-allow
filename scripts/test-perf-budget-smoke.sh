@@ -400,10 +400,11 @@ PY_BINARY_SELECTION
 "${py}" - <<'PY_RECEIPT'
 """Exercise the actual inline CI receipt consumer with synthetic v4 receipts.
 
-These fixtures test duration admission and byte-count admission, not latency
-or artifact integrity. No second runtime validator or third-party dependency
+These fixtures test duration, byte-count and retained-digest admission, not
+latency or real command output. No second runtime validator or third-party dependency
 is introduced.
 """
+import hashlib
 import json
 import math
 import subprocess
@@ -444,6 +445,7 @@ def receipt_fixture():
         ("cache_disabled_off", "targeted", "off"),
         ("first_audit", "cold", "not_applicable"),
         ("warm_check", "warm", "not_applicable"),
+        ("full_check_json", "warm", "not_applicable"),
         ("why_fast_path", "targeted", "not_applicable"),
         ("worklist", "targeted", "not_applicable"),
         ("diff_base", "targeted", "not_applicable"),
@@ -466,12 +468,20 @@ def receipt_fixture():
             "status": "passed", "payload_bytes": artifact_size,
             "semantic_payload_bytes": semantic_size,
             "artifact": {
-                "path": f"{name}.json", "sha256": f"{index + 1:064x}",
+                "path": f"{name}.json", "sha256": hashlib.sha256(b"a" * artifact_size).hexdigest(),
             },
             "semantic_artifact": {
-                "path": f"{name}.semantic.json", "sha256": f"{index + 65:064x}",
+                "path": f"{name}.semantic.json", "sha256": hashlib.sha256(b"s" * semantic_size).hexdigest(),
             },
         })
+        if name == "full_check_json":
+            samples[-1]["artifact"]["path"] = "artifacts/full-check.json"
+            samples[-1]["semantic_artifact"]["path"] = "artifacts/full-check.receipt.json"
+            samples[-1]["argv"] = [
+                "check", "--mode", "no-new", "--format", "json", "--receipt",
+                "target/perf-budget/artifacts/full-check.receipt.json", "--output",
+                "target/perf-budget/artifacts/full-check.json",
+            ]
     return {
         "schema_version": 4, "schema_id": "cargo-allow.operator-latency.v4",
         "tool": "cargo-allow", "command": "operator-latency", "result": "pass",
@@ -479,9 +489,9 @@ def receipt_fixture():
         "host": {"os": "Linux", "release": "fixture", "machine": "x86_64", "rustc": "fixture"},
         "repository": {"commit": "fixture", "tracked_files": 0, "policy_entries": 0},
         "sample_policy": {
-            "cold_process_samples": 2, "warm_process_samples": 3,
+            "cold_process_samples": 2, "warm_process_samples": 4,
             "targeted_samples": 6, "agent_loop_samples": 6,
-            "cache_mode_samples": {"on": 2, "off": 1, "not_applicable": 14},
+            "cache_mode_samples": {"on": 2, "off": 1, "not_applicable": 15},
         },
         "budget": {
             "name": "operator_loop_hard_ceiling", "kind": "catastrophic_regression",
@@ -510,13 +520,13 @@ def receipt_fixture():
         },
         "samples": samples,
         "claim_boundary": ["synthetic receipt admission fixture"],
-        "limitations": ["not a latency or artifact-integrity observation"],
+        "limitations": ["not a latency or real command-output observation"],
     }
 
 
 def duration_paths():
     return (
-        [("samples", i, "elapsed_ms") for i in range(17)]
+        [("samples", i, "elapsed_ms") for i in range(18)]
         + [("agent_loop", "composite", "steps", i, "elapsed_ms") for i in range(4)]
         + [
             ("agent_loop", "composite", "total_elapsed_ms"),
@@ -564,7 +574,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
         cls.source = consumer_source()
         cls.schema_text = (ROOT / SCHEMA_PATH).read_text(encoding="utf-8")
 
-    def invoke(self, receipt, *, write_receipt=True):
+    def invoke(self, receipt, *, write_receipt=True, mutate_retained=None):
         with tempfile.TemporaryDirectory(prefix="operator-duration-") as directory:
             root = Path(directory)
             schema_path = root / SCHEMA_PATH
@@ -586,6 +596,8 @@ class ReceiptAdmissionControls(unittest.TestCase):
                         retained = receipt_path.parent / sample[key]["path"]
                         retained.parent.mkdir(parents=True, exist_ok=True)
                         retained.write_bytes(prefix * size)
+                if mutate_retained is not None:
+                    mutate_retained(receipt_path.parent)
             return subprocess.run(
                 [sys.executable, "-"], input=self.source, cwd=root,
                 capture_output=True, text=True, timeout=20,
@@ -594,7 +606,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
     def assert_accepted(self, receipt):
         result = self.invoke(receipt)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "validated 17 operator-latency samples")
+        self.assertEqual(result.stdout.strip(), "validated 18 operator-latency samples")
 
     def assert_rejected(self, receipt, label, *, diagnostic=None):
         result = self.invoke(receipt)
@@ -602,7 +614,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
             result.returncode, 1,
             f"invalid receipt accepted: {label}; stdout={result.stdout!r}; stderr={result.stderr!r}",
         )
-        self.assertNotIn("validated 17 operator-latency samples", result.stdout)
+        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
         self.assertTrue(result.stderr, f"missing rejection diagnostic: {label}")
         if diagnostic is not None:
             self.assertIn(diagnostic, result.stderr)
@@ -634,6 +646,55 @@ class ReceiptAdmissionControls(unittest.TestCase):
         for repetition in range(2):
             with self.subTest(repetition=repetition):
                 self.assert_accepted(receipt)
+
+    def test_full_json_row_is_required_with_its_actual_command_and_artifacts(self):
+        cases = (
+            ("missing", lambda r: r["samples"][5].__setitem__("name", "replacement"),
+             "expected exactly one full_check_json sample"),
+            ("duplicate", lambda r: r["samples"][4].__setitem__("name", "full_check_json"),
+             "expected exactly one full_check_json sample"),
+            ("wrong_format", lambda r: r["samples"][5]["argv"].__setitem__(4, "markdown"),
+             "full_check_json must measure the full JSON check command"),
+            ("wrong_output", lambda r: r["samples"][5]["argv"].__setitem__(8, "other.json"), None),
+            ("wrong_receipt", lambda r: r["samples"][5]["argv"].__setitem__(6, "other.json"), None),
+            ("wrong_phase", lambda r: r["samples"][5].__setitem__("phase", "targeted"), None),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                receipt = receipt_fixture()
+                mutate(receipt)
+                self.assert_rejected(receipt, label, diagnostic=diagnostic)
+
+    def test_retained_digests_and_file_refusals(self):
+        # Each negative starts from the same accepted bytes and correct sizes.
+        # A same-size substitution exercises hashing independently of size checks.
+        self.assert_accepted(receipt_fixture())
+        for index in (3, 5):
+            for key in ("artifact", "semantic_artifact"):
+                with self.subTest(index=index, key=key, mutation="digest"):
+                    receipt = receipt_fixture()
+                    receipt["samples"][index][key]["sha256"] = "0" * 64
+                    self.assert_rejected(receipt, key, diagnostic=f"{key} sha256 must match")
+                for mutation in ("same_size", "truncated", "missing"):
+                    with self.subTest(index=index, key=key, mutation=mutation):
+                        receipt = receipt_fixture()
+                        path = receipt["samples"][index][key]["path"]
+                        def mutate(root):
+                            retained = root / path
+                            if mutation == "missing":
+                                retained.unlink()
+                            else:
+                                data = retained.read_bytes()
+                                retained.write_bytes(b"x" + data[1:] if mutation == "same_size" else data[:-1])
+                        result = self.invoke(receipt, mutate_retained=mutate)
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
+                        diagnostic = {
+                            "same_size": f"{key} sha256 must match",
+                            "truncated": "must match the retained",
+                            "missing": "FileNotFoundError",
+                        }[mutation]
+                        self.assertIn(diagnostic, result.stderr)
 
     def test_byte_count_admission_refusals(self):
         sample_index = 3
@@ -1118,5 +1179,325 @@ class HookPayloadControls(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 PY_HOOK_PAYLOAD
+
+# Execute the new matrix row and production measurement/validation functions.
+# Controlled child artifacts exercise refusal and retention, not real latency.
+"${py}" - <<'PY_FULL_CHECK_JSON'
+import ast
+import copy
+import hashlib
+import json
+import os
+import shlex
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+_, boundary, tail = script.partition("\nmeasure() {\n")
+assert boundary, "missing production measurement"
+body, boundary, _ = tail.partition("\n}\n")
+assert boundary, "missing production measurement end"
+measurement = "\nmeasure() {\n" + body + "\n}\n"
+_, boundary, tail = script.partition('log "measuring warm full check JSON report and receipt"\n')
+assert boundary, "missing full JSON matrix row"
+matrix_row, boundary, _ = tail.partition('\nlog "measuring targeted why"')
+assert boundary, "missing full JSON matrix row end"
+REPORT_LIMIT, RECEIPT_LIMIT = 8388608, 16384
+STATUSES = (
+    "matched", "new", "expired", "review_due", "location_drift", "stale",
+    "ambiguous", "invalid_selector", "evidence_missing", "missing_required_field", "baseline_debt",
+)
+REPORT_SCHEMA = Path("docs/schemas/report.schema.json").read_bytes()
+
+
+def command_artifacts():
+    counts = {status: 0 for status in STATUSES}
+    counts.update(matched=2, stale=1, weak_evidence_references=2)
+    shared = {
+        "schema_version": 1, "tool": "cargo-allow", "command": "check",
+        "status": "passed", "failed": False,
+        "claim_boundary": ["source_tree_inventory", "source_syntax_only"],
+        "scanner_limitations": ["cargo_metadata_not_invoked"],
+        "inventory": {"scope": "source_tree", "scanner": "source_syntax",
+                      "source": "git_tracked", "completeness": "scoped", "files_scanned": 2},
+        "source_inventory": {
+            "findings": 2,
+            "by_kind": [{"kind": kind, "total": 1, "matched": 1, "new": 0, "review_items": 0}
+                        for kind in ("non_rust_file", "panic")],
+            "by_family": [{"kind": kind, "family": family, "label": f"{kind}.{family}",
+                           "total": 1, "matched": 1, "new": 0, "review_items": 0}
+                          for kind, family in (("non_rust_file", "documentation"), ("panic", "unwrap"))],
+        },
+        "evidence_repair_queues": [],
+    }
+    report = copy.deepcopy(shared)
+    report.update({
+        "schema_id": "cargo-allow.report.v1",
+        "rust_scanner": {"completeness": "scoped", "files_considered": 1, "files_scanned": 1,
+                         "files_skipped": 0, "files_with_parse_errors": 0,
+                         "skipped_by_reason": {"read_failed_or_unsupported": 0}},
+        "summary": {"findings": 2, "outcomes": 3, **counts},
+        "findings": [
+            {"kind": "non_rust_file", "family": "documentation", "path": "docs/café.md",
+             "line": None, "container": None, "ast_kind": "file"},
+            {"kind": "panic", "family": "unwrap", "path": "src/lib.rs",
+             "line": 1, "container": None, "ast_kind": "method_call"},
+        ],
+        "outcomes": [
+            {"status": status, "allow_id": f"fixture-{index}", "candidate_ids": [],
+             "finding_index": index if index < 2 else None, "score": 0, "message": "fixture"}
+            for index, status in enumerate(("matched", "matched", "stale"))
+        ],
+    })
+    receipt = copy.deepcopy(shared)
+    receipt.update({
+        "schema_id": "cargo-allow.receipt.v1", "mode": "no-new", "counts": counts,
+        "advisory": {"review_items": 3, **{key: value for key, value in counts.items() if key != "matched"}},
+        "run_id": "json-run", "started_at": "2026-10-10T00:00:01Z",
+        "git_sha": "a" * 40, "policy_digest": "sha256:v1:" + "b" * 64,
+    })
+    reference = copy.deepcopy(receipt)
+    reference.update(run_id="markdown-run", started_at="2026-10-10T00:00:00Z")
+    audit = copy.deepcopy(report)
+    audit.update(command="audit", audit_remediation_roadmap=[])
+    return report, receipt, reference, audit
+
+
+def encoded(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+class FullCheckJsonControls(unittest.TestCase):
+    def invoke(self, artifacts=None, *, raw=None, missing=(), sizes=None, status=0, clock="normal"):
+        values = command_artifacts() if artifacts is None else artifacts
+        self.assertEqual(len(values), 4, "the audit control must be supplied independently of mutated check detail")
+        inputs = dict(zip(("report", "receipt", "reference", "audit"), map(encoded, values)))
+        inputs.update(raw or {})
+        for key, size in (sizes or {}).items():
+            self.assertGreaterEqual(size, len(inputs[key]))
+            inputs[key] += b" " * (size - len(inputs[key]))
+        with tempfile.TemporaryDirectory(prefix="perf-full-json-") as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / "docs/schemas").mkdir(parents=True)
+            (root / "docs/schemas/report.schema.json").write_bytes(REPORT_SCHEMA)
+            (root / "input").mkdir()
+            (root / "outside caller").mkdir()
+            output = root / "receipt/artifacts"
+            output.mkdir(parents=True)
+            for key in ("report", "receipt"):
+                if key not in missing:
+                    (root / "input" / key).write_bytes(inputs[key])
+            if "reference" not in missing:
+                (output / "warm-check.receipt.json").write_bytes(inputs["reference"])
+            if "audit" not in missing:
+                (output / "first-audit.json").write_bytes(inputs["audit"])
+            # Missing output cannot reuse an artifact left by an earlier sample.
+            for name in ("full-check.json", "full-check.receipt.json"):
+                (output / name).write_text("stale output", encoding="utf-8")
+            child = root / "controlled-child.py"
+            child.write_text(
+                "import json, os, shutil, sys\nfrom pathlib import Path\n"
+                "args = sys.argv[1:]\n"
+                "Path(os.environ['PROBE_DISPATCH']).write_text(json.dumps({'argv': args, 'cwd': str(Path.cwd())}))\n"
+                "for key, flag in (('report', '--output'), ('receipt', '--receipt')):\n"
+                "    source = Path(os.environ['PROBE_INPUT']) / key\n"
+                "    if source.is_file(): shutil.copyfile(source, args[args.index(flag) + 1])\n"
+                "sys.exit(int(os.environ['PROBE_EXIT']))\n",
+                encoding="utf-8",
+            )
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir(parents=True)
+            candidate.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                                 + shlex.quote(str(child)) + ' "$@"\n', encoding="utf-8")
+            candidate.chmod(0o755)
+            # Metadata remains unknown in this fixture; do not probe a host Rust toolchain.
+            tools = root / "fixture-tools"
+            tools.mkdir()
+            (tools / "rustc").write_text("#!/bin/sh\nexit 127\n", encoding="utf-8")
+            (tools / "rustc").chmod(0o755)
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(
+                bootstrap + measurement + '\nnow_ms() {\n'
+                + '  if [[ "$PROBE_CLOCK_MODE" == over && -e "$PROBE_CLOCK" ]]; then printf 60001; '
+                + 'else : >"$PROBE_CLOCK"; printf 0; fi\n}\n'
+                + matrix_row + '\nwrite_receipt "pass" ""\nprintf "full-json-probe-complete\\n"\n',
+                encoding="utf-8",
+            )
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": str(tools) + os.pathsep + environment["PATH"],
+                "CARGO_ALLOW_BIN": "target/selected/cargo-allow", "PROFILE": "debug",
+                "OUTPUT_DIR": str(root / "receipt"), "HARD_CEILING_MS": "60000",
+                "PYTHON3": sys.executable, "CDPATH": "", "PERF_AGENT_LOOP_SUMMARY": "",
+                "PROBE_INPUT": str(root / "input"), "PROBE_EXIT": str(status),
+                "PROBE_DISPATCH": str(root / "dispatch.json"),
+                "PROBE_CLOCK_MODE": clock, "PROBE_CLOCK": str(root / "clock"),
+            })
+            result = subprocess.run(["bash", str(probe)], cwd=root / "outside caller", env=environment,
+                                    capture_output=True, text=True, timeout=20)
+            dispatch = json.loads((root / "dispatch.json").read_text(encoding="utf-8"))
+            self.assertEqual(dispatch, {
+                "cwd": str(root),
+                "argv": ["check", "--mode", "no-new", "--format", "json", "--receipt",
+                         str(output / "full-check.receipt.json"), "--output", str(output / "full-check.json")],
+            })
+            metrics = (root / "receipt/.operator-latency.samples.tsv").read_text(encoding="utf-8")
+            receipt = json.loads((root / "receipt/operator-latency.receipt.json").read_text(encoding="utf-8"))
+            self.assertFalse(list((root / "target").glob("cargo-allow-operator-latency.*")))
+            return result, metrics, receipt, inputs
+
+    def assert_refused(self, diagnostic, *args, **kwargs):
+        result, metrics, receipt, _ = self.invoke(*args, **kwargs)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(diagnostic, result.stderr)
+        self.assertNotIn("full-json-probe-complete", result.stdout)
+        self.assertEqual(metrics, "")
+        self.assertEqual(receipt["result"], "failed")
+        self.assertEqual(receipt["samples"], [])
+        self.assertEqual(receipt["failure"]["kind"], "instrument_failure")
+        self.assertIn(diagnostic, receipt["failure"]["message"])
+
+    def test_valid_command_retains_exact_bytes_and_distinct_receipt(self):
+        for sizes in ({}, {"report": REPORT_LIMIT, "receipt": RECEIPT_LIMIT}):
+            with self.subTest(sizes=sizes):
+                result, metrics, receipt, inputs = self.invoke(sizes=sizes)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("full-json-probe-complete", result.stdout)
+                fields = metrics.strip().split("\t")
+                self.assertEqual(len(fields), 11)
+                self.assertEqual(fields[:3], ["warm", "full_check_json", "0"])
+                self.assertEqual(fields[3], "artifacts/full-check.json")
+                self.assertEqual(fields[5], "artifacts/full-check.receipt.json")
+                self.assertEqual(fields[7], "passed")
+                for key, digest_field, size_field in (("report", 4, 9), ("receipt", 6, 10)):
+                    self.assertEqual(fields[digest_field], hashlib.sha256(inputs[key]).hexdigest())
+                    self.assertEqual(int(fields[size_field]), len(inputs[key]))
+                self.assertEqual(receipt["result"], "pass")
+                self.assertEqual(receipt["schema_version"], 4)
+                self.assertEqual(receipt["samples"][0]["cache_mode"], "not_applicable")
+                self.assertEqual(receipt["sample_policy"]["warm_process_samples"], 1)
+
+    def test_missing_truncated_duplicate_and_non_json_artifacts_refuse(self):
+        values = command_artifacts()
+        for index, key in enumerate(("report", "receipt", "reference", "audit")):
+            with self.subTest(key=key, mutation="missing"):
+                diagnostic = "did not produce" if key in ("report", "receipt") else "report/receipt validation failed"
+                self.assert_refused(diagnostic, missing=(key,))
+            for label, data, diagnostic in (
+                ("truncated", encoded(values[index])[:-2], "report/receipt validation failed"),
+                ("duplicate", encoded(values[index]).rstrip()[:-1] + b', "failed": false}', "duplicate JSON key"),
+                ("non_json", encoded(values[index]).replace(b'"schema_version": 1', b'"schema_version": NaN'),
+                 "non-JSON numeric constant"),
+            ):
+                with self.subTest(key=key, mutation=label):
+                    self.assert_refused(diagnostic, raw={key: data})
+
+    def test_semantic_mismatches_refuse_without_recording_a_passed_row(self):
+        cases = (
+            ("schema", lambda r, c, p: r.__setitem__("schema_id", "cargo-allow.receipt.v1"), "expected cargo-allow.report.v1"),
+            ("schema_bool", lambda r, c, p: r.__setitem__("schema_version", True), "schema_version must be 1"),
+            ("status", lambda r, c, p: r.__setitem__("status", "failed"), "expected a passed check result"),
+            ("inventory", lambda r, c, p: r["inventory"].__setitem__("files_scanned", 3), "report/receipt inventory differs"),
+            ("policy", lambda r, c, p: c.__setitem__("policy_digest", "sha256:v1:" + "c" * 64), "warm_check semantic result"),
+            ("findings", lambda r, c, p: r["findings"].pop(), "arrays differ from summary lengths"),
+            ("outcomes", lambda r, c, p: r["outcomes"].pop(), "arrays differ from summary lengths"),
+            ("counts", lambda r, c, p: r["summary"].__setitem__("matched", 3), "summary differs from receipt counts"),
+            ("count_bool", lambda r, c, p: r["summary"].__setitem__("new", False), "summary counts must be nonnegative integers"),
+            ("outcome_status", lambda r, c, p: r["outcomes"][0].__setitem__("status", "new"), "outcomes differ from receipt counts"),
+            ("unknown_status", lambda r, c, p: r["outcomes"][0].__setitem__("status", "unknown"), "unknown outcome status"),
+            ("index", lambda r, c, p: r["outcomes"][0].__setitem__("finding_index", 2), "finding_index is outside"),
+            ("index_bool", lambda r, c, p: r["outcomes"][0].__setitem__("finding_index", True), "finding_index is outside"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                mutate(*values[:3])
+                self.assert_refused(diagnostic, values)
+
+    def test_full_report_detail_mutations_refuse_against_unchanged_audit(self):
+        cases = (
+            ("empty_findings", lambda r: r.__setitem__("findings", [{} for _ in r["findings"]]),
+             "missing required detail field"),
+            ("duplicated_finding", lambda r: r.__setitem__("findings", [copy.deepcopy(r["findings"][0]) for _ in r["findings"]]),
+             "first_audit semantic content"),
+            ("erased_outcome_fields", lambda r: r.__setitem__("outcomes", [{key: item[key] for key in ("status", "finding_index")} for item in r["outcomes"]]),
+             "missing required detail field"),
+            ("null_links", lambda r: [item.__setitem__("finding_index", None) for item in r["outcomes"]],
+             "first_audit semantic content"),
+            ("reordered_findings", lambda r: r["findings"].reverse(), "first_audit semantic content"),
+            ("changed_path", lambda r: r["findings"][0].__setitem__("path", "docs/other.md"), "first_audit semantic content"),
+            ("changed_message", lambda r: r["outcomes"][0].__setitem__("message", "substitute"), "first_audit semantic content"),
+            ("changed_allow_id", lambda r: r["outcomes"][0].__setitem__("allow_id", "substitute"), "first_audit semantic content"),
+            ("changed_candidates", lambda r: r["outcomes"][0].__setitem__("candidate_ids", ["substitute"]), "first_audit semantic content"),
+            ("changed_scanner", lambda r: r["rust_scanner"].__setitem__("files_scanned", 0), "first_audit semantic content"),
+            ("bool_scanner_count", lambda r: r["rust_scanner"].__setitem__("files_scanned", True), "first_audit semantic content"),
+            ("audit_field_on_check", lambda r: r.__setitem__("audit_remediation_roadmap", []), "first_audit semantic content"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                retained_controls = [encoded(value) for value in values[1:]]
+                mutate(values[0])
+                self.assertEqual([encoded(value) for value in values[1:]], retained_controls)
+                self.assert_refused(diagnostic, values)
+
+    def test_shared_invalid_detail_fields_refuse_before_content_parity(self):
+        # Even a matching malformed audit cannot bless erased or ill-typed
+        # detail. Field rules come from the existing report schema.
+        cases = (
+            ("missing_path", lambda r: r["findings"][0].pop("path"), "missing required detail field"),
+            ("empty_path", lambda r: r["findings"][0].__setitem__("path", ""), "invalid detail field length"),
+            ("line_bool", lambda r: r["findings"][1].__setitem__("line", True), "invalid detail field type"),
+            ("line_zero", lambda r: r["findings"][1].__setitem__("line", 0), "invalid detail field minimum"),
+            ("unknown_kind", lambda r: r["findings"][0].__setitem__("kind", "invented"), "invalid detail field value"),
+            ("missing_message", lambda r: r["outcomes"][0].pop("message"), "missing required detail field"),
+            ("score_float", lambda r: r["outcomes"][0].__setitem__("score", 0.0), "invalid detail field type"),
+            ("candidate_type", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [None]), "invalid detail field type"),
+            ("candidate_empty", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [""]), "invalid detail field length"),
+            ("unknown_field", lambda r: r["findings"][0].__setitem__("omitted_detail", True), "unknown detail field"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                mutate(values[0])
+                mutate(values[3])
+                self.assert_refused(diagnostic, values)
+
+    def test_audit_control_identity_and_presence_refuse(self):
+        values = command_artifacts()
+        values[3]["command"] = "check"
+        self.assert_refused("expected a cargo-allow audit artifact", values)
+        values = command_artifacts()
+        values[3].pop("rust_scanner")
+        self.assert_refused("missing required report field: first_audit", values)
+        values = command_artifacts()
+        values[3]["findings"][0]["path"] = "docs/other.md"
+        self.assert_refused("first_audit semantic content", values)
+
+    def test_payload_and_existing_command_gates_refuse(self):
+        self.assert_refused("8388608B catastrophic payload ceiling", sizes={"report": REPORT_LIMIT + 1})
+        self.assert_refused("16384B catastrophic payload ceiling", sizes={"receipt": RECEIPT_LIMIT + 1})
+        self.assert_refused("command failed (exit 2)", status=2)
+        self.assert_refused("exceeded the 60000ms catastrophic ceiling (60001ms)", clock="over")
+
+    def test_status_count_keys_match_the_existing_report_schema(self):
+        schema = json.loads(Path("docs/schemas/report.schema.json").read_text(encoding="utf-8"))
+        body = script.split("validate_full_check_json() {", 1)[1].split("<<'PY'\n", 1)[1].split("\nPY", 1)[0]
+        assignments = [node for node in ast.walk(ast.parse(body)) if isinstance(node, ast.Assign)
+                       and any(isinstance(target, ast.Name) and target.id == "statuses" for target in node.targets)]
+        self.assertEqual(len(assignments), 1)
+        self.assertEqual(set(ast.literal_eval(assignments[0].value)), set(schema["$defs"]["match_status"]["enum"]))
+        self.assertEqual(set(STATUSES), set(schema["$defs"]["match_status"]["enum"]))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+PY_FULL_CHECK_JSON
 
 printf 'ok operator-latency harness characterization\n'

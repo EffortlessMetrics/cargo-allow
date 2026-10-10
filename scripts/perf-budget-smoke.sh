@@ -116,6 +116,175 @@ compare_semantic_json() {
   cmp -s "${left}" "${right}" || fail "${label} semantic JSON differs"
 }
 
+validate_full_check_json() {
+  local report="$1" command_receipt="$2" reference_receipt="$3" audit_report="$4" diagnostic
+  if ! diagnostic="$("${py}" - "$(py_path "${report}")" \
+    "$(py_path "${command_receipt}")" "$(py_path "${reference_receipt}")" \
+    "$(py_path "${audit_report}")" "$(py_path "${ROOT}/docs/schemas/report.schema.json")" <<'PY'
+import collections
+import json
+import sys
+from pathlib import Path
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        require(key not in result, f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"non-JSON numeric constant: {value}")
+
+
+def read_object(path):
+    value = json.loads(Path(path).read_text(encoding="utf-8"),
+                       object_pairs_hook=unique_object, parse_constant=reject_constant)
+    require(isinstance(value, dict), "command artifact must be a JSON object")
+    return value
+
+
+def nonnegative_integer(value):
+    return type(value) is int and value >= 0
+
+
+def detail_field(value, rule, definitions, label):
+    # Only the existing finding/outcome field rules are needed here. Refuse
+    # unsupported constraints instead of silently treating this targeted check
+    # as a full JSON Schema implementation.
+    require(set(rule) <= {"type", "enum", "minimum", "minLength", "items", "description", "$ref"},
+            f"unsupported detail field constraint: {label}")
+    if "$ref" in rule:
+        require(set(rule) <= {"$ref", "description"} and rule["$ref"].startswith("#/$defs/"),
+                f"unsupported detail field reference: {label}")
+        detail_field(value, definitions[rule["$ref"][len("#/$defs/"):]], definitions, label)
+        return
+    if "type" in rule:
+        types = rule["type"] if isinstance(rule["type"], list) else [rule["type"]]
+        matches = {"string": isinstance(value, str), "integer": type(value) is int,
+                   "null": value is None, "array": isinstance(value, list)}
+        require(all(kind in matches for kind in types), f"unsupported detail field type: {label}")
+        require(any(matches[kind] for kind in types), f"invalid detail field type: {label}")
+    if "enum" in rule:
+        require(value in rule["enum"], f"invalid detail field value: {label}")
+    if value is None:
+        return
+    if "minimum" in rule:
+        require(type(value) is int and value >= rule["minimum"], f"invalid detail field minimum: {label}")
+    if "minLength" in rule:
+        require(isinstance(value, str) and len(value) >= rule["minLength"],
+                f"invalid detail field length: {label}")
+    if "items" in rule:
+        require(isinstance(value, list), f"invalid detail array: {label}")
+        for index, item in enumerate(value):
+            detail_field(item, rule["items"], definitions, f"{label}[{index}]")
+
+
+def detail_records(records, kind, definitions, label):
+    rule = definitions[kind]
+    require(set(rule) <= {"type", "additionalProperties", "required", "properties", "description"}
+            and rule["type"] == "object" and rule["additionalProperties"] is False,
+            f"unsupported {kind} detail contract")
+    require(isinstance(records, list), f"{label} must be an array")
+    for index, record in enumerate(records):
+        require(isinstance(record, dict), f"{label}[{index}] must be an object")
+        require(set(rule["required"]) <= set(record), f"missing required detail field: {label}[{index}]")
+        require(set(record) <= set(rule["properties"]), f"unknown detail field: {label}[{index}]")
+        for key, value in record.items():
+            detail_field(value, rule["properties"][key], definitions, f"{label}[{index}].{key}")
+
+
+try:
+    report, receipt, reference, audit, report_schema = [read_object(path) for path in sys.argv[1:]]
+    for value, schema, command in ((report, "report", "check"), (receipt, "receipt", "check"),
+                                   (reference, "receipt", "check"), (audit, "report", "audit")):
+        require(type(value["schema_version"]) is int and value["schema_version"] == 1,
+                "command artifact schema_version must be 1")
+        require(value["schema_id"] == f"cargo-allow.{schema}.v1",
+                f"expected cargo-allow.{schema}.v1")
+        require(value["tool"] == "cargo-allow" and value["command"] == command,
+                f"expected a cargo-allow {command} artifact")
+        require(value["status"] == "passed" and value["failed"] is False,
+                "expected a passed check result")
+    require(receipt["mode"] == reference["mode"] == "no-new", "expected no-new check mode")
+
+    # The preceding Markdown check is the independent format control. Only
+    # per-invocation identity is removed; all other receipt fields must agree.
+    normalized = []
+    for value in (receipt, reference):
+        normalized.append({key: item for key, item in value.items()
+                           if key not in ("run_id", "started_at")})
+    require(json.dumps(normalized[0], sort_keys=True) == json.dumps(normalized[1], sort_keys=True),
+            "receipt differs from warm_check semantic result")
+    for key in ("claim_boundary", "scanner_limitations", "inventory"):
+        require(report[key] == receipt[key], f"report/receipt {key} differs")
+    for key in ("source_inventory", "evidence_repair_queues"):
+        require((key in report) == (key in receipt) and report.get(key) == receipt.get(key),
+                f"report/receipt {key} differs")
+
+    findings, outcomes = report["findings"], report["outcomes"]
+    require(isinstance(findings, list) and all(isinstance(item, dict) for item in findings),
+            "report findings must be an array of objects")
+    require(isinstance(outcomes, list) and all(isinstance(item, dict) for item in outcomes),
+            "report outcomes must be an array of objects")
+    summary, counts = report["summary"], receipt["counts"]
+    require(isinstance(summary, dict) and isinstance(counts, dict), "missing check counts")
+    require(all(nonnegative_integer(value) for value in summary.values()),
+            "report summary counts must be nonnegative integers")
+    require(all(nonnegative_integer(value) for value in counts.values()),
+            "receipt counts must be nonnegative integers")
+    require(summary["findings"] == len(findings) and summary["outcomes"] == len(outcomes),
+            "report arrays differ from summary lengths")
+    require({key: value for key, value in summary.items() if key not in ("findings", "outcomes")}
+            == counts, "report summary differs from receipt counts")
+    if "source_inventory" in report:
+        require(nonnegative_integer(report["source_inventory"]["findings"])
+                and report["source_inventory"]["findings"] == len(findings),
+                "source inventory differs from findings length")
+    statuses = ("matched", "new", "expired", "review_due", "location_drift", "stale",
+                "ambiguous", "invalid_selector", "evidence_missing",
+                "missing_required_field", "baseline_debt")
+    observed = collections.Counter()
+    for outcome in outcomes:
+        require(outcome["status"] in statuses, "report contains an unknown outcome status")
+        observed[outcome["status"]] += 1
+        index = outcome["finding_index"]
+        require(index is None or (nonnegative_integer(index) and index < len(findings)),
+                "outcome finding_index is outside the retained findings")
+    require(all(observed[status] == counts[status] for status in statuses),
+            "report outcomes differ from receipt counts")
+
+    # Audit/NoNew share evaluation and full JSON rendering. Audit alone may
+    # add its remediation roadmap. Preserve all remaining content, including
+    # detail fields, array order, finding links, messages and scanner context.
+    require(report_schema["$id"].endswith("/report.v1.schema.json"), "unexpected report detail schema")
+    definitions = report_schema["$defs"]
+    for value, label in ((report, "check"), (audit, "first_audit")):
+        require(set(report_schema["required"]) <= set(value), f"missing required report field: {label}")
+        require(set(value) <= set(report_schema["properties"]), f"unknown report field: {label}")
+        detail_records(value["findings"], "finding", definitions, f"{label}.findings")
+        detail_records(value["outcomes"], "outcome", definitions, f"{label}.outcomes")
+    check_content = {key: value for key, value in report.items() if key != "command"}
+    audit_content = {key: value for key, value in audit.items()
+                     if key not in ("command", "audit_remediation_roadmap")}
+    require(json.dumps(check_content, sort_keys=True) == json.dumps(audit_content, sort_keys=True),
+            "full report differs from first_audit semantic content")
+except (OSError, UnicodeError, ValueError, TypeError, KeyError) as error:
+    print(str(error))
+    sys.exit(1)
+PY
+)"; then
+    fail "full_check_json report/receipt validation failed: ${diagnostic}"
+  fi
+}
+
 relative_path() {
   local path="$1"
   if [[ "${path}" == "${ROOT}/"* ]]; then
@@ -147,6 +316,7 @@ payload_ceilings() {
     worklist_summary) printf '%s\n' '4096 4096' ;;
     check_summary) printf '%s\n' '4096 16384' ;;
     warm_check) printf '%s\n' '- 16384' ;;
+    full_check_json) printf '%s\n' '8388608 16384' ;;
     agent_loop_check) printf '%s\n' '16384 16384' ;;
     hooks_wrapped_check | hooks_bare_check) printf '%s\n' '524288 -' ;;
     why_fast_path) printf '%s\n' '8192 8192' ;;
@@ -429,6 +599,10 @@ measure() {
   digest="$(sha256_file "${artifact}")"
   semantic_digest="$(sha256_file "${semantic}")"
   assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
+  if [[ "${name}" == "full_check_json" ]]; then
+    validate_full_check_json "${artifact}" "${semantic}" \
+      "${artifact_dir}/warm-check.receipt.json" "${artifact_dir}/first-audit.json"
+  fi
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
   semantic_payload_bytes="$(artifact_payload_bytes "${semantic}")"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
@@ -643,6 +817,14 @@ measure "warm" "warm_check" \
   check --mode no-new --format markdown \
   --receipt "${artifact_dir}/warm-check.receipt.json" \
   --output "${artifact_dir}/warm-check.md"
+
+log "measuring warm full check JSON report and receipt"
+measure "warm" "full_check_json" \
+  "artifacts/full-check.json" "artifacts/full-check.receipt.json" \
+  '"failed": false' \
+  check --mode no-new --format json \
+  --receipt "${artifact_dir}/full-check.receipt.json" \
+  --output "${artifact_dir}/full-check.json"
 
 log "measuring targeted why"
 measure "targeted" "why_fast_path" \

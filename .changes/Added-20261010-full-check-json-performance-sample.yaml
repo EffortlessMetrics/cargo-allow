@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Measure the full check JSON report and its separate receipt in the existing
+  operator-latency harness, preserve complete report detail against the existing
+  audit control, verify receipt agreement and retained artifact digests, and
+  document bounded receipt and command-summary consumers.
+time: 2026-10-10T00:00:00Z

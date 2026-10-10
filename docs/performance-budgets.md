@@ -26,9 +26,35 @@ contract.
 The hosted receipt consumer requires nonnegative integer durations for samples,
 agent-loop steps and totals, and wrapped/bare hook timings, and requires
 nonnegative per-sample artifact and semantic-artifact byte counts that match
-the byte size of the retained uploaded files. Derived hook overhead remains
-signed. These duration checks are targeted contract checks,
-not full JSON Schema validation.
+the byte size of the retained uploaded files. It independently recomputes both
+artifact SHA-256 digests, so a same-size substitution also refuses. Derived hook
+overhead remains signed. These are targeted contract checks, not full JSON
+Schema validation.
+
+The current hosted matrix requires 18 samples: 2 cold, 4 warm, 6 targeted and
+6 agent-loop rows. Its explicit cache modes remain 2 on and 1 off; the other
+15 rows do not explicitly select a cache mode. `full_check_json` adds one warm
+`check --mode no-new --format json` invocation to the existing 17 rows. It
+retains `artifacts/full-check.json` as the measured report and
+`artifacts/full-check.receipt.json` as its separate semantic artifact.
+
+Before recording that row as passed, the harness parses the report and receipt,
+rejects duplicate keys and malformed JSON, checks the report's array lengths
+and outcome counts against its summary and receipt, and checks their shared
+inventory and source context. It compares the entire receipt with the preceding
+Markdown `warm_check` receipt after removing only `run_id` and `started_at`.
+
+Counts alone cannot prove that report details survived. The harness also uses
+the already retained `first-audit.json` as a full-content control. Finding and
+outcome objects in both reports must preserve the required fields and field
+types from the existing report schema. The complete check report must then
+match the audit report after excluding the command name and the audit-only
+remediation roadmap; no finding/outcome fields, array order, links, messages or
+scanner context are discarded for comparison. This adds no command invocation
+or sample row. Missing controls, malformed details, substituted content or an
+exceeded ceiling produce an instrument-failure receipt. These checks and
+artifact hashing occur after the timed child exits; the sample measures command
+execution and output production.
 
 Run the local smoke with the default debug profile, or select release to match
 the hosted profile:
@@ -99,10 +125,10 @@ The agentic loop — route a work item, diagnose it, receipt it, re-run the
 gate — is the loop agents run dozens of times per session. These budgets
 guard its end-to-end cost at the self-hosted ledger's realistic denominator
 (~2,575 tracked files, ~1,049 policy entries, ~16,170 findings, ~158
-worklist items). The harness measures every surface below in its `agent_loop`
-phase against a disposable full-scale clone with a fresh unreceipted probe
-finding, and records `payload_bytes` and `semantic_payload_bytes` for every
-sample.
+worklist items). The harness measures the read surfaces on the repository and
+the repair composite in its `agent_loop` phase against a disposable full-scale
+clone with a fresh unreceipted probe finding. It records `payload_bytes` and
+`semantic_payload_bytes` for every sample.
 
 ### Baseline caveat
 
@@ -145,6 +171,7 @@ captured stdout of both paired hooks samples; advisory targets are not.
 | --- | ---: | ---: | ---: |
 | `worklist.json` (~159 items) | 524,288 B | 65,536 B (exceeded ~4.4×; needs paging/`--limit` or summary-first guidance) | 290,023 B |
 | `audit.json` (~16,170 findings) | 8,388,608 B | not agent-readable today; read `--command-summary-output` instead | 6,919,136 B |
+| Full `check --format json` report | 8,388,608 B | read the receipt or command summary for a bounded gate result | 7,124,531 B (2026-10-10 Linux observation below) |
 | `check` receipt | 16,384 B | 65,536 B | 9,520 B |
 | Paired `hooks_wrapped_check` / `hooks_bare_check` captured stdout | 524,288 B each | 65,536 B | hosted receipt (human check output, not the JSON receipt) |
 | `why.json` (fast path, matched) | 8,192 B | 65,536 B | 3,165 B |
@@ -152,10 +179,50 @@ captured stdout of both paired hooks samples; advisory targets are not.
 | `add` summary JSON | 4,096 B | 65,536 B | 2,448 B |
 | `--command-summary-output` (any supported command) | 4,096 B | ≤ 4,096 B (already compliant) | 2,099–2,901 B |
 
-The bounded `--command-summary-output` projection (2.1–2.9 KB) is the cheap
-agent read that already exists; agents should prefer it over full
-`worklist.json`/`audit.json` reads. Worklist paging/`--limit` is a separate
-UX slice and is intentionally not part of #4366.
+Choose the artifact that supplies the needed evidence:
+
+| Consumer | Artifact | Contents |
+| --- | --- | --- |
+| Inspect every finding and matching outcome | Full `check --format json` report | Complete emitted findings/outcomes arrays, summary and scanner context; its size grows with the source inventory |
+| Enforce or retain the no-new gate result | `check --receipt` JSON | Gate posture, counts, source/policy identity and claim boundaries; no full findings array |
+| Route an agent's next action | `--command-summary-output` JSON | Bounded command result and next-action projection; follow its artifact references when detailed evidence is needed |
+
+The bounded command-summary projection (2.1–2.9 KB in the retained historical
+baseline) is already available. A small receipt or summary does not imply that
+the full report is small, or that the command avoided the full scan. Worklist
+paging/`--limit` is a separate UX slice and is intentionally not part of #4366.
+
+### Full check JSON source observation (#4374, 2026-10-10)
+
+The [retained measurement](https://github.com/EffortlessMetrics/cargo-allow/issues/4374#issuecomment-6099859619)
+used source `30ac92bfb9dfa340cde0ac15383d63f0668a79ec` (tree
+`43aea14efcdee956d84256054e3c285b109d103d`) and the verified release executable
+with SHA-256 `52adb4defb9e36adaee7e2edb86fa3775fed01d8e7a1499c0ad8130d99937b3b`.
+The executable came from hosted CI; these measurements ran on a shared Linux
+host with warmed filesystem/cache state and separate command processes. They
+are source-only observations, not an execution of the new hosted 18-row matrix.
+
+Four serialized calls in JSON/Markdown/Markdown/JSON order produced:
+
+| Output format | End-to-end elapsed time (two samples) | Report bytes | Receipt bytes |
+| --- | ---: | ---: | ---: |
+| Full JSON | 4,763.1–4,902.0 ms | 7,124,531 B | 9,163–9,164 B |
+| Markdown | 4,843.4–5,008.3 ms | 12,245 B | 9,164 B |
+
+All four calls returned the same normalized receipt, with zero new findings;
+the two full JSON reports were byte-identical and retained 16,661 findings and
+16,683 outcomes. Each call wrote zero stdout and stderr bytes: these sizes are
+the output files. The full JSON report was about 108.7 times the 65,536 B
+advisory agent-read target. The unchanged V4 harness separately measured a
+2,183 B check command summary on this source.
+
+The timing ranges overlap, so this observation does not establish that JSON
+serialization dominates command time. The new sample applies the existing
+60,000 ms catastrophic time ceiling, the audit-sized 8,388,608 B report ceiling
+and the 16,384 B check receipt ceiling. A current hosted release baseline and
+cost attribution remain follow-through under #4374; cadence, dependency-delta
+and dedicated one-file-edit measurements remain under #4339. This adds no new
+advisory performance promise or 0.2 release requirement.
 
 ## What drives the cost
 
