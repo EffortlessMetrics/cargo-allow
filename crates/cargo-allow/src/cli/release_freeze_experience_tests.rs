@@ -1058,6 +1058,17 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
             }
             _ => {}
         }
+        // This already-admitted synthetic peer connects the required registry
+        // node through the existing SupportsOnly edge. It supplies no producer
+        // evidence for the experience admission below.
+        let role = FreezeEvidenceRole::PackageDocs;
+        evidence.push(EvidenceInput {
+            role,
+            path: std::path::PathBuf::from("synthetic-peer.json"),
+            sha256: sha256_v1_bytes(role.label().as_bytes()),
+            value: serde_json::Value::Null,
+            binding_notes: Vec::new(),
+        });
         let selection = command::tests::selection();
         let current = allow_report::ObservationReadingV1 {
             freshness: allow_report::ObservationFreshnessV1::Current,
