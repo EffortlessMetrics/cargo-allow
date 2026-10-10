@@ -4,26 +4,28 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4431,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
   "head_ref": "fix/4350-explain-ambiguity",
-  "head_sha": "80fc6bef655ebbc03369018985645aa89debaf53",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:c993be695e252aaca2ed528ac017a33b0dcf8650fe2f080c8b45c07106d98a25",
+  "head_sha": "3a2233aa30d72cbec2c758a95ebad4a183af54ff",
+  "merge_base": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "reviewed_diff_digest": "sha256:v1:754dccdde421f45fd2f86998a993f18f939a30b7a80148aaf453d1a07459cde0",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring current-source, integration and consumer review; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475520996"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478349359"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5475520996",
-    "Independent full source/governance/consumer review remains valid after the narrow native-test oracle repair. The sole transition from metadata parent a6eea2b6 changes six added/one removed line in require_explain_projection: matched human output expects the established Outcome: satisfied label; ambiguous and stale labels remain unchanged. This matches the untouched production renderer and actual Linux/macOS ARM failures. Typed sidecar equality, schema validation, canonical evaluator outcomes, candidate IDs, local finding-index remapping, coverage, unrelated-finding exclusion and read-only posture remain intact.",
-    "Full-ledger explain evaluation preserves ambiguous candidates and stronger-loser outcomes; mixed matched/new/ambiguous guidance unions all ambiguous candidate IDs while retaining first-attention context and the bounded action contract. Exact policy receipts, native formatter corrections and main integration remain unchanged. Existing style and repaired mixed-outcome threads remain resolved; no new source blocker was found.",
-    "Synthetic af76e990ae958122be992d66bd2448def82c1f90 has exact base/head parents and the reviewed source tree. Previous failed jobs establish the test-oracle defect, not a pass for this corrected head. Every current applicable native check, dependency audit, fresh feedback inspection and post-main source guard remains required. This successor changes only the retained review JSON."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4431#pullrequestreview-5478349359",
+    "Fresh full ten-path source/evaluator/renderer/summary/test/schema/governance review: evaluate the complete ledger, retain genuine assigned/tied outcomes and maintenance state, preserve candidate/status/score/message, and remap indexes without assigning weaker contextual candidates a unique winner's finding.",
+    "Actual CLI compares check/why/worklist/explain for both ties, unrelated-finding exclusion/index remapping, scanner-identity stronger winner/stale loser, full schema validity and human/JSON/common summary parity. Actual evaluator regression requires Matched/New/Ambiguous/Ambiguous and all competing IDs while preserving first-attention context and two-action bound.",
+    "All nine explain nonpolicy blobs/modes match preceding source; all nine incoming schema nonpolicy blobs/modes match actual main. Full 732,040-byte main policy prefix/1,072 entries plus unchanged 1,576-byte explain receipt block produce 1,074 unique entries; existing settings, allow-11278 limit 36, and all four canonical fingerprints preserved.",
+    "Synthetic cc1e58dacf9019486990b54424930feb823590b4 has exact ordered base/head parents and the source tree. All three prior threads remain resolved with current-source evidence. The six-file PR-body claim is corrected; no new actionable finding. Paused automatic review and historical native success are not this pair's proof.",
+    "Diff whitespace, JSON/schema structural equality and policy/blob preservation controls pass. No local Rust execution claimed. Own-record-only bootstrap and every current applicable terminal native gate, fresh feedback and eventual post-main guard remain independently required."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
@@ -31,5 +33,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4431",
-  "reviewed_at_utc": "2026-10-09T21:32:14Z"
+  "reviewed_at_utc": "2026-10-10T08:41:16.791Z"
 }
