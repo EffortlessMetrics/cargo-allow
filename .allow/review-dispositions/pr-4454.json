@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4454,
+  "base_ref": "main",
+  "base_sha": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
+  "head_ref": "fix/4453-native-root-immutable-probe",
+  "head_sha": "ba2909c7f84999776cc5ac98d9aa7779747fd747",
+  "merge_base": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
+  "reviewed_diff_digest": "sha256:v1:71176ce81c4aef496d27db4230ebcb96de6ae3ca48b6bc0d0cf7806324ee55b5",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/independent_review, separate nonauthor of source, policy, revision note and retained metadata; shared model family/campaign context and same-account EffortlessSteven transport are disclosed. No independent human-review claim.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4454#pullrequestreview-5480162450"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4454#pullrequestreview-5480162450",
+    "Complete four-path source/governance diff, full delegation source and real provider/precommit/integration consumers, native byte and boundary oracles, bounded reader/timeout/cleanup controls, supported Unix probe, package/CI context, policy and fingerprint/projector ownership were independently inspected. Native source tree diff is 14480 bytes, sha256:v1:71176ce81c4aef496d27db4230ebcb96de6ae3ca48b6bc0d0cf7806324ee55b5.",
+    "Source and Changie retain the initial reviewed blobs. Policy retains its entire 741495-byte prefix plus two exact core/review file entries; 1086 unique IDs. Both exact revision-note fingerprints were independently reproduced from the production length-prefixed canonical recipe, with no prior selector/setting/date widening.",
+    "Live substantive feedback and all review threads were reloaded; no inline threads or source/governance blockers. CodeRabbit's pending-acceptance warning retains the native CI gate; private-helper docstring metric is NonBlocking. Current CodeRabbit rate limitation and Gemini quota exhaustion are NotProven availability and are not clean review evidence.",
+    "Current source-pair pregate114272991404 passes formatter/actionlint/enforcing no-new New0/New unreceipted0 and typed Complete. Full current native CI was pending at independent review. Source-only predecessor ea890e14 has all26 source-CI jobs success and Linux1675/rawff/Linux-barrier controls, bothMac native-byte controls and applicable Windows controls; these remain historical evidence for that distinct pair.",
+    "Linux descriptor-holder barrier proves typed ETXTBSY from a known child-held writable executable while the immutable real-runner byte oracle succeeds. It does not identify the vanished hosted descriptor holder or establish Rust114554 as the actual incident cause.",
+    "This record binds the actually reviewed source parent and exact native submission time. The sole successor change is this own JSON; independent bootstrap review must verify that delta, all preserved source modes/blobs and the current synthetic pair before qualification."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: require independent own-JSON-only successor review, every applicable final-pair deterministic native check terminal green, current substantive feedback disposition, unchanged live head/base/ref/merge-base, normal head-pinned protected merge and exact new-main enforcing guard. Pending, skipped, stale, neutral or unavailable model evidence is not green. Optional model review remains informational.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38072616836/job/114272991404"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4454",
+  "reviewed_at_utc": "2026-10-10T17:43:30Z"
+}
