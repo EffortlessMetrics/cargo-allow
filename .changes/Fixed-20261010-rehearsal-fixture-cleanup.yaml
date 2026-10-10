@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Own rehearsal fixture directories before fallible setup, preserve occupied
+  paths, disable fixture Git auto-maintenance, and report bounded cleanup
+  failures while retaining the complete release-rehearsal controls.
+time: 2026-10-10T13:30:25Z
+custom: {}
