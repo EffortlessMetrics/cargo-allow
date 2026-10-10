@@ -3,35 +3,34 @@
   "schema_version": 1,
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4444,
-  "base_ref": "fix/4427-preserve-publish-receipt",
-  "base_sha": "bdce4c8b1b33e8cc36e60eed757c250233937040",
+  "base_ref": "main",
+  "base_sha": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
   "head_ref": "fix/3790-pretoken-registry-gate",
-  "head_sha": "33bc8b86c3949fb0739cc65911baf26fc0baa29a",
-  "merge_base": "bdce4c8b1b33e8cc36e60eed757c250233937040",
-  "reviewed_diff_digest": "sha256:v1:b54699c36ecfc21ea39bec3655f66e89fd44bbd1c0842a0843a8c640eb315125",
+  "head_sha": "e170d4a29cdcf8560ff57931cf21bae9cbf5ebda",
+  "merge_base": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
+  "reviewed_diff_digest": "sha256:v1:72915d4684ba444a94da81aee7f4efe64c39d37d95ec6a77ebb7219af5a08430",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source/governance review; shared model family/session context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full current-source, consumer, test and governance reviewer; shared model family and campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476258294"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478768520"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5476258294",
-    "Fresh full seven-path source/governance and consumer review on the repaired source. Strict shared preflight precedes selected-secret steps; key filtering occurs before value reads; Git, metadata, packaging and Cargo dry-run are token-free; selected-token lookup follows successful authority/preflight/dry-run immediately before upload; unsupported preflight modes reject before work.",
-    "Comment4235250813 / threadPRRT_kwDOSnyN3s6q-OdN ConfirmedAndFixed: missing-token denial is outside the dry-run exception handler, retains incomplete/incident_state=none/first_irreversible_row=null/missing rows, and actual recovery loader rejects the generated receipt. New test is RED on exact9cf parent and GREEN on this repair. Existing failed-dry-run incident and loader acceptance are preserved.",
-    "Independent 37 publisher-entrypoint, seven workflow, 11 dispatch, 22 handoff/checksum controls and diff check pass. Workflow/actionlint proof is unchanged. All five non-script paths and test mode100755 are preserved; exact728886 base-policy bytes/1068entries+two canonical receipts retained.",
-    "Exact synthetic d9ed72d2fe3c1f53588244efed3873887aca841a binds base/head and reviewed tree. Fresh close readback found no new substantive feedback; verified source thread resolved after review. Quota and skipped bot reviews are not independent evidence.",
-    "Current native CI remains running; stale prior record correctly fails readiness. This own-record successor, parent integration/retargeting, fresh pair/feedback, all applicable checks and exact post-main guard remain required. No broader credential, seven-safeguard, freshness, custody/lease, recovery-completion or release-authority claim; parent owners remain open."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5478768520",
+    "Complete eight-path source and actual workflow/publisher/recovery/manifest consumers reviewed. Strict successful registry preflight precedes selected-secret lookup; default Git/Cargo/dry-run children filter the selected key before reading values. Missing-token denial stays nonincident and recovery-loader-rejected; failed-dry-run incident classification and merged4432 null-marker semantics remain exact. The prior Rust textual consumer is strengthened to match the production gate and passes actual current Ubuntu/MSRV.",
+    "Independent 37 token, seven workflow, 11 dispatch and44 handoff scenarios plus checksum pass. Pinned actionlint passes with shellcheck disabled. Current native pregate114198663760 executes exact synthetic caf6789, formatter and enforcing zero-new; repaired test passes Ubuntu114199021222 and MSRV114199021187.",
+    "Exact source tree/synthetic ordered parents/full effective digest and all out-of-scope modes/blobs independently verified. Exact735194-byte main policy prefix plus unchanged1577-byte own suffix,1078 unique entries, both canonical fingerprints, existing settings/dates/limit36 and own note retained. Fresh feedback has no unresolved blocker. Quota/skipped bot output is not independent evidence.",
+    "This successor changes only the PR's own retained JSON. The source review remains bound to its reviewed source identity; own-record-only bootstrap, exact live pair, every current applicable gate and fresh feedback must be independently verified before merge, with exact enforcing post-main guard before bounded closeout. No local compiled Rust or broader release eligibility, selected credential, provider mutation, final tag or publication claimed."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify exact resulting base/head, own-record-only bootstrap, every applicable native check, new feedback, explicit parent retargeting and post-main enforcing guard. Pending, skipped, neutral and stale results are not green.",
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, own-record-only bootstrap, every applicable current native check, new feedback and exact post-main enforcing guard. Pending, skipped, neutral and stale results are not green.",
     "observation_ref": ""
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4444",
-  "reviewed_at_utc": "2026-10-09T23:17:11.489Z"
+  "reviewed_at_utc": "2026-10-10T11:24:08Z"
 }
