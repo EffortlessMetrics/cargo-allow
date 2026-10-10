@@ -2,6 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+#[path = "policy_discovery/malformed.rs"]
+mod malformed;
+
 fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
 }
