@@ -112,14 +112,23 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
     error.with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
 }
 
+struct RegenHintContext<'a> {
+    root: &'a Path,
+    policy_path: &'a Path,
+    finding_path: &'a Path,
+    include_untracked: bool,
+}
+
 /// Append a plan-regeneration hint to a stale add --from-plan rejection. The
 /// hint names a fresh plan path because the recorded one already exists and
 /// add-finding plans are never overwritten (#4334 Break 3, #4364). Coordinates
 /// come from the already-selected live New finding's bindings so a moved finding
 /// is planned at its current line, rather than the stale recorded line. A nearby
 /// replacement must not be presented as recovery of the recorded finding.
-/// Root, selected policy and inventory mode come from the live scan. The caller
-/// anchors the output to its original cwd; shell quoting must preserve every arg.
+/// Root, selected policy, raw finding path and inventory mode come from the live
+/// scan. Normalized binding paths remain identities, not executable filenames.
+/// The caller anchors the output to its original cwd; shell quoting must
+/// preserve every arg.
 /// Call sites whose rejection leaves regeneration impossible (an already-receipted
 /// finding, a finding that can no longer be located at the plan's coordinates)
 /// must not attach this hint — the regeneration command would fail verbatim
@@ -129,9 +138,7 @@ fn enrich_with_regen_hint(
     plan_path: &Path,
     recorded_finding: &LoadedFinding,
     bindings: &PlanFindingBindings,
-    root: &Path,
-    policy_path: &Path,
-    include_untracked: bool,
+    context: RegenHintContext<'_>,
 ) -> CargoAllowError {
     let message = error.to_string();
     if !message.contains("(policy unchanged)")
@@ -144,10 +151,20 @@ fn enrich_with_regen_hint(
     let Some(fresh) = fresh_plan_hint_path(plan_path) else {
         return manual_regen_hint(error, "no safe unused retry path was found beside the plan");
     };
-    let (Some(fresh_text), Some(root_text), Some(policy_text)) =
-        (fresh.to_str(), root.to_str(), policy_path.to_str())
+    // Preserve the selected filesystem spelling, including decomposed Unicode
+    // and Unix backslashes. An absolute path also cannot be parsed as a flag.
+    let finding_path = context.root.join(context.finding_path);
+    let (Some(fresh_text), Some(root_text), Some(policy_text), Some(finding_text)) = (
+        fresh.to_str(),
+        context.root.to_str(),
+        context.policy_path.to_str(),
+        finding_path.to_str(),
+    )
     else {
-        return manual_regen_hint(error, "a selected path cannot be displayed without data loss");
+        return manual_regen_hint(
+            error,
+            "a selected path cannot be displayed without data loss",
+        );
     };
     let mut args = vec![
         "why".to_string(),
@@ -156,7 +173,7 @@ fn enrich_with_regen_hint(
         "--kind".to_string(),
         bindings.finding_kind.clone(),
         "--path".to_string(),
-        bindings.finding_path.clone(),
+        finding_text.to_string(),
     ];
     if let Some(line) = bindings.finding_line {
         args.extend(["--line".to_string(), line.to_string()]);
@@ -167,7 +184,7 @@ fn enrich_with_regen_hint(
         "--config".to_string(),
         policy_text.to_string(),
     ]);
-    if include_untracked {
+    if context.include_untracked {
         args.push("--include-untracked".to_string());
     }
     let command = render_argv_for_display("cargo-allow", &args);
@@ -313,9 +330,12 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
             &cwd.join(plan_path),
             &plan.finding,
             &bindings,
-            &root,
-            &policy_path,
-            args.include_untracked,
+            RegenHintContext {
+                root: &root,
+                policy_path: &policy_path,
+                finding_path: &finding.path,
+                include_untracked: args.include_untracked,
+            },
         )
     })?;
 

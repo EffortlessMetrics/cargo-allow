@@ -1,12 +1,14 @@
 //! Execute the diagnostic's advertised command, including its shell syntax.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use serde_json::Value;
 
-use super::support::{cargo_allow_command, remove_temp_root, temp_root};
+use super::support::{remove_temp_root, temp_root};
+use super::{cargo_allow_command, isolated};
 
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -40,27 +42,7 @@ fn require_success(name: &str, output: &Output) -> TestResult {
     )
 }
 
-// Affect only these child processes, including the shell's cargo-allow child.
-// Another test may be using the parent process's repository environment.
-fn isolated(mut command: Command) -> Command {
-    for variable in [
-        "GIT_DIR",
-        "GIT_WORK_TREE",
-        "GIT_INDEX_FILE",
-        "GIT_COMMON_DIR",
-        "GIT_OBJECT_DIRECTORY",
-        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-        "CARGO_ALLOW_ROOT",
-        "ENV",
-        "BASH_ENV",
-    ] {
-        command.env_remove(variable);
-    }
-    command.env("NO_COLOR", "1");
-    command
-}
-
-fn git(root: &Path, args: &[&str]) -> TestResult<Output> {
+fn git<S: AsRef<OsStr>>(root: &Path, args: &[S]) -> TestResult<Output> {
     let output = isolated(Command::new("git"))
         .arg("-C")
         .arg(root)
@@ -126,29 +108,37 @@ pub(super) fn run_printed_command(cwd: &Path, printed: &str) -> TestResult<Outpu
         .output()?)
 }
 
-fn init_repository(root: &Path, include_untracked: bool) -> TestResult {
+fn init_repository(root: &Path, source_path: &Path, include_untracked: bool) -> TestResult {
     git(root, &["init"])?;
     git(root, &["config", "user.email", "fixture@example.com"])?;
     git(root, &["config", "user.name", "fixture"])?;
     git(root, &["config", "core.autocrlf", "false"])?;
+    // Keep the raw filename oracle independent of macOS Git's Unicode rewriting.
+    git(root, &["config", "core.precomposeUnicode", "false"])?;
     git(root, &["config", "core.hooksPath", ".git/no-hooks"])?;
     for policy in [DEFAULT_POLICY, SELECTED_POLICY] {
-        let init = isolated(cargo_allow_command())
+        let init = cargo_allow_command()
             .args(["init", "--root"])
             .arg(root)
             .args(["--config", policy])
             .output()?;
         require_success("init distinct recovery policies", &init)?;
     }
-    fs::write(root.join(SOURCE_PATH), SOURCE_TEXT)?;
+    fs::write(root.join(source_path), SOURCE_TEXT)?;
     git(root, &["add", "--", DEFAULT_POLICY, SELECTED_POLICY])?;
     if !include_untracked {
-        git(root, &["add", "--", SOURCE_PATH])?;
+        git(
+            root,
+            &[OsStr::new("add"), OsStr::new("--"), source_path.as_os_str()],
+        )?;
     }
     git(root, &["commit", "-q", "-m", "recovery fixture"])?;
     // This distinguishes an accidentally added include-untracked flag even
     // when the selected source itself is tracked.
-    fs::write(root.join("untracked note.txt"), "untracked inventory canary")?;
+    fs::write(
+        root.join("untracked note.txt"),
+        "untracked inventory canary",
+    )?;
     Ok(())
 }
 
@@ -157,6 +147,7 @@ struct RecoveryFixture {
     root: PathBuf,
     caller: PathBuf,
     paste_cwd: PathBuf,
+    source_path: PathBuf,
     include_untracked: bool,
     policy_before: Vec<u8>,
     head_before: Vec<u8>,
@@ -164,7 +155,7 @@ struct RecoveryFixture {
 }
 
 impl RecoveryFixture {
-    fn new(include_untracked: bool) -> TestResult<Self> {
+    fn new(include_untracked: bool, source_path: &Path) -> TestResult<Self> {
         let container = temp_root("add-plan-shell-recovery");
         let root = container.join("selected repo ' & (literal)");
         let caller = container.join("original caller outside repo");
@@ -186,7 +177,16 @@ impl RecoveryFixture {
                 "recovery caller must be outside any Git tree",
             )?;
         }
-        init_repository(&root, include_untracked)?;
+        init_repository(&root, source_path, include_untracked)?;
+        let tracked = git(&root, &["ls-files", "-z"])?;
+        let source_is_tracked = tracked
+            .stdout
+            .split(|byte| *byte == 0)
+            .any(|path| path == source_path.as_os_str().as_encoded_bytes());
+        require(
+            source_is_tracked != include_untracked,
+            "fixture Git inventory must preserve the selected raw source spelling",
+        )?;
         let mut fixture = Self {
             policy_before: fs::read(root.join(SELECTED_POLICY))?,
             head_before: git(&root, &["rev-parse", "HEAD"])?.stdout,
@@ -194,6 +194,7 @@ impl RecoveryFixture {
             root,
             caller,
             paste_cwd,
+            source_path: source_path.to_path_buf(),
             include_untracked,
             protected: Vec::new(),
         };
@@ -205,22 +206,33 @@ impl RecoveryFixture {
                     == Some(SELECTED_POLICY),
             "original plan must bind the selected policy and New line-1 target",
         )?;
-        let first = fixture.caller.join("saved plans/original plan.retry-1.json");
-        let second = fixture.caller.join("saved plans/original plan.retry-2.json");
+        let first = fixture
+            .caller
+            .join("saved plans/original plan.retry-1.json");
+        let second = fixture
+            .caller
+            .join("saved plans/original plan.retry-2.json");
         fs::write(&first, "occupied retry one")?;
         fs::create_dir(&second)?;
         let directory_canary = second.join("keep.txt");
         fs::write(&directory_canary, "occupied retry directory")?;
         fs::write(
-            fixture.root.join(SOURCE_PATH),
+            fixture.root.join(&fixture.source_path),
             format!("// same finding moved\n\n{SOURCE_TEXT}"),
         )?;
         if !include_untracked {
-            git(&fixture.root, &["add", "--", SOURCE_PATH])?;
+            git(
+                &fixture.root,
+                &[
+                    OsStr::new("add"),
+                    OsStr::new("--"),
+                    fixture.source_path.as_os_str(),
+                ],
+            )?;
         }
         for path in [
             fixture.root.join(DEFAULT_POLICY),
-            fixture.root.join(SOURCE_PATH),
+            fixture.root.join(&fixture.source_path),
             fixture.root.join("untracked note.txt"),
             fixture.caller.join(RECORDED_PLAN),
             first,
@@ -232,7 +244,7 @@ impl RecoveryFixture {
     }
 
     fn command(&self, verb: &str) -> Command {
-        let mut command = isolated(cargo_allow_command());
+        let mut command = cargo_allow_command();
         command
             .current_dir(&self.caller)
             .arg(verb)
@@ -248,7 +260,9 @@ impl RecoveryFixture {
     fn generate_plan(&self, line: usize, path: &Path) -> TestResult<Value> {
         let output = self
             .command("why")
-            .args(["--kind", "panic", "--path", SOURCE_PATH, "--line"])
+            .args(["--kind", "panic", "--path"])
+            .arg(self.root.join(&self.source_path))
+            .arg("--line")
             .arg(line.to_string())
             .arg("--plan")
             .arg(path)
@@ -312,23 +326,18 @@ impl RecoveryFixture {
         let matched_path = self.caller.join("matched report.json");
         let matched = self
             .command("why")
-            .args([
-                "--kind",
-                "panic",
-                "--path",
-                SOURCE_PATH,
-                "--line",
-                "3",
-                "--format",
-                "json",
-                "--output",
-            ])
+            .args(["--kind", "panic", "--path"])
+            .arg(self.root.join(&self.source_path))
+            .args(["--line", "3", "--format", "json", "--output"])
             .arg(&matched_path)
             .output()?;
         require_success("inspect recovered finding", &matched)?;
         let matched_report: Value = serde_json::from_slice(&fs::read(matched_path)?)?;
         require(
-            matched_report.pointer("/outcome/status").and_then(Value::as_str) == Some("matched"),
+            matched_report
+                .pointer("/outcome/status")
+                .and_then(Value::as_str)
+                == Some("matched"),
             "the recovered finding must be matched after application",
         )?;
         let replay_receipt = self.caller.join("replay must not exist.json");
@@ -352,8 +361,8 @@ impl RecoveryFixture {
     }
 }
 
-fn context_recovery_runs_verbatim(include_untracked: bool) -> TestResult {
-    let fixture = RecoveryFixture::new(include_untracked)?;
+fn context_recovery_runs_verbatim(include_untracked: bool, source_path: &Path) -> TestResult {
+    let fixture = RecoveryFixture::new(include_untracked, source_path)?;
     let refused_receipt = fixture.caller.join("refused must not exist.json");
     let refused = fixture.add(Path::new(RECORDED_PLAN), &refused_receipt)?;
     let rejection = String::from_utf8(refused.stderr)?;
@@ -371,7 +380,9 @@ fn context_recovery_runs_verbatim(include_untracked: bool) -> TestResult {
         "stale refusal changed the selected policy",
     )?;
     let printed = printed_regeneration_command(&rejection, Path::new(RECORDED_PLAN))?;
-    let retry_path = fixture.caller.join("saved plans/original plan.retry-3.json");
+    let retry_path = fixture
+        .caller
+        .join("saved plans/original plan.retry-3.json");
     require(
         !retry_path.exists(),
         "third retry path must initially be unused",
@@ -418,10 +429,66 @@ fn context_recovery_runs_verbatim(include_untracked: bool) -> TestResult {
 
 #[test]
 fn tracked_stale_plan_recovery_preserves_context_through_shell() -> TestResult {
-    context_recovery_runs_verbatim(false)
+    context_recovery_runs_verbatim(false, Path::new(SOURCE_PATH))
 }
 
 #[test]
 fn untracked_stale_plan_recovery_preserves_context_through_shell() -> TestResult {
-    context_recovery_runs_verbatim(true)
+    context_recovery_runs_verbatim(true, Path::new(SOURCE_PATH))
+}
+
+#[test]
+fn leading_dash_finding_recovery_runs_verbatim() -> TestResult {
+    context_recovery_runs_verbatim(false, Path::new("-finding.rs"))
+}
+
+#[cfg(unix)]
+#[test]
+fn raw_unicode_and_backslash_finding_recovery_runs_verbatim() -> TestResult {
+    for source_path in ["e\u{301}.rs", "literal\\file.rs"] {
+        context_recovery_runs_verbatim(false, Path::new(source_path))?;
+    }
+    Ok(())
+}
+
+// This actual-file oracle requires a filesystem accepting arbitrary non-NUL
+// bytes. The pure non-UTF-8 hint control also runs on the other Unix targets.
+#[cfg(target_os = "linux")]
+#[test]
+fn non_utf8_finding_recovery_requires_manual_guidance_without_mutation() -> TestResult {
+    use std::os::unix::ffi::OsStrExt;
+
+    let source_path = Path::new(OsStr::from_bytes(b"non-utf8-\xff.rs"));
+    let fixture = RecoveryFixture::new(false, source_path)?;
+    let refused_receipt = fixture.caller.join("refused must not exist.json");
+    let refused = fixture.add(Path::new(RECORDED_PLAN), &refused_receipt)?;
+    let rejection = String::from_utf8(refused.stderr)?;
+    // Prove that the raw filesystem target is live and independently plannable;
+    // inability to render it through a text shell command is a narrower limit.
+    let control_path = fixture.caller.join("saved plans/raw path control.json");
+    let control = fixture.generate_plan(3, &control_path)?;
+    require(
+        control.pointer("/finding/line").and_then(Value::as_u64) == Some(3)
+            && control.pointer("/outcome/status").and_then(Value::as_str) == Some("new"),
+        "raw non-UTF-8 source must remain an independently plannable New finding",
+    )?;
+    fixture.require_preserved()?;
+    require(
+        refused.status.code() == Some(2)
+            && rejection.contains("E0001_USAGE")
+            && rejection.contains("(policy unchanged)")
+            && rejection.contains("; regenerate manually: ")
+            && rejection.contains("without data loss")
+            && !rejection.contains("regenerate with")
+            && !rejection.contains('\u{fffd}')
+            && !refused_receipt.exists()
+            && !fixture
+                .caller
+                .join("saved plans/original plan.retry-3.json")
+                .exists()
+            && fs::read(fixture.root.join(SELECTED_POLICY))? == fixture.policy_before,
+        &format!("non-UTF-8 recovery must refuse without a lossy command or mutation: {rejection}"),
+    )?;
+    remove_temp_root(fixture.container);
+    Ok(())
 }

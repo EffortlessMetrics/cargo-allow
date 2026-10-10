@@ -349,9 +349,12 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
         plan_path,
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        false,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: false,
+        },
     );
 
     let message = enriched.to_string();
@@ -361,7 +364,9 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
         "enriched error should include regeneration hint: {message}"
     );
     assert!(
-        message.contains("--kind panic --path src/lib.rs --line 3"),
+        message.contains("--kind panic --path ")
+            && message.contains(&Path::new("/repo").join("src/lib.rs").display().to_string())
+            && message.contains("--line 3"),
         "enriched error should include live finding coordinates: {message}"
     );
     // The recorded plan path already exists, so the advice must name a fresh
@@ -386,18 +391,24 @@ fn enrich_with_regen_hint_is_idempotent() {
         plan_path,
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        false,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: false,
+        },
     );
     let enriched_twice = enrich_with_regen_hint(
         enriched_once,
         plan_path,
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        false,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: false,
+        },
     );
 
     let hint_count = enriched_twice
@@ -438,9 +449,12 @@ fn recovery_hint_ignores_location_and_source_drift_only_for_advice() {
         Path::new("plan.json"),
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        false,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: false,
+        },
     );
     assert!(enriched.to_string().contains("--line 3"));
 }
@@ -463,9 +477,12 @@ fn recovery_hint_refuses_each_semantic_binding_drift() {
             Path::new("plan.json"),
             &plan.finding,
             &bindings,
-            Path::new("/repo"),
-            Path::new("/repo/policy/allow.toml"),
-            false,
+            RegenHintContext {
+                root: Path::new("/repo"),
+                policy_path: Path::new("/repo/policy/allow.toml"),
+                finding_path: Path::new("src/lib.rs"),
+                include_untracked: false,
+            },
         );
         assert_eq!(enriched.to_string(), before, "{label} must not get advice");
     }
@@ -571,22 +588,32 @@ fn fresh_plan_hint_path_skips_taken_names_and_stays_bounded()
         &plan_path,
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        true,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: true,
+        },
     );
     let manual = enrich_with_regen_hint(
         manual,
         &plan_path,
         &plan.finding,
         &bindings,
-        Path::new("/repo"),
-        Path::new("/repo/policy/allow.toml"),
-        true,
+        RegenHintContext {
+            root: Path::new("/repo"),
+            policy_path: Path::new("/repo/policy/allow.toml"),
+            finding_path: Path::new("src/lib.rs"),
+            include_untracked: true,
+        },
     );
     require_regen_contract(
         manual.kind() == allow_core::CargoAllowErrorKind::Usage
-            && manual.to_string().matches("; regenerate manually: ").count() == 1
+            && manual
+                .to_string()
+                .matches("; regenerate manually: ")
+                .count()
+                == 1
             && !manual.to_string().contains("regenerate with")
             && !manual.to_string().contains("<fresh-path>"),
         "exhausted retry names require one manual instruction, not a placeholder command",
@@ -622,29 +649,34 @@ fn require_regen_contract(
 fn recovery_hint_uses_manual_guidance_for_nonpasteable_paths()
 -> Result<(), Box<dyn std::error::Error>> {
     let (plan, bindings) = matching_plan_and_bindings();
-    let mut roots = vec!["/repo\nforged command", "/repo\u{1b}[31m"];
+    let mut paths = vec!["/repo\nforged command", "/repo\u{1b}[31m"];
     if cfg!(windows) {
-        roots.extend(["C:\\repo%PATH%", "C:\\repo!PATH!"]);
+        paths.extend(["C:\\repo%PATH%", "C:\\repo!PATH!"]);
     }
-    for root in roots {
-        let error = enrich_with_regen_hint(
-            stale("source inventory changed since the plan was generated"),
-            Path::new("plan.json"),
-            &plan.finding,
-            &bindings,
-            Path::new(root),
-            Path::new("/repo/policy/allow.toml"),
-            true,
-        );
-        let message = error.to_string();
-        require_regen_contract(
-            error.kind() == allow_core::CargoAllowErrorKind::Usage
-                && message.contains("(policy unchanged)")
-                && message.contains("; regenerate manually: ")
-                && !message.contains("regenerate with")
-                && !message.chars().any(char::is_control),
-            "unsafe display paths require manual guidance without executable or control text",
-        )?;
+    for path in paths {
+        for (root, finding_path) in [(path, "src/lib.rs"), ("/repo", path)] {
+            let error = enrich_with_regen_hint(
+                stale("source inventory changed since the plan was generated"),
+                Path::new("plan.json"),
+                &plan.finding,
+                &bindings,
+                RegenHintContext {
+                    root: Path::new(root),
+                    policy_path: Path::new("/repo/policy/allow.toml"),
+                    finding_path: Path::new(finding_path),
+                    include_untracked: true,
+                },
+            );
+            let message = error.to_string();
+            require_regen_contract(
+                error.kind() == allow_core::CargoAllowErrorKind::Usage
+                    && message.contains("(policy unchanged)")
+                    && message.contains("; regenerate manually: ")
+                    && !message.contains("regenerate with")
+                    && !message.chars().any(char::is_control),
+                "unsafe display paths require manual guidance without executable or control text",
+            )?;
+        }
     }
     Ok(())
 }
@@ -656,19 +688,43 @@ fn recovery_hint_does_not_lossily_display_paths() -> Result<(), Box<dyn std::err
 
     let (plan, bindings) = matching_plan_and_bindings();
     let non_utf8 = Path::new(std::ffi::OsStr::from_bytes(b"/repo-\xff"));
-    for (root, policy_path, plan_path) in [
-        (non_utf8, Path::new("policy.toml"), Path::new("plan.json")),
-        (Path::new("/repo"), non_utf8, Path::new("plan.json")),
-        (Path::new("/repo"), Path::new("policy.toml"), non_utf8),
+    for (root, policy_path, plan_path, finding_path) in [
+        (
+            non_utf8,
+            Path::new("policy.toml"),
+            Path::new("plan.json"),
+            Path::new("src/lib.rs"),
+        ),
+        (
+            Path::new("/repo"),
+            non_utf8,
+            Path::new("plan.json"),
+            Path::new("src/lib.rs"),
+        ),
+        (
+            Path::new("/repo"),
+            Path::new("policy.toml"),
+            non_utf8,
+            Path::new("src/lib.rs"),
+        ),
+        (
+            Path::new("/repo"),
+            Path::new("policy.toml"),
+            Path::new("plan.json"),
+            non_utf8,
+        ),
     ] {
         let error = enrich_with_regen_hint(
             stale("source inventory changed since the plan was generated"),
             plan_path,
             &plan.finding,
             &bindings,
-            root,
-            policy_path,
-            false,
+            RegenHintContext {
+                root,
+                policy_path,
+                finding_path,
+                include_untracked: false,
+            },
         );
         require_regen_contract(
             error.to_string().contains("; regenerate manually: ")
@@ -681,8 +737,7 @@ fn recovery_hint_does_not_lossily_display_paths() -> Result<(), Box<dyn std::err
 
 #[cfg(unix)]
 #[test]
-fn recovery_hint_skips_dangling_symlink_candidates() -> Result<(), Box<dyn std::error::Error>>
-{
+fn recovery_hint_skips_dangling_symlink_candidates() -> Result<(), Box<dyn std::error::Error>> {
     let dir = from_plan_fixture_dir();
     let plan_path = dir.join("plan.json");
     let occupied = dir.join("plan.retry-1.json");
