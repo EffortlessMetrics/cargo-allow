@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Explain now projects an entry's current state from the complete effective
+  ledger evaluation, preserving ambiguous competing IDs and unique-winner
+  outcomes across human output, JSON, and the common command summary.
+  Entry lifecycle status stays consistent across those views without hiding
+  blocking finding outcomes or ambiguity decisions behind advisory dates.
