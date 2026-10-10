@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4447,
+  "base_ref": "main",
+  "base_sha": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "head_ref": "release/3925-provider-adapter",
+  "head_sha": "5bea604e63d4c599ca666c25e3db53f8cd49be4d",
+  "merge_base": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "reviewed_diff_digest": "sha256:v1:262c08864d01a308f169222dd9b66b80d8e34a1ec400f96ea7efb76a50d269f0",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of provider source, root/UX corrections, integration, governance and this metadata. Shared model family and campaign context disclosed. Earlier #4434 canonical rehearsal foundation authorship disclosed; this is independent provider/R4 review, not a new independent admission-foundation or human review.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5479205618"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4447#pullrequestreview-5479205618",
+    "The current hosted source5bea, treee954, sole parent92c, live main and unique merge base05f, full eleven-path digest262c0886 and actual synthetic4f415011 ordered[base,head]/matching tree were independently verified. Root refreshed the corresponding native Git ref before retaining this review.",
+    "Full current source/governance and relevant domain/transport/security-contract dimensions are covered by the independent exact-pair packet pr4447-release-audit-source-review-5bea604e.json, SHA2567d887d80006f6360442a4d2b04097ab90e922b975822d6444bcb89120cf5e0ba. Its independent observation cutoff was2026-10-10T13:54:03Z.",
+    "R4 comment4237755243 is Fixed and resolved in reply4237860511. The actual artifact reader accepts only the exact selected bare/full-ref/short-ref workflow paths; the short suffix derives from the already validated full branch/tag ref and preserves nested components. Repository/run/attempt/head/tree/event/trust/job/date/archive/byte/custody checks remain unchanged.",
+    "Independent actual Python execution with warnings treated as errors passed all51 tests; all49 old test bodies are byte-identical. The new actual-reader cases exercise nine positive variants and27 exact refusals with zero mutations. Against pinned92c production, exactly three new short-ref variants fail while six existing forms pass. The independent15-case original reproducer now has nine exact successes and six correct mismatches.",
+    "R4 changes only production workflow-path equality and its two test functions. All2661 other parent entries and all2652 main entries outside the full effective scope preserve mode/blob. Policy retains the exact738347-byte current-main prefix plus unchanged4517-byte provider suffix,1085 unique IDs, exact dates/limits/fingerprints and the existing note. The old own record truthfully bound historical9e/a611 and was not treated as current review.",
+    "Independent inspection of current pregate114227706233 confirms actual4f415011 checkout, formatter success, enforcing no-new and typedComplete. These checks do not supply the remaining native matrix, asset-size, live-provider or final qualification evidence.",
+    "Fresh threads retain credential-provider sanitization RefutedWithEvidence, both Vary findings Fixed, the historical missing-record finding resolved and current R4 Fixed. No new actionable source blocker was found. This exact own-record-only child needs separate independent bootstrap verification; no source author certifies their own repaired code.",
+    "Actual 7-asset size feasibility, retained real control/custody evidence, Complete #2501 freeze and separate exact #3927/#3760 operation mint remain prerequisites. This record does not authorize release, broaden allowances or mark intercepted fixture evidence as live qualification."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify this exact own-record-only successor with independent bootstrap, every applicable current deterministic native gate, current substantive feedback and final exact head/base/ref/merge-base. Then head-pin the normal merge and retain the exact new-main enforcing guard. Optional pending model review is informational under repository rules, never clean evidence.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38057101259/job/114227706233"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4447",
+  "reviewed_at_utc": "2026-10-10T14:00:49Z"
+}
