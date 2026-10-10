@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4450,
+  "base_ref": "main",
+  "base_sha": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "head_ref": "fix/4449-cargo-proof-fixture-reservation",
+  "head_sha": "a1301437ffbc3bb7b12d57ebfabe4785a15ce248",
+  "merge_base": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "reviewed_diff_digest": "sha256:v1:3af04ad9fd54509292abffb2859913ad4e223d4f961b2f1369d45c704a52039b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit, separate nonauthor of fixture source, formatter/main integration, Windows CI amendment, governance and this metadata. Shared model family and campaign context disclosed; root transports the independent result, with no independent human-review claim.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#pullrequestreview-5479295017"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#pullrequestreview-5479295017",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#discussion_r4237901454",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#discussion_r4237901548",
+    "Full six-path source/consumer/governance and actual native review retained in pr4450-independent-current-source-review-a1301437.json, SHA256be0d91c3d9c7ba633e6972f87d870bafa71ebda8ef7826507dc3e489006a06d2. Both substantive threads were resolved by root with the independent dispositions before retaining this review.",
+    "Exact source synthetic3a394b6e4ae102a12195b0aa43170e9accc42546 matches05f/a130 and source tree. Native Ubuntu114231807809 passes10 subprocess cases; Windows114231807813 passes9 applicable cases; all prior tests and both lifecycle cases remain. Both full three-package lanes, all-providers feature114231340347 and enforcing pregate114231340170 pass. These are current source observations, not the future metadata successor's full CI aggregate."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact own-record-only successor through independent bootstrap, current native Linux/Windows proof and all other applicable deterministic gates, fresh feedback and final exact pair. Head-pin the normal merge and retain exact new-main enforcing guard before closing #4449.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38058355398/job/114231340170"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4450",
+  "reviewed_at_utc": "2026-10-10T14:24:53Z"
+}
