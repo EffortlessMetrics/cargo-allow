@@ -183,7 +183,19 @@ def exercise_publisher_token_boundary() -> None:
                 else:
                     assert not uploaded and environment.reads == 0
                 if name in {"missing-token", "cargo-dry-run-failure"}:
+                    package_indices = [
+                        i for i, command in enumerate(commands)
+                        if command[:2] == ["cargo", "package"]
+                    ]
+                    dry_run_indices = [
+                        i for i, command in enumerate(commands)
+                        if command[:3] == ["cargo", "publish", "--dry-run"]
+                    ]
+                    assert package_indices, f"{name} did not reach Cargo packaging"
+                    assert dry_run_indices, f"{name} did not reach the Cargo dry-run"
+                    assert max(package_indices) < min(dry_run_indices)
                     data = json.loads(receipt.read_text(encoding="utf-8"))
+                    assert data["rows"], f"{name} did not retain package rows"
                     assert data["complete"] is False
                     assert data["first_irreversible_row"] is None
                     assert all(row["state"] == "missing" for row in data["rows"])
