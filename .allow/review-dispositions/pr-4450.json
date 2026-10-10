@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4450,
+  "base_ref": "main",
+  "base_sha": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
+  "head_ref": "fix/4449-cargo-proof-fixture-reservation",
+  "head_sha": "1f5e4dccc9ac1a8abc79673118c7537bd179d43a",
+  "merge_base": "90a2426c4d998d6ccc31d3264a0d5a0d3b468cba",
+  "reviewed_diff_digest": "sha256:v1:b44aff632c7f41f4a7410ab88277ad7e8a91eb93ebc8d2fb36eb7100b175a907",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/backlog_audit, separate nonauthor of this lane's source, current corrections, main integration, governance and this metadata; shared model family/campaign context disclosed. Coordinating account transports this actual independent model result; no independent human-review claim.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#pullrequestreview-5479479700"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#pullrequestreview-5479479700",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4450#discussion_r4238052101",
+    "Full current source/consumer/governance review retained in pr4450-independent-current-source-review-1f5e4dcc.json, SHA256 80ee6ecc29633fdd2e2b14e076ade20eff3334bdef49fe8bf8a4dcb5f782090f. Source head 1f5e4dccc9ac1a8abc79673118c7537bd179d43a, actual main/ref/unique merge base 90a2426c4d998d6ccc31d3264a0d5a0d3b468cba, full plain diff sha256:v1:b44aff632c7f41f4a7410ab88277ad7e8a91eb93ebc8d2fb36eb7100b175a907, tree 2b88bd94b90dc40f896b3d20226bdabe671d6511.",
+    "The complete fixture source/consumer/lifecycle, bounded Ubuntu/Windows matrix, measurement inventory, fragment, governance, incoming main correction and historical record were independently reviewed. Reviewer authored none of these files or integrations. The exclusive 128-attempt fixture reservation retries occupied paths only, preserves existing subprocess/lifecycle assertions and Cargo bounds, and handles other errors immediately with context. Incoming #4451 changes affect a separate cargo-allow test binary, with no shared fixture or routing semantic change.",
+    "All six nonpolicy PR blobs remain exact. Independent reconstruction preserves 2,655 main paths outside scope and 2,657 parent paths outside the incoming delta. Policy is the exact 739,924-byte main prefix plus unchanged 1,577-byte suffix, 1,084 unique IDs; both new receipt fingerprints were recomputed and all prior settings/limits/dates preserved. Current syntheticf4db309eea20ab10d7e3e7a7b181b4d6d94671bd has exact [base,head] parents and matching tree.",
+    "Actual current pregate114239607677 passes formatter/actionlint/enforcing no-new and typed Complete. Ubuntu114240064127 runs all 10 subprocess tests; Windows114240064125 runs all 9 applicable cases, including all five allocator controls and both lifecycle controls. Both complete locked three-package clippy/test/doc jobs pass. Feature114239607883 runs all three harness cases and includes cargo-proof.all-providers.",
+    "P1 comment4237993512 is RefutedWithEvidence and resolved in reply4238052101: performance inventory is measurement-only, the old bare row already used blocking=true, the unchanged lane manifest is experimental-informational, no required lane gains a needs edge, and the seeded failure contract checks separation. The prior three threads remain resolved. Windows acceptance for this repair does not enlarge cargo-allow's release denominator.",
+    "The current own JSON intentionally bound its earlier reviewed pair before this metadata-only refresh. This record binds the actual source parent and actual native review time; independent bootstrap must verify the one-file child, exact full diff and all preserved source modes/blobs. No source author independently certifies their own changes."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently bootstrap this own-record-only successor, require every applicable current deterministic native gate and substantive feedback disposition, recheck exact head/base/ref/unique merge base, then head-pin the normal merge and retain the exact new-main enforcing guard. Pending, skipped, stale and neutral evidence is not green; optional model review is informational and never inferred clean.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38061185668/job/114239607677"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4450",
+  "reviewed_at_utc": "2026-10-10T15:03:27Z"
+}
