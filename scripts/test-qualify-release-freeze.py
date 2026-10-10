@@ -569,6 +569,262 @@ def compose_diagnostic(binary, root, files, members, out):
     return json.loads((out / "final-freeze.evidence-graph.json").read_bytes()), json.loads((out / "final-freeze.receipt.json").read_bytes())
 
 
+
+def experience_originals(root, commit, tree, package_set):
+    """Existing receipt fixtures only; opaque references prove no experience."""
+    sha = BASE_FIXTURE.digest
+    files, members = {}, []
+
+    def put(logical_id, role, data):
+        path = logical_id.replace(":", "-") + ".json"
+        files[path] = data
+        members.append({"logical_id":logical_id, "role":role, "path":path})
+        return sha(data)
+
+    candidate_rows, installed_rows, journey_rows = [], [], []
+    for order, row in enumerate(package_set["package_set"]["crates"], 1):
+        name, version = row["name"], row["version"]
+        upload = name in PRODUCTS
+        archive = ("selected isolated archive " + name).encode()
+        archive_sha = row["sha256"] if upload else sha(archive)
+        candidate_rows.append({
+            "logical_id":name, "cargo_package_name":name, "cargo_package_version":version,
+            "rust_library_name":name.replace("-", "_"), "workspace_source_path":"crates/" + name,
+            "product_family":"cargo-allow-0.2" if upload else "shared-0.1",
+            "publication_state":"selected", "publish":True, "support_tier":"fixture",
+            "release_order":order, "selected_features":[],
+            "expected_manifest_identity":name + ":" + version, "expected_dependency_rows":[],
+            "required_assets":[], "crate_digest":archive_sha,
+            "crate_size_bytes":row["size_bytes"] if upload else len(archive),
+        })
+        installed_rows.append({"package_name":name, "package_version":version,
+            "crate_digest":archive_sha, "index_checksum":archive_sha, "resolved_version":version})
+        journey_rows.append({"logical_id":name, "package_name":name, "package_version":version,
+                             "crate_digest":archive_sha})
+    candidate = {
+        "schema_id":"cargo-allow.package-candidate.v2", "schema_version":2,
+        "topology_id":"selected-fixture-topology", "topology_digest":sha(b"normalized topology"),
+        "repository_commit":commit, "repository_tree":tree, "cargo_lock_digest":sha(b"normalized workspace lock"),
+        "candidate_product_id":"cargo-allow", "root_logical_id":"cargo-allow",
+        "root_package_name":"cargo-allow", "root_package_version":"0.2.0",
+        "target_class":"linux-gnu", "feature_set_id":"default", "rows":candidate_rows,
+        "known_exclusions":[], "limitations":["synthetic structural fixture"],
+        "claim_boundary":"existing predecessor structure; no execution is claimed",
+    }
+    candidate_sha = put("experience:package-candidate", "ExperienceReference", BASE_FIXTURE.encode(candidate))
+    executable_sha = sha(b"selected installed executable identity; original binary is not bundled")
+    install = {
+        "schema_id":"cargo-allow.isolated-install.v2", "schema_version":2,
+        "candidate_artifact_digest":candidate_sha, "repository_commit":commit, "repository_tree":tree,
+        "cargo_lock_digest":sha(b"packaged root lock"), "registry_index_digest":sha(b"isolated index"),
+        "external_cache_identity":"selected-cache", "source_checkout_denied":True,
+        "install_root_identity":sha(b"portable root identity"), "cargo_home_identity":sha(b"portable cargo home identity"),
+        "installed_executable_digest":executable_sha, "installed_version_output":"cargo-allow 0.2.0",
+        "platform":"x86_64-unknown-linux-gnu", "toolchain":"selected-toolchain",
+        "package_rows":installed_rows,
+        "graph_comparison":{"expected_packages":len(installed_rows), "matched_packages":len(installed_rows),
+            "unexpected_packages":[], "missing_packages":[], "version_mismatches":[], "path_sources":[]},
+        "limitations":["synthetic structural fixture"], "claim_boundary":"existing install structure only",
+    }
+    install_sha = put("experience:isolated-install", "ExperienceReference", BASE_FIXTURE.encode(install))
+    journey = {
+        "schema_id":"cargo-allow.exact-candidate.v2", "schema_version":2,
+        "candidate_artifact_digest":candidate_sha, "isolated_install_receipt_digest":install_sha,
+        "repository_commit":commit, "repository_tree":tree, "cargo_lock_digest":sha((root / "Cargo.lock").read_bytes()),
+        "installed_executable_digest":executable_sha, "installed_version_output":"cargo-allow 0.2.0",
+        "platform":"x86_64-unknown-linux-gnu", "toolchain":"selected-toolchain",
+        "support_matrix_generation":"selected-support", "package_rows":journey_rows,
+        "journey_steps":[{"id":"existing-synthetic-step", "exit_code":0}], "artifact_schema_results":[],
+        "scanner_completeness":"complete", "diff_base_identity":"selected-base",
+        "limitations":["not the missing #3149 executed case catalogue"], "not_included":[],
+        "claim_boundary":"existing journey structure only",
+    }
+    journey_sha = put("experience:exact-candidate", "ExperienceReference", BASE_FIXTURE.encode(journey))
+    denominator_sha = put("experience:migration-denominator", "ExperienceReference", b"opaque migration catalogue")
+    docs = []
+    for name in ("readme", "getting-started", "help", "completion", "manpage", "channel", "support-matrix", "command-registry"):
+        docs.append({"name":name, "digest":put("experience:docs:" + name, "ExperienceReference",
+                                              ("opaque selected documentation " + name).encode())})
+    original_input = {
+        "schema_id":"cargo-allow.release-experience.v1", "schema_version":1,
+        "candidate_digest":candidate_sha, "install_digest":install_sha, "journey_digest":journey_sha,
+        "binary_digest":executable_sha, "invocation_path":"installed/bin/cargo-allow",
+        "support_matrix_generation":"selected-support", "command_registry_generation":"selected-registry",
+        "migration_denominator_digest":denominator_sha, "migration_schema_id":"cargo-allow.core-command-summary.v1",
+        "clean_pilot":None, "brownfield_posture":"not_included_pending_published_pilot",
+        "brownfield_receipt_digest":None, "docs_identities":docs, "frictions":[],
+        "claimed_result":"not_proven", "not_proven_reason":"No clean external pilot was executed",
+        "narrowed_claims":["No low-friction external adoption claim"],
+        "observed_at_unix_seconds":NOW - 20, "evaluated_at_unix_seconds":NOW - 10, "maximum_age_seconds":600,
+    }
+    # Exact expected output of the existing Rust model for this fixture.
+    # The production admission must separately refuse absent semantic producers.
+    original_result = {
+        "schema_id":"cargo-allow.release-experience.v1", "schema_version":1, "result":"not_proven",
+        "findings":[], "retained_evidence":["installed package candidate truth is retained",
+            "isolated install truth is retained", "exact installed journey truth is retained",
+            "no low-friction external adoption is claimed"], "evaluated_at_unix_seconds":NOW - 10,
+    }
+    put("evidence:experience-input", "Evidence:experience-input", json.dumps(original_input, indent=2).encode() + b"\n")
+    put("evidence:release-experience", "Evidence:release-experience", json.dumps(original_result, indent=2).encode() + b"\n")
+    return files, members
+
+
+def experience_native_controls(binary):
+    """Run actual prepare/readback/qualify/replay; never substitute an evaluator."""
+    cases = ("not_proven", "forged_complete", "missing_input", "missing_result",
+             "missing_reference", "changed_reference", "reference_role", "foreign_journey",
+             "expired", "changed_result", "duplicate_json", "producer")
+    with tempfile.TemporaryDirectory(prefix="experience-native-") as directory:
+        directory = Path(directory)
+        root = directory / "repo"
+        root.mkdir()
+        git(root, "init", "-b", "main")
+        git(root, "config", "user.email", "fixture@example.invalid")
+        git(root, "config", "user.name", "experience admission fixture")
+        (root / "Cargo.toml").write_text('[workspace.package]\nversion = "0.2.0"\n')
+        (root / "Cargo.lock").write_bytes(b"synthetic committed lock\n")
+        (root / ".gitignore").write_text("target/\n")
+        for path in ("policy/product-package-topology-v2.toml", "docs/support-matrix.toml", "docs/release/evidence/rc1-publication-incident.v1.json"):
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((ROOT / path).read_bytes())
+        git(root, "add", "--all")
+        git(root, "commit", "-m", "base")
+        base = git(root, "rev-parse", "HEAD")
+        git(root, "commit", "--allow-empty", "-m", "reviewed subject")
+        reviewed = git(root, "rev-parse", "HEAD")
+        tree = git(root, "rev-parse", "HEAD^{tree}")
+        files, members = source_files(root, reviewed, tree)
+        graph, receipt = compose_diagnostic(binary, root, files, members, root / "target/diagnostic")
+        head = git(root, "commit-tree", tree, "-p", base, "-p", reviewed, input=b"synthetic experience merge\n")
+        git(root, "update-ref", "refs/heads/main", head)
+        bridge = DRIVER.native_bridge(binary, root)
+        for case in cases:
+            case_root = directory / case
+            case_root.mkdir()
+            world = World(case_root, head=head, tree=tree, base=base, reviewed=reviewed,
+                          graph=graph, graph_digest=receipt["recorded_graph_digest"])
+            files, members = source_files(root, head, tree)
+            originals, original_members = experience_originals(root, head, tree, json.loads(files["package-set.json"]))
+            original_input = json.loads(originals["evidence-experience-input.json"])
+            original_result = json.loads(originals["evidence-release-experience.json"])
+            if case == "forged_complete":
+                for name in ("clean-pilot", "clean-pilot-friction"):
+                    path = "experience-" + name + ".json"
+                    originals[path] = ("arbitrary " + name).encode()
+                    original_members.append({"logical_id":"experience:" + name, "role":"ExperienceReference", "path":path})
+                original_input.update({
+                    "clean_pilot":{"receipt_digest":BASE_FIXTURE.digest(originals["experience-clean-pilot.json"]),
+                        "result":"complete", "friction_digest":BASE_FIXTURE.digest(originals["experience-clean-pilot-friction.json"])},
+                    "claimed_result":"complete", "not_proven_reason":"", "narrowed_claims":[],
+                })
+                original_result["result"] = "complete"
+                original_result["retained_evidence"].pop()
+            elif case == "foreign_journey":
+                path = "experience-exact-candidate.json"
+                journey = json.loads(originals[path])
+                journey["repository_commit"] = "f" * 40
+                originals[path] = BASE_FIXTURE.encode(journey)
+                original_input["journey_digest"] = BASE_FIXTURE.digest(originals[path])
+            elif case == "expired":
+                original_input["observed_at_unix_seconds"] = NOW - 1_000
+                original_input["evaluated_at_unix_seconds"] = NOW - 990
+                original_result["evaluated_at_unix_seconds"] = NOW - 990
+            elif case == "changed_result":
+                original_result["retained_evidence"] = []
+            originals["evidence-experience-input.json"] = json.dumps(original_input, indent=2).encode() + b"\n"
+            originals["evidence-release-experience.json"] = json.dumps(original_result, indent=2).encode() + b"\n"
+            if case in ("missing_input", "missing_result", "missing_reference"):
+                path = {"missing_input":"evidence-experience-input.json", "missing_result":"evidence-release-experience.json",
+                        "missing_reference":"experience-docs-help.json"}[case]
+                del originals[path]
+                original_members = [member for member in original_members if member["path"] != path]
+            elif case == "changed_reference":
+                originals["experience-docs-help.json"] = b"changed selected help"
+            elif case == "reference_role":
+                for member in original_members:
+                    if member["logical_id"] == "experience:docs:help": member["role"] = "EvidenceGraph"
+            elif case == "duplicate_json":
+                originals["evidence-experience-input.json"] = originals["evidence-experience-input.json"].replace(
+                    b'"schema_version": 1,', b'"schema_version": 1, "schema_version": 1,', 1)
+            world.selection["artifacts"] = [world.add_object(505, files, members)]
+            # Each predecessor stays in a distinct original object/producer.
+            for object_id, logical_id in ((506, "experience:package-candidate"),
+                                          (507, "experience:isolated-install"),
+                                          (508, "experience:exact-candidate")):
+                group = [member for member in original_members if member["logical_id"] == logical_id]
+                payload = {member["path"]:originals.pop(member["path"]) for member in group}
+                original_members = [member for member in original_members if member["logical_id"] != logical_id]
+                world.selection["artifacts"].append(world.add_object(object_id, payload, group,
+                    run=object_id - 404, job=object_id - 202))
+            world.selection["artifacts"].append(world.add_object(509, originals, original_members, run=105, job=307))
+            bridge_calls = []
+            def checked_bridge(phase, wire, evidence, out):
+                bridge_calls.append(phase)
+                if case == "producer":
+                    selected = next(item for item in wire["artifacts"] if item["transfer"]["stable_artifact_id"] == "508")
+                    selected["expected_producer"]["run_attempt"] += 1
+                return bridge(phase, wire, evidence, out)
+            prepared = case_root / "prepared"
+            if case in ("duplicate_json", "producer"):
+                try:
+                    world.qualifier().run("prepare", prepared, checked_bridge)
+                except STORE.StoreError:
+                    if bridge_calls != ["prepare"] or prepared.exists():
+                        raise AssertionError("invalid original input did not fail in the actual staged consumer: " + case)
+                else:
+                    raise AssertionError("actual consumer admitted invalid original input: " + case)
+            else:
+                world.qualifier().run("prepare", prepared, checked_bridge)
+                receipt_bytes = (prepared / "final-freeze.receipt.json").read_bytes()
+                graph_bytes = (prepared / "final-freeze.evidence-graph.json").read_bytes()
+                world.selection["artifacts"].append(world.add_object(510, {
+                    "final-freeze.receipt.json":receipt_bytes, "final-freeze.evidence-graph.json":graph_bytes},
+                    [{"logical_id":"final-freeze-receipt", "role":"FreezeReceipt", "path":"final-freeze.receipt.json"},
+                     {"logical_id":"final-freeze-evidence-graph", "role":"EvidenceGraph", "path":"final-freeze.evidence-graph.json"}],
+                    run=106, job=308, prepared=True))
+                qualified = case_root / "qualified"
+                result = world.qualifier().run("qualify", qualified, checked_bridge)
+                replay = json.loads((qualified / "final-freeze.replay-inputs.json").read_bytes())
+                expected = {"not_proven":"not_proven", "forged_complete":"not_proven",
+                    "missing_input":"incomplete", "missing_result":"incomplete", "missing_reference":"incomplete",
+                    "changed_reference":"mismatch", "reference_role":"mismatch", "foreign_journey":"mismatch",
+                    "expired":"stale", "changed_result":"mismatch"}[case]
+                readiness = result["readiness"]
+                if (result["post_merge_qualification"] != "EquivalentTree"
+                        or result["custody_disposition"] != "Complete"
+                        or result.get("persisted_replay_verified") is not True
+                        or result["freeze_state"] != "Incomplete"):
+                    raise AssertionError("unrelated qualifier/custody boundary failed: " + case)
+                for logical_id in ("release-experience-input", "release-experience"):
+                    node = next(item for item in replay["evidence_graph"]["nodes"] if item["evidence_id"] == logical_id)
+                    if (node["result"] != expected or not node["required"]
+                            or logical_id not in replay["evidence_graph"]["required_node_ids"]
+                            or not any(row.get("evidence_id") == logical_id for row in readiness["rows"])):
+                        raise AssertionError("actual required experience row was masked or lost: " + case + "/" + logical_id)
+                    if case in ("not_proven", "forged_complete") and any(owner not in node["claim_boundary"] for owner in ("#2466", "#3149", "#3151")):
+                        raise AssertionError("matching model output fabricated an absent semantic producer")
+                if replay["retained_transfers"] != [world.objects[selection["artifact_id"]]["transfer"]
+                                                   for selection in world.selection["artifacts"]]:
+                    raise AssertionError("original producer envelopes were relabeled")
+                for selection in world.selection["artifacts"]:
+                    object_id = selection["artifact_id"]
+                    for member in selection["members"]:
+                        raw = world.objects[object_id]["files"][member["path"]]
+                        retained = next(item for item in replay["retained_artifacts"] if item["artifact_id"] == member["logical_id"])
+                        custody = next(item for item in replay["custody"]["items"] if item["artifact_id"] == member["logical_id"])
+                        if (bytes(retained["bytes"]["bytes"]) != raw
+                                or retained["declared_sha256"].removeprefix("sha256:v1:") != BASE_FIXTURE.digest(raw).removeprefix("sha256:")
+                                or custody["storage_locator"] != f"github-actions-artifact://{STORE.REPOSITORY}/{object_id}/{member['path']}"):
+                            raise AssertionError("original small receipt/reference bytes or location changed")
+                if ((qualified / "final-freeze.receipt.json").read_bytes() != receipt_bytes
+                        or bridge_calls != ["prepare", "qualify"]):
+                    raise AssertionError("prepared identity or actual consumer dispatch changed")
+            if world.unexpected or any(call[0] != "GET" for call in world.calls):
+                raise AssertionError("experience fixture used unexpected or mutating provider I/O")
+        print(f"native experience: original receipts and references retained; {len(cases)} direct-row/compiled-consumer/replay controls; zero provider mutations")
+
 def native_controls(binary):
     with tempfile.TemporaryDirectory(prefix="qualifier-native-") as directory:
         directory = Path(directory)
@@ -673,5 +929,6 @@ if __name__ == "__main__":
     if options.cargo_allow is not None:
         if remaining: raise SystemExit("native fixture accepts only --cargo-allow")
         native_controls(options.cargo_allow.resolve(strict=True))
+        experience_native_controls(options.cargo_allow.resolve(strict=True))
     else:
         unittest.main(argv=[sys.argv[0], *remaining])

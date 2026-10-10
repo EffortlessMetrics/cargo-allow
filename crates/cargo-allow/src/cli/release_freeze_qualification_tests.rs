@@ -237,3 +237,6 @@ fn clock_and_window_are_canonical_not_lexical_lookalikes() -> TestResult {
     utc("2024-02-29T23:59:59Z")?;
     Ok(())
 }
+
+#[path = "release_freeze_experience_tests.rs"]
+mod experience_tests;

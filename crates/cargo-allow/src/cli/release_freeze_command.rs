@@ -52,6 +52,9 @@ mod registry;
 #[path = "release_freeze_qualification.rs"]
 mod qualification;
 
+#[path = "release_freeze_experience.rs"]
+mod experience;
+
 #[cfg(test)]
 #[path = "release_freeze_rehearsal_tests.rs"]
 mod rehearsal_tests;
@@ -141,6 +144,12 @@ pub(crate) enum FreezeEvidenceRole {
     /// Exact-candidate isolated install journey receipt (#2925/#2926).
     #[value(name = "install-journey")]
     InstallJourney,
+    /// Original ReleaseExperienceInputV1 selected for required admission.
+    #[value(name = "experience-input")]
+    ReleaseExperienceInput,
+    /// Original CargoAllowReleaseExperienceV1, reconciled against its input.
+    #[value(name = "release-experience")]
+    ReleaseExperience,
     /// Exact-candidate interop smoke receipt.
     #[value(name = "interop")]
     Interop,
@@ -200,6 +209,16 @@ impl FreezeEvidenceRole {
                 FinalEvidenceNodeClassV1::InstalledJourney,
                 FinalEvidenceOriginV1::WorkflowArtifact,
                 "installed-journey",
+            ),
+            Self::ReleaseExperienceInput => (
+                FinalEvidenceNodeClassV1::CandidateArtifact,
+                FinalEvidenceOriginV1::WorkflowArtifact,
+                "release-experience-input",
+            ),
+            Self::ReleaseExperience => (
+                FinalEvidenceNodeClassV1::InstalledJourney,
+                FinalEvidenceOriginV1::WorkflowArtifact,
+                "release-experience",
             ),
             Self::Interop => (
                 FinalEvidenceNodeClassV1::PlatformReceipt,
@@ -874,15 +893,25 @@ fn collect_evidence(
         } else {
             root.join(path_text)
         };
-        let bytes = std::fs::read(&path).map_err(|error| {
-            usage(format!(
-                "evidence {role_text} at {}: {error}",
-                path.display()
-            ))
-        })?;
+        let bytes = if matches!(
+            role,
+            FreezeEvidenceRole::ReleaseExperienceInput | FreezeEvidenceRole::ReleaseExperience
+        ) {
+            qualification::read_experience_original(&path)?
+        } else {
+            std::fs::read(&path).map_err(|error| {
+                usage(format!(
+                    "evidence {role_text} at {}: {error}",
+                    path.display()
+                ))
+            })?
+        };
         let value: Json = if matches!(
             role,
-            FreezeEvidenceRole::Rehearsal | FreezeEvidenceRole::RegistryObservation
+            FreezeEvidenceRole::Rehearsal
+                | FreezeEvidenceRole::RegistryObservation
+                | FreezeEvidenceRole::ReleaseExperienceInput
+                | FreezeEvidenceRole::ReleaseExperience
         ) {
             rehearsal::decode(&bytes)
         } else {
@@ -1126,6 +1155,12 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
         FreezeEvidenceRole::RegistryObservation => {
             notes.extend(registry::binding_notes(subject, value));
         }
+        FreezeEvidenceRole::ReleaseExperienceInput | FreezeEvidenceRole::ReleaseExperience => {
+            // Original-pair, referenced-byte and producer admission is separate
+            // from these legacy probes. Neither role may acquire Complete from
+            // a version substring or an empty binding-note list.
+            notes.push("note:required installed-experience admission is evaluated separately".to_string());
+        }
         FreezeEvidenceRole::Controls => {
             let state = str_field(value, "state").unwrap_or_default();
             if state != "Feasible" {
@@ -1272,7 +1307,14 @@ fn build_evidence_graph(
 
     for input in evidence
         .iter()
-        .filter(|input| input.role != FreezeEvidenceRole::RegistryObservation)
+        .filter(|input| {
+            !matches!(
+                input.role,
+                FreezeEvidenceRole::RegistryObservation
+                    | FreezeEvidenceRole::ReleaseExperienceInput
+                    | FreezeEvidenceRole::ReleaseExperience
+            )
+        })
     {
         let (class, origin, id) = input.role.graph_shape();
         let result = if input.bound_ok() {
@@ -1292,6 +1334,29 @@ fn build_evidence_graph(
         let mut node = node_for(id, class, origin, &input.sha256, result, subject);
         node.required = required;
         nodes.push(node);
+    }
+
+    // Both original experience records are required even when absent. Their
+    // computed admission never borrows a caller's Complete flag or a root
+    // decision declining a pilot. Readback later binds their actual producers.
+    let experience_admission = experience::reconcile(subject, package_rows, evidence, None);
+    for role in [
+        FreezeEvidenceRole::ReleaseExperienceInput,
+        FreezeEvidenceRole::ReleaseExperience,
+    ] {
+        let (class, origin, id) = role.graph_shape();
+        let digest = evidence_role(evidence, role)
+            .map(|input| input.sha256.clone())
+            .unwrap_or_else(|| sha256_v1_bytes(format!("{id}:absent").as_bytes()));
+        required_ids.push(id.to_string());
+        nodes.push(node_for(
+            id,
+            class,
+            origin,
+            &digest,
+            experience_admission.graph_result(),
+            subject,
+        ));
     }
 
     // Registry admission is required even when no input was supplied. Its
@@ -1361,6 +1426,21 @@ fn build_evidence_graph(
     let present = |id: &str| nodes.iter().any(|node| node.evidence_id == id);
     let edges = [
         (
+            "release-experience-input",
+            "release-experience",
+            FinalEvidenceEdgeKindV1::ProducedFrom,
+        ),
+        (
+            "installed-journey",
+            "release-experience",
+            FinalEvidenceEdgeKindV1::RequiresCurrent,
+        ),
+        (
+            "support-selection",
+            "release-experience",
+            FinalEvidenceEdgeKindV1::RequiresCurrent,
+        ),
+        (
             "package-archive",
             "installed-journey",
             FinalEvidenceEdgeKindV1::ProducedFrom,
@@ -1424,7 +1504,7 @@ fn build_evidence_graph(
         })
         .collect();
 
-    FinalEvidenceGraphV1 {
+    let mut graph = FinalEvidenceGraphV1 {
         schema_id: "cargo-allow.final-evidence-graph.v1".to_string(),
         schema_version: 1,
         mode: FinalEvidenceGraphModeV1::Production,
@@ -1447,7 +1527,9 @@ fn build_evidence_graph(
         claim_boundary:
             "Production final-freeze evidence graph composed at one clean committed subject from bounded retained producer receipts."
                 .to_string(),
-    }
+    };
+    experience::apply(&mut graph, &experience_admission);
+    graph
 }
 
 fn node_for(
@@ -1491,9 +1573,9 @@ fn node_for(
     }
 }
 
-/// The explicit campaign decisions recorded by the #3737 final selection and
-/// the #3768 train: the pilots stay NotProven/NotIncluded, rc.2 is not
-/// selected, and publication authorization stays outside the freeze.
+/// Fixture posture for the selection and external-authorization decisions.
+/// Pilot applicability is never fabricated here; required experience admission
+/// remains a graph obligation independently of supported limitations.
 #[cfg(test)]
 fn readiness_decision_inputs(
     subject: &SubjectIdentity,
@@ -1587,8 +1669,6 @@ fn readiness_decision_inputs_known(
         required: true,
     };
     let mut root_decisions = vec![
-        decided("pilot-clean-not-proven", "#2466"),
-        decided("pilot-brownfield-not-included", "#2467"),
         decided("rc2-not-selected", "#3768"),
         decided("publication-authorization-remains-external", "#3760"),
     ];
@@ -2437,8 +2517,8 @@ expected_registry_checksum = "sha256:cccc"
             .iter()
             .map(|decision| decision.decision_id.as_str())
             .collect();
-        assert!(ids.contains(&"pilot-clean-not-proven"));
-        assert!(ids.contains(&"pilot-brownfield-not-included"));
+        assert!(!ids.contains(&"pilot-clean-not-proven"));
+        assert!(!ids.contains(&"pilot-brownfield-not-included"));
         assert!(ids.contains(&"rc2-not-selected"));
         assert!(ids.contains(&"publication-authorization-remains-external"));
         // Every declined selection row projects to one supported limitation

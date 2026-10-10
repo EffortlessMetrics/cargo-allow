@@ -25,14 +25,14 @@ compiling. Brownfield `IncludedWithReceipt` requires a receipt digest;
 
 ## The NotProven path
 
-No clean external pilot ran for `0.2.0`: #3150 selected no target and
-granted no mutation authority, and #2466 remains blocked. The release
-therefore carries an explicit `NotProven` receipt with a stated reason and
-narrowed claims: installed package/install/journey truth holds for the exact
-candidate, brownfield proof is scheduled after first publication, and no
-low-friction external adoption is claimed. A completed pilot can never be
-reported `NotProven`, and `NotProven` never satisfies release evidence
-reconciliation — only `Complete` does, once a pilot exists.
+When a clean external pilot has not run, the input must state an explicit
+`NotProven` reason and narrowed claims. It may retain the exact candidate's
+package/install/journey evidence, with the brownfield posture recorded
+separately, while making no low-friction external adoption claim. A completed
+pilot can never be reported `NotProven`. Under the current required experience
+contract, `NotProven` does not satisfy release evidence reconciliation.
+Selecting a target and actually producing its evidence remain separate work;
+a proposed applicability exception is not an accepted exception.
 
 ## Consumers and proof
 
@@ -52,3 +52,104 @@ git diff --check
 The evidence inventory retains experience evaluation as typed model
 validation with `may_satisfy_release_gate = false`. The receipt tells the
 truth about adoption proof; it does not manufacture it.
+
+## Required original-bundle admission
+
+The final-freeze composer accepts two additional evidence roles:
+`experience-input=path` selects the original `ReleaseExperienceInputV1`, and
+`release-experience=path` selects the original
+`CargoAllowReleaseExperienceV1`. Both are required graph nodes even when the
+caller omits them. A missing role is `Incomplete`; a duplicate role or
+malformed contract is refused. Unique JSON keys are required. Neither role
+can acquire `Complete` through the legacy version probes.
+
+The authenticated qualifier uses its existing independently selected
+producer context, immutable artifact readback, and logical-member mapping.
+The selected original artifacts must include the following members. The
+mapping names do not change any original artifact ID, producer, inventory
+path, bytes, checksum, or retention interval.
+
+| Logical member | Existing transport role | Consumed contract |
+| --- | --- | --- |
+| `evidence:experience-input` | `Evidence:experience-input` | Original experience input |
+| `evidence:release-experience` | `Evidence:release-experience` | Original model result |
+| `experience:package-candidate` | `ExperienceReference` | Package candidate V2 |
+| `experience:isolated-install` | `ExperienceReference` | Isolated install V2 |
+| `experience:exact-candidate` | `ExperienceReference` | Exact candidate V2 |
+| `experience:migration-denominator` | `ExperienceReference` | Original referenced bytes; semantic producer still required |
+| `experience:docs:<name>` | `ExperienceReference` | Every declared documentation identity's original bytes |
+| `experience:clean-pilot`, `experience:clean-pilot-friction` | `ExperienceReference` | Required when the input references a clean pilot |
+| `experience:brownfield-pilot` | `ExperienceReference` | Required when the input references a brownfield receipt |
+
+The composer compares the entire retained result with the canonical
+evaluation of the original input, including findings, retained evidence, and
+evaluation time. It does not re-render a replacement receipt. Current
+freshness is checked separately against the qualifier's checked observation
+time and the input's existing age window. Missing, changed, foreign, expired,
+or incorrectly mapped references block admission with a specific result.
+
+The three existing predecessor validators remain their contract owners.
+Admission also binds their original digests, installed executable identity,
+source commit/tree, version, platform, toolchain, support generation, selected
+package denominator, and upload archive bytes. Their lock digests keep their
+different meanings: package candidate uses the normalized workspace lock,
+isolated install uses the packaged root lock, and exact candidate uses the raw
+workspace lock. Only the raw journey lock is compared with the freeze's raw
+workspace lock. An isolated shared archive checksum does not replace the
+public registry checksum selected by the registry owner.
+
+Custody and serialized replay retain the original small records and every
+referenced member through the existing numeric provider envelopes and exact
+paths. The installed executable and packaged archives are not copied into a
+new experience bundle. Existing member and total-byte limits are unchanged.
+A binary digest is a link to the existing install/journey producer evidence,
+not a request to reinstall or execute an ambient binary.
+
+### Semantic producer dependencies
+
+A matching input/result pair plus authentic downloads cannot prove that an
+external pilot or an installed documentation/parity exercise happened. This
+admission slice therefore preserves three explicit required `NotProven`
+dependencies, even when the supplied model-level result is `Complete`:
+
+- #2466 must implement its owned pilot producer and semantic reader for the
+  selected target, performed steps, and friction results.
+- #3149 must produce the actual executed case denominator and human/machine
+  parity evidence using the existing `CoreCommandSummaryV1` contract and
+  validator. Router cases can be implemented first while later cases stay
+  explicitly missing.
+- #3151 must produce the installed help/reference/man/completion observations
+  and coherence evidence for the eight selected documentation identities.
+
+These are semantic dependencies, not new DTOs, pilot proof, or an exception
+to the current `Complete` requirement. The composer no longer fabricates
+`Decided` clean- or brownfield-pilot applicability entries. Support limitations
+remain visible and cannot waive a required experience node. The published
+command registry remains on its existing published version; candidate-only
+commands are not promoted by this adapter.
+
+The next implementation sequence is the #3149 executed catalogue and summary
+validation, #3151 installed documentation observations, and #2466's separately
+owned pilot producer/reader after target selection. Their reviewed consumers
+must replace the corresponding missing-producer holds before production
+experience admission can become `Complete`.
+
+### Focused admission controls
+
+The new unit controls exercise original-pair agreement, the three lock
+meanings, missing or changed reference bytes, foreign source and producer
+identity, stale clocks, friction, required readiness rows, and custody
+serialization. A consistently forged model-level `Complete` pair with
+arbitrary pilot and documentation bytes must still be `NotProven` at the
+admission boundary.
+
+The existing compiled qualifier fixture also prepares, reads back, qualifies,
+and replays these cases through the actual binary with provider I/O
+intercepted. It checks each required experience row directly and retains the
+exact original bytes. It does not claim any pilot or documentation production
+succeeded.
+
+```sh
+cargo test --locked -p cargo-allow release_freeze_command::qualification::tests::experience_tests
+cargo test --locked -p cargo-allow --test core_release_freeze_qualification_cli
+```

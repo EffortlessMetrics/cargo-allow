@@ -88,6 +88,24 @@ fn read_persisted_replay(
         .map_err(|error| instrument(format!("persisted replay contract: {error}")))
 }
 
+/// Retain the small original experience records within the existing member
+/// bound; executable and archive bytes stay in their original transports.
+pub(super) fn read_experience_original(path: &Path) -> CargoAllowResult<Vec<u8>> {
+    use std::io::Read as _;
+    let file = std::fs::File::open(path)
+        .map_err(|error| instrument(format!("original experience input: {error}")))?;
+    let mut bytes = Vec::new();
+    file.take(MAX_MEMBER_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| instrument(format!("original experience read: {error}")))?;
+    if bytes.len() > MAX_MEMBER_BYTES {
+        return Err(instrument(
+            "original experience record exceeds the existing member bound",
+        ));
+    }
+    Ok(bytes)
+}
+
 fn read_input(path: &Path) -> CargoAllowResult<ReadbackInput> {
     use std::io::Read as _;
     let file = std::fs::File::open(path)
@@ -210,6 +228,46 @@ impl ReadbackInput {
             return Err(instrument("duplicate selected logical member"));
         }
         Ok(first)
+    }
+
+    pub(super) fn experience_member(&self, id: &str) -> CargoAllowResult<Option<(&str, &[u8])>> {
+        self.member(id)
+            .map(|member| member.map(|(_, member)| (member.role.as_str(), member.bytes.as_slice())))
+    }
+
+    pub(super) fn experience_observed_at(
+        &self,
+        subject: &SubjectIdentity,
+    ) -> CargoAllowResult<u64> {
+        self.validate(subject)?;
+        let (date, time) = utc(&self.observed_at_utc)?
+            .split_once('T')
+            .ok_or_else(|| instrument("checked experience UTC separator is absent"))?;
+        let date = SimpleDate::parse(date)
+            .ok_or_else(|| instrument("checked experience UTC date is invalid"))?;
+        let epoch = SimpleDate {
+            year: 1970,
+            month: 1,
+            day: 1,
+        };
+        let days = u64::try_from(epoch.days_until(date))
+            .map_err(|_| instrument("experience observation precedes the Unix epoch"))?;
+        let seconds = time
+            .strip_suffix('Z')
+            .ok_or_else(|| instrument("checked experience UTC suffix is absent"))?
+            .split(':')
+            .try_fold(0u64, |total, field| {
+                let part = field
+                    .parse::<u64>()
+                    .map_err(|_| instrument("checked experience UTC field is invalid"))?;
+                total
+                    .checked_mul(60)
+                    .and_then(|total| total.checked_add(part))
+                    .ok_or_else(|| instrument("experience observation time overflow"))
+            })?;
+        days.checked_mul(86_400)
+            .and_then(|days| days.checked_add(seconds))
+            .ok_or_else(|| instrument("experience observation timestamp overflow"))
     }
 
     fn validate(&self, subject: &SubjectIdentity) -> CargoAllowResult<()> {
@@ -391,11 +449,18 @@ impl ReadbackInput {
             } else {
                 format!("Evidence:{}", input.role.label())
             };
+            let parsed_bytes = if matches!(
+                input.role,
+                FreezeEvidenceRole::ReleaseExperienceInput | FreezeEvidenceRole::ReleaseExperience
+            ) {
+                read_experience_original(&input.path)?
+            } else {
+                std::fs::read(&input.path)
+                    .map_err(|error| instrument(format!("evidence reread: {error}")))?
+            };
             if member.role != expected_role
                 || sha256_v1_bytes(&member.bytes) != input.sha256
-                || std::fs::read(&input.path)
-                    .map_err(|error| instrument(format!("evidence reread: {error}")))?
-                    != member.bytes
+                || parsed_bytes != member.bytes
             {
                 return Err(instrument(
                     "evidence parser input differs from the selected original member bytes/role",
@@ -434,6 +499,13 @@ impl ReadbackInput {
                 ));
             }
         }
+        let admission = super::experience::reconcile(
+            subject,
+            &graph.selected_subject.package_rows,
+            evidence,
+            Some(self),
+        );
+        super::experience::apply(graph, &admission);
         Ok(())
     }
 
