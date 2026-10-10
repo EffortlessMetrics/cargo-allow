@@ -492,7 +492,7 @@ impl SubjectIdentity {
         inputs: &mut impl SubjectInputs,
         version: &str,
     ) -> CargoAllowResult<Self> {
-        let dirty = inputs.git(&["status", "--porcelain"])?;
+        let dirty = inputs.git(&["status", "--porcelain", "--untracked-files=all"])?;
         if !dirty.trim().is_empty() {
             return Err(instrument(
                 "the worktree is dirty; the freeze binds the committed subject only",

@@ -56,11 +56,17 @@ fn child_probe(case: &str) -> TestResult {
         return Ok(());
     }
 
+    if matches!(case, "untracked-local" | "untracked-injected") {
+        let configured_status = fixture_git(&root, &["status", "--porcelain"])?;
+        if !configured_status.trim().is_empty() || !root.join("src/untracked.rs").is_file() {
+            return Err("the selected config did not hide the untracked source control".into());
+        }
+    }
     let result = super::SubjectIdentity::collect(
         &mut super::FilesystemSubjectInputs { root: &root },
         "0.2.0",
     );
-    if case == "clean" {
+    if case == "clean" || case == "clean-injected" {
         let subject = result?;
         if subject.commit != std::env::var(EXPECTED_HEAD)?
             || subject.tree != std::env::var(EXPECTED_TREE)?
@@ -70,7 +76,7 @@ fn child_probe(case: &str) -> TestResult {
         return Ok(());
     }
     let diagnostic = match case {
-        "dirty" => "the worktree is dirty",
+        "dirty" | "untracked-local" | "untracked-injected" => "the worktree is dirty",
         "assume-unchanged" | "skip-worktree" => "the index carries hidden state",
         other => return Err(format!("unknown child probe {other:?}").into()),
     };
@@ -115,6 +121,12 @@ fn require_child_probe(selected: &Path, foreign: &Path, case: &str, cwd: &Path) 
             .env(EXPECTED_HEAD, head.trim())
             .env(EXPECTED_TREE, tree.trim())
             .env("GIT_INDEX_FILE", &index);
+        if case == "untracked-injected" || case == "clean-injected" {
+            command
+                .env("GIT_CONFIG_COUNT", "1")
+                .env("GIT_CONFIG_KEY_0", "status.showUntrackedFiles")
+                .env("GIT_CONFIG_VALUE_0", "no");
+        }
         if !index_only {
             command
                 .env("GIT_DIR", &git_dir)
@@ -180,6 +192,26 @@ fn subject_and_discovery_use_selected_repository() -> TestResult {
     )?;
     require_child_probe(&selected.0, &foreign.0, "dirty", &selected.0)?;
     fs::write(selected.0.join("src/subject.rs"), b"// selected source\n")?;
+
+    // Status configuration may hide a nonignored source without changing HEAD,
+    // the index flags, or the three specially checked input files.
+    let untracked = selected.0.join("src/untracked.rs");
+    fs::write(&untracked, b"// selected untracked source\n")?;
+    fixture_git(
+        &selected.0,
+        &["config", "--local", "status.showUntrackedFiles", "no"],
+    )?;
+    require_child_probe(&selected.0, &foreign.0, "untracked-local", &selected.0)?;
+    fs::remove_file(&untracked)?;
+    require_child_probe(&selected.0, &foreign.0, "clean", &selected.0)?;
+    fixture_git(
+        &selected.0,
+        &["config", "--local", "--unset", "status.showUntrackedFiles"],
+    )?;
+    fs::write(&untracked, b"// selected untracked source\n")?;
+    require_child_probe(&selected.0, &foreign.0, "untracked-injected", &selected.0)?;
+    fs::remove_file(&untracked)?;
+    require_child_probe(&selected.0, &foreign.0, "clean-injected", &selected.0)?;
 
     // All three input bytes remain identical: only the selected index carries the hold.
     fixture_git(
