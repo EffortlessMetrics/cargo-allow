@@ -23509,3 +23509,188 @@ glob = ".allow/revisions/4457-retained-review-record.toml"
 line = 1
 column = 1
 
+[[allow]]
+id = "allow-review-4438-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4438.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4438 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4438.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4438.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4438-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4438-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4438-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4438-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-release-2501-qualifier-doc"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/final-freeze-qualification-v1.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intentional documentation of the authenticated prepare, external retention, fresh readback, typed qualification and persisted replay contract under #2501. This exact document defines the bounded workflow and its missing-authority outcomes; it is not current provider evidence, a Complete freeze or release authorization."
+evidence = ["issue:2501", "test:core_release_freeze_qualification_cli", "doc:docs/release/final-freeze-qualification-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2501#issuecomment-6099369311"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/final-freeze-qualification-v1.md"
+target_fingerprint = "md"
+glob = "docs/release/final-freeze-qualification-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-release-2501-qualifier-script"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/qualify-release-freeze.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intentional read-only provider driver for the existing #2501 qualification and custody models. It checks selected source and producer identities, fresh authenticated reads and ordered bounded observation time before the typed consumer. Source inventory admission does not assert live provider authority, artifact retention, prevention proof or permission to publish."
+evidence = ["issue:2501", "test:core_release_freeze_qualification_cli", "doc:docs/release/final-freeze-qualification-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2501#issuecomment-6099369311"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/qualify-release-freeze.py"
+target_fingerprint = "py"
+glob = "scripts/qualify-release-freeze.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-release-2501-qualifier-tests"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-qualify-release-freeze.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intentional intercepted-provider tests for #2501 source identity, per-route freshness, elapsed time, original artifact/member mapping and actual compiled qualification and persisted replay. Synthetic protocol probes return Incomplete; native fixtures retain separate registry and rehearsal holds. This exact test source does not qualify a production release."
+evidence = ["issue:2501", "test:core_release_freeze_qualification_cli", "doc:docs/release/final-freeze-qualification-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2501#issuecomment-6099369311"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-qualify-release-freeze.py"
+target_fingerprint = "py"
+glob = "scripts/test-qualify-release-freeze.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-release-2501-qualifier-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2501-qualified-freeze-producer.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #2501 qualifier documentation, producer, protocol fixtures and this note; records the reviewed source exception transitions without granting live qualification, custody, merge, or publication authority."
+evidence = ["issue:2501", "pr:4452", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2501-qualified-freeze-producer.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2501-qualified-freeze-producer.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-review-4452-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4452.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4452 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4452", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4452.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4452.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-review-4452-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4452-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4452 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4452", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4452-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4452-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+

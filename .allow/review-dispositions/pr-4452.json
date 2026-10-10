@@ -1,0 +1,79 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4452,
+  "base_ref": "main",
+  "base_sha": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "head_ref": "fix/2501-qualified-freeze-transport-20261010",
+  "head_sha": "9420bcb07a85f506acf3a214a6809e047d1ad2a7",
+  "merge_base": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "reviewed_diff_digest": "sha256:v1:66203b38739661b7adf3368ac0afc05596abebf7b3d0f7b545543df0b7128be3",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT /root, coordinating maintainer and author of this pending retained record. This is factual source/native preparation, not an independent full-source review. The separate experience precheck is from /root/ux_closeout with disclosed historical root/Git fixture authorship outside its nine-path experience scope; /root/source_review is performing a fresh complete nonauthor review.",
+  "independent_review": {
+    "not_proven": {
+      "reason": "No complete current source-and-governance Review exists yet. This pending record binds only the actual initial 29-path source 9420bcb07a85f506acf3a214a6809e047d1ad2a7 / edb7fb7b and its observed native readiness digest. Its exact formatter successor, bounded EXP-F4 inventory correction and new record/note/policy additions are outside that digest. The final effective 31-path source requires its own actual canonical native digest, independent Review URL and submitted time. Earlier Q7 review and native runs are retained history, not full-current-pair proof."
+    }
+  },
+  "claimed_verdict": "partial",
+  "findings": [
+    {
+      "id": "EXP-F1",
+      "severity": "blocking",
+      "owned_seam": "#2501 / #3151: original predecessor admission",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_experience.rs",
+      "source_line": 234,
+      "repair_route": "Frozen82d precheck found that public predecessor DTOs silently discarded unknown fields. Hosted942 adds private closed field-name checks and consistently resealed controls while preserving original bytes and known optional/null/default semantics. Independent affected/full review and actual execution remain required before retaining a Fixed disposition.",
+      "claim_boundary": "Historical independent prospective finding on 82d866f72e9040e2c2c2f7890004e2760cae4e41, retained in PR comment6102563320. This pending record does not assert that the authored942 repair has passed runtime or full review."
+    },
+    {
+      "id": "EXP-F2",
+      "severity": "blocking",
+      "owned_seam": "#2501 / #3151: existing composer and incoming registry fixture expectations",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_rehearsal_tests.rs",
+      "source_line": 172,
+      "repair_route": "Hosted942 expects both absent experience rows to remain required FinalExact/Incomplete and preserves named rehearsal/registry and actual compose/readiness/replay checks. Independent affected review and actual consumer execution must confirm that the fixture no longer exits before meaningful assertions.",
+      "claim_boundary": "Historical prospective82d finding. Required experience and semantic-owner holds must remain; no fake Complete fixture or production context is admitted."
+    },
+    {
+      "id": "EXP-F3",
+      "severity": "blocking",
+      "owned_seam": "#2501 / #3151: missing-record currentness and recovery advice",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_experience.rs",
+      "source_line": 118,
+      "repair_route": "Hosted942 checks the existing readback context before parsing original records, preserves the specific missing/malformed evidence result with valid readback and retains unavailable currentness without it. Independent affected/full review and actual readiness controls remain required.",
+      "claim_boundary": "Historical prospective82d finding. Existing dependent transitive staleness and global aggregation precedence remain unchanged."
+    },
+    {
+      "id": "FMT-1",
+      "severity": "blocking",
+      "owned_seam": "#4452: exact current native formatting gate",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_command.rs",
+      "source_line": 1179,
+      "repair_route": "The exact24 native rustfmt blocks across command.rs(2), experience.rs(10) and experience_tests.rs(12) are applied in d2882bd27bb40f149bc5033f5b892bf4e6bf1514. Root and the independent reviewer verified all replacements and2,692 other leaves. Actual successor formatting, enforcing no-new and all applicable native checks remain required; no-new and heavy jobs were skipped on942.",
+      "claim_boundary": "Actual942 pregate114321537329 failed formatting. Its79811-byte log hashes to9b317ac434ca0be5455608294864e389d9f69435d38565b4862f561d3927f7f3. This is not a compiler/test failure or a passing runtime claim."
+    },
+    {
+      "id": "EXP-F4",
+      "severity": "blocking",
+      "owned_seam": "#2501 / #3151: native qualifier fixture inventory denominator",
+      "source_path": "policy/release-identity-consumers.toml",
+      "source_line": 485,
+      "repair_route": "The existing qualification-provider-native-fixtures row declares one workspace-reader line but942/d288 contains two, in experience_native_controls and native_controls. The bounded authored correction updates only that row to count2, adds the existing experience function anchor and describes both fixture builders. The detector, marker classes, prerelease count1 and every other row remain unchanged. Independent affected/full review and actual denominator-guard execution must precede a Fixed runtime claim.",
+      "claim_boundary": "Source-proven 2-versus1 failure on942/d288, retained in PR comment6102591564. No observed native failure is claimed because heavy tests were skipped after the formatting failure. This record binds historical942 and excludes the correction."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4452#issuecomment-6102563320",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4452#issuecomment-6102591564"
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer: review the complete final31-path source and governance on its actual live base/head/unique merge base/synthetic and canonical native digest; retain the actual independent Review and timestamp only afterward, with a separately verified own-record-only bootstrap. Require all substantive feedback dispositions, applicable early gates before Ready and every applicable latest exact-pair check terminal green before a normal head-pinned merge, then verify the exact resulting-main guard. Reconcile actual guarded #4438 dependency first. Initial942 native readiness is neutral for a missing record, formatting failed, and the local execution backend is unavailable; none grants a bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114321968194"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4452",
+  "reviewed_at_utc": ""
+}
