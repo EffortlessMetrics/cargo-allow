@@ -4,34 +4,34 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4433,
   "base_ref": "main",
-  "base_sha": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
   "head_ref": "fix/4351-expiry-day-coherence",
-  "head_sha": "e4ed7f69dbdcdf22e96abac07a75d20296ac94c8",
-  "merge_base": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
-  "reviewed_diff_digest": "sha256:v1:83af1e5cc5f7413e6109b16188e4e1dfa793023b1d88722c7d03cfd89e6ae409",
+  "head_sha": "7dee12ec0ef424e6b262eb109bafc8118c539d2c",
+  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "reviewed_diff_digest": "sha256:v1:a9d21a85dc25a801b029827b5f8e7779d00da3c8dabcba713399b37e1d84e2ee",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthoring full source, consumer and integration reviewer. Authored none of this PR. Shared model family and inherited campaign context disclosed; coordinating account transports the review.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480573599"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480692504"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480573599",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5480692504",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#discussion_r4236062610",
-    "Fresh complete 14-path review covers strict policy-entry expiry, unchanged inclusive review/drain deadlines, raw New/Ambiguous posture, shared CLI/explain consumers, all lifecycle/allocator/hostile-Git-environment controls and the existing #4237 follow-up.",
-    "Independently verified hosted e4ed source and actual e381 synthetic commit objects, ordered parents, unique eb6 merge base, ba497 tree, full 44846-byte diff, all 2662 outside main entries and 13 owned nonpolicy entries.",
-    "Policy is the exact 747595-byte main prefix plus unchanged 1577-byte own suffix; 1093 unique IDs. Both exact-file revision-note fingerprints reproduce. The prior inline record-currentness thread is resolved and outdated.",
-    "Actual current pregate passes actionlint, formatting and enforcing no-new with zero new unreceipted findings and typed Complete. Broader native checks were running at review; they remain independent required gates."
+    "Fresh complete 14-path review covers strict policy-entry expiry, unchanged inclusive review/drain deadlines, raw New/Ambiguous posture, shared CLI/explain consumers, the complete lifecycle/allocator/hostile-Git-environment controls and the existing #4237 follow-up.",
+    "Independently verified hosted 7dee source and actual 7e097 synthetic objects, ordered parents, unique afa6 merge base, e0011 tree and complete 41486-byte diff. All 2665 outside main entries and 13 owned nonpolicy entries preserve exact modes/blobs.",
+    "Inspected incoming #4444 workflow/publisher and contract changes; no lifecycle interaction or lost main change. Policy is the exact 749172-byte main prefix plus unchanged 1577-byte own suffix, with 1095 unique IDs; both exact-file revision-note fingerprints reproduce.",
+    "The prior inline record-currentness thread remains resolved and outdated. Actual current pregate passes actionlint, formatting, enforcing no-new with zero new findings and typed Complete. Independently inspected actual 7dee local receipt. Broader native checks were running at review and remain separate gates."
   ],
   "required_ci": {
     "owner": "Coordinator must independently verify the own-record-only successor, all applicable current native checks, final live pair and substantive feedback, then exact post-merge main guard. Source review and metadata do not waive pending, failed, stale, skipped or unavailable evidence.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38080954875/job/114297582566"
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38083004020/job/114303610162"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4433",
-  "reviewed_at_utc": "2026-10-10T19:47:35Z"
+  "reviewed_at_utc": "2026-10-10T20:24:24Z"
 }
