@@ -9,8 +9,8 @@ use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type TestResult = Result<(), Box<dyn Error>>;
@@ -496,7 +496,8 @@ fn concurrent_fixture_reservations_keep_private_ownership() -> TestResult {
                 std::thread::Builder::new()
                     .spawn_scoped(scope, move || -> Result<PathBuf, String> {
                         ready.recv().map_err(|error| error.to_string())?;
-                        reserve_fixture_root(parent, 13, sequence).map_err(|error| error.to_string())
+                        reserve_fixture_root(parent, 13, sequence)
+                            .map_err(|error| error.to_string())
                     })
                     .map_err(|error| error.to_string())?,
             );
