@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4448,
+  "base_ref": "release/3925-provider-adapter",
+  "base_sha": "a57055b835bc6c3c85081158734157467ebc780b",
+  "head_ref": "release/3930-final-tag-driver",
+  "head_sha": "db79709a7003a25db1d505fa26b3121a7a18c023",
+  "merge_base": "a57055b835bc6c3c85081158734157467ebc780b",
+  "reviewed_diff_digest": "sha256:v1:7e9509c077587e9e2e3b64c27bc8d3854153a4659fda75323e84ceeab94f4f65",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of R7, R8 and the Windows correction, with shared model family and campaign context disclosed. Historical authorship of the unchanged canonical rehearsal helper is disclosed and is not independently reapproved by this review. The coordinating maintainer retained the actual independent model result; no independent human review is claimed. The same agent is now preparing this new JSON, which was absent from the historical reviewed source and has not itself been independently reviewed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5479891575"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4448#pullrequestreview-5479891575",
+    "Historical source/native scope only: db79709a7003a25db1d505fa26b3121a7a18c023, tree 720a598e6dae3f8866e2c8cd6a6e8e0e7771dd1d, reviewed base and unique merge base a57055b835bc6c3c85081158734157467ebc780b. The actual retained Review binds the complete 21-path, 358934-byte native diff 7e9509c077587e9e2e3b64c27bc8d3854153a4659fda75323e84ceeab94f4f65 and synthetic dfd96b096b5c4f5a2e3a947fa71992e7c4ad2d90 with exact [base,head] parents and the same tree.",
+    "The retained Review identifies the full source/native packet as 97313 bytes, SHA256 f2da52adbcc9dd5f9049b7b649334cfe2b816b9e124d8eaf2ea9c210a921aa9c. This metadata preparation reads the actual native Review and preserves that historical result; it does not represent a new execution or an independent re-review of the new JSON.",
+    "R7 is Fixed in that Review: one canonical helper, private argument/result grouping, unchanged historical Prepared reconstruction and fresh Request validation. The actual release-set Clippy -D warnings step passed. R8 is Fixed with actual measured collection and Windows evidence: 1287/1361 bridge lines, 63461/74438 overall lines (85.25%), and Codecov patch 95.01160% against the unchanged 85.02% threshold. No threshold, production exclusion or denominator was waived.",
+    "The retained Review records successful actual Ubuntu, ARM macOS, Intel macOS and Windows consumers using the inspected 42-test Unix and eight-test Windows selections, plus downloaded proof ZIPs and the exact-source pregate artifact. It explicitly reported full test pending at its packet cutoff and did not claim merge readiness. Later job completion is separate evidence and cannot silently expand the review to a changed source/base pair.",
+    "Currentness limitation at metadata preparation: raw source ref still names db79709a7003a25db1d505fa26b3121a7a18c023, but raw provider base ref now names 9cf153f099594578011818a3886efd6738dfe4fa while the PR API retains cached a570. This record intentionally preserves the historical reviewed base a570; it does not claim that a570 remains the live base. Actual guarded-main integration, retargeting and fresh full-current-pair review remain required.",
+    "This JSON is the sole added path and makes the effective scope 22 paths. The existing allow-review-4448-record policy entry and its existing added_allow note in .allow/revisions/3930-final-tag-driver.toml already carry fingerprint sha256:v1:0e029b548957d5d55f9ef56334d68c1e14af74cd146e9a1ff8c711d10e669893; neither file is changed. Independent review must inspect this new JSON and the complete current source/governance pair, then verify any applicable own-record-only bootstrap.",
+    "The historical source review claims no actual qualification/custody, seven-flag prevention, authorization, selected publication credential, final tag, package upload, public Release or live-setting operation. The metadata file supplies none of those authorities."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer: integrate the actual guarded main and retarget through normal history, obtain separate nonauthor review of the full resulting source/governance pair including this new JSON, and independently verify any own-record-only bootstrap before retaining current readiness. Require every applicable current native gate and substantive-feedback disposition, verify exact live head/base/ref/unique merge base and synthetic tree, then use a head-pinned normal merge and retain the exact new-main enforcing guard. Historical native success and this JSON do not authorize merge or release; pending, skipped, stale and neutral evidence is not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38066232843"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4448",
+  "reviewed_at_utc": "2026-10-10T16:35:41Z"
+}
