@@ -115,23 +115,50 @@ pub(super) fn reconcile(
     evidence: &[EvidenceInput],
     readback: Option<&ReadbackInput>,
 ) -> Admission {
+    let mut admission = Admission {
+        result: State::Complete,
+        currentness: FinalEvidenceCurrentnessV1::ProviderUnavailable,
+        notes: Vec::new(),
+    };
+    // Provider availability is independent of whether an original record is
+    // present or well-formed. Keep the specific record defect when a checked
+    // context exists; absence of that context still cannot acquire Current.
+    let now = match readback {
+        Some(readback) => match readback.experience_observed_at(subject) {
+            Ok(now) => {
+                admission.currentness = FinalEvidenceCurrentnessV1::Current;
+                Some(now)
+            }
+            Err(error) => {
+                admission.currentness = FinalEvidenceCurrentnessV1::InstrumentFailure;
+                admission.record(
+                    State::InstrumentFailure,
+                    format!("experience original readback context: {error}"),
+                );
+                None
+            }
+        },
+        None => {
+            admission.record(
+                State::NotProven,
+                "experience original member readback and current evaluation clock are absent",
+            );
+            None
+        }
+    };
     let (input, retained) = match original_pair(evidence) {
         Ok(pair) => pair,
-        Err(mut admission) => {
+        Err(problem) => {
+            admission.record(problem.result, problem.notes.join("; "));
             admission.retain_dependencies();
             return admission;
         }
     };
     let evaluated = evaluate_release_experience_v1(&input);
-    let mut admission = Admission {
-        result: evaluated.result,
-        currentness: FinalEvidenceCurrentnessV1::ProviderUnavailable,
-        notes: evaluated
-            .findings
-            .iter()
-            .map(|finding| finding.reason.clone())
-            .collect(),
-    };
+    admission.result = admission.result.min(evaluated.result);
+    admission
+        .notes
+        .extend(evaluated.findings.iter().map(|finding| finding.reason.clone()));
     if evaluated != retained {
         admission.record(
             State::Mismatch,
@@ -149,36 +176,22 @@ pub(super) fn reconcile(
             "duplicate experience documentation identity",
         );
     }
-    if let Some(readback) = readback {
-        match readback.experience_observed_at(subject) {
-            Ok(now) => {
-                admission.currentness = FinalEvidenceCurrentnessV1::Current;
-                if input.evaluated_at_unix_seconds > now
-                    || !now
-                        .checked_sub(input.observed_at_unix_seconds)
-                        .is_some_and(|age| {
-                            input.maximum_age_seconds > 0 && age <= input.maximum_age_seconds
-                        })
-                {
-                    admission.record(
-                        State::Stale,
-                        "experience is future-dated or expired at the checked provider observation",
-                    );
-                }
-                if let Err(problem) = bind_references(subject, selected_packages, &input, readback) {
-                    admission.record(problem.result, problem.notes.join("; "));
-                }
-            }
-            Err(error) => admission.record(
-                State::InstrumentFailure,
-                format!("experience original readback context: {error}"),
-            ),
+    if let (Some(readback), Some(now)) = (readback, now) {
+        if input.evaluated_at_unix_seconds > now
+            || !now
+                .checked_sub(input.observed_at_unix_seconds)
+                .is_some_and(|age| {
+                    input.maximum_age_seconds > 0 && age <= input.maximum_age_seconds
+                })
+        {
+            admission.record(
+                State::Stale,
+                "experience is future-dated or expired at the checked provider observation",
+            );
         }
-    } else {
-        admission.record(
-            State::NotProven,
-            "experience original member readback and current evaluation clock are absent",
-        );
+        if let Err(problem) = bind_references(subject, selected_packages, &input, readback) {
+            admission.record(problem.result, problem.notes.join("; "));
+        }
     }
     // An authentic download or matching model output is not a semantic proof.
     // No supported producer/reader currently discharges these three obligations.
@@ -231,10 +244,211 @@ fn reference<'a>(
     Ok(bytes)
 }
 
-fn decode<T: DeserializeOwned>(bytes: &[u8], label: &str) -> Result<T, Admission> {
+/// Close only this admission boundary over the current public V2 fields.
+/// Serde retains value, type and optional-field semantics; original bytes are
+/// never compared with or replaced by a re-serialized predecessor.
+fn object_fields(
+    value: &serde_json::Value,
+    allowed: &[&str],
+    label: &str,
+) -> Result<(), Admission> {
+    if let Some(fields) = value.as_object()
+        && let Some(field) = fields.keys().find(|field| !allowed.contains(&field.as_str()))
+    {
+        return Err(Admission::issue(
+            State::Malformed,
+            format!("{label} original has unknown field {field}"),
+        ));
+    }
+    Ok(())
+}
+
+fn candidate_fields(value: &serde_json::Value) -> Result<(), Admission> {
+    object_fields(
+        value,
+        &[
+            "schema_id",
+            "schema_version",
+            "topology_id",
+            "topology_digest",
+            "repository_commit",
+            "repository_tree",
+            "cargo_lock_digest",
+            "candidate_product_id",
+            "root_logical_id",
+            "root_package_name",
+            "root_package_version",
+            "target_class",
+            "feature_set_id",
+            "rows",
+            "known_exclusions",
+            "limitations",
+            "claim_boundary",
+        ],
+        "package candidate",
+    )?;
+    if let Some(rows) = value.get("rows").and_then(serde_json::Value::as_array) {
+        for (index, row) in rows.iter().enumerate() {
+            let label = format!("package candidate rows[{index}]");
+            object_fields(
+                row,
+                &[
+                    "logical_id",
+                    "cargo_package_name",
+                    "cargo_package_version",
+                    "rust_library_name",
+                    "workspace_source_path",
+                    "product_family",
+                    "publication_state",
+                    "publish",
+                    "support_tier",
+                    "release_order",
+                    "selected_features",
+                    "expected_manifest_identity",
+                    "expected_dependency_rows",
+                    "required_assets",
+                    "crate_digest",
+                    "crate_size_bytes",
+                ],
+                &label,
+            )?;
+            if let Some(dependencies) = row
+                .get("expected_dependency_rows")
+                .and_then(serde_json::Value::as_array)
+            {
+                for (dependency, value) in dependencies.iter().enumerate() {
+                    object_fields(
+                        value,
+                        &["package_name", "package_version", "dependency_kind"],
+                        &format!("{label} expected_dependency_rows[{dependency}]"),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn install_fields(value: &serde_json::Value) -> Result<(), Admission> {
+    object_fields(
+        value,
+        &[
+            "schema_id",
+            "schema_version",
+            "candidate_artifact_digest",
+            "repository_commit",
+            "repository_tree",
+            "cargo_lock_digest",
+            "registry_index_digest",
+            "external_cache_identity",
+            "source_checkout_denied",
+            "install_root_identity",
+            "cargo_home_identity",
+            "installed_executable_digest",
+            "installed_version_output",
+            "platform",
+            "toolchain",
+            "package_rows",
+            "graph_comparison",
+            "limitations",
+            "claim_boundary",
+        ],
+        "isolated install",
+    )?;
+    if let Some(rows) = value.get("package_rows").and_then(serde_json::Value::as_array) {
+        for (index, row) in rows.iter().enumerate() {
+            object_fields(
+                row,
+                &[
+                    "package_name",
+                    "package_version",
+                    "crate_digest",
+                    "index_checksum",
+                    "resolved_version",
+                ],
+                &format!("isolated install package_rows[{index}]"),
+            )?;
+        }
+    }
+    if let Some(graph) = value.get("graph_comparison") {
+        object_fields(
+            graph,
+            &[
+                "expected_packages",
+                "matched_packages",
+                "unexpected_packages",
+                "missing_packages",
+                "version_mismatches",
+                "path_sources",
+            ],
+            "isolated install graph_comparison",
+        )?;
+    }
+    Ok(())
+}
+
+fn journey_fields(value: &serde_json::Value) -> Result<(), Admission> {
+    object_fields(
+        value,
+        &[
+            "schema_id",
+            "schema_version",
+            "candidate_artifact_digest",
+            "isolated_install_receipt_digest",
+            "repository_commit",
+            "repository_tree",
+            "cargo_lock_digest",
+            "installed_executable_digest",
+            "installed_version_output",
+            "platform",
+            "toolchain",
+            "support_matrix_generation",
+            "package_rows",
+            "journey_steps",
+            "artifact_schema_results",
+            "scanner_completeness",
+            "diff_base_identity",
+            "limitations",
+            "not_included",
+            "claim_boundary",
+        ],
+        "exact candidate",
+    )?;
+    if let Some(rows) = value.get("package_rows").and_then(serde_json::Value::as_array) {
+        for (index, row) in rows.iter().enumerate() {
+            object_fields(
+                row,
+                &[
+                    "logical_id",
+                    "package_name",
+                    "package_version",
+                    "crate_digest",
+                ],
+                &format!("exact candidate package_rows[{index}]"),
+            )?;
+        }
+    }
+    if let Some(steps) = value.get("journey_steps").and_then(serde_json::Value::as_array) {
+        for (index, step) in steps.iter().enumerate() {
+            object_fields(
+                step,
+                &["id", "exit_code", "artifact_schema_id"],
+                &format!("exact candidate journey_steps[{index}]"),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+fn decode<T: DeserializeOwned>(
+    bytes: &[u8],
+    label: &str,
+    check_fields: fn(&serde_json::Value) -> Result<(), Admission>,
+) -> Result<T, Admission> {
     let value = super::rehearsal::decode(bytes).map_err(|error| {
         Admission::issue(State::Malformed, format!("{label} original JSON: {error}"))
     })?;
+    check_fields(&value)?;
     serde_json::from_value(value).map_err(|error| {
         Admission::issue(State::Malformed, format!("{label} original contract: {error}"))
     })
@@ -249,9 +463,12 @@ fn bind_references(
     let candidate_bytes = reference(readback, "experience:package-candidate", &input.candidate_digest)?;
     let install_bytes = reference(readback, "experience:isolated-install", &input.install_digest)?;
     let journey_bytes = reference(readback, "experience:exact-candidate", &input.journey_digest)?;
-    let candidate: PackageCandidatePayloadV2 = decode(candidate_bytes, "package candidate")?;
-    let install: IsolatedInstallPayloadV2 = decode(install_bytes, "isolated install")?;
-    let journey: ExactCandidatePayloadV2 = decode(journey_bytes, "exact candidate")?;
+    let candidate: PackageCandidatePayloadV2 =
+        decode(candidate_bytes, "package candidate", candidate_fields)?;
+    let install: IsolatedInstallPayloadV2 =
+        decode(install_bytes, "isolated install", install_fields)?;
+    let journey: ExactCandidatePayloadV2 =
+        decode(journey_bytes, "exact candidate", journey_fields)?;
     validate_predecessors(&candidate, &install, &journey)?;
     if !same_digest(&install.candidate_artifact_digest, &input.candidate_digest)
         || !same_digest(&journey.candidate_artifact_digest, &input.candidate_digest)

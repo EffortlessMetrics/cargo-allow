@@ -69,7 +69,7 @@ fn actual_qualifier_prepares_reads_back_composes_and_replays()
     if !stdout.contains("actual prepare/readback/typed-compose/serialized-replay positive; 8 discriminating controls; zero provider mutations") {
         return Err("native qualifier acceptance did not complete its actual consumer controls".into());
     }
-    if !stdout.contains("native experience: original receipts and references retained; 12 direct-row/compiled-consumer/replay controls; zero provider mutations") {
+    if !stdout.contains("native experience: original receipts and references retained; 20 direct-row/compiled-consumer/replay controls; zero provider mutations") {
         return Err("native experience admission did not run its actual consumer controls".into());
     }
     Ok(())

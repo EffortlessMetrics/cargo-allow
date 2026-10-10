@@ -334,6 +334,15 @@ fn prepare_inputs(
     args: &ReleaseFreezeComposeArgs,
     readback: Option<&qualification::ReadbackInput>,
 ) -> CargoAllowResult<PreparedInputs> {
+    prepare_inputs_with_registry_context(root, args, readback, None)
+}
+
+fn prepare_inputs_with_registry_context(
+    root: &Path,
+    args: &ReleaseFreezeComposeArgs,
+    readback: Option<&qualification::ReadbackInput>,
+    registry_expected: Option<(&allow_report::FinalRegistryContextV1, u64, u64)>,
+) -> CargoAllowResult<PreparedInputs> {
     let mut subject =
         SubjectIdentity::collect(&mut FilesystemSubjectInputs { root }, &args.version)?;
     if let Some(readback) = readback {
@@ -350,7 +359,7 @@ fn prepare_inputs(
     // #3792/#2501 must supply independently verified current registry context,
     // evaluation time, and a selected freshness window. Retained input fields
     // cannot fill this authority gap or make the production freeze Current.
-    let registry = registry::reconcile(&subject, &package_rows, &evidence, None);
+    let registry = registry::reconcile(&subject, &package_rows, &evidence, registry_expected);
     let mut graph = build_evidence_graph(
         &subject,
         &selection,
@@ -435,6 +444,17 @@ struct PreparedInputs {
 }
 
 fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult<()> {
+    compose_with_registry_context(root, args, None)
+}
+
+/// Reuse the composition pipeline with the existing registry authority port.
+/// Production has no independent context producer and therefore passes None;
+/// tests can select context/time without copying the retained input's authority.
+fn compose_with_registry_context(
+    root: &Path,
+    args: &ReleaseFreezeComposeArgs,
+    registry_expected: Option<(&allow_report::FinalRegistryContextV1, u64, u64)>,
+) -> CargoAllowResult<()> {
     let PreparedInputs {
         subject,
         selection,
@@ -446,7 +466,7 @@ fn cmd_compose(root: &Path, args: &ReleaseFreezeComposeArgs) -> CargoAllowResult
         receipt,
         receipt_bytes,
         registry,
-    } = prepare_inputs(root, args, None)?;
+    } = prepare_inputs_with_registry_context(root, args, None, registry_expected)?;
     let evaluation = evaluate_final_evidence_graph(&graph);
     let readiness = readiness_decision_inputs_observed(&subject, &selection, &evidence, None, None)
         .map(|inputs| aggregate_final_readiness(&graph, &inputs));

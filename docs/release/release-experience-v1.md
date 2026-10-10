@@ -87,8 +87,18 @@ evaluation time. It does not re-render a replacement receipt. Current
 freshness is checked separately against the qualifier's checked observation
 time and the input's existing age window. Missing, changed, foreign, expired,
 or incorrectly mapped references block admission with a specific result.
+A checked provider context remains current when an original record is missing
+or malformed: the direct input readiness row identifies missing evidence,
+rather than a provider outage. Without checked readback, provider currentness
+remains unavailable. Dependent rows retain the graph's existing transitive
+staleness rules.
 
 The three existing predecessor validators remain their contract owners.
+This admission boundary rejects unknown top-level and nested fields in their
+existing V2 object shapes. Their known optional fields retain the public
+models' null, empty, omitted and value/type semantics; the adapter neither
+rewrites the public DTOs nor compares a re-serialized replacement with the
+original bytes.
 Admission also binds their original digests, installed executable identity,
 source commit/tree, version, platform, toolchain, support generation, selected
 package denominator, and upload archive bytes. Their lock digests keep their
@@ -139,7 +149,11 @@ experience admission can become `Complete`.
 The new unit controls exercise original-pair agreement, the three lock
 meanings, missing or changed reference bytes, foreign source and producer
 identity, stale clocks, friction, required readiness rows, and custody
-serialization. A consistently forged model-level `Complete` pair with
+serialization. Direct and compiled-consumer controls also distinguish missing
+records from provider outages and reject unknown predecessor fields with
+all affected reference digests consistently updated. Allowed optional values
+and noncanonical original JSON bytes must survive custody unchanged.
+A consistently forged model-level `Complete` pair with
 arbitrary pilot and documentation bytes must still be `NotProven` at the
 admission boundary.
 

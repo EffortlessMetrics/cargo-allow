@@ -817,3 +817,299 @@ fn serialized_replay_recomputes_an_experience_reference_digest() -> ExperienceRe
     }
     Ok(())
 }
+
+impl OriginalBundle {
+    fn predecessors(&self) -> ExperienceResult<[serde_json::Value; 3]> {
+        let read = |id| -> ExperienceResult<serde_json::Value> {
+            let (_, member) = self.readback.member(id)?.ok_or("predecessor missing")?;
+            Ok(serde_json::from_slice(&member.bytes)?)
+        };
+        Ok([
+            read("experience:package-candidate")?,
+            read("experience:isolated-install")?,
+            read("experience:exact-candidate")?,
+        ])
+    }
+
+    // Fixture-only mutation reseals every downstream reference so the actual
+    // admission defect, rather than an unrelated stale digest, is the oracle.
+    fn reseal_predecessors(
+        &mut self,
+        [candidate, mut install, mut journey]: [serde_json::Value; 3],
+    ) -> ExperienceResult {
+        let bytes = |value: &serde_json::Value| -> ExperienceResult<Vec<u8>> {
+            let mut bytes = serde_json::to_vec_pretty(value)?;
+            bytes.push(b'\n');
+            Ok(bytes)
+        };
+        self.input.candidate_digest = self.put(
+            "experience:package-candidate",
+            "ExperienceReference",
+            bytes(&candidate)?,
+        )?;
+        install["candidate_artifact_digest"] =
+            serde_json::Value::String(self.input.candidate_digest.clone());
+        self.input.install_digest = self.put(
+            "experience:isolated-install",
+            "ExperienceReference",
+            bytes(&install)?,
+        )?;
+        journey["candidate_artifact_digest"] =
+            serde_json::Value::String(self.input.candidate_digest.clone());
+        journey["isolated_install_receipt_digest"] =
+            serde_json::Value::String(self.input.install_digest.clone());
+        self.input.journey_digest = self.put(
+            "experience:exact-candidate",
+            "ExperienceReference",
+            bytes(&journey)?,
+        )?;
+        self.pair()
+    }
+}
+
+#[test]
+fn predecessor_unknown_fields_are_refused_at_every_existing_object_shape() -> ExperienceResult {
+    for (label, predecessor, pointer) in [
+        ("package candidate", 0, ""),
+        ("package candidate rows[0]", 0, "/rows/0"),
+        (
+            "package candidate rows[0] expected_dependency_rows[0]",
+            0,
+            "/rows/0/expected_dependency_rows/0",
+        ),
+        ("isolated install", 1, ""),
+        ("isolated install package_rows[0]", 1, "/package_rows/0"),
+        ("isolated install graph_comparison", 1, "/graph_comparison"),
+        ("exact candidate", 2, ""),
+        ("exact candidate package_rows[0]", 2, "/package_rows/0"),
+        ("exact candidate journey_steps[0]", 2, "/journey_steps/0"),
+    ] {
+        let mut original = bundle()?;
+        let mut predecessors = original.predecessors()?;
+        predecessors[0]["rows"][0]["expected_dependency_rows"] = serde_json::json!([{
+            "package_name": "serde", "package_version": "1", "dependency_kind": "external"
+        }]);
+        original.reseal_predecessors(predecessors)?;
+        let before = original.admission()?;
+        if before.result != State::NotProven || before.notes.len() != 3 {
+            return Err(format!("valid field-control baseline failed: {:?}", before.notes).into());
+        }
+        let mut predecessors = original.predecessors()?;
+        predecessors[predecessor]
+            .pointer_mut(pointer)
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("selected predecessor object missing")?
+            .insert("unrecognized_observation".to_string(), serde_json::json!(true));
+        original.reseal_predecessors(predecessors)?;
+        original.readback.validate(&original.subject)?;
+        assert_admission(
+            &original,
+            State::Malformed,
+            &format!("{label} original has unknown field unrecognized_observation"),
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn predecessor_optional_null_empty_and_omitted_fields_keep_existing_semantics()
+-> ExperienceResult {
+    for explicit in [false, true] {
+        let mut original = bundle()?;
+        let mut predecessors = original.predecessors()?;
+        for (predecessor, pointer, field) in [
+            (0, "", "topology_digest"),
+            (1, "/package_rows/0", "resolved_version"),
+            (2, "/journey_steps/0", "artifact_schema_id"),
+        ] {
+            let object = predecessors[predecessor]
+                .pointer_mut(pointer)
+                .and_then(serde_json::Value::as_object_mut)
+                .ok_or("selected optional-field object missing")?;
+            if explicit {
+                object.insert(field.to_string(), serde_json::Value::Null);
+            } else {
+                object.remove(field);
+            }
+        }
+        let journey = predecessors[2].as_object_mut().ok_or("journey object missing")?;
+        if explicit {
+            journey.insert("not_included".to_string(), serde_json::json!([]));
+        } else {
+            journey.remove("not_included");
+        }
+        // These existing graph arrays allow empty values but have no serde
+        // default. Keep them present; omission is not an accepted alternative.
+        for field in [
+            "unexpected_packages",
+            "missing_packages",
+            "version_mismatches",
+            "path_sources",
+        ] {
+            predecessors[1]["graph_comparison"][field] = serde_json::json!([]);
+        }
+        original.reseal_predecessors(predecessors)?;
+        let before = original.readback.custody(&original.subject, "optional-originals")?;
+        let admission = original.admission()?;
+        let after = original.readback.custody(&original.subject, "optional-originals")?;
+        if admission.result != State::NotProven
+            || admission.notes.len() != 3
+            || before != after
+        {
+            return Err(format!(
+                "allowed optional values or original bytes changed: {:?}",
+                admission.notes
+            )
+            .into());
+        }
+        let (custody, retained) = after;
+        for id in [
+            "experience:package-candidate",
+            "experience:isolated-install",
+            "experience:exact-candidate",
+        ] {
+            let (_, member) = original.readback.member(id)?.ok_or("original missing")?;
+            let retained = retained
+                .iter()
+                .find(|item| item.artifact_id == id)
+                .ok_or("original not retained")?;
+            let item = custody
+                .items
+                .iter()
+                .find(|item| item.artifact_id == id)
+                .ok_or("original custody missing")?;
+            if retained.declared_sha256 != sha256_v1_bytes(&member.bytes)
+                || retained.bytes != RetainedArtifactBytesV1::new(member.bytes.clone())
+                || !item.storage_locator.contains("/505/")
+            {
+                return Err("noncanonical original bytes lost their exact custody identity".into());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -> ExperienceResult {
+    for (case, expected) in [
+        ("missing", State::Incomplete),
+        ("duplicate", State::Malformed),
+        ("malformed", State::Malformed),
+    ] {
+        let mut original = bundle()?;
+        if case == "malformed" {
+            let mut input = serde_json::to_value(&original.input)?;
+            input["maximum_age_seconds"] = serde_json::json!("not an integer");
+            original.put(
+                "evidence:experience-input",
+                "Evidence:experience-input",
+                serde_json::to_vec(&input)?,
+            )?;
+        }
+        original.readback.validate(&original.subject)?;
+        let mut evidence = original.evidence()?;
+        match case {
+            "missing" => {
+                evidence.retain(|item| item.role != FreezeEvidenceRole::ReleaseExperienceInput);
+            }
+            "duplicate" => {
+                evidence.push(original.evidence()?.pop().ok_or("result missing")?);
+            }
+            _ => {}
+        }
+        let selection = command::tests::selection();
+        let current = allow_report::ObservationReadingV1 {
+            freshness: allow_report::ObservationFreshnessV1::Current,
+            detail: "explicit diagnostic control".to_string(),
+        };
+        let mut graph = command::build_evidence_graph(
+            &original.subject,
+            &selection,
+            &evidence,
+            &original.packages,
+            None,
+            (FinalEvidenceNodeResultV1::Complete, &current),
+        );
+        let mut decisions =
+            command::readiness_decision_inputs(&original.subject, &selection, &evidence);
+        decisions.remaining_reversible_work.clear();
+        // Explicit unit fixtures fix unrelated gates and establish the positive
+        // baseline. The actual admission below restores both required defects.
+        for node in &mut graph.nodes {
+            node.result = FinalEvidenceNodeResultV1::Complete;
+            node.currentness = FinalEvidenceCurrentnessV1::Current;
+        }
+        if aggregate_final_readiness(&graph, &decisions).verdict
+            != FinalReadinessVerdictV1::ReadyForFreeze
+        {
+            return Err("diagnostic unrelated-gate baseline was not ready".into());
+        }
+        for readback in [Some(&original.readback), None] {
+            let admission = command::experience::reconcile(
+                &original.subject,
+                &original.packages,
+                &evidence,
+                readback,
+            );
+            let expected_currentness = if readback.is_some() {
+                FinalEvidenceCurrentnessV1::Current
+            } else {
+                FinalEvidenceCurrentnessV1::ProviderUnavailable
+            };
+            if admission.result != expected || admission.currentness != expected_currentness {
+                return Err(
+                    format!("pair defect lost its independent readback context: {case}").into(),
+                );
+            }
+            let mut affected = graph.clone();
+            command::experience::apply(&mut affected, &admission);
+            let readiness = aggregate_final_readiness(&affected, &decisions);
+            for id in ["release-experience-input", "release-experience"] {
+                let node = affected
+                    .nodes
+                    .iter()
+                    .find(|node| node.evidence_id == id)
+                    .ok_or("required experience node missing")?;
+                if !node.required
+                    || node.authority_scope
+                        != allow_report::FinalEvidenceAuthorityScopeV1::FinalExact
+                    || !affected.required_node_ids.iter().any(|required| required == id)
+                    || node.result != admission.graph_result()
+                    || node.currentness != expected_currentness
+                    || (readback.is_some()
+                        && readiness.rows.iter().any(|row| {
+                            row.evidence_id.as_deref() == Some(id)
+                                && row.kind
+                                    == allow_report::FinalReadinessRowKindV1::ProviderUnavailable
+                        }))
+                {
+                    return Err(
+                        format!("required row acquired a false provider outage: {case}/{id}").into(),
+                    );
+                }
+            }
+            let input = readiness
+                .rows
+                .iter()
+                .find(|row| row.evidence_id.as_deref() == Some("release-experience-input"))
+                .ok_or("direct input readiness row missing")?;
+            let (kind, action) = if readback.is_some() {
+                (
+                    allow_report::FinalReadinessRowKindV1::MissingEvidence,
+                    "produce the exact evidence result on the selected subject",
+                )
+            } else {
+                (
+                    allow_report::FinalReadinessRowKindV1::ProviderUnavailable,
+                    "restore provider access and re-observe through the exact producer",
+                )
+            };
+            if input.kind != kind || input.next_action != action {
+                return Err(format!("wrong direct pair-defect action: {case}/{input:?}").into());
+            }
+            // The dependent result may remain transitively Stale. Do not
+            // change aggregate precedence or graph dependency semantics.
+        }
+    }
+    Ok(())
+}

@@ -3,8 +3,10 @@ body: >-
   Require the original installed-experience input and result in final-freeze
   admission, retain their exact small reference records through authenticated
   custody and replay, and refuse mismatched results, missing or foreign
-  references, stale observations and producer drift. Preserve the existing
-  package/install/journey contracts and their distinct lock meanings. Remove
+  references, stale observations, unknown predecessor fields and producer drift.
+  Keep missing or malformed records distinct from provider unavailability
+  when checked readback exists. Preserve the existing package/install/journey
+  contracts and their distinct lock meanings. Remove
   fabricated pilot applicability decisions; absent pilot, executed-case and
   installed-documentation semantic producers remain explicit required holds
   even when a supplied model-level result claims Complete.

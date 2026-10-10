@@ -1,0 +1,42 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4442,
+  "base_ref": "main",
+  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "head_ref": "fix/4441-rehearsal-token-boundary",
+  "head_sha": "39e7632ed5579a60ce9b7ed647a82cb9a208454f",
+  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "reviewed_diff_digest": "sha256:v1:ef7c6822d965abdab28c74e2f54dbe0b3ec2469a03801eeba1b4893027b39e45",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/boundary_current_review: separate nonauthor full six-path source, consumer, oracle, governance and incoming-main review. Authored none of this PR's source, tests, policy, review record or integrations. Previous review5480547883, shared model family and campaign context are disclosed. Coordinating root writes only this retained record.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5480664821"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4442#pullrequestreview-5480664821",
+    "Complete six-path effective diff, current full files, #4441 acceptance, #3792 scope, actual producer/consumers, refreshed PR body, policy/note, historical record and feedback inspected. Exact synthetic c1ead2f1d50f0606ea47618ac852c2cc4ebe8702 has ordered [afa6a7d7d870229542de1aac368c852349003fe7,39e7632ed5579a60ce9b7ed647a82cb9a208454f] parents and tree2fe78e5a1b70b6ed683a1d567b3373605bbe5da7.",
+    "Both public entry points reject the selected CARGO_REGISTRY_TOKEN key, including an empty value, before subject/output/process/phase work. Names-only admission does not retrieve the selected value. All thirteen producer-owned subprocess calls explicitly use the environment that filters the key before reading permitted values.",
+    "Final selected-key presence is observed after final checkout and before aggregation. Presence forces InstrumentFailure, outranks an earlier Mismatch, and removes contradictory earlier authorization detail. Real builder/CLI controls cover workflow/checkout introduction, empty/nonempty traps, unchanged token-free results and Mismatch precedence. The current native wrapper selects TestReceiptOutput.",
+    "The optional authorization detail remains readable when absent; actual freeze admission rejects missing detail and the failed phase/aggregate. Eight phases, schema1.0, authorization Incomplete and all seven false wider prevention flags remain unchanged.",
+    "Incoming main #4444 interactions are coherent. Rehearsal invokes only publisher --mode cargo-allow --package-only or --registry-preflight, avoiding its selected-token/upload seam. Publisher default child environments filter before value lookup. The native fixture copies the publisher, oracle and workflow verbatim; the actual producer requires the oracle child's success. This inspected chain is not a new local runtime or full-workflow confinement claim.",
+    "All 2672 outside-scope afa6 leaves and all five owned nonpolicy source1449 blobs/modes are exact. Policy is the exact 749172-byte main prefix plus unchanged 1577-byte owned tail:750749 bytes and1095 unique IDs. Both review exceptions and the revision note remain exact-file scoped; prior entries, settings, selectors and lifecycle dates are unchanged.",
+    "Actual current pregate114302944348 checks out synthetic c1ead2f1 and passes enforcing no-new plus typed Complete for39e/afa6. Current workflow syntax/construction/security pass. Canonical full diff is read directly from native readiness114303298524. No local digest reconstruction, Rust/Python/formatter/guard execution or independent archive-member readback is claimed during the execution-service outage.",
+    "Review5480664821 explicitly retains the broader current matrix and aggregate as pending. Historical1449/eb6 all26 native jobs and four-platform14-test results remain earlier-pair evidence. This record does not promote them to39e/afa6 or to this metadata successor.",
+    "Comments4237706148 and4237708715 identify the same source-fixed final-observation defect. Comment4237706154 identifies the historical record/digest. This sole-own-JSON successor binds the actual current source Review and timestamp above; independent metadata bootstrap and evidence-backed disposition of all three threads remain required. The earlier bf626/a611 JSON and #3844 canonical/ancestor-recomputation debt remain historical, not newly validated.",
+    "No continuous token absence, alternate credential/configuration or descendant isolation, complete #3792 prevention, #2501 qualification, custody, Complete freeze or publication authority is established."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account must independently verify this sole-own-record successor, reconcile substantive feedback and check the exact live main/head/merge-base/synthetic pair. Ready requires completed non-blocking current source and metadata review with applicable early gates; every applicable current check must be terminal green before merge. Pending, skipped, stale, neutral, failed and malformed evidence are not green. Use a head-pinned normal merge and retain the exact post-main enforcing guard.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38082776374/job/114302944348"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4442",
+  "reviewed_at_utc": "2026-10-10T20:16:34Z"
+}

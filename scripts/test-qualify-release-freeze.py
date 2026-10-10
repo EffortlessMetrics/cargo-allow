@@ -670,11 +670,32 @@ def experience_originals(root, commit, tree, package_set):
     return files, members
 
 
+
+def reseal_experience_predecessors(originals, original_input, predecessors):
+    """Fixture-only resealing keeps each negative at its intended admission row."""
+    candidate, install, journey = predecessors
+    candidate_path = "experience-package-candidate.json"
+    install_path = "experience-isolated-install.json"
+    journey_path = "experience-exact-candidate.json"
+    originals[candidate_path] = json.dumps(candidate, indent=2).encode() + b"\n"
+    original_input["candidate_digest"] = BASE_FIXTURE.digest(originals[candidate_path])
+    install["candidate_artifact_digest"] = original_input["candidate_digest"]
+    originals[install_path] = json.dumps(install, indent=2).encode() + b"\n"
+    original_input["install_digest"] = BASE_FIXTURE.digest(originals[install_path])
+    journey["candidate_artifact_digest"] = original_input["candidate_digest"]
+    journey["isolated_install_receipt_digest"] = original_input["install_digest"]
+    originals[journey_path] = json.dumps(journey, indent=2).encode() + b"\n"
+    original_input["journey_digest"] = BASE_FIXTURE.digest(originals[journey_path])
+
+
 def experience_native_controls(binary):
     """Run actual prepare/readback/qualify/replay; never substitute an evaluator."""
     cases = ("not_proven", "forged_complete", "missing_input", "missing_result",
              "missing_reference", "changed_reference", "reference_role", "foreign_journey",
-             "expired", "changed_result", "duplicate_json", "producer")
+             "expired", "changed_result", "duplicate_json", "producer",
+             "unknown_package_top", "unknown_package_nested", "unknown_install_top",
+             "unknown_install_nested", "unknown_journey_top", "unknown_journey_nested",
+             "optional_fields", "malformed_input")
     with tempfile.TemporaryDirectory(prefix="experience-native-") as directory:
         directory = Path(directory)
         root = directory / "repo"
@@ -733,6 +754,28 @@ def experience_native_controls(binary):
                 original_result["evaluated_at_unix_seconds"] = NOW - 990
             elif case == "changed_result":
                 original_result["retained_evidence"] = []
+            elif case.startswith("unknown_") or case == "optional_fields":
+                predecessors = [json.loads(originals[path]) for path in (
+                    "experience-package-candidate.json", "experience-isolated-install.json",
+                    "experience-exact-candidate.json")]
+                if case == "optional_fields":
+                    predecessors[0]["topology_digest"] = None
+                    predecessors[1]["package_rows"][0]["resolved_version"] = None
+                    predecessors[2]["journey_steps"][0]["artifact_schema_id"] = None
+                    predecessors[2].pop("not_included")
+                else:
+                    predecessor, path = {
+                        "unknown_package_top":(0, ()), "unknown_package_nested":(0, ("rows", 0)),
+                        "unknown_install_top":(1, ()), "unknown_install_nested":(1, ("graph_comparison",)),
+                        "unknown_journey_top":(2, ()), "unknown_journey_nested":(2, ("journey_steps", 0)),
+                    }[case]
+                    target = predecessors[predecessor]
+                    for key in path:
+                        target = target[key]
+                    target["unrecognized_observation"] = True
+                reseal_experience_predecessors(originals, original_input, predecessors)
+            elif case == "malformed_input":
+                original_input["maximum_age_seconds"] = "not an integer"
             originals["evidence-experience-input.json"] = json.dumps(original_input, indent=2).encode() + b"\n"
             originals["evidence-release-experience.json"] = json.dumps(original_result, indent=2).encode() + b"\n"
             if case in ("missing_input", "missing_result", "missing_reference"):
@@ -790,7 +833,11 @@ def experience_native_controls(binary):
                 expected = {"not_proven":"not_proven", "forged_complete":"not_proven",
                     "missing_input":"incomplete", "missing_result":"incomplete", "missing_reference":"incomplete",
                     "changed_reference":"mismatch", "reference_role":"mismatch", "foreign_journey":"mismatch",
-                    "expired":"stale", "changed_result":"mismatch"}[case]
+                    "expired":"stale", "changed_result":"mismatch",
+                    "unknown_package_top":"malformed", "unknown_package_nested":"malformed",
+                    "unknown_install_top":"malformed", "unknown_install_nested":"malformed",
+                    "unknown_journey_top":"malformed", "unknown_journey_nested":"malformed",
+                    "optional_fields":"not_proven", "malformed_input":"malformed"}[case]
                 readiness = result["readiness"]
                 if (result["post_merge_qualification"] != "EquivalentTree"
                         or result["custody_disposition"] != "Complete"
@@ -800,11 +847,25 @@ def experience_native_controls(binary):
                 for logical_id in ("release-experience-input", "release-experience"):
                     node = next(item for item in replay["evidence_graph"]["nodes"] if item["evidence_id"] == logical_id)
                     if (node["result"] != expected or not node["required"]
+                            or node["authority_scope"] != "final_exact"
                             or logical_id not in replay["evidence_graph"]["required_node_ids"]
                             or not any(row.get("evidence_id") == logical_id for row in readiness["rows"])):
                         raise AssertionError("actual required experience row was masked or lost: " + case + "/" + logical_id)
-                    if case in ("not_proven", "forged_complete") and any(owner not in node["claim_boundary"] for owner in ("#2466", "#3149", "#3151")):
+                    if case in ("not_proven", "forged_complete", "optional_fields") and any(owner not in node["claim_boundary"] for owner in ("#2466", "#3149", "#3151")):
                         raise AssertionError("matching model output fabricated an absent semantic producer")
+                    if case.startswith("unknown_") and "unknown field unrecognized_observation" not in node["claim_boundary"]:
+                        raise AssertionError("unknown-field control was masked by a different defect")
+                    if case in ("missing_input", "missing_result", "malformed_input") or case.startswith("unknown_"):
+                        if (node["currentness"] != "current"
+                                or any(row.get("evidence_id") == logical_id and row["kind"] == "provider_unavailable"
+                                       for row in readiness["rows"])):
+                            raise AssertionError("valid readback acquired a false provider outage")
+                if case in ("missing_input", "missing_result", "malformed_input") or case.startswith("unknown_"):
+                    direct = next(row for row in readiness["rows"] if row.get("evidence_id") == "release-experience-input")
+                    if (direct["kind"] != "missing_evidence"
+                            or direct["next_action"] != "produce the exact evidence result on the selected subject"):
+                        raise AssertionError("actual direct input row lost its precise evidence action")
+                    # The dependent result may legitimately remain transitively stale.
                 if replay["retained_transfers"] != [world.objects[selection["artifact_id"]]["transfer"]
                                                    for selection in world.selection["artifacts"]]:
                     raise AssertionError("original producer envelopes were relabeled")

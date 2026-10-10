@@ -174,6 +174,11 @@ pub(super) fn require_noncomplete_composition(
             FinalEvidenceNodeResultV1::Mismatch
         } else if node.evidence_id == "registry-observation" {
             FinalEvidenceNodeResultV1::NotProven
+        } else if matches!(
+            node.evidence_id.as_str(),
+            "release-experience-input" | "release-experience"
+        ) {
+            FinalEvidenceNodeResultV1::Incomplete
         } else {
             FinalEvidenceNodeResultV1::Complete
         };

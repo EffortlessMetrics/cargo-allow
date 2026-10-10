@@ -572,12 +572,80 @@ fn registry_freshness_uses_independent_context_clock_and_selected_window() -> Te
     Ok(())
 }
 
+#[test]
+fn complete_adapter_contract_requires_selected_context_and_no_fixture_origin() -> TestResult {
+    use ObservationFreshnessV1 as Freshness;
+
+    let subject = super::tests::subject();
+    let (input, selected, context) = fixture(&subject, None)?;
+    // This is an explicit adapter-contract fixture, not the public observer.
+    // Its synthetic proven permissions exercise the consumer's Complete arm;
+    // no public observation is upgraded to manufacture those permissions.
+    let mut external = serde_json::to_value(&input)?;
+    for (index, _) in input.observations.iter().enumerate() {
+        for dimension in ["version", "owner", "authority"] {
+            super::rehearsal_tests::replace(
+                &mut external,
+                &format!("/observations/{index}/{dimension}_provenance/origin"),
+                json!("external_provider"),
+            )?;
+        }
+    }
+    let input: FinalRegistryPreflightInputV1 = serde_json::from_value(external.clone())?;
+    if evaluate_final_registry_preflight_v1(&input).result
+        != FinalRegistryPreflightResultV1::Complete
+    {
+        return Err("the explicit complete adapter fixture is not Complete".into());
+    }
+    let evidence = [retained(&subject, external.clone())?];
+    require_result(
+        &super::registry::reconcile(&subject, &selected, &evidence, Some((&context, 110, 10))),
+        Node::Complete,
+        Freshness::Current,
+    )?;
+    require_result(
+        &super::registry::reconcile(&subject, &selected, &evidence, None),
+        Node::NotProven,
+        Freshness::ProviderUnavailable,
+    )?;
+    for dimension in ["version", "owner", "authority"] {
+        let mut changed = external.clone();
+        super::rehearsal_tests::replace(
+            &mut changed,
+            &format!("/observations/0/{dimension}_provenance/origin"),
+            json!("test_fixture"),
+        )?;
+        if changed == external {
+            return Err("the individual fixture-origin control did not change input".into());
+        }
+        let evidence = [retained(&subject, changed)?];
+        for expected in [None, Some((&context, 110, 10))] {
+            let result = super::registry::reconcile(&subject, &selected, &evidence, expected);
+            require_result(&result, Node::NotProven, Freshness::ProviderUnavailable)?;
+            if !result.2.detail.contains("TestFixture provenance") {
+                return Err("the individual fixture-origin authority hold disappeared".into());
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Execute the delivered observer's actual main, HTTP response projection,
 /// evidence retention, and candidate-input merge. Only the HTTP transport and
 /// clock are fixtures; owner/authority outputs are never upgraded.
 fn observe(
     input: &FinalRegistryPreflightInputV1,
 ) -> Result<FinalRegistryPreflightInputV1, Box<dyn Error>> {
+    observe_scenario(input, "authority_not_proven").map(|(observed, _)| observed)
+}
+
+/// The returned digest comes from the separately retained response artifact.
+/// A test-selected context can bind it without copying current_context from
+/// the observer's merged input. This is not a production authority producer.
+fn observe_scenario(
+    input: &FinalRegistryPreflightInputV1,
+    scenario: &str,
+) -> Result<(FinalRegistryPreflightInputV1, String), Box<dyn Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .and_then(Path::parent)
@@ -585,6 +653,7 @@ fn observe(
     let mut child = Command::new("python")
         .args(["-I", "-B", "-c", OBSERVER_FIXTURE])
         .arg(root.join("scripts/final-registry-observation.py"))
+        .arg(scenario)
         .env_remove("CARGO_REGISTRY_TOKEN")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -603,7 +672,19 @@ fn observe(
         )
         .into());
     }
-    Ok(serde_json::from_slice(&output.stdout)?)
+    let envelope: Json = serde_json::from_slice(&output.stdout)?;
+    let observed = serde_json::from_value(
+        envelope
+            .get("input")
+            .ok_or("observer fixture input absent")?
+            .clone(),
+    )?;
+    let provider_digest = envelope
+        .get("provider_state_digest")
+        .and_then(Json::as_str)
+        .ok_or("retained response binding absent")?
+        .to_string();
+    Ok((observed, provider_digest))
 }
 
 const OBSERVER_FIXTURE: &str = r#"
@@ -625,6 +706,13 @@ producer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(producer)
 candidate = json.load(sys.stdin)
 shared = {row['package_name']: row['expected_checksum'] for row in candidate['shared_authorities']}
+scenario = sys.argv[2]
+expected_calls = {'authority_not_proven': 23, 'name_unavailable': 23,
+                  'shared_prerequisite_absent': 24, 'provider_unavailable': 24}
+if scenario not in expected_calls:
+    raise RuntimeError('unknown registry observer scenario')
+first_upload = next(row[1] for row in producer.SELECTION if row[3] == 'cargo-allow')
+first_shared = next(row[1] for row in producer.SELECTION if row[3] == 'shared')
 calls = []
 
 def transport(request, *, timeout):
@@ -635,11 +723,17 @@ def transport(request, *, timeout):
     parts = url[len(prefix):].split('/')
     calls.append(url)
     name = parts[0]
+    if scenario == 'provider_unavailable' and name == first_upload:
+        raise HTTPError(url, 503, 'fixture provider unavailable', {}, None)
     if len(parts) == 1:
+        if scenario == 'name_unavailable' and name == first_upload:
+            raise HTTPError(url, 404, 'fixture name unavailable', {}, None)
         payload = {'crate': {'id': name}}
     elif len(parts) == 2 and parts[1] == '0.2.0':
         raise HTTPError(url, 404, 'fixture exact version absent', {}, None)
     elif len(parts) == 2 and parts[1] == '0.1.0' and name in shared:
+        if scenario == 'shared_prerequisite_absent' and name == first_shared:
+            raise HTTPError(url, 404, 'fixture prerequisite absent', {}, None)
         payload = {'version': {'num': '0.1.0', 'checksum': shared[name].removeprefix('sha256:'), 'yanked': False}}
     else:
         raise RuntimeError('fixture received an unselected identity')
@@ -655,20 +749,32 @@ with tempfile.TemporaryDirectory(prefix='freeze-registry-observer-') as temporar
         stack.enter_context(mock.patch.dict(os.environ, {}, clear=True))
         stack.enter_context(mock.patch.object(producer, 'urlopen', side_effect=transport))
         stack.enter_context(mock.patch.object(producer, 'now_seconds', return_value=100))
+        stack.enter_context(mock.patch.object(producer.time, 'sleep', return_value=None))
         stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
         code = producer.main(['--observations-out', str(root / 'observations.json'),
                               '--evidence-out', str(evidence), '--candidate-input', str(source),
                               '--input-out', str(merged)])
     result = json.loads(merged.read_text(encoding='utf-8'))
     retained = json.loads(evidence.read_text(encoding='utf-8'))
-    if code != 0 or len(calls) != 23 or len(retained['rows']) != 13:
+    if code != 0 or len(calls) != expected_calls[scenario] or len(retained['rows']) != 13:
         raise RuntimeError('the real observer did not execute the full exact denominator')
     if any(row['owner'] != 'permission_not_proven' or row['publish_authority'] != 'not_proven'
            for row in result['observations']):
         raise RuntimeError('the fixture upgraded public observer authority')
     if result['observed_context']['provider_state_digest'] != retained['provider_state_digest']:
         raise RuntimeError('the real observer lost its retained provider-state binding')
-print(json.dumps(result, sort_keys=True))
+    if any(row[dimension + '_provenance']['origin'] != 'external_provider'
+           for row in result['observations'] for dimension in ('version', 'owner', 'authority')):
+        raise RuntimeError('the observer did not retain its actual provider provenance')
+    target = first_shared if scenario == 'shared_prerequisite_absent' else first_upload
+    target_row = next(row for row in result['observations'] if row['package_name'] == target)
+    expected_state = {'authority_not_proven': 'missing', 'name_unavailable': 'name_unavailable',
+                      'shared_prerequisite_absent': 'missing',
+                      'provider_unavailable': 'provider_unavailable'}[scenario]
+    if target_row['version']['status'] != expected_state:
+        raise RuntimeError('the observed response did not exercise the selected negative state')
+print(json.dumps({'input': result, 'provider_state_digest': retained['provider_state_digest']},
+                 sort_keys=True))
 "#;
 
 #[test]
@@ -708,6 +814,315 @@ fn delivered_public_observer_cannot_supply_missing_freeze_authority() -> TestRes
     Ok(())
 }
 
+/// Exercise negative semantics through the actual observer and the same full
+/// composition entry point as production. Only the preselected test context's
+/// provider binding comes from the separately retained response artifact;
+/// neither current_context nor the input's clock/window supplies authority.
+fn require_negative_outcomes_composition(
+    root: &Path,
+    args: &super::ReleaseFreezeComposeArgs,
+    subject: &SubjectIdentity,
+    selected: &[FinalEvidencePackageSubjectV1],
+    input: &FinalRegistryPreflightInputV1,
+    selected_context: &FinalRegistryContextV1,
+) -> TestResult {
+    use FinalRegistryPreflightResultV1 as Preflight;
+    use ObservationFreshnessV1 as Freshness;
+    use allow_report::FinalRegistryNextActionV1 as Action;
+
+    for (scenario, semantic, node, action) in [
+        (
+            "authority_not_proven",
+            Preflight::CompleteWithResidualAuthorityRisk,
+            Node::NotProven,
+            Action::ObtainAuthorityEvidence,
+        ),
+        (
+            "name_unavailable",
+            Preflight::Incomplete,
+            Node::Incomplete,
+            Action::AwaitVisibility,
+        ),
+        (
+            "shared_prerequisite_absent",
+            Preflight::Incomplete,
+            Node::Incomplete,
+            Action::ObtainPrerequisite,
+        ),
+        (
+            "visibility_pending",
+            Preflight::Incomplete,
+            Node::Incomplete,
+            Action::AwaitVisibility,
+        ),
+        (
+            "provider_unavailable",
+            Preflight::ProviderUnavailable,
+            Node::ProviderUnavailable,
+            Action::RestoreProvider,
+        ),
+    ] {
+        let (target_name, target_role) = if scenario == "shared_prerequisite_absent" {
+            (
+                "effortless-repo-protocol",
+                FinalEvidencePackageRoleV1::ExistingSharedPrerequisite,
+            )
+        } else {
+            ("allow-core", FinalEvidencePackageRoleV1::UploadCandidate)
+        };
+        let target = selected
+            .iter()
+            .find(|row| row.package_name == target_name && row.role == target_role)
+            .ok_or("negative registry target absent")?;
+        let observer_scenario = if scenario == "visibility_pending" {
+            "authority_not_proven"
+        } else {
+            scenario
+        };
+        let (mut observed, provider_digest) = observe_scenario(input, observer_scenario)?;
+        if scenario == "visibility_pending" {
+            // The delivered public observer does not emit VisibilityPending.
+            // This companion is explicitly a typed response mutation, with
+            // owner/permission fields still exactly as the observer emitted.
+            let row = observed
+                .observations
+                .iter_mut()
+                .find(|row| row.package_name == target.package_name)
+                .ok_or("visibility control row absent")?;
+            if !matches!(row.version, FinalRegistryVersionResponseV1::Missing {}) {
+                return Err("visibility control did not start from observed absence".into());
+            }
+            row.version = FinalRegistryVersionResponseV1::VisibilityPending {};
+        }
+        let mut context = selected_context.clone();
+        context.provider_state_digest = provider_digest;
+        let evaluated = evaluate_final_registry_preflight_v1(&observed);
+        let target_row = evaluated
+            .upload_rows
+            .iter()
+            .chain(&evaluated.shared_prerequisites)
+            .find(|row| row.expected.package_name == target.package_name)
+            .ok_or("canonical negative row absent")?;
+        if evaluated.result != semantic
+            || target_row.next_action != action
+            || evaluated.upload_rows.len() != 10
+            || evaluated.shared_prerequisites.len() != 3
+        {
+            return Err(
+                format!("{scenario}: canonical negative outcome changed: {evaluated:?}").into(),
+            );
+        }
+        let current = if semantic == Preflight::ProviderUnavailable {
+            Freshness::ProviderUnavailable
+        } else {
+            Freshness::Current
+        };
+        require_outcome_composition(
+            root,
+            args,
+            subject,
+            &observed,
+            Some((&context, 110, 10)),
+            (node, current),
+        )?;
+        require_outcome_composition(
+            root,
+            args,
+            subject,
+            &observed,
+            None,
+            (node, Freshness::ProviderUnavailable),
+        )?;
+        for dimension in ["version", "owner", "authority"] {
+            let original = serde_json::to_value(&observed)?;
+            let mut changed = original.clone();
+            super::rehearsal_tests::replace(
+                &mut changed,
+                &format!("/observations/0/{dimension}_provenance/origin"),
+                json!("test_fixture"),
+            )?;
+            if changed == original {
+                return Err("negative fixture-origin control did not change input".into());
+            }
+            require_outcome_composition(
+                root,
+                args,
+                subject,
+                &serde_json::from_value(changed)?,
+                Some((&context, 110, 10)),
+                (node, Freshness::ProviderUnavailable),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// The unqualified command must keep its actual full readiness absent. Apply
+/// the existing readiness consumer to its emitted graph with explicitly
+/// synthetic post-merge/custody gates only to isolate registry dispositions.
+/// No experience nodes are removed or promoted, and this aggregate is never
+/// emitted by the production command as qualification or provider evidence.
+fn diagnostic_registry_readiness(
+    root: &Path,
+    args: &super::ReleaseFreezeComposeArgs,
+    subject: &SubjectIdentity,
+) -> Result<allow_report::CargoAllowFinalReadinessV1, Box<dyn Error>> {
+    use allow_report::{
+        CargoAllowFinalReadinessV1, FinalEvidenceGraphV1, FinalReadinessRowV1,
+        aggregate_final_readiness,
+    };
+
+    let actual: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.readiness.json"),
+    )?)?;
+    let rows: Vec<FinalReadinessRowV1> = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.readiness-rows.json"),
+    )?)?;
+    let expected = [
+        "post-merge-qualification",
+        "custody-readback",
+        "evaluation-clock",
+        "authorization-window",
+    ];
+    if actual.is_some()
+        || rows.len() != expected.len()
+        || expected.iter().any(|id| {
+            rows.iter()
+                .filter(|row| row.evidence_id.as_deref() == Some(*id))
+                .count()
+                != 1
+        })
+    {
+        return Err("unqualified registry composition fabricated readiness facts".into());
+    }
+    let graph: FinalEvidenceGraphV1 = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.evidence-graph.json"),
+    )?)?;
+    let evidence = super::collect_evidence(root, args, subject)?;
+    let selection = super::load_selection(root, subject)?;
+    let decisions = super::readiness_decision_inputs(subject, &selection, &evidence);
+    Ok(aggregate_final_readiness(&graph, &decisions))
+}
+
+fn require_outcome_composition(
+    root: &Path,
+    args: &super::ReleaseFreezeComposeArgs,
+    subject: &SubjectIdentity,
+    input: &FinalRegistryPreflightInputV1,
+    authority: Option<(&FinalRegistryContextV1, u64, u64)>,
+    expected: (Node, ObservationFreshnessV1),
+) -> TestResult {
+    use ObservationFreshnessV1 as Freshness;
+    use allow_report::{
+        CargoAllowFinalFreezeReplayV1, FinalEvidenceCurrentnessV1 as Currentness,
+        FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1, FinalReadinessRowKindV1 as RowKind,
+        FinalReadinessVerdictV1, RefreshableObservationKindV1,
+    };
+
+    let bytes = serde_json::to_vec(input)?;
+    let path = root.join("target/freeze-evidence/registry-observation.input.json");
+    std::fs::write(path, &bytes)?;
+    let evidence = super::collect_evidence(root, args, subject)?;
+    let shared = super::load_shared_prerequisites(root)?;
+    let selected = subject.package_rows(&shared, &evidence)?;
+    let reconciled = super::registry::reconcile(subject, &selected, &evidence, authority);
+    require_result(&reconciled, expected.0, expected.1)?;
+    let outcome = if authority.is_some() {
+        super::compose_with_registry_context(root, args, authority)
+    } else {
+        super::cmd_compose(root, args)
+    };
+    let error = outcome
+        .err()
+        .ok_or("negative registry outcome became Complete")?;
+    if !error.to_string().contains("state=Incomplete") {
+        return Err(
+            format!("negative registry fixture failed outside composition: {error}").into(),
+        );
+    }
+    let readiness = diagnostic_registry_readiness(root, args, subject)?;
+    let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.replay.json"),
+    )?)?;
+    let (currentness, row_kind, next_action) = match expected {
+        (Node::Incomplete, Freshness::Current) => (
+            Currentness::Current,
+            RowKind::MissingEvidence,
+            "produce the exact evidence result on the selected subject",
+        ),
+        (Node::NotProven, Freshness::Current) => (
+            Currentness::Current,
+            RowKind::NotProven,
+            "produce the exact current evidence for this required row; a narrowing cannot substitute",
+        ),
+        (_, Freshness::ProviderUnavailable) => (
+            Currentness::ProviderUnavailable,
+            RowKind::ProviderUnavailable,
+            "restore provider access and re-observe through the exact producer",
+        ),
+        _ => return Err("unexpected negative registry test expectation".into()),
+    };
+    let mut required = readiness
+        .required_evidence
+        .iter()
+        .filter(|row| row.evidence_id == "registry-observation");
+    let row = required.next().ok_or("required registry row absent")?;
+    if required.next().is_some() || row.result != expected.0 || row.currentness != currentness {
+        return Err(format!("registry graph outcome lost: {row:?}").into());
+    }
+    let mut dispositions = readiness
+        .rows
+        .iter()
+        .filter(|row| row.evidence_id.as_deref() == Some("registry-observation"));
+    let disposition = dispositions
+        .next()
+        .ok_or("registry readiness action absent")?;
+    if dispositions.next().is_some()
+        || disposition.kind != row_kind
+        || disposition.next_action != next_action
+    {
+        return Err(format!("wrong registry-specific repair: {disposition:?}").into());
+    }
+    let mut readings = replay
+        .observation_readings
+        .iter()
+        .filter(|row| row.observation_id == "obs:registry-feasibility");
+    let reading = readings.next().ok_or("registry replay reading absent")?;
+    if readings.next().is_some()
+        || reading.kind != RefreshableObservationKindV1::RegistryFeasibility
+        || reading.freshness != expected.1
+        || !reading.authoritative
+        || reading.detail != reconciled.2.detail
+        || !reading
+            .detail
+            .contains(&allow_core::sha256_v1_bytes(&bytes))
+        || readiness.graph_digest != replay.evidence_graph_digest
+        || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
+        || replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
+    {
+        return Err(format!("registry semantics/provenance lost in replay: {reading:?}").into());
+    }
+    let mut observation_rows = replay
+        .rows
+        .iter()
+        .filter(|row| row.subject.as_deref() == Some("obs:registry-feasibility"));
+    if expected.1 == Freshness::Current {
+        if observation_rows.next().is_some() {
+            return Err("current negative registry reading acquired a replay failure row".into());
+        }
+    } else {
+        let row = observation_rows
+            .next()
+            .ok_or("registry outage/hold row absent")?;
+        if row.kind != FinalFreezeReplayRowKindV1::ProviderUnavailable
+            || observation_rows.next().is_some()
+        {
+            return Err(format!("registry outage/hold lost in replay: {row:?}").into());
+        }
+    }
+    Ok(())
+}
+
 /// Extend the real committed composition fixture without manufacturing a
 /// successful rehearsal or registry authorization. Inspect the specific registry
 /// row in graph/readiness/replay so another blocker cannot make this test pass.
@@ -717,14 +1132,13 @@ pub(super) fn require_noncomplete_composition(
     subject: &SubjectIdentity,
 ) -> TestResult {
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceGraphV1,
-        FinalFreezeReplayResultV1,
+        CargoAllowFinalFreezeReplayV1, FinalFreezeReplayResultV1, FinalReadinessVerdictV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
     let shared = super::load_shared_prerequisites(root)?;
     let selected = subject.package_rows(&shared, &evidence)?;
-    let (input, _, _) = fixture(subject, Some(&selected))?;
+    let (input, _, context) = fixture(subject, Some(&selected))?;
     let observed = observe(&input)?;
     let mut args = args.clone();
     let path = root.join("target/freeze-evidence/registry-observation.input.json");
@@ -770,17 +1184,12 @@ pub(super) fn require_noncomplete_composition(
         if !error.to_string().contains("state=Incomplete") {
             return Err(format!("registry fixture failed outside composition: {error}").into());
         }
-        let readiness: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(
-            &std::fs::read(args.out_dir.join("final-freeze.readiness.json"))?,
-        )?;
+        let readiness = diagnostic_registry_readiness(root, &args, subject)?;
         let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
             args.out_dir.join("final-freeze.replay.json"),
         )?)?;
-        let graph: FinalEvidenceGraphV1 = serde_json::from_slice(&std::fs::read(
-            args.out_dir.join("final-freeze.evidence-graph.json"),
-        )?)?;
-        let row = graph
-            .nodes
+        let row = readiness
+            .required_evidence
             .iter()
             .find(|row| row.evidence_id == "registry-observation")
             .ok_or("required registry row absent")?;
@@ -790,13 +1199,12 @@ pub(super) fn require_noncomplete_composition(
             .find(|row| row.observation_id == "obs:registry-feasibility")
             .ok_or("registry replay reading absent")?;
         if row.result != expected
-            || !row.required
             || reading.freshness == ObservationFreshnessV1::Current
             || !reading.authoritative
             || !reading
                 .detail
                 .contains(&allow_core::sha256_v1_bytes(&bytes))
-            || readiness.is_some()
+            || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
             || replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
         {
             return Err(format!(
@@ -805,6 +1213,7 @@ pub(super) fn require_noncomplete_composition(
             .into());
         }
     }
+    require_negative_outcomes_composition(root, &args, subject, &selected, &input, &context)?;
     let raw = serde_json::to_string(&actual)?;
     let duplicate = raw.replace(
         "\"observed_at_unix_seconds\":100",
