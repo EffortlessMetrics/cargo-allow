@@ -8,10 +8,8 @@ use serde_json::Value;
 type TestResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
 const VALID_POLICY: &str = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n";
-const MALFORMED_POLICY: &str =
-    "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = [";
-const REPAIR_NEXT: &str =
-    "Next: repair the policy TOML at the reported location and retry.";
+const MALFORMED_POLICY: &str = "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = [";
+const REPAIR_NEXT: &str = "Next: repair the policy TOML at the reported location and retry.";
 
 #[test]
 fn malformed_conventional_candidates_keep_their_precedence() -> TestResult {
@@ -269,8 +267,7 @@ impl Fixture {
             let receipt = self.require_error_receipt()?;
             let path_text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
             require(
-                receipt.get("policy_config").and_then(Value::as_str)
-                    == Some(path_text.as_str())
+                receipt.get("policy_config").and_then(Value::as_str) == Some(path_text.as_str())
                     && receipt.get("diagnostic").and_then(Value::as_str) == Some(error.message()),
                 format!("error receipt lost the selected policy diagnostic: {receipt}"),
             )?;
@@ -318,8 +315,7 @@ impl Fixture {
         )?;
         let summary = self.summary()?;
         require(
-            summary.pointer("/reason/code").and_then(Value::as_str)
-                == Some("E0002_INVALID_CONFIG"),
+            summary.pointer("/reason/code").and_then(Value::as_str) == Some("E0002_INVALID_CONFIG"),
             format!("missing-policy summary changed classification: {summary}"),
         )?;
         let receipt = self.require_error_receipt()?;

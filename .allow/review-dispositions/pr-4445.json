@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4445,
+  "base_ref": "main",
+  "base_sha": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "head_ref": "fix/4345-malformed-policy-discovery",
+  "head_sha": "f89dd811c3829801d3e5379ad1456212772cd3f7",
+  "merge_base": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "reviewed_diff_digest": "sha256:v1:4db72aeeb7922c7c074adebfbde9600672d49a77af299c7918a8212deb0e83cd",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring five-file source and consumer review; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4445#pullrequestreview-5478382561"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4445#pullrequestreview-5478382561",
+    "Historical five-path product review: contained readable malformed candidates retain selection priority and reach the canonical InvalidPolicy parser; exact error kind/location, optional-audit failure, summary and receipt propagation, valid foreign skip and higher-priority selection remain intact.",
+    "Eight authored integration tests describe 24 actual CLI invocations, with meaningful malformed, absent, foreign, metadata, precedence, federation, explicit-path and optional-audit controls. Native execution was not yet proven at this source review.",
+    "Source synthetic ab513f3276bbc02ee79ce6927e897df2bf7f1897 has the exact ordered base/head parents and matching tree. No inline review threads were observed. CodeRabbit quota is not substantive review or approval.",
+    "Native pregate 114175848435 failed formatting on three hunks and skipped the no-new guard. This historical product-correctness review does not establish merge readiness or approve the later formatter, policy, revision-note or review-record additions; their fresh full-pair review is required."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: obtain fresh successor source/governance review, own-record-only bootstrap verification, every applicable hosted check, live feedback and post-merge source guard. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38039184192/job/114175848435"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4445",
+  "reviewed_at_utc": "2026-10-10T08:54:28Z"
+}
