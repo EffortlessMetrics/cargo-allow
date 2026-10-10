@@ -222,7 +222,10 @@ fn lifecycle_fixture_allocator_reserves_distinct_roots_under_collision() -> Resu
         }
         Ok::<_, String>(fixtures)
     })?;
-    let roots: BTreeSet<_> = fixtures.iter().map(|fixture| fixture.root.clone()).collect();
+    let roots: BTreeSet<_> = fixtures
+        .iter()
+        .map(|fixture| fixture.root.clone())
+        .collect();
     require(
         roots.len() == 4 && !roots.contains(&prior.root),
         "each concurrent allocator must exclusively own a different directory",
