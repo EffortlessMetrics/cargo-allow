@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4432,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
   "head_ref": "fix/4427-preserve-publish-receipt",
-  "head_sha": "073c057fc301e6f9c04041459fe54e65494c61ea",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:4250c15995a1ec0af36f82ea19c773078c1c13f815cb18fe3f119be2bd1ac9c5",
+  "head_sha": "0b5f4692983f85890b0d3c85829f0a7d62da7158",
+  "merge_base": "0a1d0b4cfc622599198c1c0b85c4b6101621bac7",
+  "reviewed_diff_digest": "sha256:v1:240e8008de51e87a5cc520718a3a76bcaf54aac1190cd5c11be25c634c0f8ef6",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full current-source and consumer review; shared model family/campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/publication_review separate nonauthoring full nine-path source, integration, consumer and governance review; shared model family/campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5478423380"
     }
   },
   "claimed_verdict": "review_clean",
@@ -25,21 +25,23 @@
       "owned_seam": "Recovery publication and typed manifest admission",
       "source_path": "scripts/release-topology-publisher.py",
       "source_line": null,
-      "repair_route": "AcceptedFollowUp → #2509/#3761: compose fresh registry evidence, typed recovery/incident lineage and manifest closeout before admitting recovered publication.",
+      "repair_route": "AcceptedFollowUp \u2192 #2509/#3761: compose fresh registry evidence, typed recovery/incident lineage and manifest closeout before admitting recovered publication.",
       "claim_boundary": "Clean publication evidence preservation only; this PR does not complete incident recovery or authorize publication."
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5475266013",
-    "A separate nonauthoring reviewer /root/product_audit inspected all nine effective paths, the workflow/download/manifest/attestation ordering and unchanged typed publication consumers. Current source is a tree-identical normal merge of former head56da00b2 with main1d9c9148. The reviewer independently passed 22 actual workflow→publisher→manifest handoff scenarios, 11 dispatch scenarios and checksum contracts, with Cargo/provider/Git instruments explicitly local. Exact receipt bytes, authorization/digest, ten-row membership and local/registry/rebuilt/archive checksums remain bound; pinned ROOT/target lookup matches the publisher despite ambient CARGO_TARGET_DIR. Candidate/public routes and alias/incident rejection remain distinct. Both exact policy fingerprints and revision notes were independently recomputed. Current hosted pregate114019224313 passed actionlint, formatting, no-new and its typed gate; full native release/package/MSRV/platform checks remain pending. Cargo-deny114019224466 failed before execution due Docker Hub429, an unfulfilled infrastructure gate.",
-    "Thread4234236848 is resolved as AcceptedFollowUp under #2509/#3761. Current incident/recovered publication is not declared Complete; this retained advisory is not an authority waiver.",
-    "The metadata successor changes only this record; every current applicable gate and post-main source guard remains required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4432#pullrequestreview-5478423380",
+    "Full nine-path source/integration review plus complete publisher, manifest encoder, workflow ordering, topology schema, typed publication/checkpoint consumers and release-binary tests. Downloaded receipt bytes/digest/authorization are preserved; public and candidate routes remain distinct; aliases, changed archives, incidents, incomplete rows and membership/checksum mismatches refuse completion.",
+    "Both consumers admit explicit null first_irreversible_row only for complete all-verified_existing rows; any newly published row requires a positive integer. Missing, Boolean/string/float/nonpositive markers remain invalid. Independent 44 handoff scenarios, 11 dispatch scenarios, checksum contracts, Python/Bash syntax and diff whitespace pass on this source. Three disposable old-publisher/old-manifest/old-workflow RED controls separately fail the repaired boundaries; provider/Cargo/Git instruments are explicitly local.",
+    "Complete 732,040-byte/1,072-entry main prefix and unchanged 1,577-byte PR block yield 1,074 unique entries. Existing settings, entries, scopes, reasons and dates are preserved; canonical fingerprints28edc525062599c89a4bb4a067bed36b7164b2978acce5130994b06eb96b5e13 and3fa53775734c152cb8604774bf942718ca391905ec006da9f39ac8571892093d match revision notes.",
+    "Synthetic b92568c8046c9652370db5dda086e529f24cac80 has exact ordered base/head parents and matching tree. Marker thread4236442300 is Fixed; changelog thread4237092666 now precisely says explicit null and is independently verified/resolved; recovery thread4234236848 remains AcceptedFollowUp under #2509/#3761, with current incident/recovered publication still refused.",
+    "Current source pregate114178753803/run38040204731 passed actionlint, formatting, enforcing no-new with zero new findings and typed evaluation; artifact11665169373 retains the result. The old record correctly failed readiness for moved base/head/merge-base/diff. Full native package/platform/release-binary and aggregate gates remain pending; no local Rust or external release result is claimed."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, all applicable current native checks, fresh substantive feedback and the final exact pair; retain the exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38040204731/job/114178753803"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4432",
-  "reviewed_at_utc": "2026-10-09T20:54:45Z"
+  "reviewed_at_utc": "2026-10-10T09:11:30Z"
 }
