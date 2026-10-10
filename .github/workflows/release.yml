@@ -509,6 +509,7 @@ jobs:
           name: release-publish-receipt
           path: target/cargo-allow
       - name: Verify publish receipt agrees with the publish outputs
+        id: publication_receipt
         env:
           PUBLISH_VERSION: ${{ needs.publish.outputs.version }}
           PUBLISH_AUTHORIZATION_DIGEST: ${{ needs.publish.outputs.authorization_digest }}
@@ -522,11 +523,24 @@ jobs:
           receipt_authorization="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["authorization_digest"])' "${receipt}")"
           [ "${receipt_version}" = "${PUBLISH_VERSION}" ] || { echo "::error::publish receipt version differs from publish outputs"; exit 1; }
           [ "${receipt_authorization}" = "${PUBLISH_AUTHORIZATION_DIGEST}" ] || { echo "::error::publish receipt authorization differs from publish outputs"; exit 1; }
+          # Preserve the downloaded row evidence across local repackaging.
+          topology_receipt="target/cargo-allow/topology-publish.receipt.json"
+          [ -f "${topology_receipt}" ] || { echo "::error::topology publication receipt is absent"; exit 1; }
+          topology_authorization="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["authorization"])' "${topology_receipt}")"
+          [ "${topology_authorization}" = "${PUBLISH_AUTHORIZATION_DIGEST}" ] || { echo "::error::topology publication authorization differs from publish outputs"; exit 1; }
+          topology_sha256="$(python3 -c 'import hashlib,pathlib,sys; print("sha256:" + hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "${topology_receipt}")"
+          printf 'topology_sha256=%s\n' "${topology_sha256}" >> "${GITHUB_OUTPUT}"
       - name: Package crates for manifest checksums
+        env:
+          PUBLICATION_RECEIPT_SHA256: ${{ steps.publication_receipt.outputs.topology_sha256 }}
         run: |
+          set -euo pipefail
           python3 scripts/release-topology-publisher.py \
             --mode cargo-allow \
-            --package-only
+            --package-only \
+            --receipt target/cargo-allow/topology-repackage.receipt.json \
+            --publication-receipt target/cargo-allow/topology-publish.receipt.json \
+            --publication-receipt-sha256 "${PUBLICATION_RECEIPT_SHA256}"
       - name: Build tagged Linux release binary
         run: cargo build -p cargo-allow --bin cargo-allow --release --locked --target x86_64-unknown-linux-gnu
       - name: Package tagged Linux executable archive
@@ -585,6 +599,8 @@ jobs:
           RUST_TOOLCHAIN: stable
           RUNNER: ubuntu-latest
           TOPOLOGY_RECEIPT: target/cargo-allow/topology-publish.receipt.json
+          REQUIRE_PUBLISHED_TOPOLOGY: "true"
+          EXPECTED_TOPOLOGY_RECEIPT_SHA256: ${{ steps.publication_receipt.outputs.topology_sha256 }}
         run: |
           set -euo pipefail
           export VERSION="${RELEASE_VERSION}"

@@ -99,6 +99,7 @@ expect_failure env PATH="${work}/no-cargo:${PATH}" CARGO_ALLOW_BIN= RELEASE_TAG=
 [[ ! -e "${work}/unexpected-cargo-call" ]] || { printf 'missing candidate invoked Cargo\n' >&2; exit 1; }
 
 python3 scripts/test-release-topology-publisher.py
+python3 scripts/test-release-topology-publisher.py --manifest-handoff
 python3 scripts/test-final-package-docs.py
 bash scripts/check-crate-docs.sh
 
