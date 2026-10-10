@@ -4,55 +4,39 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4446,
   "base_ref": "main",
-  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "base_sha": "fdceec96c9b2bab35c123a0a0b3708654292d0a7",
   "head_ref": "fix/4334-context-safe-recovery",
-  "head_sha": "307c173703b992d5342713808223c2fbab547d1a",
-  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
-  "reviewed_diff_digest": "sha256:v1:62cbf57528cf562608074543b9f1377755e61153c44e141a946487f52fd0789f",
+  "head_sha": "e8be4d89f02ef0c24ede9f1b8048892f8264f8ea",
+  "merge_base": "fdceec96c9b2bab35c123a0a0b3708654292d0a7",
+  "reviewed_diff_digest": "sha256:v1:e9cce46b13cc0a682e230e803f1ef2c88672d5daca4bc5a763d586c4ab5997ef",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/release_audit separate nonauthor full current source, consumer, integration and governance review; authored none of this PR; shared model/campaign context and analogous isolation-pattern familiarity disclosed; coordinating account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/release_audit; separate nonauthor of this recovery implementation, follow-up repairs and integrations. Shared model family, campaign context and coordinating account disclosed. Prior incoming-main hooks-test authorship is outside this effective delta and is not counted as independent recovery evidence. Coordinator transports the model COMMENT; no independent human approval is claimed.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5480708390"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5481173180"
     }
   },
   "claimed_verdict": "review_clean",
-  "findings": [
-    {
-      "id": "follow-up-4334-plan-in-inventory",
-      "severity": "advisory",
-      "owned_seam": "Include-untracked plan output within its own inventory binding",
-      "source_path": "crates/cargo-allow/src/add_from_plan.rs",
-      "source_line": 240,
-      "repair_route": "AcceptedFollowUp under existing #4334: investigate actual inventory eligibility and generate/apply behavior before changing retry placement or claiming broader layout qualification.",
-      "claim_boundary": "The reviewed regeneration fixtures put plans outside included inventory. An unignored retry inside an include-untracked inventory can stale its own binding; this bounded repair does not close #4334."
-    },
-    {
-      "id": "follow-up-4334-drive-relative-plan",
-      "severity": "advisory",
-      "owned_seam": "Windows drive-relative plan arguments and changed working directories",
-      "source_path": "crates/cargo-allow/src/add_from_plan.rs",
-      "source_line": 329,
-      "repair_route": "AcceptedFollowUp under existing #4334: resolve the actual original plan location or provide honest manual fallback, then exercise native Windows drive-relative controls from different working directories before qualifying that layout.",
-      "claim_boundary": "Source-level inference from cwd.join(plan_path) and documented Rust Windows prefix-without-root semantics, not a native Windows reproduction. Ordinary relative/absolute layouts are exercised; C:plan.json remains unqualified. Final no-overwrite and binding checks are preserved."
-    }
-  ],
+  "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5480708390",
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478772142",
-    "Complete current source and consumers preserve selected root/policy/inventory, raw finding path, Unique-New and semantic admission, all exact repository/inventory/policy/finding/selector bindings, explicit operator inputs, no-overwrite creation, apply locking and replay refusal.",
-    "The existing platform renderer is reused through visibility/reexport only. Nonrepresentable input yields manual guidance. Bounded retry probing treats occupied files/directories/dangling symlinks as occupied and only accepts NotFound; final create_new remains the race authority.",
-    "Actual printed-command controls use another unrelated cwd, an independently plannable exact live-line control and protected policies/plan/source/occupied paths/canaries/HEAD. Raw filenames, non-UTF8 manual fallback, application/replay and named hostile-child controls remain intact. POSIX sh and cmd.exe are exercised; PowerShell and general layouts remain unqualified.",
-    "Independent full-tree verification preserves all 10 historical owned nonpolicy entries and 2669 unrelated main entries. The shared repository-environment helper is already main-identical. Policy is exact 749172-byte main prefix plus unchanged 1577-byte suffix: 750749 bytes and 1095 unique IDs. Actual governed diff verifies both exact-file note fingerprints with no policy weakening.",
-    "Both explicit #4334 layout advisories remain AcceptedFollowUp; no blocking source finding. There are no inline threads or new substantive source blockers at final pair inspection. Broader #4335 first-hour guidance remains open.",
-    "Reviewer independently reran all 14 CLI controls and exact afa6/307c governed diff: passed, Complete and zero new. Author formatter/default-guard receipt binds the tested local equivalent and identical tree. Actual hosted pregate passes on synthetic 169537 with exact 307c/afa6 binding; broader current native jobs remained pending."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5481173180",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#discussion_r4239392232",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#discussion_r4239392236",
+    "Complete 10-path source and consumer review preserves selected root/policy/inventory, live raw finding path, strict stale-binding refusal, exact semantic identity, Unique-New admission, every binding comparison, explicit operator inputs, policy digest locking, no-overwrite creation, atomic replacement and replay refusal. No configuration re-resolution or production-wide Git-selector isolation is claimed.",
+    "Both prior P2 diagnostic defects are Fixed within source scope. Retry guidance now proves exclusion of the actual absent candidate using complete/scoped inventory, physical parent containment, effective-policy exclusion, tracked-only semantics or a successful native Git ignore decision; unknown/included/partial paths and inherited selectors in the Git-dependent branch yield manual guidance. Nonabsolute anchored plan arguments, including Windows drive-relative paths, also yield manual guidance. Native Windows, general layouts, PowerShell and #4335 remain separate qualification work under #4334.",
+    "Independently fetched and rehashed source e8be4d89, ordered parents [8bebf172, fdce], exact d95ed178 tree, unique fdce merge base and actual synthetic846fed with ordered [fdce, e8] parents. All eight transported stages match local trees, ordered mapped parents and messages. Local bf161b61 is tree-equivalent, not the same commit. Complete default 87915-byte diff equals observed explicit eight-character and current native readiness114337616772 digest for this pair.",
+    "All nine owned nonpolicy entries equal authored c8d4a871; all 2677 unrelated fdce entries preserve modes/blobs. Policy is exact754690-byte main prefix plus unchanged1577-byte own suffix, totaling756267 bytes/1101 unique IDs, SHA2563e9af4ab844be530f1ecff8acde3eeb613c8204db02ebe1e6f4c80c23a385146. Two exact selectors, note fingerprints and2027-01-08 review dates are preserved without renewal or scope broadening.",
+    "Reviewer independently rehashed all59 c8 author proof members,17 bf integration proof members and480 preserved bf checkpoint members, including602 depfile inputs and25 Cargo/toolchain manifests against the actual hosted tree. Actual c8 explicitRust1.95/Linux execution:19 focused units and18 CLI tests pass, no ignored tests. The valid-index selector RED proves the conservative hint rule, not a broad selector exploit. Printed commands execute from a separate cwd and preserve policy/source/plan/occupied-path/index/HEAD canaries.",
+    "Actual tree-equivalent bf integration passes explicitRust1.95 formatting, fresh compilation, governed required-note diff and default enforcement with clean unchanged source. Default receipt9197B SHA2568bcc83ed7be833749bcec9605b4081776b6ca95c9bd5c083ecadc419b7f14524 records passed/enforcing, new0/2687files/16675findings. Preserved bf binary82957960B SHA256fff336cbaad8ec189761dd489a8a4411418a509e040387ba84aae827a9623856 remains distinct from the c8 binary; reviewer ran no new build or tests.",
+    "Current pregate114337318838 log confirms actual synthetic846fed/e8/fdce, formatter/actionlint/no-new success, enforcing new0/2687files/16675findings and typed Complete. Raw log73702B SHA256395c023a715da8e6b5c111455ea18084c2b083e7b26bc62b234ed292ef3cb38f was read; PR artifact download is not claimed. Explicit+1.95 setup/version probe does not prove compiler selection for subsequent bare Cargo commands under repository stable selection.",
+    "Historical own JSON and later short merging claim supplied no current evidence; stale readiness correctly rejected the old dimensions. Actual source verdict is ReviewClean with zero actionable source findings. Prior thread provider flags are separate from these source dispositions. Pending broader native jobs, current-record bootstrap, fresh substantive feedback and final live pair remain required; incoming-main process exceptions are not retroactively endorsed."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38083381609/job/114304722140"
+    "owner": "Coordinator must independently verify this own-JSON-only successor and complete source preservation, actual native readiness bootstrap, every applicable current native gate, fresh final pair and substantive feedback, then an authorized head-pinned merge and exact resulting-main enforcing guard in the settled campaign order. Pending, stale, failed, skipped and unavailable evidence is not green. No release, installed-candidate or publication qualification or authority is conferred.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38094440683/job/114337318838"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4446",
-  "reviewed_at_utc": "2026-10-10T20:30:23Z"
+  "reviewed_at_utc": "2026-10-10T23:23:37Z"
 }
