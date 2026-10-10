@@ -1,0 +1,42 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4444,
+  "base_ref": "main",
+  "base_sha": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "head_ref": "fix/3790-pretoken-registry-gate",
+  "head_sha": "a58fed629b9580604d8ef6931147e1c846655a68",
+  "merge_base": "eb6bc164d7d323d66787e01b6b9c70c02b5d3725",
+  "reviewed_diff_digest": "sha256:v1:dff4d0b01a0914df3786b8750a658603ca81384e75c58942d8b83e66ba833f36",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/ux_closeout: separate nonauthor full eight-path source, consumer, oracle, governance and incoming-main review. Authored none of this PR's effective paths or integration. Historical authorship of main #4434/#4447/#4451 outside this diff and shared model family/campaign context disclosed. Coordinating root writes this retained record only.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5480411048"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4444#pullrequestreview-5480411048",
+    "Complete eight-path diff, full source, actual producer/consumers, current PR body, policy, note, historical record and current feedback inspected. Exact synthetic a892ada1f0642780a5254da11b6eae83959e39df has ordered [eb6bc164d7d323d66787e01b6b9c70c02b5d3725,a58fed629b9580604d8ef6931147e1c846655a68] parents and tree28fab37fdebef965dc482d4635736983d048e736.",
+    "WF-F1 source-fixed: actual runner evaluates env before step-if. Both selected-secret expressions require visible successful job status, successful strict shared preflight and matching normal/recovery authority before secret selection. Execution conditions and all twenty shell bodies are preserved. Prior review's ordering-assumption miss remains disclosed in Findings5480323642.",
+    "The oracle parses the actual checked-in env/if expressions, evaluates env first, preserves the used lazy Boolean/string semantics and rejects unsupported syntax/types. Four hundred authored cases cover both steps and two independent old-expression mutations must fail through the selected-value trap specifically. Existing seven actual preflight shell cases remain.",
+    "Publisher preflight/package/dry-run/token ordering, filtered owned subprocess environments, missing-token nonincident denial, receipt and recovery loading, and publication/manifest handoff remain intact. The earlier receipt/order and LF/CRLF source findings remain fixed.",
+    "Seven owned nonpolicy modes/blobs are exact from reviewed edc; publisher blob905d2a729275fa19d089262f6cef27d9503bb11a and executable Python mode100755 are preserved. All2667 main entries outside scope are exact. Policy is exact747595-byte main prefix plus unchanged1577-byte own tail:749172B/1093 unique IDs. Settings, dates, selectors and both exact-path fingerprints are unchanged.",
+    "Incoming main #4454 retains the same bounded process runner and typed failure mapping; private argv assembly extraction and immutable /bin/echo, missing-executable and Linux writable-descriptor controls introduce no interaction defect with this release slice.",
+    "Current source review independently read actual pregate114288034330 (same synthetic; New0/New unreceipted0; fmt/actionlint/no-new pass; typed Complete for a58) and feature-proof114288034414 (three pass, including every_executable_matrix_row_proves_green). Canonical diff comes from native readiness114288372890; local recomputation remains unavailable during the execution outage.",
+    "The actual review kept later platform/oracle execution pending at its submitted timestamp. Subsequent coordinating observation6101233469 links successful native Ubuntu114288393218 rehearsal_characterization_fails_closed to the verbatim copied oracle and mandatory Complete child phase; Python stdout is captured. This later execution observation is distinct from what the reviewer had observed at submission. All26 applicable native source jobs, including aggregate114291246403, subsequently passed on a58/eb6.",
+    "Comments4238768129 and4238823112 identify the historical own record. This sole-own-JSON successor binds the actual current source review above. Independent metadata bootstrap, current native gates and substantive thread closeout remain required before Ready/merge. No code, note, policy or authorization change is included in this record correction.",
+    "All seven wider prevention flags remain false. No continuous credential/configuration/process/filesystem/network isolation, final qualification, Complete freeze or publication authority is claimed."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account must independently verify this sole-own-record successor and close substantive feedback with current evidence. Ready requires completed source and metadata review and successful applicable early gates. Every applicable current native check must be terminal green before merge. Recheck actual main/head/merge-base and synthetic parents at final head-pinned merge; retain the exact post-main enforcing guard. Pending, skipped, stale, neutral, failed and malformed evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38077702857/job/114288034330"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4444",
+  "reviewed_at_utc": "2026-10-10T19:01:29Z"
+}
