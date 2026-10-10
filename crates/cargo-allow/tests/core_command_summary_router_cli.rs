@@ -2423,6 +2423,244 @@ fn later_output_failures_replace_evaluated_summaries_with_typed_errors() -> Resu
     Ok(())
 }
 
+#[test]
+fn check_emit_usage_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["usage"])
+}
+
+#[test]
+fn check_emit_directory_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["directory"])
+}
+
+#[test]
+fn check_emit_write_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["write"])
+}
+
+#[test]
+fn check_emit_preserves_success_and_evaluated_gate_failure() -> Result<(), String> {
+    check_emit_route_controls(&["pass", "gate"])
+}
+
+/// Exercise every report route even when an earlier route exposes a regression.
+fn check_emit_route_controls(scenarios: &[&str]) -> Result<(), String> {
+    let mut failures = Vec::new();
+    for scenario in scenarios {
+        for route in ["receipt-only", "json", "output"] {
+            if let Err(error) = check_emit_route_control(route, scenario) {
+                failures.push(format!("{scenario}/{route}: {error}"));
+            }
+        }
+    }
+    require(failures.is_empty(), failures.join("\n"))
+}
+
+fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
+    let root = summary_outcome_fixture(&format!("summary-emit-{scenario}-{route}"), false)?;
+    let result = (|| -> Result<(), String> {
+        if scenario == "gate" {
+            // This tracked edit introduces a genuine unreceipted finding after init.
+            write_source(
+                &root,
+                "pub fn fixture(v: Option<u8>) -> u8 { v.unwrap() }\n",
+            )?;
+        }
+        let sidecar = root.join("target/probe/summary.json");
+        let receipt = root.join("target/probe/receipt.json");
+        let report = root.join("target/probe/report.md");
+        let artifacts = root.join("target/probe/artifacts");
+        let canary = root.join("target/probe/prior-owner.txt");
+        fs::write(&canary, b"prior owner's unrelated output\n")
+            .map_err(|error| error.to_string())?;
+        fs::write(
+            &sidecar,
+            r#"{"result_class":"completed","sentinel":"stale"}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let mut preserved_paths = vec![
+            root.join("src/lib.rs"),
+            root.join("policy/allow.toml"),
+            root.join(".git/HEAD"),
+            root.join(".git/index"),
+            canary,
+        ];
+        let emit = match scenario {
+            "usage" => "not-a-renderer",
+            "directory" => {
+                fs::write(&artifacts, b"prior owner of the artifact path\n")
+                    .map_err(|error| error.to_string())?;
+                preserved_paths.push(artifacts.clone());
+                "json"
+            }
+            "write" => {
+                // Markdown succeeds first; a nonempty directory blocks JSON.
+                // The invocation must fail even after an earlier member was written.
+                let occupied = artifacts.join("check-json.json");
+                fs::create_dir_all(&occupied).map_err(|error| error.to_string())?;
+                let owner = occupied.join("owner.txt");
+                fs::write(&owner, b"prior owner of the JSON member\n")
+                    .map_err(|error| error.to_string())?;
+                preserved_paths.push(owner);
+                "markdown,json"
+            }
+            _ => "json",
+        };
+        let preserved = preserved_paths
+            .into_iter()
+            .map(|path| {
+                fs::read(&path)
+                    .map(|bytes| (path, bytes))
+                    .map_err(|error| error.to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let head_before = fixture_command("git")
+            .current_dir(&root)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        require(head_before.status.success(), "fixture HEAD must resolve")?;
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let receipt_text = receipt.to_string_lossy().to_string();
+        let report_text = report.to_string_lossy().to_string();
+        let artifacts_text = artifacts.to_string_lossy().to_string();
+        let mut args = vec![
+            "--command-summary-output",
+            &sidecar_text,
+            "check",
+            "--config",
+            "policy/allow.toml",
+            "--mode",
+            "no-new",
+            "--persistent-cache",
+            "off",
+            "--receipt",
+            &receipt_text,
+            "--artifact-dir",
+            &artifacts_text,
+            "--emit",
+            emit,
+        ];
+        match route {
+            "json" => args.extend(["--format", "json"]),
+            "output" => args.extend(["--output", &report_text]),
+            _ => {}
+        }
+        let output = run(&root, &args)?;
+        for (path, bytes) in preserved {
+            require(
+                fs::read(&path).map_err(|error| error.to_string())? == bytes,
+                format!("check must preserve {}", path.display()),
+            )?;
+        }
+        let head_after = fixture_command("git")
+            .current_dir(&root)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        require(
+            head_after.status.success() && head_before.stdout == head_after.stdout,
+            "check must preserve the resolved fixture HEAD",
+        )?;
+        if route == "json" {
+            require(
+                serde_json::from_slice::<Value>(&output.stdout).is_ok(),
+                format!("the already-emitted JSON detail must remain valid: {output:?}"),
+            )?;
+        } else {
+            require(
+                output.stdout.is_empty(),
+                "file/receipt routes must keep stdout quiet",
+            )?;
+        }
+        let summary = read_summary_json(&sidecar)?;
+        let receipt_value = read_summary_json(&receipt)?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from("check"))
+                && field(&summary, &["sentinel"]).is_none(),
+            format!("the final sidecar must describe this check invocation: {summary}"),
+        )?;
+        if matches!(scenario, "pass" | "gate") {
+            let failed = scenario == "gate";
+            require(
+                output.status.code() == Some(i32::from(failed))
+                    && field(&receipt_value, &["status"])
+                        == Some(&Value::from(if failed { "failed" } else { "passed" }))
+                    && field(&receipt_value, &["failed"]) == Some(&Value::Bool(failed))
+                    && field(&receipt_value, &["enforcement"]) == Some(&Value::from("enforcing")),
+                format!("emit must preserve the evaluated gate: {output:?}; {receipt_value}"),
+            )?;
+            // Native init retains one ordinary evidence advisory on the pass route.
+            require(
+                field(&summary, &["result_class"]) == Some(&Value::from("findings"))
+                    && field(&summary, &["completeness"]) == Some(&Value::from("complete"))
+                    && field(&summary, &["posture"])
+                        == Some(&Value::from(if failed { "blocking" } else { "advisory" })),
+                format!("emit must retain the evaluated summary: {summary}"),
+            )?;
+            require(
+                field(&receipt_value, &["counts", "new"]) == Some(&Value::from(u64::from(failed))),
+                format!(
+                    "the gate control must contain exactly its intended finding: {receipt_value}"
+                ),
+            )?;
+            read_summary_json(&artifacts.join("check-json.json"))?;
+            let manifest = read_summary_json(&artifacts.join("check-artifact_set_manifest.json"))?;
+            require(
+                field(&manifest, &["blocking"]) == Some(&Value::Bool(failed)),
+                format!("the artifact manifest must retain the gate posture: {manifest}"),
+            )?;
+            require(
+                report.is_file() == (route == "output"),
+                "successful output routing changed",
+            )?;
+        } else {
+            let (exit, class, code) = if scenario == "usage" {
+                (2, "malformed_input", "E0001_USAGE")
+            } else {
+                (1, "instrument_failure", "E0007_ARTIFACT")
+            };
+            require(
+                output.status.code() == Some(exit)
+                    && String::from_utf8_lossy(&output.stderr).contains(code),
+                format!("late emit failure must return its typed error: {output:?}"),
+            )?;
+            require(
+                field(&summary, &["result_class"]) == Some(&Value::from(class))
+                    && field(&summary, &["completeness"]) == Some(&Value::from("unknown"))
+                    && field(&summary, &["posture"]) == Some(&Value::from("blocking"))
+                    && field(&summary, &["reason", "code"]) == Some(&Value::from(code)),
+                format!("late emit failure must replace the evaluated summary: {summary}"),
+            )?;
+            require(
+                field(&receipt_value, &["status"]) == Some(&Value::from("error"))
+                    && field(&receipt_value, &["failed"]) == Some(&Value::Bool(true))
+                    && field(&receipt_value, &["diagnostic"])
+                        .and_then(Value::as_str)
+                        .is_some_and(|diagnostic| diagnostic.contains(code)),
+                format!("late emit failure must replace the passing receipt: {receipt_value}"),
+            )?;
+            require(
+                !report.exists(),
+                "late emit failure must remove the stale detail file",
+            )?;
+            require(
+                !artifacts.join("check-artifact_set_manifest.json").exists(),
+                "these failed emissions must not claim a completed artifact manifest",
+            )?;
+            if scenario == "write" {
+                require(
+                    artifacts.join("check-markdown.md").is_file(),
+                    "write-failure control must execute after the first artifact succeeds",
+                )?;
+            }
+        }
+        Ok(())
+    })();
+    let cleanup = remove_temp_root(root);
+    result.and(cleanup)
+}
+
 /// Use native init and a tracked inventory, then select complete or partial Rust input.
 fn summary_outcome_fixture(label: &str, partial: bool) -> Result<PathBuf, String> {
     let root = temp_root(label)?;
