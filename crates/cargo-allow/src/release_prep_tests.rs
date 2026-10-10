@@ -344,8 +344,12 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
             && token_step.contains("if [ \"${DRY_RUN:-false}\" = \"true\" ]")
             && token_step.contains("token lookup skipped")
             && token_step.contains("source=crates_io_api_token")
+            && token_step.contains("      - name: Prove shared registry preflight before upload\n")
+            && token_step.contains("        id: shared_registry_preflight\n")
+            && token_step.contains("--registry-preflight")
+            && !token_step.contains("continue-on-error:")
             && !token_step.contains("CARGO_REGISTRY_TOKEN"),
-        "workflow_dispatch rehearsal should record the selected auth class without reading a token"
+        "workflow_dispatch rehearsal and strict shared-registry preflight should run before selected-token access without reading a token"
     );
     let require_token_step = workflow
         .split("      - name: Require crates.io API token for publication")
@@ -359,10 +363,17 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
     assert!(
         require_token_step.contains("CARGO_REGISTRY_TOKEN is absent; no upload was attempted")
             && require_token_step.contains("if [ -z \"${CARGO_REGISTRY_TOKEN}\" ]")
-            && require_token_step.contains(
-                "if: needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true'"
-            ),
-        "tag and recovery publication should fail closed before upload when the token is absent, and only after the authorize gate"
+            && require_token_step.lines().any(|line| {
+                line.trim()
+                    == "if: success() && steps.shared_registry_preflight.outcome == 'success' && (needs.authorize.outputs.valid == 'true' || needs.authorize.outputs.recovery == 'true')"
+            })
+            && !require_token_step.contains("continue-on-error:")
+            && workflow
+                .find("      - name: Prove shared registry preflight before upload")
+                .zip(workflow.find("      - name: Require crates.io API token for publication"))
+                .zip(workflow.find("      - name: Publish cargo-allow topology rows"))
+                .is_some_and(|((preflight, token), publish)| preflight < token && token < publish),
+        "tag and recovery publication should fail closed when the token is absent, and selected-token access must follow successful shared-registry preflight and the authorize gate before upload"
     );
 
     let publish_step = workflow
@@ -374,8 +385,13 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
         publish_step.contains("if [ \"${DRY_RUN}\" = \"true\" ]")
             && publish_step.contains("exit 0")
             && publish_step.contains("--publish")
+            && publish_step.lines().any(|line| {
+                line.trim()
+                    == "if: success() && steps.shared_registry_preflight.outcome == 'success'"
+            })
+            && !publish_step.contains("continue-on-error:")
             && publish_step.contains("needs.authorize.outputs.valid == 'true'"),
-        "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish"
+        "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish after successful shared-registry preflight"
     );
 }
 
