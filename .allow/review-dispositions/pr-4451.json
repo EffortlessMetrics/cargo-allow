@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4451,
+  "base_ref": "main",
+  "base_sha": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "head_ref": "fix/4377-rehearsal-owner-cleanup-20261010",
+  "head_sha": "e04b9c73abdb7c10aacd291525e76c2bc9628127",
+  "merge_base": "05f887971e5874077dc1b2aa42789f8bdd8b093b",
+  "reviewed_diff_digest": "sha256:v1:1e6fb62d8e1f0b68610c1eea610ebfe47274f6d5792b5b47fbf28c1d25e01afa",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit, separate nonauthor of the rehearsal correction, root native-format repair, integration, governance and this metadata. Shared model family and inherited campaign context disclosed; no independent human-review claim.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4451#pullrequestreview-5479243181"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4451#pullrequestreview-5479243181",
+    "Exact head `e04b9c73abdb7c10aacd291525e76c2bc9628127`, tree `051f73126b51e731abe705f90ea17585a0055adb`, sole parent831e04de; live main and unique merge base `05f887971e5874077dc1b2aa42789f8bdd8b093b`. Full plain diff `sha256:v1:1e6fb62d8e1f0b68610c1eea610ebfe47274f6d5792b5b47fbf28c1d25e01afa`, 28,548 bytes. Native Git/API synthetic `01b04771d97602d88fb24197c3227107088c5b01` has ordered [base, head] parents and the matching tree.",
+    "Only successful exclusive mkdir grants ownership. Occupied file/directory candidates are preserved; at most128 candidates are tried, and other allocation errors return immediately with context. Ownership begins before fallible construction. The new early-copy failure test invokes the actual constructor and requires the allocation to disappear while the source canary remains.",
+    "Explicit cleanup and Drop share one bounded removal helper. Explicit cleanup disables a second Drop budget before entering the helper. At most three removals and two10ms waits occur; only specified transient errors, descendant NotFound while the root remains, and Windows sharing/lock errors retry. Root absence, access denial and persistent errors have discriminating checks. Terminal diagnostics include the root, error kind/OS code, attempt count and at most twelve remaining top-level entries. Drop reports errors without panicking.",
+    "All eight original test purposes, three topologies, package/archive/registry assertions and seven-false-prevention-proof boundaries remain intact. Six new tests exercise actual ownership, collision/concurrency, exhaustion, early constructor failure, cleanup outcomes and child Git configuration/Trace2. The native Git observation verifies the child-local maintenance option; it does not establish the original CI failure's OS cause.",
+    "Prior source formatting is Fixed: applying exactly nine retained native hunks to831e reproduces current source blob `c9a5e7b1d6c2d84ec9d7af6ca2510680fd9a2906`, and current native formatting passes. The complete738347-byte main policy prefix and1080 entries/settings/dates/limits are exact. Only two authorized exact-path receipts are appended (1577bytes,1082uniqueIDs); both fingerprints and matching added_allow note records independently recompute. All2654 unrelated main modes/blobs remain exact. Own JSON is correctly absent pending this actual review.",
+    "[Current pregate114230740191](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38058150884/job/114230740191) executes exact synthetic01b04771 and passes cargo fmt, enforcing no-new with zero new findings, and typed Complete. [Readiness publisher114230739927](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38058150883/job/114230739927) correctly retained neutral while no disposition existed. Platform/coverage/heavy checks were running; no compiled14-test pass is claimed.",
+    "Fresh threads and native reviews are absent; the current PR body matches source. Earlier CodeRabbit text covered831e and is not current independent evidence. No remaining substantive source or governance blocker was found. Retain this actual review ID/time in an own-record-only successor, independently verify bootstrap, then complete all applicable current native gates and the exact new-main guard before issue closeout."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently verify this exact own-record-only successor, current native fourteen-test rehearsal/platform/full-test acceptance, all other applicable deterministic gates and fresh substantive feedback. Merge only the exact reviewed pair and retain the exact new-main enforcing guard before closeout.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38058150884/job/114230740191"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4451",
+  "reviewed_at_utc": "2026-10-10T14:13:00Z"
+}

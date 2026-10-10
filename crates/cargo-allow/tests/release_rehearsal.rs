@@ -1,8 +1,10 @@
 use sha2::{Digest, Sha256};
 use std::error::Error;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 struct ZeroMutationProof {
@@ -145,17 +147,159 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
     Ok(root.to_path_buf())
 }
 
-/// Scoped owner for a rehearsal fixture directory (#4377): removes the
-/// committed fixture from the system temp dir on scope exit, on success and
-/// on failure alike, so a failed `require` mid-test can no longer strand the
-/// fixture and package archives behind.
+const FIXTURE_ALLOCATION_ATTEMPTS: usize = 128;
+const FIXTURE_CLEANUP_ATTEMPTS: usize = 3;
+const FIXTURE_CLEANUP_RETRY_DELAY: Duration = Duration::from_millis(10);
+static FIXTURE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// Own the directory from its exclusive reservation, including fallible
+/// construction (#4377). Successful paths report cleanup errors explicitly;
+/// early returns retain a bounded, non-panicking diagnostic fallback.
 struct FixtureOwner {
     root: PathBuf,
+    cleanup_on_drop: bool,
 }
 
 impl FixtureOwner {
-    fn new(root: PathBuf) -> Self {
-        Self { root }
+    fn reserve(parent: &Path, sequence: &AtomicUsize) -> Result<Self, io::Error> {
+        for _ in 0..FIXTURE_ALLOCATION_ATTEMPTS {
+            let unique = sequence.fetch_add(1, Ordering::Relaxed);
+            let root = parent.join(format!(
+                "cargo-allow-rehearsal-fixture-{}-{unique}",
+                std::process::id()
+            ));
+            match std::fs::create_dir(&root) {
+                Ok(()) => {
+                    return Ok(Self {
+                        root,
+                        cleanup_on_drop: true,
+                    });
+                }
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+                Err(error) => {
+                    return Err(io::Error::new(
+                        error.kind(),
+                        format!("reserve rehearsal fixture {}: {error}", root.display()),
+                    ));
+                }
+            }
+        }
+        Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "exhausted {FIXTURE_ALLOCATION_ATTEMPTS} rehearsal fixture candidates in {}",
+                parent.display()
+            ),
+        ))
+    }
+
+    fn cleanup(self) -> Result<(), io::Error> {
+        self.cleanup_with(|root| std::fs::remove_dir_all(root), std::thread::sleep)
+    }
+
+    fn cleanup_with<R, W>(mut self, remove: R, wait: W) -> Result<(), io::Error>
+    where
+        R: FnMut(&Path) -> Result<(), io::Error>,
+        W: FnMut(Duration),
+    {
+        // An explicit attempt returns its terminal error to the caller. Do
+        // not silently start a second retry budget while consuming the owner.
+        self.cleanup_on_drop = false;
+        cleanup_fixture_root(&self.root, remove, wait)
+    }
+}
+
+fn cleanup_fixture_root<R, W>(root: &Path, mut remove: R, mut wait: W) -> Result<(), io::Error>
+where
+    R: FnMut(&Path) -> Result<(), io::Error>,
+    W: FnMut(Duration),
+{
+    let mut attempts = 0;
+    loop {
+        attempts += 1;
+        let error = match remove(root) {
+            Ok(()) => return Ok(()),
+            Err(error) => error,
+        };
+        let retryable = if error.kind() == io::ErrorKind::NotFound {
+            match std::fs::symlink_metadata(root) {
+                Err(observation) if observation.kind() == io::ErrorKind::NotFound => return Ok(()),
+                // An entry may disappear during traversal while the owned
+                // root still exists. Absence of that entry is not root cleanup.
+                Ok(_) => true,
+                Err(_) => false,
+            }
+        } else {
+            transient_fixture_cleanup_error(&error)
+        };
+        if retryable && attempts < FIXTURE_CLEANUP_ATTEMPTS {
+            wait(FIXTURE_CLEANUP_RETRY_DELAY);
+            continue;
+        }
+        return Err(io::Error::new(
+            error.kind(),
+            format!(
+                "remove rehearsal fixture {} failed after {attempts} attempt(s): {error} \
+                 (kind {:?}, OS {:?}); remaining: {}",
+                root.display(),
+                error.kind(),
+                error.raw_os_error(),
+                remaining_fixture_entries(root)
+            ),
+        ));
+    }
+}
+
+fn transient_fixture_cleanup_error(error: &io::Error) -> bool {
+    if matches!(
+        error.kind(),
+        io::ErrorKind::Interrupted | io::ErrorKind::DirectoryNotEmpty
+    ) {
+        return true;
+    }
+    // Windows sharing/lock violations can outlive the closing child. Other
+    // PermissionDenied errors do not justify retrying arbitrary access errors.
+    #[cfg(windows)]
+    {
+        matches!(error.raw_os_error(), Some(32) | Some(33))
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
+
+fn remaining_fixture_entries(root: &Path) -> String {
+    let entries = match std::fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) => return format!("cannot list root: {error}"),
+    };
+    let mut names = Vec::new();
+    for entry in entries.take(12) {
+        names.push(match entry {
+            Ok(entry) => entry.file_name().to_string_lossy().into_owned(),
+            Err(error) => format!("<entry error: {error}>"),
+        });
+    }
+    names.sort();
+    format!("{names:?} (at most 12 top-level entries)")
+}
+
+fn require_fixture_absent(root: &Path) -> Result<(), io::Error> {
+    match std::fs::symlink_metadata(root) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(io::Error::new(
+            error.kind(),
+            format!(
+                "verify rehearsal fixture absence {}: {error}",
+                root.display()
+            ),
+        )),
+        Ok(_) => Err(io::Error::other(format!(
+            "rehearsal fixture {} remains after cleanup: {}",
+            root.display(),
+            remaining_fixture_entries(root)
+        ))),
     }
 }
 
@@ -175,7 +319,19 @@ impl AsRef<Path> for FixtureOwner {
 
 impl Drop for FixtureOwner {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.root);
+        if self.cleanup_on_drop
+            && let Err(error) = cleanup_fixture_root(
+                &self.root,
+                |root| std::fs::remove_dir_all(root),
+                std::thread::sleep,
+            )
+        {
+            // A failed stderr write must not cause a second panic on unwind.
+            let _ = writeln!(
+                io::stderr().lock(),
+                "rehearsal fixture cleanup failed: {error}"
+            );
+        }
     }
 }
 
@@ -465,6 +621,7 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         )?;
     }
 
+    root.cleanup()?;
     Ok(())
 }
 
@@ -553,17 +710,17 @@ fn rehearsal_fixture() -> Result<FixtureOwner, Box<dyn Error>> {
 fn rehearsal_fixture_with(
     variant: FixtureTopology,
 ) -> Result<(FixtureOwner, Vec<FixtureMember>), Box<dyn Error>> {
-    use std::sync::atomic::{AtomicUsize, Ordering};
-    static FIXTURE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
     let repo = repo_root()?;
-    let unique = FIXTURE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    let root = std::env::temp_dir().join(format!(
-        "cargo-allow-rehearsal-fixture-{}-{unique}",
-        std::process::id()
-    ));
-    let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root)?;
+    rehearsal_fixture_in(&repo, &std::env::temp_dir(), &FIXTURE_COUNTER, variant)
+}
+
+fn rehearsal_fixture_in(
+    repo: &Path,
+    parent: &Path,
+    sequence: &AtomicUsize,
+    variant: FixtureTopology,
+) -> Result<(FixtureOwner, Vec<FixtureMember>), Box<dyn Error>> {
+    let root = FixtureOwner::reserve(parent, sequence)?;
 
     let copied = [
         "scripts/release-rehearsal.py",
@@ -592,7 +749,16 @@ fn rehearsal_fixture_with(
             .parent()
             .ok_or("every copied fixture path has a parent")?;
         std::fs::create_dir_all(parent)?;
-        std::fs::copy(&source, &destination)?;
+        std::fs::copy(&source, &destination).map_err(|error| {
+            io::Error::new(
+                error.kind(),
+                format!(
+                    "copy rehearsal fixture {} to {}: {error}",
+                    source.display(),
+                    destination.display()
+                ),
+            )
+        })?;
     }
     copy_directory(&repo.join(".changes"), &root.join(".changes"))?;
 
@@ -857,7 +1023,7 @@ fn rehearsal_fixture_with(
     }
     git_in(&root, &["add", "-A"])?;
     git_in(&root, &["commit", "-m", "rehearsal fixture subject"])?;
-    Ok((FixtureOwner::new(root), members))
+    Ok((root, members))
 }
 
 fn copy_directory(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
@@ -882,6 +1048,9 @@ fn copy_directory(source: &Path, destination: &Path) -> Result<(), Box<dyn Error
 /// rejects the environment.
 fn fixture_git_command() -> Command {
     let mut command = Command::new("git");
+    // The fixture owns the foreground Git command, not detached maintenance.
+    // This removes a lifetime hazard without claiming it caused a CI failure.
+    command.args(["-c", "maintenance.auto=false"]);
     for variable in ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"] {
         command.env_remove(variable);
     }
@@ -922,12 +1091,328 @@ fn fixture_git_commands_strip_inherited_repository_selection() -> Result<(), Box
 }
 
 #[test]
+fn rehearsal_fixture_reservation_keeps_occupied_paths() -> Result<(), Box<dyn Error>> {
+    let parent = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let occupied_sequence = AtomicUsize::new(0);
+    let occupied = FixtureOwner::reserve(&parent, &occupied_sequence)?;
+    let canary = occupied.join("occupied-canary");
+    std::fs::write(&canary, b"keep occupied directory")?;
+    let file_slot = FixtureOwner::reserve(&parent, &occupied_sequence)?;
+    let occupied_file = file_slot.root.clone();
+    file_slot.cleanup()?;
+    std::fs::write(&occupied_file, b"keep occupied file")?;
+
+    // Restarting the sequence forces actual directory and file collisions.
+    let sequence = AtomicUsize::new(0);
+    let mut owners = vec![
+        FixtureOwner::reserve(&parent, &sequence)?,
+        FixtureOwner::reserve(&parent, &sequence)?,
+    ];
+    let concurrent = std::thread::scope(|scope| -> Result<Vec<FixtureOwner>, io::Error> {
+        let mut handles = Vec::new();
+        for _ in 0..4 {
+            let parent = &parent;
+            let sequence = &sequence;
+            handles.push(
+                std::thread::Builder::new()
+                    .spawn_scoped(scope, move || FixtureOwner::reserve(parent, sequence))?,
+            );
+        }
+        handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .map_err(|_| io::Error::other("fixture reservation worker panicked"))?
+            })
+            .collect()
+    })?;
+    owners.extend(concurrent);
+    let distinct: std::collections::BTreeSet<_> =
+        owners.iter().map(|owner| owner.root.clone()).collect();
+    require(
+        owners.len() == 6 && distinct.len() == owners.len(),
+        "repeated and concurrent reservations must each own a distinct directory",
+    )?;
+    require(
+        std::fs::read(&canary)? == b"keep occupied directory"
+            && std::fs::read(&occupied_file)? == b"keep occupied file",
+        "reservation must preserve both occupied directory and file bytes",
+    )?;
+    for owner in owners {
+        owner.cleanup()?;
+    }
+    occupied.cleanup()?;
+    parent.cleanup()?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_reservation_exhaustion_is_bounded() -> Result<(), Box<dyn Error>> {
+    let parent = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let sequence = AtomicUsize::new(0);
+    let mut occupied = Vec::new();
+    for _ in 0..FIXTURE_ALLOCATION_ATTEMPTS {
+        let owner = FixtureOwner::reserve(&parent, &sequence)?;
+        std::fs::write(owner.join("canary"), b"occupied")?;
+        occupied.push(owner);
+    }
+    let blocked = AtomicUsize::new(0);
+    let error = FixtureOwner::reserve(&parent, &blocked)
+        .err()
+        .ok_or_else(|| io::Error::other("occupied candidates must exhaust the allocation bound"))?;
+    require(
+        error.kind() == io::ErrorKind::AlreadyExists
+            && blocked.load(Ordering::Relaxed) == FIXTURE_ALLOCATION_ATTEMPTS
+            && error
+                .to_string()
+                .contains(&format!("exhausted {FIXTURE_ALLOCATION_ATTEMPTS}")),
+        &format!("allocation must return its exact bounded collision failure: {error}"),
+    )?;
+    for owner in occupied {
+        require(
+            std::fs::read(owner.join("canary"))? == b"occupied",
+            "exhausting the reservation bound must preserve every candidate",
+        )?;
+        owner.cleanup()?;
+    }
+    parent.cleanup()?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_early_construction_error_cleans_root() -> Result<(), Box<dyn Error>> {
+    let parent = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let source = parent.join("source");
+    let allocations = parent.join("allocations");
+    std::fs::create_dir_all(source.join("scripts"))?;
+    std::fs::create_dir(&allocations)?;
+    let source_canary = source.join("scripts/release-rehearsal.py");
+    std::fs::write(&source_canary, b"first governed file copied before failure")?;
+    let sequence = AtomicUsize::new(0);
+    let error = rehearsal_fixture_in(&source, &allocations, &sequence, FixtureTopology::Committed)
+        .err()
+        .ok_or_else(|| {
+            io::Error::other("the missing second governed file must fail construction")
+        })?;
+    require(
+        error
+            .downcast_ref::<io::Error>()
+            .is_some_and(|error| error.kind() == io::ErrorKind::NotFound)
+            && error.to_string().contains("release-topology-publisher.py")
+            && sequence.load(Ordering::Relaxed) == 1,
+        &format!("the actual constructor must fail after reservation and its first copy: {error}"),
+    )?;
+    require(
+        std::fs::read_dir(&allocations)?.next().is_none(),
+        &format!(
+            "early construction must drop the entire reserved root: {}",
+            remaining_fixture_entries(&allocations)
+        ),
+    )?;
+    require(
+        std::fs::read(&source_canary)? == b"first governed file copied before failure",
+        "failed fixture construction must preserve its source bytes",
+    )?;
+    parent.cleanup()?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_cleanup_retries_only_transient_errors() -> Result<(), Box<dyn Error>> {
+    let errors = [
+        io::Error::new(io::ErrorKind::Interrupted, "injected interruption"),
+        io::Error::new(io::ErrorKind::DirectoryNotEmpty, "injected residual entry"),
+        io::Error::new(io::ErrorKind::NotFound, "injected vanished child entry"),
+    ];
+    #[cfg(windows)]
+    let errors = errors
+        .into_iter()
+        .chain([
+            io::Error::from_raw_os_error(32),
+            io::Error::from_raw_os_error(33),
+        ])
+        .collect::<Vec<_>>();
+    for error in errors {
+        let owner = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+        let root = owner.root.clone();
+        std::fs::write(root.join("canary"), b"owned")?;
+        let mut first_error = Some(error);
+        let mut attempts = 0;
+        let mut waits = Vec::new();
+        owner.cleanup_with(
+            |path| {
+                attempts += 1;
+                match first_error.take() {
+                    Some(error) => Err(error),
+                    None => std::fs::remove_dir_all(path),
+                }
+            },
+            |delay| waits.push(delay),
+        )?;
+        require(
+            attempts == 2 && waits == [FIXTURE_CLEANUP_RETRY_DELAY],
+            "an eligible transient error must receive exactly one delayed retry before success",
+        )?;
+        require_fixture_absent(&root)?;
+    }
+
+    let owner = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let root = owner.root.clone();
+    std::fs::remove_dir_all(&root)?;
+    let mut attempts = 0;
+    let mut waits = Vec::new();
+    owner.cleanup_with(
+        |path| {
+            attempts += 1;
+            std::fs::remove_dir_all(path)
+        },
+        |delay| waits.push(delay),
+    )?;
+    require(
+        attempts == 1 && waits.is_empty(),
+        "an already absent whole root must complete without a retry",
+    )?;
+    require_fixture_absent(&root)?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_cleanup_reports_persistent_errors() -> Result<(), Box<dyn Error>> {
+    let parent = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let sequence = AtomicUsize::new(0);
+    for (kind, expected_attempts) in [
+        (io::ErrorKind::DirectoryNotEmpty, FIXTURE_CLEANUP_ATTEMPTS),
+        (io::ErrorKind::PermissionDenied, 1),
+    ] {
+        let owner = FixtureOwner::reserve(&parent, &sequence)?;
+        let root = owner.root.clone();
+        let canary = root.join("remaining-canary");
+        std::fs::write(&canary, b"still owned")?;
+        let mut attempts = 0;
+        let mut waits = Vec::new();
+        let error = owner
+            .cleanup_with(
+                |_| {
+                    attempts += 1;
+                    Err(io::Error::new(kind, "injected persistent cleanup failure"))
+                },
+                |delay| waits.push(delay),
+            )
+            .err()
+            .ok_or_else(|| io::Error::other("persistent cleanup errors must reach the caller"))?;
+        require(
+            attempts == expected_attempts
+                && waits.len() + 1 == expected_attempts
+                && waits
+                    .iter()
+                    .all(|delay| *delay == FIXTURE_CLEANUP_RETRY_DELAY),
+            "cleanup must preserve its one bounded budget and avoid retrying access denial",
+        )?;
+        let diagnostic = error.to_string();
+        require(
+            error.kind() == kind
+                && diagnostic.contains(&root.display().to_string())
+                && diagnostic.contains("injected persistent cleanup failure")
+                && diagnostic.contains(&format!("{expected_attempts} attempt(s)"))
+                && diagnostic.contains("remaining-canary")
+                && std::fs::read(&canary)? == b"still owned",
+            &format!(
+                "terminal cleanup must expose cause, root, attempts and remaining entries: {error}"
+            ),
+        )?;
+    }
+    parent.cleanup()?;
+    Ok(())
+}
+
+#[test]
+fn rehearsal_fixture_git_commands_disable_automatic_maintenance() -> Result<(), Box<dyn Error>> {
+    let root = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    let traces = FixtureOwner::reserve(&std::env::temp_dir(), &FIXTURE_COUNTER)?;
+    git_in(&root, &["init"])?;
+    git_in(
+        &root,
+        &["config", "user.name", "fixture maintenance control"],
+    )?;
+    git_in(
+        &root,
+        &[
+            "config",
+            "user.email",
+            "fixture-maintenance@example.invalid",
+        ],
+    )?;
+    let config = fixture_git_command()
+        .env("GIT_CONFIG_COUNT", "1")
+        .env("GIT_CONFIG_KEY_0", "maintenance.auto")
+        .env("GIT_CONFIG_VALUE_0", "true")
+        .args(["config", "--type=bool", "--get", "maintenance.auto"])
+        .current_dir(&root)
+        .output()?;
+    require(
+        config.status.success() && String::from_utf8_lossy(&config.stdout).trim() == "false",
+        &format!(
+            "the owned Git helper must disable inherited automatic maintenance: {}",
+            String::from_utf8_lossy(&config.stderr)
+        ),
+    )?;
+    let trace_path = traces.join("commit-trace.json");
+    let commit = fixture_git_command()
+        .env("GIT_CONFIG_COUNT", "1")
+        .env("GIT_CONFIG_KEY_0", "maintenance.auto")
+        .env("GIT_CONFIG_VALUE_0", "true")
+        .env("GIT_TRACE2_EVENT", &trace_path)
+        .args([
+            "commit",
+            "--allow-empty",
+            "-m",
+            "fixture maintenance control",
+        ])
+        .current_dir(&root)
+        .output()?;
+    require(
+        commit.status.success(),
+        &format!(
+            "the actual owned fixture commit must succeed: {}",
+            String::from_utf8_lossy(&commit.stderr)
+        ),
+    )?;
+    let trace = std::fs::read_to_string(&trace_path)?;
+    let events = trace
+        .lines()
+        .map(serde_json::from_str::<serde_json::Value>)
+        .collect::<Result<Vec<_>, _>>()?;
+    require(
+        events.iter().any(|event| {
+            event.get("event").and_then(|value| value.as_str()) == Some("cmd_name")
+                && event.get("name").and_then(|value| value.as_str()) == Some("commit")
+        }),
+        "Trace2 must record the actual fixture commit",
+    )?;
+    require(
+        !events.iter().any(|event| {
+            event.get("event").and_then(|value| value.as_str()) == Some("child_start")
+                && event
+                    .get("argv")
+                    .and_then(|value| value.as_array())
+                    .is_some_and(|args| args.iter().any(|arg| arg.as_str() == Some("maintenance")))
+        }),
+        "the owned commit must not spawn automatic maintenance after the helper disables it",
+    )?;
+    root.cleanup()?;
+    traces.cleanup()?;
+    Ok(())
+}
+
+#[test]
 fn rehearsal_fixture_owner_cleans_up_on_injected_failure() -> Result<(), Box<dyn Error>> {
     // #4377: a failed `require` (or any mid-test `?`) aborts the test while
     // the fixture owner is alive; the owner's Drop must still remove the
     // committed fixture directory from the system temp dir.
-    let (fixture_subject, injected) = {
+    let (fixture_root, fixture_subject, injected) = {
         let root = rehearsal_fixture()?;
+        let fixture_root = root.root.clone();
         let fixture_subject = root.join("Cargo.toml");
         require(
             fixture_subject.is_file(),
@@ -937,7 +1422,7 @@ fn rehearsal_fixture_owner_cleans_up_on_injected_failure() -> Result<(), Box<dyn
             Err(io::Error::other("injected rehearsal failure").into());
         // The owner drops here on the injected-failure path — the same
         // scope abort a failed `require` takes.
-        (fixture_subject, injected)
+        (fixture_root, fixture_subject, injected)
     };
     require(
         injected.is_err(),
@@ -945,8 +1430,13 @@ fn rehearsal_fixture_owner_cleans_up_on_injected_failure() -> Result<(), Box<dyn
     )?;
     require(
         !fixture_subject.exists(),
-        "the scoped owner must remove the fixture directory despite the injected failure",
+        &format!(
+            "the scoped owner must remove {} despite the injected failure; remaining: {}",
+            fixture_root.display(),
+            remaining_fixture_entries(&fixture_root)
+        ),
     )?;
+    require_fixture_absent(&fixture_root)?;
     Ok(())
 }
 
@@ -989,6 +1479,7 @@ fn rehearsal_admission_rejects_a_dirty_fixture() -> Result<(), Box<dyn Error>> {
         stderr.contains("clean checkout"),
         "dirty-fixture admission must name the clean-checkout law",
     )?;
+    root.cleanup()?;
     Ok(())
 }
 
@@ -1030,6 +1521,7 @@ fn rehearsal_packaging_law_fails_on_a_corrupted_candidate_row() -> Result<(), Bo
             receipt.phases.get("candidate_package_set")
         ),
     )?;
+    root.cleanup()?;
     Ok(())
 }
 
@@ -1269,6 +1761,7 @@ fn rehearsal_tied_minimum_release_order_packages_locked() -> Result<(), Box<dyn 
             ),
         )?;
     }
+    root.cleanup()?;
     Ok(())
 }
 
@@ -1498,5 +1991,6 @@ fn rehearsal_registry_dependency_and_packaged_content_laws() -> Result<(), Box<d
             "the packaged manifest must carry the registry dependency as version-only, found {packaged_dependencies:?}"
         ),
     )?;
+    root.cleanup()?;
     Ok(())
 }

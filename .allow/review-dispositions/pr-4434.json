@@ -1,0 +1,43 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4434,
+  "base_ref": "main",
+  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "head_ref": "fix/4425-rehearsal-admission",
+  "head_sha": "0e70e436e2f7995baabd863f2ff9498042a08aa4",
+  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "reviewed_diff_digest": "sha256:v1:bfa136ee15fd65ebd09de3c35745b5e04528577df3f6a7bdb2865a4778b2b3bb",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Nonauthor of rehearsal admission, production Git binding, fixture repairs, policy/record and current integration. Shared model family and prior campaign context disclosed. Independently read complete effective source/test/governance diff, changed production modules, actual producer contract, collection/composition/graph/readiness/replay consumers, controlling #4425 acceptance, current provider pair and feedback. Root authored this allocator successor; reviewer did not mutate any source, tests, record, branch or GitHub state.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4434#pullrequestreview-5479028106"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4434#pullrequestreview-5479028106",
+    "All14 current effective paths examined. Canonical v1 rehearsal schema, exact eight unique phase names, Complete reversible phases, Incomplete authorization phase/aggregate, precise boundary object, token_present=false, and seven actual boolean-true proof fields required; unknown/missing/malformed/failed entries yield fail: binding notes.",
+    "Raw rehearsal JSON is first traversed using a serde unique-key visitor across every nested object/array; duplicate decoded keys including escaped spellings, trailing data and malformed bytes fail before Value can overwrite failure. Existing Value representation remains the consumer; no alternate test-only DTO is introduced.",
+    "Existing subject equality/version/lock/topology binding is preserved. Historical authorization candidate_commit is syntax-checked as historical inspected artifact, not falsely required to equal current freeze subject or treated as authority.",
+    "Collector -> binding_notes -> bound_ok -> required graph Mismatch -> readiness and replay -> final InstrumentFailure remains coherent. Real cmd_compose fixture uses actual producer construction and authorization phase with only subject acquisition/reversible instruments mocked. Producer's seven false proof flags stay false, no fabricated Complete fixture. All unrelated required evidence must be admissible; exact denial diagnostics survive graph, written readiness/replay and nonzero result. Duplicate raw phase rejects before composition/output.",
+    "Actual root discovery and all production Git reads clear six repository-selection overrides. Subject status explicitly requests --untracked-files=all; unchanged hidden-index checks and verified read-once three-input/CRLF binding remain intact. Tests establish distinct selected/foreign commits with equal specially verified input bytes, catch clean/dirty/assume-unchanged/skip-worktree/local-and-injected hidden untracked states, and root/nested/outside discovery without process-global environment/cwd mutation.",
+    "Fixture setup derives expected identity through independent isolated Git helper, never the production helper under test. Exact child test names/status text defeat no-empty-filter success; child selector prevents recursion; foreign index/HEAD/source/manifest/lock/topology bytes plus resolved HEAD retained. Six existing composer fixtures rerun under index-only/all-six child environments. CountingSubjectInputs expected argv updated without weakening any oracle.",
+    "Policy retains exact736770-byte main prefix plus own1577-byte suffix;1080 unique IDs; every prior entry/date/scope unchanged and allow-11278 occurrence_limit=36. Both own exact-path fingerprints independently checked against production v1 canonical order, including created and 8-byte string/list lengths. Every2643 outside-scope main blob and all12 own nonpolicy predecessor blobs unchanged.",
+    "Docs/Changie accurately preserve characterization versus production authority boundary; #3792 producer completeness, #4438/#4426 trusted registry admission, #2501 qualification/custody and later live release operations remain separate. Historical freezes untouched.",
+    "Affected init fixture allocator and full unchanged surrounding tests inspected: all15 original callers/test bodies and cleanup helper byte-identical; wrapper uses injected stamp helper; process-local AtomicUsize Relaxed fetch_add supplies unique sequence; exclusive create_dir returns ownership only on success; AlreadyExists retries at most128; other errors/exhaustion fail; no delete-before-allocation. Sequence ordering need not synchronize test contents. PID/time/sequence plus exclusive creation protects preexisting stale paths and same-stamp concurrent callers.",
+    "New fixed-stamp sequential control requires distinct roots, preserved first sentinel and no sentinel leak. Four spawned fixed-stamp callers synchronize start on one Barrier, write unique contents, join before assertions, require four unique paths and each exact marker, then clean only owned roots. Both call actual allocator used by unchanged original tests; old same-stamp remove/reuse fails these controls. No shared process environment/cwd mutation, production init change, Cargo execution or public API added.",
+    "Sole two-path successor verified: init_tests.rs and existing Changie fragment; all2654 other parent paths exact. Original CRLF framing and unchanged bytes preserved, command-scoped CRLF-aware diff check passes. Canonical full14 diff bfa136ee... independently recomputed; same a611 uniqueMB, hosted parent8fa576dc and synthetic exact[base,head]/same tree. Scope explicitly acknowledged in issue4425 comment6097537688."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently verify exact own-JSON-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair. Retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed or stale observations are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38052802965/job/114215199700"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4434",
+  "reviewed_at_utc": "2026-10-10T13:00:00Z"
+}

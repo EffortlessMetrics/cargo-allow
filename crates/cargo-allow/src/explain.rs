@@ -1,8 +1,8 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    MatchOutcome, normalize_path,
+    MatchOutcome, MatchStatus, normalize_path,
 };
-use allow_match::{CheckMode, evaluate, score_match};
+use allow_match::{CheckMode, evaluate};
 use std::path::Path;
 
 use crate::{
@@ -101,10 +101,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         &source_context,
         ExplainEntryFacts {
             entry,
-            attention_status: outcomes
-                .iter()
-                .find(|outcome| outcome.status != allow_core::MatchStatus::Matched)
-                .map(|outcome| outcome.status),
+            outcome_statuses: outcomes.iter().map(|outcome| outcome.status).collect(),
             matching_finding_count: matching_findings.len(),
             suggested_actions,
             inventory_facts,
@@ -130,8 +127,8 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 /// Entry-scoped facts `explain` has already computed for the common summary.
 struct ExplainEntryFacts<'a> {
     entry: &'a AllowEntry,
-    /// Status of the first outcome for this entry that is not `Matched`.
-    attention_status: Option<allow_core::MatchStatus>,
+    /// Full-ledger finding states remain independent of the entry lifecycle.
+    outcome_statuses: Vec<MatchStatus>,
     matching_finding_count: usize,
     suggested_actions: Vec<String>,
     inventory_facts: crate::InventoryFacts,
@@ -150,6 +147,7 @@ fn explain_summary(
     source_context: &SourceTreeReportContext,
     facts: ExplainEntryFacts<'_>,
 ) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let current_status = rendered_explain_current_status(detail_json)?;
     let semantic_identity =
         crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
     let completeness = crate::core_command_router::summary_completeness(&facts.inventory_facts);
@@ -185,7 +183,8 @@ fn explain_summary(
             completeness,
             coverage_limitation,
             allow_id: facts.entry.id.clone(),
-            attention_status: facts.attention_status,
+            current_status,
+            outcome_statuses: facts.outcome_statuses,
             matching_finding_count: facts.matching_finding_count,
             suggested_actions: facts.suggested_actions,
             calendar_expiry_blocks_no_new: facts.calendar_expiry_blocks_no_new,
@@ -207,6 +206,36 @@ fn explain_summary(
             format!("failed to build core command summary: {error}"),
         )
     })
+}
+
+/// Read the canonical status already rendered for this report. Recomputing
+/// lifecycle here would sample the clock again after the detailed artifact.
+fn rendered_explain_current_status(detail_json: &str) -> CargoAllowResult<MatchStatus> {
+    let detail: serde_json::Value = serde_json::from_str(detail_json).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to parse explain status input: {error}"),
+        )
+    })?;
+    let status = detail
+        .pointer("/summary/current_status")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "explain detail is missing its string summary.current_status",
+            )
+        })?;
+    MatchStatus::ALL
+        .iter()
+        .copied()
+        .find(|candidate| candidate.as_str() == status)
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("explain detail contains an unknown current status `{status}`"),
+            )
+        })
 }
 
 /// The entry's own declared scope, if it declares one.
@@ -315,19 +344,32 @@ fn explain_entry_state(
     entry: &AllowEntry,
     findings: &[Finding],
 ) -> (Vec<Finding>, Vec<MatchOutcome>) {
-    let matching_findings = findings
-        .iter()
-        .filter(|finding| score_match(entry, finding).is_some())
-        .cloned()
-        .collect::<Vec<_>>();
-    let mut single_entry_cfg = cfg.clone();
-    single_entry_cfg.allow = vec![entry.clone()];
+    // Resolve competition and occurrence limits in the complete ledger before
+    // projecting this entry. Evaluating it alone would turn tied candidates
+    // into authorizing matches and discard stronger neighboring entries.
+    let mut matching_findings = Vec::new();
     let outcomes = evaluate(
-        &single_entry_cfg,
-        &matching_findings,
+        cfg,
+        findings,
         CheckMode::NoNew,
         allow_core::SimpleDate::today_utc_approx(),
-    );
+    )
+    .into_iter()
+    .filter(|outcome| {
+        outcome.allow_id.as_deref() == Some(entry.id.as_str())
+            || (outcome.status == MatchStatus::Ambiguous
+                && outcome.candidate_ids.contains(&entry.id))
+    })
+    .map(|mut outcome| {
+        // Renderers index the entry-local finding list. Candidate IDs, status,
+        // score, and message remain the full-ledger evaluator's result.
+        if let Some(finding) = outcome.finding_index.and_then(|index| findings.get(index)) {
+            outcome.finding_index = Some(matching_findings.len());
+            matching_findings.push(finding.clone());
+        }
+        outcome
+    })
+    .collect();
     (matching_findings, outcomes)
 }
 

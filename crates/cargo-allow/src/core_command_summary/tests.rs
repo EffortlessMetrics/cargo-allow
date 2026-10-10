@@ -1294,7 +1294,8 @@ fn explain_facts() -> ExplainSummaryFactsV1 {
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         allow_id: "allow-0001".to_string(),
-        attention_status: None,
+        current_status: MatchStatus::Matched,
+        outcome_statuses: Vec::new(),
         matching_finding_count: 2,
         suggested_actions: Vec::new(),
         calendar_expiry_blocks_no_new: false,
@@ -1391,7 +1392,8 @@ fn explain_adapter_reports_a_receipted_entry_as_satisfied() -> Result<(), String
 #[test]
 fn explain_adapter_keeps_a_gate_failing_entry_blocking() -> Result<(), String> {
     let mut facts = explain_facts();
-    facts.attention_status = Some(MatchStatus::EvidenceMissing);
+    facts.current_status = MatchStatus::EvidenceMissing;
+    facts.outcome_statuses = vec![MatchStatus::EvidenceMissing];
     facts.suggested_actions = strings(&[
         "add evidence that supports the exception reason",
         "keep the selector scoped to the reviewed boundary",
@@ -1425,7 +1427,8 @@ fn explain_adapter_keeps_a_gate_failing_entry_blocking() -> Result<(), String> {
 #[test]
 fn explain_adapter_defers_a_competing_entry_to_repository_judgment() -> Result<(), String> {
     let mut facts = explain_facts();
-    facts.attention_status = Some(MatchStatus::Ambiguous);
+    facts.current_status = MatchStatus::Ambiguous;
+    facts.outcome_statuses = vec![MatchStatus::Ambiguous];
     facts.suggested_actions =
         strings(&["narrow selectors so each finding matches exactly one allow entry"]);
     let summary = core_command_summary_from_explain(facts)?;
@@ -1443,13 +1446,81 @@ fn explain_adapter_defers_a_competing_entry_to_repository_judgment() -> Result<(
 }
 
 #[test]
+fn explain_adapter_keeps_lifecycle_status_and_all_outcome_postures() -> Result<(), String> {
+    for (entry_status, outcomes, calendar_blocks, expected_posture) in [
+        (
+            MatchStatus::Expired,
+            vec![MatchStatus::Ambiguous],
+            false,
+            CoreCommandPostureV1::DecisionRequired,
+        ),
+        (
+            MatchStatus::ReviewDue,
+            vec![MatchStatus::Ambiguous],
+            false,
+            CoreCommandPostureV1::DecisionRequired,
+        ),
+        (
+            MatchStatus::Expired,
+            vec![MatchStatus::Expired, MatchStatus::Ambiguous],
+            false,
+            CoreCommandPostureV1::DecisionRequired,
+        ),
+        (
+            MatchStatus::ReviewDue,
+            vec![MatchStatus::ReviewDue, MatchStatus::Ambiguous],
+            false,
+            CoreCommandPostureV1::DecisionRequired,
+        ),
+        (
+            MatchStatus::Expired,
+            vec![MatchStatus::Expired, MatchStatus::New],
+            false,
+            CoreCommandPostureV1::Blocking,
+        ),
+        (
+            MatchStatus::Expired,
+            vec![MatchStatus::Expired],
+            false,
+            CoreCommandPostureV1::Advisory,
+        ),
+        (
+            MatchStatus::Expired,
+            vec![MatchStatus::Expired],
+            true,
+            CoreCommandPostureV1::Blocking,
+        ),
+    ] {
+        let mut facts = explain_facts();
+        facts.current_status = entry_status;
+        facts.outcome_statuses = outcomes;
+        facts.calendar_expiry_blocks_no_new = calendar_blocks;
+        let summary = core_command_summary_from_explain(facts)?;
+        ensure(
+            summary.reason.code == format!("explain.{}", entry_status.as_str())
+                && summary.result_class == ResultClassV1::Findings
+                && summary.posture == expected_posture,
+            format!("entry lifecycle or finding posture diverged: {summary:?}"),
+        )?;
+        if expected_posture == CoreCommandPostureV1::DecisionRequired {
+            ensure(
+                summary.reason.message.contains("ambiguous"),
+                "the lifecycle headline must retain the competing finding state",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn explain_adapter_never_reports_an_unmatched_entry_as_satisfied() -> Result<(), String> {
     // No current finding matches the entry any more. That is the `stale`
     // outcome, which the no-new gate tolerates but which is still not a clean
     // entry, so it must render as advisory rather than satisfied.
     let mut facts = explain_facts();
     facts.matching_finding_count = 0;
-    facts.attention_status = Some(MatchStatus::Stale);
+    facts.current_status = MatchStatus::Stale;
+    facts.outcome_statuses = vec![MatchStatus::Stale];
     facts.suggested_actions = strings(&["remove the stale allow entry if the exception is gone"]);
     let summary = core_command_summary_from_explain(facts)?;
     ensure(

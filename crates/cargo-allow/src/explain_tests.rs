@@ -272,6 +272,110 @@ fn missing_explain_entry_is_a_usage_error() {
 }
 
 #[test]
+fn explain_summary_reuses_the_rendered_status() -> Result<(), String> {
+    let root = Path::new(".");
+    let inventory_facts =
+        crate::InventoryFacts::scanned(allow_inventory::InventorySource::GitTracked, 1)
+            .with_completeness(allow_inventory::InventoryCompleteness::Complete);
+    let source_context = SourceTreeReportContext::new(root, inventory_facts);
+    let mut entry = test_entry("allow-rendered-status", FindingKind::Panic);
+    entry.lifecycle.expires = None;
+    entry.lifecycle.review_after = None;
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    );
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Ambiguous,
+        allow_id: None,
+        candidate_ids: vec![entry.id.clone(), "allow-competitor".to_string()],
+        finding_index: Some(0),
+        message: "the finding has two equal-strength candidates".to_string(),
+        score: 200,
+    }];
+    let (detail_json, suggested_actions) = super::explain_render::render_explain_report(
+        root,
+        &entry,
+        std::slice::from_ref(&finding),
+        &outcomes,
+        None,
+        ExplainContext {
+            inventory: source_context.inventory(),
+        },
+        |report| {
+            (
+                allow_report::render_explain_json(report),
+                report.suggested_actions.to_vec(),
+            )
+        },
+    );
+    // Make a later lifecycle projection differ without waiting for midnight
+    // or changing a process-wide clock. The rendered artifact stays authoritative.
+    entry.lifecycle.expires = Some("2000-01-01".to_string());
+    let summary = super::explain_summary(
+        &detail_json,
+        root,
+        &source_context,
+        super::ExplainEntryFacts {
+            entry: &entry,
+            outcome_statuses: outcomes.iter().map(|outcome| outcome.status).collect(),
+            matching_finding_count: 1,
+            suggested_actions,
+            inventory_facts,
+            calendar_expiry_blocks_no_new: false,
+        },
+    )
+    .map_err(|error| error.to_string())?;
+    if summary.reason.code != "explain.ambiguous"
+        || summary.posture != crate::core_command_summary::CoreCommandPostureV1::DecisionRequired
+    {
+        return Err(format!(
+            "summary replaced the rendered entry status: {summary:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn rendered_explain_status_accepts_the_vocabulary_and_rejects_unknown_data() -> Result<(), String> {
+    for expected in MatchStatus::ALL {
+        let detail = format!(
+            "{{\"summary\":{{\"current_status\":\"{}\"}}}}",
+            expected.as_str()
+        );
+        let actual =
+            super::rendered_explain_current_status(&detail).map_err(|error| error.to_string())?;
+        if actual != *expected {
+            return Err(format!(
+                "rendered status changed from {expected:?} to {actual:?}"
+            ));
+        }
+    }
+    for detail in [
+        "not JSON",
+        "null",
+        "{}",
+        r#"{"summary":{}}"#,
+        r#"{"summary":{"current_status":null}}"#,
+        r#"{"summary":{"current_status":false}}"#,
+        r#"{"summary":{"current_status":1}}"#,
+        r#"{"summary":{"current_status":"future_status"}}"#,
+    ] {
+        match super::rendered_explain_current_status(detail) {
+            Err(error) if error.kind() == CargoAllowErrorKind::Artifact => {}
+            result => {
+                return Err(format!(
+                    "invalid rendered status must fail as Artifact: {result:?}"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn explain_entry_text_reports_live_match_status() {
     let mut cfg = AllowConfig::empty();
     let entry = test_entry("allow-file", FindingKind::NonRustFile);
@@ -567,6 +671,78 @@ fn explain_entry_text_reports_occurrence_limit_exceeded() {
     assert!(text.contains("current_matches: 2"));
     assert!(text.contains("match_outcomes: matched=1, new=1"));
     assert!(text.contains("occurrence_limit exceeded"));
+}
+
+#[test]
+fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Result<(), String> {
+    let mut cfg = AllowConfig::empty();
+    for (id, glob, limit) in [
+        ("allow-a", "src/a?.rs", Some(1)),
+        ("allow-b", "src/?b.rs", None),
+        ("allow-c", "src/?c.rs", None),
+    ] {
+        let mut entry = test_entry(id, FindingKind::NonRustFile);
+        entry.path = None;
+        entry.glob = Some(glob.to_string());
+        entry.occurrence_limit = limit;
+        entry.evidence = vec!["test:explain_mixed_attention".to_string()];
+        cfg.allow.push(entry);
+    }
+    let entry = cfg.allow.first().ok_or("missing requested entry")?;
+    let findings = ["src/a1.rs", "src/a2.rs", "src/ab.rs", "src/ac.rs"]
+        .into_iter()
+        .map(|path| test_finding(FindingKind::NonRustFile, None, path, "tracked_file"))
+        .collect::<Vec<_>>();
+    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let statuses = outcomes
+        .iter()
+        .map(|outcome| outcome.status)
+        .collect::<Vec<_>>();
+    if statuses
+        != [
+            MatchStatus::Matched,
+            MatchStatus::New,
+            MatchStatus::Ambiguous,
+            MatchStatus::Ambiguous,
+        ]
+    {
+        return Err(format!(
+            "fixture lost ordered mixed attention: {outcomes:?}"
+        ));
+    }
+    let guidance =
+        "resolve equal-strength competition among these allow entries: allow-a, allow-b, allow-c";
+    let json = explain_entry_json(
+        Path::new("."),
+        &cfg,
+        entry,
+        &findings,
+        ExplainContext::default(),
+    );
+    let report: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    if report
+        .pointer("/next/suggested_actions/0")
+        .and_then(Value::as_str)
+        != Some(guidance)
+        || report
+            .pointer("/summary/current_status")
+            .and_then(Value::as_str)
+            != Some("new")
+    {
+        return Err(format!(
+            "mixed attention lost guidance or changed status: {json}"
+        ));
+    }
+    let text = explain_entry_text(Path::new("."), &cfg, entry, &findings);
+    if !text.contains(guidance)
+        || !text.contains("current_status: new")
+        || !text.contains("occurrence_limit exceeded")
+    {
+        return Err(format!(
+            "human mixed attention lost its decision context: {text}"
+        ));
+    }
+    Ok(())
 }
 
 static NEXT_EXPLAIN_FIXTURE: AtomicUsize = AtomicUsize::new(0);

@@ -35,6 +35,28 @@ a cooperative checkout; it is not a filesystem sandbox against concurrent
 hostile directory replacement. The receipt remains characterization evidence,
 not complete zero-mutation proof or release authorization.
 
+`release-freeze compose` validates the `1.0` rehearsal schema before admitting
+its result. It requires exactly the eight named phases, `Complete` results for
+the seven reversible phases, and an explicit `Incomplete` authorization hold
+with `token_present: false`. The aggregate must agree with that hold, and each
+of the seven zero-mutation proof flags must be a boolean `true`. Duplicate JSON
+keys, missing or unknown phases, unsuccessful outcomes, and absent or
+contradictory proof stay non-Complete through the evidence graph, readiness,
+and replay. This is the complete-except-authorization posture consumed by
+[`ReleaseAuthorizationEvidenceV1`](../../crates/allow-report/src/artifacts/release_authorization_v1.rs);
+it never grants publication authority.
+
+The current producer deliberately emits `Incomplete` and leaves all seven
+zero-mutation flags `false`. Its receipts therefore remain ineligible for a
+Complete freeze. The admission repair
+([#4425](https://github.com/EffortlessMetrics/cargo-allow/issues/4425)) does not
+provide the missing producer capability
+([#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792)) or the
+new exact-subject qualification and freeze
+([#2501](https://github.com/EffortlessMetrics/cargo-allow/issues/2501)). Retained
+historical freezes are unchanged; selected rehearsal and freeze qualification
+must be rerun after the repair is integrated.
+
 ## 0.2.0 release rails
 
 The namespace publication and the cargo-allow tag release are distinct,

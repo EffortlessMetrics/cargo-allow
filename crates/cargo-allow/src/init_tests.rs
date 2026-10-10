@@ -797,11 +797,85 @@ fn init_fixture_dir() -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let dir = std::env::temp_dir().join(format!("cargo-allow-init-{}-{stamp}", std::process::id()));
-    remove_init_fixture_dir(dir.clone());
-    fs::create_dir_all(&dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create init fixture: {err}")));
-    dir
+    init_fixture_dir_with_stamp(stamp)
+}
+
+fn init_fixture_dir_with_stamp(stamp: u128) -> PathBuf {
+    static NEXT_FIXTURE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+    for _ in 0..128 {
+        let sequence = NEXT_FIXTURE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!(
+            "cargo-allow-init-{}-{stamp}-{sequence}",
+            std::process::id()
+        ));
+        match fs::create_dir(&dir) {
+            Ok(()) => return dir,
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(err) => std::panic::panic_any(format!("create init fixture: {err}")),
+        }
+    }
+    std::panic::panic_any("init fixture allocation exhausted its collision budget")
+}
+
+#[test]
+fn init_fixture_repeated_stamp_preserves_existing_fixture() {
+    let first = init_fixture_dir_with_stamp(0);
+    let sentinel = first.join("sentinel");
+    fs::write(&sentinel, "first fixture")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write init sentinel: {err}")));
+
+    let second = init_fixture_dir_with_stamp(0);
+    assert_ne!(first, second);
+    assert_eq!(
+        fs::read_to_string(&sentinel)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read init sentinel: {err}"))),
+        "first fixture"
+    );
+    assert!(!second.join("sentinel").exists());
+
+    remove_init_fixture_dir(first);
+    remove_init_fixture_dir(second);
+}
+
+#[test]
+fn init_fixture_concurrent_same_stamp_keeps_private_contents() {
+    let start = std::sync::Arc::new(std::sync::Barrier::new(4));
+    let threads: Vec<_> = (0..4)
+        .map(|index| {
+            let start = std::sync::Arc::clone(&start);
+            std::thread::spawn(move || {
+                start.wait();
+                let root = init_fixture_dir_with_stamp(0);
+                let marker = format!("fixture-{index}");
+                fs::write(root.join("sentinel"), &marker).unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("write concurrent init sentinel: {err}"))
+                });
+                (root, marker)
+            })
+        })
+        .collect();
+    let fixtures: Vec<_> = threads
+        .into_iter()
+        .map(|thread| {
+            thread
+                .join()
+                .unwrap_or_else(|_| std::panic::panic_any("join concurrent init fixture"))
+        })
+        .collect();
+    let mut paths = std::collections::BTreeSet::new();
+    for (root, marker) in &fixtures {
+        assert!(paths.insert(root.clone()));
+        assert_eq!(
+            fs::read_to_string(root.join("sentinel")).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("read concurrent init sentinel: {err}"))
+            }),
+            *marker
+        );
+    }
+    for (root, _) in fixtures {
+        remove_init_fixture_dir(root);
+    }
 }
 
 fn remove_init_fixture_dir(path: PathBuf) {

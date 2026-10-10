@@ -105,8 +105,21 @@ purpose = "IntentExperimental"
 routing_owner = "core/ci"
 blocking = true
 
+# Retain the former bare name for collector windows containing older runs.
 [[jobs]]
 name = "test-proof-experimental"
+purpose = "ProofExperimental"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-proof-experimental (ubuntu-latest)"
+purpose = "ProofExperimental"
+routing_owner = "core/ci"
+blocking = true
+
+[[jobs]]
+name = "test-proof-experimental (windows-latest)"
 purpose = "ProofExperimental"
 routing_owner = "core/ci"
 blocking = true

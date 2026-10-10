@@ -27,11 +27,26 @@ pub(super) fn explain_next_steps(
     if let Some(outcome) = attention.first() {
         let finding = outcome.finding_index.and_then(|index| findings.get(index));
         let kind = worklist::work_item_kind(outcome, finding, Some(entry));
+        let mut suggested_actions =
+            worklist::suggested_actions_for_context(&kind, finding, Some(entry));
+        let competing_ids = attention
+            .iter()
+            .filter(|outcome| outcome.status == MatchStatus::Ambiguous)
+            .flat_map(|outcome| outcome.candidate_ids.iter().cloned())
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<_>>();
+        if !competing_ids.is_empty() {
+            suggested_actions.insert(
+                0,
+                format!(
+                    "resolve equal-strength competition among these allow entries: {}",
+                    competing_ids.join(", ")
+                ),
+            );
+        }
         return (
-            worklist::suggested_actions_for_context(&kind, finding, Some(entry))
-                .into_iter()
-                .take(2)
-                .collect(),
+            suggested_actions.into_iter().take(2).collect(),
             worklist::proof_commands(&kind, finding, Some(entry))
                 .into_iter()
                 .take(EXPLAIN_PROOF_COMMAND_LIMIT)

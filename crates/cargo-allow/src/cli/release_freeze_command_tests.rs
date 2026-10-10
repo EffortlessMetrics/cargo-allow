@@ -232,7 +232,7 @@ fn collector_input_error(message: impl Into<String>) -> allow_core::CargoAllowEr
 impl subject::SubjectInputs for CountingSubjectInputs {
     fn git(&mut self, args: &[&str]) -> allow_core::CargoAllowResult<String> {
         let text = match args {
-            ["status", "--porcelain"] => {
+            ["status", "--porcelain", "--untracked-files=all"] => {
                 if self.dirty {
                     " M Cargo.toml"
                 } else {

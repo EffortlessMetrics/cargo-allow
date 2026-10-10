@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Reconcile the v1 diff and worklist JSON schemas with their emitted coverage
+  movement and optional source-location fields. Strict schema validation now
+  covers nonempty rendered diff and worklist artifacts, including rejected
+  unknown fields and invalid source locations.

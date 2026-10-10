@@ -62,11 +62,13 @@
       ],
       "properties": {
         "current_status": {
-          "$ref": "#/$defs/match_status"
+          "$ref": "#/$defs/match_status",
+          "description": "Canonical entry read status, including lifecycle precedence. Full-ledger finding states and unresolved competition remain in current_findings and match_outcomes."
         },
         "current_matches": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Number of current_findings rows assigned to or tied with this entry. Includes ambiguous findings and does not count authorizations."
         },
         "match_outcomes": {
           "type": "integer",
@@ -98,12 +100,14 @@
     },
     "current_findings": {
       "type": "array",
+      "description": "Findings assigned to this entry or tied with it by the complete-ledger evaluation. Each row retains its evaluated status; weaker candidates do not inherit a stronger entry's match.",
       "items": {
         "$ref": "#/$defs/current_finding"
       }
     },
     "match_outcomes": {
       "type": "array",
+      "description": "Complete-ledger outcomes projected to this entry, preserving tied candidate IDs and remapping finding_index into this artifact's current_findings array.",
       "items": {
         "$ref": "#/$defs/match_outcome"
       }
@@ -717,7 +721,8 @@
             "integer",
             "null"
           ],
-          "minimum": 0
+          "minimum": 0,
+          "description": "Index into this artifact's current_findings array, or null for an entry-level outcome without a current finding."
         },
         "score": {
           "type": "integer",

@@ -1099,6 +1099,11 @@
         }
       }
     },
+    "coverage_movement": {
+      "type": "string",
+      "enum": ["new", "worsened", "resolved", "inherited", "retained"],
+      "description": "Coverage projection of canonical movement, posture delta, and diff attribution. Current producers emit this field; it remains optional for older v1 artifacts."
+    },
     "finding_posture_change": {
       "type": "object",
       "additionalProperties": false,
@@ -1115,6 +1120,9 @@
         },
         "changed_in_diff": {
           "type": "boolean"
+        },
+        "coverage_movement": {
+          "$ref": "#/$defs/coverage_movement"
         },
         "subject": {
           "type": ["string", "null"]
@@ -1185,6 +1193,9 @@
         },
         "changed_in_diff": {
           "type": "boolean"
+        },
+        "coverage_movement": {
+          "$ref": "#/$defs/coverage_movement"
         },
         "subject": {
           "type": ["string", "null"]

@@ -306,6 +306,9 @@ mod release_prep_tests;
 #[cfg(test)]
 mod report_config_tests;
 #[cfg(test)]
+#[path = "../tests/support/repository_environment.rs"]
+mod repository_environment;
+#[cfg(test)]
 mod root_cli_compat_tests;
 #[cfg(test)]
 mod root_cli_tests;
