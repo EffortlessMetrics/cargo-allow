@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4435,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "a61161679b2f6226e362d33e459fac62e2d7848c",
   "head_ref": "fix/4428-strict-revision-bytes",
-  "head_sha": "0395a73e8454c19bfabe3169f0c7a2a7664a7c7e",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:7a1762678cc534dd630aea4f20099fb4c6e90d0efa2603debe93a90581c732af",
+  "head_sha": "a95c740a29124558affb5501dca2822ad764597c",
+  "merge_base": "a61161679b2f6226e362d33e459fac62e2d7848c",
+  "reviewed_diff_digest": "sha256:v1:4fc3ab6dd063ca5911579417c491ded68f4f3c117bdcac0ceaff2d1ce7aca7f5",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring full source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthor full source, consumer, governance and current integration review; authored none of this PR's source, tests, repairs or integration; shared model family/prior campaign context disclosed; coordinating account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475755237"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5478957106"
     }
   },
   "claimed_verdict": "review_clean",
@@ -30,18 +30,20 @@
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5475337599",
-    "Independent review covered all eleven effective source/governance paths and production consumers. Strict bounded ordered Git reads preserve valid findings and per-file rejected status, subprocess completion and existing batching. Incomplete base/head evidence cannot earn false introduced/resolved claims. Real Git, CLI, human/JSON/Markdown, receipt, common summary and PR-adapter regressions are included. The four-file final transition exactly matches all 32 native Rust1.95 formatter hunks. Main integration and both exact policy/note fingerprints were independently verified.",
-    "Threads4234372307/2340/2350/2359 are resolved RefutedWithEvidence: public ResolvedRevisionIdentity.commit exists; the opaque capability is a distinct type; mutable writer/Take/reader temporaries live through calls returning owned results. Historical source 6f9e15e0 pregate114022949002 passed production compilation, formatting, enforcing no-new and typed ci-pregate. Full native test/platform/MSRV/package checks remain required; cargo-deny114022949086 is blocked before analysis by Docker Hub429.",
-    "Synthetic8aa7f35699e8cd007664c528df621d335de649ca matches exact source base/head parents and tree. This successor changes only the retained review JSON; every current applicable check, fresh feedback review and post-main source guard remain required.",
-    "Current successor source review 5475708567 retains the full original source review and independently verifies the 72-line two-test correction. Staging only the intentional fixture deletion honors existing #2048 inventory semantics; the new real CLI/receipt regression protects unstaged missing-source Partial versus staged deletion Complete. Production/governance and all prior saved-artifact assertions are unchanged. Exact synthetic 268e7fa6453bffa6b620bb6504b307e52556b4c6 and live pair were verified. Native repaired-head tests and all current applicable checks remain required.",
-    "Current-source review 5475755237 verifies exact native formatter wraps against job 114042998773, with the full original source and fixture-repair reviews preserved. Current head 0395a73e8454c19bfabe3169f0c7a2a7664a7c7e and synthetic f8ba4a93f5591968e9a4c47703418c35508ad1b0 bind the latest source. All earlier 6f9/5c5/2653 CI statements are historical; current native checks remain separately required."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4435#pullrequestreview-5478957106",
+    "Full 17-path effective diff and complete changed production seams, consumers, test oracles and policy/revision records.",
+    "One bounded blob visitor with exact requested OID/order/header/size/delimiter validation, strict UTF-8, 8 MiB admission, bounded oversized body/stderr drain, writer/stderr concurrency and child reaping.",
+    "Typed repository-relative per-path rejection, preserved valid findings/nearest-package attribution/order, complete inventory versus partial scanner facts and actual current-tree inventory coverage.",
+    "BasePartial/BothPartial no ordinary introduced/removal movement, HeadPartial only established New movement, report/receipt/human/Markdown/common summary and actual PR-check consumer parity.",
+    "Actual staged deletion versus tracked-but-missing Partial tests; exact producer change field; six Git repository overrides removed across all five fixture child paths; child-only hostile-index/all-overrides wrappers demand exact named-test success and unchanged canary index/HEAD, with no recursive invocation.",
+    "Current a611 integration independently verified: 16 owned nonpolicy blobs remain identical to the full independently reviewed c961 predecessor; no runtime/test/doc/own-record alteration. Exact 736770-byte main policy prefix plus original 1577-byte own tail;1080 unique IDs; prior entries and lifecycle dates identical;allow-11278 occurrence_limit=36. Both own notes/entries preserve previously independently reconstructed canonical fingerprints. All 2637 outside-scope main paths exact. Incoming explain slice has no source overlap with this PR, and actual affected consumers remain coherent.",
+    "AcceptedFollowUp #2511 remains in the unchanged findings entry; five substantive threads resolved. Current native source/platform/MSRV/pregate/coverage/package/aggregate checks pass; only historical own-record readiness/publisher failures remain before this metadata correction."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38050181994/job/114207563074"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4435",
-  "reviewed_at_utc": "2026-10-09T22:01:04.622Z"
+  "reviewed_at_utc": "2026-10-10T12:35:59Z"
 }
