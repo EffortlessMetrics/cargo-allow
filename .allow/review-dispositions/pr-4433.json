@@ -4,32 +4,34 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4433,
   "base_ref": "main",
-  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "base_sha": "50d600e3391376a5649afe797807a481ade80ca2",
   "head_ref": "fix/4351-expiry-day-coherence",
-  "head_sha": "684fed84e8cb493ba29370be32bdc5ac3db2e40b",
-  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
-  "reviewed_diff_digest": "sha256:v1:842df6f61dc76e45f3179b2c062eb4d97f1b9632f70f36e6538d8373c5bf9949",
+  "head_sha": "dec06e847f3a33dc1582588e01fed60e29317a96",
+  "merge_base": "50d600e3391376a5649afe797807a481ade80ca2",
+  "reviewed_diff_digest": "sha256:v1:792edd0c12743ac5dab52b5522675e3d023f9afad089b2d3e57ba0ddde49598a",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/backlog_audit separate nonauthoring current-source and consumer review; shared model family/prior campaign context disclosed; coordinating author account transports metadata only",
+  "reviewer_identity": "ChatGPT /root/ux_closeout separate nonauthoring full source, consumer, integration and governance review; authored none of this PR; shared model family/inherited campaign context disclosed; coordinating author account transports metadata only",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475254992"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5478571966"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5475254992",
-    "The strict policy-expiry predicate, unchanged matcher behavior, independent review/drain boundary and real scanner/evaluator/CLI boundary matrix remain independently reviewed. Integration changes only the five current-main file blobs and the byte-preserved exact policy union. Historical policy CRLF prefix and canonical entry fingerprints are preserved. No review threads are unresolved; current full native CI remains pending.",
-    "Current synthetic merge 1bf40c67f8db64621d0080a71e389a4c276266d9; source/metadata identities remain distinct.",
-    "The successor changes only this retained review JSON. Every current applicable native check and post-main source guard remains independently required; a quota-limited bot or infrastructure failure is not a clean CI result."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4433#pullrequestreview-5478571966",
+    "Complete fifteen-path source/consumer/test/schema/governance review. The shared policy-expiry predicate is strictly before today across matcher, read model and cadence. Inclusive review-after and drain rules, raw New preservation, calendar gate posture, malformed-date failures and existing lifecycle precedence remain unchanged.",
+    "Actual CLI boundary tests compare check, list, worklist, explain and cadence. Every owned fixture Git/cargo-allow child uses the established six-key repository environment filter; the real named-test wrapper proves caller index/HEAD preservation and cannot accept an empty filter. Independent native Git RED/GREEN control confirms original successful setup can corrupt the caller index and filtered setup preserves it.",
+    "The actual one-hunk native formatter successor has exact expected lifecycle_boundary.rs blob cb4d81f9f34a4e847e8833688537560e1543a858, 15,790 bytes. Every other reviewed blob is unchanged. All fourteen prior nonpolicy and sixteen incoming main nonpolicy entries, full 733,617-byte main policy prefix and unchanged 1,577-byte own tail are preserved, yielding 1,076 unique IDs; both receipt fingerprints match.",
+    "Synthetic 80e99535c0bb6d35bda5e9f932a25801a85d0484 has exact ordered base/head parents and source tree 18864a555c642b546da0ec810ed2a1fd63ea87b0. Existing stale-record thread 4236062610 and outside-diff review 5478524999 require reconciliation after this current record's bootstrap is independently verified. No remaining semantic source finding. Broader clock snapshots stay under #4237 and the complementary lifecycle/tie summary repair under #4431/#4350.",
+    "Coordinator-read current source pregate 114187244042 / run 38043145301 passes actual synthetic checkout, actionlint, formatting, enforcing no-new with 16,652 findings and zero new, and typed Complete. Artifact 11666269258 / ZIP SHA256 6cc14fe466998d8d15d3843538ad71677272a8de4d75ff24cbcd4535db0742e2. Current Ubuntu job 114187564886 explicitly passes strict-date/cadence and all four lifecycle boundary tests including actual CLI and hostile environment wrapper. No local compiled-Rust or all-gates-complete claim."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: verify the exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-merge source guard before closeout. Pending, skipped, neutral and stale results are not green.",
-    "observation_ref": ""
+    "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, reconcile prior record feedback, require all applicable current native checks and fresh final pair/feedback, then retain exact post-main enforcing evidence before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38043145301/job/114187244042"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4433",
-  "reviewed_at_utc": "2026-10-09T20:53:24Z"
+  "reviewed_at_utc": "2026-10-10T10:08:48Z"
 }
