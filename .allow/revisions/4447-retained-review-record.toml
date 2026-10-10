@@ -14,3 +14,23 @@ allow_ids = ["allow-review-4447-note"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:005fd81d841e309bef0c3f589ae4c5c5e5aebfdee2f04e154f99d92a3b21da82"
 reason = "Authored revision note for the exact retained PR #4447 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+
+# PR #4447: exact core/release source inventory receipts, ACKed in #3925.
+
+[[records]]
+allow_ids = ["allow-release-4447-store-doc"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:866fe36c5314f0d46bdb3a240986ba98a8b900b0b87b54cbd08a3a5a062eca30"
+reason = "Intentional documentation of the bounded authenticated release-operation store provider, existing domain-record custody, and remaining driver and deployment obligations under #3925/#3927. This exact source path records the contract; it is not live-provider proof or release authorization."
+
+[[records]]
+allow_ids = ["allow-release-4447-store-script"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:48606c76d49a652b44800f376d7254857fc36bd183dc6f7a3c8d51d503a2b638"
+reason = "Intentional bounded GitHub transport for existing release-operation, lease and custody record bytes under #3925/#3927. Source inventory admission only; live-provider qualification, typed driver composition and release authorization remain separate."
+
+[[records]]
+allow_ids = ["allow-release-4447-store-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:71bda8c962170269893699803c54d060f50fda94f1ceb7552eda7029d5e932b9"
+reason = "Intercepted-transport regression tests for the release-operation store context, credential, ref-update, witness, artifact and archive boundaries. Their synthetic provider inputs are production behavior validation and cannot satisfy a release gate or authorize an external operation."
