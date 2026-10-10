@@ -1021,11 +1021,22 @@ class FullContracts(unittest.TestCase):
     def test_independent_subject_context_complete_replay_and_actor_controls(self):
         original = copy.deepcopy(self.configuration["artifacts"])
         original_files = dict(self.selected)
+
+        def stale_authoritative_reading(record, kind, observation_id):
+            readings = [row for row in record["observation_readings"] if row["kind"] == kind]
+            self.assertEqual(len(readings), 1)
+            reading, = readings
+            self.assertEqual(reading["observation_id"], observation_id)
+            self.assertIs(reading["authoritative"], True)
+            self.assertEqual(reading["freshness"], "current")
+            reading["freshness"] = "stale"
+
         changes = [
             ("expected-context.json", lambda record: record["freeze"].update(tree="c" * 40)),
             ("freeze-replay.json", lambda record: record.update(selected_upload_rows=9)),
             ("freeze-replay.json", lambda record: record.update(retained_bytes_verified=False)),
-            ("freeze-replay.json", lambda record: record["observation_readings"][0].update(freshness="stale")),
+            ("freeze-replay.json", lambda record: stale_authoritative_reading(record, "source_live_control", "obs:source-live-control")),
+            ("freeze-replay.json", lambda record: stale_authoritative_reading(record, "registry_feasibility", "obs:registry-feasibility")),
             ("preflight-inputs.json", lambda record: record["candidate"].update(repository_tree="c" * 40)),
             ("authorization-custody.json", lambda record: record["freeze"].update(tree="c" * 40)),
             ("authorization.json", lambda record: record["authority"].update(nonce="foreign-nonce")),
@@ -1034,7 +1045,9 @@ class FullContracts(unittest.TestCase):
             with self.subTest(path=path, index=index):
                 files = dict(original_files)
                 record = json.loads(files[path])
+                before = copy.deepcopy(record)
                 mutate(record)
+                self.assertNotEqual(record, before)
                 files[path] = json.dumps(record, separators=(",", ":"), ensure_ascii=False).encode()
                 if path == "freeze-replay.json":
                     # Keep the byte-digest chain self-consistent so only the
@@ -1048,6 +1061,8 @@ class FullContracts(unittest.TestCase):
                     "transfer": self.provider.transfer(artifact_id), "producer": producer(),
                     "selections": {name: name for name in files}}]
                 self.expect_error(lambda: self.driver.prepare("bootstrap", self.root / f"wrong-{index}"), "ineligible")
+                self.assertEqual(self.provider.mutations(), [])
+                self.assertEqual(self.git_runner.pushes, 0)
         self.driver.config["artifacts"] = original
         self.provider.source["user"]["id"] = 405
         self.expect_error(lambda: self.driver.prepare("bootstrap", self.root / "actor"), "mismatch")
