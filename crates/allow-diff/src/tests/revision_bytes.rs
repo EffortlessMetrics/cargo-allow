@@ -50,6 +50,205 @@ impl Drop for Fixture {
     }
 }
 
+fn require_optional_package_context(
+    fixture: &Fixture,
+    paths: &[PathBuf],
+    expected: &[(&str, Option<&str>)],
+) -> Result<(), String> {
+    let revision = scan_at_revision(&fixture.0, "HEAD", &AllowConfig::empty())
+        .map_err(|error| error.to_string())?;
+    let current =
+        allow_rust::scan_rust_files(&fixture.0, paths).map_err(|error| error.to_string())?;
+    let rust_findings = revision
+        .findings
+        .iter()
+        .filter(|finding| finding.kind == FindingKind::Panic)
+        .cloned()
+        .collect::<Vec<_>>();
+    if revision.source_files_considered != paths.len()
+        || revision.rust_files_considered != expected.len()
+        || revision.rust_files_scanned != expected.len()
+        || revision.rust_files_skipped != 0
+        || revision.rust_files_with_parse_errors != 0
+        || revision.scanner_completeness != "complete"
+        || revision.inventory_completeness != "complete"
+        || revision.rust_file_statuses != current.file_statuses
+        || rust_findings != current.findings
+        || rust_findings.len() != expected.len()
+    {
+        return Err(format!(
+            "optional package context changed valid source scanning: {revision:?} / {current:?}"
+        ));
+    }
+    for (path, package) in expected {
+        let matches = rust_findings
+            .iter()
+            .filter(|finding| finding.path == Path::new(path))
+            .collect::<Vec<_>>();
+        if matches.len() != 1
+            || matches
+                .first()
+                .is_none_or(|finding| finding.identity.crate_name.as_deref() != *package)
+        {
+            return Err(format!(
+                "optional package context for {path} must be {package:?}: {matches:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn unreadable_optional_manifests_do_not_abort_revision_rust_scans() -> Result<(), String> {
+    for (label, manifest) in [
+        (
+            "non-utf8",
+            Some(b"[package]\nname = \"ignored\"\n#\xff\n".as_slice()),
+        ),
+        (
+            "invalid-toml",
+            Some(b"[package\nname = \"ignored\"\n".as_slice()),
+        ),
+        ("absent", None),
+    ] {
+        let fixture = Fixture::new(&format!("optional-manifest-{label}"))?;
+        let mut paths = vec![PathBuf::from("src/lib.rs")];
+        if let Some(manifest) = manifest {
+            fixture.write("Cargo.toml", manifest)?;
+            paths.insert(0, PathBuf::from("Cargo.toml"));
+        }
+        fixture.write(
+            "src/lib.rs",
+            b"fn retained(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )?;
+        fixture.commit();
+        require_optional_package_context(&fixture, &paths, &[("src/lib.rs", None)])?;
+    }
+    Ok(())
+}
+
+#[test]
+fn optional_manifest_context_retains_the_cap_boundary() -> Result<(), String> {
+    let fixture = Fixture::new("optional-manifest-cap")?;
+    let cap = usize::try_from(SOURCE_FILE_READ_MAX_BYTES).map_err(|error| error.to_string())?;
+    let mut manifest = b"[package]\nname = \"at-cap\"\nversion = \"0.1.0\"\n#".to_vec();
+    manifest.resize(cap, b'x');
+    fixture.write("Cargo.toml", &manifest)?;
+    fixture.write(
+        "src/lib.rs",
+        b"fn retained(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )?;
+    fixture.commit();
+    let paths = vec!["Cargo.toml".into(), "src/lib.rs".into()];
+    require_optional_package_context(&fixture, &paths, &[("src/lib.rs", Some("at-cap"))])?;
+    manifest.push(b'x');
+    fixture.write("Cargo.toml", &manifest)?;
+    fixture.commit();
+    require_optional_package_context(&fixture, &paths, &[("src/lib.rs", None)])?;
+    let error = read_file_at_revision(&fixture.0, "HEAD", "Cargo.toml")
+        .err()
+        .ok_or_else(|| "the strict single-file reader accepted an over-cap manifest".to_string())?;
+    if error.kind() != CargoAllowErrorKind::Scan || !error.to_string().contains("8388609 bytes") {
+        return Err(format!("the source cap was weakened for manifests: {error}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn unreadable_nested_manifest_keeps_nearest_readable_package_context() -> Result<(), String> {
+    let fixture = Fixture::new("optional-nested-package-context")?;
+    for directory in ["src/omitted", "src/named"] {
+        fs::create_dir_all(fixture.0.join(directory)).map_err(|error| error.to_string())?;
+    }
+    fixture.write("Cargo.toml", b"[package]\nname = \"outer\"\n")?;
+    fixture.write(
+        "src/omitted/Cargo.toml",
+        b"[package]\nname = \"omitted\"\n#\xff\n",
+    )?;
+    fixture.write("src/named/Cargo.toml", b"[package]\nname = \"inner\"\n")?;
+    for path in ["src/lib.rs", "src/omitted/lib.rs", "src/named/lib.rs"] {
+        fixture.write(
+            path,
+            b"fn retained(value: Option<u8>) -> u8 { value.unwrap() }\n",
+        )?;
+    }
+    fixture.commit();
+    let paths = vec![
+        "Cargo.toml".into(),
+        "src/lib.rs".into(),
+        "src/named/Cargo.toml".into(),
+        "src/named/lib.rs".into(),
+        "src/omitted/Cargo.toml".into(),
+        "src/omitted/lib.rs".into(),
+    ];
+    require_optional_package_context(
+        &fixture,
+        &paths,
+        &[
+            ("src/lib.rs", Some("outer")),
+            ("src/named/lib.rs", Some("inner")),
+            ("src/omitted/lib.rs", Some("outer")),
+        ],
+    )
+}
+
+#[test]
+fn required_revision_companions_still_reject_unreadable_bytes() -> Result<(), String> {
+    let cap = usize::try_from(SOURCE_FILE_READ_MAX_BYTES).map_err(|error| error.to_string())?;
+    for (label, path, receipt, valid) in [
+        (
+            "attributes",
+            ".gitattributes",
+            generated_code_entry("generated/schema.json"),
+            b"generated/schema.json linguist-generated=true\n".as_slice(),
+        ),
+        (
+            "workflow",
+            ".github/workflows/ci.yml",
+            workflow_entry(
+                "workflow-ci",
+                "github_workflow",
+                "github_workflow",
+                ".github/workflows/ci.yml",
+                None,
+            ),
+            b"steps:\n  - uses: actions/checkout@v4\n".as_slice(),
+        ),
+    ] {
+        let fixture = Fixture::new(&format!("required-revision-{label}"))?;
+        if let Some(parent) = Path::new(path).parent() {
+            fs::create_dir_all(fixture.0.join(parent)).map_err(|error| error.to_string())?;
+        }
+        fixture.write("src/lib.rs", b"fn retained() {}\n")?;
+        fixture.write(path, valid)?;
+        fixture.commit();
+        let cfg = config_with(receipt);
+        scan_at_revision(&fixture.0, "HEAD", &cfg).map_err(|error| error.to_string())?;
+        let mut oversized = valid.to_vec();
+        oversized.extend_from_slice(b"#");
+        oversized.resize(cap + 1, b'x');
+        for (bytes, reason) in [
+            (b"#\xff\n".as_slice(), "not valid UTF-8"),
+            (oversized.as_slice(), "8388609 bytes"),
+        ] {
+            fixture.write(path, bytes)?;
+            fixture.commit();
+            let error = scan_at_revision(&fixture.0, "HEAD", &cfg)
+                .err()
+                .ok_or_else(|| format!("required companion {path} was treated as optional"))?;
+            if error.kind() != CargoAllowErrorKind::Scan
+                || !error.to_string().contains(path)
+                || !error.to_string().contains(reason)
+            {
+                return Err(format!(
+                    "required companion lost its strict path error: {error}"
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn invalid_comment_bytes_preserve_valid_findings_and_order() -> Result<(), String> {
     let fixture = Fixture::new("revision-strict-utf8")?;

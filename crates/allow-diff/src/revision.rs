@@ -114,6 +114,7 @@ where
     let mut generated_findings = Vec::new();
     read_files_at_revision(root, &all_tree_files, &source_paths, |rel, source| {
         let is_rust = rel.extension().and_then(|ext| ext.to_str()) == Some("rs");
+        let is_manifest = rel.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml");
         let text = match source {
             Ok(text) => text,
             Err(error) if is_rust => {
@@ -126,6 +127,10 @@ where
                 });
                 return Ok(());
             }
+            // Package names are optional source context. A rejected manifest
+            // must not prevent valid Rust from being scanned, just as in the
+            // current-tree scanner. Required companion sources stay strict.
+            Err(_) if is_manifest => return Ok(()),
             Err(error) => {
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::Scan,
@@ -147,7 +152,7 @@ where
                 },
             });
             rust_findings_by_path.insert(rel.to_path_buf(), scan.findings);
-        } else if rel.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml") {
+        } else if is_manifest {
             packages_by_path.insert(
                 rel.to_path_buf(),
                 allow_rust::source_package_contexts_from_sources([(

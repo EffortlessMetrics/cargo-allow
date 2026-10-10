@@ -160,6 +160,119 @@ fn require_side_facts(
 }
 
 #[test]
+fn optional_manifest_rejections_preserve_complete_binary_diff() -> Result<(), String> {
+    let cap = usize::try_from(allow_core::SOURCE_FILE_READ_MAX_BYTES)
+        .map_err(|error| error.to_string())?;
+    let mut oversized = b"[package]\nname = \"must-not-be-used\"\n#".to_vec();
+    oversized.resize(cap + 1, b'x');
+    let readable = b"[workspace]\nmembers = []\n".as_slice();
+    for (label, rejected) in [
+        (
+            "non-utf8",
+            b"[package]\nname = \"must-not-be-used\"\n#\xff\n".as_slice(),
+        ),
+        ("over-cap", oversized.as_slice()),
+    ] {
+        for (side, base_rejected, head_rejected) in [
+            ("base", true, false),
+            ("head", false, true),
+            ("both", true, true),
+        ] {
+            let fixture = Fixture::new(&format!("optional-cargo-{label}-{side}"))?;
+            let base_manifest = if base_rejected { rejected } else { readable };
+            fixture.write("Cargo.toml", base_manifest)?;
+            fixture.write("src/retained.rs", VALID)?;
+            fixture.git(&["add", "--", "Cargo.toml"])?;
+            let base = fixture.commit("base with optional manifest")?;
+            let head_manifest = if head_rejected { rejected } else { readable };
+            fixture.write("Cargo.toml", head_manifest)?;
+            fixture.write("src/new.rs", VALID)?;
+            fixture.git(&["add", "--", "Cargo.toml"])?;
+            let head = fixture.commit("head with optional manifest")?;
+            for (revision, manifest) in [(&base, base_manifest), (&head, head_manifest)] {
+                let object = format!("{revision}:Cargo.toml");
+                if fixture.git(&["cat-file", "-s", &object])? != manifest.len().to_string() {
+                    return Err(format!(
+                        "{label}/{side} did not commit its selected manifest"
+                    ));
+                }
+            }
+            // Both the committed and current-tree head routes must retain
+            // the same valid source, without optional package-name authority.
+            for revision in [Some(head.as_str()), None] {
+                let output = fixture.diff(&base, revision, "json")?;
+                let report = json_report(&output)?;
+                let analysis = report
+                    .pointer("/diff/diff_analysis")
+                    .ok_or_else(|| "optional manifest diff lost analysis".to_string())?;
+                require_side_facts(analysis, true, true, "complete")?;
+                if output.status.code() != Some(1)
+                    || !output.stderr.is_empty()
+                    || analysis.get("introduced").and_then(Value::as_u64) != Some(1)
+                    || analysis.get("removed").and_then(Value::as_u64) != Some(0)
+                {
+                    return Err(format!(
+                        "{label}/{side} optional manifest changed Rust movement: {report}"
+                    ));
+                }
+                let findings = report
+                    .get("findings")
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| "optional manifest diff lost valid findings".to_string())?;
+                if findings.len() != 2 {
+                    return Err(format!(
+                        "optional manifest lost or added source: {findings:?}"
+                    ));
+                }
+                for path in ["src/retained.rs", "src/new.rs"] {
+                    let matching = findings
+                        .iter()
+                        .filter(|finding| finding.get("path").and_then(Value::as_str) == Some(path))
+                        .collect::<Vec<_>>();
+                    if matching.len() != 1
+                        || matching.first().is_none_or(|finding| {
+                            finding
+                                .get("source_package")
+                                .is_some_and(|value| !value.is_null())
+                        })
+                    {
+                        return Err(format!(
+                            "optional manifest invented context or lost {path}: {matching:?}"
+                        ));
+                    }
+                }
+                let changes = report
+                    .pointer("/diff/finding_changes")
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| "optional manifest diff lost finding changes".to_string())?;
+                if changes.len() != 1
+                    || changes.first().is_none_or(|change| {
+                        change.get("path").and_then(Value::as_str) != Some("src/new.rs")
+                            || change.get("change").and_then(Value::as_str) != Some("new")
+                            || change
+                                .get("source_package")
+                                .is_some_and(|value| !value.is_null())
+                    })
+                {
+                    return Err(format!(
+                        "optional manifest changed exact movement: {changes:?}"
+                    ));
+                }
+                let receipt = fixture.receipt("json")?;
+                if receipt.get("diff_analysis") != Some(analysis)
+                    || receipt.get("status").and_then(Value::as_str) != Some("failed")
+                {
+                    return Err(format!(
+                        "optional manifest receipt lost source facts: {receipt}"
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
     for (base_complete, head_complete, class) in [
         (false, true, "base_partial"),
