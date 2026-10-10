@@ -79,9 +79,10 @@ impl ReconciledPackagePublicationV1 {
     }
 
     /// Classify this row and validate the evidence that classification
-    /// requires. A row is `CompleteExact` only when the observed registry
-    /// checksum equals the class-correct expected checksum; every other
-    /// outcome is named, and none of them may enter a manifest as exact.
+    /// requires. A row is `CompleteExact` only when its state confirms
+    /// publication and the observed registry checksum equals the class-correct
+    /// expected checksum; every other outcome is named, and none of them may
+    /// enter a manifest as exact.
     pub fn classify(&self) -> PublicationClassificationV1 {
         // A present-but-malformed observed checksum is malformed evidence
         // (Mismatch), distinct from an absent observation (Missing or
@@ -103,6 +104,16 @@ impl ReconciledPackagePublicationV1 {
         };
         if !Self::checksum_valid(&self.expected_checksum) {
             return PublicationClassificationV1::Mismatch;
+        }
+        // A checksum cannot establish publication when the observation says
+        // the row is missing or the provider is unavailable. Check this after
+        // checksum shape so malformed evidence keeps its Mismatch diagnosis.
+        match self.state {
+            PublicationStateV1::Missing => return PublicationClassificationV1::Missing,
+            PublicationStateV1::ProviderUnavailable => {
+                return PublicationClassificationV1::Unavailable;
+            }
+            PublicationStateV1::PublishedVerified | PublicationStateV1::VerifiedExisting => {}
         }
         match self.row_class {
             // A candidate row whose registry bytes predate this candidate is
@@ -220,6 +231,124 @@ mod tests {
             expected_checksum: CANONICAL.to_string(),
             observed_registry_checksum: observed.map(str::to_string),
         }
+    }
+
+    fn matching_publication_rows() -> [ReconciledPackagePublicationV1; 2] {
+        [
+            candidate(
+                "0.2.0",
+                PublicationStateV1::PublishedVerified,
+                CANONICAL,
+                Some(CANONICAL),
+            ),
+            shared(Some(CANONICAL)),
+        ]
+    }
+
+    const NONPUBLICATION_STATES: [(PublicationStateV1, PublicationClassificationV1, &str); 2] = [
+        (
+            PublicationStateV1::Missing,
+            PublicationClassificationV1::Missing,
+            "missing",
+        ),
+        (
+            PublicationStateV1::ProviderUnavailable,
+            PublicationClassificationV1::Unavailable,
+            "provider_unavailable",
+        ),
+    ];
+
+    #[test]
+    fn missing_and_unavailable_states_cannot_become_exact_from_checksums() -> Result<(), String> {
+        let mut failures = Vec::new();
+        for exact in matching_publication_rows() {
+            for (state, expected, _) in NONPUBLICATION_STATES {
+                for observed in [Some(CANONICAL), Some(CONFLICTING), None] {
+                    let mut row = exact.clone();
+                    row.state = state;
+                    row.observed_registry_checksum = observed.map(str::to_string);
+                    let actual = row.classify();
+                    if actual != expected || row.is_manifest_ready() {
+                        failures.push(format!(
+                            "{:?}/{state:?}/{observed:?}: expected {expected:?} and not ready, got {actual:?}",
+                            row.row_class
+                        ));
+                    }
+                }
+            }
+        }
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(failures.join("\n"))
+        }
+    }
+
+    #[test]
+    fn manifest_consumers_refuse_matching_checksums_without_publication() -> Result<(), String> {
+        let mut failures = Vec::new();
+        for exact in matching_publication_rows() {
+            for (state, _, reason) in NONPUBLICATION_STATES {
+                let mut row = exact.clone();
+                row.state = state;
+                let expected_error = format!(
+                    "{} {}:{}: {reason}",
+                    row.package_name, row.package_version, row.logical_id
+                );
+                if row.manifest_row() != Err(expected_error.clone()) {
+                    failures.push(format!(
+                        "{:?}/{state:?}: manifest row did not refuse as {reason}",
+                        row.row_class
+                    ));
+                }
+                if manifest_rows_from_reconciled(std::slice::from_ref(&row)) != Err(expected_error)
+                {
+                    failures.push(format!(
+                        "{:?}/{state:?}: manifest batch did not refuse as {reason}",
+                        row.row_class
+                    ));
+                }
+            }
+        }
+        if failures.is_empty() {
+            Ok(())
+        } else {
+            Err(failures.join("\n"))
+        }
+    }
+
+    #[test]
+    fn nonpublication_states_preserve_malformed_evidence_precedence() -> Result<(), String> {
+        for exact in matching_publication_rows() {
+            for (state, absent_class, _) in NONPUBLICATION_STATES {
+                for (expected, observed, classification) in [
+                    (
+                        "short",
+                        Some(CANONICAL),
+                        PublicationClassificationV1::Mismatch,
+                    ),
+                    (
+                        CANONICAL,
+                        Some("sha256:nope"),
+                        PublicationClassificationV1::Mismatch,
+                    ),
+                    (CANONICAL, None, absent_class),
+                    ("short", None, absent_class),
+                ] {
+                    let mut row = exact.clone();
+                    row.state = state;
+                    row.expected_checksum = expected.to_string();
+                    row.observed_registry_checksum = observed.map(str::to_string);
+                    if row.classify() != classification || row.is_manifest_ready() {
+                        return Err(format!(
+                            "{:?}/{state:?}: expected {classification:?} for {expected:?}/{observed:?}",
+                            row.row_class
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     #[test]
