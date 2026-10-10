@@ -208,8 +208,7 @@ fn valid_control_time(value: &str, now: &str) -> bool {
     };
     if value.len() != 20
         || value > now
-        || !allow_core::SimpleDate::parse(date)
-            .is_some_and(|parsed| parsed.to_string() == date)
+        || !allow_core::SimpleDate::parse(date).is_some_and(|parsed| parsed.to_string() == date)
     {
         return false;
     }
@@ -304,9 +303,9 @@ fn control_rule_types(value: Option<&Json>) -> Checked<Vec<&str>> {
                 .bytes()
                 .next()
                 .is_some_and(|byte| byte.is_ascii_lowercase())
-            || !value.bytes().all(|byte| {
-                byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'
-            })
+            || !value
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
     }) || !values.windows(2).all(|pair| pair.first() <= pair.get(1))
     {
         return Err("control rule types are malformed or unordered");
@@ -344,8 +343,8 @@ fn control_projection(
     if raw.len() > MAX_FILE_BYTES {
         return Err("control receipt exceeds its bound");
     }
-    let value = rehearsal::decode(raw)
-        .map_err(|_| "control receipt is malformed or has duplicate keys")?;
+    let value =
+        rehearsal::decode(raw).map_err(|_| "control receipt is malformed or has duplicate keys")?;
     let mut object = value
         .as_object()
         .cloned()
@@ -407,7 +406,9 @@ fn control_projection(
     }
     let mut seen = BTreeMap::new();
     for (id, value) in ids.iter().zip(details) {
-        let detail = value.as_object().ok_or("ruleset detail must be an object")?;
+        let detail = value
+            .as_object()
+            .ok_or("ruleset detail must be an object")?;
         if detail.len() != 5
             || detail.keys().any(|key| {
                 !["ruleset_id", "name", "target", "enforcement", "rule_types"]
@@ -433,10 +434,8 @@ fn control_projection(
     object.remove("state");
     if recorded_digest.as_str()
         != Some(
-            allow_core::sha256_v1_bytes(
-                observer_json(&Json::Object(object.clone()))?.as_bytes(),
-            )
-            .as_str(),
+            allow_core::sha256_v1_bytes(observer_json(&Json::Object(object.clone()))?.as_bytes())
+                .as_str(),
         )
     {
         return Err("control observation digest differs from its actual content");
@@ -476,9 +475,7 @@ fn verify_current_controls(
     let current_value =
         rehearsal::decode(&readback.receipt).map_err(|_| "current controls are malformed")?;
     if expected != current
-        || current_value
-            .get("generated_at_utc")
-            .and_then(Json::as_str)
+        || current_value.get("generated_at_utc").and_then(Json::as_str)
             != Some(utc(readback.provider_observed_at_unix_seconds)?.as_str())
     {
         return Err("current controls differ from the independently frozen projection");
@@ -500,7 +497,9 @@ fn verify_rehearsal(selected: &Files, inputs: &CargoAllowFinalFreezeReplayInputs
             != Some(RELEASE_OPERATION_VERSION)
         || value.get("commit_sha").and_then(Json::as_str) != Some(freeze.commit.as_str())
     {
-        return Err("canonical rehearsal schema, phase, boundary, proof or release identity is ineligible");
+        return Err(
+            "canonical rehearsal schema, phase, boundary, proof or release identity is ineligible",
+        );
     }
     for (field, expected) in [
         ("subject_lockfile_digest", freeze.cargo_lock_digest.as_str()),
@@ -521,7 +520,9 @@ fn verify_rehearsal(selected: &Files, inputs: &CargoAllowFinalFreezeReplayInputs
         node.evidence_id == "release-rehearsal"
             || node.class == FinalEvidenceNodeClassV1::ReleaseRehearsal
     });
-    let node = nodes.next().ok_or("required rehearsal graph node is missing")?;
+    let node = nodes
+        .next()
+        .ok_or("required rehearsal graph node is missing")?;
     if nodes.next().is_some()
         || node.evidence_id != "release-rehearsal"
         || node.class != FinalEvidenceNodeClassV1::ReleaseRehearsal
