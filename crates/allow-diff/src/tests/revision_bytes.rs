@@ -15,13 +15,13 @@ impl Fixture {
     fn new(label: &str) -> Result<Self, String> {
         let fixture = Self(temp_root(label));
         fs::create_dir_all(fixture.0.join("src")).map_err(|error| error.to_string())?;
-        git(&fixture.0, &["init"]);
-        git(
+        fixture_git(&fixture.0, &["init"]);
+        fixture_git(
             &fixture.0,
             &["config", "user.email", "cargo-allow@example.invalid"],
         );
-        git(&fixture.0, &["config", "user.name", "cargo-allow test"]);
-        git(&fixture.0, &["config", "core.autocrlf", "false"]);
+        fixture_git(&fixture.0, &["config", "user.name", "cargo-allow test"]);
+        fixture_git(&fixture.0, &["config", "core.autocrlf", "false"]);
         Ok(fixture)
     }
 
@@ -30,8 +30,8 @@ impl Fixture {
     }
 
     fn commit(&self) {
-        git(&self.0, &["add", "."]);
-        git(
+        fixture_git(&self.0, &["add", "."]);
+        fixture_git(
             &self.0,
             &[
                 "-c",
@@ -48,6 +48,116 @@ impl Drop for Fixture {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.0);
     }
+}
+
+fn isolate_fixture_repository(command: &mut std::process::Command) {
+    for name in [
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_INDEX_FILE",
+        "GIT_COMMON_DIR",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    ] {
+        command.env_remove(name);
+    }
+}
+
+fn fixture_git_command(root: &Path) -> std::process::Command {
+    let mut command = std::process::Command::new("git");
+    command.arg("-C").arg(root);
+    isolate_fixture_repository(&mut command);
+    command
+}
+
+fn fixture_git(root: &Path, args: &[&str]) {
+    let output = fixture_git_command(root)
+        .args(args)
+        .output()
+        .unwrap_or_else(|error| std::panic::panic_any(format!("fixture git {args:?}: {error}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "fixture git {args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+}
+
+#[test]
+fn fixture_commits_own_bytes() -> Result<(), String> {
+    let fixture = Fixture::new("isolated-revision-fixture")?;
+    let source: &[u8] = b"pub fn isolated_fixture() -> u8 { 7 }\n";
+    fixture.write("src/lib.rs", source)?;
+    fixture.commit();
+    let output = fixture_git_command(&fixture.0)
+        .args(["show", "HEAD:src/lib.rs"])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if !output.status.success() || output.stdout != source {
+        return Err(format!(
+            "the fixture must commit its own source bytes: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn revision_fixtures_isolate_repository_environment() -> Result<(), String> {
+    let canary = Fixture::new("revision-environment-canary")?;
+    let source: &[u8] = b"// unrelated repository canary\n";
+    canary.write("src/lib.rs", source)?;
+    canary.commit();
+    let git_dir = canary.0.join(".git");
+    let index = git_dir.join("index");
+    let index_before = fs::read(&index).map_err(|error| error.to_string())?;
+    let head_before = fixture_git_command(&canary.0)
+        .args(["rev-parse", "--verify", "HEAD"])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if !head_before.status.success() || head_before.stdout.is_empty() {
+        return Err("the canary must start with a committed HEAD".to_string());
+    }
+
+    let test_name = "tests::revision_bytes::fixture_commits_own_bytes";
+    for index_only in [true, false] {
+        let executable = std::env::current_exe().map_err(|error| error.to_string())?;
+        let mut command = std::process::Command::new(executable);
+        isolate_fixture_repository(&mut command);
+        command
+            .args(["--exact", test_name, "--nocapture", "--color", "never"])
+            .env("GIT_INDEX_FILE", &index);
+        if !index_only {
+            command
+                .env("GIT_DIR", &git_dir)
+                .env("GIT_WORK_TREE", &canary.0)
+                .env("GIT_COMMON_DIR", &git_dir)
+                .env("GIT_OBJECT_DIRECTORY", git_dir.join("objects"))
+                .env("GIT_ALTERNATE_OBJECT_DIRECTORIES", git_dir.join("objects"));
+        }
+        let output = command.output().map_err(|error| error.to_string())?;
+        let head_after = fixture_git_command(&canary.0)
+            .args(["rev-parse", "--verify", "HEAD"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        if fs::read(&index).map_err(|error| error.to_string())? != index_before
+            || !head_after.status.success()
+            || head_after.stdout != head_before.stdout
+            || fs::read(canary.0.join("src/lib.rs")).map_err(|error| error.to_string())? != source
+        {
+            return Err(format!(
+                "fixture child changed the canary index, commit or source (index_only={index_only})"
+            ));
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !output.status.success() || !stdout.contains(&format!("test {test_name} ... ok")) {
+            return Err(format!(
+                "the named fixture child did not pass (index_only={index_only}): {stdout}\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn require_optional_package_context(

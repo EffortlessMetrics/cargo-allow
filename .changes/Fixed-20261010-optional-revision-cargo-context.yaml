@@ -3,3 +3,5 @@ body: >-
   Keep valid revision Rust scans usable when an optional Cargo.toml is non-UTF-8
   or over the source read limit, omitting only its package-name context while
   preserving strict Rust and governed companion reads (#4428).
+  Isolate revision test fixtures from inherited Git repository selection and
+  verify child staging and commits preserve an unrelated canary (#4428).
