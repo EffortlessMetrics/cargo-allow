@@ -6,15 +6,15 @@
   "base_ref": "main",
   "base_sha": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
   "head_ref": "fix/4334-context-safe-recovery",
-  "head_sha": "cd8243ae88d8c1262332cd3177ffa06fe27c000a",
+  "head_sha": "ca1f34a6a037cbbf28fab95f16918b139343e1b7",
   "merge_base": "c9616c3e66cb31e51332da970acd18ad8b8fee0b",
-  "reviewed_diff_digest": "sha256:v1:5093f1dc939acd7574d3bfe4deb128f66a31e31371de12fefa354c8aca79d5e6",
+  "reviewed_diff_digest": "sha256:v1:95b8f698c5fe93f3aaea9866b7e714484ab34d986c2260091f13dede49e4759f",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source, consumer and integration review; shared model/campaign context disclosed; coordinating author account transports metadata and authors only the separate exact-path governance successor",
+  "reviewer_identity": "ChatGPT /root/product_audit separate nonauthoring full source, consumer, integration and governance review; authored none of the implementation or evidence files; shared model/campaign context disclosed; coordinating author account transports the native verdict and own-record-only successor",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478695477"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478738660"
     }
   },
   "claimed_verdict": "review_clean",
@@ -23,25 +23,26 @@
       "id": "follow-up-4334-plan-in-inventory",
       "severity": "advisory",
       "owned_seam": "Include-untracked plan output within its own inventory binding",
-      "source_path": "crates/cargo-allow/src/cli/add_from_plan.rs",
+      "source_path": "crates/cargo-allow/src/add_from_plan.rs",
       "source_line": null,
       "repair_route": "Existing #4334 retains plan-in-inventory binding/layout qualification; investigate the actual include-untracked inventory contract before closing that broader issue.",
       "claim_boundary": "The reviewed regeneration fixtures put plans outside included inventory. This review does not qualify every plan layout or close the broader #4334 controller."
     }
   ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478695477",
-    "Complete eight-path source/consumer review at cd8243ae. Both original findings in review5478559365 are Fixed: owned fixture Git/CLI children filter repository selectors, and executable regeneration paths use the selected live Finding raw path instead of normalized binding identity.",
-    "Unique-New admission, replacement refusal, semantic/binding checks, explicit operator judgment, apply/replay and final create_new collision refusal remain unchanged. Strict representability checks retain typed manual Usage guidance for unsafe paths; NFD/backslash/leading-dash controls exercise actual printed sh/cmd.exe commands. No PowerShell qualification.",
-    "All seven unformatted owned blobs match reviewed90db source; the sole other source delta is the exact native formatter hunk. All2640 main paths outside the eight-file scope and complete main policy are preserved at the reviewed source.",
-    "Reviewer directly read pregate114194698395, Linux114195125334 and macOS ARM114195125249. Pregate passes fmt/no-new. Actual add_from_plan_apply has14 Linux and13 ARM passed, zero failed/filtered, including printed-command/raw-path/apply/replay/hostile-environment controls; actual Linux invalid-UTF8 manual oracle passes. Remaining current gates are not assumed green.",
-    "Fresh inline threads empty, no new actionable source finding. The separate exact-path review-record/revision-note/policy addition is an unreviewed successor and is NOT covered by an own-record-only bootstrap. It must receive independent full-successor governance/source-preservation review and native no-new proof before a refreshed record-only head is admissible."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5478738660",
+    "Complete eleven-path source/governance review at ca1f34a6 on guarded c961. All eight implementation modes/blobs match fully reviewed cd8243ae; two original source findings in review5478559365 remain Fixed. No new source blocker.",
+    "Unique-New admission, semantic/binding/replacement checks, selected root/config/inventory, raw executable finding path, strict manual Usage fallback, collision selection and final create_new refusal, explicit judgment and apply/replay remain intact. Actual printed sh/cmd.exe and hostile-environment controls are preserved; no PowerShell qualification.",
+    "The predecessor added exactly its own JSON, authored revision note and two exact-path policy receipts. Independent full governance review now covers that complete addition; all2647 parent paths outside the delta and2639 main paths outside effective scope preserve modes/blobs.",
+    "Policy is exact735194-byte main prefix plus1577-byte own tail,736771 bytes/1078 unique entries. All1076 existing entries/settings/dates/limits remain exact. Only new receipt paths have creation2026-10-10/review2027-01-08. Independent Rust-encoding fingerprints6f79ba005c2f9ab5e280509e30ddd85e2133e2546ed3149a53f78e1de14fd6e4 and4c52e19d9724deed3327d4ddaea95eca47f45842b15ea0e9ffdae509b0b9fc56 match the revision note.",
+    "Synthetic6be92555c735446ce596e2a4bfdc914f67c91807 has exact[c9616c3e66cb31e51332da970acd18ad8b8fee0b,ca1f34a6a037cbbf28fab95f16918b139343e1b7] parents and tree7ac5fdb0b98efcf5bf67b28e5ef087b9479fedc2. Direct current pregate114197941784 passes actual checkout/format/no-new. Actual predecessor Linux14 and macOS ARM13 recovery cases remain preserved source evidence, not a substitute for current gates.",
+    "No actionable current inline findings. NonBlocking advisory source-path typo is Fixed in this own-JSON successor to actual crates/cargo-allow/src/add_from_plan.rs. AcceptedFollowUp #4334 remains: outside-inventory plan controls do not qualify every include-untracked plan-in-inventory layout."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer account: independently verify the own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38045710707/job/114194698395"
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38046825882/job/114197941784"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4446",
-  "reviewed_at_utc": "2026-10-10T10:56:03Z"
+  "reviewed_at_utc": "2026-10-10T11:13:09Z"
 }
