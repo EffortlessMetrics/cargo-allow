@@ -253,7 +253,7 @@ fn class_of(review_after: Option<&str>, expires: Option<&str>) -> LifecycleCaden
 
 #[test]
 fn review_boundary_is_inclusive_overdue_and_horizon_bounded() {
-    // review_after == as_of is overdue (match-engine `<=`, #2008).
+    // review_after == as_of is overdue (match-engine `<=`).
     assert_eq!(
         class_of(Some(CLASSIFIER_AS_OF), None),
         LifecycleCadenceClassV1::ReviewOverdue
@@ -277,7 +277,7 @@ fn review_boundary_is_inclusive_overdue_and_horizon_bounded() {
 
 #[test]
 fn expiry_boundary_is_strict_and_expiring_on_the_day() {
-    // The expires day itself is NOT expired (match-engine `<`, #2008);
+    // The expires day itself is NOT expired (shared policy-entry `<`, #4351);
     // it is expiring with zero days remaining.
     let on_the_day = sole_row(&[classifier_entry("allow-e", None, Some(CLASSIFIER_AS_OF))]);
     assert_eq!(on_the_day.class, LifecycleCadenceClassV1::Expiring);
