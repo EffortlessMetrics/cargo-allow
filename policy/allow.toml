@@ -23729,3 +23729,25 @@ glob = ".allow/revisions/4461-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-3149-command-case-catalogue-eol"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/.gitattributes"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Preserve the literal first-family command catalogue digest across platform checkouts; this exact attributes file forces LF only for core-command-migration-cases.v1.json and does not normalize retained observation bytes or expand qualification."
+evidence = ["issue:3149", "pr:4461", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/.gitattributes"
+target_fingerprint = ".gitattributes"
+glob = "docs/release/.gitattributes"
+
+[allow.last_seen]
+line = 1
+column = 1
