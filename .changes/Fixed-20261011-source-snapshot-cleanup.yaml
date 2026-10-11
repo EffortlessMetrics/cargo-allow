@@ -1,0 +1,3 @@
+kind: Fixed
+body: Restore owned source-candidate snapshot cleanup and report cleanup failures without hiding the original journey failure.
+time: 2026-10-11T03:19:00Z
