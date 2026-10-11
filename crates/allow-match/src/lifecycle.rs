@@ -52,8 +52,9 @@ pub fn malformed_lifecycle_reason(entry: &AllowEntry) -> Option<String> {
 ///
 /// Boundary law: STRICT `date < today`. The expires day itself is not
 /// expired; that deliberate asymmetry against [`entry_review_is_due`]'s
-/// inclusive form is recorded in #2008 and reused verbatim by the #4239
-/// cadence classifier.
+/// inclusive form is shared with ledger read projections through
+/// [`SimpleDate::policy_expiry_has_passed`] and reused by the cadence
+/// classifier (#4351). Federation drain deadlines have a separate law.
 ///
 /// Fail-safe: if `expires` is `Some` but unparseable (e.g. `"2026-13-40"`),
 /// the entry is treated as expired. A malformed expiry must never silently
@@ -67,7 +68,7 @@ pub fn entry_is_expired(entry: &AllowEntry, today: SimpleDate) -> bool {
             // If the date parses, compare normally. If it does NOT parse,
             // fail-safe: treat as expired (the entry's lifecycle is broken).
             match SimpleDate::parse(expires) {
-                Some(date) => date < today,
+                Some(date) => date.policy_expiry_has_passed(today),
                 None => true,
             }
         }
@@ -79,7 +80,8 @@ pub fn entry_is_expired(entry: &AllowEntry, today: SimpleDate) -> bool {
 ///
 /// Boundary law: INCLUSIVE `date <= today`; the deadline day itself is due.
 /// That deliberate asymmetry against [`entry_is_expired`]'s strict form is
-/// recorded in #2008 and reused verbatim by the #4239 cadence classifier.
+/// preserved by the cadence classifier; federation drain deadlines do not
+/// define policy-entry lifecycle semantics.
 ///
 /// Fail-safe: if `review_after` is `Some` but unparseable, treat as due
 /// (review is required). A malformed date must never silently suppress
