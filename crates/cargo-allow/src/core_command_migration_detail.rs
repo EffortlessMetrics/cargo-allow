@@ -303,8 +303,7 @@ fn adoption(
         detail.schema_version,
         &detail.tool,
         &detail.command,
-        "cargo-allow.core-adoption-plan.v1",
-        "adopt",
+        ("cargo-allow.core-adoption-plan.v1", "adopt"),
         &detail.claim_boundary,
         &detail.scanner_limitations,
     )?;
@@ -446,8 +445,7 @@ fn doctor(
         detail.schema_version,
         &detail.tool,
         &detail.command,
-        "cargo-allow.doctor.v1",
-        "doctor",
+        ("cargo-allow.doctor.v1", "doctor"),
         &detail.claim_boundary,
         &detail.scanner_limitations,
     )?;
@@ -460,7 +458,7 @@ fn doctor(
     let config_path = context
         .config_path
         .as_ref()
-        .map(|path| allow_core::normalize_path(&Path::new(&context.root).join(path)));
+        .map(|path| allow_core::normalize_path(Path::new(&context.root).join(path)));
     need(
         detail.config.found == fixture.policy.is_some() && detail.config.path == config_path,
         "doctor selected configuration mismatch",
@@ -613,8 +611,7 @@ fn report(
         detail.schema_version,
         &detail.tool,
         &detail.command,
-        "cargo-allow.report.v1",
-        &spec.command,
+        ("cargo-allow.report.v1", &spec.command),
         &detail.claim_boundary,
         &detail.scanner_limitations,
     )?;
@@ -891,8 +888,7 @@ fn validate_receipt(
         receipt.schema_version,
         &receipt.tool,
         &receipt.command,
-        "cargo-allow.receipt.v1",
-        "check",
+        ("cargo-allow.receipt.v1", "check"),
         &receipt.claim_boundary,
         &receipt.scanner_limitations,
     )?;
@@ -907,7 +903,7 @@ fn validate_receipt(
     let config = context
         .config_path
         .as_ref()
-        .map(|path| allow_core::normalize_path(&Path::new(&context.root).join(path)));
+        .map(|path| allow_core::normalize_path(Path::new(&context.root).join(path)));
     let fixture_config = fixture_config
         .ok_or("successful check receipt requires the actual valid selected fixture policy")?;
     let kinds = detail
@@ -975,8 +971,7 @@ pub(super) fn validate_error_receipt(
         receipt.schema_version,
         &receipt.tool,
         &receipt.command,
-        "cargo-allow.receipt.v1",
-        "check",
+        ("cargo-allow.receipt.v1", "check"),
         &receipt.claim_boundary,
         &receipt.scanner_limitations,
     )?;
@@ -1015,8 +1010,7 @@ fn header(
     version: u32,
     tool: &str,
     command: &str,
-    expected_schema: &str,
-    expected_command: &str,
+    (expected_schema, expected_command): (&str, &str),
     claims: &[String],
     limitations: &[String],
 ) -> Result<(), String> {
