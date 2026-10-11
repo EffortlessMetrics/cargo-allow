@@ -6,6 +6,14 @@ macro-expansion, or proof-level coverage.
 
 ## Reusable component contracts
 
+The [command-case evidence family](cargo-allow.command-case-evidence.v1.schema.json)
+contains the #3149 migration catalogue, caller-pinned expected context, retained
+first-family bundle, and native admission projection. See the
+[collection and readback contract](../release/core-command-migration-evidence.md).
+It preserves the complete denominator and distinguishes semantic validity from
+Partial qualification; neither collection nor readback establishes installation,
+trusted-worker custody, or publication authority.
+
 The [final registry preflight](cargo-allow.final-registry-preflight.v1.schema.json)
 (`cargo-allow.final-registry-preflight.v1`) is produced by
 `allow_report::evaluate_final_registry_preflight_v1` and its canonical renderer.

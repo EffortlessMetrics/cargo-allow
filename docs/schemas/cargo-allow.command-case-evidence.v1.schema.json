@@ -1,0 +1,1021 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cargo-allow.dev/schemas/cargo-allow.command-case-evidence.v1.schema.json",
+  "title": "Core-command retained evidence boundaries, version 1",
+  "description": "Structural catalogue/context/bundle/admission contracts. Native readback of actual bytes and typed command semantics is required; this schema does not establish qualification, custody, or installed provenance.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/catalogue"
+    },
+    {
+      "$ref": "#/$defs/context"
+    },
+    {
+      "$ref": "#/$defs/bundle"
+    },
+    {
+      "$ref": "#/$defs/admission"
+    }
+  ],
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "enum": [
+            "complete_satisfied",
+            "blocking_finding",
+            "advisory",
+            "empty",
+            "partial",
+            "stale",
+            "unsupported",
+            "invalid",
+            "instrument_failure",
+            "primary_action",
+            "repository_decision",
+            "read_only",
+            "candidate_write",
+            "live_mutation",
+            "proof_scope",
+            "format_parity",
+            "terminal_safety",
+            "installed_outside_checkout"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E"
+          ]
+        },
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scenario": {
+          "type": "string",
+          "minLength": 1
+        },
+        "applicability": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "complete_satisfied",
+              "blocking_finding",
+              "advisory",
+              "empty",
+              "partial",
+              "stale",
+              "unsupported",
+              "invalid",
+              "instrument_failure",
+              "primary_action",
+              "repository_decision",
+              "read_only",
+              "candidate_write",
+              "live_mutation",
+              "proof_scope",
+              "format_parity",
+              "terminal_safety",
+              "installed_outside_checkout"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "obligation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_family_collector": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "family",
+        "command",
+        "scenario",
+        "applicability",
+        "obligation",
+        "first_family_collector"
+      ]
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "require_clean": {
+          "type": "boolean"
+        },
+        "output_failure": {
+          "type": "boolean"
+        },
+        "source_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parse_errors": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_valid": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "check_fails": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source",
+        "policy",
+        "require_clean",
+        "output_failure",
+        "source_findings",
+        "parse_errors",
+        "policy_valid",
+        "check_fails"
+      ]
+    },
+    "catalogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "cargo-allow.command-migration-catalogue.v1"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "authority": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dimension"
+          },
+          "minItems": 18,
+          "maxItems": 18,
+          "uniqueItems": true
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case"
+          },
+          "minItems": 107,
+          "maxItems": 107,
+          "uniqueItems": true
+        },
+        "first_family_fixtures": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "clean_no_policy": {
+              "$ref": "#/$defs/fixture"
+            },
+            "findings_no_policy": {
+              "$ref": "#/$defs/fixture"
+            },
+            "healthy_policy": {
+              "$ref": "#/$defs/fixture"
+            },
+            "new_finding": {
+              "$ref": "#/$defs/fixture"
+            },
+            "invalid_policy": {
+              "$ref": "#/$defs/fixture"
+            },
+            "partial_inventory": {
+              "$ref": "#/$defs/fixture"
+            },
+            "partial_require_clean": {
+              "$ref": "#/$defs/fixture"
+            },
+            "instrument_failure": {
+              "$ref": "#/$defs/fixture"
+            }
+          },
+          "required": [
+            "clean_no_policy",
+            "findings_no_policy",
+            "healthy_policy",
+            "new_finding",
+            "invalid_policy",
+            "partial_inventory",
+            "partial_require_clean",
+            "instrument_failure"
+          ]
+        },
+        "claim_boundary": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_id",
+        "schema_version",
+        "authority",
+        "dimensions",
+        "cases",
+        "first_family_fixtures",
+        "claim_boundary"
+      ]
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "path",
+        "size_bytes",
+        "digest"
+      ]
+    },
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provenance": {
+          "enum": [
+            "source_build",
+            "supplied_installed_candidate"
+          ]
+        },
+        "source_generation": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "candidate_identity": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:v1:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "install_identity": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:v1:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "size_bytes",
+        "digest",
+        "tool_version",
+        "provenance",
+        "source_generation",
+        "candidate_identity",
+        "install_identity"
+      ]
+    },
+    "case_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "source_snapshot_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "fixture_commit": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+        },
+        "output_digests": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "stdout": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:v1:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "stderr": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:v1:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:v1:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "summary": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:v1:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "receipt": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:v1:[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "stdout",
+            "stderr",
+            "detail",
+            "summary",
+            "receipt"
+          ]
+        },
+        "policy_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:v1:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config_path": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "profile": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_config_identity": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:v1:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "case_id",
+        "root",
+        "cwd",
+        "argv",
+        "environment",
+        "source_snapshot_digest",
+        "fixture_commit",
+        "output_digests",
+        "policy_digest",
+        "config_path",
+        "mode",
+        "profile",
+        "resolved_config_identity"
+      ]
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "cargo-allow.command-case-context.v1"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "collection_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "catalogue_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "binary": {
+          "$ref": "#/$defs/binary"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case_context"
+          },
+          "minItems": 1,
+          "maxItems": 29,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_id",
+        "schema_version",
+        "collection_id",
+        "catalogue_digest",
+        "binary",
+        "cases"
+      ]
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "started_at_utc": {
+          "type": "string",
+          "pattern": "Z$"
+        },
+        "finished_at_utc": {
+          "type": "string",
+          "pattern": "Z$"
+        },
+        "started": {
+          "type": "boolean"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "launch_error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timed_out": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "started_at_utc",
+        "finished_at_utc",
+        "started",
+        "exit_code",
+        "launch_error",
+        "timed_out"
+      ]
+    },
+    "output_guard": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "$ref": "#/$defs/member"
+        },
+        "after": {
+          "$ref": "#/$defs/member"
+        }
+      },
+      "required": [
+        "before",
+        "after"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "$ref": "#/$defs/case_context"
+        },
+        "process": {
+          "$ref": "#/$defs/process"
+        },
+        "before": {
+          "$ref": "#/$defs/member"
+        },
+        "after": {
+          "$ref": "#/$defs/member"
+        },
+        "stdout": {
+          "$ref": "#/$defs/member"
+        },
+        "stderr": {
+          "$ref": "#/$defs/member"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/member"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/member"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/member"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_guard": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/output_guard"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "context",
+        "process",
+        "before",
+        "after",
+        "stdout",
+        "stderr",
+        "detail",
+        "summary",
+        "receipt",
+        "output_guard"
+      ]
+    },
+    "snapshot_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "file",
+            "directory",
+            "symlink",
+            "other"
+          ]
+        },
+        "mode": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/member"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "link_target": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "mode",
+        "size_bytes",
+        "content",
+        "link_target"
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/snapshot_entry"
+          },
+          "maxItems": 512
+        }
+      },
+      "required": [
+        "entries"
+      ]
+    },
+    "bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "cargo-allow.command-case-bundle.v1"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "collection_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "catalogue_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "context_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "binary": {
+          "$ref": "#/$defs/binary"
+        },
+        "binary_member": {
+          "$ref": "#/$defs/member"
+        },
+        "binary_digest_after": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/execution"
+          },
+          "maxItems": 29,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_id",
+        "schema_version",
+        "collection_id",
+        "catalogue_digest",
+        "context_digest",
+        "binary",
+        "binary_member",
+        "binary_digest_after",
+        "cases"
+      ]
+    },
+    "semantic_validity": {
+      "enum": [
+        "valid",
+        "incomplete",
+        "invalid"
+      ]
+    },
+    "case_admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "semantic_validity": {
+          "$ref": "#/$defs/semantic_validity"
+        },
+        "process_observed": {
+          "type": "boolean"
+        },
+        "detail_reconciled": {
+          "type": "boolean"
+        },
+        "observed_result_class": {
+          "anyOf": [
+            {
+              "enum": [
+                "completed",
+                "findings",
+                "not_proven",
+                "partial_data",
+                "stale_input",
+                "unsupported",
+                "malformed_input",
+                "instrument_failure",
+                "cancelled",
+                "conflict"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_completeness": {
+          "anyOf": [
+            {
+              "enum": [
+                "complete",
+                "partial",
+                "unknown"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "binding_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "case_id",
+        "semantic_validity",
+        "process_observed",
+        "detail_reconciled",
+        "observed_result_class",
+        "observed_completeness",
+        "errors",
+        "binding_gaps"
+      ]
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_id": {
+          "const": "cargo-allow.command-case-admission.v1"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "catalogue_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "context_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "bundle_digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$"
+        },
+        "collection_id": {
+          "type": "string"
+        },
+        "semantic_validity": {
+          "$ref": "#/$defs/semantic_validity"
+        },
+        "qualification": {
+          "const": "partial"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/case_admission"
+          },
+          "maxItems": 29
+        },
+        "missing_cases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dimension"
+          },
+          "maxItems": 18
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "qualification_gaps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "claim_boundary": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "schema_id",
+        "schema_version",
+        "catalogue_digest",
+        "context_digest",
+        "bundle_digest",
+        "collection_id",
+        "semantic_validity",
+        "qualification",
+        "cases",
+        "missing_cases",
+        "dimensions",
+        "errors",
+        "qualification_gaps",
+        "claim_boundary"
+      ]
+    }
+  }
+}

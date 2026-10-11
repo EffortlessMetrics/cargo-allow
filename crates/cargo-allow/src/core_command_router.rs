@@ -131,7 +131,20 @@ pub(crate) fn write_error_summary_artifact(
     } else {
         "filesystem_fallback"
     };
-    let Ok(summary) = core_command_summary_from_error(
+    let Ok(summary) = build_error_summary(operation, inventory_source, error) else {
+        return;
+    };
+    let _ = write_summary_artifact_with_config(&root, &summary, Some(config));
+}
+
+/// Pure projection shared with retained hard-error readback. Subject, effects
+/// and claim boundaries come from this emitter, never from a claimed sidecar.
+pub(crate) fn build_error_summary(
+    operation: &str,
+    inventory_source: &str,
+    error: &CargoAllowError,
+) -> Result<CoreCommandSummaryV1, String> {
+    core_command_summary_from_error(
         env!("CARGO_PKG_VERSION"),
         operation,
         CoreSourceSubjectV1::worktree(
@@ -150,10 +163,7 @@ pub(crate) fn write_error_summary_artifact(
             "the source-syntax scan the command would have reported was not completed".to_string(),
             "the failure classification does not establish, repair, or authorize any source exception".to_string(),
         ]),
-    ) else {
-        return;
-    };
-    let _ = write_summary_artifact_with_config(&root, &summary, Some(config));
+    )
 }
 
 /// Reject a configured command-summary sidecar that aliases a mutation target.
@@ -215,24 +225,48 @@ fn write_summary_artifact_with_config(
     Ok(())
 }
 
+/// Already-evaluated facts shared by live report projection and retained readback.
+/// This boundary does not contain findings to rescan or policy to reevaluate.
+pub(crate) struct ReportSummaryFacts<'a> {
+    pub(crate) command: &'a str,
+    pub(crate) root: &'a Path,
+    pub(crate) inventory_facts: crate::InventoryFacts,
+    pub(crate) failed: bool,
+    pub(crate) advisory_count: usize,
+    pub(crate) subject: CoreSourceSubjectV1,
+}
+
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
-    let completeness = summary_completeness(&args.inventory_facts);
-    let advisory_count = report_advisory_count(args);
+    build_report_summary_from_facts(ReportSummaryFacts {
+        command: args.command,
+        root: args.root,
+        inventory_facts: args.inventory_facts,
+        failed: args.failed,
+        advisory_count: report_advisory_count(args.outcomes, args.evidence),
+        subject: report_subject(args)?,
+    })
+}
+
+pub(crate) fn build_report_summary_from_facts(
+    facts: ReportSummaryFacts<'_>,
+) -> CargoAllowResult<CoreCommandSummaryV1> {
+    let completeness = summary_completeness(&facts.inventory_facts);
+    let advisory_count = facts.advisory_count;
     let (result_class, posture, reason) = if completeness != CompletenessV1::Complete {
         (
             ResultClassV1::PartialData,
             CoreCommandPostureV1::Blocking,
             CoreCommandReasonV1 {
-                code: format!("{}.partial_coverage", args.command),
-                message: partial_coverage_reason(&args.inventory_facts),
+                code: format!("{}.partial_coverage", facts.command),
+                message: partial_coverage_reason(&facts.inventory_facts),
             },
         )
-    } else if args.failed {
+    } else if facts.failed {
         (
             ResultClassV1::Findings,
             CoreCommandPostureV1::Blocking,
             CoreCommandReasonV1 {
-                code: format!("{}.blocking_findings", args.command),
+                code: format!("{}.blocking_findings", facts.command),
                 message: format!(
                     "{advisory_count} blocking or review outcome(s) require attention"
                 ),
@@ -243,7 +277,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             ResultClassV1::Findings,
             CoreCommandPostureV1::Advisory,
             CoreCommandReasonV1 {
-                code: format!("{}.advisory_findings", args.command),
+                code: format!("{}.advisory_findings", facts.command),
                 message: format!("{advisory_count} advisory or review outcome(s) remain"),
             },
         )
@@ -252,17 +286,17 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             ResultClassV1::Completed,
             CoreCommandPostureV1::Satisfied,
             CoreCommandReasonV1 {
-                code: format!("{}.satisfied", args.command),
+                code: format!("{}.satisfied", facts.command),
                 message: "the selected source-exception posture is satisfied".to_string(),
             },
         )
     };
 
-    let root_path = allow_core::normalize_path(args.root);
+    let root_path = allow_core::normalize_path(facts.root);
     let primary_action = if completeness != CompletenessV1::Complete {
         Some(
             CoreCommandActionV1::command(
-                format!("{}.diagnose_coverage", args.command),
+                format!("{}.diagnose_coverage", facts.command),
                 "Diagnose coverage",
                 "cargo-allow",
                 crate::core_command_summary::rooted_command_args(
@@ -276,10 +310,10 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
                 "doctor remains read-only and does not repair or authorize exceptions",
             ),
         )
-    } else if advisory_count > 0 || args.failed {
+    } else if advisory_count > 0 || facts.failed {
         Some(
             CoreCommandActionV1::command(
-                format!("{}.inspect_worklist", args.command),
+                format!("{}.inspect_worklist", facts.command),
                 "Inspect the worklist",
                 "cargo-allow",
                 crate::core_command_summary::rooted_command_args(
@@ -302,7 +336,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
     };
 
     let next_proof =
-        (args.command == "audit" && completeness == CompletenessV1::Complete).then(|| {
+        (facts.command == "audit" && completeness == CompletenessV1::Complete).then(|| {
             CoreCommandActionV1::command(
                 "audit.full_no_new_check",
                 "Run the enforcing no-new check",
@@ -323,7 +357,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             )
         });
 
-    let subject = report_subject(args)?;
+    let subject = facts.subject;
     let mut limitations = vec![
         "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
             .to_string(),
@@ -334,7 +368,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
 
     build_core_command_summary(CoreCommandSummaryInputV1 {
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
-        operation: args.command.to_string(),
+        operation: facts.command.to_string(),
         mode: None,
         profile: None,
         subject,
@@ -366,8 +400,19 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
 }
 
 fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSubjectV1> {
-    let semantic_identity = canonical_report_identity(args)?;
-    let (kind, portable_identity, limitations) = match args.inventory_source_identity {
+    Ok(report_subject_from_identity(
+        &canonical_report_identity(args)?,
+        args.inventory_facts,
+        args.inventory_source_identity,
+    ))
+}
+
+pub(crate) fn report_subject_from_identity(
+    semantic_identity: &str,
+    inventory_facts: crate::InventoryFacts,
+    inventory_source_identity: Option<&str>,
+) -> CoreSourceSubjectV1 {
+    let (kind, portable_identity, limitations) = match inventory_source_identity {
         Some(identity) => (
             CoreSourceSubjectKindV1::Index,
             identity.to_string(),
@@ -377,7 +422,7 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
             CoreSourceSubjectKindV1::Worktree,
             format!(
                 "worktree:{}:current-unpinned",
-                args.inventory_facts.source.as_str()
+                inventory_facts.source.as_str()
             ),
             vec![
                 "the current worktree result is not bound to a commit, tree, or Git-index identity"
@@ -385,7 +430,7 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
             ],
         ),
     };
-    Ok(CoreSourceSubjectV1 {
+    CoreSourceSubjectV1 {
         kind,
         repository_identity: format!("local-repository:{semantic_identity}"),
         portable_identity,
@@ -393,7 +438,7 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
         head: None,
         paths: Vec::new(),
         limitations,
-    })
+    }
 }
 
 fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<String> {
@@ -573,17 +618,19 @@ pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> Completenes
     }
 }
 
-fn report_advisory_count(args: &ReportRenderArgs<'_>) -> usize {
-    let outcomes = args
-        .outcomes
+pub(crate) fn report_advisory_count(
+    outcomes: &[allow_core::MatchOutcome],
+    evidence: crate::EvidenceReportSummary,
+) -> usize {
+    let outcomes = outcomes
         .iter()
         .filter(|outcome| outcome.status != MatchStatus::Matched)
         .count();
     outcomes
-        + args.evidence.policy_missing_evidence_entries
-        + args.evidence.broken_evidence_links
-        + args.evidence.weak_evidence_references
-        + args.evidence.occurrence_headroom_entries
+        + evidence.policy_missing_evidence_entries
+        + evidence.broken_evidence_links
+        + evidence.weak_evidence_references
+        + evidence.occurrence_headroom_entries
 }
 
 /// Explain, in the operator's own vocabulary, why coverage was not complete.

@@ -23553,3 +23553,179 @@ glob = ".allow/revisions/4433-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-3149-command-case-catalogue"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/core-command-migration-cases.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retain the accepted #3149 command and applicability denominator, including unexecuted A-C, diff-D and #3882 entrypoint controls; exact-file data does not grant completion or release authority."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/core-command-migration-cases.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/core-command-migration-cases.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3149-command-case-contract"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/core-command-migration-evidence.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Document the explicit-binary one-invocation collector and native retained-member reader, their exact inputs, and the unresolved configuration, installation and qualification boundaries."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/core-command-migration-evidence.md"
+target_fingerprint = "md"
+glob = "docs/release/core-command-migration-evidence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3149-command-case-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Define the closed versioned catalogue, expected-context, retained-bundle and admission JSON boundaries; schema conformance alone does not establish semantic correspondence or complete qualification."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3149-command-case-collector"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/command-case-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Collect bounded read-only A-family observations once per supplied-binary invocation with owned fixtures, closed child environment, retained detail and summary, member hashes and observed effects; no semantic or release authority is delegated to Python."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/command-case-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/command-case-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3149-command-case-controls"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-command-case-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Exercise the actual transport and native reader against missing, foreign, contradictory and rehashed members and context, including path ownership, source mutation and incomplete-process controls; test assertions do not create qualification evidence."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-command-case-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/test-command-case-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3149-command-case-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3149-command-case-evidence.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Record canonical governance fingerprints and genuine rationale for these exact #3149 command-evidence file admissions without broadening directory scope or granting installation, merge or release authority."
+evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3149-command-case-evidence.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3149-command-case-evidence.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4461-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4461.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4461 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4461", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4461.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4461.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4461-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4461-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4461 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4461", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4461-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4461-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

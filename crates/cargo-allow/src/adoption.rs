@@ -594,18 +594,34 @@ fn inventory_identity(
     inventory: Option<&Inventory>,
     policy_digest: Option<&str>,
 ) -> String {
-    let mut values = vec![
-        "cargo-allow.adoption-repository.v1".to_string(),
-        policy_digest.unwrap_or("no-policy").to_string(),
-    ];
-    if let Some(inventory) = inventory {
-        values.push(inventory.source.as_str().to_string());
-        values.push(inventory.completeness.as_str().to_string());
-        let mut paths = inventory
+    let inventory = inventory.map(|inventory| {
+        let paths = inventory
             .files
             .iter()
             .map(|path| normalize_path(path.strip_prefix(root).unwrap_or(path)))
             .collect::<Vec<_>>();
+        (
+            inventory.source.as_str(),
+            inventory.completeness.as_str(),
+            paths,
+        )
+    });
+    inventory_identity_from_facts(policy_digest, inventory)
+}
+
+/// The existing path-list identity shared with retained fixture readback.
+/// This digest deliberately does not claim to hash the contents of each file.
+pub(crate) fn inventory_identity_from_facts(
+    policy_digest: Option<&str>,
+    inventory: Option<(&str, &str, Vec<String>)>,
+) -> String {
+    let mut values = vec![
+        "cargo-allow.adoption-repository.v1".to_string(),
+        policy_digest.unwrap_or("no-policy").to_string(),
+    ];
+    if let Some((source, completeness, mut paths)) = inventory {
+        values.push(source.to_string());
+        values.push(completeness.to_string());
         paths.sort();
         values.extend(paths);
     } else {
