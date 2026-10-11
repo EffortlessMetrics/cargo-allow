@@ -224,6 +224,9 @@ class TransportTests(unittest.TestCase):
         self.assertNotIn("GIT_WORK_TREE", env)
         self.assertFalse(any(key.startswith("CARGO_ALLOW") for key in env))
         self.assertEqual(env["GIT_CONFIG_GLOBAL"], os.devnull)
+        paths = env["PATH"].split(os.pathsep)
+        self.assertTrue(paths)
+        self.assertTrue(all(Path(path).is_absolute() for path in paths), paths)
         store = COLLECT.Store(self.root)
         process, stdout, stderr = COLLECT.run_process(
             [sys.executable, "-c", "import json,os,sys; print(json.dumps(dict(os.environ),sort_keys=True)); sys.stderr.buffer.write(sys.stdin.buffer.read() + b'\\n')"],
@@ -235,6 +238,38 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(observed[key], value)
         self.assertNotIn("GIT_DIR", observed)
         self.assertEqual((self.root / stderr["path"]).read_bytes(), b"\n")
+
+    def test_child_environment_excludes_relative_default_search_paths(self):
+        parent = dict(os.environ)
+        git = git_path()
+        absolute = self.root / "absolute-default-tools"
+        absolute.mkdir()
+        defaults = ["", ".", "relative-tools", "C:drive-relative", r"\root-relative",
+                    str(git.parent), str(absolute), str(absolute)]
+        with mock.patch.object(COLLECT.os, "defpath", os.pathsep.join(defaults)):
+            env = COLLECT.child_environment(self.root / "absolute-path-home", git)
+        self.assertEqual(os.environ, parent)
+        self.assertEqual(env["PATH"].split(os.pathsep), [str(git.parent), str(absolute)])
+        self.assertTrue(all(Path(path).is_absolute() for path in env["PATH"].split(os.pathsep)))
+        store = COLLECT.Store(self.root)
+        process, stdout, _ = COLLECT.run_process(
+            [sys.executable, "-c", "import json,os; print(json.dumps(os.get_exec_path()))"],
+            self.root, env, 10, store, "absolute-path-process",
+        )
+        self.assertEqual(process["exit_code"], 0)
+        self.assertEqual(json.loads((self.root / stdout["path"]).read_bytes()),
+                         [str(git.parent), str(absolute)])
+        self.assertEqual(os.environ, parent)
+
+    def test_child_environment_refuses_relative_git_before_home_allocation(self):
+        parent = dict(os.environ)
+        for index, git in enumerate((Path("git"), Path("C:relative-git"), Path(r"\root-relative-git"))):
+            home = self.root / ("refused-git-home-" + str(index))
+            with self.subTest(git=str(git)):
+                with self.assertRaisesRegex(ValueError, "absolute"):
+                    COLLECT.child_environment(home, git)
+                self.assertFalse(home.exists())
+        self.assertEqual(os.environ, parent)
 
     def test_catalogue_checkout_retains_pinned_bytes_with_autocrlf(self):
         env = COLLECT.child_environment(self.root / "checkout-home", git_path())

@@ -141,10 +141,15 @@ def owned_root(path):
 
 
 def child_environment(home, git):
+    if not git.is_absolute():
+        raise ValueError("child Git executable must have an absolute path")
+    # Windows' default search path includes the current directory. Retained
+    # evidence requires absolute components, with the selected Git first.
+    defaults = [entry for entry in os.defpath.split(os.pathsep) if Path(entry).is_absolute()]
+    path = os.pathsep.join(dict.fromkeys([str(git.parent)] + defaults))
     home.mkdir()
     cargo_home = home / "cargo"
     cargo_home.mkdir()
-    path = os.pathsep.join(dict.fromkeys([str(git.parent)] + os.defpath.split(os.pathsep)))
     env = {
         "PATH": path,
         "HOME": str(home),
