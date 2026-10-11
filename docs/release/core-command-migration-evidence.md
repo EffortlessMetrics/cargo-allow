@@ -70,6 +70,10 @@ Inputs are checked for regular-file kind and size before opening. On supported
 Unix hosts, nonblocking/no-follow opens also prevent a leaf changed into a FIFO
 or symlink after inspection from blocking the reader or following that link.
 The opened handle and named file must retain the same identity through readback.
+The native Unix opener currently verifies flag mappings for x86, x86_64, arm
+and aarch64 on Linux, Android, macOS, iOS and FreeBSD; other OS/architecture
+combinations fail explicitly. Windows uses reparse-point inspection. This
+internal I/O boundary does not select the release support matrix.
 
 ## Native retained readback
 

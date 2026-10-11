@@ -244,21 +244,23 @@ fn configure_regular_open(options: &mut OpenOptions) -> Result<(), String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        // NOFOLLOW uses the repository cache readers' platform flag mapping.
-        // NONBLOCK additionally closes regular-to-FIFO races;
-        // NOFOLLOW keeps a replaced leaf symlink from being followed.
-        #[cfg(any(target_os = "linux", target_os = "android"))]
-        options.custom_flags(0o4000 | 0o400000);
-        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
-        options.custom_flags(0x4 | 0x100);
-        #[cfg(not(any(
-            target_os = "linux",
-            target_os = "android",
-            target_os = "macos",
-            target_os = "ios",
-            target_os = "freebsd"
-        )))]
-        return Err("bounded regular-file opening is unsupported on this Unix target".to_string());
+        // libc 0.2.189's native ABI definitions: O_NOFOLLOW differs between
+        // x86 and ARM even on the same OS. O_NONBLOCK closes a regular-to-FIFO
+        // replacement race; O_NOFOLLOW refuses a replaced leaf symlink.
+        // Keep unverified OS/architecture combinations explicitly unavailable.
+        let os = std::env::consts::OS;
+        let arch = std::env::consts::ARCH;
+        let flags = match (os, arch) {
+            ("linux" | "android", "x86" | "x86_64") => 0x800 | 0x20000,
+            ("linux" | "android", "arm" | "aarch64") => 0x800 | 0x8000,
+            ("macos" | "ios" | "freebsd", "x86" | "x86_64" | "arm" | "aarch64") => 0x4 | 0x100,
+            _ => {
+                return Err(format!(
+                    "bounded regular-file opening is unsupported for {os}/{arch}"
+                ));
+            }
+        };
+        options.custom_flags(flags);
     }
     #[cfg(windows)]
     {
