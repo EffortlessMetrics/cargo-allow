@@ -185,7 +185,12 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
                 LIFECYCLE.remove(root, race_path, "race", race["token"])
             except OSError as error:
                 expected_errno = error.errno in {errno.EINVAL, errno.ENOTDIR, errno.ELOOP, errno.EPERM}
-                expected_message = str(error) == "Cannot call rmtree on a symbolic link"
+                # Python can attach filename after constructing this error,
+                # changing str(error) while preserving its exact arguments.
+                expected_message = (
+                    error.args == ("Cannot call rmtree on a symbolic link",)
+                    and error.filename in (None, race_path, str(race_path))
+                )
                 if not original_safe or not (expected_errno or expected_message):
                     raise
             except SystemExit:
