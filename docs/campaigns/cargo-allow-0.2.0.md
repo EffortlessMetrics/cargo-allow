@@ -245,8 +245,11 @@ execute the additive summaries or every accepted command and documentation
 surface. Retain each expected case, exact installed executable, argv/cwd,
 selected configuration, detailed typed artifact, summary and effect, and derive
 parity from the same evaluation. Missing cases, foreign subjects, contradictory
-summaries and arbitrary replacement detail remain unsatisfied. Runtime resolved
-configuration, selected profile/mode, same-evaluation artifact-set and authenticated
+summaries and arbitrary replacement detail must remain unsatisfied. Independent
+review after this checkpoint found false acceptance of replacement detail by the
+local `7e906fd2` reader; repair and independent verification of its semantic checks
+remain open. Runtime resolved configuration, selected profile/mode,
+same-evaluation artifact-set and authenticated
 installation/custody bindings remain explicit gaps. Feed the original members
 into the existing #3151/#2501 consumers; a stricter experience reader cannot
 supply missing executions or installed qualification.
