@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add a reusable authenticated release-object reader and nonforced Git operation
+  store that preserves existing record bytes, checks independent provider
+  readback, and permits one process-local continuation per exact changed append.
+  Intercepted provider tests cover contention, malformed objects, lost responses,
+  archive provenance, credential redaction, and restart refusal. Release-driver
+  integration and real release authorization remain separate requirements.

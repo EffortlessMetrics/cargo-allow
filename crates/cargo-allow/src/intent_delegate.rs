@@ -275,6 +275,11 @@ fn run_provider_change_status(
     root: &Path,
     timeout: Duration,
 ) -> Result<BoundedProcessOutput, IntentDelegateFailure> {
+    let mut command = provider_change_status_command(executable, root);
+    run_with_timeout(&mut command, timeout)
+}
+
+fn provider_change_status_command(executable: &Path, root: &Path) -> Command {
     let mut command = Command::new(executable);
     command
         .arg("--root")
@@ -287,7 +292,7 @@ fn run_provider_change_status(
         .arg("--phase")
         .arg("precommit")
         .arg("--analysis-receipt");
-    run_with_timeout(&mut command, timeout)
+    command
 }
 
 #[derive(Debug)]
@@ -856,10 +861,100 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn run_provider_change_status_preserves_non_utf8_root_arg() -> Result<(), String> {
+        assert_native_root_probe(&native_probe_root())
+    }
+
+    #[cfg(unix)]
+    fn native_probe_root() -> std::path::PathBuf {
+        use std::os::unix::ffi::OsStringExt;
+
+        // argv has no filesystem UTF-8 restriction, including on macOS. Spaces,
+        // quotes and a newline also discriminate splitting and shell evaluation.
+        std::ffi::OsString::from_vec(b"/cargo-allow native '$probe'\nrepo-\xff".to_vec()).into()
+    }
+
+    #[cfg(unix)]
+    fn assert_native_root_probe(root: &Path) -> Result<(), String> {
         use std::ffi::OsString;
-        use std::os::unix::ffi::{OsStrExt, OsStringExt};
+        use std::os::unix::ffi::OsStrExt;
+
+        let expected: Vec<OsString> = vec![
+            "--root".into(),
+            root.as_os_str().to_owned(),
+            "--format".into(),
+            "json".into(),
+            "change".into(),
+            "status".into(),
+            "--staged".into(),
+            "--phase".into(),
+            "precommit".into(),
+            "--analysis-receipt".into(),
+        ];
+        // /bin/echo is an installed immutable probe on the supported Unix CI
+        // platforms. Never write or copy an executable for this byte oracle.
+        let executable = Path::new("/bin/echo");
+        let command = provider_change_status_command(executable, root);
+        if !command
+            .get_args()
+            .eq(expected.iter().map(OsString::as_os_str))
+        {
+            return Err("provider argument boundaries or native root bytes changed".to_string());
+        }
+        let output = run_provider_change_status(executable, root, Duration::from_secs(5))
+            .map_err(|failure| failure.to_string())?;
+        if !output.status.success()
+            || output.stdout_exceeded
+            || output.stderr_exceeded
+            || !output.stderr.is_empty()
+        {
+            return Err(format!("native argument probe failed: {output:?}"));
+        }
+        let mut expected_stdout = Vec::new();
+        for argument in &expected {
+            if !expected_stdout.is_empty() {
+                expected_stdout.push(b' ');
+            }
+            expected_stdout.extend_from_slice(argument.as_os_str().as_bytes());
+        }
+        expected_stdout.push(b'\n');
+        if output.stdout != expected_stdout {
+            return Err(
+                "bounded provider runner did not preserve exact native argv bytes".to_string(),
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn run_provider_change_status_preserves_typed_spawn_failure() -> Result<(), String> {
+        let executable = std::env::current_exe()
+            .map_err(|err| err.to_string())?
+            .with_file_name(format!(
+                "cargo-allow-missing-provider-{}",
+                std::process::id()
+            ));
+        if executable.exists() {
+            return Err("missing-provider negative control collided with a file".to_string());
+        }
+        let failure =
+            match run_provider_change_status(&executable, Path::new("."), Duration::from_secs(5)) {
+                Err(failure) => failure,
+                Ok(output) => return Err(format!("missing provider unexpectedly ran: {output:?}")),
+            };
+        if failure.class != IntentDelegateFailureClass::InstrumentFailure
+            || failure.code != IntentDelegateFailureCode::ProviderInstrumentFailure
+        {
+            return Err(format!(
+                "spawn failure lost its typed instrument classification: {failure}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn immutable_native_root_probe_survives_child_held_writable_executable() -> Result<(), String> {
         use std::os::unix::fs::PermissionsExt;
-        use std::path::PathBuf;
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let nonce = SystemTime::now()
@@ -867,48 +962,77 @@ mod tests {
             .map_err(|err| err.to_string())?
             .as_nanos();
         let fixture_root = std::env::temp_dir().join(format!(
-            "cargo-allow-intent-native-path-{}-{nonce}",
+            "cargo-allow-intent-writable-probe-{}-{nonce}",
             std::process::id()
         ));
-        std::fs::create_dir_all(&fixture_root).map_err(|err| err.to_string())?;
-        let script = fixture_root.join("cargo-intent");
-        let capture = fixture_root.join("captured-root.bin");
-        let capture_text = capture
-            .to_str()
-            .ok_or_else(|| "capture path is not UTF-8".to_string())?;
-        let script_text =
-            format!("#!/bin/sh\nprintf '%s' \"$2\" > '{capture_text}'\nprintf '{{}}'\n");
-        std::fs::write(&script, script_text).map_err(|err| err.to_string())?;
-        let mut permissions = std::fs::metadata(&script)
-            .map_err(|err| err.to_string())?
-            .permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&script, permissions).map_err(|err| err.to_string())?;
-
-        let mut root_bytes = fixture_root.as_os_str().as_bytes().to_vec();
-        root_bytes.extend_from_slice(b"/repo-");
-        root_bytes.push(0xff);
-        let root = PathBuf::from(OsString::from_vec(root_bytes));
-        match std::fs::create_dir_all(&root) {
-            Ok(()) => {}
-            Err(err) if err.raw_os_error() == Some(92) => {
-                // macOS APFS enforces UTF-8 paths and rejects invalid byte sequences with EILSEQ (os error 92)
-                let _ = std::fs::remove_dir_all(fixture_root);
-                return Ok(());
+        std::fs::create_dir(&fixture_root).map_err(|err| err.to_string())?;
+        let result = (|| {
+            let script = fixture_root.join("cargo-intent");
+            let mut writer = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&script)
+                .map_err(|err| err.to_string())?;
+            writer
+                .write_all(b"#!/bin/sh\nprintf '{}'\n")
+                .map_err(|err| err.to_string())?;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+                .map_err(|err| err.to_string())?;
+            // The child owns the writable descriptor as stdout. Closing stderr
+            // acknowledges admission; the stdin barrier holds that descriptor
+            // until parent cleanup. The Command temporary drops the parent copy.
+            let mut holder = Command::new("/bin/sh")
+                .args(["-c", "printf ready >&2; exec 2>&-; IFS= read -r release"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::from(writer))
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|err| format!("spawn descriptor holder: {err}"))?;
+            let result = (|| {
+                let stderr = holder
+                    .stderr
+                    .take()
+                    .ok_or_else(|| "descriptor holder had no barrier pipe".to_string())?;
+                let barrier = receive_reader(
+                    spawn_bounded_reader(stderr, 16, "descriptor-holder barrier"),
+                    Instant::now() + Duration::from_secs(5),
+                )
+                .map_err(|err| err.to_string())?;
+                if barrier.bytes != b"ready"
+                    || barrier.exceeded
+                    || holder.try_wait().map_err(|err| err.to_string())?.is_some()
+                {
+                    return Err("descriptor holder did not reach the live barrier".to_string());
+                }
+                let root = native_probe_root();
+                let failure =
+                    match run_provider_change_status(&script, &root, Duration::from_secs(5)) {
+                        Err(failure) => failure,
+                        Ok(output) => {
+                            return Err(format!(
+                                "writable executable unexpectedly ran: {output:?}"
+                            ));
+                        }
+                    };
+                if failure.class != IntentDelegateFailureClass::InstrumentFailure
+                    || failure.code != IntentDelegateFailureCode::ProviderInstrumentFailure
+                    || !failure.detail.contains("os error 26")
+                {
+                    return Err(format!("expected typed Linux ETXTBSY, got {failure}"));
+                }
+                assert_native_root_probe(&root)
+            })();
+            let cleanup = terminate_and_reap(&mut holder);
+            if cleanup.contains("error:") {
+                return Err(format!(
+                    "descriptor-holder cleanup failed: {cleanup}; probe={result:?}"
+                ));
             }
-            Err(err) => return Err(err.to_string()),
-        }
-
-        let output = run_provider_change_status(&script, &root, Duration::from_secs(5))
-            .map_err(|failure| failure.to_string())?;
-        if !output.status.success() {
-            return Err(format!("path-capture provider failed: {}", output.status));
-        }
-        let captured = std::fs::read(&capture).map_err(|err| err.to_string())?;
-        if captured.as_slice() != root.as_os_str().as_bytes() {
-            return Err("provider did not receive the exact OS-native root bytes".to_string());
-        }
-        std::fs::remove_dir_all(fixture_root).map_err(|err| err.to_string())?;
+            result
+        })();
+        let cleanup = std::fs::remove_dir_all(&fixture_root).map_err(|err| err.to_string());
+        result?;
+        cleanup?;
         Ok(())
     }
 

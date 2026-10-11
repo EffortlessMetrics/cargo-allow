@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Reject a selected CARGO_REGISTRY_TOKEN environment entry before release
+  rehearsal admission or output validation (#4441), without reading its value.
+  Filter the entry before copying allowed child environment values and pass
+  that environment to every owned subprocess. Recheck the selected key after
+  all phases and the final checkout inspection; observed late presence marks
+  the authorization phase and aggregate InstrumentFailure and removes the
+  earlier token-absence detail. The seven broader zero-mutation proof flags
+  remain unproven under #3792/#2501.
