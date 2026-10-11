@@ -308,7 +308,16 @@ fn adoption(
         &detail.claim_boundary,
         &detail.scanner_limitations,
     )?;
-    inventory(&detail.inventory, "<repository-root>", fixture)?;
+    inventory(
+        &detail.inventory,
+        "<repository-root>",
+        fixture,
+        if fixture.parse_errors > 0 {
+            "partial"
+        } else {
+            "scoped"
+        },
+    )?;
     let plan = &detail.plan;
     // The older nested plan type predates deny_unknown_fields. Exact typed
     // roundtrip comparison rejects discarded extension keys at that boundary.
@@ -443,7 +452,7 @@ fn doctor(
         &detail.scanner_limitations,
     )?;
     let displayed_root = allow_core::normalize_path(Path::new(&context.root));
-    inventory(&detail.inventory, &displayed_root, fixture)?;
+    inventory(&detail.inventory, &displayed_root, fixture, "scoped")?;
     need(
         detail.root.path == displayed_root && detail.root.discovery == "explicit_root",
         "doctor root/discovery mismatch",
@@ -511,11 +520,7 @@ fn doctor(
             },
         "doctor scanner completeness contradicts its typed counters",
     )?;
-    let facts = inventory_facts(
-        &detail.inventory,
-        &scanner,
-        detail.config.deleted_tracked_files,
-    )?;
+    let facts = inventory_facts(&detail.inventory, None, detail.config.deleted_tracked_files);
     let root = Path::new(&context.root);
     let source_context = crate::reporting::SourceTreeReportContext::new(root, facts);
     let report = allow_report::DoctorReport {
@@ -617,6 +622,11 @@ fn report(
         &detail.inventory,
         &allow_core::normalize_path(Path::new(&context.root)),
         fixture,
+        if fixture.parse_errors > 0 {
+            "partial"
+        } else {
+            "scoped"
+        },
     )?;
     scanner_facts(&detail.rust_scanner, fixture)?;
     need(
@@ -765,7 +775,7 @@ fn report(
             || detail.summary.contains_key("policy_missing_evidence"),
         "report lacks the raw policy-evidence count required for summary readback",
     )?;
-    let facts = inventory_facts(&detail.inventory, &detail.rust_scanner, 0)?;
+    let facts = inventory_facts(&detail.inventory, Some(&detail.rust_scanner), 0);
     let root = Path::new(&context.root);
     let source_context = crate::reporting::SourceTreeReportContext::new(root, facts);
     let evidence = crate::EvidenceReportSummary {
@@ -985,7 +995,12 @@ fn header(
     )
 }
 
-fn inventory(value: &Inventory, root: &str, fixture: &FixtureSpec) -> Result<(), String> {
+fn inventory(
+    value: &Inventory,
+    root: &str,
+    fixture: &FixtureSpec,
+    rendered_completeness: &str,
+) -> Result<(), String> {
     need(
         value.scope == "source_tree"
             && value.scanner == "source_syntax"
@@ -994,36 +1009,32 @@ fn inventory(value: &Inventory, root: &str, fixture: &FixtureSpec) -> Result<(),
             && value.source_identity.is_none()
             && !value.empty_git_tracked
             && value.files_scanned == Some(1 + usize::from(fixture.policy.is_some()))
-            && matches!(
-                value.completeness.as_str(),
-                "complete" | "scoped" | "partial"
-            ),
+            && value.completeness == rendered_completeness,
         "detail inventory subject or scope mismatch",
     )
 }
 
 fn inventory_facts(
     value: &Inventory,
-    scanner: &Scanner,
+    scanner: Option<&Scanner>,
     deleted: usize,
-) -> Result<crate::InventoryFacts, String> {
-    let completeness = match value.completeness.as_str() {
-        "complete" => allow_inventory::InventoryCompleteness::Complete,
-        "scoped" => allow_inventory::InventoryCompleteness::Scoped,
-        "partial" => allow_inventory::InventoryCompleteness::Partial,
-        _ => return Err("unsupported inventory completeness".to_string()),
-    };
-    Ok(crate::InventoryFacts {
+) -> crate::InventoryFacts {
+    // The pinned tracked fixture has all of its paths present. Audit/check's
+    // displayed inventory merges scanner coverage, but the live summary keeps
+    // the underlying scoped inventory distinct. Doctor instead passes scanner
+    // counters through DoctorReport, not its source context. Reconstruct those
+    // existing boundaries without counting a parse failure twice.
+    crate::InventoryFacts {
         source: allow_inventory::InventorySource::GitTracked,
-        completeness,
+        completeness: allow_inventory::InventoryCompleteness::Scoped,
         files_scanned: value.files_scanned,
         empty_git_tracked: value.empty_git_tracked,
         deleted_tracked: Some(deleted),
-        rust_files_skipped: scanner.files_skipped,
-        rust_files_considered: scanner.files_considered,
-        rust_files_with_parse_errors: scanner.files_with_parse_errors,
+        rust_files_skipped: scanner.map_or(0, |scanner| scanner.files_skipped),
+        rust_files_considered: scanner.map_or(0, |scanner| scanner.files_considered),
+        rust_files_with_parse_errors: scanner.map_or(0, |scanner| scanner.files_with_parse_errors),
         policy_digest: None,
-    })
+    }
 }
 
 fn scanner_facts(scanner: &Scanner, fixture: &FixtureSpec) -> Result<(), String> {

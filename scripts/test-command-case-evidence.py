@@ -365,6 +365,18 @@ class NativeAdmissionTests(unittest.TestCase):
         self.replace_member(context, case, "detail", self.read_member(foreign["detail"]))
         self.invalid(context, bundle)
 
+    def test_rendered_inventory_and_scanner_coverage_are_not_conflated(self):
+        for command in ("doctor", "audit", "check"):
+            context, bundle = self.selected(["A." + command + ".partial_inventory"])
+            case = bundle["cases"][0]
+            detail = json.loads(self.read_member(case["detail"]))
+            detail["inventory"]["completeness"] = "partial" if command == "doctor" else "scoped"
+            self.replace_member(context, case, "detail", COLLECT.json_bytes(detail))
+            with self.subTest(command=command):
+                self.invalid(context, bundle, "inventory subject or scope")
+            self.tearDown()
+            self.setUp()
+
     def test_rehashed_class_coverage_actions_effects_and_proof_contradictions(self):
         for key, value in [("result_class", "completed"), ("completeness", "partial"),
                            ("primary_action", None), ("next_proof", None),
