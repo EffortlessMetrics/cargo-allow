@@ -8,6 +8,7 @@ implement a second semantic validator or grant release qualification.
 import argparse
 import copy
 from contextlib import redirect_stdout
+import errno
 import hashlib
 import importlib.util
 import io
@@ -15,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -96,6 +98,47 @@ def preserve_candidate_profiles(collection, runner_profile):
         store.put(source.relative_to(collection / "fixtures").as_posix(), data)
     print(f"retained {len(profiles)} candidate LLVM profiles in {exported}", file=sys.stderr)
     return exported
+
+
+def remove_owned_fixture(root, identity):
+    """Retry only a read-only unlink within this exclusively allocated root."""
+    def inspect_owned(path):
+        COLLECT.reject_symlinks(root)
+        if not path.is_absolute() or ".." in path.parts:
+            raise ValueError("cleanup requires an absolute owned path")
+        relative = path.relative_to(root)
+        current = root
+        metadata = current.lstat()
+        if (not stat.S_ISDIR(metadata.st_mode)
+                or (metadata.st_dev, metadata.st_ino) != (identity.st_dev, identity.st_ino)):
+            raise ValueError("owned fixture root changed before cleanup")
+        for part in (None,) + relative.parts:
+            if part is not None:
+                current = current / part
+                metadata = current.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_file_attributes", 0) & 0x0400:
+                raise ValueError("indirection in owned cleanup path")
+        return metadata
+
+    def retry_readonly_unlink(function, name, error):
+        if (function is not os.unlink or not isinstance(error, PermissionError)
+                or error.errno not in (errno.EACCES, errno.EPERM)):
+            raise error
+        path = Path(name)
+        before = inspect_owned(path)
+        if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+                or before.st_mode & stat.S_IWUSR):
+            raise error
+        os.chmod(path, stat.S_IMODE(before.st_mode) | stat.S_IWUSR)
+        after = inspect_owned(path)
+        if ((before.st_dev, before.st_ino, before.st_nlink, before.st_size, before.st_mtime_ns)
+                != (after.st_dev, after.st_ino, after.st_nlink, after.st_size, after.st_mtime_ns)
+                or not stat.S_ISREG(after.st_mode) or not after.st_mode & stat.S_IWUSR):
+            raise ValueError("owned read-only file changed during cleanup retry")
+        function(path)  # A second failure propagates; no blanket error suppression.
+
+    inspect_owned(root)
+    shutil.rmtree(root, onexc=retry_readonly_unlink)
 
 
 class TransportTests(unittest.TestCase):
@@ -364,6 +407,129 @@ class TransportTests(unittest.TestCase):
                 preserve_candidate_profiles(collection, str(link / "profile.profraw"))
             self.assertEqual(prior.read_bytes(), b"prior owner\n")
 
+    def test_owned_readonly_git_object_cleanup_retries_only_the_failed_leaf(self):
+        owned = Path(tempfile.mkdtemp(prefix="owned-cleanup-", dir=self.root)).resolve()
+        identity = owned.lstat()
+        leaf = owned / ".git/objects/aa/object"
+        leaf.parent.mkdir(parents=True)
+        leaf.write_bytes(b"owned object\n")
+        leaf.chmod(0o444)
+        before = leaf.lstat()
+        prior = self.root / "prior-owner"
+        prior.write_bytes(b"outside prior owner\n")
+        prior_mode = prior.lstat().st_mode
+        original_unlink = os.unlink
+        attempts = []
+
+        def readonly_unlink(path, *args, **kwargs):
+            observed = os.stat(path, dir_fd=kwargs.get("dir_fd"), follow_symlinks=False)
+            if (observed.st_dev, observed.st_ino) == (before.st_dev, before.st_ino):
+                attempts.append(bool(observed.st_mode & stat.S_IWUSR))
+                if not observed.st_mode & stat.S_IWUSR:
+                    raise PermissionError(errno.EACCES, "controlled read-only unlink", os.fspath(path))
+            return original_unlink(path, *args, **kwargs)
+
+        with mock.patch.object(os, "unlink", side_effect=readonly_unlink), \
+                mock.patch.object(os, "chmod", wraps=os.chmod) as chmod:
+            remove_owned_fixture(owned, identity)
+        self.assertEqual(attempts, [False, True])
+        chmod.assert_called_once_with(leaf, stat.S_IMODE(before.st_mode) | stat.S_IWUSR)
+        self.assertFalse(owned.exists())
+        self.assertEqual(prior.read_bytes(), b"outside prior owner\n")
+        self.assertEqual(prior.lstat().st_mode, prior_mode)
+
+    def test_owned_cleanup_propagates_unrelated_writable_and_retry_failures(self):
+        for label, error, readonly, expected_chmod in (
+            ("io", OSError(errno.EIO, "controlled I/O failure"), True, 0),
+            ("writable", PermissionError(errno.EACCES, "controlled writable failure"), False, 0),
+            ("retry", PermissionError(errno.EACCES, "controlled repeated failure"), True, 1),
+        ):
+            with self.subTest(failure=label):
+                owned = Path(tempfile.mkdtemp(prefix="owned-failure-", dir=self.root)).resolve()
+                identity = owned.lstat()
+                leaf = owned / "leaf"
+                leaf.write_bytes(b"retain failed leaf\n")
+                leaf.chmod(0o444 if readonly else 0o600)
+                with mock.patch.object(os, "unlink", side_effect=error), \
+                        mock.patch.object(os, "chmod", wraps=os.chmod) as chmod:
+                    with self.assertRaises(OSError) as raised:
+                        remove_owned_fixture(owned, identity)
+                self.assertIs(raised.exception, error)
+                self.assertEqual(chmod.call_count, expected_chmod)
+                self.assertEqual(leaf.read_bytes(), b"retain failed leaf\n")
+                leaf.chmod(0o600)
+                shutil.rmtree(owned)
+
+    def test_owned_cleanup_refuses_outside_alias_nonfile_and_changed_root(self):
+        owned = Path(tempfile.mkdtemp(prefix="owned-refusal-", dir=self.root)).resolve()
+        identity = owned.lstat()
+        prior = self.root / "readonly-prior-owner"
+        prior.write_bytes(b"keep outside bytes and mode\n")
+        prior.chmod(0o444)
+        prior_mode = prior.lstat().st_mode
+        directory = owned / "directory"
+        directory.mkdir()
+        alias = owned / "hard-link"
+        os.link(prior, alias)
+        refused = [prior, owned / ".." / prior.name, directory, alias]
+        if os.name != "nt":
+            symlink = owned / "symlink"
+            symlink.symlink_to(prior)
+            refused.append(symlink)
+        for path in refused:
+            def invoke_callback(root, *, onexc):
+                self.assertEqual(root, owned)
+                onexc(os.unlink, path, PermissionError(errno.EACCES, "controlled refusal"))
+
+            with self.subTest(path=path), mock.patch.object(shutil, "rmtree", side_effect=invoke_callback), \
+                    mock.patch.object(os, "chmod") as chmod:
+                with self.assertRaises((ValueError, PermissionError)):
+                    remove_owned_fixture(owned, identity)
+                chmod.assert_not_called()
+            self.assertEqual(prior.read_bytes(), b"keep outside bytes and mode\n")
+            self.assertEqual(prior.lstat().st_mode, prior_mode)
+        changed = SimpleNamespace(st_dev=identity.st_dev, st_ino=identity.st_ino + 1)
+        with mock.patch.object(shutil, "rmtree") as remove, mock.patch.object(os, "chmod") as chmod:
+            with self.assertRaisesRegex(ValueError, "root changed"):
+                remove_owned_fixture(owned, changed)
+            remove.assert_not_called()
+            chmod.assert_not_called()
+        # Only after the unchanged-owner assertions, release these disposable
+        # test sentinels; a Windows read-only hard link cannot be unlinked yet.
+        prior.chmod(0o600)
+        alias.unlink()
+
+    def test_native_cleanup_exports_before_delete_and_retains_failed_export(self):
+        for fail in (True, False):
+            owned = Path(tempfile.mkdtemp(prefix="owned-export-", dir=self.root)).resolve()
+            collection = owned / "collection"
+            collection.mkdir()
+            profile = collection / "profile-sentinel"
+            profile.write_bytes(b"profile custody\n")
+            fixture = SimpleNamespace(root=owned, root_identity=owned.lstat(), collection=collection)
+            calls = []
+
+            def export(actual, runner):
+                self.assertEqual(actual, collection)
+                self.assertEqual(profile.read_bytes(), b"profile custody\n")
+                calls.append("export")
+                if fail:
+                    raise OSError(errno.EIO, "controlled export failure")
+
+            with mock.patch.object(sys.modules[__name__], "preserve_candidate_profiles", side_effect=export), \
+                    mock.patch.object(sys.modules[__name__], "remove_owned_fixture", wraps=remove_owned_fixture) as remove:
+                if fail:
+                    with self.assertRaisesRegex(RuntimeError, "fixtures retained"):
+                        NativeAdmissionTests.tearDownClass.__func__(fixture)
+                    remove.assert_not_called()
+                    self.assertEqual(profile.read_bytes(), b"profile custody\n")
+                    shutil.rmtree(owned)
+                else:
+                    NativeAdmissionTests.tearDownClass.__func__(fixture)
+                    remove.assert_called_once_with(owned, fixture.root_identity)
+                    self.assertFalse(owned.exists())
+            self.assertEqual(calls, ["export"])
+
     def test_unstarted_and_timed_out_processes_remain_distinct(self):
         store = COLLECT.Store(self.root)
         env = COLLECT.child_environment(self.root / "home", git_path())
@@ -495,6 +661,7 @@ class NativeAdmissionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.root = Path(tempfile.mkdtemp(prefix="command-case-native-tests-")).resolve()
+        cls.root_identity = cls.root.lstat()
         args = arguments(cls.root, NATIVE)
         with redirect_stdout(io.StringIO()):
             COLLECT.collect(args)
@@ -510,7 +677,7 @@ class NativeAdmissionTests(unittest.TestCase):
             # No automatic TemporaryDirectory finalizer: failed profile
             # custody must leave the actual fixture/profile bytes available.
             raise RuntimeError(f"candidate profile export failed; fixtures retained at {cls.root}") from error
-        shutil.rmtree(cls.root)
+        remove_owned_fixture(cls.root, cls.root_identity)
 
     def setUp(self):
         self.restore = {}
@@ -576,6 +743,106 @@ class NativeAdmissionTests(unittest.TestCase):
         if text:
             self.assertIn(text, json.dumps(result))
         return result
+
+    @unittest.skipUnless(os.name == "nt", "native Windows absolute/verbatim path semantics")
+    def test_windows_absolute_verbatim_and_drive_relative_reader_paths(self):
+        context, bundle = self.selected(["A.audit.healthy_policy"])
+        context_bytes = COLLECT.json_bytes(context)
+        bundle["context_digest"] = COLLECT.digest(context_bytes)
+        context_path = self.collection / "windows-context.json"
+        bundle_path = self.collection / "windows-bundle.json"
+        context_path.write_bytes(context_bytes)
+        bundle_path.write_bytes(COLLECT.json_bytes(bundle))
+        self.remove.extend([context_path, bundle_path])
+
+        def ordinary(path):
+            value = str(path)
+            if value.startswith("\\\\?\\UNC\\"):
+                return "\\\\" + value[8:]
+            return value[4:] if value.startswith("\\\\?\\") else value
+
+        def verbatim(path):
+            value = ordinary(path)
+            return "\\\\?\\UNC\\" + value[2:] if value.startswith("\\\\") else "\\\\?\\" + value
+
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("GIT_", "CARGO_ALLOW"))}
+        for label, form in (("ordinary", ordinary), ("verbatim", verbatim)):
+            argv = [str(NATIVE), "command-migration-evidence", "--catalogue", form(CATALOGUE),
+                    "--expected-context", form(context_path), "--bundle", form(bundle_path)]
+            output = self.collection / ("windows-" + label + "-result.json")
+            with self.subTest(form=label):
+                self.assertTrue(Path(form(CATALOGUE)).is_absolute())
+                observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=30)
+                self.assertEqual(observed.returncode, 0, observed.stderr.decode(errors="replace"))
+                admission = json.loads(observed.stdout)
+                self.assertEqual(admission["semantic_validity"], "valid", admission)
+                self.assertEqual(admission["qualification"], "partial")
+                self.assertTrue(admission["cases"][0]["detail_reconciled"])
+                observed = subprocess.run(argv + ["--output", form(output)], cwd=self.collection,
+                                          env=env, capture_output=True, timeout=30)
+                self.assertEqual(observed.returncode, 0, observed.stderr.decode(errors="replace"))
+                self.remove.append(output)
+                self.assertEqual(json.loads(output.read_bytes()), admission)
+                prior = output.read_bytes()
+                observed = subprocess.run(argv + ["--output", form(output)], cwd=self.collection,
+                                          env=env, capture_output=True, timeout=30)
+                self.assertNotEqual(observed.returncode, 0)
+                self.assertIn(b"already exists", observed.stderr)
+                self.assertEqual(output.read_bytes(), prior)
+
+        # A foreign drive prefix remains relative even after cwd.join().
+        drive = "Z:" if Path(ordinary(self.collection)).drive.upper() != "Z:" else "Y:"
+        relative = drive + "unanchored-reader.json"
+        self.assertFalse(Path(relative).is_absolute())
+        for role in ("catalogue", "expected-context", "bundle", "output"):
+            inputs = {"catalogue": ordinary(CATALOGUE), "expected-context": ordinary(context_path),
+                      "bundle": ordinary(bundle_path)}
+            inputs[role] = relative
+            argv = [str(NATIVE), "command-migration-evidence"]
+            for name, path in inputs.items():
+                argv.extend(["--" + name, path])
+            with self.subTest(drive_relative=role):
+                observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=30)
+                self.assertNotEqual(observed.returncode, 0)
+                self.assertIn(b"absolute input/member path", observed.stderr)
+
+    @unittest.skipUnless(os.name == "nt", "native Windows junction/reparse point semantics")
+    def test_windows_junction_inputs_members_and_outputs_are_refused(self):
+        foreign = self.root / "foreign-junction-target"
+        foreign.mkdir()
+        prior = foreign / "prior-owner"
+        prior.write_bytes(b"outside junction canary\n")
+        catalogue = foreign / "catalogue.json"
+        catalogue.write_bytes(CATALOGUE.read_bytes())
+        context, bundle = self.selected(["A.audit.healthy_policy"])
+        detail = foreign / "detail.json"
+        detail.write_bytes(self.read_member(bundle["cases"][0]["detail"]))
+        junction = self.collection / "junction"
+        cmd = Path(os.environ["SystemRoot"]) / "System32/cmd.exe"
+        made = subprocess.run([str(cmd), "/d", "/c", "mklink", "/J", str(junction), str(foreign)],
+                              capture_output=True, timeout=10)
+        self.assertEqual(made.returncode, 0, made.stderr.decode(errors="replace"))
+        self.addCleanup(os.rmdir, junction)
+        self.assertTrue(junction.lstat().st_file_attributes & 0x0400)
+        # The member route must emit its typed Invalid result, not fail while
+        # reading the three independent top-level JSON inputs.
+        bundle["cases"][0]["detail"]["path"] = "junction/detail.json"
+        self.invalid(context, bundle, "symlink input/member refused")
+        context, bundle = self.selected(["A.audit.healthy_policy"])
+        observed, _ = self.admit(context, bundle, output=junction / "new-result.json")
+        self.assertNotEqual(observed.returncode, 0)
+        self.assertIn(b"symlink input/member refused", observed.stderr)
+        self.assertFalse((foreign / "new-result.json").exists())
+        observed = subprocess.run([str(NATIVE), "command-migration-evidence", "--catalogue",
+                                   str(junction / "catalogue.json"), "--expected-context",
+                                   str(self.collection / "test-context.json"), "--bundle",
+                                   str(self.collection / "test-bundle.json")],
+                                  cwd=self.collection, capture_output=True, timeout=30)
+        self.assertNotEqual(observed.returncode, 0)
+        self.assertIn(b"symlink input/member refused", observed.stderr)
+        self.assertEqual(prior.read_bytes(), b"outside junction canary\n")
+        self.assertEqual(catalogue.read_bytes(), CATALOGUE.read_bytes())
 
     def test_actual_first_family_valid_observations_remain_partial_qualification(self):
         # These live routes work both before and after the separately owned

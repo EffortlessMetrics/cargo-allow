@@ -175,13 +175,19 @@ pub(super) fn valid_digest(value: &str) -> bool {
 }
 
 fn reject_symlink_components(path: &Path) -> Result<(), String> {
-    let mut current = PathBuf::new();
-    for component in path.components() {
-        if matches!(component, Component::ParentDir | Component::CurDir) {
-            return Err("input path contains an ambiguous component".to_string());
-        }
-        current.push(component);
-        let metadata = fs::symlink_metadata(&current)
+    if !path.is_absolute() {
+        return Err("an absolute input/member path is required".to_string());
+    }
+    if path
+        .components()
+        .any(|component| matches!(component, Component::ParentDir | Component::CurDir))
+    {
+        return Err("input path contains an ambiguous component".to_string());
+    }
+    // Ancestors begin at a complete root, including Windows verbatim/UNC
+    // roots. A standalone drive Prefix is not a filesystem path to inspect.
+    for current in path.ancestors().collect::<Vec<_>>().into_iter().rev() {
+        let metadata = fs::symlink_metadata(current)
             .map_err(|error| format!("inspect {}: {error}", current.display()))?;
         if is_indirection(&metadata) {
             return Err(format!(

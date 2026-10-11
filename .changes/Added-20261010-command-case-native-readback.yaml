@@ -11,5 +11,6 @@ body: >-
   literal fixture and existing native projections. The reader is registered
   for Cargo-prefixed dispatch and schema coverage. Instrumented candidates
   write profiles only within their owned outputs; native readback rejects
-  foreign profile destinations without exempting unexpected source files
-  (#3149).
+  foreign profile destinations without exempting unexpected source files.
+  Absolute Windows drive and verbatim paths retain the same component and
+  member protections (#3149).
