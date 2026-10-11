@@ -80,9 +80,9 @@ fn today_utc_approx_uses_system_clock_day() {
 
 #[test]
 fn has_passed_date_str_is_inclusive_of_today() {
-    // #2008: an `expires`/deadline date equal to today must count as passed.
+    // #2008: a federation drain deadline equal to today counts as passed.
     // The deadline has arrived; enforcing it a day late (strict `<`) let drain
-    // windows and entries live one extra day past their stated expiry.
+    // windows live one extra day. Policy-entry expiry has a separate law.
     let today = SimpleDate::parse("2026-06-26")
         .unwrap_or_else(|| std::panic::panic_any("fixture today should parse"));
 
@@ -108,11 +108,32 @@ fn has_passed_date_str_handles_missing_and_unparseable() {
 
 #[test]
 fn has_passed_and_is_due_share_the_inclusive_boundary() {
-    // #2008: expiry (has_passed) and review_after (is_due) must agree on the
-    // boundary. A deadline equal to today counts for both.
+    // Drain deadlines (has_passed) and review_after (is_due) both use an
+    // inclusive boundary. Policy-entry expires is deliberately strict.
     let today = SimpleDate::parse("2026-06-26")
         .unwrap_or_else(|| std::panic::panic_any("fixture today should parse"));
 
     assert!(SimpleDate::has_passed_date_str(Some("2026-06-26"), today));
     assert!(SimpleDate::is_due_date_str(Some("2026-06-26"), today));
+}
+
+#[test]
+fn policy_expiry_boundary_is_strict_without_changing_inclusive_deadlines() -> Result<(), String> {
+    let today = SimpleDate::parse("2026-06-26").ok_or("fixture date should parse")?;
+    for (date, expired, inclusive_due) in [
+        ("2026-06-25", true, true),
+        ("2026-06-26", false, true),
+        ("2026-06-27", false, false),
+    ] {
+        let parsed = SimpleDate::parse(date).ok_or("boundary date should parse")?;
+        if parsed.policy_expiry_has_passed(today) != expired
+            || SimpleDate::has_passed_date_str(Some(date), today) != inclusive_due
+            || SimpleDate::is_due_date_str(Some(date), today) != inclusive_due
+        {
+            return Err(format!(
+                "policy expiry and inclusive deadline laws diverged at {date}"
+            ));
+        }
+    }
+    Ok(())
 }
