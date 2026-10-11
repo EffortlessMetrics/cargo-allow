@@ -186,6 +186,30 @@ class TransportTests(unittest.TestCase):
             COLLECT.collect(args)
         self.assertFalse(args.output_dir.exists())
 
+    def test_rewritten_catalogue_cannot_dispatch_later_commands_or_unbounded_cases(self):
+        catalogue, _ = COLLECT.load_json(CATALOGUE)
+        for mode in ("later_command", "too_many"):
+            changed = copy.deepcopy(catalogue)
+            case = next(item for item in changed["cases"] if item["id"] == "A.audit.clean_no_policy")
+            if mode == "later_command":
+                case["command"] = "add"
+                selected = [case["id"]]
+            else:
+                selected = []
+                for index in range(30):
+                    row = copy.deepcopy(case)
+                    row["id"] = f"A.audit.extra_{index}"
+                    changed["cases"].append(row)
+                    selected.append(row["id"])
+            args = arguments(self.root, Path(sys.executable).resolve(), selected)
+            with self.subTest(mode=mode), mock.patch.object(
+                COLLECT, "load_json", return_value=(changed, COLLECT.json_bytes(changed))
+            ), mock.patch.object(COLLECT, "run_process") as calls:
+                with self.assertRaisesRegex(ValueError, "bounded read-only"):
+                    COLLECT.collect(args)
+                calls.assert_not_called()
+                self.assertFalse(args.output_dir.exists())
+
 
 @unittest.skipIf(NATIVE is None, "native binary supplied by the Rust integration target")
 class NativeAdmissionTests(unittest.TestCase):

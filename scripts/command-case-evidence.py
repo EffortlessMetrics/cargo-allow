@@ -21,6 +21,8 @@ import sys
 
 JSON_LIMIT = 8 * 1024 * 1024
 BINARY_LIMIT = 256 * 1024 * 1024
+FIRST_FAMILY_COMMANDS = {"adopt", "doctor", "audit", "check"}
+MAX_SELECTED_CASES = 29
 SCHEMA = "cargo-allow.command-case-bundle.v1"
 
 
@@ -347,6 +349,14 @@ def collect(args):
         raise ValueError("case selection is empty or duplicated")
     if any(case not in specs or not specs[case]["first_family_collector"] for case in selected):
         raise ValueError("unknown or unimplemented case requested")
+    # This is an execution boundary, not semantic admission of the catalogue.
+    # A rewritten first-family flag must not dispatch a later mutation/release
+    # command before the native reader can reject its denominator.
+    if len(selected) > MAX_SELECTED_CASES or any(
+        specs[case]["family"] != "A" or specs[case]["command"] not in FIRST_FAMILY_COMMANDS
+        for case in selected
+    ):
+        raise ValueError("selection exceeds the bounded read-only A-family transport")
     binary, git = args.binary.absolute(), args.git.absolute()
     if not args.binary.is_absolute() or not args.git.is_absolute():
         raise ValueError("--binary and --git must be explicit absolute paths")
