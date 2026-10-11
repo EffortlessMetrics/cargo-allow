@@ -1,0 +1,52 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4436,
+  "base_ref": "main",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "head_ref": "docs/2502-final-release-record",
+  "head_sha": "383f0d02c87e4d179461e1e74d72c228405e0e4a",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:1aad9ab741effea910086303d829e10117c194cef6cee8681903ddc56895b0af",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of the #4436 documentation, policy and current integration. Shared model/campaign context and same-account transport are disclosed; no distinct human approval is claimed. Authored the separate #4443 hook-test integration now in main; this verdict covers #4436 and its interactions rather than independently reapproving that incoming work.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4436#pullrequestreview-5481325101"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-3777-macos-support-projection",
+      "severity": "advisory",
+      "owned_seam": "Existing public support-document macOS evidence projection",
+      "source_path": "SUPPORT.md",
+      "source_line": 55,
+      "repair_route": "NonBlocking / AcceptedFollowUp: actual comment 6102285842 is owned by existing #3777, projected under #3796, with final platform selection under #3737. Reconcile the unchanged macOS paragraph with its bounded CI rows without inferring a support ruling from this PR.",
+      "claim_boundary": "This six-path PR neither changes SUPPORT.md nor repeats its erroneous no-execution claim. The existing discrepancy remains open; the accepted follow-up supplies no support decision, native macOS qualification or final-release authority."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4436#pullrequestreview-5481325101",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4436#issuecomment-6102285842",
+    "Actual COMMENT at 2026-10-11T00:24:22Z covers all six effective paths, both complete release documents, removed claims, historical JSON, revision note, fragment and policy; controlling #2502 contract, all substantive feedback, eleven publisher/topology/workflow/rehearsal/freeze/support/security/manifest consumers and incoming expiry interactions.",
+    "Hosted head 383f and synthetic 0fced2f have independently rehashed native Git identities, ordered parents, identical tree 8c8c21256b8b7d00c0d4cf6614fe9de9d630033a and unique 5eab merge base. Full six-path 36,038-byte native default, explicit abbreviated diff and current readiness digests agree. The prior full-index comparison stop is an instrument-only serialization observation.",
+    "The documents remain prospective with a dated edb7 source checkpoint. Stable 0.1.11, immutable incident-bearing RC.1 and final 0.2.0 qualification remain distinct. Fresh GitHub observations of RC.1 Latest/prerelease=false and no exact final tag/Release do not establish crates.io presence or absence.",
+    "The thirteen dependency-processing rows are ten selected 0.2.0 upload candidates plus three shared 0.1.0 prerequisites. The historical timing finding remains Fixed and resolved: shared registry preflight is required before tag-phase uploads, without claiming a delivered pre-tag authorization gate.",
+    "All seven production rehearsal prevention flags remain false. Token-key observation, admission and receipt preservation do not supply independent prevention, registry freshness, custody/replay, Complete freeze, explicit authorization, installed experience, typed public manifest or actual draft-asset closeout. Configuration/default/support and frozen/public manifest-role decisions remain unratified.",
+    "All five owned nonpolicy entries and 2,684 unrelated main entries are exact. Policy is the exact 756,267-byte main prefix plus unchanged 1,577-byte suffix, totaling 757,844 bytes / 1,103 unique IDs. Both canonical file admissions/revision fingerprints, existing settings, selectors, dates and limits remain unchanged.",
+    "Reviewer rehashed all 18 local guard and 9 transport members plus preserved f4 checkpoint/source correspondence. All 602 linked inputs and 1,372 Rust/Cargo/toolchain/configuration entries match the producer and document source; these were new guard executions with a preserved source-equivalent executable, not new Rust builds/tests or installed proof.",
+    "Current local governed diff is Complete with zero current/policy failures and three finding plus two policy introductions. Default passes/enforces with new=0, 2,690 files / 16,687 findings. Current native pregate 114347487459 is Complete on the actual synthetic; current readiness correctly rejects the old record. Broader CI, own-record bootstrap and independent metadata review remain pending.",
+    "Existing SUPPORT.md comment 6102285842 remains AcceptedFollowUp under its actual owners; no source blocker or new support ruling. Rate/credit-limited and short historical model reviews are not current independent evidence. #2502 remains open."
+  ],
+  "required_ci": {
+    "owner": "Coordinator must independently verify this own-JSON-only successor, complete source preservation, native readiness bootstrap and metadata review, accepted-follow-up scope, all applicable current native gates and fresh final refs/feedback before a coordinated expected-head merge. Verify the exact resulting-main guard. Pending, failed, skipped, unavailable and stale evidence is not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38097880194/job/114347487459"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4436",
+  "reviewed_at_utc": "2026-10-11T00:24:22Z"
+}
