@@ -141,11 +141,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 && scan.rust_files_with_parse_errors == 0,
         }
     } else {
-        // Current-tree completeness is the separate #2493 lane. This slice
-        // classifies only the two exact committed revisions when --head is
-        // supplied; existing current-tree checks continue to enforce their
-        // own inventory and scanner failure rules.
-        allow_diff::DiffScanCoverage::complete()
+        let facts = current_world_loaded(&current_world)?.inventory_facts;
+        allow_diff::DiffScanCoverage {
+            inventory_complete: matches!(
+                facts.completeness,
+                allow_inventory::InventoryCompleteness::Complete
+                    | allow_inventory::InventoryCompleteness::Scoped
+            ),
+            scanner_complete: facts.rust_files_skipped == 0
+                && facts.rust_files_with_parse_errors == 0,
+        }
     };
     let base_inventory_complete = base_revision_scan.inventory_completeness == "complete";
     let base_scanner_complete = base_revision_scan.rust_files_skipped == 0
@@ -388,6 +393,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     // Suppress human-readable diagnostics on stderr when format is JSON to avoid
     // corrupting JSON pipeline scripts (#3218).
     if args.format != OutputFormat::Json {
+        report_revision_read_warnings("base", &base_revision_scan);
+        if let Some(scan) = &head_revision_scan {
+            report_revision_read_warnings("head", scan);
+        }
         if result_class.is_blocking() {
             eprintln!(
                 "diff result: {} (non-complete evidence is non-clean; repair the indicated revision input before relying on movement)",
@@ -482,6 +491,18 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn report_revision_read_warnings(side: &str, scan: &allow_diff::RevisionScanResult) {
+    for status in &scan.rust_file_statuses {
+        if let allow_rust::RustFileScanOutcome::Skipped { reason } = &status.outcome {
+            eprintln!(
+                "warning: {side} revision {} skipped `{}` (read error: {reason})",
+                scan.revision.commit,
+                normalize_path(&status.path),
+            );
+        }
+    }
 }
 
 fn diff_summary(

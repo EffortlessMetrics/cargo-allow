@@ -2,7 +2,7 @@ use allow_core::{
     AllowConfig, CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
     Finding, FindingKind, normalize_path, source_tree_path_is_ignored,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use crate::revision_git::{git_tree_files_at_commit, read_files_at_revision};
@@ -22,6 +22,8 @@ pub struct RevisionScanResult {
     pub rust_files_scanned: usize,
     pub rust_files_skipped: usize,
     pub rust_files_with_parse_errors: usize,
+    /// Repository-relative per-file outcomes shared with the current-tree scanner.
+    pub rust_file_statuses: Vec<allow_rust::RustFileScanStatus>,
     pub inventory_completeness: &'static str,
     pub scanner_completeness: &'static str,
     pub findings: Vec<Finding>,
@@ -99,38 +101,105 @@ where
         resolved_revision,
     )
     .map_err(snapshot_error)?;
-    let source_texts = read_files_at_revision(root, &all_tree_files, &source_paths)?;
-    let mut manifests = Vec::new();
-    for rel in files
-        .iter()
-        .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
-    {
-        let text = source_texts
-            .get(rel)
-            .ok_or_else(|| missing_revision_source(rel))?;
-        manifests.push((rel.clone(), text.clone()));
-    }
-    let packages = allow_rust::source_package_contexts_from_sources(manifests);
-    let mut findings = Vec::new();
     let rust_files_considered = files
         .iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
         .count();
+    let mut rust_files_skipped = 0usize;
     let mut rust_files_with_parse_errors = 0usize;
+    let mut rust_file_statuses = Vec::with_capacity(rust_files_considered);
+    let mut rust_findings_by_path = BTreeMap::new();
+    let mut packages_by_path = BTreeMap::new();
+    let mut workflow_findings_by_path = BTreeMap::new();
+    let mut generated_findings = Vec::new();
+    read_files_at_revision(root, &all_tree_files, &source_paths, |rel, source| {
+        let is_rust = rel.extension().and_then(|ext| ext.to_str()) == Some("rs");
+        let is_manifest = rel.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml");
+        let text = match source {
+            Ok(text) => text,
+            Err(error) if is_rust => {
+                rust_files_skipped += 1;
+                rust_file_statuses.push(allow_rust::RustFileScanStatus {
+                    path: rel.to_path_buf(),
+                    outcome: allow_rust::RustFileScanOutcome::Skipped {
+                        reason: error.to_string(),
+                    },
+                });
+                return Ok(());
+            }
+            // Package names are optional source context. A rejected manifest
+            // must not prevent valid Rust from being scanned, just as in the
+            // current-tree scanner. Required companion sources stay strict.
+            Err(_) if is_manifest => return Ok(()),
+            Err(error) => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Scan,
+                    format!("cannot read revision source `{}`: {error}", rel.display()),
+                ));
+            }
+        };
+        if is_rust {
+            let scan = allow_rust::scan_rust_source_with_completeness(rel, text);
+            if scan.has_parse_error {
+                rust_files_with_parse_errors += 1;
+            }
+            rust_file_statuses.push(allow_rust::RustFileScanStatus {
+                path: rel.to_path_buf(),
+                outcome: if scan.has_parse_error {
+                    allow_rust::RustFileScanOutcome::ParseError
+                } else {
+                    allow_rust::RustFileScanOutcome::Scanned
+                },
+            });
+            rust_findings_by_path.insert(rel.to_path_buf(), scan.findings);
+        } else if is_manifest {
+            packages_by_path.insert(
+                rel.to_path_buf(),
+                allow_rust::source_package_contexts_from_sources([(
+                    rel.to_path_buf(),
+                    text.to_string(),
+                )]),
+            );
+        } else if rel == Path::new(".gitattributes") {
+            generated_findings = allow_files::generated_findings_from_gitattributes_text(text);
+        } else if is_workflow_path(rel) {
+            workflow_findings_by_path.insert(
+                rel.to_path_buf(),
+                allow_files::workflow_findings_from_sources(vec![(
+                    rel.to_path_buf(),
+                    text.to_string(),
+                )]),
+            );
+        }
+        Ok(())
+    })?;
+    rust_file_statuses.sort_by(|left, right| left.path.cmp(&right.path));
     for rel in files
         .iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
     {
-        let text = source_texts
-            .get(rel)
-            .ok_or_else(|| missing_revision_source(rel))?;
-        let rust_scan = allow_rust::scan_rust_source_with_completeness(rel, text);
-        if rust_scan.has_parse_error {
-            rust_files_with_parse_errors += 1;
+        if rust_file_statuses
+            .binary_search_by(|status| status.path.cmp(rel))
+            .is_err()
+        {
+            return Err(missing_revision_source(rel));
         }
-        let mut rust_findings = rust_scan.findings;
-        allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
-        findings.extend(rust_findings);
+    }
+    // Blob order is independent of path order. Retain only scanner products,
+    // then restore the existing source order and nearest-package selection.
+    let mut packages = Vec::new();
+    for rel in &files {
+        if let Some(contexts) = packages_by_path.remove(rel) {
+            packages.extend(contexts);
+        }
+    }
+    packages.sort_by_key(|package| std::cmp::Reverse(package.root.len()));
+    let mut findings = Vec::new();
+    for rel in &files {
+        if let Some(mut rust_findings) = rust_findings_by_path.remove(rel) {
+            allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
+            findings.extend(rust_findings);
+        }
     }
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -140,24 +209,11 @@ where
             content_aware_generated: false,
         },
     ));
-    if has_generated_code_receipt(cfg)
-        && let Some(text) = source_texts.get(Path::new(".gitattributes"))
-    {
-        findings.extend(allow_files::generated_findings_from_gitattributes_text(
-            text,
-        ));
-    }
-    if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
-        let mut workflow_sources = Vec::new();
-        for rel in files.iter().filter(|path| is_workflow_path(path)) {
-            let text = source_texts
-                .get(rel)
-                .ok_or_else(|| missing_revision_source(rel))?;
-            workflow_sources.push((rel.clone(), text.clone()));
+    findings.extend(generated_findings);
+    for rel in &files {
+        if let Some(workflow_findings) = workflow_findings_by_path.remove(rel) {
+            findings.extend(workflow_findings);
         }
-        findings.extend(allow_files::workflow_findings_from_sources(
-            workflow_sources,
-        ));
     }
     if has_policy_family(cfg, &["process_spawn"]) {
         findings.extend(allow_files::process_findings_from_config(cfg));
@@ -180,7 +236,7 @@ where
     ));
     let scanner_completeness = if rust_files_considered == 0 {
         "unknown"
-    } else if rust_files_with_parse_errors > 0 {
+    } else if rust_files_skipped > 0 || rust_files_with_parse_errors > 0 {
         "partial"
     } else {
         "complete"
@@ -190,9 +246,10 @@ where
         selected_source_closure: snapshot.selected_source_closure,
         source_files_considered: source_paths.len(),
         rust_files_considered,
-        rust_files_scanned: rust_files_considered,
-        rust_files_skipped: 0,
+        rust_files_scanned: rust_files_considered - rust_files_skipped,
+        rust_files_skipped,
         rust_files_with_parse_errors,
+        rust_file_statuses,
         inventory_completeness: "complete",
         scanner_completeness,
         findings,

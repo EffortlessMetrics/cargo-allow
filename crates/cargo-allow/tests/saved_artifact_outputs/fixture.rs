@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::repository_environment::isolate_repository;
 use super::support::{remove_temp_root, temp_root};
 
 /// Map the authored fixture calendar dates to today-relative ones so the
@@ -47,10 +48,9 @@ pub(crate) fn commit_fixture_base(root: &Path) {
 }
 
 fn git(root: &Path, args: &[&str]) {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
+    let mut command = Command::new("git");
+    command.arg("-C").arg(root).args(args);
+    let output = isolate_repository(&mut command)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {

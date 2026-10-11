@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Stream bounded Git revision blobs without lossy UTF-8 substitution, preserve
+  per-file scan rejection and independent base/head completeness, and prevent
+  incomplete input from earning unproven introduced or resolved findings.
