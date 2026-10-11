@@ -1,0 +1,66 @@
+name: Reader direct-floor evidence
+
+# Temporary proof branch for #4461 R11. The existing producer owns the
+# classes, source admission, floor settlement, and generated receipts.
+on:
+  push:
+    branches: [work/4461-floor-proof-20261011]
+
+permissions:
+  contents: read
+
+jobs:
+  direct-floor-proof:
+    name: Linux 1.95 floors (${{ matrix.product }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product: cargo-allow
+            classes: check,test,package
+            advisory: "false"
+          - product: shared
+            classes: check
+            advisory: "true"
+          - product: cargo-intent
+            classes: check
+            advisory: "true"
+          - product: cargo-proof
+            classes: check
+            advisory: "true"
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI_PROOF_PRODUCT: ${{ matrix.product }}
+      CI_PROOF_CLASSES: ${{ matrix.classes }}
+      CI_PROOF_ADVISORY: ${{ matrix.advisory }}
+      CI_PROOF_MSRV: "1.95"
+      RUSTUP_TOOLCHAIN: "1.95"
+      RUSTUP_AUTO_INSTALL: "0"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUTF8: "1"
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the claimed toolchain
+        run: rustup toolchain install 1.95 --profile minimal --component rustfmt
+      - name: Collect fresh bounded floor evidence
+        run: python3 scripts/reader-direct-floor-ci.py
+      - name: Retain collector outputs and source identities
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reader-direct-floors-${{ matrix.product }}-${{ github.sha }}
+          path: target/reader-direct-floor-evidence/
+          if-no-files-found: error
+          retention-days: 90
