@@ -124,6 +124,8 @@ class Store:
 def owned_root(path):
     path = path.absolute()
     reject_symlinks(path.parent)
+    if "%" in str(path):
+        raise ValueError("collection root cannot contain an LLVM profile filename pattern")
     if any((parent / ".git").exists() for parent in (path.parent,) + tuple(path.parents)):
         raise ValueError("collection fixtures must be outside a repository checkout")
     path.mkdir()  # Exclusive ownership: existing files, directories and links all fail.
@@ -298,6 +300,13 @@ def collect_case(spec, fixture, root, store, binary, git, timeout):
     fixture_commit = setup_git(fixture_root, git, env, timeout, store, prefix + "/setup")
     outputs = fixture_root / "target/command-case"
     outputs.mkdir(parents=True)
+    profiles = outputs / "profiles"
+    profiles.mkdir()
+    # An instrumented supplied binary must not write a default profile among
+    # the fixture's source files. Bind its output to this invocation's owned
+    # directory, never to an inherited runner path. Uninstrumented binaries
+    # ignore the value; no second candidate execution is needed.
+    env["LLVM_PROFILE_FILE"] = str(profiles / "candidate-%m-%p.profraw")
     detail_path, summary_path = outputs / "detail.json", outputs / "summary.json"
     receipt_path = outputs / "receipt.json"
     output_guard = None

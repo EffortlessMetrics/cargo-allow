@@ -499,6 +499,13 @@ fn validate_case_context(
     let env = &context.environment;
     let home = collection.join("homes").join(&spec.id);
     let null_config = if cfg!(windows) { "nul" } else { "/dev/null" };
+    if let Some(profile) = env.get("LLVM_PROFILE_FILE") {
+        let expected = outputs.join("profiles").join("candidate-%m-%p.profraw");
+        need(
+            !context.root.contains('%') && profile == expected.to_string_lossy().as_ref(),
+            "LLVM profile destination is not the exact owned candidate output path",
+        )?;
+    }
     need(
         env.get("GIT_CONFIG_NOSYSTEM").map(String::as_str) == Some("1")
             && env.get("GIT_CONFIG_GLOBAL").map(String::as_str) == Some(null_config)
@@ -530,6 +537,7 @@ fn validate_case_context(
                         | "SYSTEMROOT"
                         | "TEMP"
                         | "TMP"
+                        | "LLVM_PROFILE_FILE"
                 )
             }),
         "ambient Git/policy/PATH selector escaped the controlled child environment",

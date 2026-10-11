@@ -582,6 +582,7 @@ impl CargoAllowCommand {
         "workflow-construction",
         "dependency-graph-evidence",
         "dependency-graph-delta",
+        "command-migration-evidence",
     ];
 }
 

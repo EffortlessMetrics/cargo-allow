@@ -134,7 +134,8 @@ fn core_command_migration_explicit_help_and_package_containment() -> Result<(), 
         let refused = native(arguments)?;
         require(
             refused.status.code() == Some(2)
-                && String::from_utf8_lossy(&refused.stderr).contains("unrecognized subcommand 'allow'"),
+                && String::from_utf8_lossy(&refused.stderr)
+                    .contains("unrecognized subcommand 'allow'"),
             "unknown/bare allow token was incorrectly stripped as a Cargo shim",
         )?;
     }
@@ -229,7 +230,16 @@ fn source_generation(root: &Path) -> Result<String, String> {
 fn child(program: impl AsRef<std::ffi::OsStr>) -> Command {
     let mut command = Command::new(program);
     command.env_clear();
-    for key in ["PATH", "SystemRoot", "WINDIR", "TMP", "TEMP"] {
+    // The test runner owns this instrumentation destination. Candidate case
+    // execution still constructs and validates its own separate environment.
+    for key in [
+        "PATH",
+        "SystemRoot",
+        "WINDIR",
+        "TMP",
+        "TEMP",
+        "LLVM_PROFILE_FILE",
+    ] {
         if let Some(value) = std::env::var_os(key) {
             command.env(key, value);
         }
