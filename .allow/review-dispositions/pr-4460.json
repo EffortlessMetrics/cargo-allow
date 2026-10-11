@@ -1,0 +1,62 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4460,
+  "base_ref": "main",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "head_ref": "fix/3149-preserve-evaluated-command-summaries",
+  "head_sha": "f516f260a2d1f39dc586ceaf612c4934b4eb5c76",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:05ed89e0fd201daa423f316be009de39d6d792940cac350949c0e500100af558",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthor of this PR's code, tests, policy, note, integrations and wording repair. Shared model family, campaign context, tools, account transport and access to author proof remain correlated-failure limits. Coordinator retains the actual model COMMENT; no separate human or account approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4460#pullrequestreview-5481345368"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-3880-early-emit-validation",
+      "severity": "advisory",
+      "owned_seam": "Check emit grammar validation before evaluation and preliminary output",
+      "source_path": "crates/cargo-allow/src/check.rs",
+      "source_line": 369,
+      "repair_route": "NonBlocking / AcceptedFollowUp under existing #3880: move renderer validation and output preflight before evaluation with explicit precedence and artifact-preservation controls. Retain actual thread 4239601507 as AcceptedFollowUp, not Fixed. Separately qualify audit/diff grammar and the broader collision, optional-renderer and partial-I/O contract.",
+      "claim_boundary": "Correct final Usage and Artifact exits, typed summaries and error receipts do not establish early rejection or the complete #3880 preflight and transaction contract. Already-written stdout cannot be withdrawn."
+    },
+    {
+      "id": "follow-up-3880-sidecar-availability-comment",
+      "severity": "advisory",
+      "owned_seam": "Best-effort typed error-summary availability claim",
+      "source_path": "crates/cargo-allow/src/core_command_router.rs",
+      "source_line": 129,
+      "repair_route": "NonBlocking / AcceptedFollowUp under existing #3880: qualify the unchanged internal promise of never a missing file on successful context, root and path resolution and writing. Preserve stderr and process exit as authoritative when those steps fail.",
+      "claim_boundary": "This real preexisting documentation overclaim is not an introduced executable regression and was not fixed by the separate neutral completion wording. The helper can return early or ignore a final write failure."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4460#pullrequestreview-5481345368",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4460#pullrequestreview-5481211314",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4460#discussion_r4239601507",
+    "Complete current 10-path source and surrounding handler, writer, dispatch, projection, emitter, typed artifact validator, policy, test, contract and incoming strict-expiry review. The reviewer reloaded actual #3149, reopened #3880, PR body, reviews, threads, top-level feedback and checks without mutating or executing the product.",
+    "Actual b291, f516 and synthetic 0c60 objects were independently rehashed, with exact ordered parents, source tree e67808fb0477ed3bc4985cca8671103573be6fa2 and unique 5eab merge base. Native default and explicit eight-character diff serialization both give 50,956 bytes and the reviewed digest. The separate 51,596-byte full-index serialization is retained without substituting its digest.",
+    "Evaluated adoption and doctor outcomes are marked only after requested outputs succeed. Receipt-only Human check derives its typed sidecar from the same in-memory report. Invalid emit grammar returns Usage / exit 2; renderer, validation and artifact I/O failures return Artifact / exit 1 through actual receipt replacement, cleanup and final summary paths. Full comma-separated requests are preserved for CheckArgs. Complete and SemanticNonGreen retain completed rendering and the original policy posture; required rendering failures retain their manifests and safely completed members.",
+    "The wording successor truthfully declines to attest whether scanning or evaluation completed. Both existing late-error controls reject the demonstrated false incompletion claim. The prior actual 23d review missed that preexisting nonblocking wording issue. An exact historical 996 blocked-JSON result fails the new negative predicate; no fresh RED is claimed for this wording successor.",
+    "All 2,679 unrelated main entries retain exact modes and blobs. Integration preserved all nine owned nonpolicy entries from 23d; the wording child changes only the router, two existing assertions and the existing changelog. All 2,686 other repair-parent entries remain exact. Policy is the exact 756,267-byte main prefix plus unchanged 1,621-byte suffix, totaling 757,888 bytes and 1,103 unique IDs. Both exact-file canonical entries match the unchanged note; no selector or review date was broadened or renewed.",
+    "Actual clean local 955ff99e710dac95c4575aa9cf241403e9a82b10 has the exact hosted source tree. With explicit Rust 1.95 and two build jobs, all 34 integration tests passed, zero failed, ignored or filtered, at 00:15:40-00:19:08 UTC on 2026-10-11. Formatting passed, fresh dev governed diff was Complete with zero current and policy failures, and default no-new passed enforcing with failed=false, new=0, 2,689 files and 16,686 findings. Test, guard, transport and wording proof members were independently rehashed.",
+    "The actual 955 dev executable, original depfile and fingerprints, 602 linked source inputs, 25 manifest and toolchain inputs and separately identified test harness are retained. Binary SHA256 is d0b7138187ed6537b233887b65be63f27f76ce73cbe3386c1f99de70c809ddc6. This is Linux source-build proof; test-product identity is not inferred from an unrelated executable filename, and no installed or other-platform qualification is claimed.",
+    "Historical results remain historical: 26ca was 1 pass / 3 failures with a nondiscriminating second-member request setup; 996 was 31 pass / 1 failure; test-only 9e was 3 pass / 3 failures and exposed full-list truncation and single-human RenderFailure; earlier 3cde was 34 pass. None is relabeled as current 955 execution. Both #3880 advisory findings remain AcceptedFollowUp rather than Fixed.",
+    "Current source pregate 114348539419 succeeds. Readiness 114348920806 independently matches this exact pair and diff and was neutral because this retained record was absent. Pending native platform, package, coverage, interop and review jobs were not claimed green. Private-helper docstring percentages and paused or quota-limited model feedback do not substitute for current correctness review."
+  ],
+  "required_ci": {
+    "owner": "Coordinator must obtain independent review of this own-JSON-only successor, verify all other source modes and blobs and actual native readiness bootstrap, read fresh feedback, and finish every applicable current native gate. Any subsequent merge must use the exact reviewed head and settled campaign order, followed by resulting-main enforcement. Pending, stale, failed, cancelled, skipped or unavailable evidence is not green. Full #3149 catalogue and installed experience, reopened #3880, freeze and release authority remain separate.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114348539419"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4460",
+  "reviewed_at_utc": "2026-10-11T00:31:59Z"
+}

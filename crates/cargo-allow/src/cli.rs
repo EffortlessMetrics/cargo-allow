@@ -257,9 +257,12 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         return Ok(());
     };
     configure_summary_output(cli.command_summary_output, &command)?;
+    let mut error_summary = crate::core_command_router::ErrorSummaryDisposition::Required;
     let result: CargoAllowResult<()> = match &command {
         CargoAllowCommand::Init(args) => init::cmd_init(args),
-        CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(args),
+        CargoAllowCommand::Adopt(args) => {
+            adoption::cmd_adopt_with_summary_disposition(args, &mut error_summary)
+        }
         CargoAllowCommand::Audit(args) => audit::cmd_audit(args),
         CargoAllowCommand::Check(args) => check::cmd_check(args),
         CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(args),
@@ -274,7 +277,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(args),
         CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(args),
         CargoAllowCommand::Prune(args) => prune::cmd_prune(args),
-        CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(args),
+        CargoAllowCommand::Doctor(args) => {
+            doctor::cmd_doctor_with_summary_disposition(args, &mut error_summary)
+        }
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(args),
         CargoAllowCommand::Completions(args) => completions::cmd_completions(args),
@@ -330,7 +335,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
     // #4393: a summary-supported command that exits on a hard error still
     // writes its `--command-summary-output` sidecar, classified by the typed
     // error code, so the failure class is reachable through the sidecar.
-    if let Err(error) = result.as_ref() {
+    if let (Err(error), crate::core_command_router::ErrorSummaryDisposition::Required) =
+        (result.as_ref(), error_summary)
+    {
         crate::core_command_router::write_error_summary_artifact(
             summary_error_context(&command),
             error,
