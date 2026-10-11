@@ -14,8 +14,10 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
+use allow_inventory::{InventoryCompleteness, InventorySource};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::validate_policy;
 use allow_report::{
@@ -31,12 +33,13 @@ use super::{
     select_add_finding,
 };
 use crate::command_support::select_mutation_policy;
+use crate::core_command_summary::render_argv_for_display;
 use crate::plan_bindings::{
     PlanFindingBindings, compute_plan_finding_bindings_with_policy, read_bound_file,
 };
 use crate::policy_config::{EvidenceValidationMode, load_policy_at_path_with_digest};
 use crate::{
-    MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
+    InventoryFacts, MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -111,12 +114,25 @@ fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
     error.with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
 }
 
+struct RegenHintContext<'a> {
+    root: &'a Path,
+    policy_path: &'a Path,
+    finding_path: &'a Path,
+    include_untracked: bool,
+    ignored: &'a [String],
+    inventory_facts: InventoryFacts,
+}
+
 /// Append a plan-regeneration hint to a stale add --from-plan rejection. The
 /// hint names a fresh plan path because the recorded one already exists and
 /// add-finding plans are never overwritten (#4334 Break 3, #4364). Coordinates
 /// come from the already-selected live New finding's bindings so a moved finding
 /// is planned at its current line, rather than the stale recorded line. A nearby
 /// replacement must not be presented as recovery of the recorded finding.
+/// Root, selected policy, raw finding path and inventory mode come from the live
+/// scan. Normalized binding paths remain identities, not executable filenames.
+/// The caller anchors the output to its original cwd; shell quoting must
+/// preserve every arg.
 /// Call sites whose rejection leaves regeneration impossible (an already-receipted
 /// finding, a finding that can no longer be located at the plan's coordinates)
 /// must not attach this hint — the regeneration command would fail verbatim
@@ -126,34 +142,152 @@ fn enrich_with_regen_hint(
     plan_path: &Path,
     recorded_finding: &LoadedFinding,
     bindings: &PlanFindingBindings,
+    context: RegenHintContext<'_>,
 ) -> CargoAllowError {
-    if !same_semantic_finding(recorded_finding, bindings) {
+    let message = error.to_string();
+    if !message.contains("(policy unchanged)")
+        || message.contains("; regenerate with ")
+        || message.contains("; regenerate manually: ")
+        || !same_semantic_finding(recorded_finding, bindings)
+    {
         return error;
     }
-    let kind = &bindings.finding_kind;
-    let path = &bindings.finding_path;
-    let recorded = plan_path.display();
-    let hint = match (bindings.finding_line, fresh_plan_hint_path(plan_path)) {
-        (Some(line), Some(fresh)) => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line} \
-             ({recorded} already exists and add-finding plans are never overwritten)",
-            fresh.display()
-        ),
-        (None, Some(fresh)) => format!(
-            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} \
-             ({recorded} already exists and add-finding plans are never overwritten)",
-            fresh.display()
-        ),
-        (_, None) => format!(
-            "; regenerate with cargo-allow why --plan <fresh-path> --kind {kind} --path {path} \
-             ({recorded} already exists and add-finding plans are never overwritten)"
-        ),
+    // On Windows, joining a drive-relative path such as C:plan.json to the
+    // caller's cwd still leaves it drive-relative. Do not advertise a path
+    // whose meaning can change when the operator pastes it from another cwd.
+    if !plan_path.is_absolute() {
+        return manual_regen_hint(error, "the recorded plan path is not anchored absolutely");
+    }
+    let Some(fresh) = fresh_plan_hint_path(plan_path) else {
+        return manual_regen_hint(error, "no safe unused retry path was found beside the plan");
     };
-    let message = error.to_string();
-    if message.contains("(policy unchanged)") && !message.contains("regenerate with") {
-        error.with_message_suffix(hint)
-    } else {
-        error
+    // Preserve the selected filesystem spelling, including decomposed Unicode
+    // and Unix backslashes. An absolute path also cannot be parsed as a flag.
+    let finding_path = context.root.join(context.finding_path);
+    let (Some(fresh_text), Some(root_text), Some(policy_text), Some(finding_text)) = (
+        fresh.to_str(),
+        context.root.to_str(),
+        context.policy_path.to_str(),
+        finding_path.to_str(),
+    ) else {
+        return manual_regen_hint(
+            error,
+            "a selected path cannot be displayed without data loss",
+        );
+    };
+    if !retry_output_is_outside_inventory(&fresh, &context) {
+        return manual_regen_hint(
+            error,
+            "the retry output cannot be proved excluded from the bound source inventory",
+        );
+    }
+    let mut args = vec![
+        "why".to_string(),
+        "--plan".to_string(),
+        fresh_text.to_string(),
+        "--kind".to_string(),
+        bindings.finding_kind.clone(),
+        "--path".to_string(),
+        finding_text.to_string(),
+    ];
+    if let Some(line) = bindings.finding_line {
+        args.extend(["--line".to_string(), line.to_string()]);
+    }
+    args.extend([
+        "--root".to_string(),
+        root_text.to_string(),
+        "--config".to_string(),
+        policy_text.to_string(),
+    ]);
+    if context.include_untracked {
+        args.push("--include-untracked".to_string());
+    }
+    let command = render_argv_for_display("cargo-allow", &args);
+    if !command.starts_with("cargo-allow ") {
+        return manual_regen_hint(
+            error,
+            "the selected paths are not safe to paste through the platform shell",
+        );
+    }
+    let recorded = allow_report::sanitize_terminal_text(&plan_path.display().to_string());
+    error.with_message_suffix(format!(
+        "; regenerate with {command}\n\
+         ({recorded} already exists and add-finding plans are never overwritten)"
+    ))
+}
+
+fn manual_regen_hint(error: CargoAllowError, reason: &str) -> CargoAllowError {
+    error.with_message_suffix(format!(
+        "; regenerate manually: {reason}. Run why --plan with an unused output path \
+         outside the selected source-tree inventory or excluded by its effective rules, \
+         the same root, selected policy and include-untracked setting, and the live finding \
+         coordinates; existing plans are never overwritten."
+    ))
+}
+
+/// Creating an eligible output after computing a plan's inventory binding
+/// makes that plan stale immediately. Qualify the proposed filename, not the
+/// recorded plan's name: an exact .gitignore rule need not cover its retry.
+/// These are read-only diagnostic checks; application still verifies all exact
+/// bindings and the plan writer still owns the final no-overwrite decision.
+fn retry_output_is_outside_inventory(fresh: &Path, context: &RegenHintContext<'_>) -> bool {
+    if !matches!(
+        context.inventory_facts.completeness,
+        InventoryCompleteness::Complete | InventoryCompleteness::Scoped
+    ) {
+        return false;
+    }
+    let (Some(parent), Some(name)) = (fresh.parent(), fresh.file_name()) else {
+        return false;
+    };
+    // Resolve only the existing parent for containment. Keep the chosen path's
+    // original spelling in the displayed command; do not retarget a plan alias.
+    let Ok(parent) = parent.canonicalize() else {
+        return false;
+    };
+    let resolved = parent.join(name);
+    let Ok(relative) = resolved.strip_prefix(context.root) else {
+        return true;
+    };
+    if allow_core::source_tree_path_is_ignored(relative, context.ignored) {
+        return true;
+    }
+    match (context.inventory_facts.source, context.include_untracked) {
+        // A missing tracked path would make the live inventory partial above.
+        (InventorySource::GitTracked, false) => true,
+        (InventorySource::FilesystemIncludeUntracked, true) => {
+            // Inventory facts do not bind inherited repository selectors. Do
+            // not qualify a path with an unverified Git directory or index.
+            if [
+                "GIT_DIR",
+                "GIT_WORK_TREE",
+                "GIT_INDEX_FILE",
+                "GIT_COMMON_DIR",
+                "GIT_OBJECT_DIRECTORY",
+                "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            ]
+            .iter()
+            .any(|name| std::env::var_os(name).is_some())
+            {
+                return false;
+            }
+            // This source label also covers a raw filesystem fallback, which
+            // the completeness gate above rejects. In the successful Git case,
+            // ask Git about the absent candidate, including filename-specific
+            // rules and negations. Keep its index check: tracked files are not
+            // excluded merely because an ignore pattern happens to match.
+            Command::new("git")
+                .arg("-C")
+                .arg(context.root)
+                .args(["check-ignore", "--quiet", "--"])
+                .arg(relative)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .is_ok_and(|status| status.success())
+        }
+        _ => false,
     }
 }
 
@@ -187,10 +321,14 @@ fn same_semantic_finding(recorded: &LoadedFinding, live: &PlanFindingBindings) -
 /// regeneration hint is executable as printed. Bounded probe; `None` when no
 /// free candidate name could be found.
 fn fresh_plan_hint_path(plan_path: &Path) -> Option<PathBuf> {
-    let stem = plan_path.file_stem()?.to_string_lossy().into_owned();
+    let stem = plan_path.file_stem()?.to_str()?;
     (1..=99).find_map(|attempt| {
         let candidate = plan_path.with_file_name(format!("{stem}.retry-{attempt}.json"));
-        (!candidate.exists()).then_some(candidate)
+        matches!(
+            std::fs::symlink_metadata(&candidate),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound
+        )
+        .then_some(candidate)
     })
 }
 
@@ -268,8 +406,22 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         args.include_untracked,
         finding,
     )?;
-    verify_bindings(&plan, &bindings, source_context.source_tree_root())
-        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan.finding, &bindings))?;
+    verify_bindings(&plan, &bindings, source_context.source_tree_root()).map_err(|error| {
+        enrich_with_regen_hint(
+            error,
+            &cwd.join(plan_path),
+            &plan.finding,
+            &bindings,
+            RegenHintContext {
+                root: &root,
+                policy_path: &policy_path,
+                finding_path: &finding.path,
+                include_untracked: args.include_untracked,
+                ignored: &cfg.workspace.ignored,
+                inventory_facts,
+            },
+        )
+    })?;
 
     // Construct the entry canonically from the live finding plus operator
     // judgment. Approval metadata is never read from the plan.

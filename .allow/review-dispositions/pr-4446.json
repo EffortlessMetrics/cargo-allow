@@ -1,0 +1,44 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4446,
+  "base_ref": "main",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "head_ref": "fix/4334-context-safe-recovery",
+  "head_sha": "dae86f52cb7ab213484502755b99e864abe26db4",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:636be6cb3222d4af459a319fcc9aae320e891d1f18c3d99031632a9d0b9aa57a",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/campaign_audit; separate nonauthor of this recovery implementation, repairs, integrations and retained record. Shared model family, campaign context and coordinating account are disclosed. Unrelated incoming-main publication-classifier and expiry-fixture authorship and separate reader work are outside this recovery delta and are not counted as independent recovery proof. Coordinator retains the actual model COMMENT; no independent human or account approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5481379007"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#pullrequestreview-5481379007",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#discussion_r4239392232",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4446#discussion_r4239392236",
+    "Complete current ten-path source and consumer review includes selected source-root and policy/world loading, plan generation and bindings, final no-overwrite creation, shell rendering and child-local Git isolation. Advice preserves the selected absolute root, policy, raw finding path and include-untracked choice. The same semantic identity and selector maps are required; every actual apply binding, unique-New restriction, explicit operator judgment, policy lock, atomic replacement and replay refusal remains enforced.",
+    "Both former P2 diagnostic defects are Fixed within the bounded current source. The absent retry candidate must be excluded by complete/scoped inventory, physical parent containment, effective-policy exclusion, tracked-only semantics or a successful native Git-ignore decision. Unknown, included or partial paths receive manual guidance; inherited repository selectors suppress the Git-dependent branch. An ignored original filename does not qualify a distinct sibling. Retry selection is bounded and occupied files, directories and dangling symlinks remain untouched.",
+    "Nonabsolute anchored paths, including Windows drive-relative spellings, and unrepresentable shell paths receive manual guidance. The provider marks both existing threads resolved with explicit repair replies. Native Windows/PowerShell, general recovery layouts and first-hour delivery remain separate acceptance under #4334/#4335; local Linux proof and source analysis do not qualify those broader claims.",
+    "Actual dae86 and synthetic 79b8 Git objects were independently rehashed. Head parents are actual e9c572e0 then current 5eab; synthetic parents are current base then dae86; both have tree ab773b2b54db7117b90338a4638b669ff8803fa4. The unique merge base is 5eab. Native default and explicit eight-character diff serialization match the complete 88,726-byte reviewed digest. Local producer 0a33630fcb35ff3262d50f60c305b9b7b9b80e2d has the same tree and remains a different commit.",
+    "All nine owned nonpolicy entries preserve their e9 modes and blobs; all 2,681 unrelated main entries are exact. Policy is the exact 756,267-byte main prefix plus unchanged 1,577-byte own suffix, totaling 757,844 bytes and 1,103 unique IDs. Both exact-path selectors, canonical revision fingerprints and 2027-01-08 review dates are unchanged. The actual required-note diff passes without policy weakening or renewal.",
+    "Actual clean local 0a, explicit Rust 1.95 and two jobs: 19 focused units passed with 1,663 filtered at 00:22:37-00:27:02 UTC; all 18 CLI tests passed at 00:27:02-00:27:44 UTC; no failures or ignored tests. The CLI tests execute printed shell guidance from an unrelated directory, compare the exact plan to an explicit selected-context control, apply and verify replay refusal, and preserve policy/source/plan/occupied-path/index/HEAD canaries. These are actual shell executions, not whitespace parsing.",
+    "Actual current 0a formatting passed, then fresh governed diff was Complete with zero current and policy failures, followed by passed/enforcing default no-new with new=0, 2,691 files and 16,678 findings. Governed receipt SHA256 is 11ed054876184aad4394c235bb1e3e52326f08fdbedc8f22c9895c3cc1f0a9ba; default receipt SHA256 is 4f903035c549c1bd49ae6161e61d139ae1eb535af3a912b8cd14c50cb2e132ab. Each stage records clean unchanged head and tree.",
+    "The reviewer rehashed all 25 current test/guard members and all 860 binary-checkpoint members, then verified 602 linked inputs, 157 development direct inputs, 391 unit-harness inputs, five CLI-harness inputs and 25 Cargo/toolchain inputs against actual hosted modes and blobs. The later development executable is not retrospectively labeled as the historically executed CLI-test child. The reviewer performed no new build, test or product invocation.",
+    "Current source pregate 114349971093 checks out actual synthetic 79b8 for dae86/5eab and passes actionlint, formatting and enforcing no-new with the stated counts and typed Complete. Its full 73,706-byte log has SHA256 590d4c99abb4f5156937b84aad3eab61ab44b8c4198763a4803ae71b7ed92222. Log readback does not imply artifact-ZIP custody; explicit +1.95 setup/probe remains distinct from later bare Cargo selection.",
+    "At the final 00:47:05 UTC preflight, the actual pair was unchanged and Draft; test aggregate, coverage and Windows core jobs remained running. Readiness 114350380827 correctly rejected the historical e8/fdce record, while publisher job outcomes were kept separate. This actual source review is ReviewClean with zero actionable source findings. Earlier reviews and quota-limited/paused feedback remain historical for their named sources, and incoming-main process exceptions are not retroactively endorsed."
+  ],
+  "required_ci": {
+    "owner": "Coordinator must obtain independent review of this own-JSON-only successor, verify complete source preservation and actual native readiness bootstrap, finish every applicable current native gate, and read fresh substantive feedback and exact refs before an authorized head-pinned merge in the settled campaign order. Preserve exact resulting-main enforcement. Pending, stale, failed, cancelled, skipped and unavailable evidence is not green. Broader #4334/#4335, installed-candidate, release and publication qualification remain separate.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38098718472/job/114349971093"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4446",
+  "reviewed_at_utc": "2026-10-11T00:47:11Z"
+}
