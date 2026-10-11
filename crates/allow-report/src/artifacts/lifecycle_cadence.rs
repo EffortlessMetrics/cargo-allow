@@ -25,14 +25,14 @@
 //!    (`expires = "never"` never expires). The expires day itself is
 //!    therefore NOT expired; it is `expiring` with zero days remaining.
 //!    This preserves the pre-existing `<` versus `<=` boundary asymmetry
-//!    recorded in #2008: the match engine owns the classification, so the
-//!    cadence must not disagree with it.
+//!    for policy entries, shared by match evaluation and ledger read
+//!    projections (#4351). Federation drain deadlines are independent.
 //! 3. `expiring` — `expires` within [`EXPIRING_SOON_DAYS`] days of
 //!    `as_of` (inclusive of the expires day itself).
 //! 4. `review_overdue` — the match-engine
 //!    `allow_match::lifecycle::entry_review_is_due` predicate, reused
 //!    verbatim: `review_after` reached, INCLUSIVE of the deadline day
-//!    (`review_after <= as_of`, #2008).
+//!    (`review_after <= as_of`).
 //! 5. `review_due_soon` — `review_after` within [`REVIEW_DUE_SOON_DAYS`]
 //!    days after `as_of`.
 //! 6. `current` — everything else.

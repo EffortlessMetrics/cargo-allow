@@ -2,9 +2,9 @@
 
 Use this pattern when asking an agent to work the policy lifecycle queue. The
 agent should treat `cadence` as a scheduling surface for owner work, not
-permission to suppress findings, and never as a candidate gate: it shares no
-code path with `check`/`diff` verdicts, mutates nothing, and never extends an
-expiry.
+permission to suppress findings, and never as a candidate gate: its report
+does not feed `check`/`diff` verdicts, running it mutates nothing, and it never
+extends an expiry.
 
 ## Prompt
 
@@ -23,14 +23,12 @@ report can render: malformed lifecycle dates fail closed at load with
 classification reuses the match-engine lifecycle law exactly:
 `expires` flips to `expired` only strictly after the expires day (the expires
 day itself is `expiring` with zero days remaining), while `review_after` is
-overdue on the deadline day itself (the pre-existing #2008 `<` versus `<=`
-asymmetry). Cadence agrees with match authorization, but not unconditionally
-with `list`, `worklist`, or `check`: the shared read-model projections behind
-those surfaces apply the inclusive `has_passed_date_str` law to `expires`, so
-on the exact `expires == as-of` day they report the entry `expired` while
-cadence still reports `expiring` with zero days remaining; treat that
-boundary-day split as the documented posture until #4351 unifies the
-expires-day law.
+overdue on the deadline day itself. Match evaluation and the read projections
+behind `check`, `list`, `worklist`, and `explain` share that strict policy-entry
+expiry boundary. On `expires == as-of`, cadence reports `expiring` with zero
+days remaining and the entry has not expired on the other surfaces; it can
+still carry unrelated match or review attention. Federation drain deadlines
+remain inclusive and do not govern policy-entry expiry.
 Work the rows by `required_disposition`:
 - `review_due_soon` (within 14 days): schedule the review.
 - `review_overdue`: review now or narrow the entry.
