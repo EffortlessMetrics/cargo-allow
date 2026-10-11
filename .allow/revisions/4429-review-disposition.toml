@@ -1,0 +1,15 @@
+# PR #4429: retained review evidence and the exact revision note.
+# Preserves the concurrent allow-1064 receipt; no merge or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1064"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:05b7229e831671d9206789506d86d7011652b92684190b65bcda4f11268d8544"
+reason = "Retained structured review evidence for PR #4429 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+
+[[records]]
+allow_ids = ["allow-review-4429-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ffc75626ace86085cc14ba8f4ce7c0ec4063ad4a399e342c80e0d0f03e63d4d8"
+reason = "Authored revision note for the exact retained PR #4429 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
