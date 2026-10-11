@@ -117,7 +117,7 @@
         "sha256:90637b00caf45d494fe8bbe1fbae29a730ed0cf6cc17f0c8f3122c6941fd0786",
         "sha256:86fe2512fda53f78468273d5829876cf16c9c55e2f39d41652644fdd2fb22afd"
       ],
-      "note": "The first attempt uploaded its own candidate bytes (86fe2512...) and observed the registry already holding ae3f4ed1...; the final run's repackage (90637b00...) also differs. The registry bytes match no retained candidate receipt, so the producing candidate is unretained intermediate moved-tag history."
+      "note": "The first retained topology receipt records the attempt's local candidate bytes (86fe2512...) as uploaded_waiting_for_registry with registry_checksum=null. The separately retained historical incident narrative in #3759 reports the registry already holding ae3f4ed1...; that observed checksum is not a value in the first receipt's JSON. The final run's repackage (90637b00...) also differs. The registry bytes match no retained candidate receipt, so the producing candidate is unretained intermediate moved-tag history."
     },
     {
       "state": "published_across_candidate_history",
@@ -147,7 +147,7 @@
     "The incident tag's create/delete/recreate event history (timestamps, actor, order) is not retained; only the current annotated tag target is observable.",
     "The producing-candidate receipts for the allow-diff and cargo-allow registry bytes are unretained: no retained topology receipt carries ae3f4ed1... or 212dfcc8... as a candidate-local package checksum (they appear only as observed registry values), so their source candidates are identified only as intermediate moved-tag history.",
     "docs.rs build state for the ten rows was not observed in this record.",
-    "Attestation state is carried by the final run's verified install receipts rather than re-verified here."
+    "The retained install receipts contain identity fields only and carry no installation-result or attestation fields. The final run's workflow jobs report historical install and attestation success. Current installation and artifact attestation state were not independently re-verified here."
   ],
   "channel_posture": "public_prerelease_with_incident",
   "final_candidate_eligibility": "not_reusable",

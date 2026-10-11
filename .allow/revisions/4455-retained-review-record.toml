@@ -1,0 +1,16 @@
+# PR #4455: exact retained source-review evidence and this authored note.
+# These records do not authorize merge, CI bypass, or release.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-review-4455-record"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:09a720230a25630bc01ef53d2928e12d1a6279fcad179407774672e3edeaad54"
+reason = "Retained independent source-review evidence for the bounded RC.1 attribution correction in PR #4455; the exact record reports a review disposition and does not authorize CI bypass, merge, or release."
+
+[[records]]
+allow_ids = ["allow-review-4455-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:02c0fab84ad581835832fbfe2934b7b3ed32104fd7bc8f2725d1b29ff84c9f2b"
+reason = "Authored revision note for the exact retained PR #4455 source-review record and this note; records bounded evidence exceptions without widening directory scope or granting merge, CI bypass, or release authority."
