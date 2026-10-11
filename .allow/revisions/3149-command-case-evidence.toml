@@ -42,3 +42,11 @@ allow_ids = ["allow-3149-command-case-schema"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:b232a2f17a7ad48faca753276d77b23073a657db561841a43d321ee54fc14709"
 reason = "Define the closed versioned catalogue, expected-context, retained-bundle and admission JSON boundaries; schema conformance alone does not establish semantic correspondence or complete qualification."
+
+# The Windows repair adds one exact-file admission, emitted by the actual native
+# why/add chain. Its fingerprint comes from the governed diff starter at cae34637.
+[[records]]
+allow_ids = ["allow-3149-command-case-catalogue-eol"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:23bbb23f117a1b28cc26f1b25301a35c44b04f0d91baf9d6e73d143cfc2cc07c"
+reason = "Keep the byte-pinned first-family catalogue identical under Windows CRLF checkouts with one filename-scoped LF rule; preserve raw observation bytes and the unresolved command and installed-qualification boundaries."
