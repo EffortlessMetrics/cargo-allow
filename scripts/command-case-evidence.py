@@ -77,19 +77,27 @@ def regular_bytes(path, limit):
         before = os.fstat(handle.fileno())
         if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
             raise ValueError("not a bounded regular file: " + str(path))
-        if file_identity(named_before) != file_identity(before):
+        if file_identity(named_before, cross_view=True) != file_identity(before, cross_view=True):
             raise ValueError("file changed before open: " + str(path))
         data = handle.read(limit + 1)
         after = os.fstat(handle.fileno())
     reject_symlinks(path)
     named = path.lstat()
-    if file_identity(before) != file_identity(after) or file_identity(after) != file_identity(named) or len(data) != before.st_size:
+    if (file_identity(before) != file_identity(after)
+            or file_identity(named_before) != file_identity(named)
+            or file_identity(after, cross_view=True) != file_identity(named, cross_view=True)
+            or len(data) != before.st_size):
         raise ValueError("file changed while reading: " + str(path))
     return data
 
 
-def file_identity(metadata):
-    return (metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_nlink,
+def file_identity(metadata, *, cross_view=False):
+    mode = metadata.st_mode
+    if cross_view and os.name == "nt":
+        # CPython infers these bits from .exe/.bat/.cmd/.com names, while
+        # descriptor stat has no filename. Keep full modes within each view.
+        mode &= ~0o111
+    return (metadata.st_dev, metadata.st_ino, mode, metadata.st_nlink,
             metadata.st_size, metadata.st_mtime_ns)
 
 

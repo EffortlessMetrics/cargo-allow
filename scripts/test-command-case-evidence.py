@@ -172,7 +172,7 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(env["GIT_CONFIG_GLOBAL"], os.devnull)
         store = COLLECT.Store(self.root)
         process, stdout, stderr = COLLECT.run_process(
-            [sys.executable, "-c", "import json,os,sys; print(json.dumps(dict(os.environ),sort_keys=True)); print(sys.stdin.read(),file=sys.stderr)"],
+            [sys.executable, "-c", "import json,os,sys; print(json.dumps(dict(os.environ),sort_keys=True)); sys.stderr.buffer.write(sys.stdin.buffer.read() + b'\\n')"],
             self.root, env, 10, store, "process",
         )
         self.assertEqual(process["exit_code"], 0)
