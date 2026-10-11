@@ -213,8 +213,8 @@
           "items": {
             "$ref": "#/$defs/case"
           },
-          "minItems": 106,
-          "maxItems": 106,
+          "minItems": 107,
+          "maxItems": 107,
           "uniqueItems": true
         },
         "first_family_fixtures": {

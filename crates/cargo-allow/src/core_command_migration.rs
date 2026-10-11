@@ -23,7 +23,7 @@ pub(crate) use reconcile::reconcile;
 // package. The conformance test binds these bytes to the repository document;
 // packaged readers receive the complete catalogue as an explicit input.
 pub(crate) const CATALOGUE_DIGEST: &str =
-    "sha256:v1:1d437929db8db15ed916ce72cac81af27cb5720d10c8fd19b3b84ad0220e6e6d";
+    "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08";
 pub(crate) const CATALOGUE_SCHEMA: &str = "cargo-allow.command-migration-catalogue.v1";
 pub(crate) const CONTEXT_SCHEMA: &str = "cargo-allow.command-case-context.v1";
 pub(crate) const BUNDLE_SCHEMA: &str = "cargo-allow.command-case-bundle.v1";

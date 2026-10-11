@@ -139,7 +139,7 @@ fn core_command_migration_explicit_help_and_package_containment() -> Result<(), 
         .ok_or("missing cases")?;
     require(
         dimensions.len() == 18
-            && cases.len() == 106
+            && cases.len() == 107
             && cases
                 .iter()
                 .filter(|case| case.get("first_family_collector") == Some(&Value::Bool(true)))
@@ -147,6 +147,30 @@ fn core_command_migration_explicit_help_and_package_containment() -> Result<(), 
                 == 29,
         "accepted denominator or bounded A selection changed without a contract update",
     )?;
+    for negative in [
+        "internal_leakage",
+        "extraction_leakage",
+        "sibling_requirement",
+        "spec_requirement",
+        "experimental_promotion",
+        "maturity_disagreement",
+        "hidden_reachability",
+        "alias_compatibility",
+        "write_posture",
+        "forbidden_proof",
+        "package_help_mismatch",
+        "published_channel_snippets",
+        "first_screen_crowding",
+    ] {
+        let id = Value::String(format!("E.help.{negative}"));
+        require(
+            cases.iter().any(|case| {
+                case.get("id") == Some(&id)
+                    && case.get("first_family_collector") == Some(&Value::Bool(false))
+            }),
+            format!("required unresolved #3882 negative control is absent: {negative}"),
+        )?;
+    }
     Ok(())
 }
 

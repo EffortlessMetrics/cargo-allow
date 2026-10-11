@@ -12,7 +12,7 @@ The initial collector executes 29 JSON cases across `adopt`, `doctor`, `audit`,
 and explicit `check --mode no-new`. It covers clean/no-policy,
 findings/no-policy, healthy-policy, new-finding, invalid-policy, partial
 inventory, actual output failure, and strict-doctor partial coverage. It does
-not execute the remaining 77 groups. Supported routes are named explicitly:
+not execute the remaining 78 groups. Supported routes are named explicitly:
 for example, `add --from-plan` consumes `why --plan` with `--update` and has no
 separate preview/candidate policy route. `refresh` and `prune --output` write
 reports, not candidate policies.

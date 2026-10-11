@@ -1501,7 +1501,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Internal and release-evidence commands do not leak into the normal first-screen inventory; explicit internal help remains reachable. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Internal and release-evidence commands, including release identity, do not leak into the normal first-screen inventory; explicit internal help remains reachable. Source authority: #3882 required negative control 1; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1515,7 +1515,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Extraction/parity engineering surfaces remain Internal and hidden from the normal path. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Extraction/parity engineering surfaces remain Internal and hidden from the normal path. Source authority: #3882 required negative control 2; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1529,7 +1529,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Experimental sibling tools never become prerequisites for basic cargo-allow operation. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Optional cargo-intent and cargo-proof sibling tools never become prerequisites for basic cargo-allow operation. Source authority: #3882 required negative control 3; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1543,7 +1543,21 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Optional specification/campaign mechanisms never become basic source-ledger prerequisites. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Optional spec-system and campaign mechanisms never become basic source-ledger prerequisites. Source authority: #3882 required negative control 3; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.experimental_promotion",
+      "family": "E",
+      "command": "help",
+      "scenario": "experimental_promotion",
+      "applicability": [
+        "blocking_finding",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An experimental command must not be presented as stable merely by grouping, even when every generated surface agrees. Source authority: #3882 required negative control 4; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1557,7 +1571,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Checked help, generated references and package metadata cannot disagree about maturity or support. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Checked help, generated references and package metadata cannot disagree about maturity or support. Source authority: #3882 required negative control 5; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1571,7 +1585,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Every documented hidden/internal command remains reachable through explicit help, including command-migration-evidence. Source authority: #3882 required negative controls; remains unexecuted by the A collector. Include the hidden command-migration-evidence reader: absent from normal help/completions, reachable explicit help, accurate file-reading scope and Partial qualification boundary.",
+      "obligation": "Every documented hidden/internal command remains reachable through explicit help, including command-migration-evidence. Source authority: #3882 required negative control 6; remains unexecuted by the A collector. Include the hidden command-migration-evidence reader: absent from normal help/completions, reachable explicit help, accurate file-reading scope and Partial qualification boundary.",
       "first_family_collector": false
     },
     {
@@ -1585,7 +1599,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Grouping and hiding cannot silently rename, remove or change a compatible alias. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Grouping and hiding cannot silently rename, remove or change a compatible alias. Source authority: #3882 required negative control 7; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1599,7 +1613,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Every mutating entrypoint retains its actual candidate/live write posture and owned paths. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Every mutating entrypoint retains its actual candidate/live write posture and owned paths; first-screen guidance must not route unfamiliar users directly to live writes. Source authority: #3882 required negative control 8; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1613,7 +1627,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Help and examples cannot claim compilation, runtime, coverage, unsafe or release proof from source-syntax evidence. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Help and examples cannot claim build, type, runtime, security, coverage, unsafe or release proof from source-syntax evidence. Source authority: #3882 required negative control 9; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1627,7 +1641,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Installed package README/rustdoc/help and reference/completion surfaces stay synchronized. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Installed package README/rustdoc/help and reference/completion surfaces stay synchronized. Source authority: #3882 required negative control 10; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1641,7 +1655,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Published-channel installation snippets are labeled accurately and do not promote a source build or prospective channel. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Published-channel installation snippets are labeled accurately and do not promote a source build or prospective channel. Source authority: #3882 required negative control 11; remains unexecuted by the A collector.",
       "first_family_collector": false
     },
     {
@@ -1655,7 +1669,7 @@
         "proof_scope",
         "installed_outside_checkout"
       ],
-      "obligation": "Advanced, Experimental and Internal groups do not crowd the bounded normal first screen. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "obligation": "Advanced, Experimental and Internal groups do not crowd the bounded normal first screen. Source authority: #3882 required negative control 12; remains unexecuted by the A collector.",
       "first_family_collector": false
     }
   ],
