@@ -4,35 +4,37 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4429,
   "base_ref": "main",
-  "base_sha": "afa6a7d7d870229542de1aac368c852349003fe7",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
   "head_ref": "docs/3768-october-release-map",
-  "head_sha": "8dbc46797ddc6c78d351d32ff402cece339ef080",
-  "merge_base": "afa6a7d7d870229542de1aac368c852349003fe7",
-  "reviewed_diff_digest": "sha256:v1:d6d6f0f8c66e0974c9a2a78a097a7759fe19cd0ee4c6696dab648afef044d3ac",
+  "head_sha": "19b9ea5998c4ad651577cdaad7ae623d8643f75f",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:5594dcf0680cd428e4dd9f7ea2cd20d2735ed872fe2d04fd4c395a590959d01c",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "ChatGPT /root/campaign_audit, separate nonauthoring complete source, consumer, governance and integration reviewer for #4429; authored none of this PR. Shared model family/inherited campaign context and authorship of separate #4457 disclosed; coordinating account transports the actual independent review.",
+  "reviewer_identity": "ChatGPT /root/product_audit, separate nonauthor of this PR's documentation, policy, note, record and integrations. Shared model/campaign context, retained author proof and same-account GitHub transport are disclosed correlated-failure limits. Authored separate #4446 recovery and a #4436 integration; this review does not independently approve those.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5480702573"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5481321462"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5480702573",
-    "Reviewed the complete five-path current source, entire campaign document, context/closeout consumers, selected topology/MSRV, support projections, actual release/rehearsal/qualification consumers and live decisions. All thirteen delivered rows are merged ancestors of the dated afa6 checkpoint.",
-    "Prior actionable adoption-sequencing finding is verified fixed: operated #2460 adoption proceeds alongside measured performance work, with feedback informing priorities. Measurement, attribution, justified optimization and incremental/full proof retain their own sequence; editor work builds on proven incremental surfaces.",
-    "Unratified configuration/default/support decisions, the public support-document conflict, typed pilot limitations and installed-experience proof remain explicit. The #3761 manifest-role decision remains separate from the bounded typed classifier repair. All seven actual rehearsal prevention flags remain false; models and fixture successes do not establish production qualification or authority.",
-    "Independently compared full trees: all 2673 unrelated main entries and the three historical own governance/changelog blobs and modes are exact. Policy preserves the entire 749172-byte main prefix plus unchanged 1554-byte own suffix, totaling750726 bytes/1095 unique IDs. Both canonical revision-note fingerprints reproduce.",
-    "Closeout contract remains exact1452 bytes with SHA25614695148a387603719db177067dc14479b54600c7e9df1633920024c8425bc2f; all seven relative references resolve. Directly rehashed actual afa6 pregate ZIP644 bytes/9a8069b3 and sole975-byte member/78838483; it binds afa6/eb6 and three passed checks.",
-    "All four inline threads were rechecked and resolved; no new substantive blocker. Actual agent-context contract and exact afa6/8dbc governed diff pass with Complete, zero new and precisely two correctly noted additions. The verified local-equivalent default guard and current native pregate pass; broader gates remain separate."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5481321462",
+    "Actual COMMENT source review at 2026-10-11T00:23:13Z read all five effective paths, the complete resulting campaign map and removed claims, policy/revision/changelog/history, affected context/closeout/rehearsal/freeze/support consumers, current PR body and all four resolved review threads.",
+    "MAP-F1 is verified repaired on the actual ordinary 02e-to-ce32 source: the reader rejection requirement remains normative and the discovered replacement-detail false acceptance is explicitly unmet at the dated 10 October 23:25 UTC checkpoint. Later repairs are not retrodated into that snapshot.",
+    "All 16 dated merged-PR observations and merge reachability were checked. The #4443 and #4457 process exceptions, Complete installed-experience requirement, unratified release decisions, full catalogue/18-dimension obligations and prevention/custody/freeze/public-byte gaps remain explicit.",
+    "The historical duplicate allow-11345 repair preserves the main-owned allow-11278 limit. The editorial thread remains NonBlocking; canonical AllowEntry fingerprints are not hashes of review/file bytes. Paused old CodeRabbit coverage is not a current clean review.",
+    "Actual head 19b9 and synthetic 808e have the expected ordered parents and identical tree 1cf0c0a7da6126f79594ef27d8d1e00e619534d9; native default, explicit abbreviated diff and readiness digest agree at 69295 bytes. All four owned nonpolicy and 2685 unrelated main entries remain exact.",
+    "Policy preserves the entire 756267-byte main prefix plus unchanged 1554-byte suffix, 757821 bytes / 1103 unique IDs. Both canonical policy items match the actual note/governed diff. The 1452-byte Closeout contract remains exact and relative links resolve.",
+    "Exact local a0df formatting and source-equivalent preserved-f4 governed/default executions passed; 602 linked source inputs and all 1372 compile entries were independently checked. Default result is enforcing, failed=false, new=0, 2690 files / 16687 findings. This is not a fresh build/test or installed-candidate qualification.",
+    "Current source pregate and readiness publisher passed. The native readiness result reproduced this exact diff and correctly rejected the historical record. New metadata bootstrap, current CI and final feedback checks remain the author's pending lifecycle responsibilities."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer account: independently verify this own-record-only successor bootstrap, every applicable current native check, fresh substantive feedback and exact final pair; retain exact post-main enforcing guard before closeout. Pending, skipped, neutral, failed and stale evidence are not green.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38083504916/job/114305091828"
+    "owner": "Coordinating maintainer: independently verify this own-record-only successor, bootstrap and actual metadata review, every applicable current native check, fresh substantive feedback and exact final pair before a coordinated head-pinned merge; verify the resulting-main enforcement result. Pending, skipped, failed, neutral and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114347485417"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4429",
-  "reviewed_at_utc": "2026-10-10T20:28:11Z"
+  "reviewed_at_utc": "2026-10-11T00:23:13Z"
 }
