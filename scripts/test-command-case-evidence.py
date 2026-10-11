@@ -146,10 +146,26 @@ def remove_owned_fixture(root, identity):
 
     inspect_owned(root)
     try:
-        shutil.rmtree(root, onexc=retain_readonly_unlink)
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(root, onexc=retain_readonly_unlink)
+        else:
+            # Python 3.11 and earlier pass sys.exc_info(), not the exception.
+            # Preserve the original object and traceback for every refusal.
+            def onerror(function, name, info):
+                retain_readonly_unlink(function, name, info[1].with_traceback(info[2]))
+            shutil.rmtree(root, onerror=onerror)
     except _RetainReadonlyFixture as retained:
         return retained.args[0]
     return {"status": "removed", "root": str(root)}
+
+
+def invoke_rmtree_error(callbacks, function, name, error):
+    """Inject a cleanup failure through the selected stdlib callback API."""
+    if set(callbacks) == {"onexc"}:
+        return callbacks["onexc"](function, name, error)
+    if set(callbacks) == {"onerror"}:
+        return callbacks["onerror"](function, name, (type(error), error, error.__traceback__))
+    raise AssertionError("unexpected rmtree callback contract")
 
 
 class TransportTests(unittest.TestCase):
@@ -500,6 +516,65 @@ class TransportTests(unittest.TestCase):
                     # the production cleanup path never changes permissions.
                     leaf.chmod(0o600)
 
+    def test_owned_cleanup_accepts_legacy_and_current_rmtree_callbacks(self):
+        # The wrapper accepts Python 3.11, whose rmtree has only onerror.
+        # Keep both real callback contracts observable on either test host.
+        actual_rmtree = shutil.rmtree
+        for version in ((3, 11), (3, 12)):
+            for fail in (False, True):
+                with self.subTest(version=version, fail=fail):
+                    owned = Path(tempfile.mkdtemp(prefix="owned-python-api-", dir=self.root)).resolve()
+                    identity = owned.lstat()
+                    leaf = owned / "leaf"
+                    leaf.write_bytes(b"callback identity sentinel\n")
+                    error = OSError(errno.EIO, "original cleanup failure")
+                    try:
+                        raise error
+                    except OSError:
+                        original_info = sys.exc_info()
+                    callbacks = []
+
+                    def legacy(path, ignore_errors=False, onerror=None, *, dir_fd=None):
+                        self.assertEqual(path, owned)
+                        self.assertFalse(ignore_errors)
+                        self.assertIsNone(dir_fd)
+                        callbacks.append("onerror")
+                        if fail:
+                            onerror(os.unlink, leaf, original_info)
+                        else:
+                            actual_rmtree(path)
+
+                    def current(path, *, onexc):
+                        self.assertEqual(path, owned)
+                        callbacks.append("onexc")
+                        if fail:
+                            onexc(os.unlink, leaf, error)
+                        else:
+                            actual_rmtree(path)
+
+                    expected = "onerror" if version < (3, 12) else "onexc"
+                    backend = legacy if version < (3, 12) else current
+                    with mock.patch.object(sys, "version_info", version), \
+                            mock.patch.object(shutil, "rmtree", side_effect=backend):
+                        if fail:
+                            try:
+                                remove_owned_fixture(owned, identity)
+                            except OSError as raised:
+                                self.assertIs(raised, error)
+                                traceback = raised.__traceback__
+                                while traceback is not None and traceback is not original_info[2]:
+                                    traceback = traceback.tb_next
+                                self.assertIs(traceback, original_info[2])
+                            else:
+                                self.fail("cleanup swallowed the original failure")
+                            self.assertEqual(leaf.read_bytes(), b"callback identity sentinel\n")
+                        else:
+                            self.assertEqual(remove_owned_fixture(owned, identity), {
+                                "status": "removed", "root": str(owned),
+                            })
+                            self.assertFalse(owned.exists())
+                    self.assertEqual(callbacks, [expected])
+
     def test_owned_cleanup_propagates_unrelated_writable_and_metadata_failures(self):
         for label in ("io", "other-errno", "writable", "group-write", "other-write",
                       "wrong-callback", "missing-readonly-attribute", "metadata-error"):
@@ -532,9 +607,9 @@ class TransportTests(unittest.TestCase):
                                                st_file_attributes=0 if label == "missing-readonly-attribute" else 1)
                     return observed
 
-                def invoke_callback(root, *, onexc):
+                def invoke_callback(root, **callbacks):
                     self.assertEqual(root, owned)
-                    onexc(os.rmdir if label == "wrong-callback" else os.unlink, leaf, error)
+                    invoke_rmtree_error(callbacks, os.rmdir if label == "wrong-callback" else os.unlink, leaf, error)
 
                 try:
                     with mock.patch.object(shutil, "rmtree", side_effect=invoke_callback), \
@@ -570,9 +645,9 @@ class TransportTests(unittest.TestCase):
             symlink.symlink_to(prior)
             refused.append(symlink)
         for path in refused:
-            def invoke_callback(root, *, onexc):
+            def invoke_callback(root, **callbacks):
                 self.assertEqual(root, owned)
-                onexc(os.unlink, path, PermissionError(errno.EACCES, "controlled refusal"))
+                invoke_rmtree_error(callbacks, os.unlink, path, PermissionError(errno.EACCES, "controlled refusal"))
 
             with self.subTest(path=path), mock.patch.object(shutil, "rmtree", side_effect=invoke_callback), \
                     mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")) as chmod, \
@@ -598,8 +673,8 @@ class TransportTests(unittest.TestCase):
                                        st_file_attributes=0x0401)
             return observed
 
-        def reparse_callback(root, *, onexc):
-            onexc(os.unlink, leaf, PermissionError(errno.EACCES, "controlled reparse refusal"))
+        def reparse_callback(root, **callbacks):
+            invoke_rmtree_error(callbacks, os.unlink, leaf, PermissionError(errno.EACCES, "controlled reparse refusal"))
 
         with mock.patch.object(shutil, "rmtree", side_effect=reparse_callback), \
                 mock.patch.object(Path, "lstat", autospec=True, side_effect=reparse_observation), \
@@ -1441,7 +1516,33 @@ class NativeAdmissionTests(unittest.TestCase):
             self.tearDown()
             self.setUp()
 
-    @unittest.skipUnless(os.name != "nt", "symlink/hardlink control requires Unix link support")
+    def test_retained_detail_summary_and_binary_hardlinks_are_refused(self):
+        # Hard links need no symlink privilege on Windows. Every platform
+        # must reach the ownership rejection with otherwise valid evidence.
+        for role in ("detail", "summary", "binary"):
+            with self.subTest(role=role):
+                context, bundle = self.selected(["A.audit.healthy_policy"])
+                member = (bundle["binary_member"] if role == "binary"
+                          else bundle["cases"][0][role])
+                original = self.collection / member["path"]
+                before = original.stat()
+                alias = self.collection / ("hardlink-" + role)
+                os.link(original, alias)
+                self.remove.append(alias)
+                try:
+                    self.assertGreater(original.stat().st_nlink, 1)
+                    self.assertEqual((alias.stat().st_dev, alias.stat().st_ino),
+                                     (before.st_dev, before.st_ino))
+                    member["path"] = alias.name
+                    self.invalid(context, bundle, "hard-link")
+                    self.assertEqual(COLLECT.digest(alias.read_bytes()), member["digest"])
+                    self.assertEqual(original.stat().st_mode, before.st_mode)
+                finally:
+                    alias.unlink()
+                    self.remove.remove(alias)
+                self.assertEqual(original.stat().st_nlink, before.st_nlink)
+
+    @unittest.skipUnless(os.name != "nt", "symlink control requires Unix link support")
     def test_symlink_hardlink_and_new_output_prior_owner_are_preserved(self):
         context, bundle = self.selected(["A.audit.healthy_policy"])
         case = bundle["cases"][0]

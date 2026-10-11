@@ -12,5 +12,6 @@ body: >-
   for Cargo-prefixed dispatch and schema coverage. Instrumented candidates
   write profiles only within their owned outputs; native readback rejects
   foreign profile destinations without exempting unexpected source files.
-  Absolute Windows drive and verbatim paths retain the same component and
-  member protections (#3149).
+  Absolute Windows drive and verbatim paths reject indirection and hard-linked
+  retained members, with read-only native volume/index checks across readback.
+  The documented filesystem identity limits remain explicit (#3149).

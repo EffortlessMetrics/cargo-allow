@@ -9,6 +9,12 @@ use std::path::{Component, Path, PathBuf};
 pub(super) const JSON_LIMIT: u64 = 8 * 1024 * 1024;
 const BINARY_LIMIT: u64 = 256 * 1024 * 1024;
 
+struct FileSnapshot {
+    metadata: fs::Metadata,
+    #[cfg(windows)]
+    identity: (u64, u64, u64),
+}
+
 pub(crate) fn decode<T: DeserializeOwned>(bytes: &[u8]) -> Result<T, String> {
     let mut decoder = serde_json::Deserializer::from_slice(bytes);
     UniqueKeys
@@ -97,7 +103,7 @@ impl MemberReader {
             return Err("binary member has invalid size".to_string());
         }
         let (mut file, before) = open_regular(&path, BINARY_LIMIT, true)?;
-        if before.len() != member.size_bytes {
+        if before.metadata.len() != member.size_bytes {
             return Err("binary member is not the declared regular file".to_string());
         }
         let mut hasher = Sha256::new();
@@ -115,19 +121,13 @@ impl MemberReader {
             let chunk = buffer.get(..count).ok_or("invalid binary read length")?;
             hasher.update(chunk);
         }
-        let after = file.metadata().map_err(|error| error.to_string())?;
         let digest = hasher
             .finalize()
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect::<String>();
-        reject_symlink_components(&path)?;
         if total != member.size_bytes
-            || !stable_identity(&before, &after)
-            || !stable_identity(
-                &after,
-                &fs::symlink_metadata(&path).map_err(|error| error.to_string())?,
-            )
+            || !file_still_matches(&file, &before, &path, BINARY_LIMIT, true)?
             || format!("sha256:v1:{digest}") != member.digest
         {
             return Err("binary member changed or has the wrong digest".to_string());
@@ -203,7 +203,7 @@ fn open_regular(
     path: &Path,
     limit: u64,
     retained_member: bool,
-) -> Result<(File, fs::Metadata), String> {
+) -> Result<(File, FileSnapshot), String> {
     reject_symlink_components(path)?;
     // Inspect before open: an unwritten FIFO blocks in an ordinary File::open,
     // before a post-open size or kind check can protect the caller.
@@ -215,12 +215,74 @@ fn open_regular(
     let file = options
         .open(path)
         .map_err(|error| format!("open {}: {error}", path.display()))?;
-    let opened = file.metadata().map_err(|error| error.to_string())?;
-    validate_regular(&opened, path, limit, retained_member)?;
-    if !stable_identity(&named, &opened) {
+    let opened = snapshot_file(&file, path, limit, retained_member)?;
+    if !stable_metadata(&named, &opened.metadata) {
         return Err(format!("file changed before open: {}", path.display()));
     }
     Ok((file, opened))
+}
+
+fn snapshot_file(
+    file: &File,
+    path: &Path,
+    limit: u64,
+    retained_member: bool,
+) -> Result<FileSnapshot, String> {
+    let metadata = file.metadata().map_err(|error| error.to_string())?;
+    validate_regular(&metadata, path, limit, retained_member)?;
+    #[cfg(windows)]
+    let identity = {
+        // Query the already opened read-only handle. Keep it open until the
+        // final named handle has been compared, so its file index cannot be
+        // recycled between observations. This is the workspace same-file
+        // dependency's volume/index API, with link ownership also enforced.
+        let info = winapi_util::file::information(file).map_err(|error| error.to_string())?;
+        if retained_member && info.number_of_links() != 1 {
+            return Err("retained member has multiple hard-link owners".to_string());
+        }
+        (
+            info.volume_serial_number(),
+            info.file_index(),
+            info.number_of_links(),
+        )
+    };
+    Ok(FileSnapshot {
+        metadata,
+        #[cfg(windows)]
+        identity,
+    })
+}
+
+fn file_still_matches(
+    file: &File,
+    before: &FileSnapshot,
+    path: &Path,
+    limit: u64,
+    retained_member: bool,
+) -> Result<bool, String> {
+    let after = snapshot_file(file, path, limit, retained_member)?;
+    reject_symlink_components(path)?;
+    let named = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    validate_regular(&named, path, limit, retained_member)?;
+    if !stable_metadata(&before.metadata, &after.metadata)
+        || !stable_metadata(&after.metadata, &named)
+    {
+        return Ok(false);
+    }
+    #[cfg(windows)]
+    {
+        // MetadataExt's native identity methods are unstable at Rust 1.95.
+        // Reopen without following a replaced reparse leaf and compare real
+        // volume/index/link observations, not just equal lengths and mtimes.
+        let (named_file, named_snapshot) = open_regular(path, limit, retained_member)?;
+        let same = before.identity == after.identity
+            && after.identity == named_snapshot.identity
+            && stable_metadata(&after.metadata, &named_snapshot.metadata);
+        drop(named_file);
+        return Ok(same);
+    }
+    #[cfg(not(windows))]
+    Ok(true)
 }
 
 fn validate_regular(
@@ -275,6 +337,9 @@ fn configure_regular_open(options: &mut OpenOptions) -> Result<(), String> {
         const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
         options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
     }
+    #[cfg(not(any(unix, windows)))]
+    return Err("bounded file identity is unsupported on this platform".to_string());
+    #[cfg(any(unix, windows))]
     Ok(())
 }
 
@@ -300,21 +365,15 @@ fn read_regular(path: &Path, limit: u64, retained_member: bool) -> Result<Vec<u8
         .take(limit + 1)
         .read_to_end(&mut bytes)
         .map_err(|error| error.to_string())?;
-    let after = file.metadata().map_err(|error| error.to_string())?;
-    reject_symlink_components(path)?;
-    if bytes.len() as u64 != before.len()
-        || !stable_identity(&before, &after)
-        || !stable_identity(
-            &after,
-            &fs::symlink_metadata(path).map_err(|error| error.to_string())?,
-        )
+    if bytes.len() as u64 != before.metadata.len()
+        || !file_still_matches(&file, &before, path, limit, retained_member)?
     {
         return Err(format!("member changed during read: {}", path.display()));
     }
     Ok(bytes)
 }
 
-fn stable_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
+fn stable_metadata(left: &fs::Metadata, right: &fs::Metadata) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
@@ -329,6 +388,95 @@ fn stable_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
 }
 
 struct UniqueKeys;
+
+#[cfg(all(test, any(unix, windows)))]
+mod tests {
+    use super::*;
+    use std::fs::FileTimes;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn fixture(name: &str) -> Result<PathBuf, String> {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-readback-{name}-{}-{stamp}",
+            std::process::id()
+        ));
+        fs::create_dir(&root).map_err(|error| error.to_string())?;
+        root.canonicalize().map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn equal_size_and_mtime_replacement_is_not_the_opened_file() -> Result<(), String> {
+        let root = fixture("replacement")?;
+        let path = root.join("member");
+        fs::write(&path, b"original").map_err(|error| error.to_string())?;
+        let (mut file, before) = open_regular(&path, JSON_LIMIT, true)?;
+        if !file_still_matches(&file, &before, &path, JSON_LIMIT, true)? {
+            return Err("unchanged file failed its identity check".to_string());
+        }
+        fs::rename(&path, root.join("original")).map_err(|error| error.to_string())?;
+        fs::write(&path, b"replaced").map_err(|error| error.to_string())?;
+        let modified = before
+            .metadata
+            .modified()
+            .map_err(|error| error.to_string())?;
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .map_err(|error| error.to_string())?
+            .set_times(FileTimes::new().set_modified(modified))
+            .map_err(|error| error.to_string())?;
+        let replacement = fs::symlink_metadata(&path).map_err(|error| error.to_string())?;
+        if replacement.len() != before.metadata.len()
+            || replacement.modified().map_err(|error| error.to_string())? != modified
+        {
+            return Err("replacement fixture did not preserve size and mtime".to_string());
+        }
+        if file_still_matches(&file, &before, &path, JSON_LIMIT, true)? {
+            return Err("equal-size/equal-mtime replacement was accepted".to_string());
+        }
+        let mut original = Vec::new();
+        file.read_to_end(&mut original)
+            .map_err(|error| error.to_string())?;
+        if original != b"original"
+            || fs::read(&path).map_err(|error| error.to_string())? != b"replaced"
+        {
+            return Err("identity verification changed fixture bytes".to_string());
+        }
+        drop(file);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn retained_member_link_added_after_open_is_refused() -> Result<(), String> {
+        let root = fixture("hard-link")?;
+        let path = root.join("member");
+        let alias = root.join("alias");
+        fs::write(&path, b"owned bytes").map_err(|error| error.to_string())?;
+        let (file, before) = open_regular(&path, JSON_LIMIT, true)?;
+        if !file_still_matches(&file, &before, &path, JSON_LIMIT, true)? {
+            return Err("single-owner member was refused".to_string());
+        }
+        fs::hard_link(&path, &alias).map_err(|error| error.to_string())?;
+        if !file_still_matches(&file, &before, &path, JSON_LIMIT, true)
+            .is_err_and(|error| error.contains("hard-link"))
+            || !open_regular(&alias, JSON_LIMIT, true)
+                .is_err_and(|error| error.contains("hard-link"))
+        {
+            return Err("retained member alias was not refused for ownership".to_string());
+        }
+        if read_input(&path)? != b"owned bytes"
+            || fs::read(&alias).map_err(|error| error.to_string())? != b"owned bytes"
+        {
+            return Err("ownership verification changed fixture bytes".to_string());
+        }
+        drop(file);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+}
 
 impl<'de> DeserializeSeed<'de> for UniqueKeys {
     type Value = ();

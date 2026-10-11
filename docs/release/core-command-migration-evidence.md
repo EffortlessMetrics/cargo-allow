@@ -69,11 +69,18 @@ does not emit a successful qualification claim.
 Inputs are checked for regular-file kind and size before opening. On supported
 Unix hosts, nonblocking/no-follow opens also prevent a leaf changed into a FIFO
 or symlink after inspection from blocking the reader or following that link.
-The opened handle and named file must retain the same identity through readback.
+The opened handle and named file are compared again after readback; retained
+members must have exactly one hard link at both observations.
 The native Unix opener currently verifies flag mappings for x86, x86_64, arm
 and aarch64 on Linux, Android, macOS, iOS and FreeBSD; other OS/architecture
-combinations fail explicitly. Windows uses reparse-point inspection. This
-internal I/O boundary does not select the release support matrix.
+combinations fail explicitly. Windows uses reparse-point inspection and
+read-only open-handle queries for volume serial, 64-bit file index and link
+count. The original handle stays open while the final named handle is compared,
+so equal length and modification time cannot by themselves establish identity.
+This is the same native identity API used by the workspace's `same-file`
+dependency; its 64-bit index is not a universal 128-bit ReFS identity guarantee.
+Other non-Unix/non-Windows platforms fail explicitly. These observed checks
+do not provide an atomic filesystem snapshot or select the release support matrix.
 
 ## Native retained readback
 
@@ -106,8 +113,9 @@ The reader compares expected binary/source/configuration/mode/argv/cwd and
 environment observations, exact fixture snapshots, typed detail facts,
 summary result/currentness/coverage/actions/effects/next proof, and check
 receipt correspondence. Rehashed foreign detail, contradictory classifications,
-changed source or policy, missing/duplicate/unknown selected cases, member
-aliases, and a shrunken denominator cannot become valid observations.
+changed source or policy, missing/duplicate/unknown selected cases, duplicate
+member roles, hard-linked retained members, and a shrunken denominator cannot
+become valid observations.
 Only check owns the requested receipt role; an extra receipt on another
 selected command is invalid even when that command lacks its summary or was
 cancelled. Report advisory and baseline expectations come from the already
