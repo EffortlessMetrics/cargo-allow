@@ -130,7 +130,8 @@ fn core_command_migration_explicit_help_and_package_containment() -> Result<(), 
             && String::from_utf8_lossy(&direct_missing.stderr).contains("--catalogue"),
         "cargo-prefixed reader did not reach its ordinary required-input validation",
     )?;
-    for arguments in [&["allow"][..], &["allow", "unknown-command"][..]] {
+    let refused_arguments: [&[&str]; 2] = [&["allow"], &["allow", "unknown-command"]];
+    for arguments in refused_arguments {
         let refused = native(arguments)?;
         require(
             refused.status.code() == Some(2)
