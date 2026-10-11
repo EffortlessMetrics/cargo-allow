@@ -67,6 +67,36 @@ def report_identity(detail):
     return "local-repository:" + COLLECT.digest(encoded)
 
 
+def preserve_candidate_profiles(collection, runner_profile):
+    """Keep actual candidate profiles available to the coverage runner.
+
+    Candidate execution uses only its owned fixture output directory. The
+    test harness exports completed files before deleting that fixture;
+    tarpaulin recursively collects its runner-owned profile directory.
+    """
+    profiles = sorted((collection / "fixtures").glob("*/target/command-case/profiles/*"))
+    if not profiles:
+        return None
+    if runner_profile is None:
+        raise ValueError("candidate profiles require an explicit runner LLVM_PROFILE_FILE")
+    destination = Path(runner_profile).parent
+    COLLECT.reject_symlinks(destination)
+    if "%" in str(destination) or not destination.is_dir():
+        raise ValueError("runner profile directory must be an existing concrete directory")
+    # An exclusive child preserves any prior owner's files even when multiple
+    # harnesses export profiles concurrently. Do not write the runner's own
+    # pattern or rely on a timestamp/PID filename to establish ownership.
+    exported = Path(tempfile.mkdtemp(prefix="command-case-", dir=destination))
+    store = COLLECT.Store(exported)
+    for source in profiles:
+        if not source.name.startswith("candidate-") or source.suffix != ".profraw":
+            raise ValueError("unexpected candidate profile output: " + str(source))
+        data = COLLECT.regular_bytes(source, COLLECT.BINARY_LIMIT)
+        store.put(source.relative_to(collection / "fixtures").as_posix(), data)
+    print(f"retained {len(profiles)} candidate LLVM profiles in {exported}", file=sys.stderr)
+    return exported
+
+
 class TransportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="command-case-transport-")
@@ -169,6 +199,42 @@ class TransportTests(unittest.TestCase):
         self.assertIsNone(case["receipt"])
         self.assertEqual(bundle["binary_digest_after"], bundle["binary"]["digest"])
         self.assertEqual(case["context"]["source_snapshot_digest"], case["before"]["digest"])
+        outputs = Path(case["context"]["root"]) / "target/command-case/profiles"
+        self.assertTrue(outputs.is_dir())
+        self.assertEqual(case["context"]["environment"].get("LLVM_PROFILE_FILE"),
+                         str(outputs / "candidate-%m-%p.profraw"))
+
+    def test_profile_export_preserves_bytes_prior_owners_and_parent_environment(self):
+        # These are copy/ownership sentinels, not claimed valid LLVM profiles.
+        collection = self.root / "collection"
+        source = collection / "fixtures/A.audit.clean_no_policy/target/command-case/profiles/candidate-1-2.profraw"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"profile copy sentinel\n")
+        runner = self.root / "runner-profiles"
+        runner.mkdir()
+        prior = runner / "candidate-1-2.profraw"
+        prior.write_bytes(b"prior owner\n")
+        pattern = str(runner / "runner-%m-%p.profraw")
+        parent = dict(os.environ)
+        first = preserve_candidate_profiles(collection, pattern)
+        second = preserve_candidate_profiles(collection, pattern)
+        self.assertNotEqual(first, second)
+        relative = source.relative_to(collection / "fixtures")
+        self.assertEqual((first / relative).read_bytes(), source.read_bytes())
+        self.assertEqual((second / relative).read_bytes(), source.read_bytes())
+        self.assertEqual(prior.read_bytes(), b"prior owner\n")
+        self.assertEqual(os.environ, parent)
+        for refused in (None, "relative/profile.profraw", str(self.root / "absent/profile.profraw"),
+                        str(self.root / "%p/profile.profraw")):
+            with self.subTest(destination=refused), self.assertRaises(ValueError):
+                preserve_candidate_profiles(collection, refused)
+        self.assertEqual(source.read_bytes(), b"profile copy sentinel\n")
+        if os.name != "nt":
+            link = self.root / "linked-runner"
+            link.symlink_to(runner, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, "symlink"):
+                preserve_candidate_profiles(collection, str(link / "profile.profraw"))
+            self.assertEqual(prior.read_bytes(), b"prior owner\n")
 
     def test_unstarted_and_timed_out_processes_remain_distinct(self):
         store = COLLECT.Store(self.root)
@@ -197,6 +263,11 @@ class TransportTests(unittest.TestCase):
         args = arguments(self.root, Path(sys.executable).resolve(), ["A.audit.clean_no_policy"])
         args.install_identity = "sha256:v1:" + "a" * 64
         with self.assertRaisesRegex(ValueError, "source build"):
+            COLLECT.collect(args)
+        self.assertFalse(args.output_dir.exists())
+        args = arguments(self.root, Path(sys.executable).resolve(), ["A.audit.clean_no_policy"])
+        args.output_dir = self.root / "expanded-%p"
+        with self.assertRaisesRegex(ValueError, "profile.*pattern"):
             COLLECT.collect(args)
         self.assertFalse(args.output_dir.exists())
 
@@ -295,8 +366,7 @@ assert swapped and prior.read_bytes() == b"prior regular owner\n"
 class NativeAdmissionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temporary = tempfile.TemporaryDirectory(prefix="command-case-native-tests-")
-        cls.root = Path(cls.temporary.name).resolve()
+        cls.root = Path(tempfile.mkdtemp(prefix="command-case-native-tests-")).resolve()
         args = arguments(cls.root, NATIVE)
         with redirect_stdout(io.StringIO()):
             COLLECT.collect(args)
@@ -306,7 +376,13 @@ class NativeAdmissionTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.temporary.cleanup()
+        try:
+            preserve_candidate_profiles(cls.collection, os.environ.get("LLVM_PROFILE_FILE"))
+        except Exception as error:
+            # No automatic TemporaryDirectory finalizer: failed profile
+            # custody must leave the actual fixture/profile bytes available.
+            raise RuntimeError(f"candidate profile export failed; fixtures retained at {cls.root}") from error
+        shutil.rmtree(cls.root)
 
     def setUp(self):
         self.restore = {}
@@ -461,6 +537,27 @@ class NativeAdmissionTests(unittest.TestCase):
         for binary in (context["binary"], bundle["binary"]):
             binary["install_identity"] = "sha256:v1:" + "a" * 64
         self.invalid(context, bundle, "source build")
+
+    def test_owned_profiler_environment_and_legacy_absence(self):
+        context, bundle = self.selected(["A.audit.clean_no_policy"])
+        expected = str(Path(context["cases"][0]["root"]) / "target/command-case/profiles/candidate-%m-%p.profraw")
+        self.assertEqual(context["cases"][0]["environment"].get("LLVM_PROFILE_FILE"), expected)
+        for value in (str(self.root / "foreign-%p.profraw"),
+                      str(Path(context["cases"][0]["root"]) / "target/command-case/foreign-%p.profraw"),
+                      expected.replace("candidate-%m-%p", "other-%m-%p")):
+            changed_context, changed_bundle = self.selected(["A.audit.clean_no_policy"])
+            for item in (changed_context["cases"][0], changed_bundle["cases"][0]["context"]):
+                item["environment"]["LLVM_PROFILE_FILE"] = value
+            with self.subTest(profile=value):
+                self.invalid(changed_context, changed_bundle, "profile destination")
+        # Older uninstrumented producers did not record this optional value.
+        # This checks readback compatibility, not a second candidate run.
+        for item in (context["cases"][0], bundle["cases"][0]["context"]):
+            del item["environment"]["LLVM_PROFILE_FILE"]
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        self.assertEqual(result["semantic_validity"], "valid", result)
+        self.assertEqual(result["qualification"], "partial", result)
 
     def test_rehashed_foreign_detail_is_rejected_even_after_transport_repin(self):
         context, bundle = self.selected(["A.doctor.healthy_policy"])
@@ -801,6 +898,24 @@ class NativeAdmissionTests(unittest.TestCase):
         path.write_bytes(data)
         case["after"]["size_bytes"], case["after"]["digest"] = len(data), COLLECT.digest(data)
         self.invalid(context, bundle, "mutation")
+        # Instrumentation outputs get no filename exemption in source
+        # snapshots, even when an attacker repins every member digest.
+        context, bundle = self.selected(["A.audit.healthy_policy"])
+        case = bundle["cases"][0]
+        snapshot = json.loads(self.restore[path])
+        relative = "cases/A.audit.healthy_policy/after/files/default.profraw"
+        member_path = self.collection / relative
+        data = b"unexpected source profile\n"
+        member_path.write_bytes(data)
+        self.remove.append(member_path)
+        snapshot["entries"].append({"path": "default.profraw", "kind": "file", "mode": 0o600,
+                                    "size_bytes": len(data), "link_target": None,
+                                    "content": {"path": relative, "size_bytes": len(data),
+                                                "digest": COLLECT.digest(data)}})
+        data = COLLECT.json_bytes(snapshot)
+        path.write_bytes(data)
+        case["after"]["size_bytes"], case["after"]["digest"] = len(data), COLLECT.digest(data)
+        self.invalid(context, bundle, "unexpected source file")
 
 
 def main():

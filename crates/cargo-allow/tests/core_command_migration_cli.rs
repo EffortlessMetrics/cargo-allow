@@ -116,6 +116,28 @@ fn core_command_migration_explicit_help_and_package_containment() -> Result<(), 
             && help.contains("without executing a candidate"),
         format!("hidden reader has no accurate reachable help: {help}"),
     )?;
+    let prefixed = native(&["allow", "command-migration-evidence", "--help"])?;
+    require(
+        prefixed.status.success() && prefixed.stdout == explicit.stdout,
+        "cargo-prefixed reader help differs from the direct command",
+    )?;
+    let direct_missing = native(&["command-migration-evidence"])?;
+    let prefixed_missing = native(&["allow", "command-migration-evidence"])?;
+    require(
+        direct_missing.status.code() == Some(2)
+            && prefixed_missing.status == direct_missing.status
+            && prefixed_missing.stderr == direct_missing.stderr
+            && String::from_utf8_lossy(&direct_missing.stderr).contains("--catalogue"),
+        "cargo-prefixed reader did not reach its ordinary required-input validation",
+    )?;
+    for arguments in [&["allow"][..], &["allow", "unknown-command"][..]] {
+        let refused = native(arguments)?;
+        require(
+            refused.status.code() == Some(2)
+                && String::from_utf8_lossy(&refused.stderr).contains("unrecognized subcommand 'allow'"),
+            "unknown/bare allow token was incorrectly stripped as a Cargo shim",
+        )?;
+    }
     let root = repository_root()?;
     let model = fs::read_to_string(root.join("crates/cargo-allow/src/core_command_migration.rs"))
         .map_err(|error| error.to_string())?;
