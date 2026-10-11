@@ -7,7 +7,7 @@ implement a second semantic validator or grant release qualification.
 
 import argparse
 import copy
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import errno
 import hashlib
 import importlib.util
@@ -101,7 +101,10 @@ def preserve_candidate_profiles(collection, runner_profile):
 
 
 def remove_owned_fixture(root, identity):
-    """Retry only a read-only unlink within this exclusively allocated root."""
+    """Remove an owned tree, or explicitly retain it after a readonly refusal."""
+    class _RetainReadonlyFixture(Exception):
+        pass
+
     def inspect_owned(path):
         COLLECT.reject_symlinks(root)
         if not path.is_absolute() or ".." in path.parts:
@@ -120,25 +123,33 @@ def remove_owned_fixture(root, identity):
                 raise ValueError("indirection in owned cleanup path")
         return metadata
 
-    def retry_readonly_unlink(function, name, error):
+    def retain_readonly_unlink(function, name, error):
         if (function is not os.unlink or not isinstance(error, PermissionError)
                 or error.errno not in (errno.EACCES, errno.EPERM)):
             raise error
         path = Path(name)
+        if path == root:
+            raise ValueError("cleanup retention requires a strict owned descendant")
         before = inspect_owned(path)
+        attributes = getattr(before, "st_file_attributes", None)
         if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
-                or before.st_mode & stat.S_IWUSR):
+                or before.st_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH)
+                or (attributes is not None and not attributes & 0x0001)):
             raise error
-        os.chmod(path, stat.S_IMODE(before.st_mode) | stat.S_IWUSR)
-        after = inspect_owned(path)
-        if ((before.st_dev, before.st_ino, before.st_nlink, before.st_size, before.st_mtime_ns)
-                != (after.st_dev, after.st_ino, after.st_nlink, after.st_size, after.st_mtime_ns)
-                or not stat.S_ISREG(after.st_mode) or not after.st_mode & stat.S_IWUSR):
-            raise ValueError("owned read-only file changed during cleanup retry")
-        function(path)  # A second failure propagates; no blanket error suppression.
+        # Stop traversal immediately. Earlier entries may already be gone;
+        # neither change permissions nor retry this unlink or its parents.
+        raise _RetainReadonlyFixture({
+            "status": "retained_readonly", "root": str(root),
+            "failed_leaf": str(path), "errno": error.errno,
+            "winerror": getattr(error, "winerror", None),
+        }) from error
 
     inspect_owned(root)
-    shutil.rmtree(root, onexc=retry_readonly_unlink)
+    try:
+        shutil.rmtree(root, onexc=retain_readonly_unlink)
+    except _RetainReadonlyFixture as retained:
+        return retained.args[0]
+    return {"status": "removed", "root": str(root)}
 
 
 class TransportTests(unittest.TestCase):
@@ -407,58 +418,105 @@ class TransportTests(unittest.TestCase):
                 preserve_candidate_profiles(collection, str(link / "profile.profraw"))
             self.assertEqual(prior.read_bytes(), b"prior owner\n")
 
-    def test_owned_readonly_git_object_cleanup_retries_only_the_failed_leaf(self):
-        owned = Path(tempfile.mkdtemp(prefix="owned-cleanup-", dir=self.root)).resolve()
-        identity = owned.lstat()
-        leaf = owned / ".git/objects/aa/object"
-        leaf.parent.mkdir(parents=True)
-        leaf.write_bytes(b"owned object\n")
-        leaf.chmod(0o444)
-        before = leaf.lstat()
+    def test_owned_readonly_git_object_cleanup_retains_remaining_fixture(self):
         prior = self.root / "prior-owner"
         prior.write_bytes(b"outside prior owner\n")
         prior_mode = prior.lstat().st_mode
-        original_unlink = os.unlink
-        attempts = []
+        for error_number in (errno.EACCES, errno.EPERM):
+            with self.subTest(errno=error_number):
+                owned = Path(tempfile.mkdtemp(prefix="owned-cleanup-", dir=self.root)).resolve()
+                identity = owned.lstat()
+                leaf = owned / ".git/objects/aa/object"
+                leaf.parent.mkdir(parents=True)
+                leaf.write_bytes(b"owned object\n")
+                leaf.chmod(0o444)
+                before = leaf.lstat()
+                original_unlink = os.unlink
+                attempts = []
 
-        def readonly_unlink(path, *args, **kwargs):
-            observed = os.stat(path, dir_fd=kwargs.get("dir_fd"), follow_symlinks=False)
-            if (observed.st_dev, observed.st_ino) == (before.st_dev, before.st_ino):
-                attempts.append(bool(observed.st_mode & stat.S_IWUSR))
-                if not observed.st_mode & stat.S_IWUSR:
-                    raise PermissionError(errno.EACCES, "controlled read-only unlink", os.fspath(path))
-            return original_unlink(path, *args, **kwargs)
+                def readonly_unlink(path, *args, **kwargs):
+                    observed = os.stat(path, dir_fd=kwargs.get("dir_fd"), follow_symlinks=False)
+                    if (observed.st_dev, observed.st_ino) == (before.st_dev, before.st_ino):
+                        attempts.append(stat.S_IMODE(observed.st_mode))
+                        raise PermissionError(error_number, "controlled read-only unlink", os.fspath(path))
+                    return original_unlink(path, *args, **kwargs)
 
-        with mock.patch.object(os, "unlink", side_effect=readonly_unlink), \
-                mock.patch.object(os, "chmod", wraps=os.chmod) as chmod:
-            remove_owned_fixture(owned, identity)
-        self.assertEqual(attempts, [False, True])
-        chmod.assert_called_once_with(leaf, stat.S_IMODE(before.st_mode) | stat.S_IWUSR)
-        self.assertFalse(owned.exists())
-        self.assertEqual(prior.read_bytes(), b"outside prior owner\n")
-        self.assertEqual(prior.lstat().st_mode, prior_mode)
+                try:
+                    with mock.patch.object(os, "unlink", side_effect=readonly_unlink), \
+                            mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")) as chmod, \
+                            mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")) as fchmod, \
+                            mock.patch.object(os, "rmdir", wraps=os.rmdir) as rmdir:
+                        result = remove_owned_fixture(owned, identity)
+                    self.assertEqual(result, {
+                        "status": "retained_readonly", "root": str(owned),
+                        "failed_leaf": str(leaf), "errno": error_number, "winerror": None,
+                    })
+                    self.assertEqual(attempts, [stat.S_IMODE(before.st_mode)])
+                    chmod.assert_not_called()
+                    fchmod.assert_not_called()
+                    rmdir.assert_not_called()
+                    self.assertTrue(owned.is_dir())
+                    self.assertEqual(leaf.read_bytes(), b"owned object\n")
+                    self.assertEqual(leaf.lstat().st_mode, before.st_mode)
+                    self.assertEqual(prior.read_bytes(), b"outside prior owner\n")
+                    self.assertEqual(prior.lstat().st_mode, prior_mode)
+                finally:
+                    # Release only this test's known leaf after the assertions;
+                    # the production cleanup path never changes permissions.
+                    leaf.chmod(0o600)
 
-    def test_owned_cleanup_propagates_unrelated_writable_and_retry_failures(self):
-        for label, error, readonly, expected_chmod in (
-            ("io", OSError(errno.EIO, "controlled I/O failure"), True, 0),
-            ("writable", PermissionError(errno.EACCES, "controlled writable failure"), False, 0),
-            ("retry", PermissionError(errno.EACCES, "controlled repeated failure"), True, 1),
-        ):
+    def test_owned_cleanup_propagates_unrelated_writable_and_metadata_failures(self):
+        for label in ("io", "other-errno", "writable", "group-write", "other-write",
+                      "wrong-callback", "missing-readonly-attribute", "metadata-error"):
             with self.subTest(failure=label):
                 owned = Path(tempfile.mkdtemp(prefix="owned-failure-", dir=self.root)).resolve()
                 identity = owned.lstat()
                 leaf = owned / "leaf"
                 leaf.write_bytes(b"retain failed leaf\n")
-                leaf.chmod(0o444 if readonly else 0o600)
-                with mock.patch.object(os, "unlink", side_effect=error), \
-                        mock.patch.object(os, "chmod", wraps=os.chmod) as chmod:
-                    with self.assertRaises(OSError) as raised:
-                        remove_owned_fixture(owned, identity)
-                self.assertIs(raised.exception, error)
-                self.assertEqual(chmod.call_count, expected_chmod)
-                self.assertEqual(leaf.read_bytes(), b"retain failed leaf\n")
-                leaf.chmod(0o600)
-                shutil.rmtree(owned)
+                leaf.chmod(0o600 if label == "writable" else 0o444)
+                before = leaf.lstat()
+                error = (OSError(errno.EIO, "controlled I/O failure") if label == "io"
+                         else PermissionError(errno.EBUSY if label == "other-errno" else errno.EACCES,
+                                              "controlled unrelated failure"))
+                metadata_error = OSError(errno.EIO, "controlled metadata failure")
+                original_lstat = Path.lstat
+
+                def inspect(path, *args, **kwargs):
+                    observed = original_lstat(path, *args, **kwargs)
+                    if path != leaf:
+                        return observed
+                    if label == "metadata-error":
+                        raise metadata_error
+                    if label in ("group-write", "other-write", "missing-readonly-attribute"):
+                        mode = observed.st_mode
+                        if label == "group-write":
+                            mode |= stat.S_IWGRP
+                        elif label == "other-write":
+                            mode |= stat.S_IWOTH
+                        return SimpleNamespace(st_mode=mode, st_nlink=observed.st_nlink,
+                                               st_file_attributes=0 if label == "missing-readonly-attribute" else 1)
+                    return observed
+
+                def invoke_callback(root, *, onexc):
+                    self.assertEqual(root, owned)
+                    onexc(os.rmdir if label == "wrong-callback" else os.unlink, leaf, error)
+
+                try:
+                    with mock.patch.object(shutil, "rmtree", side_effect=invoke_callback), \
+                            mock.patch.object(Path, "lstat", autospec=True, side_effect=inspect), \
+                            mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")) as chmod, \
+                            mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")) as fchmod, \
+                            mock.patch.object(os, "unlink") as unlink:
+                        with self.assertRaises(OSError) as raised:
+                            remove_owned_fixture(owned, identity)
+                    self.assertIs(raised.exception, metadata_error if label == "metadata-error" else error)
+                    chmod.assert_not_called()
+                    fchmod.assert_not_called()
+                    unlink.assert_not_called()
+                    self.assertEqual(leaf.read_bytes(), b"retain failed leaf\n")
+                    self.assertEqual(leaf.lstat().st_mode, before.st_mode)
+                finally:
+                    leaf.chmod(0o600)
 
     def test_owned_cleanup_refuses_outside_alias_nonfile_and_changed_root(self):
         owned = Path(tempfile.mkdtemp(prefix="owned-refusal-", dir=self.root)).resolve()
@@ -471,7 +529,7 @@ class TransportTests(unittest.TestCase):
         directory.mkdir()
         alias = owned / "hard-link"
         os.link(prior, alias)
-        refused = [prior, owned / ".." / prior.name, directory, alias]
+        refused = [prior, owned, Path("relative-leaf"), owned / ".." / prior.name, directory, alias]
         if os.name != "nt":
             symlink = owned / "symlink"
             symlink.symlink_to(prior)
@@ -482,53 +540,167 @@ class TransportTests(unittest.TestCase):
                 onexc(os.unlink, path, PermissionError(errno.EACCES, "controlled refusal"))
 
             with self.subTest(path=path), mock.patch.object(shutil, "rmtree", side_effect=invoke_callback), \
-                    mock.patch.object(os, "chmod") as chmod:
+                    mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")) as chmod, \
+                    mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")) as fchmod, \
+                    mock.patch.object(os, "unlink") as unlink:
                 with self.assertRaises((ValueError, PermissionError)):
                     remove_owned_fixture(owned, identity)
                 chmod.assert_not_called()
+                fchmod.assert_not_called()
+                unlink.assert_not_called()
             self.assertEqual(prior.read_bytes(), b"keep outside bytes and mode\n")
             self.assertEqual(prior.lstat().st_mode, prior_mode)
+        # A synthetic metadata observation exercises the Windows reparse bit
+        # without creating a privileged junction on this host.
+        leaf = owned / "reparse-observation"
+        leaf.write_bytes(b"keep reparse sentinel\n")
+        original_lstat = Path.lstat
+
+        def reparse_observation(path, *args, **kwargs):
+            observed = original_lstat(path, *args, **kwargs)
+            if path == leaf:
+                return SimpleNamespace(st_mode=stat.S_IFREG | 0o444, st_nlink=1,
+                                       st_file_attributes=0x0401)
+            return observed
+
+        def reparse_callback(root, *, onexc):
+            onexc(os.unlink, leaf, PermissionError(errno.EACCES, "controlled reparse refusal"))
+
+        with mock.patch.object(shutil, "rmtree", side_effect=reparse_callback), \
+                mock.patch.object(Path, "lstat", autospec=True, side_effect=reparse_observation), \
+                mock.patch.object(os, "chmod") as chmod, \
+                mock.patch.object(os, "fchmod", create=True) as fchmod, \
+                mock.patch.object(os, "unlink") as unlink:
+            with self.assertRaisesRegex(ValueError, "indirection"):
+                remove_owned_fixture(owned, identity)
+            chmod.assert_not_called()
+            fchmod.assert_not_called()
+            unlink.assert_not_called()
+        self.assertEqual(leaf.read_bytes(), b"keep reparse sentinel\n")
         changed = SimpleNamespace(st_dev=identity.st_dev, st_ino=identity.st_ino + 1)
         with mock.patch.object(shutil, "rmtree") as remove, mock.patch.object(os, "chmod") as chmod:
             with self.assertRaisesRegex(ValueError, "root changed"):
                 remove_owned_fixture(owned, changed)
             remove.assert_not_called()
             chmod.assert_not_called()
-        # Only after the unchanged-owner assertions, release these disposable
-        # test sentinels; a Windows read-only hard link cannot be unlinked yet.
+        # Release these known test sentinels only after the unchanged-owner
+        # assertions; a Windows readonly hard link cannot be unlinked yet.
         prior.chmod(0o600)
         alias.unlink()
 
     def test_native_cleanup_exports_before_delete_and_retains_failed_export(self):
         for fail in (True, False):
-            owned = Path(tempfile.mkdtemp(prefix="owned-export-", dir=self.root)).resolve()
-            collection = owned / "collection"
-            collection.mkdir()
-            profile = collection / "profile-sentinel"
-            profile.write_bytes(b"profile custody\n")
-            fixture = SimpleNamespace(root=owned, root_identity=owned.lstat(), collection=collection)
-            calls = []
+            with self.subTest(export_fails=fail):
+                owned = Path(tempfile.mkdtemp(prefix="owned-export-", dir=self.root)).resolve()
+                collection = owned / "collection"
+                profile = collection / "fixtures/A.fake/target/command-case/profiles/candidate-unit.profraw"
+                profile.parent.mkdir(parents=True)
+                profile.write_bytes(b"controlled profile custody sentinel\n")
+                leaf = owned / "readonly-object"
+                leaf.write_bytes(b"remaining fixture sentinel\n")
+                leaf.chmod(0o444)
+                before = leaf.lstat()
+                runner = Path(tempfile.mkdtemp(prefix="runner-", dir=self.root))
+                fixture = SimpleNamespace(root=owned, root_identity=owned.lstat(), collection=collection)
+                calls = []
+                original_export = preserve_candidate_profiles
+                original_unlink = os.unlink
+                diagnostic = io.StringIO()
 
-            def export(actual, runner):
-                self.assertEqual(actual, collection)
-                self.assertEqual(profile.read_bytes(), b"profile custody\n")
-                calls.append("export")
-                if fail:
-                    raise OSError(errno.EIO, "controlled export failure")
+                def export(actual, runner_profile):
+                    self.assertEqual(actual, collection)
+                    self.assertEqual(profile.read_bytes(), b"controlled profile custody sentinel\n")
+                    calls.append("export")
+                    if fail:
+                        raise OSError(errno.EIO, "controlled export failure")
+                    return original_export(actual, runner_profile)
 
-            with mock.patch.object(sys.modules[__name__], "preserve_candidate_profiles", side_effect=export), \
-                    mock.patch.object(sys.modules[__name__], "remove_owned_fixture", wraps=remove_owned_fixture) as remove:
-                if fail:
-                    with self.assertRaisesRegex(RuntimeError, "fixtures retained"):
-                        NativeAdmissionTests.tearDownClass.__func__(fixture)
-                    remove.assert_not_called()
-                    self.assertEqual(profile.read_bytes(), b"profile custody\n")
-                    shutil.rmtree(owned)
-                else:
-                    NativeAdmissionTests.tearDownClass.__func__(fixture)
-                    remove.assert_called_once_with(owned, fixture.root_identity)
-                    self.assertFalse(owned.exists())
-            self.assertEqual(calls, ["export"])
+                def readonly_unlink(path, *args, **kwargs):
+                    observed = os.stat(path, dir_fd=kwargs.get("dir_fd"), follow_symlinks=False)
+                    if (observed.st_dev, observed.st_ino) == (before.st_dev, before.st_ino):
+                        raise PermissionError(errno.EACCES, "controlled readonly fixture", os.fspath(path))
+                    return original_unlink(path, *args, **kwargs)
+
+                try:
+                    with mock.patch.object(sys.modules[__name__], "preserve_candidate_profiles", side_effect=export), \
+                            mock.patch.object(sys.modules[__name__], "remove_owned_fixture", wraps=remove_owned_fixture) as remove, \
+                            mock.patch.dict(os.environ, {"LLVM_PROFILE_FILE": str(runner / "harness-%p.profraw")}), \
+                            mock.patch.object(os, "unlink", side_effect=readonly_unlink), \
+                            mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")), \
+                            mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")), \
+                            redirect_stderr(diagnostic):
+                        if fail:
+                            with self.assertRaisesRegex(RuntimeError, "fixtures retained"):
+                                NativeAdmissionTests.tearDownClass.__func__(fixture)
+                            remove.assert_not_called()
+                            self.assertEqual(profile.read_bytes(), b"controlled profile custody sentinel\n")
+                            self.assertEqual(list(runner.iterdir()), [])
+                        else:
+                            NativeAdmissionTests.tearDownClass.__func__(fixture)
+                            remove.assert_called_once_with(owned, fixture.root_identity)
+                    self.assertTrue(owned.is_dir())
+                    self.assertEqual(leaf.read_bytes(), b"remaining fixture sentinel\n")
+                    self.assertEqual(leaf.lstat().st_mode, before.st_mode)
+                    self.assertEqual(calls, ["export"])
+                    if not fail:
+                        copies = list(runner.glob("command-case-*/A.fake/target/command-case/profiles/candidate-unit.profraw"))
+                        self.assertEqual(len(copies), 1)
+                        self.assertEqual(copies[0].read_bytes(), b"controlled profile custody sentinel\n")
+                        self.assertIn("remaining fixture retained at " + str(owned), diagnostic.getvalue())
+                        self.assertIn(str(leaf), diagnostic.getvalue())
+                        self.assertIn("errno=" + str(errno.EACCES), diagnostic.getvalue())
+                finally:
+                    leaf.chmod(0o600)
+
+    def test_owned_writable_fixture_cleanup_reports_removed(self):
+        owned = Path(tempfile.mkdtemp(prefix="owned-writable-", dir=self.root)).resolve()
+        identity = owned.lstat()
+        (owned / "leaf").write_bytes(b"ordinary cleanup\n")
+        diagnostic = io.StringIO()
+        with mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")) as chmod, \
+                mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")) as fchmod, \
+                redirect_stderr(diagnostic):
+            result = remove_owned_fixture(owned, identity)
+        self.assertEqual(result, {"status": "removed", "root": str(owned)})
+        self.assertFalse(owned.exists())
+        self.assertEqual(diagnostic.getvalue(), "")
+        chmod.assert_not_called()
+        fchmod.assert_not_called()
+
+    def test_native_retention_does_not_hide_an_earlier_test_failure(self):
+        owned = Path(tempfile.mkdtemp(prefix="owned-prior-failure-", dir=self.root)).resolve()
+        collection = owned / "collection"
+        collection.mkdir()
+        leaf = owned / "leaf"
+        leaf.write_bytes(b"retained after original failure\n")
+        leaf.chmod(0o444)
+        fixture = SimpleNamespace(root=owned, root_identity=owned.lstat(), collection=collection)
+
+        class PriorFailure(unittest.TestCase):
+            @classmethod
+            def tearDownClass(cls):
+                NativeAdmissionTests.tearDownClass.__func__(fixture)
+
+            def runTest(self):
+                self.fail("controlled original admission failure")
+
+        result = unittest.TestResult()
+        diagnostic = io.StringIO()
+        try:
+            with mock.patch.object(os, "unlink", side_effect=PermissionError(errno.EACCES, "controlled readonly unlink")), \
+                    mock.patch.object(os, "chmod", side_effect=AssertionError("cleanup changed permissions")), \
+                    mock.patch.object(os, "fchmod", create=True, side_effect=AssertionError("cleanup changed permissions")), \
+                    redirect_stderr(diagnostic):
+                unittest.TestSuite([PriorFailure()]).run(result)
+            self.assertEqual(result.testsRun, 1)
+            self.assertEqual(len(result.failures), 1)
+            self.assertEqual(result.errors, [])
+            self.assertFalse(result.wasSuccessful())
+            self.assertIn("controlled original admission failure", result.failures[0][1])
+            self.assertIn("remaining fixture retained at " + str(owned), diagnostic.getvalue())
+            self.assertEqual(leaf.read_bytes(), b"retained after original failure\n")
+        finally:
+            leaf.chmod(0o600)
 
     def test_unstarted_and_timed_out_processes_remain_distinct(self):
         store = COLLECT.Store(self.root)
@@ -677,7 +849,11 @@ class NativeAdmissionTests(unittest.TestCase):
             # No automatic TemporaryDirectory finalizer: failed profile
             # custody must leave the actual fixture/profile bytes available.
             raise RuntimeError(f"candidate profile export failed; fixtures retained at {cls.root}") from error
-        remove_owned_fixture(cls.root, cls.root_identity)
+        cleanup = remove_owned_fixture(cls.root, cls.root_identity)
+        if cleanup["status"] == "retained_readonly":
+            print(f"remaining fixture retained at {cleanup['root']}: "
+                  f"observed readonly leaf {cleanup['failed_leaf']}; unlink refused "
+                  f"(errno={cleanup['errno']}, winerror={cleanup['winerror']})", file=sys.stderr)
 
     def setUp(self):
         self.restore = {}
