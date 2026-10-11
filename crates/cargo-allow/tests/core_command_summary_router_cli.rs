@@ -2414,6 +2414,20 @@ fn later_output_failures_replace_evaluated_summaries_with_typed_errors() -> Resu
                 "{command} must not hide later I/O failure behind its evaluated outcome: {summary}"
             ),
         )?;
+        // These artifact failures occur after evaluation. The fallback cannot
+        // infer that scanning was incomplete from the later output error.
+        require(
+            field(&summary, &["claim_boundary", "limitations"])
+                .and_then(Value::as_array)
+                .is_some_and(|limitations| {
+                    limitations.iter().all(|limitation| {
+                        limitation
+                            .as_str()
+                            .is_some_and(|text| !text.contains("was not completed"))
+                    })
+                }),
+            format!("{command} must not claim its completed scan was incomplete: {summary}"),
+        )?;
         require(
             fs::read(&canary).map_err(|error| error.to_string())? == b"prior owner's bytes\n",
             "failed output replacement must preserve the prior owner",
@@ -2723,6 +2737,18 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                     && field(&summary, &["posture"]) == Some(&Value::from("blocking"))
                     && field(&summary, &["reason", "code"]) == Some(&Value::from(code)),
                 format!("late emit failure must replace the evaluated summary: {summary}"),
+            )?;
+            require(
+                field(&summary, &["claim_boundary", "limitations"])
+                    .and_then(Value::as_array)
+                    .is_some_and(|limitations| {
+                        limitations.iter().all(|limitation| {
+                            limitation
+                                .as_str()
+                                .is_some_and(|text| !text.contains("was not completed"))
+                        })
+                    }),
+                format!("late emit failure must not deny completed evaluation: {summary}"),
             )?;
             require(
                 field(&receipt_value, &["status"]) == Some(&Value::from("error"))

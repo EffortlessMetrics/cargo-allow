@@ -11,3 +11,5 @@ body: >-
   Check emission retains every comma-separated renderer request and reports
   failed renderers through the same typed error path, preserving the manifest's
   original policy result and any successfully completed artifacts.
+  Typed error summaries no longer claim that scanning was incomplete when
+  an output failure occurred after evaluation.

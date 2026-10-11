@@ -168,7 +168,7 @@ pub(crate) fn write_error_summary_artifact(
             "the failed command's typed error classification and reason only",
         )
         .with_limitations(vec![
-            "the source-syntax scan the command would have reported was not completed".to_string(),
+            "this error summary does not attest whether source scanning or evaluation completed".to_string(),
             "the failure classification does not establish, repair, or authorize any source exception".to_string(),
         ]),
     ) else {
