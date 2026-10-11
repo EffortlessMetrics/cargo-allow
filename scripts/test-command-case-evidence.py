@@ -216,7 +216,7 @@ class TransportTests(unittest.TestCase):
     def test_windows_named_executable_mode_keeps_bounded_read_reachable(self):
         source = self.root / "candidate.exe"
         source.write_bytes(b"bounded executable bytes\n")
-        original_lstat = os.lstat
+        original_lstat = type(source).lstat
 
         def named_executable(path, *args, **kwargs):
             observed = original_lstat(path, *args, **kwargs)
@@ -227,7 +227,7 @@ class TransportTests(unittest.TestCase):
         # CPython's Windows path stat infers executable bits from the suffix;
         # its descriptor stat has no filename from which to infer them.
         with mock.patch.object(COLLECT.os, "name", "nt"), mock.patch.object(
-            COLLECT.os, "lstat", side_effect=named_executable
+            type(source), "lstat", named_executable
         ):
             self.assertEqual(COLLECT.regular_bytes(source, 1024), source.read_bytes())
 
