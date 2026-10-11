@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Ledger read projections now share the matcher's strict policy-entry expiry
+  boundary, so check, list, worklist, explain, and cadence agree that an entry
+  expires after its stated expiry day. Review dates and federation drain
+  deadlines retain their inclusive boundaries.
