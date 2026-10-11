@@ -90,3 +90,23 @@ rendered artifact is scanned for secret markers in tests).
 
 The evidence inventory retains the lease as typed model validation. The
 lease serializes authority; it does not grant it.
+
+## Authenticated provider boundary and remaining driver
+
+The [release operation store](release-operation-store-v1.md) now supplies a
+reusable authenticated readback and atomic, nonforced Git-ref append boundary
+for these existing lease bytes. It derives no lease eligibility of its own:
+the caller must validate the observed record and apply the existing acquire
+or renewal reducer before preparing changed bytes. A changed append returns a
+single process-local witness only after an exact provider response and
+independent immutable-object readback. An unchanged SHA, ambiguous response,
+later observation or restarted process cannot recover that witness.
+
+The actual #3930 driver remains unwired. It must compare the lease subject
+with the independently selected authorization and tag commit/tree/denominator
+and enforce canonical operation history before consuming any witness.
+`renew_operation_lease_v1` preserves journal/checkpoint head bindings; it does
+not provide the checked head-rebinding transition needed by the full driver.
+The provider fixture exercises an ordinary renewal with those bindings fixed.
+Its production transport behavior is tested with intercepted responses and
+does not establish a live lease or satisfy a release gate.

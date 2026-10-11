@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Probe cargo-intent delegation's native root argument with an immutable Unix
+  executable through the real bounded runner, preserving raw argument bytes
+  and boundaries without a freshly written script. Keep typed spawn failures
+  visible and discriminate Linux writable-executable failures with a bounded
+  child-held descriptor barrier.

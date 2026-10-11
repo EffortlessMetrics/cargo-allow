@@ -1,0 +1,2 @@
+kind: Fixed
+body: Guard both release workflow secret expressions before step conditions are evaluated, requiring the currently visible successful job status, strict shared registry preflight, and matching publication or recovery authority. Keep the selected CARGO_REGISTRY_TOKEN unread and out of publisher subprocesses until an actual upload follows a successful Cargo dry run, and reject unsupported registry-preflight modes before any work. This does not establish broader credential isolation or release authorization.

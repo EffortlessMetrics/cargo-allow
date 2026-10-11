@@ -78,14 +78,23 @@ impl SimpleDate {
     /// `true` when `date` has arrived as of `today` — i.e. `date <= today`
     /// (inclusive of the deadline day itself).
     ///
-    /// This is the deadline/expiry predicate used for `expires` and drain
-    /// windows. The boundary is inclusive: a deadline dated *today* has passed
-    /// (#2008 — a strict `<` previously enforced expiry one day late, letting
-    /// drain windows and entries live a day past their stated expiry). The
-    /// `is_due_date_str` review predicate uses the same inclusive boundary so
-    /// the two cannot drift.
+    /// This inclusive deadline predicate governs federation drain windows
+    /// (#2008): a drain deadline dated today has passed. Policy-entry expiry
+    /// has a distinct strict boundary; use [`Self::policy_expiry_has_passed`]
+    /// for a parsed `expires` date. Missing or unparseable deadlines return
+    /// false here; callers validate required deadline fields separately.
     pub fn has_passed_date_str(date: Option<&str>, today: Self) -> bool {
         date.and_then(Self::parse).is_some_and(|date| date <= today)
+    }
+
+    /// Whether this parsed policy-entry `expires` date is strictly before
+    /// `today`. The expiry day itself is still current; expiry starts the
+    /// following day. Match evaluation and ledger read projections share
+    /// this boundary (#4351), independently of inclusive drain deadlines and
+    /// review dates. Callers retain their validation of missing, `never`, and
+    /// malformed lifecycle strings before consulting this parsed-date law.
+    pub fn policy_expiry_has_passed(self, today: Self) -> bool {
+        self < today
     }
 
     /// `true` when `date` is due on or before `today` — i.e. `date <= today`

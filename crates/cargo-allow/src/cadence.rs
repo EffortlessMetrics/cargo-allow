@@ -62,10 +62,10 @@ pub(crate) fn parse_as_of_arg(value: &str) -> Result<SimpleDate, String> {
 /// entry" via `allow_policy::lifecycle::validate_lifecycle`, `expired`
 /// binds to `allow_match::lifecycle::entry_is_expired` (strict
 /// `date < today`, `expires = "never"` never expires) and `review_overdue`
-/// to `entry_review_is_due` (inclusive `date <= today`, the #2008
-/// asymmetry, deliberately preserved so cadence never disagrees with the
-/// matcher). All date math goes through `allow_core::SimpleDate`; no
-/// second calendar implementation lives here.
+/// to `entry_review_is_due` (inclusive `date <= today`, deliberately
+/// preserved so cadence never disagrees with the matcher). All date math
+/// goes through `allow_core::SimpleDate`; no second calendar implementation
+/// lives here.
 #[must_use]
 fn classify_lifecycle_class(entry: &AllowEntry, as_of: SimpleDate) -> LifecycleCadenceClassV1 {
     // Loader law, reused verbatim: an entry the policy loader would reject
@@ -74,7 +74,7 @@ fn classify_lifecycle_class(entry: &AllowEntry, as_of: SimpleDate) -> LifecycleC
     if validate_lifecycle(entry).is_err() {
         return LifecycleCadenceClassV1::Invalid;
     }
-    // Match-engine boundaries, reused verbatim (#2008). After the loader
+    // Match-engine boundaries, reused verbatim. After the loader
     // check both lifecycle dates parse, so the helpers' unparseable
     // fail-safes are unreachable defense on this path.
     if entry_is_expired(entry, as_of) {
