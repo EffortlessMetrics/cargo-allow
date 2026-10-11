@@ -1,7 +1,44 @@
 schema_version = 1
 
-# Exact file receipts for the #3149 command-case catalogue, transport, schema,
-# documentation, and this governed note. These source-development artifacts
-# preserve Partial qualification and do not authorize installation or release.
-# Canonical addition fingerprints will be bound after the normal why/add plan
-# applications; this initial note is not a completed governance record.
+# Exact #3149 catalogue, transport, contract, schema and native-control files.
+# Each addition was emitted through why --plan and add --from-plan --update.
+# Fingerprints below come from the actual governed diff starter, with authored
+# rationale. Existing policy bytes and dates are preserved. These source-file
+# receipts do not establish installed qualification, independent review, merge,
+# publication authority, or completion of the unresolved command denominator.
+
+[[records]]
+allow_ids = ["allow-3149-command-case-catalogue"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6aa22b17ae4f3ef1ac55a40964dc794211ac053c96e1e2a06264510c3428812b"
+reason = "Retain the accepted #3149 command and applicability denominator, including unexecuted A-C, diff-D and #3882 entrypoint controls; exact-file data does not grant completion or release authority."
+
+[[records]]
+allow_ids = ["allow-3149-command-case-collector"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6e6cc9516d63731e85b238eaa2d3e77ec95fdc5bfeac875cbe2f59f3da0da73b"
+reason = "Collect bounded read-only A-family observations once per supplied-binary invocation with owned fixtures, closed child environment, retained detail and summary, member hashes and observed effects; no semantic or release authority is delegated to Python."
+
+[[records]]
+allow_ids = ["allow-3149-command-case-contract"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b823f0bd30e53b9694c5bf6e6dce09d915677944a3ca89e356386e3b7cff5857"
+reason = "Document the explicit-binary one-invocation collector and native retained-member reader, their exact inputs, and the unresolved configuration, installation and qualification boundaries."
+
+[[records]]
+allow_ids = ["allow-3149-command-case-controls"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8c17aa3473f455d58b5c64ecf9cd5098a09184fbf9a14487ad11b386a81f3f69"
+reason = "Exercise the actual transport and native reader against missing, foreign, contradictory and rehashed members and context, including path ownership, source mutation and incomplete-process controls; test assertions do not create qualification evidence."
+
+[[records]]
+allow_ids = ["allow-3149-command-case-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5d8af68bb9c65e74eade7aa0e3fab561f9b6d972eeaf6bccb245b513a153321a"
+reason = "Record canonical governance fingerprints and genuine rationale for these exact #3149 command-evidence file admissions without broadening directory scope or granting installation, merge or release authority."
+
+[[records]]
+allow_ids = ["allow-3149-command-case-schema"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b232a2f17a7ad48faca753276d77b23073a657db561841a43d321ee54fc14709"
+reason = "Define the closed versioned catalogue, expected-context, retained-bundle and admission JSON boundaries; schema conformance alone does not establish semantic correspondence or complete qualification."
