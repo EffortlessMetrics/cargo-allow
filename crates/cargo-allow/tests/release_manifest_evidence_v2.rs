@@ -7,6 +7,7 @@ use allow_report::{
     validate_release_manifest_v2,
 };
 use std::error::Error;
+use std::process::Command;
 
 fn create_valid_envelope() -> ReleaseManifestEnvelopeV2 {
     let payload = ReleaseManifestPayloadV2 {
@@ -145,4 +146,77 @@ fn release_manifest_v2_detects_incidents_and_failures() -> Result<(), Box<dyn Er
     );
 
     Ok(())
+}
+
+#[test]
+fn publication_cli_requires_observed_publication_for_manifest_readiness()
+-> Result<(), Box<dyn Error>> {
+    let checksum = format!("sha256:{}", "a".repeat(64));
+    let mut failures = Vec::new();
+    for (row_class, package_name, version) in [
+        ("cargo_allow_candidate", "cargo-allow", "0.2.0"),
+        (
+            "published_shared_prerequisite",
+            "effortless-repo-edit",
+            "0.1.0",
+        ),
+    ] {
+        for (state, classification, manifest_ready) in [
+            ("missing", "missing", false),
+            ("provider_unavailable", "provider_unavailable", false),
+            ("published_verified", "complete_exact", true),
+            ("verified_existing", "complete_exact", true),
+        ] {
+            let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+                .args([
+                    "reconcile-package-publication",
+                    "--logical-id",
+                    package_name,
+                    "--package-name",
+                    package_name,
+                    "--package-version",
+                    version,
+                    "--release-order",
+                    "1",
+                    "--row-class",
+                    row_class,
+                    "--state",
+                    state,
+                    "--expected-checksum",
+                    &checksum,
+                    "--observed-registry-checksum",
+                    &checksum,
+                ])
+                .output()?;
+            if !output.status.success() {
+                return Err(format!(
+                    "{row_class}/{state}: classification command failed: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                )
+                .into());
+            }
+            let projection: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+            let expected = serde_json::json!({
+                "schema": "cargo-allow.reconciled-package-publication.v1",
+                "logical_id": package_name,
+                "package_name": package_name,
+                "package_version": version,
+                "release_order": 1,
+                "row_class": row_class,
+                "state": state,
+                "classification": classification,
+                "manifest_ready": manifest_ready,
+            });
+            if projection != expected {
+                failures.push(format!(
+                    "{row_class}/{state}: expected {expected}, got {projection}"
+                ));
+            }
+        }
+    }
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(failures.join("\n").into())
+    }
 }
