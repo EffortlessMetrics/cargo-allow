@@ -273,6 +273,35 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(member["digest"], COLLECT.digest(expected))
             self.assertEqual(member["size_bytes"], len(expected))
 
+    def test_named_changes_after_read_keep_full_mode_identity(self):
+        source = self.root / "candidate.exe"
+        source.write_bytes(b"unchanged candidate\n")
+        actual = source.stat()
+        original_lstat, original_fstat = type(source).lstat, os.fstat
+        fields = {"st_dev": actual.st_dev + 1, "st_ino": actual.st_ino + 1,
+                  "st_mode": actual.st_mode ^ 0o100, "st_nlink": actual.st_nlink + 1,
+                  "st_size": actual.st_size + 1, "st_mtime_ns": actual.st_mtime_ns + 1}
+        for field, value in fields.items():
+            calls = 0
+
+            def descriptor_stat(descriptor):
+                nonlocal calls
+                calls += 1
+                return original_fstat(descriptor)
+
+            def named_stat(path, *args, **kwargs):
+                observed = original_lstat(path, *args, **kwargs)
+                if calls == 2 and os.fspath(path) == str(source):
+                    return self.changed_metadata(observed, **{field: value})
+                return observed
+
+            with self.subTest(field=field), mock.patch.object(COLLECT.os, "name", "nt"), \
+                    mock.patch.object(COLLECT.os, "fstat", side_effect=descriptor_stat), \
+                    mock.patch.object(type(source), "lstat", named_stat):
+                with self.assertRaisesRegex(ValueError, "changed while reading"):
+                    COLLECT.regular_bytes(source, 1024)
+        self.assertEqual(source.read_bytes(), b"unchanged candidate\n")
+
     @staticmethod
     def changed_metadata(metadata, **changes):
         fields = ("st_dev", "st_ino", "st_mode", "st_nlink", "st_size", "st_mtime_ns")
