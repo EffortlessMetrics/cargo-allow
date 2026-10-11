@@ -53,6 +53,20 @@ def arguments(root, binary, cases=None):
     )
 
 
+def report_identity(detail):
+    # Adversarial fixtures deliberately rebind the existing canonical JSON
+    # subject too. A transport-only mismatch must not be the rejection oracle.
+    def scrub(value):
+        if isinstance(value, dict):
+            return {key: scrub(item) for key, item in value.items()
+                    if key not in ("root", "source_tree_root", "policy_config", "started_at", "run_id")}
+        if isinstance(value, list):
+            return [scrub(item) for item in value]
+        return value
+    encoded = json.dumps(scrub(detail), sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()
+    return "local-repository:" + COLLECT.digest(encoded)
+
+
 class TransportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="command-case-transport-")
@@ -210,6 +224,70 @@ class TransportTests(unittest.TestCase):
                 calls.assert_not_called()
                 self.assertFalse(args.output_dir.exists())
 
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "named-pipe control requires Unix FIFO support")
+    def test_fifo_catalogue_and_binary_are_refused_before_collection_allocation(self):
+        fifo = self.root / "unwritten-fifo"
+        os.mkfifo(fifo)
+        for role in ("catalogue", "binary"):
+            output = self.root / (role + "-collection")
+            argv = [sys.executable, "-B", str(SCRIPT),
+                    "--binary", str(fifo if role == "binary" else Path(sys.executable).resolve()),
+                    "--git", str(git_path()),
+                    "--catalogue", str(fifo if role == "catalogue" else CATALOGUE),
+                    "--output-dir", str(output), "--collection-id", "fifo-rejection",
+                    "--tool-version", "0.2.0", "--source-generation", "1" * 40,
+                    "--provenance", "source_build", "--timeout", "0.05"]
+            with self.subTest(role=role):
+                observed = subprocess.run(argv, cwd=self.root, capture_output=True, timeout=2)
+                self.assertNotEqual(observed.returncode, 0, observed.stdout)
+                self.assertIn(b"regular file", observed.stderr)
+                self.assertFalse(output.exists())
+                self.assertTrue(fifo.exists())
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "replacement control requires Unix FIFO support")
+    def test_regular_to_fifo_replacement_at_open_refuses_without_blocking(self):
+        source = self.root / "source.json"
+        source.write_bytes(b"prior regular owner\n")
+        # Patch only the disposable child's final open operation. This places
+        # the replacement after any production preflight, for both the old
+        # Path.open route and a descriptor-based opener.
+        code = r'''
+import importlib.util, io, os, pathlib, sys
+from unittest import mock
+script, target = map(pathlib.Path, sys.argv[1:])
+spec = importlib.util.spec_from_file_location("collector", script)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+original_io_open, original_os_open = io.open, os.open
+prior = target.with_name("retained-prior-owner")
+swapped = False
+def swap(path):
+    global swapped
+    if not swapped and pathlib.Path(path) == target:
+        target.rename(prior)
+        os.mkfifo(target)
+        swapped = True
+def io_open(path, *args, **kwargs):
+    swap(path)
+    return original_io_open(path, *args, **kwargs)
+def os_open(path, *args, **kwargs):
+    swap(path)
+    return original_os_open(path, *args, **kwargs)
+with mock.patch.object(io, "open", side_effect=io_open), mock.patch.object(os, "open", side_effect=os_open):
+    try:
+        module.regular_bytes(target, 1024)
+    except ValueError as error:
+        print(str(error))
+    else:
+        raise AssertionError("replaced nonregular input was accepted")
+assert swapped and prior.read_bytes() == b"prior regular owner\n"
+'''
+        observed = subprocess.run([sys.executable, "-B", "-c", code, str(SCRIPT), str(source)],
+                                  cwd=self.root, capture_output=True, timeout=2)
+        self.assertEqual(observed.returncode, 0, observed.stderr.decode(errors="replace"))
+        self.assertIn(b"regular file", observed.stdout)
+        self.assertEqual((self.root / "retained-prior-owner").read_bytes(), b"prior regular owner\n")
+
 
 @unittest.skipIf(NATIVE is None, "native binary supplied by the Rust integration target")
 class NativeAdmissionTests(unittest.TestCase):
@@ -258,7 +336,7 @@ class NativeAdmissionTests(unittest.TestCase):
             expected = next(item for item in context["cases"] if item["case_id"] == case["context"]["case_id"])
             expected["output_digests"][role] = member["digest"]
 
-    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None):
+    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=30):
         context_bytes = COLLECT.json_bytes(context) if raw_context is None else raw_context
         bundle["context_digest"] = COLLECT.digest(context_bytes)
         bundle_bytes = COLLECT.json_bytes(bundle) if raw_bundle is None else raw_bundle
@@ -278,7 +356,7 @@ class NativeAdmissionTests(unittest.TestCase):
         for key in list(env):
             if key.startswith("GIT_") or key.startswith("CARGO_ALLOW"):
                 del env[key]
-        observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=30)
+        observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=timeout)
         if output is not None:
             return observed, None
         self.assertTrue(observed.stdout, observed.stderr.decode(errors="replace"))
@@ -388,6 +466,206 @@ class NativeAdmissionTests(unittest.TestCase):
         foreign = next(item for item in self.bundle["cases"] if item["context"]["case_id"] == "A.doctor.partial_inventory")
         self.replace_member(context, case, "detail", self.read_member(foreign["detail"]))
         self.invalid(context, bundle)
+
+    def replace_report(self, context, case, detail, summary):
+        summary["subject"]["repository_identity"] = report_identity(detail)
+        self.replace_member(context, case, "detail", COLLECT.json_bytes(detail))
+        self.replace_member(context, case, "summary", COLLECT.json_bytes(summary))
+
+    def test_unrequested_receipts_are_refused_for_successful_and_incomplete_non_check_cases(self):
+        foreign = next(case for case in self.bundle["cases"]
+                       if case["context"]["case_id"] == "A.check.healthy_policy")
+        payloads = (b"not even a JSON receipt\n", self.read_member(foreign["receipt"]))
+        for command in ("adopt", "doctor", "audit"):
+            for state in ("healthy", "missing_summary", "cancelled"):
+                for index, payload in enumerate(payloads):
+                    with self.subTest(command=command, state=state, payload=index):
+                        context, bundle = self.selected(["A." + command + ".healthy_policy"])
+                        case = bundle["cases"][0]
+                        self.assertIsNone(case["receipt"])
+                        path = self.collection / "unrequested-receipt.json"
+                        path.write_bytes(payload)
+                        self.remove.append(path)
+                        member = {"path": path.name, "size_bytes": len(payload), "digest": COLLECT.digest(payload)}
+                        case["receipt"] = member
+                        case["context"]["output_digests"]["receipt"] = context["cases"][0]["output_digests"]["receipt"] = member["digest"]
+                        if state == "missing_summary":
+                            case["summary"] = None
+                            case["context"]["output_digests"]["summary"] = context["cases"][0]["output_digests"]["summary"] = None
+                        elif state == "cancelled":
+                            case["process"].update(exit_code=-9, timed_out=True)
+                        self.invalid(context, bundle)
+                    self.tearDown()
+                    self.setUp()
+
+    def test_clean_audit_rejects_invented_roadmap_and_repair_queue_after_semantic_repin(self):
+        invented = {"signal": "invented_approval", "label": "Publish without further checks",
+                    "route_kind": "command", "item_kind": None, "worklist_status": None,
+                    "worklist_filter": None, "count": 99, "command": "cargo-allow release-identity --help"}
+        for field in ("audit_remediation_roadmap", "evidence_repair_queues"):
+            with self.subTest(field=field):
+                context, bundle = self.selected(["A.audit.clean_no_policy"])
+                case = bundle["cases"][0]
+                detail = json.loads(self.read_member(case["detail"]))
+                summary = json.loads(self.read_member(case["summary"]))
+                self.assertEqual(summary["subject"]["repository_identity"], report_identity(detail))
+                self.assertFalse(detail.get(field))
+                detail[field] = [copy.deepcopy(invented)]
+                self.replace_report(context, case, detail, summary)
+                self.invalid(context, bundle)
+            self.tearDown()
+            self.setUp()
+
+    def test_nonempty_audit_routes_validate_every_field_and_do_not_leak_to_check(self):
+        mutations = {"signal": "expired", "label": "invented label", "route_kind": "prune_stale",
+                     "item_kind": "expired_allow", "worklist_status": "expired", "worklist_filter": "weak_evidence",
+                     "count": 99, "command": "cargo-allow release-identity --help"}
+        for field in ("audit_remediation_roadmap", "evidence_repair_queues"):
+            for key, value in mutations.items():
+                with self.subTest(field=field, key=key):
+                    context, bundle = self.selected(["A.audit.healthy_policy"])
+                    case = bundle["cases"][0]
+                    detail = json.loads(self.read_member(case["detail"]))
+                    summary = json.loads(self.read_member(case["summary"]))
+                    self.assertEqual(len(detail[field]), 1)
+                    detail[field][0][key] = value
+                    self.replace_report(context, case, detail, summary)
+                    self.invalid(context, bundle)
+                self.tearDown()
+                self.setUp()
+        context, bundle = self.selected(["A.check.healthy_policy"])
+        case = bundle["cases"][0]
+        detail = json.loads(self.read_member(case["detail"]))
+        summary = json.loads(self.read_member(case["summary"]))
+        detail["audit_remediation_roadmap"] = copy.deepcopy(detail["evidence_repair_queues"])
+        self.replace_report(context, case, detail, summary)
+        self.invalid(context, bundle)
+
+    def test_check_receipt_metadata_requires_the_actual_fixture_posture(self):
+        mutations = [("lifecycle_posture", "invented-approved"),
+                     ("lifecycle_posture", "calendar-expiry-blocking"),
+                     ("lane_posture", {"source-exception": "approved"}),
+                     ("lane_posture", {"non_rust_file": "advisory"}),
+                     ("federation", {"federation_version": "invented", "ledger_contributors": [], "precedence_applied": "invented"}),
+                     ("federation", {"federation_version": "1", "ledger_contributors": [], "precedence_applied": "federation_registry"})]
+        for field in ("lifecycle_posture", "lane_posture", "federation"):
+            mutations.extend([(field, None), (field, "omit")])
+        for field, value in mutations:
+            with self.subTest(field=field, value=value):
+                context, bundle = self.selected(["A.check.healthy_policy"])
+                case = bundle["cases"][0]
+                receipt = json.loads(self.read_member(case["receipt"]))
+                self.assertEqual(receipt["lifecycle_posture"], "candidate-mode")
+                self.assertEqual(receipt["lane_posture"], {"non_rust_file": "blocking"})
+                self.assertEqual(receipt["federation"], {"federation_version": "1", "ledger_contributors": [], "precedence_applied": "cli_override"})
+                if value == "omit":
+                    del receipt[field]
+                else:
+                    receipt[field] = value
+                self.replace_member(context, case, "receipt", COLLECT.json_bytes(receipt))
+                self.invalid(context, bundle)
+            self.tearDown()
+            self.setUp()
+
+    def test_coherent_suppression_or_inflation_cannot_erase_literal_policy_advisory(self):
+        for command in ("audit", "check"):
+            for replacement in (0, 2):
+                with self.subTest(command=command, count=replacement):
+                    context, bundle = self.selected(["A." + command + ".healthy_policy"])
+                    case = bundle["cases"][0]
+                    before = copy.deepcopy(case["before"])
+                    after = copy.deepcopy(case["after"])
+                    detail = json.loads(self.read_member(case["detail"]))
+                    summary = json.loads(self.read_member(case["summary"]))
+                    self.assertEqual(detail["summary"]["policy_missing_evidence"], 1)
+                    self.assertEqual(summary["result_class"], "findings")
+                    for counts in (detail["summary"], detail["trend"]):
+                        if replacement:
+                            counts["policy_missing_evidence"] = replacement
+                        else:
+                            del counts["policy_missing_evidence"]
+                    detail["trend"]["review_items"] = replacement
+                    for field in ("evidence_repair_queues", "audit_remediation_roadmap"):
+                        if replacement:
+                            for row in detail.get(field, []):
+                                row["count"] = replacement
+                        elif field == "audit_remediation_roadmap":
+                            detail.pop(field, None)
+                        else:
+                            detail[field] = []
+                    if replacement:
+                        summary["reason"]["message"] = "2 advisory or review outcome(s) remain"
+                    else:
+                        summary["result_class"], summary["posture"] = "completed", "satisfied"
+                        summary.pop("primary_action", None)
+                        summary["reason"] = {"code": command + ".satisfied", "message": "the selected source-exception posture is satisfied"}
+                    self.replace_report(context, case, detail, summary)
+                    if command == "check":
+                        receipt = json.loads(self.read_member(case["receipt"]))
+                        for counts in (receipt["counts"], receipt["advisory"]):
+                            if replacement:
+                                counts["policy_missing_evidence"] = replacement
+                            else:
+                                del counts["policy_missing_evidence"]
+                        receipt["advisory"]["review_items"] = replacement
+                        receipt["evidence_repair_queues"] = copy.deepcopy(detail["evidence_repair_queues"])
+                        self.replace_member(context, case, "receipt", COLLECT.json_bytes(receipt))
+                    self.assertEqual(case["before"], before)
+                    self.assertEqual(case["after"], after)
+                    self.invalid(context, bundle)
+                self.tearDown()
+                self.setUp()
+
+    def test_other_report_context_counters_cannot_be_defined_by_submitted_detail(self):
+        for summary_key, trend_key in (("policy_baseline_debt", "baseline_debt"),
+                                       ("broken_evidence_links", "broken_evidence_links"),
+                                       ("weak_evidence_references", "weak_evidence_references"),
+                                       (None, "occurrence_headroom")):
+            with self.subTest(counter=trend_key):
+                context, bundle = self.selected(["A.audit.healthy_policy"])
+                case = bundle["cases"][0]
+                detail = json.loads(self.read_member(case["detail"]))
+                summary = json.loads(self.read_member(case["summary"]))
+                if summary_key is not None:
+                    detail["summary"][summary_key] = 1
+                detail["trend"][trend_key] = 1
+                detail["trend"]["review_items"] = 2
+                if trend_key != "baseline_debt":
+                    summary["reason"]["message"] = "2 advisory or review outcome(s) remain"
+                self.replace_report(context, case, detail, summary)
+                self.invalid(context, bundle)
+            self.tearDown()
+            self.setUp()
+
+    @unittest.skipUnless(hasattr(os, "mkfifo"), "native bounded-file controls require Unix FIFO support")
+    def test_native_fifo_inputs_detail_and_binary_members_refuse_without_blocking(self):
+        fifo = self.collection / "unwritten-fifo"
+        os.mkfifo(fifo)
+        self.remove.append(fifo)
+        for field in ("detail", "binary_member"):
+            with self.subTest(member=field):
+                context, bundle = self.selected(["A.audit.healthy_policy"])
+                member = bundle["cases"][0][field] if field == "detail" else bundle[field]
+                member["path"] = fifo.name
+                self.invalid(context, bundle, "regular file", timeout=2)
+        context, bundle = self.selected(["A.audit.healthy_policy"])
+        context_path = self.collection / "fifo-context.json"
+        bundle_path = self.collection / "fifo-bundle.json"
+        context_bytes = COLLECT.json_bytes(context)
+        context_path.write_bytes(context_bytes)
+        bundle["context_digest"] = COLLECT.digest(context_bytes)
+        bundle_path.write_bytes(COLLECT.json_bytes(bundle))
+        for field in ("catalogue", "expected-context", "bundle"):
+            with self.subTest(input=field):
+                inputs = {"catalogue": CATALOGUE, "expected-context": context_path, "bundle": bundle_path}
+                inputs[field] = fifo
+                argv = [str(NATIVE), "command-migration-evidence"]
+                for name, path in inputs.items():
+                    argv.extend(["--" + name, str(path)])
+                observed = subprocess.run(argv, cwd=self.collection, capture_output=True, timeout=2)
+                self.assertNotEqual(observed.returncode, 0, observed.stdout)
+                self.assertIn(b"regular file", observed.stderr)
+        self.assertTrue(fifo.exists())
 
     def test_rendered_inventory_and_scanner_coverage_are_not_conflated(self):
         for command in ("doctor", "audit", "check"):
