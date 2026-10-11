@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -180,6 +181,104 @@ class TransportTests(unittest.TestCase):
             self.assertEqual(observed[key], value)
         self.assertNotIn("GIT_DIR", observed)
         self.assertEqual((self.root / stderr["path"]).read_bytes(), b"\n")
+
+    def test_catalogue_checkout_retains_pinned_bytes_with_autocrlf(self):
+        env = COLLECT.child_environment(self.root / "checkout-home", git_path())
+        checkout = self.root / "checkout"
+        checkout.mkdir()
+        relative = "docs/release/core-command-migration-cases.v1.json"
+
+        def git(*argv, root=checkout):
+            return subprocess.run([str(git_path()), "-C", str(root), "-c", "core.autocrlf=true", *argv],
+                                  env=env, capture_output=True, check=True, timeout=10).stdout
+
+        # Read the committed bytes independently of this host's checkout EOLs.
+        canonical = git("show", "HEAD:" + relative, root=REPOSITORY)
+        self.assertNotIn(b"\r\n", canonical)
+        self.assertIn('"' + COLLECT.digest(canonical) + '"',
+                      (REPOSITORY / "crates/cargo-allow/src/core_command_migration.rs").read_text())
+        copied = checkout / relative
+        copied.parent.mkdir(parents=True)
+        copied.write_bytes(canonical)
+        attributes = REPOSITORY / "docs/release/.gitattributes"
+        if attributes.exists():
+            (copied.parent / ".gitattributes").write_bytes(attributes.read_bytes())
+        ordinary = checkout / "ordinary.txt"
+        ordinary.write_bytes(b"ordinary\n")
+        git("init", "--quiet")
+        git("add", "--", ".")
+        copied.unlink()
+        ordinary.unlink()
+        git("checkout-index", "--all", "--force")
+        self.assertEqual(ordinary.read_bytes(), b"ordinary\r\n")
+        self.assertEqual(copied.read_bytes(), canonical)
+
+    def test_windows_named_executable_mode_keeps_bounded_read_reachable(self):
+        source = self.root / "candidate.exe"
+        source.write_bytes(b"bounded executable bytes\n")
+        original_lstat = os.lstat
+
+        def named_executable(path, *args, **kwargs):
+            observed = original_lstat(path, *args, **kwargs)
+            if os.fspath(path) == str(source):
+                observed = self.changed_metadata(observed, st_mode=observed.st_mode | 0o111)
+            return observed
+
+        # CPython's Windows path stat infers executable bits from the suffix;
+        # its descriptor stat has no filename from which to infer them.
+        with mock.patch.object(COLLECT.os, "name", "nt"), mock.patch.object(
+            COLLECT.os, "lstat", side_effect=named_executable
+        ):
+            self.assertEqual(COLLECT.regular_bytes(source, 1024), source.read_bytes())
+
+    def test_windows_cross_api_projection_preserves_identity_and_permissions(self):
+        source = self.root / "candidate.exe"
+        source.write_bytes(b"unchanged candidate\n")
+        actual = source.stat()
+        fields = {"st_dev": actual.st_dev + 1, "st_ino": actual.st_ino + 1,
+                  "st_mode": actual.st_mode ^ 0o200, "st_nlink": actual.st_nlink + 1,
+                  "st_size": actual.st_size + 1, "st_mtime_ns": actual.st_mtime_ns + 1}
+        for field, value in fields.items():
+            changed = self.changed_metadata(actual, **{field: value})
+            with self.subTest(field=field), mock.patch.object(COLLECT.os, "name", "nt"), \
+                    mock.patch.object(COLLECT.os, "fstat", return_value=changed):
+                with self.assertRaisesRegex(ValueError, "changed before open"):
+                    COLLECT.regular_bytes(source, 1024)
+        self.assertEqual(source.read_bytes(), b"unchanged candidate\n")
+
+    def test_descriptor_changes_during_read_keep_full_mode_identity(self):
+        source = self.root / "candidate.exe"
+        source.write_bytes(b"unchanged candidate\n")
+        actual = source.stat()
+        fields = {"st_dev": actual.st_dev + 1, "st_ino": actual.st_ino + 1,
+                  "st_mode": actual.st_mode ^ 0o100, "st_nlink": actual.st_nlink + 1,
+                  "st_size": actual.st_size + 1, "st_mtime_ns": actual.st_mtime_ns + 1}
+        for field, value in fields.items():
+            changed = self.changed_metadata(actual, **{field: value})
+            with self.subTest(field=field), mock.patch.object(COLLECT.os, "name", "nt"), \
+                    mock.patch.object(COLLECT.os, "fstat", side_effect=[actual, changed]):
+                with self.assertRaisesRegex(ValueError, "changed while reading"):
+                    COLLECT.regular_bytes(source, 1024)
+        self.assertEqual(source.read_bytes(), b"unchanged candidate\n")
+
+    def test_process_transport_retains_explicit_mixed_line_endings(self):
+        env = COLLECT.child_environment(self.root / "byte-home", git_path())
+        process, stdout, stderr = COLLECT.run_process(
+            [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'one\\r\\ntwo\\n'); sys.stderr.buffer.write(b'err\\r\\n')"],
+            self.root, env, 10, COLLECT.Store(self.root), "mixed-lines",
+        )
+        self.assertEqual(process["exit_code"], 0)
+        for member, expected in ((stdout, b"one\r\ntwo\n"), (stderr, b"err\r\n")):
+            self.assertEqual((self.root / member["path"]).read_bytes(), expected)
+            self.assertEqual(member["digest"], COLLECT.digest(expected))
+            self.assertEqual(member["size_bytes"], len(expected))
+
+    @staticmethod
+    def changed_metadata(metadata, **changes):
+        fields = ("st_dev", "st_ino", "st_mode", "st_nlink", "st_size", "st_mtime_ns")
+        values = {name: getattr(metadata, name) for name in fields}
+        values.update(changes)
+        return SimpleNamespace(**values)
 
     def test_one_supplied_binary_invocation_and_fresh_absence_are_retained(self):
         # Python deliberately refuses cargo-allow argv. This tests process
