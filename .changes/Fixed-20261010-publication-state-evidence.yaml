@@ -1,0 +1,2 @@
+kind: Fixed
+body: Refuse missing or unavailable registry observations during package-publication reconciliation even when a supplied checksum matches, preserving malformed-evidence diagnostics and preventing those rows from entering release manifests as exact publications.
