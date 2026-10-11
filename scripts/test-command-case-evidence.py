@@ -263,6 +263,8 @@ prior = target.with_name("retained-prior-owner")
 swapped = False
 def swap(path):
     global swapped
+    if isinstance(path, int):
+        return  # Wrapping an already opened descriptor is not a new path open.
     if not swapped and pathlib.Path(path) == target:
         target.rename(prior)
         os.mkfifo(target)
