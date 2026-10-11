@@ -2,7 +2,7 @@ use super::Member;
 use serde::de::{DeserializeOwned, DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
-use std::fs::{self, File};
+use std::fs::{self, File, OpenOptions};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
@@ -27,7 +27,7 @@ pub(crate) fn read_input(path: &Path) -> Result<Vec<u8>, String> {
             .join(path)
     };
     reject_symlink_components(&absolute)?;
-    read_regular(&absolute, JSON_LIMIT)
+    read_regular(&absolute, JSON_LIMIT, false)
 }
 
 pub(crate) fn validate_new_output(path: &Path) -> Result<PathBuf, String> {
@@ -82,7 +82,7 @@ impl MemberReader {
         if member.size_bytes > JSON_LIMIT {
             return Err(format!("member exceeds size bound: {}", member.path));
         }
-        let bytes = read_regular(&path, JSON_LIMIT)?;
+        let bytes = read_regular(&path, JSON_LIMIT, true)?;
         if bytes.len() as u64 != member.size_bytes
             || allow_core::sha256_v1_bytes(&bytes) != member.digest
         {
@@ -96,10 +96,8 @@ impl MemberReader {
         if member.size_bytes == 0 || member.size_bytes > BINARY_LIMIT {
             return Err("binary member has invalid size".to_string());
         }
-        reject_symlink_components(&path)?;
-        let mut file = File::open(&path).map_err(|error| format!("open binary: {error}"))?;
-        let before = file.metadata().map_err(|error| error.to_string())?;
-        if !before.is_file() || before.len() != member.size_bytes {
+        let (mut file, before) = open_regular(&path, BINARY_LIMIT, true)?;
+        if before.len() != member.size_bytes {
             return Err("binary member is not the declared regular file".to_string());
         }
         let mut hasher = Sha256::new();
@@ -128,7 +126,7 @@ impl MemberReader {
             || !stable_identity(&before, &after)
             || !stable_identity(
                 &after,
-                &fs::metadata(&path).map_err(|error| error.to_string())?,
+                &fs::symlink_metadata(&path).map_err(|error| error.to_string())?,
             )
             || format!("sha256:v1:{digest}") != member.digest
         {
@@ -147,20 +145,6 @@ impl MemberReader {
         }
         let path = self.root.join(&member.path);
         reject_symlink_components(&path)?;
-        // Retained members are independently created copies. A hard link can
-        // alias another role or external owner and is refused where the host
-        // exposes link counts. This is readback, not a filesystem sandbox.
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::MetadataExt;
-            if fs::metadata(&path)
-                .map_err(|error| error.to_string())?
-                .nlink()
-                != 1
-            {
-                return Err("retained member has multiple hard-link owners".to_string());
-            }
-        }
         Ok(path)
     }
 }
@@ -199,7 +183,7 @@ fn reject_symlink_components(path: &Path) -> Result<(), String> {
         current.push(component);
         let metadata = fs::symlink_metadata(&current)
             .map_err(|error| format!("inspect {}: {error}", current.display()))?;
-        if metadata.file_type().is_symlink() {
+        if is_indirection(&metadata) {
             return Err(format!(
                 "symlink input/member refused: {}",
                 current.display()
@@ -209,13 +193,100 @@ fn reject_symlink_components(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn read_regular(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
+fn open_regular(
+    path: &Path,
+    limit: u64,
+    retained_member: bool,
+) -> Result<(File, fs::Metadata), String> {
     reject_symlink_components(path)?;
-    let mut file = File::open(path).map_err(|error| format!("open {}: {error}", path.display()))?;
-    let before = file.metadata().map_err(|error| error.to_string())?;
-    if !before.is_file() || before.len() > limit {
+    // Inspect before open: an unwritten FIFO blocks in an ordinary File::open,
+    // before a post-open size or kind check can protect the caller.
+    let named = fs::symlink_metadata(path).map_err(|error| error.to_string())?;
+    validate_regular(&named, path, limit, retained_member)?;
+    let mut options = OpenOptions::new();
+    options.read(true);
+    configure_regular_open(&mut options)?;
+    let file = options
+        .open(path)
+        .map_err(|error| format!("open {}: {error}", path.display()))?;
+    let opened = file.metadata().map_err(|error| error.to_string())?;
+    validate_regular(&opened, path, limit, retained_member)?;
+    if !stable_identity(&named, &opened) {
+        return Err(format!("file changed before open: {}", path.display()));
+    }
+    Ok((file, opened))
+}
+
+fn validate_regular(
+    metadata: &fs::Metadata,
+    path: &Path,
+    limit: u64,
+    retained_member: bool,
+) -> Result<(), String> {
+    if !metadata.is_file() || is_indirection(metadata) || metadata.len() > limit {
         return Err(format!("not a bounded regular file: {}", path.display()));
     }
+    // Retained members are independent copies. Check both the named file and
+    // its opened handle so an alias introduced around open is also refused.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if retained_member && metadata.nlink() != 1 {
+            return Err("retained member has multiple hard-link owners".to_string());
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = retained_member;
+    Ok(())
+}
+
+fn configure_regular_open(options: &mut OpenOptions) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        // NOFOLLOW uses the repository cache readers' platform flag mapping.
+        // NONBLOCK additionally closes regular-to-FIFO races;
+        // NOFOLLOW keeps a replaced leaf symlink from being followed.
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        options.custom_flags(0o4000 | 0o400000);
+        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+        options.custom_flags(0x4 | 0x100);
+        #[cfg(not(any(
+            target_os = "linux",
+            target_os = "android",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "freebsd"
+        )))]
+        return Err("bounded regular-file opening is unsupported on this Unix target".to_string());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // Inspect a replaced reparse point itself instead of its target.
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    Ok(())
+}
+
+fn is_indirection(metadata: &fs::Metadata) -> bool {
+    if metadata.file_type().is_symlink() {
+        return true;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+        if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return true;
+        }
+    }
+    false
+}
+
+fn read_regular(path: &Path, limit: u64, retained_member: bool) -> Result<Vec<u8>, String> {
+    let (mut file, before) = open_regular(path, limit, retained_member)?;
     let mut bytes = Vec::new();
     Read::by_ref(&mut file)
         .take(limit + 1)
@@ -227,7 +298,7 @@ fn read_regular(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
         || !stable_identity(&before, &after)
         || !stable_identity(
             &after,
-            &fs::metadata(path).map_err(|error| error.to_string())?,
+            &fs::symlink_metadata(path).map_err(|error| error.to_string())?,
         )
     {
         return Err(format!("member changed during read: {}", path.display()));
@@ -239,11 +310,12 @@ fn stable_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
-        if left.dev() != right.dev() || left.ino() != right.ino() {
+        if left.dev() != right.dev() || left.ino() != right.ino() || left.nlink() != right.nlink() {
             return false;
         }
     }
     left.is_file() == right.is_file()
+        && is_indirection(left) == is_indirection(right)
         && left.len() == right.len()
         && left.modified().ok() == right.modified().ok()
 }

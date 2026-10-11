@@ -62,21 +62,35 @@ def reject_symlinks(path):
 
 def regular_bytes(path, limit):
     reject_symlinks(path)
-    with path.open("rb") as handle:
+    named_before = path.lstat()
+    if not stat.S_ISREG(named_before.st_mode) or named_before.st_size > limit:
+        raise ValueError("not a bounded regular file: " + str(path))
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    if os.name == "posix":
+        if not hasattr(os, "O_NONBLOCK") or not hasattr(os, "O_NOFOLLOW"):
+            raise ValueError("bounded regular file opening is unsupported on this host")
+        flags |= os.O_NONBLOCK | os.O_NOFOLLOW
+    # Preflight rejects existing special files. Nonblocking/no-follow open on
+    # Unix also refuses a FIFO or symlink substituted after that inspection.
+    descriptor = os.open(path, flags)
+    with os.fdopen(descriptor, "rb") as handle:
         before = os.fstat(handle.fileno())
         if not stat.S_ISREG(before.st_mode) or before.st_size > limit:
             raise ValueError("not a bounded regular file: " + str(path))
+        if file_identity(named_before) != file_identity(before):
+            raise ValueError("file changed before open: " + str(path))
         data = handle.read(limit + 1)
         after = os.fstat(handle.fileno())
     reject_symlinks(path)
-    named = path.stat()
-    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
-        after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns
-    ) or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != (
-        named.st_dev, named.st_ino, named.st_size, named.st_mtime_ns
-    ) or len(data) != before.st_size:
+    named = path.lstat()
+    if file_identity(before) != file_identity(after) or file_identity(after) != file_identity(named) or len(data) != before.st_size:
         raise ValueError("file changed while reading: " + str(path))
     return data
+
+
+def file_identity(metadata):
+    return (metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_nlink,
+            metadata.st_size, metadata.st_mtime_ns)
 
 
 def safe_relative(value):

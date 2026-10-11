@@ -5,4 +5,7 @@ body: >-
   command details, summaries, check receipts, fixture bytes, and observed
   effects. The complete command denominator and missing runtime bindings stay
   explicit; valid selected observations remain Partial release qualification
-  and do not establish installation or publication authority (#3149).
+  and do not establish installation or publication authority. Readback refuses
+  blocking special-file inputs, unrequested receipts, and coherently rehashed
+  advisory, action-route, or receipt-posture claims that contradict the selected
+  literal fixture and existing native projections (#3149).

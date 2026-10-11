@@ -239,6 +239,13 @@ fn admit_case(
         "case source/config/mode/profile/argv/cwd/environment identity mismatch",
     )?;
     validate_case_context(spec, fixture, expected, binary)?;
+    // These exact argv request a receipt only for check. An unrequested role
+    // is invalid even when a later missing-summary or cancellation branch
+    // would otherwise return an incomplete observation.
+    need(
+        spec.command == "check" || case.receipt.is_none(),
+        "selected command did not request a receipt member",
+    )?;
     need(
         case.before.digest == expected.source_snapshot_digest,
         "stale or foreign source snapshot",

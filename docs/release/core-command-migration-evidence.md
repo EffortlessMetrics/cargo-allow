@@ -66,6 +66,11 @@ oversized members and changed-during-read inputs fail closed. Failed collection
 can leave its newly owned directory and raw observations for diagnosis; it
 does not emit a successful qualification claim.
 
+Inputs are checked for regular-file kind and size before opening. On supported
+Unix hosts, nonblocking/no-follow opens also prevent a leaf changed into a FIFO
+or symlink after inspection from blocking the reader or following that link.
+The opened handle and named file must retain the same identity through readback.
+
 ## Native retained readback
 
 Pin and review `expected-context.json` independently before treating it as the
@@ -99,6 +104,14 @@ summary result/currentness/coverage/actions/effects/next proof, and check
 receipt correspondence. Rehashed foreign detail, contradictory classifications,
 changed source or policy, missing/duplicate/unknown selected cases, member
 aliases, and a shrunken denominator cannot become valid observations.
+Only check owns the requested receipt role; an extra receipt on another
+selected command is invalid even when that command lacks its summary or was
+cancelled. Report advisory and baseline expectations come from the already
+validated literal fixture policy and typed outcomes, not submitted counters.
+The native report and receipt projections check roadmap/repair routes and
+the selected lifecycle, lane and federation metadata. The healthy-policy
+fixture's real missing-evidence advisory stays visible even though that fixture
+does not require evidence to enforce its matching policy entry.
 Hard failures with absent detail retain their native error classification and
 error-receipt readback as incomplete observations; a process that never
 started is a separate incomplete observation.

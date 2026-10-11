@@ -768,33 +768,46 @@ fn report(
                 == usize::from(fixture.policy.is_some()),
         "report findings contradict the exact retained source fixture",
     )?;
-    // Current report JSON omits raw policy-missing-evidence counts when they do
-    // not exceed EvidenceMissing outcomes. Do not invent those omitted facts.
-    need(
-        counts.count(MatchStatus::EvidenceMissing) == 0
-            || detail.summary.contains_key("policy_missing_evidence"),
-        "report lacks the raw policy-evidence count required for summary readback",
-    )?;
+    // These are the exact catalogue bytes already checked against both source
+    // snapshots. Parsing them is a pure readback of the controlled fixture,
+    // not policy discovery, evidence-path I/O or a second command evaluation.
+    // Submitted counters cannot become the expected facts merely because all
+    // submitted artifacts repeat the same erased or invented advisory.
+    let fixture_config = fixture
+        .policy
+        .as_deref()
+        .map(allow_policy::parse_policy_with_reportable_evidence)
+        .transpose()
+        .map_err(|error| format!("report requires a valid literal fixture policy: {error}"))?;
+    let (evidence, baseline_debt) = fixture_report_context(fixture_config.as_ref(), &outcomes)?;
     let facts = inventory_facts(&detail.inventory, Some(&detail.rust_scanner), 0);
     let root = Path::new(&context.root);
     let source_context = crate::reporting::SourceTreeReportContext::new(root, facts);
-    let evidence = crate::EvidenceReportSummary {
-        policy_missing_evidence_entries: count(&detail.summary, "policy_missing_evidence"),
-        broken_evidence_links: count(&detail.summary, "broken_evidence_links"),
-        weak_evidence_references: count(&detail.summary, "weak_evidence_references"),
-        occurrence_headroom_entries: count(&detail.trend, "occurrence_headroom"),
-    };
-    let baseline_debt =
-        count(&detail.summary, "policy_baseline_debt").max(counts.count(MatchStatus::BaselineDebt));
     let mut report_context = source_context.report(Some(baseline_debt));
     evidence.apply_to(&mut report_context);
-    let expected_trend = allow_report::AdvisoryClass::receipt_fields(&counts, report_context)
-        .into_iter()
-        .map(|(class, count)| (class.field_name().to_string(), count))
-        .collect::<BTreeMap<_, _>>();
+    // The existing renderer owns counter presence, roadmap fields, queue
+    // order and command text. Its count/routing projection needs only typed
+    // outcomes and checked context. Finding rows are validated above and in
+    // validate_source_inventory; no unreported scanner identity is fabricated.
+    let native_report = allow_report::render_json_with_context(
+        &spec.command,
+        &[],
+        &outcomes,
+        detail.failed,
+        report_context,
+    );
+    let mut native_report: ReportDetail = decode(native_report.as_bytes())?;
+    native_report
+        .summary
+        .insert("findings".to_string(), detail.findings.len());
     need(
-        detail.trend == expected_trend,
-        "report advisory projection contradicts typed outcomes/context",
+        detail.summary == native_report.summary && detail.trend == native_report.trend,
+        "report counters contradict the literal fixture and native outcome/context projection",
+    )?;
+    need(
+        detail.audit_remediation_roadmap == native_report.audit_remediation_roadmap
+            && detail.evidence_repair_queues == native_report.evidence_repair_queues,
+        "report roadmap or repair queues contradict the native typed projection",
     )?;
     validate_source_inventory(&detail, &outcomes)?;
     let advisory_count = crate::core_command_router::report_advisory_count(&outcomes, evidence);
@@ -825,12 +838,42 @@ fn report(
             binary,
             &outcomes,
             report_context,
+            fixture_config.as_ref(),
         )?;
     }
     Ok(DetailProjection {
         summary, exit_code: i32::from(detail.failed),
         binding_gaps: vec!["detailed report finding rows omit full scanner identities; exact literal fixture snapshots are checked separately without reconstructing unreported finding bytes".to_string()],
     })
+}
+
+fn fixture_report_context(
+    config: Option<&allow_core::AllowConfig>,
+    outcomes: &[MatchOutcome],
+) -> Result<(crate::EvidenceReportSummary, usize), String> {
+    let Some(config) = config else {
+        return Ok((crate::EvidenceReportSummary::default(), 0));
+    };
+    // All currently pinned first-A policies have no evidence references. This
+    // makes zero broken/weak links a checked fixture fact without inspecting
+    // live paths. A future fixture with references needs its own readback.
+    need(
+        config.allow.iter().all(|entry| entry.evidence.is_empty()),
+        "literal fixture has unsupported evidence-reference readback requirements",
+    )?;
+    Ok((
+        crate::EvidenceReportSummary {
+            policy_missing_evidence_entries: allow_report::matched_policy_missing_evidence_entries(
+                config, outcomes,
+            ),
+            broken_evidence_links: 0,
+            weak_evidence_references: 0,
+            occurrence_headroom_entries: allow_report::occurrence_headroom_entries(
+                config, outcomes,
+            ),
+        },
+        allow_report::policy_baseline_debt_entries(config),
+    ))
 }
 
 fn validate_receipt(
@@ -840,6 +883,7 @@ fn validate_receipt(
     binary: &BinaryContext,
     outcomes: &[MatchOutcome],
     report_context: allow_report::ReportContext<'_>,
+    fixture_config: Option<&allow_core::AllowConfig>,
 ) -> Result<(), String> {
     let receipt: Receipt = decode(bytes)?;
     header(
@@ -852,25 +896,6 @@ fn validate_receipt(
         &receipt.claim_boundary,
         &receipt.scanner_limitations,
     )?;
-    // Counts and repair routes have their own established receipt projection.
-    // Read its pure output instead of assuming JSON report keys are identical.
-    let native =
-        allow_report::render_receipt_with_context("check", outcomes, detail.failed, report_context);
-    let native: serde_json::Value = decode(native.as_bytes())?;
-    let expected_counts: BTreeMap<String, usize> = serde_json::from_value(
-        native
-            .get("counts")
-            .ok_or("native receipt lacks counts")?
-            .clone(),
-    )
-    .map_err(|error| error.to_string())?;
-    let expected_queues: Vec<Queue> = serde_json::from_value(
-        native
-            .get("evidence_repair_queues")
-            .ok_or("native receipt lacks repair queues")?
-            .clone(),
-    )
-    .map_err(|error| error.to_string())?;
     need(
         receipt.tool_version == binary.tool_version
             && receipt.mode == "no-new"
@@ -883,36 +908,58 @@ fn validate_receipt(
         .config_path
         .as_ref()
         .map(|path| allow_core::normalize_path(&Path::new(&context.root).join(path)));
+    let fixture_config = fixture_config
+        .ok_or("successful check receipt requires the actual valid selected fixture policy")?;
+    let kinds = detail
+        .findings
+        .iter()
+        .map(|finding| finding.kind.parse::<allow_core::FindingKind>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    let lanes = allow_core::effective_lane_posture_for_findings(&fixture_config.lanes, kinds);
+    let mut native_context = report_context;
+    native_context.mode = Some("no-new");
+    native_context.enforcement = Some("enforcing");
+    native_context.policy_config = config.as_deref();
+    native_context.policy_digest = context.policy_digest.as_deref();
+    native_context.git_sha = Some(&context.fixture_commit);
+    native_context.tool_version = Some(&binary.tool_version);
+    native_context.started_at = Some(&receipt.started_at);
+    native_context.run_id = Some(&receipt.run_id);
+    native_context.lifecycle_posture = Some(
+        if fixture_config.requirements.calendar_expiry_blocks_no_new {
+            allow_report::RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING
+        } else {
+            allow_report::RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE
+        },
+    );
+    native_context.lane_posture = Some(&lanes);
+    // The validated fixture contains no federation configuration and supplies
+    // an explicit policy argv. Reuse the existing typed version/precedence
+    // vocabulary without running federation discovery again.
+    native_context.federation = Some(allow_report::FederationReportContext {
+        federation_version: Some(allow_policy::federation::FEDERATION_VERSION),
+        precedence_applied: Some(allow_policy::federation::PrecedenceTier::CliOverride.as_str()),
+        ledger_contributors: None,
+        divergence_summary: None,
+    });
+    let native =
+        allow_report::render_receipt_with_context("check", outcomes, detail.failed, native_context);
+    let mut native: Receipt = decode(native.as_bytes())?;
+    // This independently checked, lossy finding projection is also compared
+    // with the detail; it is not a claim to reconstruct full scanner identity.
+    native.source_inventory = detail.source_inventory.clone();
     need(
-        receipt.policy_config == config
+        receipt == native
             && receipt.inventory == detail.inventory
-            && receipt.failed == detail.failed
-            && receipt.status == detail.status
-            && receipt.counts == expected_counts
             && receipt.advisory == detail.trend
-            && receipt.source_inventory == detail.source_inventory
-            && receipt.evidence_repair_queues == detail.evidence_repair_queues
-            && receipt.evidence_repair_queues == expected_queues
-            && receipt.diagnostic.is_none(),
-        "same-invocation receipt/detail semantics mismatch",
+            && receipt.evidence_repair_queues == detail.evidence_repair_queues,
+        "same-invocation receipt/detail/fixture semantics or metadata mismatch",
     )?;
     need(
-        matches!(receipt.enforcement.as_str(), "advisory" | "enforcing")
-            && !receipt.started_at.is_empty()
-            && !receipt.run_id.is_empty(),
-        "receipt lacks observed enforcement/run identity",
+        !receipt.started_at.is_empty() && !receipt.run_id.is_empty(),
+        "receipt lacks observed run identity",
     )?;
-    if context.policy_digest.is_some() {
-        need(
-            receipt.enforcement == "enforcing",
-            "selected no-new policy receipt is not enforcing",
-        )?;
-    } else {
-        need(
-            receipt.enforcement == "advisory",
-            "no-policy inspection cannot be promoted to an enforcing pass",
-        )?;
-    }
     Ok(())
 }
 
@@ -1056,10 +1103,6 @@ fn scanner_facts(scanner: &Scanner, fixture: &FixtureSpec) -> Result<(), String>
         ),
         "unsupported scanner generation",
     )
-}
-
-fn count(values: &BTreeMap<String, usize>, key: &str) -> usize {
-    values.get(key).copied().unwrap_or(0)
 }
 
 fn validate_source_inventory(
