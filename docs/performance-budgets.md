@@ -61,6 +61,10 @@ each of these three subprocesses with UTC-day observations and admits their
 comparison only when all observations share one day. A crossed-day attempt
 retains its artifacts, stdout/stderr, day observations and measurement rows in
 an exclusively created `utc-rollover-attempt-N` directory beside the receipt.
+Each archive records all three successful children as `observed_not_admitted`,
+with their actual argv, elapsed times, hashes and byte counts. Its artifact
+paths resolve from that archive's root, while argv retains the paths originally
+dispatched. CI uploads both bounded attempt directories with the receipt.
 The harness then retries all three controls once, replacing only their rows
 and current artifacts; the successful receipt still has 18 unique sample rows.
 Its limitations record the retry and that its `first_audit` timing may benefit

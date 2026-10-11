@@ -1537,10 +1537,12 @@ class FullCheckUtcControls(unittest.TestCase):
             }), encoding="utf-8")
             clock = root / "clock.py"
             clock.write_text(
-                "import json, os\nfrom pathlib import Path\n"
+                "import json, os, sys\nfrom pathlib import Path\n"
                 "root = Path(os.environ['PROBE_ROOT'])\n"
-                "values = json.loads((root / 'case.json').read_text())['days']\n"
-                "counter = root / 'clock-count'\n"
+                "milliseconds = len(sys.argv) > 1\n"
+                "values = ([0, 11, 100, 122, 200, 233, 300, 344, 400, 455, 500, 566] if milliseconds "
+                "else json.loads((root / 'case.json').read_text())['days'])\n"
+                "counter = root / ('ms-count' if milliseconds else 'clock-count')\n"
                 "index = int(counter.read_text()) if counter.exists() else 0\n"
                 "counter.write_text(str(index + 1))\n"
                 "print(values[min(index, len(values) - 1)])\n", encoding="utf-8")
@@ -1594,7 +1596,7 @@ class FullCheckUtcControls(unittest.TestCase):
                 (archive / "canary").write_bytes(b"prior owner\n")
             probe = root / "scripts/perf-budget-smoke.sh"
             probe.write_text(bootstrap + measurement
-                + '\nnow_ms() { printf 0; }\n'
+                + '\nnow_ms() { "${py}" "$PROBE_ROOT/clock.py" ms; }\n'
                 + 'utc_day() { "${py}" "$PROBE_ROOT/clock.py"; }\n'
                 + 'cat "$PROBE_ROOT/prefix.tsv" >>"${metrics}"\n'
                 + family
@@ -1629,11 +1631,28 @@ class FullCheckUtcControls(unittest.TestCase):
         self.assertEqual(len(set(names)), 18)
         for index, call in enumerate(dispatch):
             self.assertEqual(call["argv"][0], "audit" if index % 3 == 0 else "check")
+        self.assertEqual([sample["elapsed_ms"] for sample in receipt["samples"][3:6]],
+                         [11, 22, 33] if calls == 3 else [44, 55, 66])
         for sample in receipt["samples"][3:6]:
             for key, size in (("artifact", "payload_bytes"), ("semantic_artifact", "semantic_payload_bytes")):
                 data = retained[sample[key]["path"]]
                 self.assertEqual(sample[size], len(data))
                 self.assertEqual(sample[key]["sha256"], hashlib.sha256(data).hexdigest())
+
+    def assert_archived_measurements(self, observed, attempt):
+        retained = observed[3]
+        prefix = f"utc-rollover-attempt-{attempt}/"
+        rows = [line.split("\t") for line in retained[prefix + "samples.tsv"].decode().splitlines()]
+        self.assertEqual([row[1] for row in rows], ["first_audit", "warm_check", "full_check_json"])
+        self.assertEqual([int(row[2]) for row in rows], [11 * index for index in range(3 * attempt - 2, 3 * attempt + 1)])
+        for index, row in enumerate(rows):
+            self.assertEqual(len(row), 11)
+            self.assertEqual(row[7], "observed_not_admitted")
+            self.assertEqual(json.loads(row[8]), observed[1][3 * (attempt - 1) + index]["argv"])
+            for path_field, digest_field, size_field in ((3, 4, 9), (5, 6, 10)):
+                data = retained[prefix + row[path_field]]
+                self.assertEqual(row[digest_field], hashlib.sha256(data).hexdigest())
+                self.assertEqual(int(row[size_field]), len(data))
 
     def test_same_day_preserves_one_three_command_attempt(self):
         observed = self.invoke(["2026-10-10"] * 7, ["2026-10-10"] * 3)
@@ -1647,11 +1666,12 @@ class FullCheckUtcControls(unittest.TestCase):
                 observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
                 self.assert_passed(observed, 6)
                 retained = observed[3]
-                audit = json.loads(retained["utc-rollover-attempt-1/first-audit.json"])
+                audit = json.loads(retained["utc-rollover-attempt-1/artifacts/first-audit.json"])
                 self.assertEqual(audit["outcomes"][0]["status"], "matched")
                 self.assertEqual(json.loads(retained["artifacts/first-audit.json"])["outcomes"][0]["status"], "review_due")
                 self.assertIn("utc-rollover-attempt-1/day-observations.tsv", retained)
                 self.assertIn("utc-rollover-attempt-1/samples.tsv", retained)
+                self.assert_archived_measurements(observed, 1)
                 self.assertTrue(any("retry" in item and "warm" in item for item in observed[2]["limitations"]))
 
     def test_rollover_inside_a_command_is_not_admitted_as_a_stable_interval(self):
@@ -1660,6 +1680,7 @@ class FullCheckUtcControls(unittest.TestCase):
             with self.subTest(boundary=boundary):
                 observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
                 self.assert_passed(observed, 6)
+                self.assert_archived_measurements(observed, 1)
 
     def test_repeated_rollover_refuses_after_two_attempts(self):
         old, new, later = "2026-10-10", "2026-10-11", "2026-10-12"
@@ -1672,6 +1693,23 @@ class FullCheckUtcControls(unittest.TestCase):
         self.assertEqual([sample["name"] for sample in receipt["samples"]],
                          ["cache_cold_on", "cache_warm_on", "cache_disabled_off"])
         self.assertIn("utc-rollover-attempt-2/day-observations.tsv", retained)
+        for attempt in (1, 2):
+            self.assert_archived_measurements(observed, attempt)
+
+    def test_ci_upload_selects_all_retained_attempt_files(self):
+        old, new, later = "2026-10-10", "2026-10-11", "2026-10-12"
+        observed = self.invoke([old] * 3 + [new] * 7 + [later] * 4,
+                               [old, new, new, new, later, later])
+        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        upload = workflow.split("name: operator-latency-receipt\n", 1)[1].split("if-no-files-found:", 1)[0]
+        roots = [Path(line.strip()) for line in upload.split("path: |", 1)[1].splitlines() if line.strip()]
+        members = [Path("target/perf-budget") / name for name in observed[3]
+                   if name.startswith("utc-rollover-attempt-")]
+        self.assertEqual(len(members), 26)
+        self.assertTrue(all(any(root == member or root in member.parents for root in roots) for member in members))
+        missing_attempt_roots = [root for root in roots if "utc-rollover-attempt-" not in str(root)]
+        self.assertFalse(any(root == member or root in member.parents
+                             for root in missing_attempt_roots for member in members))
 
     def test_stable_day_corruption_and_nonzero_command_are_not_retried(self):
         day, tomorrow = "2026-10-10", "2026-10-11"

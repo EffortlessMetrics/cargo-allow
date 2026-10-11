@@ -641,6 +641,8 @@ jobs:
           path: |
             target/perf-budget/operator-latency.receipt.json
             target/perf-budget/artifacts/
+            target/perf-budget/utc-rollover-attempt-1/
+            target/perf-budget/utc-rollover-attempt-2/
           if-no-files-found: warn
 
   test:
