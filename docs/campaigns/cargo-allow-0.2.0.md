@@ -5,19 +5,19 @@ Long-lived roadmap: [#2045](https://github.com/EffortlessMetrics/cargo-allow/iss
 
 ## Factual checkpoint — 10 October 2026
 
-Observed basis: [`main@afa6a7d7d870229542de1aac368c852349003fe7`](https://github.com/EffortlessMetrics/cargo-allow/tree/afa6a7d7d870229542de1aac368c852349003fe7),
-tree `fd342bda65cb4d8b07baa2fbd37b8f7a766a1925`, observed at 20:20 UTC. The
-repairs listed below have merged. The exact [post-main pre-gate](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38082535313/job/114302231502)
+Observed basis: [`main@edb7fb7b6b574524ea4f16a27f9d8086af1c4d21`](https://github.com/EffortlessMetrics/cargo-allow/tree/edb7fb7b6b574524ea4f16a27f9d8086af1c4d21),
+tree `2f1c7d488a5b3b0921896e8b22a4cba9253aa157`, observed at 21:15 UTC. The
+repairs listed below have merged. The exact [post-main pre-gate](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38085447307/job/114310869862)
 passed workflow syntax, formatting, the enforcing no-new guard with zero new
 unreceipted findings, and typed pre-gate evaluation. This is bounded source
 evidence; final qualification, the production publication operation and public
 release closeout remain unproven. Independent download and readback of
-[artifact 11681625151](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38082535313/artifacts/11681625151)
+[artifact 11682675934](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38085447307/artifacts/11682675934)
 verified its sole 975-byte `pregate-result.json`, exact head/base binding and
 successful checks. The 644-byte archive SHA-256 is
-`9a8069b3e57fa80990812b695214392edafac485faa215db343db6c3005d96d3`;
+`085e798865b050a6b40f5ebd3a60dc6d4de7f34157aa8fd780eace1e40599052`;
 the member SHA-256 is
-`78838483e6e3a9bd3cf67ad72da11e43416d8d15c01c70ab86db36509e55fd26`.
+`ddd5ad947119b6bbebd0c745343fe2aee228563c1ca741d129a27ac5f34941b6`.
 
 This dated map records sequencing and blocker classification. [#3768](https://github.com/EffortlessMetrics/cargo-allow/issues/3768)
 owns the moving PR queue, exact branch/check state and integration order. Child
@@ -67,6 +67,7 @@ fixture repairs are merged at the checkpoint above:
 | [#4447](https://github.com/EffortlessMetrics/cargo-allow/pull/4447), under #3925/#3927 | The bounded operation-store adapter retains exact record bytes, guarded ref updates, witnesses and archive readback. Actual provider qualification, custody and complete operation composition remain separate. |
 | [#4454](https://github.com/EffortlessMetrics/cargo-allow/pull/4454), under #4453 | The native-root argv test uses an immutable executable, compares exact native bytes and preserves typed spawn/timeout controls. Its Linux writable-script control proves the original ETXTBSY distinction. |
 | [#4444](https://github.com/EffortlessMetrics/cargo-allow/pull/4444), under #3790/#3792 | Shared-registry preflight runs before selected-token environment expressions are evaluated, using the actual runner ordering. The bounded source repair preserves token-free nonpublishing paths; full authorization, custody and rehearsal isolation remain unproven. |
+| [#4442](https://github.com/EffortlessMetrics/cargo-allow/pull/4442), under #4441/#3792 | The rehearsal rejects selected-token key presence before admission/output work and checks again after its phases and final checkout. Owned child environments exclude those keys before retrieving values. This bounded foundation does not establish whole-process credential or mutation prevention. |
 
 Earlier delivered foundations remain available:
 
@@ -95,7 +96,7 @@ handoff. Finish them before trusting a successor final freeze.
 | --- | --- |
 | [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774; PR #4438 | Replace shared-row-count currentness with the existing typed registry evaluator. Bind all 10+3 identities/checksums, independently assembled expected context, a real evaluation clock and a selected freshness window. Missing authority remains NotProven; stale, malformed and provider-failed observations remain non-clean. #3792/#2501 retain the production-input wiring. |
 | [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761), bounded PR #4457 | Require an actual confirming publication state before matching checksums can make a typed package row manifest-ready. Preserve missing/unavailable and malformed-evidence diagnoses in both package classes and the real CLI. The shell manifest generator already refuses those incomplete states; this is a typed library/CLI repair, with broader manifest-role and workflow work still open. |
-| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444 has merged its preflight repair; #4442 remains the separate selected-token lane. Neither establishes every prevention control or a Complete producer. |
+| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The private invocation-boundary slice and one usable qualifying-worker enforcement path remain; neither foundation establishes every prevention control or a Complete producer. |
 
 The delivered #4425 rehearsal admission and #4427 receipt-preservation repairs
 above are foundations for these remaining owners, not duplicate pending tasks.
@@ -104,6 +105,18 @@ The [actual rehearsal producer](../../scripts/release-rehearsal.py) initializes
 all seven zero-mutation prevention flags to false and retains incomplete
 authorization/aggregate posture. Keep those claims unproven until their real
 controls are demonstrated. A stricter consumer cannot manufacture missing proof.
+
+The [bounded #3792 engineering sequence](https://github.com/EffortlessMetrics/cargo-allow/issues/3792#issuecomment-6101981804)
+first guards each existing operation's selected executable, complete argv, root
+and output before the real process adapter, including the nested publisher.
+That slice leaves every prevention flag false. One selected worker must then
+enforce the filesystem, credential, descendant and network boundaries with
+allowed positives and actual forbidden-effect controls. Prefetch inputs outside
+the worker, obtain independently bound registry context, run all eight existing
+phases and seven denial families, and retain the original producer evidence
+through #4452's qualification/custody/replay path. Host/launcher, producer
+workflow/job, retention and observation-window selection remain explicit inputs;
+a fixture or plan alone cannot qualify them.
 
 #4249 remains the separate per-field rehearsal subject-binding test gap. Tests
 for the new admission defects must invoke the real consumer and distinguish the
@@ -172,10 +185,22 @@ parallel when its source/evidence authority does not overlap another writer.
 | --- | --- |
 | #4351 / PR #4433 | Align every expiry projection with the existing law: an entry expires strictly before today; review-after and federation drain boundaries remain inclusive. Preserve lifecycle precedence and prove yesterday/today/tomorrow through supported consumers. |
 | #4345 | Finish outside-inventory evidence classification and the stale-plan diagnostic contract after the merged malformed-policy slice. Keep typed hard-error routing and executable guidance without deriving semantics from prose. |
-| #4334 / PR #4446 | Finish init/propose collision and existing/tracked evidence guidance. The original same-plan-path collision is repaired; the existing bounded PR carries explicit root/config and quoted-path recovery. Its integration and current proof remain separate from the broader inventory-layout advisory. |
+| #4334 / PR #4446 | Finish init/propose collision and existing/tracked evidence guidance. The original same-plan-path collision is repaired; the existing bounded PR carries explicit root/config and quoted-path recovery. Unignored retry output inside an include-untracked inventory and Windows drive-relative plan paths remain recorded follow-ups; the latter is a source-level concern without a native Windows reproduction. |
 | #4335 | Teach the measured initial-red behavior of ordinary repositories under the current default instead of presenting empty init as a generally green adoption path. |
 | #4362 / PR #4443 | Prove root/config propagation through the actual outer hooks CLI, including the unset-root negative control and isolation from inherited fixture state. |
-| #3149 / #3882 | Reconcile the remaining operator grammar and supported help front door against the actual installed commands. |
+| #3149 / #3882 | Preserve delivered command migration and materialize the existing accepted case denominator. Execute exact-installed summary/detail/effect parity first for adopt/doctor/audit/check, then the remaining command families and installed help/reference/completion surfaces. |
+
+The [#3149 execution packet](https://github.com/EffortlessMetrics/cargo-allow/issues/3149#issuecomment-6102117077)
+preserves delivered A–D work and the eighteen accepted dimensions. The existing
+experience field `migration_denominator_digest` has no retained production case
+catalogue to bind. Existing candidate journeys establish their own executed
+scope; they do not execute the additive summaries or every accepted command and
+documentation surface. Retain each expected case, exact installed executable,
+argv/cwd, selected configuration, detailed typed artifact, summary and effect,
+and derive parity from the same evaluation. Missing cases, foreign subjects,
+contradictory summaries and arbitrary replacement detail must remain unsatisfied.
+Feed those original members into #3151/#2501; a stricter experience admission
+reader cannot supply the absent semantic producer.
 
 **Committed-revision reader [#4428](https://github.com/EffortlessMetrics/cargo-allow/issues/4428),
 under #2494/#3300/#1916, is a supported diff-completeness and bounded-input
@@ -224,6 +249,18 @@ target writes remain distinct scopes. Exact installed experience, safety,
 upgrade/rollback and selected-platform evidence under #2501/#3151 still need
 qualification; issue prose cannot waive a required Complete input. Brownfield
 #2467 remains post-first-final by default.
+
+The [#2466 pilot producer/reader packet](https://github.com/EffortlessMetrics/cargo-allow/issues/2466#issuecomment-6102119549)
+identifies the other concrete experience dependency. Its already-specified
+`CoreAdoptionPilotV1` has no current implementation; the three-field experience
+pilot reference validates supplied result/digest declarations without proving
+target identity, executed steps, CI red/repair-green, rollback or friction.
+Implement that existing contract and derive the pilot result from the original
+selected-candidate, target, command and control records. Preserve the #3150
+selection/consent gate: env-check remains an initial-audit proposal, and audit
+alone neither completes a clean pilot nor waives required Complete experience.
+Synthetic controls remain model validation until the selected pilot actually
+runs and its original evidence is admitted.
 
 ## Stage 4 — qualify one settled final subject
 
