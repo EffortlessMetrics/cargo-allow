@@ -25,6 +25,7 @@ mod command_support;
 mod companion;
 mod compat;
 mod completions;
+mod core_command_migration;
 mod core_command_router;
 pub mod core_command_summary;
 mod diff;

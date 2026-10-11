@@ -13,6 +13,7 @@ use crate::{
 mod campaign_closeout_command;
 pub(crate) mod candidate_preparation_command;
 mod ci_pregate_command;
+mod core_command_migration_command;
 mod dependency_graph_delta_command;
 mod dependency_graph_evidence_command;
 mod frozen_subject_lock_command;
@@ -144,6 +145,9 @@ pub(crate) enum CargoAllowCommand {
     ReconcilePackagePublication(
         reconcile_package_publication_command::ReconcilePackagePublicationArgs,
     ),
+    /// Read back retained command-case evidence without executing a candidate.
+    #[command(hide = true)]
+    CommandMigrationEvidence(core_command_migration_command::CommandMigrationEvidenceArgs),
     /// Validate and project release identity for repository automation.
     #[command(hide = true)]
     ReleaseIdentity(release_identity_command::ReleaseIdentityArgs),
@@ -284,6 +288,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Changie(args) => changie::cmd_changie(&args.clone()),
         CargoAllowCommand::ReconcilePackagePublication(args) => {
             reconcile_package_publication_command::cmd_reconcile_package_publication(args)
+        }
+        CargoAllowCommand::CommandMigrationEvidence(args) => {
+            core_command_migration_command::cmd_command_migration_evidence(args)
         }
         CargoAllowCommand::ReleaseIdentity(args) => {
             release_identity_command::cmd_release_identity(args)

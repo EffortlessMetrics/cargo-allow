@@ -411,16 +411,16 @@ fn rust_scanner_completeness(scan: &allow_rust::RustScanResult) -> &'static str 
 ///
 /// Doctor's own JSON artifact supplies the relocation-stable semantic identity,
 /// so the summary never rescans source or reloads policy to describe itself.
-struct DoctorSetupFacts<'a> {
-    config_present: bool,
-    config_valid: Option<bool>,
-    config_diagnostic: Option<&'a str>,
+pub(crate) struct DoctorSetupFacts<'a> {
+    pub(crate) config_present: bool,
+    pub(crate) config_valid: Option<bool>,
+    pub(crate) config_diagnostic: Option<&'a str>,
     /// `None` means evidence health was not probed, not that it is clean.
-    broken_evidence_links: Option<usize>,
-    weak_evidence_references: Option<usize>,
+    pub(crate) broken_evidence_links: Option<usize>,
+    pub(crate) weak_evidence_references: Option<usize>,
 }
 
-fn doctor_summary(
+pub(crate) fn doctor_summary(
     report: allow_report::DoctorReport<'_>,
     root: &Path,
     source_context: &SourceTreeReportContext,

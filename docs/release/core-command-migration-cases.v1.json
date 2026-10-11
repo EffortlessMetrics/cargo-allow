@@ -1,0 +1,1745 @@
+{
+  "schema_id": "cargo-allow.command-migration-catalogue.v1",
+  "schema_version": 1,
+  "authority": [
+    "https://github.com/EffortlessMetrics/cargo-allow/issues/3149",
+    "https://github.com/EffortlessMetrics/cargo-allow/issues/3149#issuecomment-5252812693",
+    "https://github.com/EffortlessMetrics/cargo-allow/issues/3149#issuecomment-5403810615",
+    "https://github.com/EffortlessMetrics/cargo-allow/issues/3149#issuecomment-6102117077",
+    "https://github.com/EffortlessMetrics/cargo-allow/issues/3882"
+  ],
+  "dimensions": [
+    {
+      "id": "complete_satisfied",
+      "description": "A complete satisfied result within the command's actual proof boundary."
+    },
+    {
+      "id": "blocking_finding",
+      "description": "A blocking finding remains distinct from advisory information."
+    },
+    {
+      "id": "advisory",
+      "description": "Advisory information does not become an enforcing gate pass."
+    },
+    {
+      "id": "empty",
+      "description": "No policy, no entries and no filter matches retain their separate meanings."
+    },
+    {
+      "id": "partial",
+      "description": "Partial inventory or scanner coverage cannot look complete."
+    },
+    {
+      "id": "stale",
+      "description": "Stale source, policy, plan or target cannot be reused as current proof."
+    },
+    {
+      "id": "unsupported",
+      "description": "Unsupported subjects or artifact generations remain explicit."
+    },
+    {
+      "id": "invalid",
+      "description": "Invalid configuration or policy remains distinct from instrument failure."
+    },
+    {
+      "id": "instrument_failure",
+      "description": "A tool or artifact I/O failure remains distinct from an evaluated domain outcome."
+    },
+    {
+      "id": "primary_action",
+      "description": "A deterministic primary action retains its exact argv and proof boundary."
+    },
+    {
+      "id": "repository_decision",
+      "description": "Repository judgment is not replaced by an invented preferred action."
+    },
+    {
+      "id": "read_only",
+      "description": "Read-only commands and their observed non-effects remain explicit."
+    },
+    {
+      "id": "candidate_write",
+      "description": "Candidate artifact writes name their exact owned paths."
+    },
+    {
+      "id": "live_mutation",
+      "description": "Live mutations name their exact owned paths and rollback boundary."
+    },
+    {
+      "id": "proof_scope",
+      "description": "Targeted evidence does not stand for full proof."
+    },
+    {
+      "id": "format_parity",
+      "description": "Human, JSON, receipt and summary outputs agree when applicable."
+    },
+    {
+      "id": "terminal_safety",
+      "description": "TTY, non-TTY, quiet and file output preserve terminal safety."
+    },
+    {
+      "id": "installed_outside_checkout",
+      "description": "The selected installed binary is exercised outside the source checkout."
+    }
+  ],
+  "cases": [
+    {
+      "id": "A.adopt.clean_no_policy",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "clean_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Clean source without policy keeps adoption guidance separate from gate proof.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.findings_no_policy",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "findings_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Source findings without policy remain visible; advisory inspection cannot stand for an enforcing pass.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.healthy_policy",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "healthy_policy",
+      "applicability": [
+        "complete_satisfied",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "A healthy policy preserves the command-specific result and next proof; healthy doctor is setup evidence only.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.new_finding",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "new_finding",
+      "applicability": [
+        "blocking_finding",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "One new source finding retains audit/adoption guidance versus check enforcement and doctor setup-only limits.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.invalid_policy",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "invalid_policy",
+      "applicability": [
+        "invalid",
+        "repository_decision",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Invalid policy keeps typed diagnostics, exit behavior and any emitted detail/summary coherent.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.partial_inventory",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "partial_inventory",
+      "applicability": [
+        "partial",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Malformed tracked Rust retains partial coverage and cannot become Complete through an error adapter.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.adopt.instrument_failure",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "instrument_failure",
+      "applicability": [
+        "instrument_failure",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An actual output write failure remains an instrument failure, with absent detail reported rather than invented.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.clean_no_policy",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "clean_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Clean source without policy keeps adoption guidance separate from gate proof.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.findings_no_policy",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "findings_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Source findings without policy remain visible; advisory inspection cannot stand for an enforcing pass.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.healthy_policy",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "healthy_policy",
+      "applicability": [
+        "complete_satisfied",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "A healthy policy preserves the command-specific result and next proof; healthy doctor is setup evidence only.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.new_finding",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "new_finding",
+      "applicability": [
+        "blocking_finding",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "One new source finding retains audit/adoption guidance versus check enforcement and doctor setup-only limits.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.invalid_policy",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "invalid_policy",
+      "applicability": [
+        "invalid",
+        "repository_decision",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Invalid policy keeps typed diagnostics, exit behavior and any emitted detail/summary coherent.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.partial_inventory",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "partial_inventory",
+      "applicability": [
+        "partial",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Malformed tracked Rust retains partial coverage and cannot become Complete through an error adapter.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.instrument_failure",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "instrument_failure",
+      "applicability": [
+        "instrument_failure",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An actual output write failure remains an instrument failure, with absent detail reported rather than invented.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.clean_no_policy",
+      "family": "A",
+      "command": "audit",
+      "scenario": "clean_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Clean source without policy keeps adoption guidance separate from gate proof.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.findings_no_policy",
+      "family": "A",
+      "command": "audit",
+      "scenario": "findings_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Source findings without policy remain visible; advisory inspection cannot stand for an enforcing pass.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.healthy_policy",
+      "family": "A",
+      "command": "audit",
+      "scenario": "healthy_policy",
+      "applicability": [
+        "complete_satisfied",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "A healthy policy preserves the command-specific result and next proof; healthy doctor is setup evidence only.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.new_finding",
+      "family": "A",
+      "command": "audit",
+      "scenario": "new_finding",
+      "applicability": [
+        "blocking_finding",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "One new source finding retains audit/adoption guidance versus check enforcement and doctor setup-only limits.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.invalid_policy",
+      "family": "A",
+      "command": "audit",
+      "scenario": "invalid_policy",
+      "applicability": [
+        "invalid",
+        "repository_decision",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Invalid policy keeps typed diagnostics, exit behavior and any emitted detail/summary coherent.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.partial_inventory",
+      "family": "A",
+      "command": "audit",
+      "scenario": "partial_inventory",
+      "applicability": [
+        "partial",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Malformed tracked Rust retains partial coverage and cannot become Complete through an error adapter.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.audit.instrument_failure",
+      "family": "A",
+      "command": "audit",
+      "scenario": "instrument_failure",
+      "applicability": [
+        "instrument_failure",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An actual output write failure remains an instrument failure, with absent detail reported rather than invented.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.clean_no_policy",
+      "family": "A",
+      "command": "check",
+      "scenario": "clean_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Clean source without policy keeps adoption guidance separate from gate proof.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.findings_no_policy",
+      "family": "A",
+      "command": "check",
+      "scenario": "findings_no_policy",
+      "applicability": [
+        "empty",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Source findings without policy remain visible; advisory inspection cannot stand for an enforcing pass.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.healthy_policy",
+      "family": "A",
+      "command": "check",
+      "scenario": "healthy_policy",
+      "applicability": [
+        "complete_satisfied",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "A healthy policy preserves the command-specific result and next proof; healthy doctor is setup evidence only.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.new_finding",
+      "family": "A",
+      "command": "check",
+      "scenario": "new_finding",
+      "applicability": [
+        "blocking_finding",
+        "advisory",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "One new source finding retains audit/adoption guidance versus check enforcement and doctor setup-only limits.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.invalid_policy",
+      "family": "A",
+      "command": "check",
+      "scenario": "invalid_policy",
+      "applicability": [
+        "invalid",
+        "repository_decision",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Invalid policy keeps typed diagnostics, exit behavior and any emitted detail/summary coherent.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.partial_inventory",
+      "family": "A",
+      "command": "check",
+      "scenario": "partial_inventory",
+      "applicability": [
+        "partial",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Malformed tracked Rust retains partial coverage and cannot become Complete through an error adapter.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.instrument_failure",
+      "family": "A",
+      "command": "check",
+      "scenario": "instrument_failure",
+      "applicability": [
+        "instrument_failure",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An actual output write failure remains an instrument failure, with absent detail reported rather than invented.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.doctor.partial_require_clean",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "partial_require_clean",
+      "applicability": [
+        "partial",
+        "primary_action",
+        "read_only",
+        "proof_scope",
+        "format_parity",
+        "installed_outside_checkout"
+      ],
+      "obligation": "The strict exit route retains the same partial diagnosis as the relaxed route.",
+      "first_family_collector": true
+    },
+    {
+      "id": "A.check.human_receipt",
+      "family": "A",
+      "command": "check",
+      "scenario": "human_receipt",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "The receipt-only human route emits a fresh requested common summary without adding stdout detail.",
+      "first_family_collector": false
+    },
+    {
+      "id": "A.adopt.presentation",
+      "family": "A",
+      "command": "adopt",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual human, JSON, quiet, file and TTY/non-TTY invocations retain result/action/effect/terminal-safety parity; a JSON case does not satisfy this obligation. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "A.doctor.presentation",
+      "family": "A",
+      "command": "doctor",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual human, JSON, quiet, file and TTY/non-TTY invocations retain result/action/effect/terminal-safety parity; a JSON case does not satisfy this obligation. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "A.audit.presentation",
+      "family": "A",
+      "command": "audit",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual human, JSON, quiet, file and TTY/non-TTY invocations retain result/action/effect/terminal-safety parity; a JSON case does not satisfy this obligation. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "A.check.presentation",
+      "family": "A",
+      "command": "check",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual human, JSON, quiet, file and TTY/non-TTY invocations retain result/action/effect/terminal-safety parity; a JSON case does not satisfy this obligation. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.list.empty",
+      "family": "B",
+      "command": "list",
+      "scenario": "empty",
+      "applicability": [
+        "empty",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Distinguish an empty ledger, no filter matches and unavailable or partial evidence.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.list.action",
+      "family": "B",
+      "command": "list",
+      "scenario": "action",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Preserve the exact primary action, alternatives and ambiguity without inventing repository judgment.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.list.partial",
+      "family": "B",
+      "command": "list",
+      "scenario": "partial",
+      "applicability": [
+        "partial",
+        "stale",
+        "unsupported",
+        "instrument_failure",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Partial, unavailable, stale and unsupported inputs remain non-conclusive.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.list.presentation",
+      "family": "B",
+      "command": "list",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual render/terminal routes retain action and safe output parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.explain.empty",
+      "family": "B",
+      "command": "explain",
+      "scenario": "empty",
+      "applicability": [
+        "empty",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Distinguish an empty ledger, no filter matches and unavailable or partial evidence.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.explain.action",
+      "family": "B",
+      "command": "explain",
+      "scenario": "action",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Preserve the exact primary action, alternatives and ambiguity without inventing repository judgment.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.explain.partial",
+      "family": "B",
+      "command": "explain",
+      "scenario": "partial",
+      "applicability": [
+        "partial",
+        "stale",
+        "unsupported",
+        "instrument_failure",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Partial, unavailable, stale and unsupported inputs remain non-conclusive.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.explain.presentation",
+      "family": "B",
+      "command": "explain",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual render/terminal routes retain action and safe output parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.why.empty",
+      "family": "B",
+      "command": "why",
+      "scenario": "empty",
+      "applicability": [
+        "empty",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Distinguish an empty ledger, no filter matches and unavailable or partial evidence.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.why.action",
+      "family": "B",
+      "command": "why",
+      "scenario": "action",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Preserve the exact primary action, alternatives and ambiguity without inventing repository judgment.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.why.partial",
+      "family": "B",
+      "command": "why",
+      "scenario": "partial",
+      "applicability": [
+        "partial",
+        "stale",
+        "unsupported",
+        "instrument_failure",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Partial, unavailable, stale and unsupported inputs remain non-conclusive.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.why.presentation",
+      "family": "B",
+      "command": "why",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual render/terminal routes retain action and safe output parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.worklist.empty",
+      "family": "B",
+      "command": "worklist",
+      "scenario": "empty",
+      "applicability": [
+        "empty",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Distinguish an empty ledger, no filter matches and unavailable or partial evidence.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.worklist.action",
+      "family": "B",
+      "command": "worklist",
+      "scenario": "action",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Preserve the exact primary action, alternatives and ambiguity without inventing repository judgment.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.worklist.partial",
+      "family": "B",
+      "command": "worklist",
+      "scenario": "partial",
+      "applicability": [
+        "partial",
+        "stale",
+        "unsupported",
+        "instrument_failure",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Partial, unavailable, stale and unsupported inputs remain non-conclusive.",
+      "first_family_collector": false
+    },
+    {
+      "id": "B.worklist.presentation",
+      "family": "B",
+      "command": "worklist",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Separate actual render/terminal routes retain action and safe output parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.init.preview",
+      "family": "C",
+      "command": "init",
+      "scenario": "preview",
+      "applicability": [
+        "read_only",
+        "repository_decision",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual init --dry-run output and unchanged policy bytes, including existing-file keep/overwrite guidance and repository judgments (init_args.rs; init.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.init.alternate_config",
+      "family": "C",
+      "command": "init",
+      "scenario": "alternate_config",
+      "applicability": [
+        "candidate_write",
+        "live_mutation",
+        "repository_decision",
+        "proof_scope",
+        "format_parity"
+      ],
+      "obligation": "Retain init --config <new in-root candidate path> as an actual new-file write with that exact ownership. There is no separate --write candidate switch; alternate-path bootstrap does not approve or install the live policy (init_args.rs; init.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.init.apply",
+      "family": "C",
+      "command": "init",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual default/selected-config init creation and --force replacement, including native mutation receipt/backup and supported rollback verification. Distinguish the written path from a qualified policy or full repository proof (init.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.init.stale_conflict",
+      "family": "C",
+      "command": "init",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.init.presentation",
+      "family": "C",
+      "command": "init",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.propose.preview",
+      "family": "C",
+      "command": "propose",
+      "scenario": "preview",
+      "applicability": [
+        "read_only",
+        "repository_decision",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain the actual proposal without --write on stdout and its separate summary; source and selected policy remain unchanged. This is proposed baseline_debt requiring repository judgment (propose_args.rs; propose.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.propose.candidate",
+      "family": "C",
+      "command": "propose",
+      "scenario": "candidate",
+      "applicability": [
+        "candidate_write",
+        "live_mutation",
+        "repository_decision",
+        "proof_scope",
+        "format_parity"
+      ],
+      "obligation": "Retain actual propose --write <new in-root path> candidate bytes, exact owned path and summary. Candidate baseline_debt is not live exception approval (propose.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.propose.replacement_boundary",
+      "family": "C",
+      "command": "propose",
+      "scenario": "replacement_boundary",
+      "applicability": [
+        "candidate_write",
+        "live_mutation",
+        "repository_decision",
+        "proof_scope",
+        "format_parity"
+      ],
+      "obligation": "Retain supported propose --write <path> --force replacement and backup/recovery semantics, including whether the requested path is the current ledger. There is no --update/apply subcommand; the candidate-oriented summary cannot be credited as approval or an enforcing full check (propose_args.rs; propose.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.propose.stale_conflict",
+      "family": "C",
+      "command": "propose",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.propose.presentation",
+      "family": "C",
+      "command": "propose",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add.preview",
+      "family": "C",
+      "command": "add",
+      "scenario": "preview",
+      "applicability": [
+        "read_only",
+        "repository_decision",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Preview preserves exact current inputs and requires any repository judgment without live mutation.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add.candidate",
+      "family": "C",
+      "command": "add",
+      "scenario": "candidate",
+      "applicability": [
+        "candidate_write",
+        "primary_action",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Candidate-only output names exact owned paths and does not claim live policy approval.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add.apply",
+      "family": "C",
+      "command": "add",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "The actual live apply and rollback path preserve ownership and targeted-versus-full proof.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add.stale_conflict",
+      "family": "C",
+      "command": "add",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add.presentation",
+      "family": "C",
+      "command": "add",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add_from_plan.unsupported_preview",
+      "family": "C",
+      "command": "add_from_plan",
+      "scenario": "unsupported_preview",
+      "applicability": [
+        "unsupported",
+        "read_only",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "The current add --from-plan route requires --update and conflicts with --dry-run. A preview request is an explicit unsupported/no-mutation refusal; creation and preview of the candidate remain the existing why --plan linkage (add_args.rs). No nonexistent add-from-plan preview receives coverage credit.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add_from_plan.plan_linkage",
+      "family": "C",
+      "command": "add_from_plan",
+      "scenario": "plan_linkage",
+      "applicability": [
+        "candidate_write",
+        "stale",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain the actual why --plan candidate and its exact add --from-plan --update consumption. The add-from-plan route conflicts with --write and does not produce a separate candidate policy; refusal of that combination preserves bytes (add_args.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add_from_plan.apply",
+      "family": "C",
+      "command": "add_from_plan",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "The actual live apply and rollback path preserve ownership and targeted-versus-full proof.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add_from_plan.stale_conflict",
+      "family": "C",
+      "command": "add_from_plan",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.add_from_plan.presentation",
+      "family": "C",
+      "command": "add_from_plan",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.refresh.preview",
+      "family": "C",
+      "command": "refresh",
+      "scenario": "preview",
+      "applicability": [
+        "read_only",
+        "repository_decision",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual refresh --allow-id/--all preview (default or --dry-run) with selected IDs and unchanged policy; do not equate targeted refresh with a full gate (refresh_args.rs; refresh.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.refresh.report_output_boundary",
+      "family": "C",
+      "command": "refresh",
+      "scenario": "report_output_boundary",
+      "applicability": [
+        "read_only",
+        "format_parity",
+        "proof_scope"
+      ],
+      "obligation": "Retain --output as a preview/result report file and verify the policy remains unchanged without --write. Refresh has no separate candidate-policy output; a report file cannot satisfy a candidate-policy obligation (refresh_args.rs; refresh.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.refresh.apply",
+      "family": "C",
+      "command": "refresh",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual refresh --write selected/all last_seen edits, mutation receipt/backup, expected-digest conflict refusal and supported rollback readback; preserve targeted-versus-full proof (refresh.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.refresh.stale_conflict",
+      "family": "C",
+      "command": "refresh",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.refresh.presentation",
+      "family": "C",
+      "command": "refresh",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.prune.preview",
+      "family": "C",
+      "command": "prune",
+      "scenario": "preview",
+      "applicability": [
+        "read_only",
+        "repository_decision",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual prune --stale/--allow-id preview (default or --dry-run), selected stale IDs and unchanged policy (prune_args.rs; prune.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.prune.report_output_boundary",
+      "family": "C",
+      "command": "prune",
+      "scenario": "report_output_boundary",
+      "applicability": [
+        "read_only",
+        "format_parity",
+        "proof_scope"
+      ],
+      "obligation": "Retain --output as a preview/result report file and verify the policy remains unchanged without --write. Prune has no separate candidate-policy output; a report file cannot satisfy a candidate-policy obligation (prune_args.rs; prune.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.prune.apply",
+      "family": "C",
+      "command": "prune",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain actual prune --write selected stale-entry removal, mutation receipt/backup, stale/conflict refusal and supported rollback readback; targeted removal is not a full gate (prune.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.prune.stale_conflict",
+      "family": "C",
+      "command": "prune",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.prune.presentation",
+      "family": "C",
+      "command": "prune",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.migrate.unsupported_preview",
+      "family": "C",
+      "command": "migrate",
+      "scenario": "unsupported_preview",
+      "applicability": [
+        "unsupported",
+        "read_only",
+        "format_parity"
+      ],
+      "obligation": "Current migrate always names a policy output and exposes no --dry-run. Retain refusal/no-mutation for an unsupported preview flag; review uses an explicit separate candidate output. Do not invent a no-write migrate invocation (migrate_args.rs; migrate.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.migrate.candidate",
+      "family": "C",
+      "command": "migrate",
+      "scenario": "candidate",
+      "applicability": [
+        "candidate_write",
+        "live_mutation",
+        "repository_decision",
+        "proof_scope",
+        "format_parity"
+      ],
+      "obligation": "Retain actual migrate --output/--out <new candidate path>, exact path effects, preserved inputs and validation/quarantine warnings. Existing supported external candidate compatibility is explicit; candidate bytes are not live-policy approval (migrate.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.migrate.apply",
+      "family": "C",
+      "command": "migrate",
+      "scenario": "apply",
+      "applicability": [
+        "live_mutation",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain migrate --update atomic replacement or --force backup/replacement at the selected output, their mutual exclusion, validated live-input rules and supported rollback. Preserve unrelated entries and targeted-versus-full proof (migrate.rs).",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.migrate.stale_conflict",
+      "family": "C",
+      "command": "migrate",
+      "scenario": "stale_conflict",
+      "applicability": [
+        "stale",
+        "invalid",
+        "instrument_failure",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Stale or conflicting input refuses mutation and preserves unrelated bytes.",
+      "first_family_collector": false
+    },
+    {
+      "id": "C.migrate.presentation",
+      "family": "C",
+      "command": "migrate",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Retain each actually supported human/JSON/receipt/summary and quiet/file/terminal route with the same evaluated outcome and effects; unsupported format/flag combinations need source-backed refusal controls, not invented parity. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "D.diff.exact_range",
+      "family": "D",
+      "command": "diff",
+      "scenario": "exact_range",
+      "applicability": [
+        "complete_satisfied",
+        "blocking_finding",
+        "advisory",
+        "proof_scope",
+        "read_only",
+        "installed_outside_checkout"
+      ],
+      "obligation": "An exact base/head diff preserves full versus targeted proof and policy posture.",
+      "first_family_collector": false
+    },
+    {
+      "id": "D.diff.partial_stale",
+      "family": "D",
+      "command": "diff",
+      "scenario": "partial_stale",
+      "applicability": [
+        "partial",
+        "stale",
+        "unsupported",
+        "invalid",
+        "instrument_failure",
+        "read_only",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Partial or stale range evidence and unsupported/invalid inputs fail closed.",
+      "first_family_collector": false
+    },
+    {
+      "id": "D.diff.presentation",
+      "family": "D",
+      "command": "diff",
+      "scenario": "presentation",
+      "applicability": [
+        "format_parity",
+        "terminal_safety",
+        "primary_action",
+        "read_only",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Diff detail, summary and receipt agree across actual output routes. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.entrypoint",
+      "family": "E",
+      "command": "help",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Checked Start, Operate, Change policy, Advanced, Experimental and Internal groups agree; hidden internal commands stay hidden from normal help but explicit help remains reachable, including command-migration-evidence. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.adopt_docs.entrypoint",
+      "family": "E",
+      "command": "adopt_docs",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "README, onboarding and adoption instructions agree with checked help and command support. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.reference.entrypoint",
+      "family": "E",
+      "command": "reference",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Generated Markdown and JSON references retain exact support, action, write and proof metadata. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.man.entrypoint",
+      "family": "E",
+      "command": "man",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Generated manpages agree with the checked command surface and support metadata. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.completions.entrypoint",
+      "family": "E",
+      "command": "completions",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Completion scripts preserve registered commands and hiding without alias drift. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.package.entrypoint",
+      "family": "E",
+      "command": "package",
+      "scenario": "entrypoint",
+      "applicability": [
+        "primary_action",
+        "repository_decision",
+        "proof_scope",
+        "format_parity",
+        "terminal_safety",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Installed package README/rustdoc/help and reference artifacts agree without channel or support promotion. Human summaries remain bounded and color-independent; cancelled and malformed evidence remains non-green.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.internal_leakage",
+      "family": "E",
+      "command": "help",
+      "scenario": "internal_leakage",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Internal and release-evidence commands do not leak into the normal first-screen inventory; explicit internal help remains reachable. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.extraction_leakage",
+      "family": "E",
+      "command": "help",
+      "scenario": "extraction_leakage",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Extraction/parity engineering surfaces remain Internal and hidden from the normal path. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.sibling_requirement",
+      "family": "E",
+      "command": "help",
+      "scenario": "sibling_requirement",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Experimental sibling tools never become prerequisites for basic cargo-allow operation. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.spec_requirement",
+      "family": "E",
+      "command": "help",
+      "scenario": "spec_requirement",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Optional specification/campaign mechanisms never become basic source-ledger prerequisites. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.maturity_disagreement",
+      "family": "E",
+      "command": "help",
+      "scenario": "maturity_disagreement",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Checked help, generated references and package metadata cannot disagree about maturity or support. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.hidden_reachability",
+      "family": "E",
+      "command": "help",
+      "scenario": "hidden_reachability",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Every documented hidden/internal command remains reachable through explicit help, including command-migration-evidence. Source authority: #3882 required negative controls; remains unexecuted by the A collector. Include the hidden command-migration-evidence reader: absent from normal help/completions, reachable explicit help, accurate file-reading scope and Partial qualification boundary.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.alias_compatibility",
+      "family": "E",
+      "command": "help",
+      "scenario": "alias_compatibility",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Grouping and hiding cannot silently rename, remove or change a compatible alias. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.write_posture",
+      "family": "E",
+      "command": "help",
+      "scenario": "write_posture",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Every mutating entrypoint retains its actual candidate/live write posture and owned paths. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.forbidden_proof",
+      "family": "E",
+      "command": "help",
+      "scenario": "forbidden_proof",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Help and examples cannot claim compilation, runtime, coverage, unsafe or release proof from source-syntax evidence. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.package_help_mismatch",
+      "family": "E",
+      "command": "help",
+      "scenario": "package_help_mismatch",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Installed package README/rustdoc/help and reference/completion surfaces stay synchronized. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.published_channel_snippets",
+      "family": "E",
+      "command": "help",
+      "scenario": "published_channel_snippets",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Published-channel installation snippets are labeled accurately and do not promote a source build or prospective channel. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    },
+    {
+      "id": "E.help.first_screen_crowding",
+      "family": "E",
+      "command": "help",
+      "scenario": "first_screen_crowding",
+      "applicability": [
+        "terminal_safety",
+        "format_parity",
+        "proof_scope",
+        "installed_outside_checkout"
+      ],
+      "obligation": "Advanced, Experimental and Internal groups do not crowd the bounded normal first screen. Source authority: #3882 required negative controls; remains unexecuted by the A collector.",
+      "first_family_collector": false
+    }
+  ],
+  "claim_boundary": "These are stable obligation groups for the accepted A-C, diff-D and #3882 denominator. The 18 dimensions are applicability dimensions, not 18 tests or an automatic Cartesian product. Each grouped later obligation must be expanded into retained actual executions before it can be satisfied. The first-family collector implements only the explicitly marked A fixtures; their semantic validity never establishes complete migration or installed release qualification. Provider/wrapper, configuration, artifact-set, profile and consumer dependencies retain their existing authorities.",
+  "first_family_fixtures": {
+    "clean_no_policy": {
+      "source": "pub fn fixture() {}\n",
+      "policy": null,
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 0,
+      "policy_valid": null,
+      "check_fails": false
+    },
+    "findings_no_policy": {
+      "source": "pub fn fixture(value: Option<u8>) -> u8 { value.unwrap() }\n",
+      "policy": null,
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 1,
+      "parse_errors": 0,
+      "policy_valid": null,
+      "check_fails": false
+    },
+    "healthy_policy": {
+      "source": "pub fn fixture() {}\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\ncalendar_expiry_blocks_no_new = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 0,
+      "policy_valid": true,
+      "check_fails": false
+    },
+    "new_finding": {
+      "source": "pub fn fixture(value: Option<u8>) -> u8 { value.unwrap() }\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\ncalendar_expiry_blocks_no_new = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 1,
+      "parse_errors": 0,
+      "policy_valid": true,
+      "check_fails": true
+    },
+    "invalid_policy": {
+      "source": "pub fn fixture() {}\n",
+      "policy": "not = [valid\n",
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 0,
+      "policy_valid": false,
+      "check_fails": true
+    },
+    "partial_inventory": {
+      "source": "pub fn broken( {\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\ncalendar_expiry_blocks_no_new = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 1,
+      "policy_valid": true,
+      "check_fails": true
+    },
+    "partial_require_clean": {
+      "source": "pub fn broken( {\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\ncalendar_expiry_blocks_no_new = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": true,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 1,
+      "policy_valid": true,
+      "check_fails": true
+    },
+    "instrument_failure": {
+      "source": "pub fn broken( {\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\ncalendar_expiry_blocks_no_new = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": false,
+      "output_failure": true,
+      "source_findings": 0,
+      "parse_errors": 1,
+      "policy_valid": true,
+      "check_fails": true
+    }
+  }
+}
