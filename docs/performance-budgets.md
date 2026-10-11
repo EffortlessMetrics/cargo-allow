@@ -50,11 +50,23 @@ outcome objects in both reports must preserve the required fields and field
 types from the existing report schema. The complete check report must then
 match the audit report after excluding the command name and the audit-only
 remediation roadmap; no finding/outcome fields, array order, links, messages or
-scanner context are discarded for comparison. This adds no command invocation
-or sample row. Missing controls, malformed details, substituted content or an
+scanner context are discarded for comparison. A comparable attempt adds no
+further command invocation or sample row. Missing controls, malformed details, substituted content or an
 exceeded ceiling produce an instrument-failure receipt. These checks and
 artifact hashing occur after the timed child exits; the sample measures command
 execution and output production.
+
+Audit and check evaluate lifecycle dates independently. The harness brackets
+each of these three subprocesses with UTC-day observations and admits their
+comparison only when all observations share one day. A crossed-day attempt
+retains its artifacts, stdout/stderr, day observations and measurement rows in
+an exclusively created `utc-rollover-attempt-N` directory beside the receipt.
+The harness then retries all three controls once, replacing only their rows
+and current artifacts; the successful receipt still has 18 unique sample rows.
+Its limitations record the retry and that its `first_audit` timing may benefit
+from warmer filesystem caches. A second crossover refuses. Command failures,
+exceeded ceilings and same-day content mismatches still fail immediately;
+lifecycle statuses and messages are never normalized away.
 
 Run the local smoke with the default debug profile, or select release to match
 the hosted profile:

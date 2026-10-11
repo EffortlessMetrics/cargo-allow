@@ -26,6 +26,8 @@ receipt="${output_dir}/operator-latency.receipt.json"
 metrics="${output_dir}/.operator-latency.samples.tsv"
 hard_ceiling_ms="${HARD_CEILING_MS:-60000}"
 failure_reason=""
+PERF_UTC_RETRIES=0
+export PERF_UTC_RETRIES
 
 mkdir -p "${ROOT}/target" "${artifact_dir}"
 : >"${metrics}"
@@ -83,6 +85,21 @@ now_ms() {
     printf '%s' "$(( value / 1000000 ))"
   else
     "${py}" -c 'import time; print(time.time_ns() // 1_000_000)'
+  fi
+}
+
+utc_day() {
+  "${py}" -c 'from datetime import datetime, timezone; print(datetime.now(timezone.utc).date().isoformat())'
+}
+
+observe_full_check_day() {
+  [[ -n "${full_check_day:-}" ]] || return 0
+  local day
+  day="$(utc_day)" || fail "cannot read UTC day for full-check controls"
+  [[ "${day}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "invalid UTC day for full-check controls"
+  printf '%s\t%s\t%s\n' "$1" "$2" "${day}" >>"${run_dir}/full-check-day.tsv"
+  if [[ "${day}" != "${full_check_day}" ]]; then
+    full_check_day_changed=1
   fi
 }
 
@@ -474,6 +491,12 @@ payload = {
     ],
 }
 agent_loop_path = os.environ.get("PERF_AGENT_LOOP_SUMMARY", "")
+utc_retries = int(os.environ.get("PERF_UTC_RETRIES", "0"))
+if utc_retries:
+    payload["limitations"].append(
+        f"full-check UTC retry count: {utc_retries}; discarded attempts are retained under "
+        "utc-rollover-attempt-N; retry timings, including first_audit, may have warmer filesystem caches"
+    )
 if agent_loop_path and Path(agent_loop_path).is_file():
     payload["agent_loop"] = json.loads(Path(agent_loop_path).read_text(encoding="utf-8"))
 if failure:
@@ -574,6 +597,7 @@ measure() {
   rm -f "${artifact}" "${semantic}"
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
   argv_json="$(encode_argv "$@")"
+  observe_full_check_day "${name}" "before"
   start="$(now_ms)"
   local rc=0
   "${binary}" "$@" >"${stdout_path}" 2>"${stderr_path}" || rc=$?
@@ -583,6 +607,7 @@ measure() {
     fail "${name} command failed (exit ${rc})"
   fi
   end="$(now_ms)"
+  observe_full_check_day "${name}" "after"
   elapsed=$(( end - start ))
   [[ -s "${artifact}" ]] || fail "${name} did not produce ${artifact_rel}"
   [[ -s "${semantic}" ]] || fail "${name} did not produce ${semantic_rel}"
@@ -599,6 +624,12 @@ measure() {
   digest="$(sha256_file "${artifact}")"
   semantic_digest="$(sha256_file "${semantic}")"
   assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
+  # A report pair evaluated across UTC days is not a comparable sample.
+  # Keep ordinary command/marker/ceiling failures above as immediate failures.
+  if [[ "${full_check_day_changed:-0}" == "1" ]]; then
+    log "${name}: UTC day changed; withholding this attempt from admission"
+    return 0
+  fi
   if [[ "${name}" == "full_check_json" ]]; then
     validate_full_check_json "${artifact}" "${semantic}" \
       "${artifact_dir}/warm-check.receipt.json" "${artifact_dir}/first-audit.json"
@@ -804,27 +835,58 @@ compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-receipt.json" \
 compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-receipt.json" \
   "${artifact_dir}/cache_disabled_off.semantic-receipt.json" "on/off receipt"
 
-log "measuring first process audit"
-measure "cold" "first_audit" \
-  "artifacts/first-audit.json" "artifacts/first-audit.json" \
-  '"status": "passed"' \
-  audit --format json --output "${artifact_dir}/first-audit.json"
+measure_full_check_family() {
+  local full_check_day full_check_day_changed attempt retained name
+  local prefix="${run_dir}/full-check-prefix.tsv"
+  cp "${metrics}" "${prefix}" || fail "cannot retain pre-existing measurement rows"
+  for attempt in 1 2; do
+    full_check_day="$(utc_day)" || fail "cannot read UTC day for full-check controls"
+    [[ "${full_check_day}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || fail "invalid UTC day for full-check controls"
+    full_check_day_changed=0
+    printf 'attempt\t%s\t%s\n' "${attempt}" "${full_check_day}" >"${run_dir}/full-check-day.tsv"
 
-log "measuring warm no-new check"
-measure "warm" "warm_check" \
-  "artifacts/warm-check.md" "artifacts/warm-check.receipt.json" \
-  '"failed": false' \
-  check --mode no-new --format markdown \
-  --receipt "${artifact_dir}/warm-check.receipt.json" \
-  --output "${artifact_dir}/warm-check.md"
+    log "measuring first process audit"
+    measure "cold" "first_audit" \
+      "artifacts/first-audit.json" "artifacts/first-audit.json" \
+      '"status": "passed"' \
+      audit --format json --output "${artifact_dir}/first-audit.json"
 
-log "measuring warm full check JSON report and receipt"
-measure "warm" "full_check_json" \
-  "artifacts/full-check.json" "artifacts/full-check.receipt.json" \
-  '"failed": false' \
-  check --mode no-new --format json \
-  --receipt "${artifact_dir}/full-check.receipt.json" \
-  --output "${artifact_dir}/full-check.json"
+    log "measuring warm no-new check"
+    measure "warm" "warm_check" \
+      "artifacts/warm-check.md" "artifacts/warm-check.receipt.json" \
+      '"failed": false' \
+      check --mode no-new --format markdown \
+      --receipt "${artifact_dir}/warm-check.receipt.json" \
+      --output "${artifact_dir}/warm-check.md"
+
+    log "measuring warm full check JSON report and receipt"
+    measure "warm" "full_check_json" \
+      "artifacts/full-check.json" "artifacts/full-check.receipt.json" \
+      '"failed": false' \
+      check --mode no-new --format json \
+      --receipt "${artifact_dir}/full-check.receipt.json" \
+      --output "${artifact_dir}/full-check.json"
+
+    [[ "${full_check_day_changed}" == "1" ]] || return 0
+    retained="${output_dir}/utc-rollover-attempt-${attempt}"
+    mkdir "${retained}" || fail "cannot exclusively retain UTC rollover attempt ${attempt}"
+    for name in first-audit.json warm-check.md warm-check.receipt.json full-check.json full-check.receipt.json; do
+      cp "${artifact_dir}/${name}" "${retained}/${name}" || fail "cannot retain UTC rollover artifact ${name}"
+    done
+    for name in first_audit warm_check full_check_json; do
+      cp "${run_dir}/${name}.stdout" "${run_dir}/${name}.stderr" "${retained}/" || \
+        fail "cannot retain UTC rollover command output ${name}"
+    done
+    cp "${run_dir}/full-check-day.tsv" "${retained}/day-observations.tsv" || fail "cannot retain UTC observations"
+    cp "${metrics}" "${retained}/samples.tsv" || fail "cannot retain UTC rollover measurement rows"
+    cp "${prefix}" "${metrics}" || fail "cannot restore pre-existing measurement rows"
+    [[ "${attempt}" == "1" ]] || fail "UTC day changed during both full-check attempts; use a fresh output directory to rerun"
+    PERF_UTC_RETRIES=1
+    log "UTC day changed; retained attempt ${attempt}; retrying all three controls (filesystem caches may be warmer)"
+  done
+}
+
+measure_full_check_family
 
 log "measuring targeted why"
 measure "targeted" "why_fast_path" \
