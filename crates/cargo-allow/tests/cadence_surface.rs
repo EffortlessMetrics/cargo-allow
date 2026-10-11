@@ -420,7 +420,7 @@ fn cadence_boundary_pins_review_and_expiry_transitions() {
     assert_eq!(
         class_at("2026-09-20"),
         ("review_overdue".to_string(), Some(0)),
-        "D itself is overdue (inclusive review boundary, #2008)"
+        "D itself is overdue (inclusive review boundary)"
     );
     assert_eq!(
         class_at("2026-10-24"),
@@ -430,7 +430,7 @@ fn cadence_boundary_pins_review_and_expiry_transitions() {
     assert_eq!(
         class_at("2026-10-25"),
         ("expiring".to_string(), Some(0)),
-        "E itself is NOT expired (strict expiry boundary, #2008)"
+        "E itself is NOT expired (strict policy-entry expiry boundary, #4351)"
     );
     assert_eq!(
         class_at("2026-10-26"),
