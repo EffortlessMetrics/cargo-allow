@@ -1205,7 +1205,7 @@ assert boundary, "missing production measurement end"
 measurement = "\nmeasure() {\n" + body + "\n}\n"
 _, boundary, tail = script.partition('log "measuring warm full check JSON report and receipt"\n')
 assert boundary, "missing full JSON matrix row"
-matrix_row, boundary, _ = tail.partition('\nlog "measuring targeted why"')
+matrix_row, boundary, _ = tail.partition('\n\n')
 assert boundary, "missing full JSON matrix row end"
 REPORT_LIMIT, RECEIPT_LIMIT = 8388608, 16384
 STATUSES = (
@@ -1494,6 +1494,209 @@ class FullCheckJsonControls(unittest.TestCase):
         self.assertEqual(len(assignments), 1)
         self.assertEqual(set(ast.literal_eval(assignments[0].value)), set(schema["$defs"]["match_status"]["enum"]))
         self.assertEqual(set(STATUSES), set(schema["$defs"]["match_status"]["enum"]))
+
+
+class FullCheckUtcControls(unittest.TestCase):
+    def invoke(self, days, command_days, *, corrupt=False, command_exit=0,
+               prior_archive=False):
+        if "\nmeasure_full_check_family() {\n" in script:
+            body = script.split("\nmeasure_full_check_family() {\n", 1)[1].split("\n}\n", 1)[0]
+            family = "\nmeasure_full_check_family() {\n" + body + "\n}\nmeasure_full_check_family\n"
+        else:
+            # The unmodified orchestration is also executable as the RED control.
+            family = script.split('log "measuring first process audit"\n', 1)[1].split(
+                '\nlog "measuring targeted why"', 1)[0]
+        with tempfile.TemporaryDirectory(prefix="perf-utc-window-") as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / "docs/schemas").mkdir(parents=True)
+            (root / "docs/schemas/report.schema.json").write_bytes(REPORT_SCHEMA)
+            output = root / "receipt/artifacts"
+            output.mkdir(parents=True)
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir(parents=True)
+            views = {}
+            for day in set(command_days):
+                values = command_artifacts()
+                if day != "2026-10-10":
+                    for value in (values[0], values[3]):
+                        value["outcomes"][0].update(status="review_due", message="review is due")
+                        value["summary"].update(matched=1, review_due=1)
+                        for category in ("by_kind", "by_family"):
+                            value["source_inventory"][category][0].update(matched=0, review_items=1)
+                    for value in (values[1], values[2]):
+                        value["counts"].update(matched=1, review_due=1)
+                        value["advisory"].update(review_due=1)
+                        value["source_inventory"] = copy.deepcopy(values[0]["source_inventory"])
+                if corrupt:
+                    values[0]["findings"][0]["path"] = "docs/substituted.md"
+                views[day] = dict(zip(("report", "receipt", "reference", "audit"), values))
+            (root / "case.json").write_text(json.dumps({
+                "days": days, "command_days": command_days, "views": views,
+                "command_exit": command_exit,
+            }), encoding="utf-8")
+            clock = root / "clock.py"
+            clock.write_text(
+                "import json, os\nfrom pathlib import Path\n"
+                "root = Path(os.environ['PROBE_ROOT'])\n"
+                "values = json.loads((root / 'case.json').read_text())['days']\n"
+                "counter = root / 'clock-count'\n"
+                "index = int(counter.read_text()) if counter.exists() else 0\n"
+                "counter.write_text(str(index + 1))\n"
+                "print(values[min(index, len(values) - 1)])\n", encoding="utf-8")
+            child = root / "child.py"
+            child.write_text(
+                "import json, os, sys\nfrom pathlib import Path\n"
+                "root = Path(os.environ['PROBE_ROOT']); args = sys.argv[1:]\n"
+                "case = json.loads((root / 'case.json').read_text())\n"
+                "trace = root / 'dispatch.jsonl'\n"
+                "index = len(trace.read_text().splitlines()) if trace.exists() else 0\n"
+                "day = case['command_days'][min(index, len(case['command_days']) - 1)]\n"
+                "with trace.open('a') as log: log.write(json.dumps({'argv': args, 'day': day}) + '\\n')\n"
+                "if case['command_exit'] and index == 1: sys.exit(case['command_exit'])\n"
+                "view = case['views'][day]; out = Path(args[args.index('--output') + 1])\n"
+                "if args[0] == 'audit': out.write_text(json.dumps(view['audit'], indent=2) + '\\n')\n"
+                "else:\n"
+                "    machine = args[args.index('--format') + 1] == 'json'\n"
+                "    out.write_text(json.dumps(view['report'], indent=2) + '\\n' if machine else 'passed\\n')\n"
+                "    receipt = Path(args[args.index('--receipt') + 1])\n"
+                "    receipt.write_text(json.dumps(view['receipt' if machine else 'reference'], indent=2) + '\\n')\n",
+                encoding="utf-8")
+            candidate.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                                 + shlex.quote(str(child)) + ' "$@"\n', encoding="utf-8")
+            candidate.chmod(0o755)
+            tools = root / "tools"
+            tools.mkdir()
+            for name in ("cargo", "rustc"):
+                (tools / name).write_text("#!/bin/sh\nexit 127\n", encoding="utf-8")
+                (tools / name).chmod(0o755)
+            # Fifteen already-controlled rows isolate preservation of the full
+            # denominator; only the three real production calls execute here.
+            preceding = [("cold", "cache_cold_on"), ("warm", "cache_warm_on"),
+                         ("targeted", "cache_disabled_off")]
+            following = [("targeted", name) for name in ("why_fast_path", "worklist", "diff_base")]
+            following += [("warm", "warm_audit"), ("targeted", "worklist_summary"),
+                          ("targeted", "check_summary")]
+            following += [("agent_loop", name) for name in (
+                "agent_loop_worklist", "agent_loop_why_plan", "agent_loop_add", "agent_loop_check",
+                "hooks_wrapped_check", "hooks_bare_check")]
+            (output / "controlled-existing.txt").write_bytes(b"controlled row\n")
+            existing_digest = hashlib.sha256(b"controlled row\n").hexdigest()
+            def rows(names):
+                return "".join("\t".join((phase, name, "0", "artifacts/controlled-existing.txt",
+                    existing_digest, "artifacts/controlled-existing.txt", existing_digest,
+                    "passed", "[]", "15", "15")) + "\n" for phase, name in names)
+            (root / "prefix.tsv").write_text(rows(preceding), encoding="utf-8")
+            (root / "suffix.tsv").write_text(rows(following), encoding="utf-8")
+            archive = root / "receipt/utc-rollover-attempt-1"
+            if prior_archive:
+                archive.mkdir()
+                (archive / "canary").write_bytes(b"prior owner\n")
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(bootstrap + measurement
+                + '\nnow_ms() { printf 0; }\n'
+                + 'utc_day() { "${py}" "$PROBE_ROOT/clock.py"; }\n'
+                + 'cat "$PROBE_ROOT/prefix.tsv" >>"${metrics}"\n'
+                + family
+                + '\ncat "$PROBE_ROOT/suffix.tsv" >>"${metrics}"\n'
+                + 'write_receipt "pass" ""\n', encoding="utf-8")
+            environment = os.environ.copy()
+            environment.update({"PATH": str(tools) + os.pathsep + environment["PATH"],
+                "CARGO_ALLOW_BIN": "target/selected/cargo-allow", "PROFILE": "debug",
+                "OUTPUT_DIR": str(root / "receipt"), "HARD_CEILING_MS": "60000",
+                "PYTHON3": sys.executable, "CDPATH": "", "PERF_AGENT_LOOP_SUMMARY": "",
+                "PROBE_ROOT": str(root)})
+            result = subprocess.run(["bash", str(probe)], cwd=root, env=environment,
+                                    capture_output=True, text=True, timeout=30)
+            calls = [json.loads(line) for line in (root / "dispatch.jsonl").read_text().splitlines()]
+            receipt = json.loads((root / "receipt/operator-latency.receipt.json").read_text())
+            retained = {str(path.relative_to(root / "receipt")): path.read_bytes()
+                        for path in (root / "receipt").rglob("*") if path.is_file()}
+            print(f"UTC control: exit={result.returncode} calls={len(calls)} rows={len(receipt['samples'])}")
+            self.assertFalse(list((root / "target").glob("cargo-allow-operator-latency.*")))
+            return result, calls, receipt, retained, preceding, following
+
+    def assert_passed(self, observed, calls):
+        result, dispatch, receipt, retained, preceding, following = observed
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(dispatch), calls)
+        self.assertEqual(receipt["result"], "pass")
+        names = [sample["name"] for sample in receipt["samples"]]
+        self.assertEqual(names, [name for _, name in preceding]
+                         + ["first_audit", "warm_check", "full_check_json"]
+                         + [name for _, name in following])
+        self.assertEqual(len(names), 18)
+        self.assertEqual(len(set(names)), 18)
+        for index, call in enumerate(dispatch):
+            self.assertEqual(call["argv"][0], "audit" if index % 3 == 0 else "check")
+        for sample in receipt["samples"][3:6]:
+            for key, size in (("artifact", "payload_bytes"), ("semantic_artifact", "semantic_payload_bytes")):
+                data = retained[sample[key]["path"]]
+                self.assertEqual(sample[size], len(data))
+                self.assertEqual(sample[key]["sha256"], hashlib.sha256(data).hexdigest())
+
+    def test_same_day_preserves_one_three_command_attempt(self):
+        observed = self.invoke(["2026-10-10"] * 7, ["2026-10-10"] * 3)
+        self.assert_passed(observed, 3)
+        self.assertFalse(any(name.startswith("utc-rollover-") for name in observed[3]))
+
+    def test_rollover_between_commands_retries_all_three_and_retains_attempt(self):
+        old, new = "2026-10-10", "2026-10-11"
+        for boundary, command_days in ((3, [old, new, new]), (5, [old, old, new])):
+            with self.subTest(boundary=boundary):
+                observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
+                self.assert_passed(observed, 6)
+                retained = observed[3]
+                audit = json.loads(retained["utc-rollover-attempt-1/first-audit.json"])
+                self.assertEqual(audit["outcomes"][0]["status"], "matched")
+                self.assertEqual(json.loads(retained["artifacts/first-audit.json"])["outcomes"][0]["status"], "review_due")
+                self.assertIn("utc-rollover-attempt-1/day-observations.tsv", retained)
+                self.assertIn("utc-rollover-attempt-1/samples.tsv", retained)
+                self.assertTrue(any("retry" in item and "warm" in item for item in observed[2]["limitations"]))
+
+    def test_rollover_inside_a_command_is_not_admitted_as_a_stable_interval(self):
+        old, new = "2026-10-10", "2026-10-11"
+        for boundary, command_days in ((2, [new, new, new]), (6, [old, old, new])):
+            with self.subTest(boundary=boundary):
+                observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
+                self.assert_passed(observed, 6)
+
+    def test_repeated_rollover_refuses_after_two_attempts(self):
+        old, new, later = "2026-10-10", "2026-10-11", "2026-10-12"
+        observed = self.invoke([old] * 3 + [new] * 7 + [later] * 4,
+                               [old, new, new, new, later, later])
+        result, calls, receipt, retained, _, _ = observed
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(len(calls), 6)
+        self.assertIn("UTC day changed during both full-check attempts", result.stderr)
+        self.assertEqual([sample["name"] for sample in receipt["samples"]],
+                         ["cache_cold_on", "cache_warm_on", "cache_disabled_off"])
+        self.assertIn("utc-rollover-attempt-2/day-observations.tsv", retained)
+
+    def test_stable_day_corruption_and_nonzero_command_are_not_retried(self):
+        day, tomorrow = "2026-10-10", "2026-10-11"
+        for options, expected_calls, diagnostic in (
+                ({"corrupt": True}, 3, "first_audit semantic content"),
+                ({"command_exit": 1}, 2, "command failed (exit 1)"),
+                ({"command_exit": 2}, 2, "command failed (exit 2)")):
+            with self.subTest(options=options):
+                dates = [day] * 7 if options.get("corrupt") else [day] * 3 + [tomorrow] * 4
+                observed = self.invoke(dates, [day, tomorrow, tomorrow] if options.get("command_exit") else [day] * 3,
+                                       **options)
+                self.assertEqual(observed[0].returncode, 1)
+                self.assertIn(diagnostic, observed[0].stderr)
+                self.assertEqual(len(observed[1]), expected_calls)
+                self.assertFalse(any(name.startswith("utc-rollover-") for name in observed[3]))
+
+    def test_archive_collision_preserves_prior_owner_and_refuses(self):
+        old, new = "2026-10-10", "2026-10-11"
+        observed = self.invoke([old] * 3 + [new] * 11, [old, new, new, new, new, new], prior_archive=True)
+        self.assertEqual(observed[0].returncode, 1)
+        self.assertIn("cannot exclusively retain UTC rollover attempt", observed[0].stderr)
+        self.assertEqual(len(observed[1]), 3)
+        self.assertEqual(observed[3]["utc-rollover-attempt-1/canary"], b"prior owner\n")
+        self.assertEqual([name for name in observed[3] if name.startswith("utc-rollover-")],
+                         ["utc-rollover-attempt-1/canary"])
 
 
 if __name__ == "__main__":
