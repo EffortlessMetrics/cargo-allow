@@ -157,7 +157,13 @@ fn lifecycle_status(
 }
 
 fn entry_lifecycle_status(entry: &AllowEntry, today: SimpleDate) -> Option<MatchStatus> {
-    if SimpleDate::has_passed_date_str(entry.lifecycle.expires.as_deref(), today) {
+    if entry
+        .lifecycle
+        .expires
+        .as_deref()
+        .and_then(SimpleDate::parse)
+        .is_some_and(|expires| expires.policy_expiry_has_passed(today))
+    {
         return Some(MatchStatus::Expired);
     }
     if SimpleDate::is_due_date_str(entry.lifecycle.review_after.as_deref(), today) {
