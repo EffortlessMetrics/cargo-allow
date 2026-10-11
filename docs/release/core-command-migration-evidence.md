@@ -31,7 +31,7 @@ python3 scripts/command-case-evidence.py \
   --output-dir /outside/checkouts/new-collection \
   --collection-id caller-selected-observation \
   --tool-version 0.2.0 \
-  --source-generation <full-source-object-id> \
+  --source-generation FULL_SOURCE_OBJECT_ID \
   --provenance source_build
 ```
 

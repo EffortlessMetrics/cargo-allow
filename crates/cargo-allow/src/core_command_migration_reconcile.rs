@@ -574,7 +574,9 @@ fn snapshot(
                 None
             }
             _ => {
-                return Err("symlink or special-file mutation in the controlled fixture".to_string());
+                return Err(
+                    "symlink or special-file mutation in the controlled fixture".to_string()
+                );
             }
         };
         need(

@@ -118,6 +118,11 @@ impl MemberReader {
             hasher.update(chunk);
         }
         let after = file.metadata().map_err(|error| error.to_string())?;
+        let digest = hasher
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
         reject_symlink_components(&path)?;
         if total != member.size_bytes
             || !stable_identity(&before, &after)
@@ -125,7 +130,7 @@ impl MemberReader {
                 &after,
                 &fs::metadata(&path).map_err(|error| error.to_string())?,
             )
-            || format!("sha256:v1:{:x}", hasher.finalize()) != member.digest
+            || format!("sha256:v1:{digest}") != member.digest
         {
             return Err("binary member changed or has the wrong digest".to_string());
         }

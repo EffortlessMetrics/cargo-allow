@@ -872,12 +872,14 @@
               "enum": [
                 "completed",
                 "findings",
+                "not_proven",
                 "partial_data",
-                "stale_evidence",
-                "malformed_input",
+                "stale_input",
                 "unsupported",
+                "malformed_input",
                 "instrument_failure",
-                "not_applicable"
+                "cancelled",
+                "conflict"
               ]
             },
             {
@@ -891,8 +893,7 @@
               "enum": [
                 "complete",
                 "partial",
-                "unknown",
-                "not_applicable"
+                "unknown"
               ]
             },
             {

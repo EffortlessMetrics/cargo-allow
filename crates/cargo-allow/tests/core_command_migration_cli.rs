@@ -1,5 +1,6 @@
 //! Actual retained transport, native readback and packaged-command boundaries.
 
+use effortless_repo_protocol::{CompletenessV1, ResultClassV1};
 use serde_json::Value;
 use std::fs;
 use std::io;
@@ -52,6 +53,33 @@ fn core_command_migration_native_transport_and_admission() -> Result<(), String>
     )
     .map_err(|error| error.to_string())?;
     let validator = jsonschema::validator_for(&schema).map_err(|error| error.to_string())?;
+    let classes = serde_json::to_value([
+        ResultClassV1::Completed,
+        ResultClassV1::Findings,
+        ResultClassV1::NotProven,
+        ResultClassV1::PartialData,
+        ResultClassV1::StaleInput,
+        ResultClassV1::Unsupported,
+        ResultClassV1::MalformedInput,
+        ResultClassV1::InstrumentFailure,
+        ResultClassV1::Cancelled,
+        ResultClassV1::Conflict,
+    ])
+    .map_err(|error| error.to_string())?;
+    let completeness = serde_json::to_value([
+        CompletenessV1::Complete,
+        CompletenessV1::Partial,
+        CompletenessV1::Unknown,
+    ])
+    .map_err(|error| error.to_string())?;
+    require(
+        schema.pointer("/$defs/case_admission/properties/observed_result_class/anyOf/0/enum")
+            == Some(&classes)
+            && schema
+                .pointer("/$defs/case_admission/properties/observed_completeness/anyOf/0/enum")
+                == Some(&completeness),
+        "evidence schema vocabulary differs from the native protocol",
+    )?;
     for name in ["catalogue", "context", "bundle", "admission"] {
         let value: Value = serde_json::from_slice(
             &fs::read(observations.join(format!("{name}.json")))
