@@ -14,3 +14,9 @@ allow_ids = ["allow-11346"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:5f22f9538ef05a056b7e8b75e3531b833f1ba4783d51dfa33a25b20e29455d81"
 reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority. Id and fingerprint refreshed after id-collision-free renumbering during the main merge."
+
+[[records]]
+allow_ids = ["allow-1117"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:99e4c0e3034d41f6bbae881f63d05f60a015311ca6d6d9629db046eafc4f31cf"
+reason = "receipt for docs/release/final-freeze-qualification-v1.md, the retained freeze qualification evidence (#2501 journey)"
