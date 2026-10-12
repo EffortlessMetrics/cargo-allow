@@ -34,6 +34,12 @@ also accepts hyphenated aliases such as `stale-allow` for artifact-local
 `work-*` queue IDs.
 Use `--baseline-debt` or `--broad-scope` for the common generated-debt and
 wildcard-scope advisory queues without needing the underlying item-kind names.
+When narrowing a broad scope means hand-authoring a non-Rust entry, follow
+the four authoring requirements in
+[Authoring a non-Rust entry](../source-exception-ledger.md#authoring-a-non-rust-entry)
+(one scope only, selector-glob agreement, finding-family equality, and the
+extension `target_fingerprint`); `cargo-allow propose` output already
+satisfies them and is safe to copy.
 Use `--status <status>` for match-status slices such as `new`, `stale`,
 `expired`, `review_due`, or `baseline_debt`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.

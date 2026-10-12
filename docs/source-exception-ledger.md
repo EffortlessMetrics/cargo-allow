@@ -934,6 +934,52 @@ The current non-Rust family vocabulary is intentionally explicit:
 `generated_code`, `editor_extension`, `package_metadata`, `shell_script`,
 `python_tool`, `javascript_tool`, `configuration`, and `unknown_non_rust`.
 
+### Authoring a non-Rust entry
+
+Hand-authoring a `non_rust_file` entry has four requirements that are easy to
+miss. The fastest correct route is `cargo-allow propose`, which generates
+entries that already satisfy all four; copy its shape when writing by hand.
+
+1. **One scope only.** Set exactly one of `path` (a literal source-tree path
+   with no wildcard tokens) or `glob` (a source-tree pattern). A `path`
+   containing `*` is rejected with
+   `error[E0003_INVALID_POLICY]: ... use glob for source-tree patterns`.
+2. **Selector glob must agree with the scope.** When `[allow.selector]` sets
+   `glob`, it must match the entry `path`, or one of the two scopes must be
+   omitted; otherwise policy validation rejects the entry.
+3. **`family` equals the finding family.** Use the family the scanner
+   reported for the file (see the vocabulary above and the per-file families
+   in `cargo-allow audit` output), for example `documentation` for Markdown
+   docs or `configuration` for TOML config. A plausible-but-wrong family such
+   as `configuration` for a `.md` file never matches, and the entry reports
+   `stale` with no further hint.
+4. **`selector.target_fingerprint` is the file extension.** Use the
+   extension without a dot, for example `toml`, `md`, or `yml`, together with
+   `selector.ast_kind = "tracked_file"`.
+
+A minimal matching entry for one Markdown file:
+
+```toml
+[[allow]]
+id = "allow-0100"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/guide.md"
+owner = "docs"
+classification = "reviewed_exception"
+reason = "Reviewed guide retained as governed documentation surface."
+created = "2026-10-12"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+```
+
+If a new entry immediately reports `stale`, check requirements 3 and 4
+first: a family or extension mismatch is the usual cause.
+
+
 Human and Markdown audit reports summarize the non-Rust file inventory by
 status and family, then list the scanned file paths. This is a review surface,
 not a separate schema contract; the stable machine-readable report remains the
