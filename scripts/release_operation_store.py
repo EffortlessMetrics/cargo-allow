@@ -198,6 +198,28 @@ class HttpResponse:
     body: bytes = field(repr=False)
 
 
+@dataclass(frozen=True, repr=False)
+class ArtifactMemberReadback:
+    """One checked logical member; this view is not an authority DTO."""
+
+    logical_id: str
+    role: str
+    path: str
+    data: bytes
+    storage_locator: str
+
+
+@dataclass(frozen=True, repr=False)
+class ArtifactReadback:
+    """Completed immutable-object read, preserving its original envelope."""
+
+    artifact_id: int
+    transfer_bytes: bytes
+    created_at_utc: str
+    retention_expiry_utc: str
+    members: tuple[ArtifactMemberReadback, ...]
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req: Any, fp: Any, code: int, msg: str,
                          headers: Any, newurl: str) -> None:
@@ -854,6 +876,60 @@ class GitHubReleaseStore:
         not an individual job; attempt/job reads corroborate that receipt and
         cannot replace it. This method does not assert maintainer approval.
         """
+        files, _ = self._read_artifact(transfer, artifact_id=artifact_id,
+                                      expected_producer=expected_producer)
+        return files
+
+    def read_artifact_members(
+        self, transfer: Mapping[str, Any], *, artifact_id: int,
+        expected_producer: Mapping[str, Any],
+        members: Mapping[str, tuple[str, str]],
+    ) -> ArtifactReadback:
+        """Bind the complete provider inventory to independently selected IDs.
+
+        The numeric provider identity stays in its original envelope. Logical
+        replay IDs form a total one-to-one file map. Retention comes from the
+        stable before/after metadata, never from a supplied verified flag.
+        """
+        _require(isinstance(transfer, Mapping) and isinstance(members, Mapping)
+                 and isinstance(expected_producer, Mapping),
+                 "invalid_input", "selected member mapping required")
+        inventory = self._inventory(transfer)
+        selected = dict(members)
+        paths: set[str] = set()
+        _require(len(selected) == len(inventory), "mismatch",
+                 "logical member mapping does not cover the complete inventory")
+        for logical_id, entry in selected.items():
+            _require(isinstance(logical_id, str) and bool(_TOKEN.fullmatch(logical_id))
+                     and isinstance(entry, tuple) and len(entry) == 2,
+                     "invalid_input", "malformed logical member mapping")
+            role, path = entry
+            _require(isinstance(role, str) and bool(_TOKEN.fullmatch(role))
+                     and isinstance(path, str)
+                     and bool(re.fullmatch(r"[A-Za-z0-9._/-]+", path)),
+                     "invalid_input", "noncanonical logical member identity")
+            self._archive_path(path)
+            _require(path in inventory and path not in paths, "mismatch",
+                     "missing or duplicate logical member path")
+            paths.add(path)
+        # Snapshot caller-owned records before a credential or transport hook.
+        envelope = _object(_json_bytes(dict(transfer)))
+        producer = _object(_json_bytes(dict(expected_producer)))
+        files, metadata = self._read_artifact(
+            envelope, artifact_id=artifact_id, expected_producer=producer)
+        return ArtifactReadback(
+            artifact_id, _json_bytes(envelope), metadata["created_at"],
+            metadata["expires_at"], tuple(
+                ArtifactMemberReadback(
+                    logical_id, role, path, files[path],
+                    f"github-actions-artifact://{REPOSITORY}/{artifact_id}/{path}",
+                ) for logical_id, (role, path) in sorted(selected.items())
+            ),
+        )
+
+    def _read_artifact(self, transfer: Mapping[str, Any], *, artifact_id: int,
+                       expected_producer: Mapping[str, Any]
+                       ) -> tuple[Mapping[str, bytes], dict[str, Any]]:
         _require(_integer(artifact_id)
                  and isinstance(transfer, Mapping)
                  and isinstance(expected_producer, Mapping)
@@ -955,4 +1031,4 @@ class GitHubReleaseStore:
         for key in ("id", "name", "created_at", "expires_at", "workflow_run", "digest"):
             _require(after.get(key) == metadata.get(key),
                      "mismatch", "artifact metadata changed during download")
-        return files
+        return files, metadata

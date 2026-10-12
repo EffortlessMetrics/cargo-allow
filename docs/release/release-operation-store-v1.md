@@ -99,6 +99,16 @@ transfer envelope must remain outside the immutable bytes it describes; it
 cannot be embedded retroactively in its own upload. This adapter reads an
 already finalized object and does not mint or upload an authorization.
 
+`read_artifact_members()` is an additional read-only view for #2501. It runs
+the same complete immutable-object read and returns the original numeric
+envelope, checked metadata creation/expiry, and immutable member bytes. The
+caller independently selects every logical member's role and exact archive
+path. Missing members, duplicate paths or aliases refuse before credential or
+HTTP access. It does not re-key the envelope or create a custody authority.
+The original `read_artifact()` interface and its admission order are preserved.
+See [final freeze qualification](final-freeze-qualification-v1.md) for the
+actual prepare/retain/readback/typed-compose/replay consumer and its bounds.
+
 ## Atomic append and witness
 
 The supported interface is deliberately split:
