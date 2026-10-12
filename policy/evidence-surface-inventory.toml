@@ -57,7 +57,6 @@ claim_boundary = "The typed candidate artifact contract is present and structura
 
 [[surfaces]]
 id = "exact-candidate-interop"
-owner_issue = 3357
 semantic_authority = "candidate interoperability"
 path = "crates/cargo-allow/tests/exact_candidate_interop.rs"
 subject = "candidate interop smoke"
@@ -261,7 +260,6 @@ claim_boundary = "The classifier's local cases are checked; a real rehearsal is 
 
 [[surfaces]]
 id = "release-rehearsal-incident-corpus"
-owner_issue = 3751
 semantic_authority = "release rehearsal incident corpus"
 path = "crates/cargo-allow/tests/release_rehearsal_incident_corpus.rs"
 subject = "release incident fixtures"
@@ -295,7 +293,6 @@ claim_boundary = "The documented journey is checked; a completed installation jo
 
 [[surfaces]]
 id = "release-rehearsal"
-owner_issue = 3751
 semantic_authority = "release rehearsal"
 path = "crates/cargo-allow/tests/release_rehearsal.rs"
 subject = "scripts/release-rehearsal.py"
@@ -584,7 +581,6 @@ claim_boundary = "Support wording is checked; package, platform, and external ev
 
 [[surfaces]]
 id = "rc1-publication-incident-reconciliation"
-owner_issue = 3759
 semantic_authority = "rc.1 publication incident reconciliation"
 path = "crates/cargo-allow/tests/rc_publication_incident.rs"
 subject = "docs/release/evidence/rc1-publication-incident.v1.json"
@@ -635,7 +631,6 @@ claim_boundary = "Fixtures prove mutation-history semantics; no live release cre
 
 [[surfaces]]
 id = "github-release-checkpoint-v1"
-owner_issue = 3933
 semantic_authority = "remotely durable GitHub Release checkpoints"
 path = "crates/cargo-allow/tests/github_release_checkpoint.rs"
 subject = "CargoAllowGitHubReleaseCheckpointV1"
@@ -652,7 +647,6 @@ claim_boundary = "Fixtures prove remote-durability semantics; no live uploads, p
 
 [[surfaces]]
 id = "release-operation-composition"
-owner_issue = 3940
 semantic_authority = "canonical release-operation identity shared across children"
 path = "crates/cargo-allow/tests/release_operation_composition.rs"
 subject = "CargoAllowReleaseOperationIdentityV1 across journal, checkpoint, lease, and tag"
@@ -669,7 +663,6 @@ claim_boundary = "Fixtures prove local cross-child binding only; no workflow tra
 
 [[surfaces]]
 id = "authenticated-release-operation-store"
-owner_issue = 3925
 semantic_authority = "#3925 durable lease store and #3927 authenticated custody readback"
 path = "crates/cargo-allow/tests/release_operation_store.rs"
 subject = "scripts/release_operation_store.py"
@@ -685,18 +678,3 @@ last_reconciled_commit = "c9616c3e66cb31e51332da970acd18ad8b8fee0b"
 claim_boundary = "The actual adapter is exercised with intercepted HTTP, not a local eligibility replacement. No live credential, authenticated external observation, control/tag ref, authorization mint or publication occurs. Rust compilation and native gates require separate evidence. Lease/tag subject comparison, checked journal/checkpoint head rebinding and real workflow integration remain with the named owners."
 
 [[surfaces]]
-id = "final-tag-production-driver"
-owner_issue = 3930
-semantic_authority = "existing final-tag, canonical-operation, lease and authorization owners composed at the real provider boundary"
-path = "crates/cargo-allow/tests/release_final_tag_driver.rs"
-subject = "scripts/release-final-tag.py and the compiled release-final-tag-bridge command"
-producer = "existing typed freeze/preflight/authorization/custody constructors plus intercepted production HTTP and native Git command interfaces"
-consumer = "#3930 actual workflow composition and #2502 same-run release execution"
-claimed_acceptance_row = "independent expected-context compilation, canonical rehearsal admission, current six-control readback, subject agreement, checked durable head advancement, immutable tag intent/start/response/readback and no duplicate push permit"
-assertion_mechanism = "actual compiled pure Rust bridge on every native test host; Python production driver on POSIX with exact-byte artifact/control interception, native Git hash oracle, owned process cleanup and hostile ambiguity/restart/expiry/subject controls; actual early physical-driver refusal on unsupported hosts"
-evidence_class = "ProductionBehaviorValidation"
-disposition = "bounded executable consumer with synthetic provider exchanges"
-required_stronger_owner = "#3930 workflow and same-run publisher wiring; #3761 frozen manifest; #2501 emitted replay inputs and actual Complete freeze; #3925 asset-size feasibility; #2284/#2501 actual control qualification; #3927 exact separate mint"
-may_satisfy_release_gate = false
-last_reconciled_commit = "05f887971e5874077dc1b2aa42789f8bdd8b093b"
-claim_boundary = "Every native test host requires the actual compiled bridge and typed fixture; no Python eligibility model or successful missing-native skip exists. POSIX additionally runs the physical-driver lifecycle; unsupported hosts run the actual early refusal. I/O-only tests are a separately reported narrower scope. Rehearsal and control positives are synthetic, and manifest semantics remain with the actual frozen-input producer. No live credential, provider observation, control/tag ref, upload, mint or publication occurs; native results must be recorded separately from authored source."
