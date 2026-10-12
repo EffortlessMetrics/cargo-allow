@@ -47,7 +47,10 @@ pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
 use worklist_items::work_items_from_outcomes;
 #[cfg(test)]
 pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
-use worklist_queue::{filter_work_items, page_work_items, renumber_work_items, sort_work_items};
+use worklist_queue::{
+    filter_work_items, page_work_items, renumber_work_items, sort_work_items,
+    validate_free_text_filters,
+};
 #[cfg(test)]
 use worklist_render::render_worklist_human_with_context;
 use worklist_render::{
@@ -116,6 +119,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         items.len() + 1,
     ));
     let unfiltered_total = items.len();
+    validate_free_text_filters(&items, filters)?;
     let mut items = filter_work_items(items, filters);
     sort_work_items(&mut items);
     renumber_work_items(&mut items);
