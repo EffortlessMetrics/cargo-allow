@@ -24,6 +24,9 @@ with the observed family values instead of returning an empty queue.
 Use `--kind <kind>` for governed source-exception slices such as `unsafe`,
 `panic`, `lint-exception`, `non-rust`, `generated`, `process`, `network`, or
 `workflow`; unknown kind names fail closed instead of producing an empty queue.
+Work items carry their queue type in both `kind` and its alias `item_kind`
+(the documented `--item-kind` filter name), so the value read from an item
+can be reused verbatim as the next filter.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, `broken_evidence_link`, or
 `weak_evidence_reference`. The canonical values use underscores, and the CLI
