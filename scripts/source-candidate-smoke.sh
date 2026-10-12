@@ -59,12 +59,34 @@ PY
   fi
   snapshot_root=""
   snapshot_cleanup() {
+    local operation_status=$?
+    local cleanup_status=0
+    trap - EXIT
     if [[ -n "${snapshot_root}" ]]; then
-      lifecycle_remove_tolerant "${temp_root}" "${snapshot_root}" source-candidate-snapshot "${snapshot_token}" || true
+      if python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+        --purpose source-candidate-snapshot --token "${snapshot_token}"; then
+        snapshot_root=""
+      else
+        cleanup_status=$?
+      fi
     fi
-    if [[ -n "${test_root_token}" ]]; then
-      lifecycle_remove_tolerant "${TMPDIR:-/tmp}" "${temp_root}" source-candidate-test-root "${test_root_token}" || true
+    # A refused child removal must not be bypassed by recursively deleting
+    # its parent. Keep the marker-owned paths for diagnosis in that case.
+    if [[ "${cleanup_status}" -eq 0 && -n "${test_root_token}" ]]; then
+      if python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
+        --purpose source-candidate-test-root --token "${test_root_token}"; then
+        test_root_token=""
+      else
+        cleanup_status=$?
+      fi
     fi
+    if [[ "${cleanup_status}" -ne 0 ]]; then
+      printf 'source-candidate-smoke: cleanup failed; retained owned paths under %s\n' "${temp_root}" >&2
+      if [[ "${operation_status}" -eq 0 ]]; then
+        operation_status="${cleanup_status}"
+      fi
+    fi
+    exit "${operation_status}"
   }
   trap snapshot_cleanup EXIT
   python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null

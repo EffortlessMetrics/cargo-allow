@@ -1,6 +1,5 @@
 use super::*;
 use allow_core::{CargoAllowError, CargoAllowErrorKind};
-use std::collections::BTreeMap;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -79,6 +78,7 @@ fn git_cat_file_batch_reports_git_failure() {
         Path::new("target/cargo-allow-missing-git-root"),
         &tree,
         &[path],
+        |_, _| Ok(()),
     )
     .err()
     .unwrap_or_else(|| std::panic::panic_any("missing Git root should fail"));
@@ -140,16 +140,16 @@ fn git_cat_file_batch_input_reports_write_and_flush_failures() {
 }
 
 #[test]
-fn git_cat_file_batch_mapping_rejects_missing_requested_blob() {
-    let path = PathBuf::from("src/lib.rs");
-    let mut paths = BTreeMap::new();
-    paths.insert(path.clone(), "A".repeat(40));
-    let err = revision_git::map_blob_texts_by_path_for_test(paths, BTreeMap::new())
+fn git_cat_file_batch_rejects_missing_requested_blob() {
+    let err =
+        revision_git::visit_git_cat_file_batch_for_test(io::empty(), &["a".repeat(40)], |_, _| {
+            Ok(())
+        })
         .err()
-        .unwrap_or_else(|| std::panic::panic_any("missing blob mapping should fail"));
+        .unwrap_or_else(|| std::panic::panic_any("missing blob response should fail"));
 
     assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
-    assert!(err.to_string().contains("did not return blob"));
+    assert!(err.to_string().contains("missing"));
 }
 
 #[test]
