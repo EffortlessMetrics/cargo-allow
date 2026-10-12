@@ -19,7 +19,8 @@ Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
 Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
-`unsafe_fn`, or `ci_declarative`.
+`unsafe_fn`, or `ci_declarative`; a family no work item carries fails closed
+with the observed family values instead of returning an empty queue.
 Use `--kind <kind>` for governed source-exception slices such as `unsafe`,
 `panic`, `lint-exception`, `non-rust`, `generated`, `process`, `network`, or
 `workflow`; unknown kind names fail closed instead of producing an empty queue.
@@ -36,7 +37,8 @@ Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
 Use `--path <path>` to focus one source-tree path or subtree before assigning
 file-local cleanup.
 Use `--source-package <name>` to focus a source-tree package context already
-reported by the scanner; do not treat that as Cargo metadata or build proof.
+reported by the scanner; a package no work item carries fails closed with the
+observed package values. Do not treat that as Cargo metadata or build proof.
 Package context is derived from readable source-tree `Cargo.toml` text when a
 visible `[package].name` exists. Invalid, unreadable, non-UTF8, or
 workspace-only manifests may leave this field absent even when the project has a
