@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: `list --family` and `list --source-package` now fail closed on values
+  no allow entry carries, matching the `worklist` contract (#4365). Previously
+  `list --family bogus_family` silently succeeded with an empty table,
+  indistinguishable from a genuinely empty slice. Unknown values now error
+  with the observed family/package values and a pointer to the unfiltered
+  ledger. Valid values are unchanged.
