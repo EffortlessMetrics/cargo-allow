@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::repository_environment::isolate_repository;
 use super::support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command,
@@ -32,8 +33,9 @@ pub(crate) fn run_cargo_allow_expect_status(
     args: &[&str],
     should_succeed: bool,
 ) -> std::process::Output {
-    let output = cargo_allow_command()
-        .args(args)
+    let mut command = cargo_allow_command();
+    command.args(args);
+    let output = isolate_repository(&mut command)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow: {err}")));
     let command = format!("cargo-allow {}", args.join(" "));
