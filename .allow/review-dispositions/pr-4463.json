@@ -1,0 +1,42 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4463,
+  "base_ref": "main",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "head_ref": "fix/4462-source-snapshot-cleanup-20261011",
+  "head_sha": "d4621eb8995861621a88473ae3991da99697f138",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:fb5d00b1f1d7c1ef1ddf3b8be552b608dc565019fa71e2b8305d9169f04cde15",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/cleanup_audit; separate nonauthor of this PR's product source, test repair, governance and retained record. /root authored the source/governance and this record. Shared model family, campaign context, workspace and GitHub account transport are disclosed. The native COMMENT is the anchored independent model review; no independent human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4463#pullrequestreview-5481809737"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4463#pullrequestreview-5481809737",
+    "Complete five-path source diff: 12,493 bytes with the recorded digest. Reviewer verified actual ordinary 19e0506a and d4621eb8 raw commit identities, messages and parents, synthetic8eae33b433cadf207dfd4c3d3e613653f1d95a72 ordered [5eab,d462], and all2689 entries equal frozen localc173. All2684 unaffected base entries and all3 product entries equal testedf374/initial8d. This successor adds only the actual own-review JSON.",
+    "Outer snapshot cleanup uses the existing strict marker-owned lifecycle.remove; captures original status, preserves child failure, fails on cleanup-only error, and does not remove a parent after child refusal. It adds no outer recursive fallback. Six real Bash controls check caller/allocated roots, actual sentinel/marker/path state, child failure, cleanup failure, combined failure, unsupported refusal and independently expected status73. The full lifecycle pass is14.174seconds on Python3.12.14/Linux at f374; unchanged product bytes retain that evidence without a claimed rerun.",
+    "Exact review-record/note admissions came from genuine why --plan / add --from-plan --update. The756267-byte main prefix and all1101 existing policy entries are unchanged;1629 native suffix bytes yield1103 unique IDs. The note uses actual canonical diff fingerprints. The temporary nonreview seed and actual own JSON were absent from reviewed source. Source governance precedes this sole-JSON bootstrap child.",
+    "Before native review submission there were zero inline threads and zero submitted reviews. Both complete CodeRabbit source/governance reviews had no actionable comments. Its exact governance-scope warning is NonBlocking required review workflow support; its pending-admission premise was stale. Docstring33.33% is NonBlocking with no demonstrated cleanup defect. Gemini quota evidence is unavailable, not clean.",
+    "All19 historical8d/e5 UB observation groups and12 follow-up records, including substantive degraded raw output, were read. The trap-in-command-substitution, unset lifecycle, self-accepting status73, parent-bypass and fake-shell-oracle claims are RefutedWithEvidence in native review5481809737. Four degraded and eight budget-skipped followups are not clean evidence.",
+    "Historical optional installed cargo-allow0.1.8 and absent Bun verifier failures remain AcceptedFollowUp under #4252, distinct from the retained current-source producer. Historical opened-event posting actually failed missing-token preflight while gate_outcome said posted; AcceptedFollowUp under #4255. No HTTP acknowledgement or grouped review was supplied by that run; successful advisory wrapper is not publication evidence.",
+    "Final source-equivalent c173 required-note diff and enforcing no-new passed using retained actual0a607deab6070af44107b0e1daaa34500dd01ee6 executable8c1a1a1500e9fb7bd09074f2adc40a2f6cfc5a3bef39741bd6a24d94c05e03ba, originally built under explicit Rust1.95 with1372 tracked Rust/Cargo/toolchain entries equal. No new d462 build is claimed. These source guards explicitly selected policy/allow.toml. Actual governed receipt SHA9a1caa7a7d8402e180ffe07fe6eaf5c5a7de56880ce0e36626ec45ecd6d109d6 and no-new SHAa3974e6c440b7056c9e6972bf53c929c647803d5d42d5347c64962b7453f39b0; new0/2689files/16686findings,154 retained advisory review items and4 introduced review-required diff movements.",
+    "Current source-synthetic8eae package-smoke114381906574/run38109404700 passed. Its complete327816-byte log SHAae2d8e3586172226438961c0cefa48288fd1d78fb9c294e93be6ddebae7a2e75 shows qualification/install-journey completion with no original missing-helper/outer-cleanup error; it is not final-release qualification. At the source review's last04:01:56 readback32checks succeeded,1expectedneutral and3(test,coverage,UB review) were running. Current metadata and final CI/feedback remain separately required.",
+    "Baseline RED stopped at the first new case, not six separately executed baseline failures. Malformed initial fixture, unchanged baseline exception-rendering failure and governance-template usage/capture mistake remain retained. Default whitespace check reports44 native CRLF lines; command-local cr-at-eol passes without Git settings changes.",
+    "Claim boundary is the outer cleanup repair under #4462. Unchanged inner tolerant fallback, complete historical #3509 lifecycle, native Windows safe-deletion, final installed/platform/support/release qualification remain outside this source verdict. No reserved #4435\u2192#4458 slot or tag/token/publication authority is created."
+  ],
+  "required_ci": {
+    "owner": "Root/coordinating maintainer must verify this sole-JSON child's preservation of the genuinely reviewed source, typed retained-review bootstrap and independent actual-hosted metadata review, all applicable terminal current native checks and substantive feedback, then a fresh exact-pair Ready/merge preflight under an assigned slot and resulting-main guard. Pending, neutral, failed, skipped, stale, unavailable or inaccessible protected-gate evidence is not waived. This record supplies no release or slot authority.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38109404700"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4463",
+  "reviewed_at_utc": "2026-10-11T04:01:19Z"
+}
