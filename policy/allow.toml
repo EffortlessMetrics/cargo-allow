@@ -23688,26 +23688,122 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11345"
+id = "allow-review-4436-record"
 kind = "non_rust_file"
 family = "configuration"
-path = ".allow/revisions/4433-retained-review-record.toml"
+path = ".allow/review-dispositions/pr-4436.json"
 owner = "core/review"
 classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4433 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4433", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+reason = "Retained structured review evidence for PR #4436 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md"]
 created = "2026-10-09"
 review_after = "2027-01-07"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/revisions/4433-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4433-retained-review-record.toml"
+symbol = ".allow/review-dispositions/pr-4436.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4436.json"
 
 [allow.last_seen]
 line = 1
 column = 1
+
+
+
+
+[[allow]]
+id = "allow-review-4436-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4436-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4436 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4436-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4436-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11346"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4438-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4438-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4438-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-1109"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4438.json"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "review disposition for PR #4438 per the #3844 protocol"
+evidence = ["issue:4374"]
+created = "2026-10-12"
+review_after = "2027-01-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4438.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4438.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11347"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4438-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4438-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4438-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
 
 
 [[allow]]
@@ -23727,30 +23823,6 @@ ast_kind = "tracked_file"
 symbol = ".allow/review-dispositions/pr-4438.json"
 target_fingerprint = "json"
 glob = ".allow/review-dispositions/pr-4438.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-11346"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4438-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4438-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4438-retained-review-record.toml"
 
 [allow.last_seen]
 line = 1
@@ -23785,6 +23857,7 @@ column = 1
 
 
 
+
 [[allow]]
 id = "allow-11348"
 kind = "non_rust_file"
@@ -23807,6 +23880,7 @@ glob = "scripts/qualify-release-freeze.py"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 
 
@@ -23837,6 +23911,7 @@ column = 1
 
 
 
+
 [[allow]]
 id = "allow-11350"
 kind = "non_rust_file"
@@ -23858,6 +23933,7 @@ glob = ".allow/revisions/2501-qualified-freeze-producer.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 
 
@@ -23887,6 +23963,7 @@ column = 1
 
 
 
+
 [[allow]]
 id = "allow-11352"
 kind = "non_rust_file"
@@ -23908,5 +23985,6 @@ glob = ".allow/revisions/4452-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 

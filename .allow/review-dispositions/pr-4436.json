@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4436,
+  "base_ref": "main",
+  "base_sha": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "head_ref": "docs/2502-final-release-record",
+  "head_sha": "d34ffee1a927fccc52cd46208d98a95dbde6fc65",
+  "merge_base": "1d9c9148d50b4dade37d0d1ec0dfdf43f0a1e91d",
+  "reviewed_diff_digest": "sha256:v1:29df46dfc2a752bde9ecae04c8ba4d8893af699816ce3fafe8bb08293904634c",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit separate nonauthoring full source review; shared model family/session context disclosed; coordinating author account transports metadata only",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4436#pullrequestreview-5475690073"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4436#pullrequestreview-5475690073",
+    "Independently inspected all five effective paths. The stable 0.1.11 baseline, incident-bearing RC history, final 0.2.0 draft/NotProven status, 10+3 package plan and publisher dependency order agree with the actual source; the reviewer independently ran the publisher --list path. Historical Windows measurements are distinguished from the actual V4 host bounds. Delivered typed foundations are distinguished from pending production context, authority, custody and assets. Defaults, support, clean-install/rollback and final acceptance remain explicit open decisions. The sole timing finding is fixed: the historical failure was before tag-phase uploads, not before tag creation. Its CodeRabbit thread has a Fixed disposition and is resolved. All 727,309 prior policy bytes and 1,066 prior entries are preserved; two exact review-record receipts and their fingerprints were independently verified. No blocking finding. #2502 remains open and this draft documentation does not constitute a published release.",
+    "CodeRabbit timing comment 4234564437 was fixed at the reviewed head, replied to in 4234804634, and its thread resolved. #2502 remains open."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: verify exact resulting base/head, ledger-only bootstrap, every applicable hosted check, new feedback and post-main source guard. Pending, skipped, neutral and stale results are not green.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4436",
+  "reviewed_at_utc": "2026-10-09T21:52:05.321Z"
+}
