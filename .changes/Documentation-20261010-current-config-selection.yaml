@@ -1,0 +1,7 @@
+kind: Documentation
+body: >-
+  Refresh the current configuration-selection guide after the #3875/#3876
+  resolver and consumer cutover. Record the implemented selection order,
+  shared command seams, malformed-policy behavior, and separate write
+  authorization while preserving the pending #3877/#3878 precedence and
+  migration decision.
