@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4429,
+  "base_ref": "main",
+  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "head_ref": "docs/3768-october-release-map",
+  "head_sha": "19b9ea5998c4ad651577cdaad7ae623d8643f75f",
+  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "reviewed_diff_digest": "sha256:v1:5594dcf0680cd428e4dd9f7ea2cd20d2735ed872fe2d04fd4c395a590959d01c",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit, separate nonauthor of this PR's documentation, policy, note, record and integrations. Shared model/campaign context, retained author proof and same-account GitHub transport are disclosed correlated-failure limits. Authored separate #4446 recovery and a #4436 integration; this review does not independently approve those.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5481321462"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4429#pullrequestreview-5481321462",
+    "Actual COMMENT source review at 2026-10-11T00:23:13Z read all five effective paths, the complete resulting campaign map and removed claims, policy/revision/changelog/history, affected context/closeout/rehearsal/freeze/support consumers, current PR body and all four resolved review threads.",
+    "MAP-F1 is verified repaired on the actual ordinary 02e-to-ce32 source: the reader rejection requirement remains normative and the discovered replacement-detail false acceptance is explicitly unmet at the dated 10 October 23:25 UTC checkpoint. Later repairs are not retrodated into that snapshot.",
+    "All 16 dated merged-PR observations and merge reachability were checked. The #4443 and #4457 process exceptions, Complete installed-experience requirement, unratified release decisions, full catalogue/18-dimension obligations and prevention/custody/freeze/public-byte gaps remain explicit.",
+    "The historical duplicate allow-11345 repair preserves the main-owned allow-11278 limit. The editorial thread remains NonBlocking; canonical AllowEntry fingerprints are not hashes of review/file bytes. Paused old CodeRabbit coverage is not a current clean review.",
+    "Actual head 19b9 and synthetic 808e have the expected ordered parents and identical tree 1cf0c0a7da6126f79594ef27d8d1e00e619534d9; native default, explicit abbreviated diff and readiness digest agree at 69295 bytes. All four owned nonpolicy and 2685 unrelated main entries remain exact.",
+    "Policy preserves the entire 756267-byte main prefix plus unchanged 1554-byte suffix, 757821 bytes / 1103 unique IDs. Both canonical policy items match the actual note/governed diff. The 1452-byte Closeout contract remains exact and relative links resolve.",
+    "Exact local a0df formatting and source-equivalent preserved-f4 governed/default executions passed; 602 linked source inputs and all 1372 compile entries were independently checked. Default result is enforcing, failed=false, new=0, 2690 files / 16687 findings. This is not a fresh build/test or installed-candidate qualification.",
+    "Current source pregate and readiness publisher passed. The native readiness result reproduced this exact diff and correctly rejected the historical record. New metadata bootstrap, current CI and final feedback checks remain the author's pending lifecycle responsibilities."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer: independently verify this own-record-only successor, bootstrap and actual metadata review, every applicable current native check, fresh substantive feedback and exact final pair before a coordinated head-pinned merge; verify the resulting-main enforcement result. Pending, skipped, failed, neutral and stale evidence are not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114347485417"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4429",
+  "reviewed_at_utc": "2026-10-11T00:23:13Z"
+}

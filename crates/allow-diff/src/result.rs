@@ -90,7 +90,8 @@ pub const fn classify_diff_result(
 
 /// Keep only movement that is safe to report when scanner coverage is partial.
 /// A removed finding may be absent because the partial side omitted its file,
-/// so it must never become an improvement or resolved count.
+/// so it must never become an improvement or resolved count. An incomplete
+/// base cannot establish that a head finding was introduced, either.
 pub fn retain_confident_finding_changes(
     result: DiffResultClass,
     changes: Vec<crate::FindingPostureChange>,
@@ -100,7 +101,10 @@ pub fn retain_confident_finding_changes(
     }
     changes
         .into_iter()
-        .filter(|change| !matches!(change.kind, crate::FindingPostureKind::Removed))
+        .filter(|change| {
+            matches!(result, DiffResultClass::HeadPartial)
+                && matches!(change.kind, crate::FindingPostureKind::New)
+        })
         .collect()
 }
 
