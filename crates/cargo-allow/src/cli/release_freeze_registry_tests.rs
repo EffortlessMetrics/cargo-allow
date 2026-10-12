@@ -957,6 +957,53 @@ fn require_negative_outcomes_composition(
     Ok(())
 }
 
+/// The unqualified command must keep its actual full readiness absent. Apply
+/// the existing readiness consumer to its emitted graph with explicitly
+/// synthetic post-merge/custody gates only to isolate registry dispositions.
+/// No experience nodes are removed or promoted, and this aggregate is never
+/// emitted by the production command as qualification or provider evidence.
+fn diagnostic_registry_readiness(
+    root: &Path,
+    args: &super::ReleaseFreezeComposeArgs,
+    subject: &SubjectIdentity,
+) -> Result<allow_report::CargoAllowFinalReadinessV1, Box<dyn Error>> {
+    use allow_report::{
+        CargoAllowFinalReadinessV1, FinalEvidenceGraphV1, FinalReadinessRowV1,
+        aggregate_final_readiness,
+    };
+
+    let actual: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.readiness.json"),
+    )?)?;
+    let rows: Vec<FinalReadinessRowV1> = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.readiness-rows.json"),
+    )?)?;
+    let expected = [
+        "post-merge-qualification",
+        "custody-readback",
+        "evaluation-clock",
+        "authorization-window",
+    ];
+    if actual.is_some()
+        || rows.len() != expected.len()
+        || expected.iter().any(|id| {
+            rows.iter()
+                .filter(|row| row.evidence_id.as_deref() == Some(*id))
+                .count()
+                != 1
+        })
+    {
+        return Err("unqualified registry composition fabricated readiness facts".into());
+    }
+    let graph: FinalEvidenceGraphV1 = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.evidence-graph.json"),
+    )?)?;
+    let evidence = super::collect_evidence(root, args, subject)?;
+    let selection = super::load_selection(root, subject)?;
+    let decisions = super::readiness_decision_inputs(subject, &selection, &evidence);
+    Ok(aggregate_final_readiness(&graph, &decisions))
+}
+
 fn require_outcome_composition(
     root: &Path,
     args: &super::ReleaseFreezeComposeArgs,
@@ -967,10 +1014,9 @@ fn require_outcome_composition(
 ) -> TestResult {
     use ObservationFreshnessV1 as Freshness;
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1,
-        FinalEvidenceCurrentnessV1 as Currentness, FinalFreezeReplayResultV1,
-        FinalFreezeReplayRowKindV1, FinalReadinessRowKindV1 as RowKind, FinalReadinessVerdictV1,
-        RefreshableObservationKindV1,
+        CargoAllowFinalFreezeReplayV1, FinalEvidenceCurrentnessV1 as Currentness,
+        FinalFreezeReplayResultV1, FinalFreezeReplayRowKindV1, FinalReadinessRowKindV1 as RowKind,
+        FinalReadinessVerdictV1, RefreshableObservationKindV1,
     };
 
     let bytes = serde_json::to_vec(input)?;
@@ -994,9 +1040,7 @@ fn require_outcome_composition(
             format!("negative registry fixture failed outside composition: {error}").into(),
         );
     }
-    let readiness: CargoAllowFinalReadinessV1 = serde_json::from_slice(&std::fs::read(
-        args.out_dir.join("final-freeze.readiness.json"),
-    )?)?;
+    let readiness = diagnostic_registry_readiness(root, args, subject)?;
     let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
         args.out_dir.join("final-freeze.replay.json"),
     )?)?;
@@ -1088,8 +1132,7 @@ pub(super) fn require_noncomplete_composition(
     subject: &SubjectIdentity,
 ) -> TestResult {
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalFreezeReplayResultV1,
-        FinalReadinessVerdictV1,
+        CargoAllowFinalFreezeReplayV1, FinalFreezeReplayResultV1, FinalReadinessVerdictV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
@@ -1141,9 +1184,7 @@ pub(super) fn require_noncomplete_composition(
         if !error.to_string().contains("state=Incomplete") {
             return Err(format!("registry fixture failed outside composition: {error}").into());
         }
-        let readiness: CargoAllowFinalReadinessV1 = serde_json::from_slice(&std::fs::read(
-            args.out_dir.join("final-freeze.readiness.json"),
-        )?)?;
+        let readiness = diagnostic_registry_readiness(root, &args, subject)?;
         let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
             args.out_dir.join("final-freeze.replay.json"),
         )?)?;

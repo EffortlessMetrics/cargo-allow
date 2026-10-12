@@ -1,0 +1,28 @@
+# #2501: exact qualifier implementation receipts and this authored audit note.
+# This note does not establish live qualification, custody, or release authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11347"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:21469a0b83793f6137fa4bb51cd4b59c47a159db19bc3ecd3bb7ee8b45e69517"
+reason = "Intentional documentation of the authenticated prepare, external retention, fresh readback, typed qualification and persisted replay contract under #2501. This exact document defines the bounded workflow and its missing-authority outcomes; it is not current provider evidence, a Complete freeze or release authorization."
+
+[[records]]
+allow_ids = ["allow-11350"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:205572053ef5d5869f4998e17a453c9fccca69c6cfcae691eecf7e558cc6cb3f"
+reason = "Authored revision note for the exact #2501 qualifier documentation, producer, protocol fixtures and this note; records the reviewed source exception transitions without granting live qualification, custody, merge, or publication authority."
+
+[[records]]
+allow_ids = ["allow-11348"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:44873f1b645c3d91ddbe13256bfe4d6c92001f3e3f5fe5c0e0ae54762dfdc17f"
+reason = "Intentional read-only provider driver for the existing #2501 qualification and custody models. It checks selected source and producer identities, fresh authenticated reads and ordered bounded observation time before the typed consumer. Source inventory admission does not assert live provider authority, artifact retention, prevention proof or permission to publish."
+
+[[records]]
+allow_ids = ["allow-11349"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8c35731df1712a5d07aee2f577ef1d003beb8b55b915392efcc3c66a60e87d24"
+reason = "Intentional intercepted-provider tests for #2501 source identity, per-route freshness, elapsed time, original artifact/member mapping and actual compiled qualification and persisted replay. Synthetic protocol probes return Incomplete; native fixtures retain separate registry and rehearsal holds. This exact test source does not qualify a production release."
