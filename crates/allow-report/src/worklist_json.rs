@@ -78,6 +78,10 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
     let mut fields = vec![
         format!("      \"id\": \"{}\"", json_escape(item.id)),
         format!("      \"kind\": \"{}\"", json_escape(item.kind)),
+        // `item_kind` aliases `kind` so consumers can filter by the same
+        // field name the artifact carries (#4365 Gap 1). `kind` is kept for
+        // backward compatibility with existing worklist.v1 consumers.
+        format!("      \"item_kind\": \"{}\"", json_escape(item.kind)),
     ];
     push_optional_json_string(&mut fields, "exception_kind", item.exception_kind);
     push_optional_json_string(&mut fields, "family", item.family);
