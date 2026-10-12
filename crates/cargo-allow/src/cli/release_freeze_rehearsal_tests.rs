@@ -160,16 +160,20 @@ pub(super) fn require_noncomplete_composition(
     let shared = super::load_shared_prerequisites(root)?;
     let package_rows = subject.package_rows(&shared, &evidence)?;
     let incident = super::load_incident_handoff(root);
+    let registry = super::registry::reconcile(subject, &package_rows, &evidence, None);
     let graph = super::build_evidence_graph(
         subject,
         &selection,
         &evidence,
         &package_rows,
         incident.as_deref(),
+        (registry.0, &registry.2),
     );
     for node in graph.nodes.iter().filter(|node| node.required) {
         let expected = if node.evidence_id == "release-rehearsal" {
             FinalEvidenceNodeResultV1::Mismatch
+        } else if node.evidence_id == "registry-observation" {
+            FinalEvidenceNodeResultV1::NotProven
         } else {
             FinalEvidenceNodeResultV1::Complete
         };
