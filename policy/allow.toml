@@ -23553,6 +23553,255 @@ glob = ".allow/revisions/4433-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-1064"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4429.json"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4429 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4429", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4429.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4429.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4429-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4429-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4429 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4429", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4429-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4429-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4463-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4463.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4463 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4463", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4463.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4463.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-review-4463-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4463-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4463 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4463", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4463-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4463-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4435-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4435.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4435 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4435", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4435.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4435.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-review-4435-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4435-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4435 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4435", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4435-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4435-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-review-4436-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4436.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4436 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4436.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4436.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+
+[[allow]]
+id = "allow-review-4436-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4436-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4436 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4436-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4436-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11346"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4438-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4438-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4438-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-1109"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4438.json"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "review disposition for PR #4438 per the #3844 protocol"
+evidence = ["issue:4374"]
+created = "2026-10-12"
+review_after = "2027-01-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4438.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4438.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11347"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4433-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4433 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4433", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-09"
+review_after = "2027-01-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4433-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4433-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
 
 [[allow]]
 id = "allow-3149-command-case-catalogue"
@@ -23576,6 +23825,7 @@ glob = "docs/release/core-command-migration-cases.v1.json"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-3149-command-case-contract"
 kind = "non_rust_file"
@@ -23597,6 +23847,7 @@ glob = "docs/release/core-command-migration-evidence.md"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 [[allow]]
 id = "allow-3149-command-case-schema"
@@ -23620,6 +23871,7 @@ glob = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-3149-command-case-collector"
 kind = "non_rust_file"
@@ -23641,6 +23893,7 @@ glob = "scripts/command-case-evidence.py"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 [[allow]]
 id = "allow-3149-command-case-controls"
@@ -23664,6 +23917,7 @@ glob = "scripts/test-command-case-evidence.py"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-3149-command-case-note"
 kind = "non_rust_file"
@@ -23685,6 +23939,7 @@ glob = ".allow/revisions/3149-command-case-evidence.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 [[allow]]
 id = "allow-review-4461-record"
@@ -23708,6 +23963,7 @@ glob = ".allow/review-dispositions/pr-4461.json"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-review-4461-note"
 kind = "non_rust_file"
@@ -23730,6 +23986,7 @@ glob = ".allow/revisions/4461-retained-review-record.toml"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-3149-command-case-catalogue-eol"
 kind = "non_rust_file"
@@ -23751,3 +24008,4 @@ glob = "docs/release/.gitattributes"
 [allow.last_seen]
 line = 1
 column = 1
+

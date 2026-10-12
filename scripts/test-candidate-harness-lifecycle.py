@@ -7,6 +7,8 @@ import json
 import errno
 import importlib.util
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -45,6 +47,99 @@ def reject(*args: str) -> None:
     )
     if result.returncode == 0:
         raise SystemExit(f"unsafe operation unexpectedly succeeded: {args!r}")
+
+
+def check_source_snapshot_cleanup(root: Path, environment: dict[str, str]) -> None:
+    """Exercise the actual outer EXIT trap without installing or running Cargo."""
+    bash = shutil.which("bash")
+    assert bash
+    cases = (
+        ("caller-root", 0, "", True),
+        ("allocated-root", 0, "", False),
+        ("child-failure", 42, "", False),
+        ("cleanup-failure", 0, "injected cleanup refusal", False),
+        ("both-failures", 42, "injected cleanup refusal", False),
+        ("unsupported-cleanup", 0, "platform does not provide symlink-safe recursive deletion", False),
+    )
+    for name, child_status, refusal, caller_root in cases:
+        case = root / f"outer-cleanup-{name}"
+        case.mkdir()
+        temporary = case / "temporary"
+        temporary.mkdir()
+        sentinel = temporary / "caller-owned"
+        sentinel.write_bytes(b"preserve caller bytes\n")
+        commands = case / "commands"
+        commands.mkdir()
+        removals = case / "removals.log"
+        # Real allocation, snapshot, verification and removal all use the
+        # lifecycle tool. Only selected child/removal failures are injected.
+        python_shim = commands / "python3"
+        python_shim.write_text(
+            f"#!{bash}\n"
+            f"if [[ \"${{1:-}}\" == {shlex.quote(str(TOOL))} && \"${{2:-}}\" == remove ]]; then\n"
+            "  previous=\n"
+            "  for argument in \"$@\"; do\n"
+            f"    if [[ \"$previous\" == --purpose ]]; then printf '%s\\n' \"$argument\" >> {shlex.quote(str(removals))}; fi\n"
+            "    previous=\"$argument\"\n"
+            "  done\n"
+            + (f"  printf '%s\\n' {shlex.quote(refusal)} >&2\n  exit 73\n" if refusal else "")
+            + "fi\n"
+            + f"exec {shlex.quote(sys.executable)} \"$@\"\n",
+            encoding="utf-8",
+        )
+        python_shim.chmod(0o700)
+        bash_shim = commands / "bash"
+        bash_shim.write_text(
+            f"#!{bash}\n"
+            + (f"if [[ \"${{2:-}}\" == --internal ]]; then exit {child_status}; fi\n" if child_status else "")
+            + f"exec {shlex.quote(bash)} \"$@\"\n",
+            encoding="utf-8",
+        )
+        bash_shim.chmod(0o700)
+        env = {
+            **environment,
+            "PATH": str(commands) + os.pathsep + environment.get("PATH", os.defpath),
+            "TMPDIR": str(case if caller_root else temporary),
+            "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1",
+            "CANDIDATE_HARNESS_TEST_INJECTION": "1",
+        }
+        for key in ("CANDIDATE_HARNESS_TEST_ROOT", "CARGO_ALLOW_BIN", "WORK_DIR", "CONSUMER_DIR"):
+            env.pop(key, None)
+        if caller_root:
+            env["CANDIDATE_HARNESS_TEST_ROOT"] = str(temporary)
+        result = subprocess.run(
+            [bash, str(ROOT / "scripts" / "source-candidate-smoke.sh")],
+            cwd=ROOT, env=env, capture_output=True, text=True, check=False,
+        )
+        expected_status = child_status or (73 if refusal else 0)
+        if result.returncode != expected_status:
+            raise SystemExit(f"{name}: expected exit {expected_status}, got {result.returncode}\n{result.stdout}{result.stderr}")
+        if sentinel.read_bytes() != b"preserve caller bytes\n":
+            raise SystemExit(f"{name}: cleanup damaged caller sentinel")
+        if "command not found" in result.stderr:
+            raise SystemExit(f"{name}: cleanup command was unavailable: {result.stderr}")
+        attempted = removals.read_text(encoding="utf-8").splitlines() if removals.exists() else []
+        expected_removals = ["source-candidate-snapshot"]
+        if not caller_root and not refusal:
+            expected_removals.append("source-candidate-test-root")
+        if attempted != expected_removals:
+            raise SystemExit(f"{name}: unexpected removal order/parent bypass: {attempted!r}")
+        remaining = [path for path in temporary.iterdir() if path != sentinel]
+        if refusal:
+            if refusal not in result.stderr or len(remaining) != 1:
+                raise SystemExit(f"{name}: refused cleanup lost its diagnostic or retained root")
+            owned_root = remaining[0]
+            snapshots = list(owned_root.glob("source-candidate-snapshot.*"))
+            if not owned_root.name.startswith("source-candidate-test-root.") or len(snapshots) != 1:
+                raise SystemExit(f"{name}: refused snapshot or parent was removed")
+            for retained in (owned_root, snapshots[0]):
+                if not (retained / LIFECYCLE.MARKER).is_file():
+                    raise SystemExit(f"{name}: refused directory lost its ownership marker")
+        elif remaining:
+            raise SystemExit(f"{name}: successful cleanup left owned directories: {remaining!r}")
+        if not child_status and "disposable snapshot ok" not in result.stdout:
+            raise SystemExit(f"{name}: real internal snapshot probe did not run")
+    print(f"source-candidate outer cleanup: {len(cases)} controlled paths passed")
 
 
 with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as temporary:
@@ -90,7 +185,12 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
                 LIFECYCLE.remove(root, race_path, "race", race["token"])
             except OSError as error:
                 expected_errno = error.errno in {errno.EINVAL, errno.ENOTDIR, errno.ELOOP, errno.EPERM}
-                expected_message = str(error) == "Cannot call rmtree on a symbolic link"
+                # Python can attach filename after constructing this error,
+                # changing str(error) while preserving its exact arguments.
+                expected_message = (
+                    error.args == ("Cannot call rmtree on a symbolic link",)
+                    and error.filename in (None, race_path, str(race_path))
+                )
                 if not original_safe or not (expected_errno or expected_message):
                     raise
             except SystemExit:
@@ -333,6 +433,7 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     }
 
     if __import__("shutil").rmtree.avoids_symlink_attacks:
+        check_source_snapshot_cleanup(root, poisoned_git_env)
         for script in ("exact-candidate-package-set.sh", "source-candidate-smoke.sh"):
             result = subprocess.run(
                 ["bash", str(ROOT / "scripts" / script)],
