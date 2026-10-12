@@ -216,3 +216,89 @@ fn render_list_rows_filters_allow_id() {
     assert!(!text.contains("allow-runtime"));
     assert!(text.contains("allow-parser"));
 }
+
+fn filters_with<'a>(family: Option<&'a str>, source_package: Option<&'a str>) -> ListFilters<'a> {
+    ListFilters {
+        kind: None,
+        family,
+        owner: None,
+        classification: None,
+        path: None,
+        source_package,
+        allow_id: None,
+        status: None,
+        expired: false,
+        review_due: false,
+        stale: false,
+        location_drift: false,
+        baseline_debt: false,
+        broad_scope: false,
+        missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
+    }
+}
+
+#[test]
+fn list_free_text_filters_fail_closed_on_unknown_values() {
+    let mut first = list_row(
+        "allow-one",
+        FindingKind::Panic,
+        "parser",
+        "reviewed_exception",
+    );
+    first.family = Some("unwrap".to_string());
+    first.source_package = Some("allow-core".to_string());
+    let mut second = list_row(
+        "allow-two",
+        FindingKind::Unsafe,
+        "runtime",
+        "reviewed_exception",
+    );
+    second.family = Some("unsafe_block".to_string());
+    let rows = vec![first, second];
+
+    // Unset and known values pass.
+    assert!(list_filter::validate_list_free_text_filters(&rows, &filters_with(None, None)).is_ok());
+    assert!(
+        list_filter::validate_list_free_text_filters(
+            &rows,
+            &filters_with(Some("unwrap"), Some("allow-core")),
+        )
+        .is_ok()
+    );
+
+    // Unknown family fails closed and names the observed values.
+    let error = list_filter::validate_list_free_text_filters(
+        &rows,
+        &filters_with(Some("bogus_family"), None),
+    )
+    .unwrap_err();
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(
+        error
+            .to_string()
+            .contains("unknown --family value `bogus_family`"),
+        "{error}"
+    );
+    assert!(error.to_string().contains("unwrap"), "{error}");
+    assert!(error.to_string().contains("unsafe_block"), "{error}");
+
+    // Unknown source package fails closed the same way.
+    let error =
+        list_filter::validate_list_free_text_filters(&rows, &filters_with(None, Some("nope")))
+            .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("unknown --source-package value `nope`"),
+        "{error}"
+    );
+    assert!(error.to_string().contains("allow-core"), "{error}");
+
+    // An empty ledger carries no values, so any set filter is unknown.
+    let error =
+        list_filter::validate_list_free_text_filters(&[], &filters_with(Some("unwrap"), None))
+            .unwrap_err();
+    assert!(error.to_string().contains("none"), "{error}");
+}

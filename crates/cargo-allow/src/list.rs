@@ -80,6 +80,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         evidence_source_tree_files.as_ref(),
     );
     let filters = list_filters(args)?;
+    list_filter::validate_list_free_text_filters(&all_rows, &filters)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {
         inventory: source_context.inventory(),
