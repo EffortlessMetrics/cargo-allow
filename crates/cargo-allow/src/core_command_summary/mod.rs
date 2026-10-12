@@ -24,6 +24,7 @@ pub use adapters_query::{
     core_command_summary_from_explain, core_command_summary_from_why,
     core_command_summary_from_worklist,
 };
+pub(crate) use render::render_argv_for_display;
 pub use render::{render_core_command_summary_human, render_core_command_summary_json};
 
 use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
