@@ -133,17 +133,22 @@ pub fn render_human_with_context(
         .filter(|o| command != "audit" || !AUDIT_REVIEW_QUEUE_STATUSES.contains(&o.status))
         .filter(|o| !quiet || blocks_check(o.status))
         .collect::<Vec<_>>();
-    for outcome in non_matched.iter().take(HUMAN_NON_MATCHED_OUTCOME_LIMIT) {
+    let non_matched_lines = deduped_outcome_lines(non_matched.iter().copied());
+    for (status, message, count) in non_matched_lines
+        .iter()
+        .take(HUMAN_NON_MATCHED_OUTCOME_LIMIT)
+    {
         // The message is repository-derived (paths, symbols, reasons). It is
         // sanitized and never wrapped in escapes, so it cannot inject terminal
         // control sequences; only the tool-authored status word is styled.
         out.push_str(&format!(
-            "{}: {}\n",
-            style_status(context.style, outcome.status, outcome.status.as_str()),
-            crate::style::sanitize_terminal_text(&outcome.message)
+            "{}: {}{}\n",
+            style_status(context.style, *status, status.as_str()),
+            crate::style::sanitize_terminal_text(message),
+            occurrence_suffix(*count)
         ));
     }
-    append_human_omitted_outcome_note(&mut out, non_matched.len());
+    append_human_omitted_outcome_note(&mut out, non_matched_lines.len());
     if !crate::contracts::is_quiet() {
         out.push('\n');
         out.push_str(CLAIM_BOUNDARY_TEXT);
@@ -315,16 +320,18 @@ fn render_audit_summary_human(
     ));
     append_audit_remediation_roadmap_human(summary, signals, out);
     append_evidence_repair_queues_human(summary, signals, out);
-    if !queue.is_empty() {
+    let queue_lines = deduped_outcome_lines(queue.iter().copied());
+    if !queue_lines.is_empty() {
         out.push_str("\nAudit review queue:\n");
-        for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
+        for (status, message, count) in queue_lines.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
             out.push_str(&format!(
-                "  {}: {}\n",
-                outcome.status.as_str(),
-                outcome.message
+                "  {}: {}{}\n",
+                status.as_str(),
+                message,
+                occurrence_suffix(*count)
             ));
         }
-        append_human_omitted_review_queue_note(out, queue.len());
+        append_human_omitted_review_queue_note(out, queue_lines.len());
     }
 }
 
@@ -423,16 +430,21 @@ pub fn render_markdown_with_context(
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
         .collect::<Vec<_>>();
-    if !non_matched.is_empty() {
+    let non_matched_lines = deduped_outcome_lines(non_matched.iter().copied());
+    if !non_matched_lines.is_empty() {
         out.push_str("\n## Non-matched outcomes\n\n");
-        for outcome in non_matched.iter().take(MARKDOWN_NON_MATCHED_OUTCOME_LIMIT) {
+        for (status, message, count) in non_matched_lines
+            .iter()
+            .take(MARKDOWN_NON_MATCHED_OUTCOME_LIMIT)
+        {
             out.push_str(&format!(
-                "- `{}`: {}\n",
-                outcome.status.as_str(),
-                outcome.message
+                "- `{}`: {}{}\n",
+                status.as_str(),
+                message,
+                occurrence_suffix(*count)
             ));
         }
-        append_markdown_omitted_outcome_note(&mut out, non_matched.len());
+        append_markdown_omitted_outcome_note(&mut out, non_matched_lines.len());
     }
     out.push_str("\n> ");
     out.push_str(CLAIM_BOUNDARY_TEXT);
@@ -588,16 +600,43 @@ fn render_audit_summary_markdown(
     append_audit_remediation_roadmap_markdown(summary, signals, out);
     append_evidence_repair_queues_markdown(summary, signals, out);
 
-    if !queue.is_empty() {
+    let queue_lines = deduped_outcome_lines(queue.iter().copied());
+    if !queue_lines.is_empty() {
         out.push_str("\n## Audit Review Queue\n\n");
-        for outcome in queue.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
+        for (status, message, count) in queue_lines.iter().take(AUDIT_REVIEW_QUEUE_LIMIT) {
             out.push_str(&format!(
-                "- `{}`: {}\n",
-                outcome.status.as_str(),
-                outcome.message
+                "- `{}`: {}{}\n",
+                status.as_str(),
+                message,
+                occurrence_suffix(*count)
             ));
         }
-        append_markdown_omitted_review_queue_note(out, queue.len());
+        append_markdown_omitted_review_queue_note(out, queue_lines.len());
+    }
+}
+
+fn deduped_outcome_lines<'a>(
+    outcomes: impl Iterator<Item = &'a MatchOutcome>,
+) -> Vec<(MatchStatus, String, usize)> {
+    let mut lines: Vec<(MatchStatus, String, usize)> = Vec::new();
+    for outcome in outcomes {
+        if let Some(existing) = lines
+            .iter_mut()
+            .find(|(s, m, _)| *s == outcome.status && *m == outcome.message)
+        {
+            existing.2 += 1;
+        } else {
+            lines.push((outcome.status, outcome.message.clone(), 1));
+        }
+    }
+    lines
+}
+
+fn occurrence_suffix(count: usize) -> String {
+    if count > 1 {
+        format!(" ({count} occurrences)")
+    } else {
+        String::new()
     }
 }
 
