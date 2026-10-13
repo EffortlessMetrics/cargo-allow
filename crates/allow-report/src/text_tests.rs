@@ -724,3 +724,33 @@ fn audit_review_queue_outcomes(count: usize) -> Vec<MatchOutcome> {
         })
         .collect()
 }
+
+#[test]
+fn audit_dedupes_identical_review_queue_lines_with_count() {
+    let dup = |index: usize| MatchOutcome {
+        status: MatchStatus::ReviewDue,
+        allow_id: Some("allow-0284".to_string()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(index),
+        message: "allow-0284 matched but review is due after 2026-09-22".to_string(),
+        score: 90,
+    };
+    let outcomes = vec![dup(0), dup(1), dup(2), dup(3)];
+    // Human audit prints review_due only in the queue (trailing list excludes
+    // queue statuses), so the deduped message appears exactly once, counted.
+    let text = render_human_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+    assert_eq!(
+        text.matches("review is due after 2026-09-22").count(),
+        1,
+        "{text}"
+    );
+    assert_eq!(text.matches("(4 occurrences)").count(), 1, "{text}");
+    // Markdown renders queue + non-matched sections; each dedupes to one line.
+    let md = render_markdown_with_context("audit", &[], &outcomes, false, context("git_tracked"));
+    assert_eq!(
+        md.matches("review is due after 2026-09-22").count(),
+        2,
+        "{md}"
+    );
+    assert_eq!(md.matches("(4 occurrences)").count(), 2, "{md}");
+}

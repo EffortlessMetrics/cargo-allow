@@ -123,8 +123,8 @@ pub(super) fn require_noncomplete_composition(
     diagnostic: &str,
 ) -> Result<(), Box<dyn Error>> {
     use allow_report::{
-        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceNodeResultV1,
-        FinalFreezeReplayResultV1, FinalReadinessVerdictV1,
+        CargoAllowFinalFreezeReplayV1, CargoAllowFinalReadinessV1, FinalEvidenceGraphV1,
+        FinalEvidenceNodeResultV1, FinalFreezeReplayResultV1,
     };
 
     let evidence = super::collect_evidence(root, args, subject)?;
@@ -174,6 +174,11 @@ pub(super) fn require_noncomplete_composition(
             FinalEvidenceNodeResultV1::Mismatch
         } else if node.evidence_id == "registry-observation" {
             FinalEvidenceNodeResultV1::NotProven
+        } else if matches!(
+            node.evidence_id.as_str(),
+            "release-experience-input" | "release-experience"
+        ) {
+            FinalEvidenceNodeResultV1::Incomplete
         } else {
             FinalEvidenceNodeResultV1::Complete
         };
@@ -196,19 +201,23 @@ pub(super) fn require_noncomplete_composition(
     let replay: CargoAllowFinalFreezeReplayV1 = serde_json::from_slice(&std::fs::read(
         args.out_dir.join("final-freeze.replay.json"),
     )?)?;
-    let readiness: CargoAllowFinalReadinessV1 = serde_json::from_slice(&std::fs::read(
+    let readiness: Option<CargoAllowFinalReadinessV1> = serde_json::from_slice(&std::fs::read(
         args.out_dir.join("final-freeze.readiness.json"),
     )?)?;
+    let graph: FinalEvidenceGraphV1 = serde_json::from_slice(&std::fs::read(
+        args.out_dir.join("final-freeze.evidence-graph.json"),
+    )?)?;
     if replay.result == FinalFreezeReplayResultV1::CompleteEquivalent
-        || readiness.verdict == FinalReadinessVerdictV1::ReadyForFreeze
-        || !readiness.required_evidence.iter().any(|row| {
+        || readiness.is_some()
+        || !graph.nodes.iter().any(|row| {
             row.evidence_id == "release-rehearsal"
+                && row.required
                 && row.result == FinalEvidenceNodeResultV1::Mismatch
         })
     {
         return Err(format!(
             "rehearsal denial was lost in replay/readiness: {:?}/{:?}",
-            replay.result, readiness.verdict
+            replay.result, readiness
         )
         .into());
     }

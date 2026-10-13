@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: hard CLI errors now end with a structured `Next:` action (#4345).
+  Report paths already emitted the Result/Why/Next grammar, but
+  `error[E...]` paths (for example `diff --base <bad-ref>`) printed only
+  the message with no next step. `format_cli_error` now appends one
+  conservative, kind-specific next action (verify the revision, repair the
+  policy location, check the output path, run `doctor`, and so on) unless
+  the message already carries a `Next:` line, which is preserved as-is.
+  No error codes, messages, or exit behavior changed.

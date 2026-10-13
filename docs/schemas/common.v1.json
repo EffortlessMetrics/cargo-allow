@@ -1645,6 +1645,7 @@
       "required": [
         "id",
         "kind",
+        "item_kind",
         "risk",
         "difficulty",
         "status",
@@ -1681,6 +1682,28 @@
             "mirror_divergence"
           ],
           "description": "Stable queue item kind emitted by cargo-allow worklist."
+        },
+        "item_kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "occurrence_headroom",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "mirror_divergence"
+          ],
+          "description": "Alias of `kind` using the documented `--item-kind` filter name; always emitted with the same value as `kind`."
         },
         "exception_kind": {
           "type": "string",
