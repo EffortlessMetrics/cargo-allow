@@ -4,11 +4,11 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4456,
   "base_ref": "main",
-  "base_sha": "58f1b645ac8faf97002a52340bd49a7ecf125768",
+  "base_sha": "4a1b17091d41483ef69a05f999beef8450ca585c",
   "head_ref": "perf/4374-full-check-json-20261010",
-  "head_sha": "8425d34664cc35847166dc9f51be8f5173a72ca0",
+  "head_sha": "b05764cfb3176939efc774fee21f917f54780741",
   "merge_base": "58f1b645ac8faf97002a52340bd49a7ecf125768",
-  "reviewed_diff_digest": "sha256:v1:9b8eaca38e11c0d9246dd05416eb2d1a43946e81bb069afd1a9ea82b6350fb0e",
+  "reviewed_diff_digest": "sha256:v1:96291f8f4b5652aeb0f619072cfdc9d2b6f10c2f962d1bf8c569a4ac959b0bbe",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthor of this performance PR's source, UTC/custody repairs, policy, note and integration. Same model family, shared campaign context and shared account transport are disclosed. The coordinating account transports the anchored model COMMENT; no independent human approval is claimed. /root/campaign_audit authored the initial retained record; /root authored its evidence-only compiler-attribution correction. Neither author claims to be the independent reviewer.",
@@ -47,7 +47,8 @@
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#pullrequestreview-5481650934",
     "PERF-PROV-1: the authentic 02:47:44Z correction on actual 0f1f0c93 withdraws the native pregate Rust 1.95 attribution in source review 5481598254 and holds metadata review 5481639623 until this evidence-only own-record correction receives a renewed independent actual-head metadata/bootstrap review. The inaccurate sentence is corrected here; the original native reviews and sealed source/metadata packets remain historical, accompanied by the independent correction. The actual reviewed source remains 9bb9fc80 / c7852069 with its authentic 02:22:16Z source review. The separate record-head bot finding 4240006293 remains refuted; no source SHA is relabeled as the metadata head.",
     "Bounded re-review 2026-10-13 for the post-integration pair: the effective merge base moved to 4c27c27a (main tip). A prior head 405fd5e0 briefly carried unresolved policy/allow.toml conflict markers from an integration merge; it was rebuilt as d522bb5b with an id-and-content-aware tail-merge resolution (main's allow-review-4455 rows retained, this PR's allow-review-4456 rows appended verbatim) and verified with the local no-new guard green (failed=false, new=0). Verified: the four PR-owned files (.github/workflows/ci.yml, docs/performance-budgets.md, scripts/perf-budget-smoke.sh, scripts/test-perf-budget-smoke.sh) are byte-identical to the independently reviewed head 9bb9fc80 (zero-line delta), and 9bb9fc80 is an ancestor of d522bb5b. The proven independent review reference and verdict are preserved unchanged; no PR-owned dimension was affected by the base movement or the policy integration.",
-    "Post-merge-rebase rebind 2026-10-13 (base 58f1b645): the merge of #4460 into main moved the base again and introduced an allow.toml tail conflict with this PR; re-resolved id-and-content-aware (main's allow-review-4460 rows retained; this PR's allow-review-4456 rows appended verbatim with original field values). Local no-new guard green (failed=false, new=0) and `cargo-allow diff --base origin/main --require-change-note` exits 0. The four PR-owned files remain byte-identical to the independently reviewed head 9bb9fc80. Binding fields updated to the current pair; verdict and proven review reference preserved unchanged."
+    "Post-merge-rebase rebind 2026-10-13 (base 58f1b645): the merge of #4460 into main moved the base again and introduced an allow.toml tail conflict with this PR; re-resolved id-and-content-aware (main's allow-review-4460 rows retained; this PR's allow-review-4456 rows appended verbatim with original field values). Local no-new guard green (failed=false, new=0) and `cargo-allow diff --base origin/main --require-change-note` exits 0. The four PR-owned files remain byte-identical to the independently reviewed head 9bb9fc80. Binding fields updated to the current pair; verdict and proven review reference preserved unchanged.",
+    "Synchronized rebind 2026-10-13 against live base 4a1b1709 (post-#4491 main): binding fields updated to the current pair after the base moved during the prior CI window; no content change. Verdict, findings and proven review reference preserved unchanged."
   ],
   "required_ci": {
     "owner": "Root/coordinating maintainer must verify this sole-JSON child's source preservation and independent actual-hosted metadata/bootstrap review, every applicable current native check and substantive thread disposition, then perform fresh exact-pair Ready/merge preflight and resulting-main guard. This source review and record waive no pending, neutral, skipped, cancelled, failed, stale or unavailable evidence. They do not authorize a merge slot or release operation.",
@@ -55,5 +56,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4456",
-  "reviewed_at_utc": "2026-10-13T07:50:00Z"
+  "reviewed_at_utc": "2026-10-13T08:45:00Z"
 }
