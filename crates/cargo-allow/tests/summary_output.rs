@@ -324,6 +324,91 @@ glob = "docs/file-{index:02}.md"
     remove_temp_root(root);
 }
 
+/// #4477 slice 2: human stdout `worklist` without paging flags shows a
+/// bounded first page plus a remainder footer; JSON keeps the full queue.
+#[test]
+fn worklist_human_stdout_is_bounded_by_default_and_json_is_not() {
+    let root = temp_root("worklist-bounded-default");
+    write_source_fixture(&root);
+    let mut policy = String::from("policy = \"cargo-allow\"\n");
+    for index in 0..25 {
+        policy.push_str(&format!(
+            r#"
+[[allow]]
+id = "allow-{index:02}"
+kind = "non_rust_file"
+family = "configuration"
+path = "docs/file-{index:02}.md"
+owner = "core"
+classification = "fixture"
+reason = "bounded worklist fixture"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/file-{index:02}.md"
+target_fingerprint = "md"
+glob = "docs/file-{index:02}.md"
+"#
+        ));
+    }
+    write_policy(&root, &policy);
+
+    let run_worklist = |extra: &[&str]| {
+        let mut command = cargo_allow_command();
+        command.arg("worklist").arg("--root").arg(&root);
+        for arg in extra {
+            command.arg(arg);
+        }
+        command
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run worklist: {err}")))
+    };
+
+    let human = run_worklist(&[]);
+    let human_text = String::from_utf8_lossy(&human.stdout).into_owned();
+    assert!(
+        human.status.success(),
+        "worklist should succeed: {human_text}"
+    );
+    assert!(
+        human_text.contains("more work items not shown; rerun with --limit"),
+        "default page ends with the remainder footer: {human_text}"
+    );
+
+    let json_output = root.join("worklist.json");
+    let json = run_worklist(&[
+        "--format",
+        "json",
+        "--output",
+        json_output.to_str().unwrap_or("worklist.json"),
+    ]);
+    assert!(json.status.success(), "json worklist should succeed");
+    let json_text = fs::read_to_string(&json_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read worklist json: {err}")));
+    for index in 0..25 {
+        assert!(
+            json_text.contains(&format!("\"allow-{index:02}\"")),
+            "json keeps queue entry allow-{index:02}"
+        );
+    }
+
+    let human_output = root.join("worklist.txt");
+    let human_file = run_worklist(&["--output", human_output.to_str().unwrap_or("worklist.txt")]);
+    assert!(
+        human_file.status.success(),
+        "human --output worklist succeeds"
+    );
+    let human_file_text = fs::read_to_string(&human_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read worklist.txt: {err}")));
+    assert!(
+        !human_file_text.contains("more work items not shown"),
+        "--output artifacts must not gain the stdout footer"
+    );
+
+    remove_temp_root(root);
+}
+
 fn write_source_fixture(root: &std::path::Path) {
     fs::create_dir_all(root.join("src"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));

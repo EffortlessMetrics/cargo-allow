@@ -171,9 +171,35 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
             let mut rendered =
                 crate::core_command_summary::render_core_command_summary_human(&summary);
             rendered.push('\n');
-            rendered.push_str(&render_worklist_human_with_context_styled(
-                &items, context, style,
-            ));
+            // Human stdout without paging flags gets a bounded first page
+            // (#4477 slice 2, mirroring list): the JSON detail and summary
+            // above are already built from the full queue, and artifacts
+            // keep every item. The page applies only to this rendering.
+            let human_stdout = args.output.is_none();
+            let default_page = human_stdout && args.limit.is_none() && args.offset.is_none();
+            if default_page && items.len() > DEFAULT_HUMAN_WORKLIST_PAGE {
+                let total = items.len();
+                let page = page_work_items(
+                    items,
+                    WorklistPaging {
+                        limit: Some(DEFAULT_HUMAN_WORKLIST_PAGE as u32),
+                        offset: 0,
+                        total,
+                        unfiltered_total,
+                    },
+                );
+                rendered.push_str(&render_worklist_human_with_context_styled(
+                    &page, context, style,
+                ));
+                let more = total - DEFAULT_HUMAN_WORKLIST_PAGE;
+                rendered.push_str(&format!(
+                    "\n... {more} more work items not shown; rerun with --limit {total} to see all, or page with --limit/--offset."
+                ));
+            } else {
+                rendered.push_str(&render_worklist_human_with_context_styled(
+                    &items, context, style,
+                ));
+            }
             rendered
         }
     };
@@ -186,6 +212,10 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
 /// The relocation-stable semantic identity comes from worklist's own JSON
 /// artifact, exactly as `audit`, `check`, and `doctor` derive theirs, so the
 /// summary never rescans source or re-evaluates matching to describe itself.
+/// Default first-page size for human stdout `worklist` without paging
+/// flags (#4477 slice 2; mirrors the `list` bound).
+const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
+
 fn worklist_summary(
     detail_json: &str,
     root: &std::path::Path,
