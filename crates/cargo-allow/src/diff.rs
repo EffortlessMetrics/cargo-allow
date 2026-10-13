@@ -53,8 +53,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 CargoAllowError::with_kind(
                     CargoAllowErrorKind::Usage,
                     "diff requires --base <revision>; \
-                     no upstream was auto-detected for merge-base; \
-                     pass --base origin/main or set an upstream with `git branch --set-upstream-to`",
+                     no upstream was auto-detected for merge-base",
+                )
+                .with_next_step(
+                    "pass --base <revision> (for example `origin/main`) or set an upstream with `git branch --set-upstream-to`, then retry.",
                 )
             })?
         }
