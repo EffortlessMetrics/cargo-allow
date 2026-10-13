@@ -196,6 +196,13 @@ pub struct CargoAllowError {
     causes: Vec<String>,
     /// Linked cause chain for `Error::source` / `successors` walks.
     source: Option<Box<CauseError>>,
+    /// Optional typed remedy action for renderers (the CLI's `Next:` line).
+    ///
+    /// Typed so the action cannot be forgotten, duplicated, or drift from
+    /// the failure the way a `Next:` embedded in the message string can
+    /// (#4488). Renderers prefer this over message-carried and per-kind
+    /// generic guidance.
+    next_step: Option<String>,
 }
 
 impl CargoAllowError {
@@ -208,6 +215,7 @@ impl CargoAllowError {
             diagnostics: Vec::new(),
             causes: Vec::new(),
             source: None,
+            next_step: None,
         }
     }
 
@@ -220,6 +228,7 @@ impl CargoAllowError {
             diagnostics: Vec::new(),
             causes: Vec::new(),
             source: None,
+            next_step: None,
         }
     }
 
@@ -276,6 +285,20 @@ impl CargoAllowError {
             self.message.push_str(suffix);
         }
         self
+    }
+
+    /// Attach a typed remedy action for renderers, returning a new value.
+    ///
+    /// The CLI renders this as the error's single `Next:` line in preference
+    /// to any message-carried or per-kind generic guidance (#4488).
+    pub fn with_next_step(mut self, next_step: impl Into<String>) -> Self {
+        self.next_step = Some(next_step.into());
+        self
+    }
+
+    /// The typed remedy action attached with [`Self::with_next_step`], when present.
+    pub fn next_step(&self) -> Option<&str> {
+        self.next_step.as_deref()
     }
 
     /// Rendered cause messages in attachment order (outermost first).

@@ -254,6 +254,47 @@ fn exit_matrix_explain_unknown_id_names_the_id_fix() {
     drop_root(root);
 }
 
+/// #4488: `diff` without a base and without an upstream fails with the
+/// typed next step (pass --base / set upstream), never the generic syntax
+/// advice, and renders exactly one Next line.
+#[test]
+fn exit_matrix_diff_without_base_names_the_base_fix() {
+    let root = temp_root("exit-diff-no-base");
+    write_panic_source(&root);
+    // A real repository with no upstream: merge-base auto-detection has
+    // nothing to find, so the missing-base error must fire deterministically.
+    let git_init = std::process::Command::new("git")
+        .arg("init")
+        .arg("-q")
+        .current_dir(&root)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run git init: {err}")));
+    assert!(git_init.status.success(), "git init should succeed");
+
+    let output = cargo_allow()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    assert_exit("diff without base", &output, 2, "diff requires --base");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        stderr.matches("Next:").count(),
+        1,
+        "exactly one Next line: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: pass --base <revision>"),
+        "typed Next names the base fix: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "generic syntax advice must not appear: {stderr}"
+    );
+    drop_root(root);
+}
+
 #[test]
 fn exit_matrix_missing_config_is_1() {
     let root = temp_root("exit-missing-config");
