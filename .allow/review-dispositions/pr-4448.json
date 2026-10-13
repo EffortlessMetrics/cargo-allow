@@ -4,11 +4,11 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4448,
   "base_ref": "main",
-  "base_sha": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
+  "base_sha": "9dea6d05f57d26ee02ef8a921eddd095e816f8ef",
   "head_ref": "release/3930-final-tag-driver",
-  "head_sha": "c8e3a03a829f349cafcd0476cc92311031fe4e2e",
-  "merge_base": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
-  "reviewed_diff_digest": "sha256:v1:5c084601528910d0db52221aabcd1f98c45896481c70965558bea68bb3ca1740",
+  "head_sha": "16d35f30869e8a112723cf7dbf84ba953e543ee8",
+  "merge_base": "9dea6d05f57d26ee02ef8a921eddd095e816f8ef",
+  "reviewed_diff_digest": "sha256:v1:cb49b7a2b60ea34928edc270e810819acee5baf548ec035f779372942c692ef8",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/driver_review, separate pure nonauthor of the complete source, repairs, integration, retained JSON, policy and canonical rehearsal helper. Shared model family and inherited campaign context are disclosed. This is an actual independently submitted model COMMENT Review, not independent human approval. The coordinating maintainer writes this own-record-only successor and is not counted as the independent reviewer.",
@@ -29,7 +29,8 @@
     "The reviewer inspected the complete driver/bridge, nine states, available versus continuation authority, durable append/Started witness, exact custody/lease/subject, no repeated push after ambiguous response, read-only reconciliation, canonical eight rehearsal phases/seven prevention flags, process cleanup and relevant incoming provider/publisher/rehearsal/hook/CI consumers. No actionable source finding remained.",
     "The generic #3844 canonical rendering/ancestor recomputation gap stays open. The #4443 premerge stale-record/gate exception remains historical; this record does not endorse it or select a merge slot. Existing Graphite/Gemini/CodeRabbit skipped or unavailable model evidence is not treated as a clean review.",
     "No actual provider fit/qualification, seven-flag prevention, installed experience, immutable candidate custody, final manifest decision, selected publication credential, authority mint, final tag, upload, public Release or live-setting operation is established. Ordinary nonforced append with a nonce is not expected-old-OID CAS. The actual independent Review grants no release authority.",
-    "Bounded re-review 2026-10-13 for the post-integration pair: verified 16 of 17 PR-owned files are byte-identical to the independently reviewed head cf53514a. The single intersection file crates/cargo-allow/src/cli/release_freeze_command.rs carries main's own reviewed evolution combined with this PR's surviving one-line rewire (`use super::release_freeze_rehearsal as rehearsal;`); coherence verified (cli.rs declares the sibling module, the module file exists, full workspace compiled under the local no-new guard, failed=false and new=0). The policy/allow.toml integration was re-resolved id-and-content-aware and the evidence-surface inventory took main's 41-row schema plus one complete schema row for the PR's release_final_tag_driver.rs test (42 classified rows, validator and its unit test green). The proven independent review reference and verdict are preserved unchanged."
+    "Bounded re-review 2026-10-13 for the post-integration pair: verified 16 of 17 PR-owned files are byte-identical to the independently reviewed head cf53514a. The single intersection file crates/cargo-allow/src/cli/release_freeze_command.rs carries main's own reviewed evolution combined with this PR's surviving one-line rewire (`use super::release_freeze_rehearsal as rehearsal;`); coherence verified (cli.rs declares the sibling module, the module file exists, full workspace compiled under the local no-new guard, failed=false and new=0). The policy/allow.toml integration was re-resolved id-and-content-aware and the evidence-surface inventory took main's 41-row schema plus one complete schema row for the PR's release_final_tag_driver.rs test (42 classified rows, validator and its unit test green). The proven independent review reference and verdict are preserved unchanged.",
+    "Objective repairs and rebind 2026-10-13 (second rebind, base 9dea6d05): the retained revision note (.allow/revisions/3930-final-tag-driver.toml) still recorded pre-collision ids allow-11346/allow-11348 after the branch's test-file and disposition receipts were re-identified to allow-11353/allow-11354; the note records now cover the current ids with fresh row fingerprints, and `cargo-allow diff --base origin/main --require-change-note` exits 0. Local no-new guard green (failed=false, new=0). Binding fields updated to the current pair; the proven independent review reference and verdict are preserved unchanged."
   ],
   "required_ci": {
     "owner": "Coordinating maintainer: independently verify the sole-own-record successor and current native readiness, disposition substantive feedback, retain exact live main/base/head/unique merge base/synthetic binding, and require every applicable latest current-pair gate before Ready or merge. Preserve the coordinated merge order; a normal head-pinned merge requires an exact resulting-main enforcing guard and issue reconciliation. Pending, stale, skipped, malformed, neutral or unavailable required evidence is not green. This record and source Review do not waive any gate or authorize publication.",
@@ -37,5 +38,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4448",
-  "reviewed_at_utc": "2026-10-13T03:50:00Z"
+  "reviewed_at_utc": "2026-10-13T04:55:00Z"
 }
