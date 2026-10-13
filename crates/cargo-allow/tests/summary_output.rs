@@ -300,10 +300,25 @@ glob = "docs/file-{index:02}.md"
     assert!(json.status.success(), "json list should succeed");
     let json_text = fs::read_to_string(&json_output)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read list json: {err}")));
+    for index in 0..25 {
+        assert!(
+            json_text.contains(&format!("\"allow-{index:02}\"")),
+            "json keeps entry allow-{index:02}"
+        );
+    }
+
+    // An explicit --offset alone keeps its historical meaning (all
+    // remaining rows), so no default bound and no footer apply.
+    let offset_only = run_list(&["--offset", "10"]);
+    let offset_only_text = String::from_utf8_lossy(&offset_only.stdout).into_owned();
     assert_eq!(
-        json_text.matches("\"allow-").count() >= 25,
-        true,
-        "json keeps every entry id"
+        offset_only_text.matches("- [").count(),
+        15,
+        "offset-only shows every remaining entry: {offset_only_text}"
+    );
+    assert!(
+        !offset_only_text.contains("more entries"),
+        "offset-only gains no footer: {offset_only_text}"
     );
 
     remove_temp_root(root);

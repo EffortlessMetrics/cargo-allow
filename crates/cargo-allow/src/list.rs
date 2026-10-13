@@ -109,7 +109,10 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     // the full set byte-identically; the bound is presentation only.
     let human_stdout = matches!(args.format, HumanJsonFormat::Human) && args.output.is_none();
     let total_rows = filtered_rows.len();
-    let effective_limit = if human_stdout && args.limit.is_none() {
+    // The default page applies only when the caller supplied neither paging
+    // flag: an explicit --offset alone historically shows every remaining
+    // row, and that behavior is preserved.
+    let effective_limit = if human_stdout && args.limit.is_none() && args.offset.is_none() {
         Some(DEFAULT_HUMAN_LIST_PAGE)
     } else {
         args.limit
