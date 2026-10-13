@@ -251,16 +251,12 @@ fn entry_scope_paths(entry: &AllowEntry) -> Vec<String> {
 }
 
 pub(crate) fn missing_allow_entry_error(id: &str) -> CargoAllowError {
-    // Carry the specific action in the message: the generic Usage Next line
-    // (review the command syntax) contradicts this failure, whose syntax was
-    // correct and whose fix is an existing ID (#4485). format_cli_error
-    // keeps a message-carried Next: and appends no second one.
-    CargoAllowError::with_kind(
-        CargoAllowErrorKind::Usage,
-        format!(
-            "no allow entry `{id}`\nNext: run `cargo-allow list` to see valid IDs, then retry with an existing ID."
-        ),
-    )
+    // The generic Usage Next line (review the command syntax) contradicts
+    // this failure, whose syntax was correct and whose fix is an existing
+    // ID (#4485). Carry the remedy as the typed next step (#4488/#4490);
+    // the rendered output is unchanged.
+    CargoAllowError::with_kind(CargoAllowErrorKind::Usage, format!("no allow entry `{id}`"))
+        .with_next_step("run `cargo-allow list` to see valid IDs, then retry with an existing ID.")
 }
 
 /// Normalize an allow-entry id shorthand for lookup.

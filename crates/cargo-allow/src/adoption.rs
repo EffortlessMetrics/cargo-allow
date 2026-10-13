@@ -46,7 +46,18 @@ struct AdoptionArtifact {
     plan: allow_report::CoreAdoptionPlanV1,
 }
 
+#[cfg(test)]
 pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
+    cmd_adopt_with_summary_disposition(
+        args,
+        &mut crate::core_command_router::ErrorSummaryDisposition::Required,
+    )
+}
+
+pub(crate) fn cmd_adopt_with_summary_disposition(
+    args: &AdoptionArgs,
+    error_summary: &mut crate::core_command_router::ErrorSummaryDisposition,
+) -> CargoAllowResult<()> {
     let inspection = inspect(args)?;
     let output = args
         .output
@@ -109,13 +120,16 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
         allow_report::BootstrapDisposition::PartialInventory
         | allow_report::BootstrapDisposition::InvalidPolicy
         | allow_report::BootstrapDisposition::UnsupportedRepositoryState
-        | allow_report::BootstrapDisposition::InstrumentFailure => Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Artifact,
-            format!(
-                "cargo-allow adopt: {}",
-                disposition_text(artifact.plan.bootstrap_disposition)
-            ),
-        )),
+        | allow_report::BootstrapDisposition::InstrumentFailure => {
+            *error_summary = crate::core_command_router::ErrorSummaryDisposition::EvaluatedOutcome;
+            Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "cargo-allow adopt: {}",
+                    disposition_text(artifact.plan.bootstrap_disposition)
+                ),
+            ))
+        }
         _ => Ok(()),
     }
 }

@@ -602,7 +602,10 @@ condition is active.
 `cargo-allow list` defaults to a concise human card for each allow entry with
 bounded ID, status, kind, scope, owner, match/evidence summary, and reason
 lines. Cards avoid an unbounded horizontal TSV row while retaining a
-deterministic count/status/evidence summary. The view distinguishes an empty
+deterministic count/status/evidence summary. On stdout, a run without
+`--limit`/`--offset` shows the first 20 entries and ends with a footer naming
+how many more remain and how to page through them; `--limit`/`--offset` page
+explicitly, and JSON plus `--output` artifacts always keep the full set. The view distinguishes an empty
 ledger, an empty filtered view, and an empty tracked-source inventory. Long
 repository values are ellipsized in this concise view; `--wide` or explicit
 `--columns` retains the complete human projection. JSON remains complete and

@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  CLI errors can now carry a typed remedy action that the error renderer
+  prints as the single `Next:` line, replacing per-site guidance embedded in
+  message strings. `cargo-allow diff` without a base uses it first: its
+  missing-base error names passing `--base` or setting an upstream instead
+  of the generic command-syntax advice (#4488).

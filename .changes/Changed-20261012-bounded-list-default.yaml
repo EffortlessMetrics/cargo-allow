@@ -1,0 +1,8 @@
+kind: Changed
+body: >-
+  Human `cargo-allow list` output on stdout now shows a bounded first page
+  of 20 entries when no `--limit` is given, ending with an explicit footer
+  naming how many entries remain and how to see them (`--limit` /
+  `--offset`). Previously a large ledger dumped thousands of lines (6,795
+  on this repository). JSON and `--output` artifacts keep the full set
+  unchanged (#4477).

@@ -1,0 +1,6 @@
+kind: Changed
+body: >-
+  The explain/prune unknown-ID remedy and the `propose --write` failure
+  remedies now travel as the typed error next-step added in #4488 instead of
+  `Next:` text embedded in message strings. Rendered CLI output is
+  byte-identical; this is internal plumbing only (#4490).
