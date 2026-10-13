@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `init` next steps now name the commit step in a Git worktree
+  (#4479). The seeded self-receipt for the starter policy reads `stale`
+  on the first check because git-tracked inventory cannot see the
+  just-written, still-untracked policy file — tool-made confusion that
+  routed new users toward pruning the ledger's own receipt. Init now
+  leads its next steps with `git add <policy> && git commit` and explains
+  the stale-until-committed behavior; non-Git roots are unchanged. No
+  inventory or stale semantics changed.

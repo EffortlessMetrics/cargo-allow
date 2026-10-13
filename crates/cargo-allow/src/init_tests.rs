@@ -356,6 +356,7 @@ fn dry_run_announcement_includes_preview_and_next_steps() {
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -398,6 +399,7 @@ fn dry_run_announcement_strict_preview_promotes_mode_and_stale_failure() {
         "policy/allow.toml",
         true,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -417,12 +419,14 @@ fn dry_run_announcement_keep_and_overwrite_use_action_word() {
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
     let overwrite = super::dry_run_announcement_styled(
         "overwrite",
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -443,12 +447,14 @@ fn post_write_announcement_shares_next_steps_with_dry_run() {
         "created",
         "policy/allow.toml",
         allow_report::Style::PLAIN,
+        None,
     );
     let dry = super::dry_run_announcement_styled(
         "create",
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(created.starts_with("created policy/allow.toml\n"));
@@ -467,6 +473,7 @@ fn init_human_summary_styles_fixed_action_markers_only() {
         "policy/allow.toml",
         false,
         allow_report::Style::ANSI,
+        None,
     );
     assert!(dry.contains("would \u{1b}[33mcreate\u{1b}[0m policy/allow.toml"));
     assert!(!dry.contains("policy/allow.toml\u{1b}"));
@@ -475,6 +482,7 @@ fn init_human_summary_styles_fixed_action_markers_only() {
         "created",
         "policy/allow.toml",
         allow_report::Style::ANSI,
+        None,
     );
     assert!(written.starts_with("\u{1b}[32mcreated\u{1b}[0m policy/allow.toml\n"));
     assert!(!written.contains("policy/allow.toml\u{1b}"));
@@ -884,4 +892,17 @@ fn remove_init_fixture_dir(path: PathBuf) {
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
         Err(err) => std::panic::panic_any(format!("remove init fixture {}: {err}", path.display())),
     }
+}
+
+#[test]
+fn next_steps_name_commit_step_only_with_hint() {
+    // #4479: in a Git worktree the starter policy is invisible to
+    // git-tracked inventory until committed, so the seeded self-receipt
+    // reads stale on the first check. Name the commit step up front.
+    let with = super::next_steps_block(Some("policy/allow.toml"));
+    assert!(with.contains("git add policy/allow.toml && git commit"), "{with}");
+    assert!(with.contains("reads stale (expected, not broken)"), "{with}");
+    let without = super::next_steps_block(None);
+    assert!(!without.contains("git add"), "{without}");
+    assert!(without.contains("cargo-allow audit"), "{without}");
 }
