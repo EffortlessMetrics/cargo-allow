@@ -82,11 +82,14 @@ User-facing command guides use this table as their maturity source. `Published
 | `doctor` | Stable | Stabilizing | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `adopt` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `capabilities` | Not included | Experimental | [Getting started](../getting-started.md) |
-| `vocabulary` | Not included | Experimental | [Source exception ledger](../source-exception-ledger.md) |
+| `vocabulary` | Not included | Experimental | [Migrate from bare allow](../how-to/migrate-from-bare-allow.md) |
 | `tool` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `completions` | Not included | Experimental | [Install shell completions](../how-to/install-shell-completions.md) |
-| `reference` | Not included | Experimental | [Getting started](../getting-started.md) |
+| `reference` | Not included | Experimental | [Install shell completions](../how-to/install-shell-completions.md) |
 | `hooks` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
+| `cadence` | Not included | Experimental | [Getting started](../getting-started.md) |
+| `extraction-parity` | Not included | Experimental | [Extraction parity](../architecture/extraction-parity.md) |
+| `changie` | Not included | Experimental | [Run the Changie static sensor](../how-to/run-changie-sensor.md) |
 
 The table intentionally separates published stability from current-main
 maturity. A guide marker must not be read as a claim that the source candidate

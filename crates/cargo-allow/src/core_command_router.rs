@@ -52,6 +52,17 @@ impl SummaryOutputConfig {
 
 static SUMMARY_OUTPUT: OnceLock<SummaryOutputConfig> = OnceLock::new();
 
+/// A command's error-summary handoff for one CLI invocation.
+///
+/// An evaluated domain error may retain the command's own summary only after
+/// all detailed output has succeeded. Writing a sidecar alone is insufficient:
+/// a later rendering or artifact error still needs the typed hard-error summary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ErrorSummaryDisposition {
+    Required,
+    EvaluatedOutcome,
+}
+
 pub(crate) fn configure_summary_output(config: SummaryOutputConfig) -> CargoAllowResult<()> {
     SUMMARY_OUTPUT.set(config).map_err(|_| {
         CargoAllowError::with_kind(
@@ -83,6 +94,16 @@ fn print_report_with_summary_config(
     write_summary_artifact_with_config(args.root, &summary, summary_config)?;
 
     emit_text(args.output, &rendered)
+}
+
+/// Emit the same report-derived sidecar when a command intentionally keeps its
+/// detailed report off stdout, such as the human receipt-only check route.
+pub(crate) fn write_report_summary_artifact(args: &ReportRenderArgs<'_>) -> CargoAllowResult<()> {
+    let Some(config) = SUMMARY_OUTPUT.get() else {
+        return Ok(());
+    };
+    let summary = build_report_summary(args)?;
+    write_summary_artifact_with_config(args.root, &summary, Some(config))
 }
 
 /// Write the `--summary-output` artifact for a command that builds its own
@@ -147,7 +168,7 @@ pub(crate) fn write_error_summary_artifact(
             "the failed command's typed error classification and reason only",
         )
         .with_limitations(vec![
-            "the source-syntax scan the command would have reported was not completed".to_string(),
+            "this error summary does not attest whether source scanning or evaluation completed".to_string(),
             "the failure classification does not establish, repair, or authorize any source exception".to_string(),
         ]),
     ) else {

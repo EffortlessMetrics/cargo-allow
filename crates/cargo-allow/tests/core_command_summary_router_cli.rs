@@ -2093,6 +2093,11 @@ fn a_hard_error_writes_the_e000x_classified_summary_sidecar() -> Result<(), Stri
 
     // `src/other.rs` has no finding, so `why` exits on a typed usage error.
     let sidecar = root.join("why-error-summary.json");
+    fs::write(
+        &sidecar,
+        r#"{"result_class":"completed","sentinel":"stale"}"#,
+    )
+    .map_err(|error| format!("seed stale hard-error summary: {error}"))?;
     let sidecar_text = sidecar.to_string_lossy().to_string();
     let output = run(
         &root,
@@ -2143,6 +2148,717 @@ fn a_hard_error_writes_the_e000x_classified_summary_sidecar() -> Result<(), Stri
     )?;
 
     remove_temp_root(root)
+}
+
+#[test]
+fn adoption_evaluated_errors_preserve_their_summary_and_detailed_output() -> Result<(), String> {
+    for (label, invalid_policy, partial, disposition, completeness, class, reason, exit) in [
+        (
+            "summary-adopt-invalid",
+            true,
+            false,
+            "InvalidPolicy",
+            "complete",
+            "malformed_input",
+            "adoption.invalid_policy",
+            1,
+        ),
+        (
+            "summary-adopt-partial",
+            false,
+            true,
+            "PartialInventory",
+            "partial",
+            "partial_data",
+            "adoption.partial_inventory",
+            1,
+        ),
+        (
+            "summary-adopt-healthy",
+            false,
+            false,
+            "ExistingPolicyHealthy",
+            "complete",
+            "completed",
+            "adoption.existing_policy_healthy",
+            0,
+        ),
+    ] {
+        let root = summary_outcome_fixture(label, partial)?;
+        if invalid_policy {
+            fs::write(root.join("policy/allow.toml"), "not = [valid\n")
+                .map_err(|error| format!("write invalid policy: {error}"))?;
+        }
+        let (detail, summary) = summary_with_unchanged_output(
+            &root,
+            &["adopt", "--config", "policy/allow.toml", "--format", "json"],
+            exit,
+        )?;
+        require(
+            field(&detail, &["plan", "bootstrap_disposition"]) == Some(&Value::from(disposition))
+                && field(&detail, &["plan", "inventory", "completeness"])
+                    == Some(&Value::from(if partial { "Partial" } else { "Complete" })),
+            format!("{label} must retain the evaluated adoption plan: {detail}"),
+        )?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from("adopt"))
+                && field(&summary, &["result_class"]) == Some(&Value::from(class))
+                && field(&summary, &["completeness"]) == Some(&Value::from(completeness))
+                && field(&summary, &["reason", "code"]) == Some(&Value::from(reason)),
+            format!("{label} must retain the evaluated summary: {summary}"),
+        )?;
+        remove_temp_root(root)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn doctor_require_clean_keeps_partial_coverage_in_the_summary() -> Result<(), String> {
+    for (label, partial, require_clean, exit) in [
+        ("summary-doctor-partial-strict", true, true, 1),
+        ("summary-doctor-partial-relaxed", true, false, 0),
+        ("summary-doctor-clean-strict", false, true, 0),
+    ] {
+        let root = summary_outcome_fixture(label, partial)?;
+        let mut args = vec![
+            "doctor",
+            "--config",
+            "policy/allow.toml",
+            "--format",
+            "json",
+        ];
+        if require_clean {
+            args.push("--require-clean");
+        }
+        let (detail, summary) = summary_with_unchanged_output(&root, &args, exit)?;
+        let completeness = if partial { "partial" } else { "complete" };
+        require(
+            field(&detail, &["scanner", "completeness"]) == Some(&Value::from(completeness))
+                && field(&detail, &["scanner", "rust", "files_with_parse_errors"])
+                    == Some(&Value::from(u64::from(partial))),
+            format!("{label} must retain its scanner diagnosis: {detail}"),
+        )?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from("doctor"))
+                && field(&summary, &["result_class"])
+                    == Some(&Value::from(if partial {
+                        "partial_data"
+                    } else {
+                        "completed"
+                    }))
+                && field(&summary, &["completeness"]) == Some(&Value::from(completeness))
+                && field(&summary, &["reason", "code"])
+                    == Some(&Value::from(if partial {
+                        "doctor.partial_coverage"
+                    } else {
+                        "doctor.healthy_setup"
+                    })),
+            format!("{label} must not become complete because require-clean failed: {summary}"),
+        )?;
+        remove_temp_root(root)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn receipt_only_human_check_writes_the_same_summary_as_report_routes() -> Result<(), String> {
+    let root = summary_outcome_fixture("summary-check-receipt-routes", false)?;
+    let mut first_summary = None;
+    for route in ["receipt-only", "json", "output"] {
+        let sidecar = root.join(format!("target/probe/{route}-summary.json"));
+        let receipt = root.join(format!("target/probe/{route}-receipt.json"));
+        let report = root.join(format!("target/probe/{route}-report.txt"));
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let receipt_text = receipt.to_string_lossy().to_string();
+        let report_text = report.to_string_lossy().to_string();
+        require(
+            !sidecar.exists(),
+            "each check route must start without a summary",
+        )?;
+        let mut args = vec![
+            "--command-summary-output",
+            &sidecar_text,
+            "check",
+            "--config",
+            "policy/allow.toml",
+            "--mode",
+            "no-new",
+            "--persistent-cache",
+            "off",
+            "--receipt",
+            &receipt_text,
+        ];
+        match route {
+            "json" => args.extend(["--format", "json"]),
+            "output" => args.extend(["--output", &report_text]),
+            _ => {}
+        }
+        let output = run(&root, &args)?;
+        require(
+            output.status.success(),
+            format!(
+                "{route} check failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ),
+        )?;
+        if route == "json" {
+            let _: Value = serde_json::from_slice(&output.stdout)
+                .map_err(|error| format!("parse JSON check detail: {error}"))?;
+        } else {
+            require(
+                output.stdout.is_empty(),
+                format!("{route} must keep stdout quiet"),
+            )?;
+        }
+        if route == "receipt-only" {
+            require(
+                String::from_utf8_lossy(&output.stderr)
+                    .contains("cargo-allow check: passed (mode: no-new, receipt written to "),
+                "receipt-only Human check must retain its brief stderr status",
+            )?;
+        } else if route == "output" {
+            require(
+                fs::read_to_string(&report)
+                    .map_err(|error| error.to_string())?
+                    .contains("Result: passed (enforcing)"),
+                "the Human output file must retain its detailed gate verdict",
+            )?;
+        }
+        let receipt = read_summary_json(&receipt)?;
+        require(
+            field(&receipt, &["status"]) == Some(&Value::from("passed"))
+                && field(&receipt, &["failed"]) == Some(&Value::Bool(false))
+                && field(&receipt, &["enforcement"]) == Some(&Value::from("enforcing"))
+                && field(&receipt, &["counts", "new"]) == Some(&Value::from(0)),
+            format!("{route} must retain the passing no-new receipt: {receipt}"),
+        )?;
+        let summary = read_summary_json(&sidecar)?;
+        // Native init leaves one ordinary policy-missing-evidence advisory.
+        // A passing no-new receipt must not erase that finding from the summary.
+        require(
+            field(&receipt, &["advisory", "policy_missing_evidence"]) == Some(&Value::from(1))
+                && field(&summary, &["operation"]) == Some(&Value::from("check"))
+                && field(&summary, &["result_class"]) == Some(&Value::from("findings"))
+                && field(&summary, &["completeness"]) == Some(&Value::from("complete"))
+                && field(&summary, &["posture"]) == Some(&Value::from("advisory")),
+            format!("{route} must preserve the advisory summary: {summary}"),
+        )?;
+        if let Some(expected) = first_summary.as_ref() {
+            require(
+                &summary == expected,
+                format!("{route} changed the report-derived summary"),
+            )?;
+        } else {
+            first_summary = Some(summary);
+        }
+    }
+    remove_temp_root(root)
+}
+
+#[test]
+fn later_output_failures_replace_evaluated_summaries_with_typed_errors() -> Result<(), String> {
+    for command in ["adopt", "doctor", "check"] {
+        let root = summary_outcome_fixture(
+            &format!("summary-late-output-{command}"),
+            command != "check",
+        )?;
+        let sidecar = root.join("target/probe/summary.json");
+        let blocked_output = root.join("target/probe/owned-directory");
+        fs::create_dir(&blocked_output).map_err(|error| error.to_string())?;
+        let canary = blocked_output.join("owner.txt");
+        fs::write(&canary, b"prior owner's bytes\n").map_err(|error| error.to_string())?;
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let blocked_text = blocked_output.to_string_lossy().to_string();
+        let mut args = vec![
+            "--command-summary-output",
+            &sidecar_text,
+            command,
+            "--config",
+            "policy/allow.toml",
+        ];
+        if command == "check" {
+            // The quiet Human route emits its summary before writing the receipt.
+            args.extend([
+                "--mode",
+                "no-new",
+                "--persistent-cache",
+                "off",
+                "--receipt",
+                &blocked_text,
+            ]);
+        } else {
+            // Directory resolution succeeds; the later detail write cannot replace
+            // a nonempty directory. This failure occurs after summary emission.
+            args.extend(["--format", "json", "--output", &blocked_text]);
+            if command == "doctor" {
+                args.push("--require-clean");
+            }
+        }
+        let output = run(&root, &args)?;
+        require(
+            output.status.code() == Some(1)
+                && output.stdout.is_empty()
+                && String::from_utf8_lossy(&output.stderr).contains("E0007"),
+            format!("{command} must retain the artifact I/O failure: {output:?}"),
+        )?;
+        let summary = read_summary_json(&sidecar)?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from(command))
+                && field(&summary, &["result_class"]) == Some(&Value::from("instrument_failure"))
+                && field(&summary, &["completeness"]) == Some(&Value::from("unknown"))
+                && field(&summary, &["reason", "code"]) == Some(&Value::from("E0007_ARTIFACT"))
+                && field(&summary, &["reason", "message"])
+                    .and_then(Value::as_str)
+                    .is_some_and(|message| message.contains("owned-directory")),
+            format!(
+                "{command} must not hide later I/O failure behind its evaluated outcome: {summary}"
+            ),
+        )?;
+        // These artifact failures occur after evaluation. The fallback cannot
+        // infer that scanning was incomplete from the later output error.
+        require(
+            field(&summary, &["claim_boundary", "limitations"])
+                .and_then(Value::as_array)
+                .is_some_and(|limitations| {
+                    limitations.iter().all(|limitation| {
+                        limitation
+                            .as_str()
+                            .is_some_and(|text| !text.contains("was not completed"))
+                    })
+                }),
+            format!("{command} must not claim its completed scan was incomplete: {summary}"),
+        )?;
+        require(
+            fs::read(&canary).map_err(|error| error.to_string())? == b"prior owner's bytes\n",
+            "failed output replacement must preserve the prior owner",
+        )?;
+        remove_temp_root(root)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn check_emit_usage_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["usage"])
+}
+
+#[test]
+fn check_emit_directory_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["directory"])
+}
+
+#[test]
+fn check_emit_write_failure_replaces_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&["write", "single-write"])
+}
+
+#[test]
+fn check_emit_preserves_success_and_evaluated_gate_failure() -> Result<(), String> {
+    check_emit_route_controls(&["pass", "gate"])
+}
+
+#[test]
+fn check_emit_retains_every_requested_renderer() -> Result<(), String> {
+    check_emit_route_controls(&["multi-pass", "multi-gate"])
+}
+
+#[test]
+fn check_emit_renderer_failures_replace_evaluated_outputs() -> Result<(), String> {
+    check_emit_route_controls(&[
+        "render",
+        "mixed-render",
+        "reverse-render",
+        "gate-mixed-render",
+    ])
+}
+
+/// Exercise every report route even when an earlier route exposes a regression.
+fn check_emit_route_controls(scenarios: &[&str]) -> Result<(), String> {
+    let mut failures = Vec::new();
+    for scenario in scenarios {
+        for route in ["receipt-only", "json", "output"] {
+            if let Err(error) = check_emit_route_control(route, scenario) {
+                failures.push(format!("{scenario}/{route}: {error}"));
+            }
+        }
+    }
+    require(failures.is_empty(), failures.join("\n"))
+}
+
+fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
+    let root = summary_outcome_fixture(&format!("summary-emit-{scenario}-{route}"), false)?;
+    let result = (|| -> Result<(), String> {
+        let gate_failed = matches!(scenario, "gate" | "multi-gate" | "gate-mixed-render");
+        let render_failed = scenario.contains("render");
+        if gate_failed {
+            // This tracked edit introduces a genuine unreceipted finding after init.
+            write_source(
+                &root,
+                "pub fn fixture(v: Option<u8>) -> u8 { v.unwrap() }\n",
+            )?;
+        }
+        let sidecar = root.join("target/probe/summary.json");
+        let receipt = root.join("target/probe/receipt.json");
+        let report = root.join("target/probe/report.md");
+        let artifacts = root.join("target/probe/artifacts");
+        let canary = root.join("target/probe/prior-owner.txt");
+        fs::write(&canary, b"prior owner's unrelated output\n")
+            .map_err(|error| error.to_string())?;
+        fs::write(
+            &sidecar,
+            r#"{"result_class":"completed","sentinel":"stale"}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let mut preserved_paths = vec![
+            root.join("src/lib.rs"),
+            root.join("policy/allow.toml"),
+            root.join(".git/HEAD"),
+            root.join(".git/index"),
+            canary,
+        ];
+        let emit = match scenario {
+            "usage" => "not-a-renderer",
+            "directory" => {
+                fs::write(&artifacts, b"prior owner of the artifact path\n")
+                    .map_err(|error| error.to_string())?;
+                preserved_paths.push(artifacts.clone());
+                "json"
+            }
+            "write" | "single-write" => {
+                // Markdown succeeds first; a nonempty directory blocks JSON.
+                // The invocation must fail even after an earlier member was written.
+                let occupied = artifacts.join("check-json.json");
+                fs::create_dir_all(&occupied).map_err(|error| error.to_string())?;
+                let owner = occupied.join("owner.txt");
+                fs::write(&owner, b"prior owner of the JSON member\n")
+                    .map_err(|error| error.to_string())?;
+                preserved_paths.push(owner);
+                if scenario == "write" {
+                    "markdown,json"
+                } else {
+                    "json"
+                }
+            }
+            "multi-pass" | "multi-gate" => "markdown,json",
+            "render" => "human",
+            "mixed-render" | "gate-mixed-render" => "json,human",
+            "reverse-render" => "human,json",
+            _ => "json",
+        };
+        let preserved = preserved_paths
+            .into_iter()
+            .map(|path| {
+                fs::read(&path)
+                    .map(|bytes| (path, bytes))
+                    .map_err(|error| error.to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let head_before = fixture_command("git")
+            .current_dir(&root)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        require(head_before.status.success(), "fixture HEAD must resolve")?;
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let receipt_text = receipt.to_string_lossy().to_string();
+        let report_text = report.to_string_lossy().to_string();
+        let artifacts_text = artifacts.to_string_lossy().to_string();
+        let mut args = vec![
+            "--command-summary-output",
+            &sidecar_text,
+            "check",
+            "--config",
+            "policy/allow.toml",
+            "--mode",
+            "no-new",
+            "--persistent-cache",
+            "off",
+            "--receipt",
+            &receipt_text,
+            "--artifact-dir",
+            &artifacts_text,
+            "--emit",
+            emit,
+        ];
+        match route {
+            "json" => args.extend(["--format", "json"]),
+            "output" => args.extend(["--output", &report_text]),
+            _ => {}
+        }
+        let output = run(&root, &args)?;
+        for (path, bytes) in preserved {
+            require(
+                fs::read(&path).map_err(|error| error.to_string())? == bytes,
+                format!("check must preserve {}", path.display()),
+            )?;
+        }
+        let head_after = fixture_command("git")
+            .current_dir(&root)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        require(
+            head_after.status.success() && head_before.stdout == head_after.stdout,
+            "check must preserve the resolved fixture HEAD",
+        )?;
+        if route == "json" {
+            require(
+                serde_json::from_slice::<Value>(&output.stdout).is_ok(),
+                format!("the already-emitted JSON detail must remain valid: {output:?}"),
+            )?;
+        } else {
+            require(
+                output.stdout.is_empty(),
+                "file/receipt routes must keep stdout quiet",
+            )?;
+        }
+        let summary = read_summary_json(&sidecar)?;
+        let receipt_value = read_summary_json(&receipt)?;
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from("check"))
+                && field(&summary, &["sentinel"]).is_none(),
+            format!("the final sidecar must describe this check invocation: {summary}"),
+        )?;
+        if matches!(scenario, "pass" | "gate" | "multi-pass" | "multi-gate") || render_failed {
+            let manifest = read_summary_json(&artifacts.join("check-artifact_set_manifest.json"))?;
+            let requested: Vec<_> = emit
+                .split(',')
+                .map(|format| {
+                    if format == "human" {
+                        "human_summary"
+                    } else {
+                        format
+                    }
+                })
+                .collect();
+            require(
+                field(&manifest, &["requested_formats"]) == Some(&serde_json::json!(requested))
+                    && field(&manifest, &["blocking"]) == Some(&Value::Bool(gate_failed))
+                    && field(&manifest, &["result_class"])
+                        == Some(&Value::from(if gate_failed {
+                            "blocking"
+                        } else {
+                            "passed"
+                        })),
+                format!(
+                    "the manifest must retain every requested format and the semantic result: {manifest}"
+                ),
+            )?;
+            let entries = field(&manifest, &["artifacts"])
+                .and_then(Value::as_array)
+                .ok_or_else(|| "manifest artifact entries are missing".to_string())?;
+            require(
+                entries.len() == requested.len(),
+                "every requested renderer needs an entry",
+            )?;
+            for (entry, format) in entries.iter().zip(requested) {
+                let failed = format == "human_summary";
+                require(
+                    field(entry, &["format"]) == Some(&Value::from(format))
+                        && field(entry, &["status"])
+                            == Some(&Value::from(if failed {
+                                "RenderFailed"
+                            } else {
+                                "Written"
+                            })),
+                    format!("the actual renderer outcome must be retained: {entry}"),
+                )?;
+                if failed {
+                    require(
+                        field(entry, &["render_errors"])
+                            .and_then(Value::as_array)
+                            .is_some_and(|errors| {
+                                errors.iter().any(|error| {
+                                    error
+                                        .as_str()
+                                        .is_some_and(|text| text.contains("not a report renderer"))
+                                })
+                            }),
+                        format!("the failed renderer must retain its real diagnostic: {entry}"),
+                    )?;
+                } else {
+                    let name = field(entry, &["file_name"])
+                        .and_then(Value::as_str)
+                        .ok_or_else(|| "written artifact filename is missing".to_string())?;
+                    require(
+                        artifacts.join(name).is_file(),
+                        "successfully rendered members must survive",
+                    )?;
+                }
+            }
+        }
+        if matches!(scenario, "pass" | "gate" | "multi-pass" | "multi-gate") {
+            let failed = gate_failed;
+            require(
+                output.status.code() == Some(i32::from(failed))
+                    && field(&receipt_value, &["status"])
+                        == Some(&Value::from(if failed { "failed" } else { "passed" }))
+                    && field(&receipt_value, &["failed"]) == Some(&Value::Bool(failed))
+                    && field(&receipt_value, &["enforcement"]) == Some(&Value::from("enforcing")),
+                format!("emit must preserve the evaluated gate: {output:?}; {receipt_value}"),
+            )?;
+            // Native init retains one ordinary evidence advisory on the pass route.
+            require(
+                field(&summary, &["result_class"]) == Some(&Value::from("findings"))
+                    && field(&summary, &["completeness"]) == Some(&Value::from("complete"))
+                    && field(&summary, &["posture"])
+                        == Some(&Value::from(if failed { "blocking" } else { "advisory" })),
+                format!("emit must retain the evaluated summary: {summary}"),
+            )?;
+            require(
+                field(&receipt_value, &["counts", "new"]) == Some(&Value::from(u64::from(failed))),
+                format!(
+                    "the gate control must contain exactly its intended finding: {receipt_value}"
+                ),
+            )?;
+            read_summary_json(&artifacts.join("check-json.json"))?;
+            require(
+                report.is_file() == (route == "output"),
+                "successful output routing changed",
+            )?;
+        } else {
+            let (exit, class, code) = if scenario == "usage" {
+                (2, "malformed_input", "E0001_USAGE")
+            } else {
+                (1, "instrument_failure", "E0007_ARTIFACT")
+            };
+            require(
+                output.status.code() == Some(exit)
+                    && String::from_utf8_lossy(&output.stderr).contains(code),
+                format!(
+                    "late emit failure must return {code}: exit {:?}; stderr {}",
+                    output.status.code(),
+                    String::from_utf8_lossy(&output.stderr),
+                ),
+            )?;
+            require(
+                field(&summary, &["result_class"]) == Some(&Value::from(class))
+                    && field(&summary, &["completeness"]) == Some(&Value::from("unknown"))
+                    && field(&summary, &["posture"]) == Some(&Value::from("blocking"))
+                    && field(&summary, &["reason", "code"]) == Some(&Value::from(code)),
+                format!("late emit failure must replace the evaluated summary: {summary}"),
+            )?;
+            require(
+                field(&summary, &["claim_boundary", "limitations"])
+                    .and_then(Value::as_array)
+                    .is_some_and(|limitations| {
+                        limitations.iter().all(|limitation| {
+                            limitation
+                                .as_str()
+                                .is_some_and(|text| !text.contains("was not completed"))
+                        })
+                    }),
+                format!("late emit failure must not deny completed evaluation: {summary}"),
+            )?;
+            require(
+                field(&receipt_value, &["status"]) == Some(&Value::from("error"))
+                    && field(&receipt_value, &["failed"]) == Some(&Value::Bool(true))
+                    // Error receipts retain the plain diagnostic, while the
+                    // command summary carries the stable typed error code.
+                    && field(&receipt_value, &["diagnostic"])
+                        == field(&summary, &["reason", "message"]),
+                format!("late emit failure must replace the passing receipt: {receipt_value}"),
+            )?;
+            require(
+                !report.exists(),
+                "late emit failure must remove the stale detail file",
+            )?;
+            require(
+                artifacts.join("check-artifact_set_manifest.json").is_file() == render_failed,
+                "renderer failures must retain their manifest; I/O failure must not fabricate one",
+            )?;
+            if render_failed {
+                require(
+                    field(&summary, &["reason", "message"])
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| message.contains("not a report renderer")),
+                    "the invocation error must explain the actual renderer failure",
+                )?;
+            }
+            if matches!(scenario, "write" | "single-write") {
+                require(
+                    field(&summary, &["reason", "message"])
+                        .and_then(Value::as_str)
+                        .is_some_and(|message| message.contains("check-json.json")),
+                    "the write-failure control must reach the blocked JSON member",
+                )?;
+            }
+            if scenario == "write" {
+                require(
+                    artifacts.join("check-markdown.md").is_file(),
+                    "write-failure control must execute after the first artifact succeeds",
+                )?;
+            }
+        }
+        Ok(())
+    })();
+    let cleanup = remove_temp_root(root);
+    result.and(cleanup)
+}
+
+/// Use native init and a tracked inventory, then select complete or partial Rust input.
+fn summary_outcome_fixture(label: &str, partial: bool) -> Result<PathBuf, String> {
+    let root = temp_root(label)?;
+    write_source(&root, "pub fn fixture() {}\n")?;
+    let init = run(&root, &["init"])?;
+    require(init.status.success(), format!("init {label}: {init:?}"))?;
+    git_commit_fixture(&root)?;
+    if partial {
+        write_source(&root, "pub fn broken( {\n")?;
+    }
+    fs::create_dir_all(root.join("target/probe")).map_err(|error| error.to_string())?;
+    Ok(root)
+}
+
+/// A sidecar must describe this invocation without changing its detailed output,
+/// exit, or repository bytes; preexisting bytes are never proof of emission.
+fn summary_with_unchanged_output(
+    root: &Path,
+    args: &[&str],
+    exit: i32,
+) -> Result<(Value, Value), String> {
+    let source_before = fs::read(root.join("src/lib.rs")).map_err(|error| error.to_string())?;
+    let policy_before =
+        fs::read(root.join("policy/allow.toml")).map_err(|error| error.to_string())?;
+    let baseline = run(root, args)?;
+    let sidecar = root.join("target/probe/summary.json");
+    fs::write(
+        &sidecar,
+        r#"{"result_class":"completed","sentinel":"stale"}"#,
+    )
+    .map_err(|error| format!("seed stale summary: {error}"))?;
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let mut summary_args = vec!["--command-summary-output", &sidecar_text];
+    summary_args.extend_from_slice(args);
+    let output = run(root, &summary_args)?;
+    require(
+        baseline.status.code() == Some(exit)
+            && output.status.code() == Some(exit)
+            && baseline.stdout == output.stdout
+            && baseline.stderr == output.stderr,
+        format!(
+            "the sidecar changed {args:?} detail or exit: baseline={baseline:?}, sidecar={output:?}"
+        ),
+    )?;
+    require(
+        fs::read(root.join("src/lib.rs")).map_err(|error| error.to_string())? == source_before
+            && fs::read(root.join("policy/allow.toml")).map_err(|error| error.to_string())?
+                == policy_before,
+        "summary probes must preserve source and policy bytes",
+    )?;
+    let detail = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("parse {args:?} detail: {error}"))?;
+    let summary = read_summary_json(&sidecar)?;
+    require(
+        field(&summary, &["sentinel"]).is_none(),
+        "stale summary bytes survived this invocation",
+    )?;
+    Ok((detail, summary))
+}
+
+fn read_summary_json(path: &Path) -> Result<Value, String> {
+    let bytes = fs::read(path).map_err(|error| format!("read {}: {error}", path.display()))?;
+    serde_json::from_slice(&bytes).map_err(|error| format!("parse {}: {error}", path.display()))
 }
 
 /// Run the real binary from an explicit working directory, without the
