@@ -8,6 +8,83 @@ use super::{WorkItem, WorklistFilters};
 use crate::parse_kind_filter;
 use allow_core::{FindingKind, MatchStatus, source_tree_path_matches_filter};
 
+/// Fail closed on free-text filter values that match nothing the queue
+/// actually carries (#4365 Gap 3).
+///
+/// `--kind`, `--item-kind`, and `--status` already reject unknown values at
+/// parse time because their vocabularies are closed. `--family` and
+/// `--source-package` draw from whatever the scanner and policy produced, so
+/// they can only be checked against the built queue: a value no work item
+/// carries is almost certainly a typo, and silently returning an empty queue
+/// makes that indistinguishable from a genuinely empty slice.
+pub(super) fn validate_free_text_filters(
+    items: &[WorkItem],
+    filters: WorklistFilters<'_>,
+) -> allow_core::CargoAllowResult<()> {
+    // An empty queue keeps its empty-queue summary semantics; fail-closed
+    // applies only when the queue carries items a typo could be confused
+    // with an empty slice of.
+    if items.is_empty() {
+        return Ok(());
+    }
+    validate_filter_value(
+        "--family",
+        "family",
+        filters.family,
+        items.iter().filter_map(|item| item.family.as_deref()),
+    )?;
+    validate_filter_value(
+        "--source-package",
+        "source package",
+        filters.source_package,
+        items
+            .iter()
+            .filter_map(|item| item.source_package.as_deref()),
+    )?;
+    validate_filter_value(
+        "--owner",
+        "owner",
+        filters.owner,
+        items.iter().filter_map(|item| item.owner.as_deref()),
+    )?;
+    validate_filter_value(
+        "--classification",
+        "classification",
+        filters.classification,
+        items
+            .iter()
+            .filter_map(|item| item.classification.as_deref()),
+    )
+}
+
+fn validate_filter_value<'a>(
+    flag: &str,
+    noun: &str,
+    value: Option<&str>,
+    observed: impl Iterator<Item = &'a str>,
+) -> allow_core::CargoAllowResult<()> {
+    let Some(value) = value else {
+        return Ok(());
+    };
+    let mut observed = observed.collect::<Vec<_>>();
+    observed.sort_unstable();
+    observed.dedup();
+    if observed.contains(&value) {
+        return Ok(());
+    }
+    let observed_text = if observed.is_empty() {
+        "none (the unfiltered queue carries no values for this filter)".to_string()
+    } else {
+        observed.join(", ")
+    };
+    Err(allow_core::CargoAllowError::with_kind(
+        allow_core::CargoAllowErrorKind::Usage,
+        format!(
+            "unknown {flag} value `{value}`: no work items carry {noun} `{value}`; observed {noun} values: {observed_text}. Run `cargo-allow worklist --format json` without {flag} to see the current queue, or correct the {flag} value."
+        ),
+    ))
+}
+
 pub(super) fn filter_work_items(
     items: Vec<WorkItem>,
     filters: WorklistFilters<'_>,
@@ -164,9 +241,10 @@ pub(super) fn page_work_items(
 #[cfg(test)]
 mod tests {
     use super::{
-        item_kind_matches, kind_matches, selector_precision_rank, work_item_path_matches_filter,
-        work_item_risk_rank,
+        item_kind_matches, kind_matches, selector_precision_rank, validate_free_text_filters,
+        work_item_path_matches_filter, work_item_risk_rank,
     };
+    use crate::worklist::worklist_types::WorklistFilters;
     use crate::worklist::{
         WorkItem, WorkItemEvidenceReference,
         worklist_item_kind::BROKEN_EVIDENCE_LINK,
@@ -277,6 +355,85 @@ mod tests {
         assert!(kind_matches(&panic_item, Some("panic")));
         assert!(!kind_matches(&panic_item, Some("unsafe")));
         assert!(!kind_matches(&panic_item, Some("not-a-kind")));
+    }
+
+    #[test]
+    fn free_text_filters_fail_closed_on_unknown_values() {
+        let mut packaged = queue_item(Some("src/lib.rs"));
+        packaged.source_package = Some("allow-report".to_string());
+        let items = vec![queue_item(Some("src/lib.rs")), packaged];
+
+        // Known values and unset filters pass.
+        assert!(validate_free_text_filters(&items, WorklistFilters::default()).is_ok());
+        let filters = WorklistFilters {
+            family: Some("unwrap"),
+            source_package: Some("allow-report"),
+            ..WorklistFilters::default()
+        };
+        assert!(validate_free_text_filters(&items, filters).is_ok());
+
+        // Unknown family fails closed and names the observed values.
+        let filters = WorklistFilters {
+            family: Some("bogus_family"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Usage);
+        assert!(
+            error
+                .to_string()
+                .contains("unknown --family value `bogus_family`"),
+            "{error}"
+        );
+        assert!(error.to_string().contains("unwrap"), "{error}");
+
+        // Unknown source package fails closed the same way.
+        let filters = WorklistFilters {
+            source_package: Some("nope"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("unknown --source-package value `nope`"),
+            "{error}"
+        );
+        assert!(error.to_string().contains("allow-report"), "{error}");
+
+        // Unknown owner and classification fail closed the same way.
+        let filters = WorklistFilters {
+            owner: Some("nobody"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert!(
+            error.to_string().contains("unknown --owner value `nobody`"),
+            "{error}"
+        );
+        assert!(
+            error.to_string().contains("observed owner values: owner"),
+            "{error}"
+        );
+        let filters = WorklistFilters {
+            classification: Some("nope"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("unknown --classification value `nope`"),
+            "{error}"
+        );
+
+        // An empty queue keeps empty-queue semantics instead of erroring:
+        // there is no slice a typo could be confused with.
+        let filters = WorklistFilters {
+            family: Some("unwrap"),
+            ..WorklistFilters::default()
+        };
+        assert!(validate_free_text_filters(&[], filters).is_ok());
     }
 
     #[test]

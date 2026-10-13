@@ -19,10 +19,14 @@ Use `--risk low`, `--risk medium`, `--risk high`, `--difficulty small`, or
 `--difficulty medium` when the assignment needs a narrower queue, but do not
 mistake a filter for approval to ignore the rest of the ledger.
 Use `--family <family>` for scanner-family slices such as `unwrap`, `indexing`,
-`unsafe_fn`, or `ci_declarative`.
+`unsafe_fn`, or `ci_declarative`; a family no work item carries fails closed
+with the observed family values instead of returning an empty queue.
 Use `--kind <kind>` for governed source-exception slices such as `unsafe`,
 `panic`, `lint-exception`, `non-rust`, `generated`, `process`, `network`, or
 `workflow`; unknown kind names fail closed instead of producing an empty queue.
+Work items carry their queue type in both `kind` and its alias `item_kind`
+(the documented `--item-kind` filter name), so the value read from an item
+can be reused verbatim as the next filter.
 Use `--item-kind <kind>` for queue-type slices such as `stale_allow`,
 `baseline_debt`, `broad_scope`, `broken_evidence_link`, or
 `weak_evidence_reference`. The canonical values use underscores, and the CLI
@@ -30,13 +34,20 @@ also accepts hyphenated aliases such as `stale-allow` for artifact-local
 `work-*` queue IDs.
 Use `--baseline-debt` or `--broad-scope` for the common generated-debt and
 wildcard-scope advisory queues without needing the underlying item-kind names.
+When narrowing a broad scope means hand-authoring a non-Rust entry, follow
+the four authoring requirements in
+[Authoring a non-Rust entry](../source-exception-ledger.md#authoring-a-non-rust-entry)
+(one scope only, selector-glob agreement, finding-family equality, and the
+extension `target_fingerprint`); `cargo-allow propose` output already
+satisfies them and is safe to copy.
 Use `--status <status>` for match-status slices such as `new`, `stale`,
 `expired`, `review_due`, or `baseline_debt`.
 Use `--allow-id <id>` when the assignment is tied to one durable policy entry.
 Use `--path <path>` to focus one source-tree path or subtree before assigning
 file-local cleanup.
 Use `--source-package <name>` to focus a source-tree package context already
-reported by the scanner; do not treat that as Cargo metadata or build proof.
+reported by the scanner; a package no work item carries fails closed with the
+observed package values. Do not treat that as Cargo metadata or build proof.
 Package context is derived from readable source-tree `Cargo.toml` text when a
 visible `[package].name` exists. Invalid, unreadable, non-UTF8, or
 workspace-only manifests may leave this field absent even when the project has a

@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  `cargo-allow explain` with an unknown allow ID no longer appends the
+  generic "review the command syntax" advice after its own correct first
+  line. The error now carries one specific Next line: run `cargo-allow list`
+  to see valid IDs, then retry with an existing ID (#4485).

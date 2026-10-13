@@ -1,0 +1,8 @@
+kind: Documentation
+body: >-
+  Getting Started now sets the measured first-run expectation before the
+  bootstrap decision (#4335): on an ordinary existing repository, `init`
+  followed by `check --mode no-new` is expected to be red because the
+  strict ledger receipts nothing yet. The guide names that red as the
+  decision list working as designed (not a broken install) and points
+  readers who want a green first gate to the `propose` baseline path.

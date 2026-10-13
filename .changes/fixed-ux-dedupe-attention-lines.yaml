@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `explain`, `audit`, and `check` human/markdown output no longer repeat
+  identical per-occurrence outcome lines. An allow entry matching N findings
+  with the same status and message (for example a `review_due` entry with
+  `occurrence_limit: 4`) printed the same attention line N times, burying
+  distinct problems. Identical (status, message) lines now collapse to one
+  line with an `(N occurrences)` suffix when N > 1. JSON output keeps full
+  per-occurrence detail unchanged.

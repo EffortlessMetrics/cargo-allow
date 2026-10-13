@@ -235,6 +235,15 @@ Creates `policy/allow.toml` with workspace defaults and no generated debt.
 Useful when the tree is clean or you want to receipt findings one-by-one with
 `add` later.
 
+**Set the first-run expectation before you choose.** On an ordinary existing
+repository, `init` followed by `check --mode no-new` is expected to be red:
+the strict ledger receipts nothing yet, so every retained finding reports as
+`new: unreceipted` and the check fails. That red is the tool working as
+designed, not a broken install — it is the list of decisions still to make.
+If you want the first gate green while you work through that list, choose
+`propose` (reviewed `baseline_debt`) instead; if you stay on `init`, expect
+to receipt findings deliberately until the check turns green.
+
 Both bootstrap paths seed one entry: the ledger's receipt for itself. The
 policy file is a tracked non-Rust file, so once it is committed it appears in
 its own inventory; without that receipt the first `check --mode no-new` after
