@@ -399,3 +399,77 @@ fn explain_json_renderer_records_context_and_current_status() {
     assert!(text.contains("- action: add missing evidence"));
     assert!(text.contains("- proof: cargo-allow check --kind unsafe"));
 }
+
+#[test]
+fn explain_human_dedupes_identical_attention_lines_with_count() {
+    let entry = AllowEntry {
+        id: "allow-explain-dedupe".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: Some(PathBuf::from("src/lib.rs")),
+        glob: None,
+        owner: "owner".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "test policy entry".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: Some(4),
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: Some("2026-09-22".to_string()),
+            expires: None,
+        },
+        selector: Selector::default(),
+        last_seen: None,
+    };
+    let dup = |index: usize| MatchOutcome {
+        status: MatchStatus::ReviewDue,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(index),
+        message: "allow-explain-dedupe matched but review is due after 2026-09-22".to_string(),
+        score: 90,
+    };
+    let outcomes = vec![
+        dup(0),
+        dup(1),
+        dup(2),
+        dup(3),
+        MatchOutcome {
+            status: MatchStatus::Stale,
+            allow_id: Some(entry.id.clone()),
+            candidate_ids: Vec::new(),
+            finding_index: None,
+            message: "allow-explain-dedupe is stale".to_string(),
+            score: 0,
+        },
+    ];
+    let report = ExplainReport {
+        inventory: InventoryContext::default(),
+        entry: &entry,
+        selector_precision: 0,
+        broad_scope: false,
+        current_findings: &[],
+        match_outcomes: &outcomes,
+        evidence_references: &[],
+        link_references: &[],
+        suggested_actions: &[],
+        proof_commands: &[],
+    };
+
+    let human = render_explain_human(report);
+
+    // BDD: identical per-occurrence lines collapse to one counted line;
+    // distinct lines stay separate; a single occurrence gets no suffix.
+    assert_eq!(
+        human.matches("review is due after 2026-09-22").count(),
+        1,
+        "duplicate attention lines must collapse: {human}"
+    );
+    assert!(human.contains("(4 occurrences)"), "{human}");
+    assert!(
+        human.contains("- stale: allow-explain-dedupe is stale\n"),
+        "{human}"
+    );
+    assert!(!human.contains("is stale (1 occurrences)"), "{human}");
+}

@@ -683,3 +683,20 @@ required_stronger_owner = "#3930 actual driver composition; #3925 checked subjec
 may_satisfy_release_gate = false
 last_reconciled_commit = "c9616c3e66cb31e51332da970acd18ad8b8fee0b"
 claim_boundary = "The actual adapter is exercised with intercepted HTTP, not a local eligibility replacement. No live credential, authenticated external observation, control/tag ref, authorization mint or publication occurs. Rust compilation and native gates require separate evidence. Lease/tag subject comparison, checked journal/checkpoint head rebinding and real workflow integration remain with the named owners."
+
+[[surfaces]]
+id = "final-freeze-authenticated-qualification"
+owner_issue = 2501
+semantic_authority = "existing post-merge qualification, custody, transfer and final freeze replay"
+path = "crates/cargo-allow/tests/core_release_freeze_qualification_cli.rs"
+subject = "scripts/qualify-release-freeze.py and the actual Rust freeze composer"
+producer = "compiled cargo-allow producer/consumer with intercepted standard-library provider reads"
+consumer = "#2501 qualified freeze and serialized retained replay inputs"
+claimed_acceptance_row = "actual prepare/readback/typed-compose/replay qualification and custody boundaries"
+assertion_mechanism = "native binary preparation, separate immutable object retention, fresh intercepted reads, exact original producer/member mapping, serialized replay and targeted positive/negative controls"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded production behavior with synthetic provider responses"
+required_stronger_owner = "#2501 actual selected Complete freeze and workflow retention; #3792 rehearsal/registry proof; #2284 current controls; #3761 frozen manifest role; #3925 actual size feasibility"
+may_satisfy_release_gate = false
+last_reconciled_commit = "486b0b19cae43ce3b5e3919fff3a09772876fa15"
+claim_boundary = "The actual qualifier and Rust composer are exercised through intercepted HTTP, not a test-only eligibility model. No live credential, provider mutation, release authority, tag or publication is used. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real registry and rehearsal holds remain explicit."

@@ -1,3 +1,7 @@
+#[path = "add_from_plan_apply/recovery.rs"]
+mod recovery;
+#[path = "support/repository_environment.rs"]
+mod repository_environment;
 mod support;
 
 use std::fs;
@@ -7,11 +11,25 @@ use std::process::Command;
 use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
-    cargo_allow_command, remove_temp_root, temp_root,
+    remove_temp_root, temp_root,
 };
 
+// Isolate children only: tests may run concurrently in the same parent process.
+fn isolated(mut command: Command) -> Command {
+    repository_environment::isolate_repository(&mut command);
+    for name in ["CARGO_ALLOW_ROOT", "CARGO_ALLOW_CONFIG", "ENV", "BASH_ENV"] {
+        command.env_remove(name);
+    }
+    command.env("NO_COLOR", "1");
+    command
+}
+
+fn cargo_allow_command() -> Command {
+    isolated(support::cargo_allow_command())
+}
+
 fn git(root: &Path, args: &[&str]) {
-    let output = Command::new("git")
+    let output = isolated(Command::new("git"))
         .arg("-C")
         .arg(root)
         .args(args)
@@ -132,7 +150,7 @@ fn append_past_read_limit_refuses_without_mutation(
         !receipt.exists(),
         "refusal must not claim an application receipt"
     );
-    let diff = Command::new("git")
+    let diff = isolated(Command::new("git"))
         .arg("-C")
         .arg(&root)
         .args(["diff", "--numstat", "--", "policy/allow.toml"])
@@ -380,7 +398,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
         !changed_region_text.contains("Historical CRLF header"),
         "the recorded changed region must not cover preserved preimage bytes"
     );
-    let numstat = Command::new("git")
+    let numstat = isolated(Command::new("git"))
         .arg("-C")
         .arg(&root)
         .args(["diff", "--numstat", "--", "policy/allow.toml"])
@@ -540,7 +558,7 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
         Some("new")
     );
 
-    let initial_head = Command::new("git")
+    let initial_head = isolated(Command::new("git"))
         .current_dir(&root)
         .args(["rev-parse", "HEAD"])
         .output()?;
@@ -602,8 +620,8 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
 
-    // Relative ASCII argv and per-command fixture cwd isolate the recorded-line
-    // lead from separate root/config/quoting recovery questions.
+    // Keep this moved-line control in the repository cwd. The separate recovery
+    // module exercises custom root/config paths and outside-cwd shell execution.
     let rejected = cargo_allow_command()
         .current_dir(&root)
         .args([
@@ -628,43 +646,13 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
 
-    // Parse the actual advertised command; do not rebuild or correct its line.
-    // This fixture uses no spaces, quoting, absolute paths, or shell syntax.
-    let (_, tail) = rejection_text
-        .split_once("; regenerate with ")
-        .ok_or("stale binding rejection lacked regeneration advice")?;
-    let (printed, _) = tail
-        .split_once(" (")
-        .ok_or("regeneration advice lacked its explanation boundary")?;
-    let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
-    assert_eq!(tokens.first().copied(), Some("cargo-allow"));
-    assert_eq!(tokens.get(1).copied(), Some("why"));
-    let retry_argument = tokens
-        .windows(2)
-        .find_map(|pair| match pair {
-            ["--plan", argument] => Some(*argument),
-            _ => None,
-        })
-        .ok_or("printed regeneration command lacked --plan")?;
-    assert!(Path::new(retry_argument).is_relative());
-    assert_eq!(
-        Path::new(retry_argument)
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str),
-        Some(retry_argument),
-        "this fixture's hint must use a relative sibling filename"
-    );
-    assert_ne!(retry_argument, "add-plan.json");
-    assert_ne!(retry_argument, "control-plan.json");
-    let retry_path = root.join(retry_argument);
+    // Execute the actual advertised shell command; do not rebuild its argv or
+    // correct its line. The regenerated output remains a fresh sibling plan.
+    let printed =
+        recovery::printed_regeneration_command(&rejection_text, Path::new("add-plan.json"))?;
+    let retry_path = root.join("add-plan.retry-1.json");
     assert!(!retry_path.exists(), "hint output must initially be fresh");
-
-    // The binary comes from the existing CARGO_BIN_EXE helper. Every printed
-    // argv token after cargo-allow is passed unchanged; no format flag is added.
-    let hinted = cargo_allow_command()
-        .current_dir(&root)
-        .args(tokens.iter().skip(1))
-        .output()?;
+    let hinted = recovery::run_printed_command(&root, printed)?;
     let hinted_stderr = String::from_utf8(hinted.stderr.clone())?;
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
@@ -713,7 +701,7 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
     );
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
-    let control_head = Command::new("git")
+    let control_head = isolated(Command::new("git"))
         .current_dir(&root)
         .args(["rev-parse", "HEAD"])
         .output()?;
@@ -743,10 +731,9 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
 
     let apply = cargo_allow_command()
         .current_dir(&root)
+        .args(["add", "--from-plan"])
+        .arg(&retry_path)
         .args([
-            "add",
-            "--from-plan",
-            retry_argument,
             "--owner",
             "fixture",
             "--reason",
@@ -797,10 +784,9 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
 
     let replay = cargo_allow_command()
         .current_dir(&root)
+        .args(["add", "--from-plan"])
+        .arg(&retry_path)
         .args([
-            "add",
-            "--from-plan",
-            retry_argument,
             "--owner",
             "fixture",
             "--reason",
@@ -845,7 +831,7 @@ fn replacement_finding_must_not_receive_recovery_hint(
             .and_then(Value::as_str),
         Some("unwrap")
     );
-    let head_before = Command::new("git")
+    let head_before = isolated(Command::new("git"))
         .current_dir(&root)
         .args(["rev-parse", "HEAD"])
         .output()?;
@@ -936,32 +922,12 @@ fn replacement_finding_must_not_receive_recovery_hint(
 
     // Before the repair, execute the ACTUAL advertised command unchanged and
     // inspect its plan. This proves retargeting, rather than mere bad wording.
-    if let Some((_, tail)) = rejection.split_once("; regenerate with ") {
-        let (printed, _) = tail
-            .split_once(" (")
-            .ok_or("hint explanation boundary missing")?;
-        let tokens: Vec<_> = printed.split_ascii_whitespace().collect();
-        assert_eq!(tokens.first().copied(), Some("cargo-allow"));
-        assert_eq!(tokens.get(1).copied(), Some("why"));
-        let retry_name = tokens
-            .windows(2)
-            .find_map(|pair| match pair {
-                ["--plan", value] => Some(*value),
-                _ => None,
-            })
-            .ok_or("hint plan argument missing")?;
-        assert_eq!(
-            Path::new(retry_name)
-                .file_name()
-                .and_then(std::ffi::OsStr::to_str),
-            Some(retry_name)
-        );
-        let retry_path = root.join(retry_name);
+    if rejection.contains("; regenerate with ") {
+        let printed =
+            recovery::printed_regeneration_command(&rejection, Path::new("add-plan.json"))?;
+        let retry_path = root.join("add-plan.retry-1.json");
         assert!(!retry_path.exists());
-        let hinted = cargo_allow_command()
-            .current_dir(&root)
-            .args(tokens.iter().skip(1))
-            .output()?;
+        let hinted = recovery::run_printed_command(&root, printed)?;
         assert_status("advertised different-target regeneration", &hinted, true);
         let hinted_plan: Value = serde_json::from_slice(&fs::read(&retry_path)?)?;
         assert_eq!(
@@ -980,7 +946,7 @@ fn replacement_finding_must_not_receive_recovery_hint(
             "Replacement {label}: stale add refused and preserved policy/plan/output; printed argv {printed:?} succeeded but generated the different {callee} target, not the original unwrap"
         );
     }
-    let head_after = Command::new("git")
+    let head_after = isolated(Command::new("git"))
         .current_dir(&root)
         .args(["rev-parse", "HEAD"])
         .output()?;
@@ -1014,4 +980,18 @@ fn add_from_plan_replaced_same_family_does_not_advertise_recovery()
         "unwrap",
         true,
     )
+}
+
+#[test]
+fn add_from_plan_fixture_children_ignore_repository_environment() -> Result<(), String> {
+    for test_name in [
+        "add_from_plan_moved_line_recovery_hint_runs_verbatim",
+        "add_from_plan_replaced_callee_does_not_advertise_recovery",
+        "add_from_plan_replaced_same_family_does_not_advertise_recovery",
+        "recovery::tracked_stale_plan_recovery_preserves_context_through_shell",
+        "recovery::untracked_stale_plan_recovery_preserves_context_through_shell",
+    ] {
+        repository_environment::require_isolated_fixture_test(test_name)?;
+    }
+    Ok(())
 }
