@@ -209,6 +209,51 @@ fn exit_matrix_command_summary_output_without_a_subcommand_is_2() {
     drop_root(root);
 }
 
+/// #4485: an unknown allow ID is a Usage failure whose fix is an existing
+/// ID, not corrected syntax. The error must carry exactly one, specific
+/// Next line and never the generic syntax advice.
+#[test]
+fn exit_matrix_explain_unknown_id_names_the_id_fix() {
+    let root = temp_root("exit-explain-unknown-id");
+    write_panic_source(&root);
+    let policy = root.join("policy/allow.toml");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(&policy, fixture_policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write fixture policy: {err}")));
+
+    let output = cargo_allow()
+        .arg("explain")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg(&policy)
+        .arg("allow-9999")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run explain: {err}")));
+    assert_exit(
+        "explain unknown id",
+        &output,
+        2,
+        "no allow entry `allow-9999`",
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        stderr.matches("Next:").count(),
+        1,
+        "exactly one Next line: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: run `cargo-allow list` to see valid IDs"),
+        "specific Next names the ID fix: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "generic syntax advice must not appear: {stderr}"
+    );
+    drop_root(root);
+}
+
 #[test]
 fn exit_matrix_missing_config_is_1() {
     let root = temp_root("exit-missing-config");
