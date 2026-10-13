@@ -396,6 +396,21 @@ fn propose_write_failures_name_the_actual_fix() {
         String::from_utf8_lossy(&forced.stderr)
     );
 
+    // A directory target is not the exists case: it must not receive
+    // --force advice (force cannot overwrite a directory); the apply
+    // layer's own refusal stands.
+    let dir_target = root.join("policy-dir-target");
+    fs::create_dir_all(&dir_target)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create dir target: {err}")));
+    let dir_arg = dir_target.to_str().unwrap_or("dir");
+    let dir_run = run_propose(&["--write", dir_arg]);
+    let dir_text = String::from_utf8_lossy(&dir_run.stderr).into_owned();
+    assert!(!dir_run.status.success(), "directory write must fail");
+    assert!(
+        !dir_text.contains("Next: pass --force to overwrite"),
+        "directory target must not receive --force advice: {dir_text}"
+    );
+
     // Out-of-root target: fail closed, nothing written, specific Next.
     let outside = root.join("../outside-propose.toml");
     let outside_arg = outside.to_str().unwrap_or("outside");

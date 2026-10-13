@@ -326,9 +326,11 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         let absolute_target = write_target_after_containment(write_target.as_deref())?;
         // Name the actual fix for the common baseline flow (writing over the
         // existing policy): the generic Artifact Next line (writable/parent)
-        // contradicts this failure (#4481). The apply below keeps its
-        // create-new-only refusal as the race-safe backstop.
-        if !args.force && absolute_target.exists() {
+        // contradicts this failure (#4481). Regular files only: a directory
+        // target cannot be force-overwritten, so it keeps the apply layer's
+        // own refusal. The apply below keeps its create-new-only refusal as
+        // the race-safe backstop.
+        if !args.force && absolute_target.is_file() {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
