@@ -261,15 +261,24 @@ fn exit_matrix_explain_unknown_id_names_the_id_fix() {
 fn exit_matrix_diff_without_base_names_the_base_fix() {
     let root = temp_root("exit-diff-no-base");
     write_panic_source(&root);
-    // A real repository with no upstream: merge-base auto-detection has
-    // nothing to find, so the missing-base error must fire deterministically.
-    let git_init = std::process::Command::new("git")
-        .arg("init")
-        .arg("-q")
-        .current_dir(&root)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run git init: {err}")));
-    assert!(git_init.status.success(), "git init should succeed");
+    // A real repository with a committed HEAD and no upstream: merge-base
+    // auto-detection has nothing to find, so the missing-base error must
+    // fire deterministically (an unresolved HEAD would be ambiguous).
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-c")
+            .arg("user.email=exit-matrix@example.invalid")
+            .arg("-c")
+            .arg("user.name=Exit Matrix")
+            .args(args)
+            .current_dir(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run git {args:?}: {err}")));
+        assert!(out.status.success(), "git {args:?} should succeed");
+    };
+    git(&["init", "-q"]);
+    git(&["add", "src/lib.rs"]);
+    git(&["commit", "-qm", "fixture"]);
 
     let output = cargo_allow()
         .arg("diff")
@@ -287,6 +296,10 @@ fn exit_matrix_diff_without_base_names_the_base_fix() {
     assert!(
         stderr.contains("Next: pass --base <revision>"),
         "typed Next names the base fix: {stderr}"
+    );
+    assert!(
+        stderr.contains("set an upstream"),
+        "typed Next also names the upstream remedy: {stderr}"
     );
     assert!(
         !stderr.contains("review the command syntax"),
