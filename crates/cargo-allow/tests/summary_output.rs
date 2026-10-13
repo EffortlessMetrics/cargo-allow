@@ -372,8 +372,16 @@ glob = "docs/file-{index:02}.md"
         "worklist should succeed: {human_text}"
     );
     assert!(
-        human_text.contains("more work items not shown; rerun with --limit"),
+        human_text.contains("more work items not shown; page with --limit/--offset"),
         "default page ends with the remainder footer: {human_text}"
+    );
+    assert!(
+        human_text.contains("use --format json to see the full queue"),
+        "footer names the honest full-queue path (human renders cap at 80): {human_text}"
+    );
+    assert!(
+        !human_text.contains("rerun with --limit 25 to see all"),
+        "footer must not promise a full human view past the 80-item cap: {human_text}"
     );
 
     let json_output = root.join("worklist.json");

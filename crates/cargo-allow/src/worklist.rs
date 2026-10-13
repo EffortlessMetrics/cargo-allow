@@ -192,8 +192,11 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
                     &page, context, style,
                 ));
                 let more = total - DEFAULT_HUMAN_WORKLIST_PAGE;
+                // The human renderer caps any listing at 80 items, so
+                // --limit alone cannot show a large queue in full; the
+                // honest full-queue path is JSON.
                 rendered.push_str(&format!(
-                    "\n... {more} more work items not shown; rerun with --limit {total} to see all, or page with --limit/--offset."
+                    "\n... {more} more work items not shown; page with --limit/--offset, or use --format json to see the full queue."
                 ));
             } else {
                 rendered.push_str(&render_worklist_human_with_context_styled(
