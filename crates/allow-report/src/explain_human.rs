@@ -117,18 +117,15 @@ pub fn render_explain_human_styled(report: ExplainReport<'_>, style: Style) -> S
             ));
         }
     }
-    let attention = report
-        .match_outcomes
-        .iter()
-        .filter(|outcome| outcome.status != MatchStatus::Matched)
-        .collect::<Vec<_>>();
+    let attention = deduped_attention_lines(report.match_outcomes);
     if !attention.is_empty() {
         out.push_str("\nattention:\n");
-        for outcome in attention.iter().take(20) {
+        for (status, message, count) in attention.iter().take(20) {
             out.push_str(&format!(
-                "- {}: {}\n",
-                style.status(outcome.status.as_str(), outcome.status.as_str()),
-                outcome.message
+                "- {}: {}{}\n",
+                style.status(status.as_str(), status.as_str()),
+                message,
+                occurrence_suffix(*count)
             ));
         }
     } else if entry.classification == "baseline_debt" {
@@ -150,6 +147,32 @@ pub fn render_explain_human_styled(report: ExplainReport<'_>, style: Style) -> S
     out.push('\n');
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
+}
+
+fn deduped_attention_lines(outcomes: &[MatchOutcome]) -> Vec<(MatchStatus, String, usize)> {
+    let mut lines: Vec<(MatchStatus, String, usize)> = Vec::new();
+    for outcome in outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+    {
+        if let Some(existing) = lines
+            .iter_mut()
+            .find(|(s, m, _)| *s == outcome.status && *m == outcome.message)
+        {
+            existing.2 += 1;
+        } else {
+            lines.push((outcome.status, outcome.message.clone(), 1));
+        }
+    }
+    lines
+}
+
+fn occurrence_suffix(count: usize) -> String {
+    if count > 1 {
+        format!(" ({count} occurrences)")
+    } else {
+        String::new()
+    }
 }
 
 fn explain_kind_label(entry: &AllowEntry) -> String {

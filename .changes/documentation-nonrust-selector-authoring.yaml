@@ -1,0 +1,10 @@
+kind: Documentation
+body: >-
+  Document the four non-Rust selector authoring requirements in the source
+  exception ledger (#4365 Gap 2): one scope only (literal `path` vs `glob`),
+  selector-glob agreement with the scope, `family` equality with the finding
+  family, and `selector.target_fingerprint` as the file-extension token.
+  Previously each was discoverable only through E0003 errors or silent
+  `stale` non-matches. The agent worklist guide now links the authoring
+  section from its broad-scope guidance, and the documented example entry
+  was verified to match on first attempt in a scratch fixture.
