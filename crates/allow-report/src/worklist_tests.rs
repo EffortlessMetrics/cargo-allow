@@ -70,6 +70,9 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     assert!(json.contains("\"item_kinds\": {"));
     assert!(json.contains("\"stale_allow\": 1"));
     assert!(json.contains("\"id\": \"work-0001\""));
+    // Item-level `item_kind` mirrors `kind` (#4365 Gap 1): one occurrence in
+    // the filters block (the applied filter) and one on the work item itself.
+    assert_eq!(json.matches("\"item_kind\": \"stale_allow\"").count(), 2);
     assert!(json.contains("\"exception_kind\": \"panic\""));
     assert!(json.contains("\"evidence_count\": 1"));
     assert!(json.contains("\"selector_precision\": 42"));
@@ -125,6 +128,7 @@ fn worklist_json_renderer_records_filters_summary_and_items() {
     {{
       "id": "work-0001",
       "kind": "stale_allow",
+      "item_kind": "stale_allow",
       "exception_kind": "panic",
       "family": "unwrap",
       "owner": "parser",

@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `worklist --family` and `worklist --source-package` now fail closed on
+  values no work item carries (#4365 Gap 3). Previously a typo such as
+  `--family bogus_family` silently returned rc=0 with an empty queue,
+  indistinguishable from a genuinely empty slice — the exact confusion the
+  fail-closed `--kind`/`--item-kind`/`--status` contract exists to prevent.
+  Unknown values now error with the observed family/package values and a
+  pointer to the unfiltered queue. Valid values are unchanged.
