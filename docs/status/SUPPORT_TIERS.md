@@ -88,7 +88,7 @@ User-facing command guides use this table as their maturity source. `Published
 | `reference` | Not included | Experimental | [Install shell completions](../how-to/install-shell-completions.md) |
 | `hooks` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
 | `cadence` | Not included | Experimental | [Getting started](../getting-started.md) |
-| `extraction-parity` | Not included | Experimental | [JSON schemas](../schemas/README.md) |
+| `extraction-parity` | Not included | Experimental | [Extraction parity](../architecture/extraction-parity.md) |
 | `changie` | Not included | Experimental | [Run the Changie static sensor](../how-to/run-changie-sensor.md) |
 
 The table intentionally separates published stability from current-main
