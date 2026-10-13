@@ -71,7 +71,9 @@ pub(crate) struct WorklistArgs {
     pub(super) include_untracked: bool,
     /// Maximum number of ranked work items to emit after filters.
     ///
-    /// Default: no limit; the full filtered queue is emitted.
+    /// Default: no limit; the full filtered queue is emitted. On human
+    /// stdout with neither --limit nor --offset, only the first 20 items
+    /// are shown with a remainder footer (#4477).
     #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
     pub(super) limit: Option<u32>,
     /// Number of ranked work items to skip before emitting, after filters.

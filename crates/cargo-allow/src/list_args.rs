@@ -112,7 +112,9 @@ pub(crate) struct ListArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Limit the number of entries shown (after filtering and sorting).
-    /// Useful for large ledgers or paginated inspection (#3173).
+    /// Useful for large ledgers or paginated inspection (#3173). On human
+    /// stdout with neither --limit nor --offset, the first 20 entries are
+    /// shown with a remainder footer (#4477).
     #[arg(long)]
     pub(super) limit: Option<usize>,
     /// Skip this many entries before rendering (after filtering and sorting).

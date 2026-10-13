@@ -329,7 +329,12 @@ glob = "docs/file-{index:02}.md"
 #[test]
 fn worklist_human_stdout_is_bounded_by_default_and_json_is_not() {
     let root = temp_root("worklist-bounded-default");
-    write_source_fixture(&root);
+    // Clean source: the queue is exactly the 25 stale-entry items, so the
+    // remainder arithmetic is exact.
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn clean() -> u8 { 1 }\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write clean source: {err}")));
     let mut policy = String::from("policy = \"cargo-allow\"\n");
     for index in 0..25 {
         policy.push_str(&format!(
@@ -375,6 +380,17 @@ glob = "docs/file-{index:02}.md"
         human_text.contains("more work items not shown; page with --limit/--offset"),
         "default page ends with the remainder footer: {human_text}"
     );
+    let rendered_items = human_text
+        .lines()
+        .filter(|line| line.starts_with("work-"))
+        .count();
+    assert_eq!(
+        rendered_items, 20,
+        "default page renders exactly 20 items: {human_text}"
+    );
+    // The queue also carries a coverage item beyond the 25 stale entries,
+    // so the exact remainder is checked against the JSON queue below
+    // (footer remainder == JSON total - rendered page).
     assert!(
         human_text.contains("use --format json to see the full queue"),
         "footer names the honest full-queue path (human renders cap at 80): {human_text}"
@@ -400,6 +416,19 @@ glob = "docs/file-{index:02}.md"
             "json keeps queue entry allow-{index:02}"
         );
     }
+    let json_doc: serde_json::Value = serde_json::from_str(&json_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse worklist json: {err}")));
+    let json_total = json_doc
+        .pointer("/work_items")
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
+    assert!(
+        human_text.contains(&format!(
+            "... {} more work items not shown",
+            json_total - 20
+        )),
+        "footer remainder equals JSON total minus the page: {human_text}"
+    );
 
     let human_output = root.join("worklist.txt");
     let human_file = run_worklist(&["--output", human_output.to_str().unwrap_or("worklist.txt")]);
@@ -412,6 +441,10 @@ glob = "docs/file-{index:02}.md"
     assert!(
         !human_file_text.contains("more work items not shown"),
         "--output artifacts must not gain the stdout footer"
+    );
+    assert!(
+        human_file_text.contains("allow-24"),
+        "--output keeps the full queue through the last entry"
     );
 
     remove_temp_root(root);

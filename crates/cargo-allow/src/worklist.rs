@@ -210,15 +210,15 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+/// Default first-page size for human stdout `worklist` without paging
+/// flags (#4477 slice 2; mirrors the `list` bound).
+const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
+
 /// Build the common operator summary from the queue worklist already ranked.
 ///
 /// The relocation-stable semantic identity comes from worklist's own JSON
 /// artifact, exactly as `audit`, `check`, and `doctor` derive theirs, so the
 /// summary never rescans source or re-evaluates matching to describe itself.
-/// Default first-page size for human stdout `worklist` without paging
-/// flags (#4477 slice 2; mirrors the `list` bound).
-const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
-
 fn worklist_summary(
     detail_json: &str,
     root: &std::path::Path,
