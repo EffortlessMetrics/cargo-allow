@@ -411,6 +411,32 @@ fn propose_write_failures_name_the_actual_fix() {
         "directory target must not receive --force advice: {dir_text}"
     );
 
+    // A symlink-to-file target also keeps the apply layer's refusal: the
+    // apply layer refuses symlink leaves on replace, so --force advice
+    // would be unusable there too. Creation is best-effort (symlink
+    // privilege varies by host); the directory case above always runs.
+    let link_target = root.join("policy-link-target.toml");
+    let link_created = {
+        #[cfg(windows)]
+        {
+            std::os::windows::fs::symlink_file(&policy_output, &link_target).is_ok()
+        }
+        #[cfg(not(windows))]
+        {
+            std::os::unix::fs::symlink(&policy_output, &link_target).is_ok()
+        }
+    };
+    if link_created {
+        let link_arg = link_target.to_str().unwrap_or("link");
+        let link_run = run_propose(&["--write", link_arg]);
+        let link_text = String::from_utf8_lossy(&link_run.stderr).into_owned();
+        assert!(!link_run.status.success(), "symlink write must fail");
+        assert!(
+            !link_text.contains("Next: pass --force to overwrite"),
+            "symlink target must not receive --force advice: {link_text}"
+        );
+    }
+
     // Out-of-root target: fail closed, nothing written, specific Next.
     let outside = root.join("../outside-propose.toml");
     let outside_arg = outside.to_str().unwrap_or("outside");

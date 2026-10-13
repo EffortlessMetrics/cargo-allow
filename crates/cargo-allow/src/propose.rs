@@ -326,11 +326,15 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         let absolute_target = write_target_after_containment(write_target.as_deref())?;
         // Name the actual fix for the common baseline flow (writing over the
         // existing policy): the generic Artifact Next line (writable/parent)
-        // contradicts this failure (#4481). Regular files only: a directory
-        // target cannot be force-overwritten, so it keeps the apply layer's
-        // own refusal. The apply below keeps its create-new-only refusal as
-        // the race-safe backstop.
-        if !args.force && absolute_target.is_file() {
+        // contradicts this failure (#4481). Plain regular files only, judged
+        // by the leaf's own metadata: a directory cannot be force-overwritten
+        // and the apply layer refuses symlink leaves on replace, so both keep
+        // its own refusal. The apply below keeps its create-new-only refusal
+        // as the race-safe backstop.
+        let plain_file_target = std::fs::symlink_metadata(absolute_target)
+            .map(|metadata| metadata.file_type().is_file())
+            .unwrap_or(false);
+        if !args.force && plain_file_target {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
