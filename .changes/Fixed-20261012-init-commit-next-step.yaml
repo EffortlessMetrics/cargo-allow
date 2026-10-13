@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  `cargo-allow init` in a Git worktree now names the missing first-run step:
+  commit the starter policy so git-tracked inventory can see it. Until that
+  commit the seeded ledger self-receipt read `stale` in the first check with
+  no explanation, inviting a new user to prune the entry the tool had just
+  created (#4479).
