@@ -543,6 +543,86 @@ fn first_hour_init_bootstrap_passes_no_new_without_propose() {
     drop_root(root);
 }
 
+fn git(root: &Path, args: &[&str]) {
+    let output = Command::new("git")
+        .arg("-c")
+        .arg("user.email=first-hour@example.invalid")
+        .arg("-c")
+        .arg("user.name=First Hour")
+        .args(args)
+        .current_dir(root)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run git {args:?}: {err}")));
+    if !output.status.success() {
+        std::panic::panic_any(format!(
+            "git {args:?} failed; stderr=`{}`",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+}
+
+fn list_entry_line(root: &Path) -> String {
+    let output = run(
+        cargo_allow()
+            .arg("list")
+            .arg("--root")
+            .arg(root)
+            .arg("--allow-id")
+            .arg("allow-0001")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}"))),
+        "list allow-0001",
+    );
+    combined(&output)
+}
+
+/// #4479: in a Git worktree, init must name the commit that makes
+/// git-tracked inventory see the starter policy. Until then the seeded
+/// self-receipt reads stale; after the commit it reads matched, and
+/// untracking it returns it to stale (the law did not change).
+#[test]
+fn first_hour_init_names_commit_step_and_seed_matches_once_committed() {
+    let root = temp_root("init-commit-step");
+    write_source(&root, "pub fn ok() -> u8 { 1 }\n");
+    git(&root, &["init", "-q"]);
+    git(&root, &["add", "src/lib.rs"]);
+    git(&root, &["commit", "-qm", "source"]);
+
+    let init = run(
+        cargo_allow()
+            .arg("init")
+            .arg("--root")
+            .arg(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}"))),
+        "init",
+    );
+    assert!(
+        combined(&init).contains("git add policy/allow.toml"),
+        "init in a git worktree must name the commit step: {}",
+        combined(&init)
+    );
+    assert!(
+        list_entry_line(&root).contains("[stale] allow-0001"),
+        "uncommitted starter policy seed should read stale"
+    );
+
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-qm", "starter policy"]);
+    assert!(
+        list_entry_line(&root).contains("[matched] allow-0001"),
+        "committed starter policy seed should read matched"
+    );
+
+    git(&root, &["rm", "-q", "--cached", "policy/allow.toml"]);
+    assert!(
+        list_entry_line(&root).contains("[stale] allow-0001"),
+        "untracked starter policy seed should read stale again"
+    );
+
+    drop_root(root);
+}
+
 /// The generated ledger is itself a tracked file, so it lands in its own
 /// inventory as a `non_rust_file` finding. Nothing receipted it, so an
 /// adopter's first gate run failed on `policy/allow.toml` rather than on their
