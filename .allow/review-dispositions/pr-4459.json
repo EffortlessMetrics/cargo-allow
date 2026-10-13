@@ -4,11 +4,11 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4459,
   "base_ref": "main",
-  "base_sha": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
+  "base_sha": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
   "head_ref": "fix/3792-rehearsal-selected-invocations-20261010",
-  "head_sha": "d65689488263c2c76a84d991a5c0bb6fe6c5ee35",
-  "merge_base": "edb7fb7b6b574524ea4f16a27f9d8086af1c4d21",
-  "reviewed_diff_digest": "sha256:v1:c2147a9f373885569d46130609b367e9c75b8385988ecf31a24f4775a5e4de60",
+  "head_sha": "a6b002d8f77f8c78711145e4f55aa8a5451c27b8",
+  "merge_base": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
+  "reviewed_diff_digest": "sha256:v1:e1033faf75558b34106327d7078d500398aa0becb4ee5a2347145114d9e25fdb",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
   "reviewer_identity": "ChatGPT /root/release_audit, author preparing source and pending retained metadata for the coordinating maintainer. This is author preparation only, not an independent review or a clean verdict.",
@@ -29,12 +29,14 @@
       "claim_boundary": "Historical initial source d65689488263c2c76a84d991a5c0bb6fe6c5ee35. No clean review, repaired-source acceptance, publication authority or prevention-flag upgrade is claimed."
     }
   ],
-  "threads_inspected": [],
+  "threads_inspected": [
+    "Objective repair and rebind 2026-10-13: the branch's retained revision note (.allow/revisions/4459-retained-review-record.toml) still recorded the pre-collision id allow-11346 after the branch's own note receipt was re-identified to allow-11353; the note record now covers allow-11353 with the current row fingerprint (sha256:v1:c86a6355e3f2e29203120ebd42896721a44095f57de582c3be9a8a8825edd822), and `cargo-allow diff --base origin/main --require-change-note` exits 0 with zero missing change notes. Local no-new guard green (failed=false, new=0) at the post-integration merge; policy integration re-resolved id-and-content-aware (main's allow-review-4455 rows retained; this PR's allow-11353/11345 rows appended byte-preserved). The partial verdict, blocking finding IB-F1, and the not-proven independent-review state are preserved unchanged: this rebind updates only the binding fields to the current pair and does not claim the required independent affected/full-current-pair review or hosted validation."
+  ],
   "required_ci": {
     "owner": "Coordinating maintainer: independently review the complete repaired source and governance diff, bind its actual native digest and final live pair, then separately verify any own-record-only successor, substantive feedback and every applicable current native check before normal head-pinned merge. Retain the exact new-main enforcing guard. The linked neutral check is only the initial d656 source observation; this pending record supplies no CI bypass, merge or release authority.",
     "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114315919636"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4459",
-  "reviewed_at_utc": ""
+  "reviewed_at_utc": "2026-10-13T04:25:00Z"
 }
