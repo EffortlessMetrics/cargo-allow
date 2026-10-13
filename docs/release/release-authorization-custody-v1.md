@@ -176,8 +176,27 @@ producer receipt must bind the finalized artifact ID to its producer.
 The provider assigns that ID after upload, so the finalized transfer envelope
 stays outside the immutable payload it describes.
 
-#3930 will compose these reads, the existing custody/compiler reducers and
-the durable operation store in the actual same-run driver. A local record or
-synthetic provider response cannot satisfy the real source-authentication,
-custody-storage, one-use selection or publication acceptance rows. #3927
-remains open for that production composition and separately authorized mint.
+The [#3930 final-tag driver](final-tag-transaction-v1.md#production-driver-boundary)
+composes those reads with the existing custody/compiler reducers and durable
+operation store. The hidden Rust bridge rebuilds ExpectedContext from the
+selected freeze inputs, candidate/preflight, shared checksum authorities,
+evidence bytes and frozen-tree inventory. The retained expected context must
+agree exactly. The source bytes must match both the independently approved
+actor's authenticated source and the exact authorization statement.
+
+`compile_release_authorization_v1` still admits only Available authority.
+`validate_release_authorization_continuation_v1` is a separate revalidation
+path for the same selected operation. It recompiles the original Available
+context, applies all current non-use eligibility checks, checks exact original
+custody/subject/evidence/nonce bindings, and replays SelectedForRun and, when
+present, IrreversibleOperationStarted from the immutable birth. It does not
+reset consumption, mint another authorization or expose a provider permit.
+The driver also reconstructs the full stored lease, tag and canonical event
+history from their existing reducers and downloaded checkpoints.
+
+A local record or synthetic provider response cannot satisfy real source
+authentication, custody storage or publication acceptance rows. #3927 still
+owns the separately authorized mint after actual Complete #2501. The freeze
+producer must retain its existing typed replay-input set, and independently
+selected producer receipts must bind finalized numeric artifact IDs outside
+the immutable artifact payloads they describe.

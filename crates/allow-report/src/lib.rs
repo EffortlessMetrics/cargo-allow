@@ -352,7 +352,7 @@ pub use artifacts::{
     ReleaseAuthorizationSourceKindV1, ReleaseAuthorizationSourceV1,
     ReleaseAuthorizationUseObservationV1, compile_release_authorization_v1,
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
-    transition_authorization_consumption,
+    transition_authorization_consumption, validate_release_authorization_continuation_v1,
 };
 // Canonical shared release-operation authority (#3940 PR A).
 pub use artifacts::{
@@ -387,15 +387,18 @@ pub use artifacts::{
 
 // Root re-exports for the durable operation lease (#3925).
 pub use artifacts::{
-    CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_FINAL_OPERATION,
-    OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION, OPERATION_LEASE_RECOVERY_OPERATION,
-    OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION, OperationLeaseAcquireInitV1,
-    OperationLeaseClassV1, OperationLeaseHolderV1, OperationLeaseKeyV1, OperationLeaseStateV1,
-    OperationLeaseTransitionV1, RunnerLossEvidenceV1, acquire_operation_lease_for_operation_v1,
-    acquire_operation_lease_v1, cancel_operation_lease_v1, note_lease_irreversible_start_v1,
+    CargoAllowReleaseOperationLeaseV1, LeaseReadbackV1, OPERATION_LEASE_CHECKPOINT_ROLE,
+    OPERATION_LEASE_FINAL_OPERATION, OPERATION_LEASE_FINAL_TAG, OPERATION_LEASE_FINAL_VERSION,
+    OPERATION_LEASE_RECOVERY_OPERATION, OPERATION_LEASE_SCHEMA_ID, OPERATION_LEASE_SCHEMA_VERSION,
+    OperationLeaseAcquireInitV1, OperationLeaseCheckpointReadbackV1, OperationLeaseClassV1,
+    OperationLeaseHeadAdvanceV1, OperationLeaseHolderV1, OperationLeaseKeyV1,
+    OperationLeaseStateV1, OperationLeaseTransitionV1, RunnerLossEvidenceV1,
+    acquire_operation_lease_for_operation_v1, acquire_operation_lease_v1,
+    advance_operation_lease_heads_v1, cancel_operation_lease_v1, note_lease_irreversible_start_v1,
     observe_lease_provider_unavailable_v1, observe_runner_loss_v1, operation_lease_key_digest_v1,
     operation_lease_subject_digest_v1, release_operation_lease_v1,
-    render_release_operation_lease_v1, renew_operation_lease_v1, verify_lease_readback_v1,
+    render_release_operation_lease_v1, renew_operation_lease_v1,
+    validate_operation_lease_checkpoint_v1, verify_lease_readback_v1,
 };
 // Root re-exports for the operator-side authorization custody protocol (#3927).
 pub use artifacts::{
@@ -418,10 +421,10 @@ pub use artifacts::{
     FINAL_TAG_TAG, FINAL_TAG_TRANSACTION_SCHEMA_ID, FINAL_TAG_TRANSACTION_SCHEMA_VERSION,
     FINAL_TAG_VERSION, FinalTagDurabilityV1, FinalTagIdentityV1, FinalTagRemoteObservationV1,
     FinalTagTransactionInitV1, TagTransactionStateV1, TagTransactionTransitionV1,
-    begin_tag_transaction_for_operation_v1, begin_tag_transaction_v1,
-    reconcile_tag_push_unknown_v1, record_tag_push_intent_v1, record_tag_push_response_v1,
-    record_tag_push_started_v1, render_final_tag_transaction_v1, tag_push_intent_digest_v1,
-    tag_release_gate_open_v1,
+    begin_tag_transaction_for_authorized_operation_v1, begin_tag_transaction_for_operation_v1,
+    begin_tag_transaction_v1, reconcile_tag_push_unknown_v1, record_tag_push_intent_v1,
+    record_tag_push_response_v1, record_tag_push_started_v1, render_final_tag_transaction_v1,
+    tag_push_intent_digest_v1, tag_release_gate_open_v1,
 };
 // Root re-exports for the remote publication checkpoints (#3922).
 pub use artifacts::{
