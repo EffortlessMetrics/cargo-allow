@@ -189,7 +189,9 @@ impl std::error::Error for CauseError {
 pub struct CargoAllowError {
     kind: CargoAllowErrorKind,
     message: String,
-    location: Option<CargoAllowErrorLocation>,
+    // Boxed (like `next_step`) so the error stays under Clippy's
+    // large-error threshold; the public accessor is unchanged.
+    location: Option<Box<CargoAllowErrorLocation>>,
     diagnostics: Vec<CargoAllowDiagnostic>,
     /// Rendered cause chain (each element is the `Display` of an underlying
     /// error). Stored as strings so the struct stays `Clone` + `PartialEq`.
@@ -201,8 +203,9 @@ pub struct CargoAllowError {
     /// Typed so the action cannot be forgotten, duplicated, or drift from
     /// the failure the way a `Next:` embedded in the message string can
     /// (#4488). Renderers prefer this over message-carried and per-kind
-    /// generic guidance.
-    next_step: Option<String>,
+    /// generic guidance. Boxed so the error stays under Clippy's
+    /// large-error threshold.
+    next_step: Option<Box<str>>,
 }
 
 impl CargoAllowError {
@@ -292,7 +295,7 @@ impl CargoAllowError {
     /// The CLI renders this as the error's single `Next:` line in preference
     /// to any message-carried or per-kind generic guidance (#4488).
     pub fn with_next_step(mut self, next_step: impl Into<String>) -> Self {
-        self.next_step = Some(next_step.into());
+        self.next_step = Some(next_step.into().into_boxed_str());
         self
     }
 
@@ -356,14 +359,14 @@ impl CargoAllowError {
             .rsplit_once('\n')
             .map(|(_, line)| line.chars().count() + 1)
             .unwrap_or_else(|| prefix.chars().count() + 1);
-        self.location = Some(CargoAllowErrorLocation {
+        self.location = Some(Box::new(CargoAllowErrorLocation {
             path: path.map(|value| value.display().to_string()),
             line: u32::try_from(line).unwrap_or(u32::MAX),
             column: u32::try_from(column).unwrap_or(u32::MAX),
-        });
+        }));
         for diagnostic in &mut self.diagnostics {
             diagnostic.path = path.map(|value| value.display().to_string());
-            diagnostic.span = self.location.clone();
+            diagnostic.span = self.location.as_deref().cloned();
         }
         self
     }
@@ -371,7 +374,7 @@ impl CargoAllowError {
     /// Structured source location, when the error originated from located
     /// input such as a TOML parse.
     pub fn location(&self) -> Option<&CargoAllowErrorLocation> {
-        self.location.as_ref()
+        self.location.as_deref()
     }
 
     /// The human-readable message (without the cause chain).
