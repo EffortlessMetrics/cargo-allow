@@ -137,10 +137,18 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
                 )
             };
             let text = format!("{}\n{detail}", render_core_command_summary_human(&summary));
-            if more_rows > 0 {
-                format!(
-                    "{text}\n... {more_rows} more entries not shown; rerun with --limit {total_rows} to see all, or page with --limit/--offset."
-                )
+            // The footer is stdout guidance only: --output artifacts (human
+            // or JSON) keep their pre-#4477 bytes exactly.
+            if human_stdout && more_rows > 0 {
+                if args.offset.unwrap_or(0) == 0 {
+                    format!(
+                        "{text}\n... {more_rows} more entries not shown; rerun with --limit {total_rows} to see all, or page with --limit/--offset."
+                    )
+                } else {
+                    format!(
+                        "{text}\n... {more_rows} more entries after this page not shown; page with --limit/--offset, or drop --offset and use --limit {total_rows} to see all."
+                    )
+                }
             } else {
                 text
             }

@@ -263,6 +263,33 @@ glob = "docs/file-{index:02}.md"
         "no footer when nothing is hidden: {explicit_text}"
     );
 
+    // Human --output artifacts keep their exact bytes: no footer even when
+    // an explicit --limit truncates the file.
+    let human_output = root.join("list.txt");
+    let human_file = run_list(&[
+        "--limit",
+        "10",
+        "--output",
+        human_output.to_str().unwrap_or("list.txt"),
+    ]);
+    assert!(human_file.status.success(), "human --output list succeeds");
+    let human_file_text = fs::read_to_string(&human_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read list.txt: {err}")));
+    assert!(
+        !human_file_text.contains("more entries not shown"),
+        "--output artifacts must not gain the stdout footer: {human_file_text}"
+    );
+    assert_eq!(human_file_text.matches("- [").count(), 10);
+
+    // With --offset the footer counts entries after this page and its
+    // advice does not pretend --limit alone (keeping the offset) shows all.
+    let offset_page = run_list(&["--offset", "10", "--limit", "10"]);
+    let offset_text = String::from_utf8_lossy(&offset_page.stdout).into_owned();
+    assert!(
+        offset_text.contains("... 5 more entries after this page not shown"),
+        "offset footer counts the tail after the page: {offset_text}"
+    );
+
     let json_output = root.join("list.json");
     let json = run_list(&[
         "--format",
