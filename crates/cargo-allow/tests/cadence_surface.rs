@@ -8,7 +8,9 @@
 //! e. never-a-gate: policy bytes and the check verdict are untouched,
 //! f. human/JSON/markdown parity from one semantic result,
 //! g. the ambient-day default as-of,
-//! h. malformed `--as-of` input fails loudly with the usage exit code.
+//! h. malformed `--as-of` input fails loudly with the usage exit code,
+//! i. the expires-day boundary agrees across cadence, list, worklist, and
+//!    check (#4391).
 //!
 //! Loader law note (fixture c): the policy loader rejects malformed and
 //! descending lifecycle dates at parse, so a cadence invocation over such a
@@ -67,15 +69,48 @@ impl Fixture {
     }
 
     fn run(&self, args: &[String]) -> Output {
+        self.run_command("cadence", args)
+    }
+
+    fn run_command(&self, command: &str, args: &[String]) -> Output {
         cargo_allow_command()
-            .arg("cadence")
+            .arg(command)
             .arg("--root")
             .arg(&self.root)
             .arg("--config")
             .arg("policy/allow.toml")
             .args(args)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("cadence run: {err}")))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("{command} run: {err}")))
+    }
+
+    /// Run one read surface in JSON mode writing the artifact into the
+    /// fixture, and return the parsed document.
+    fn surface_json(&self, command: &str, name: &str) -> Value {
+        let output_path = self.output_path(&format!("{command}-{name}.json"));
+        let output_arg = output_path
+            .to_str()
+            .unwrap_or_else(|| std::panic::panic_any("fixture output path must be unicode"))
+            .to_string();
+        let args = vec![
+            "--format".to_string(),
+            "json".to_string(),
+            "--output".to_string(),
+            output_arg,
+        ];
+        let output = self.run_command(command, &args);
+        assert!(
+            output.status.success(),
+            "{command} {name} should succeed: stdout=`{}` stderr=`{}`",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let contents = fs::read_to_string(&output_path).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read {}: {err}", output_path.display()))
+        });
+        serde_json::from_str(&contents).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("{command} artifact parses: {err}\n{contents}"))
+        })
     }
 
     /// Run cadence in JSON mode writing the artifact into the fixture, and
@@ -437,6 +472,135 @@ fn cadence_boundary_pins_review_and_expiry_transitions() {
         ("expired".to_string(), Some(-1)),
         "E+1 is expired"
     );
+}
+
+/// Cross-surface expiry-day pin (#4391): the strict `expires < today` law
+/// must agree on every read surface, not just cadence. An entry expiring on
+/// the ambient UTC day is `expiring` for cadence and never `expired` for
+/// list/worklist/check, while an entry that expired yesterday is `expired`
+/// on all four — the yesterday rows keep the today assertions honest.
+/// `lifecycle_boundary.rs` pins the same law for matched entries across
+/// check/list/explain/cadence; this test pins the unused-entry path and the
+/// worklist queue, which that corpus does not exercise. Only cadence takes
+/// `--as-of`, so if UTC midnight intervenes the whole fixture is rebuilt
+/// once for the new day (the `lifecycle_boundary.rs` retry pattern) instead
+/// of silently skipping.
+#[test]
+fn expires_day_agrees_across_cadence_list_worklist_and_check() {
+    for _ in 0..2 {
+        let today = allow_core::SimpleDate::today_utc_approx();
+        if expires_day_cross_surface_attempt(today) {
+            return;
+        }
+    }
+    std::panic::panic_any("UTC day changed during both cross-surface attempts");
+}
+
+/// One cross-surface attempt pinned to `today`; returns false when the UTC
+/// day rolled over mid-attempt so the caller can rebuild the fixture.
+fn expires_day_cross_surface_attempt(today: allow_core::SimpleDate) -> bool {
+    let yesterday = today.add_days(-1);
+    let entries = vec![
+        reviewed_entry(
+            "allow-expires-today",
+            "src/expires-today.rs",
+            "2026-06-01",
+            None,
+            Some(&today.to_string()),
+        ),
+        reviewed_entry(
+            "allow-expired-yesterday",
+            "src/expired-yesterday.rs",
+            "2026-06-01",
+            None,
+            Some(&yesterday.to_string()),
+        ),
+    ];
+    let fixture = Fixture::new("expires-day-cross-surface", &entries);
+
+    let cadence = fixture.cadence_json(&today.to_string(), "cross-surface");
+    assert_eq!(
+        row_for(&cadence, "allow-expires-today")
+            .pointer("/class")
+            .and_then(Value::as_str),
+        Some("expiring"),
+        "cadence keeps the expires day expiring (strict boundary, #4351)"
+    );
+    assert_eq!(
+        row_for(&cadence, "allow-expired-yesterday")
+            .pointer("/class")
+            .and_then(Value::as_str),
+        Some("expired"),
+        "cadence reports yesterday's entry expired"
+    );
+
+    let list = fixture.surface_json("list", "cross-surface");
+    if allow_core::SimpleDate::today_utc_approx() != today {
+        return false;
+    }
+    let list_status = |allow_id: &str| {
+        list.pointer("/allow_entries")
+            .and_then(Value::as_array)
+            .unwrap_or_else(|| std::panic::panic_any("list artifact carries allow_entries"))
+            .iter()
+            .find(|entry| {
+                entry.get("allow_id").and_then(Value::as_str) == Some(allow_id)
+                    || entry.get("id").and_then(Value::as_str) == Some(allow_id)
+            })
+            .and_then(|entry| entry.get("status").and_then(Value::as_str))
+            .map(str::to_string)
+    };
+    assert_eq!(
+        list_status("allow-expires-today").as_deref(),
+        Some("stale"),
+        "list must not call the expires day expired; unused entries stay stale"
+    );
+    assert_eq!(
+        list_status("allow-expired-yesterday").as_deref(),
+        Some("expired"),
+        "list reports yesterday's entry expired"
+    );
+
+    let worklist = fixture.surface_json("worklist", "cross-surface");
+    if allow_core::SimpleDate::today_utc_approx() != today {
+        return false;
+    }
+    let has_expired_item = |allow_id: &str| {
+        worklist
+            .pointer("/work_items")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items.iter().any(|item| {
+                    item.get("allow_id").and_then(Value::as_str) == Some(allow_id)
+                        && item.get("item_kind").and_then(Value::as_str) == Some("expired_allow")
+                })
+            })
+            .unwrap_or(false)
+    };
+    assert!(
+        !has_expired_item("allow-expires-today"),
+        "worklist must not queue the expires day as expired_allow"
+    );
+    assert!(
+        has_expired_item("allow-expired-yesterday"),
+        "worklist queues yesterday's entry as expired_allow"
+    );
+
+    let check = fixture.run_command("check", &["--mode".to_string(), "no-new".to_string()]);
+    let check_text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&check.stdout),
+        String::from_utf8_lossy(&check.stderr)
+    );
+    assert!(
+        !check_text.contains("allow-expires-today is expired on"),
+        "check must not report the expires day as expired:\n{check_text}"
+    );
+    assert!(
+        check_text.contains("allow-expired-yesterday is expired on"),
+        "check reports yesterday's entry as expired:\n{check_text}"
+    );
+    allow_core::SimpleDate::today_utc_approx() == today
 }
 
 /// Fixture c: the loader owns the fail-closed boundary. Malformed

@@ -10,7 +10,7 @@ after_fingerprint = "sha256:v1:2b8f8fac4d4a29ac8bcac15b383b87d9ddf36647aaf3e89f6
 reason = "Retained structured review evidence for PR #4459 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
 
 [[records]]
-allow_ids = ["allow-11346"]
+allow_ids = ["allow-11353"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:aeb4533f8ef84761766db820a6963975186a43be80a21e5ca89ed3749f3a45ba"
+after_fingerprint = "sha256:v1:c86a6355e3f2e29203120ebd42896721a44095f57de582c3be9a8a8825edd822"
 reason = "Authored revision note for the exact retained PR #4459 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
