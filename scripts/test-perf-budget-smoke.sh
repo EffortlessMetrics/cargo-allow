@@ -400,10 +400,11 @@ PY_BINARY_SELECTION
 "${py}" - <<'PY_RECEIPT'
 """Exercise the actual inline CI receipt consumer with synthetic v4 receipts.
 
-These fixtures test duration admission and byte-count admission, not latency
-or artifact integrity. No second runtime validator or third-party dependency
+These fixtures test duration, byte-count and retained-digest admission, not
+latency or real command output. No second runtime validator or third-party dependency
 is introduced.
 """
+import hashlib
 import json
 import math
 import subprocess
@@ -444,6 +445,7 @@ def receipt_fixture():
         ("cache_disabled_off", "targeted", "off"),
         ("first_audit", "cold", "not_applicable"),
         ("warm_check", "warm", "not_applicable"),
+        ("full_check_json", "warm", "not_applicable"),
         ("why_fast_path", "targeted", "not_applicable"),
         ("worklist", "targeted", "not_applicable"),
         ("diff_base", "targeted", "not_applicable"),
@@ -466,12 +468,20 @@ def receipt_fixture():
             "status": "passed", "payload_bytes": artifact_size,
             "semantic_payload_bytes": semantic_size,
             "artifact": {
-                "path": f"{name}.json", "sha256": f"{index + 1:064x}",
+                "path": f"{name}.json", "sha256": hashlib.sha256(b"a" * artifact_size).hexdigest(),
             },
             "semantic_artifact": {
-                "path": f"{name}.semantic.json", "sha256": f"{index + 65:064x}",
+                "path": f"{name}.semantic.json", "sha256": hashlib.sha256(b"s" * semantic_size).hexdigest(),
             },
         })
+        if name == "full_check_json":
+            samples[-1]["artifact"]["path"] = "artifacts/full-check.json"
+            samples[-1]["semantic_artifact"]["path"] = "artifacts/full-check.receipt.json"
+            samples[-1]["argv"] = [
+                "check", "--mode", "no-new", "--format", "json", "--receipt",
+                "target/perf-budget/artifacts/full-check.receipt.json", "--output",
+                "target/perf-budget/artifacts/full-check.json",
+            ]
     return {
         "schema_version": 4, "schema_id": "cargo-allow.operator-latency.v4",
         "tool": "cargo-allow", "command": "operator-latency", "result": "pass",
@@ -479,9 +489,9 @@ def receipt_fixture():
         "host": {"os": "Linux", "release": "fixture", "machine": "x86_64", "rustc": "fixture"},
         "repository": {"commit": "fixture", "tracked_files": 0, "policy_entries": 0},
         "sample_policy": {
-            "cold_process_samples": 2, "warm_process_samples": 3,
+            "cold_process_samples": 2, "warm_process_samples": 4,
             "targeted_samples": 6, "agent_loop_samples": 6,
-            "cache_mode_samples": {"on": 2, "off": 1, "not_applicable": 14},
+            "cache_mode_samples": {"on": 2, "off": 1, "not_applicable": 15},
         },
         "budget": {
             "name": "operator_loop_hard_ceiling", "kind": "catastrophic_regression",
@@ -510,13 +520,13 @@ def receipt_fixture():
         },
         "samples": samples,
         "claim_boundary": ["synthetic receipt admission fixture"],
-        "limitations": ["not a latency or artifact-integrity observation"],
+        "limitations": ["not a latency or real command-output observation"],
     }
 
 
 def duration_paths():
     return (
-        [("samples", i, "elapsed_ms") for i in range(17)]
+        [("samples", i, "elapsed_ms") for i in range(18)]
         + [("agent_loop", "composite", "steps", i, "elapsed_ms") for i in range(4)]
         + [
             ("agent_loop", "composite", "total_elapsed_ms"),
@@ -564,7 +574,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
         cls.source = consumer_source()
         cls.schema_text = (ROOT / SCHEMA_PATH).read_text(encoding="utf-8")
 
-    def invoke(self, receipt, *, write_receipt=True):
+    def invoke(self, receipt, *, write_receipt=True, mutate_retained=None):
         with tempfile.TemporaryDirectory(prefix="operator-duration-") as directory:
             root = Path(directory)
             schema_path = root / SCHEMA_PATH
@@ -586,6 +596,8 @@ class ReceiptAdmissionControls(unittest.TestCase):
                         retained = receipt_path.parent / sample[key]["path"]
                         retained.parent.mkdir(parents=True, exist_ok=True)
                         retained.write_bytes(prefix * size)
+                if mutate_retained is not None:
+                    mutate_retained(receipt_path.parent)
             return subprocess.run(
                 [sys.executable, "-"], input=self.source, cwd=root,
                 capture_output=True, text=True, timeout=20,
@@ -594,7 +606,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
     def assert_accepted(self, receipt):
         result = self.invoke(receipt)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "validated 17 operator-latency samples")
+        self.assertEqual(result.stdout.strip(), "validated 18 operator-latency samples")
 
     def assert_rejected(self, receipt, label, *, diagnostic=None):
         result = self.invoke(receipt)
@@ -602,7 +614,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
             result.returncode, 1,
             f"invalid receipt accepted: {label}; stdout={result.stdout!r}; stderr={result.stderr!r}",
         )
-        self.assertNotIn("validated 17 operator-latency samples", result.stdout)
+        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
         self.assertTrue(result.stderr, f"missing rejection diagnostic: {label}")
         if diagnostic is not None:
             self.assertIn(diagnostic, result.stderr)
@@ -634,6 +646,55 @@ class ReceiptAdmissionControls(unittest.TestCase):
         for repetition in range(2):
             with self.subTest(repetition=repetition):
                 self.assert_accepted(receipt)
+
+    def test_full_json_row_is_required_with_its_actual_command_and_artifacts(self):
+        cases = (
+            ("missing", lambda r: r["samples"][5].__setitem__("name", "replacement"),
+             "expected exactly one full_check_json sample"),
+            ("duplicate", lambda r: r["samples"][4].__setitem__("name", "full_check_json"),
+             "expected exactly one full_check_json sample"),
+            ("wrong_format", lambda r: r["samples"][5]["argv"].__setitem__(4, "markdown"),
+             "full_check_json must measure the full JSON check command"),
+            ("wrong_output", lambda r: r["samples"][5]["argv"].__setitem__(8, "other.json"), None),
+            ("wrong_receipt", lambda r: r["samples"][5]["argv"].__setitem__(6, "other.json"), None),
+            ("wrong_phase", lambda r: r["samples"][5].__setitem__("phase", "targeted"), None),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                receipt = receipt_fixture()
+                mutate(receipt)
+                self.assert_rejected(receipt, label, diagnostic=diagnostic)
+
+    def test_retained_digests_and_file_refusals(self):
+        # Each negative starts from the same accepted bytes and correct sizes.
+        # A same-size substitution exercises hashing independently of size checks.
+        self.assert_accepted(receipt_fixture())
+        for index in (3, 5):
+            for key in ("artifact", "semantic_artifact"):
+                with self.subTest(index=index, key=key, mutation="digest"):
+                    receipt = receipt_fixture()
+                    receipt["samples"][index][key]["sha256"] = "0" * 64
+                    self.assert_rejected(receipt, key, diagnostic=f"{key} sha256 must match")
+                for mutation in ("same_size", "truncated", "missing"):
+                    with self.subTest(index=index, key=key, mutation=mutation):
+                        receipt = receipt_fixture()
+                        path = receipt["samples"][index][key]["path"]
+                        def mutate(root):
+                            retained = root / path
+                            if mutation == "missing":
+                                retained.unlink()
+                            else:
+                                data = retained.read_bytes()
+                                retained.write_bytes(b"x" + data[1:] if mutation == "same_size" else data[:-1])
+                        result = self.invoke(receipt, mutate_retained=mutate)
+                        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
+                        diagnostic = {
+                            "same_size": f"{key} sha256 must match",
+                            "truncated": "must match the retained",
+                            "missing": "FileNotFoundError",
+                        }[mutation]
+                        self.assertIn(diagnostic, result.stderr)
 
     def test_byte_count_admission_refusals(self):
         sample_index = 3
@@ -1118,5 +1179,566 @@ class HookPayloadControls(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 PY_HOOK_PAYLOAD
+
+# Execute the new matrix row and production measurement/validation functions.
+# Controlled child artifacts exercise refusal and retention, not real latency.
+"${py}" - <<'PY_FULL_CHECK_JSON'
+import ast
+import copy
+import hashlib
+import json
+import os
+import shlex
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
+bootstrap, boundary, _ = script.partition("\nPERF_BINARY_REL=")
+assert boundary, "missing production bootstrap boundary"
+_, boundary, tail = script.partition("\nmeasure() {\n")
+assert boundary, "missing production measurement"
+body, boundary, _ = tail.partition("\n}\n")
+assert boundary, "missing production measurement end"
+measurement = "\nmeasure() {\n" + body + "\n}\n"
+_, boundary, tail = script.partition('log "measuring warm full check JSON report and receipt"\n')
+assert boundary, "missing full JSON matrix row"
+matrix_row, boundary, _ = tail.partition('\n\n')
+assert boundary, "missing full JSON matrix row end"
+REPORT_LIMIT, RECEIPT_LIMIT = 8388608, 16384
+STATUSES = (
+    "matched", "new", "expired", "review_due", "location_drift", "stale",
+    "ambiguous", "invalid_selector", "evidence_missing", "missing_required_field", "baseline_debt",
+)
+REPORT_SCHEMA = Path("docs/schemas/report.schema.json").read_bytes()
+
+
+def command_artifacts():
+    counts = {status: 0 for status in STATUSES}
+    counts.update(matched=2, stale=1, weak_evidence_references=2)
+    shared = {
+        "schema_version": 1, "tool": "cargo-allow", "command": "check",
+        "status": "passed", "failed": False,
+        "claim_boundary": ["source_tree_inventory", "source_syntax_only"],
+        "scanner_limitations": ["cargo_metadata_not_invoked"],
+        "inventory": {"scope": "source_tree", "scanner": "source_syntax",
+                      "source": "git_tracked", "completeness": "scoped", "files_scanned": 2},
+        "source_inventory": {
+            "findings": 2,
+            "by_kind": [{"kind": kind, "total": 1, "matched": 1, "new": 0, "review_items": 0}
+                        for kind in ("non_rust_file", "panic")],
+            "by_family": [{"kind": kind, "family": family, "label": f"{kind}.{family}",
+                           "total": 1, "matched": 1, "new": 0, "review_items": 0}
+                          for kind, family in (("non_rust_file", "documentation"), ("panic", "unwrap"))],
+        },
+        "evidence_repair_queues": [],
+    }
+    report = copy.deepcopy(shared)
+    report.update({
+        "schema_id": "cargo-allow.report.v1",
+        "rust_scanner": {"completeness": "scoped", "files_considered": 1, "files_scanned": 1,
+                         "files_skipped": 0, "files_with_parse_errors": 0,
+                         "skipped_by_reason": {"read_failed_or_unsupported": 0}},
+        "summary": {"findings": 2, "outcomes": 3, **counts},
+        "findings": [
+            {"kind": "non_rust_file", "family": "documentation", "path": "docs/café.md",
+             "line": None, "container": None, "ast_kind": "file"},
+            {"kind": "panic", "family": "unwrap", "path": "src/lib.rs",
+             "line": 1, "container": None, "ast_kind": "method_call"},
+        ],
+        "outcomes": [
+            {"status": status, "allow_id": f"fixture-{index}", "candidate_ids": [],
+             "finding_index": index if index < 2 else None, "score": 0, "message": "fixture"}
+            for index, status in enumerate(("matched", "matched", "stale"))
+        ],
+    })
+    receipt = copy.deepcopy(shared)
+    receipt.update({
+        "schema_id": "cargo-allow.receipt.v1", "mode": "no-new", "counts": counts,
+        "advisory": {"review_items": 3, **{key: value for key, value in counts.items() if key != "matched"}},
+        "run_id": "json-run", "started_at": "2026-10-10T00:00:01Z",
+        "git_sha": "a" * 40, "policy_digest": "sha256:v1:" + "b" * 64,
+    })
+    reference = copy.deepcopy(receipt)
+    reference.update(run_id="markdown-run", started_at="2026-10-10T00:00:00Z")
+    audit = copy.deepcopy(report)
+    audit.update(command="audit", audit_remediation_roadmap=[])
+    return report, receipt, reference, audit
+
+
+def encoded(value):
+    return (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+
+
+class FullCheckJsonControls(unittest.TestCase):
+    def invoke(self, artifacts=None, *, raw=None, missing=(), sizes=None, status=0, clock="normal"):
+        values = command_artifacts() if artifacts is None else artifacts
+        self.assertEqual(len(values), 4, "the audit control must be supplied independently of mutated check detail")
+        inputs = dict(zip(("report", "receipt", "reference", "audit"), map(encoded, values)))
+        inputs.update(raw or {})
+        for key, size in (sizes or {}).items():
+            self.assertGreaterEqual(size, len(inputs[key]))
+            inputs[key] += b" " * (size - len(inputs[key]))
+        with tempfile.TemporaryDirectory(prefix="perf-full-json-") as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / "docs/schemas").mkdir(parents=True)
+            (root / "docs/schemas/report.schema.json").write_bytes(REPORT_SCHEMA)
+            (root / "input").mkdir()
+            (root / "outside caller").mkdir()
+            output = root / "receipt/artifacts"
+            output.mkdir(parents=True)
+            for key in ("report", "receipt"):
+                if key not in missing:
+                    (root / "input" / key).write_bytes(inputs[key])
+            if "reference" not in missing:
+                (output / "warm-check.receipt.json").write_bytes(inputs["reference"])
+            if "audit" not in missing:
+                (output / "first-audit.json").write_bytes(inputs["audit"])
+            # Missing output cannot reuse an artifact left by an earlier sample.
+            for name in ("full-check.json", "full-check.receipt.json"):
+                (output / name).write_text("stale output", encoding="utf-8")
+            child = root / "controlled-child.py"
+            child.write_text(
+                "import json, os, shutil, sys\nfrom pathlib import Path\n"
+                "args = sys.argv[1:]\n"
+                "Path(os.environ['PROBE_DISPATCH']).write_text(json.dumps({'argv': args, 'cwd': str(Path.cwd())}))\n"
+                "for key, flag in (('report', '--output'), ('receipt', '--receipt')):\n"
+                "    source = Path(os.environ['PROBE_INPUT']) / key\n"
+                "    if source.is_file(): shutil.copyfile(source, args[args.index(flag) + 1])\n"
+                "sys.exit(int(os.environ['PROBE_EXIT']))\n",
+                encoding="utf-8",
+            )
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir(parents=True)
+            candidate.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                                 + shlex.quote(str(child)) + ' "$@"\n', encoding="utf-8")
+            candidate.chmod(0o755)
+            # Metadata remains unknown in this fixture; do not probe a host Rust toolchain.
+            tools = root / "fixture-tools"
+            tools.mkdir()
+            (tools / "rustc").write_text("#!/bin/sh\nexit 127\n", encoding="utf-8")
+            (tools / "rustc").chmod(0o755)
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(
+                bootstrap + measurement + '\nnow_ms() {\n'
+                + '  if [[ "$PROBE_CLOCK_MODE" == over && -e "$PROBE_CLOCK" ]]; then printf 60001; '
+                + 'else : >"$PROBE_CLOCK"; printf 0; fi\n}\n'
+                + matrix_row + '\nwrite_receipt "pass" ""\nprintf "full-json-probe-complete\\n"\n',
+                encoding="utf-8",
+            )
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": str(tools) + os.pathsep + environment["PATH"],
+                "CARGO_ALLOW_BIN": "target/selected/cargo-allow", "PROFILE": "debug",
+                "OUTPUT_DIR": str(root / "receipt"), "HARD_CEILING_MS": "60000",
+                "PYTHON3": sys.executable, "CDPATH": "", "PERF_AGENT_LOOP_SUMMARY": "",
+                "PROBE_INPUT": str(root / "input"), "PROBE_EXIT": str(status),
+                "PROBE_DISPATCH": str(root / "dispatch.json"),
+                "PROBE_CLOCK_MODE": clock, "PROBE_CLOCK": str(root / "clock"),
+            })
+            result = subprocess.run(["bash", str(probe)], cwd=root / "outside caller", env=environment,
+                                    capture_output=True, text=True, timeout=20)
+            dispatch = json.loads((root / "dispatch.json").read_text(encoding="utf-8"))
+            self.assertEqual(dispatch, {
+                "cwd": str(root),
+                "argv": ["check", "--mode", "no-new", "--format", "json", "--receipt",
+                         str(output / "full-check.receipt.json"), "--output", str(output / "full-check.json")],
+            })
+            metrics = (root / "receipt/.operator-latency.samples.tsv").read_text(encoding="utf-8")
+            receipt = json.loads((root / "receipt/operator-latency.receipt.json").read_text(encoding="utf-8"))
+            self.assertFalse(list((root / "target").glob("cargo-allow-operator-latency.*")))
+            return result, metrics, receipt, inputs
+
+    def assert_refused(self, diagnostic, *args, **kwargs):
+        result, metrics, receipt, _ = self.invoke(*args, **kwargs)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(diagnostic, result.stderr)
+        self.assertNotIn("full-json-probe-complete", result.stdout)
+        self.assertEqual(metrics, "")
+        self.assertEqual(receipt["result"], "failed")
+        self.assertEqual(receipt["samples"], [])
+        self.assertEqual(receipt["failure"]["kind"], "instrument_failure")
+        self.assertIn(diagnostic, receipt["failure"]["message"])
+
+    def test_valid_command_retains_exact_bytes_and_distinct_receipt(self):
+        for sizes in ({}, {"report": REPORT_LIMIT, "receipt": RECEIPT_LIMIT}):
+            with self.subTest(sizes=sizes):
+                result, metrics, receipt, inputs = self.invoke(sizes=sizes)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("full-json-probe-complete", result.stdout)
+                fields = metrics.strip().split("\t")
+                self.assertEqual(len(fields), 11)
+                self.assertEqual(fields[:3], ["warm", "full_check_json", "0"])
+                self.assertEqual(fields[3], "artifacts/full-check.json")
+                self.assertEqual(fields[5], "artifacts/full-check.receipt.json")
+                self.assertEqual(fields[7], "passed")
+                for key, digest_field, size_field in (("report", 4, 9), ("receipt", 6, 10)):
+                    self.assertEqual(fields[digest_field], hashlib.sha256(inputs[key]).hexdigest())
+                    self.assertEqual(int(fields[size_field]), len(inputs[key]))
+                self.assertEqual(receipt["result"], "pass")
+                self.assertEqual(receipt["schema_version"], 4)
+                self.assertEqual(receipt["samples"][0]["cache_mode"], "not_applicable")
+                self.assertEqual(receipt["sample_policy"]["warm_process_samples"], 1)
+
+    def test_missing_truncated_duplicate_and_non_json_artifacts_refuse(self):
+        values = command_artifacts()
+        for index, key in enumerate(("report", "receipt", "reference", "audit")):
+            with self.subTest(key=key, mutation="missing"):
+                diagnostic = "did not produce" if key in ("report", "receipt") else "report/receipt validation failed"
+                self.assert_refused(diagnostic, missing=(key,))
+            for label, data, diagnostic in (
+                ("truncated", encoded(values[index])[:-2], "report/receipt validation failed"),
+                ("duplicate", encoded(values[index]).rstrip()[:-1] + b', "failed": false}', "duplicate JSON key"),
+                ("non_json", encoded(values[index]).replace(b'"schema_version": 1', b'"schema_version": NaN'),
+                 "non-JSON numeric constant"),
+            ):
+                with self.subTest(key=key, mutation=label):
+                    self.assert_refused(diagnostic, raw={key: data})
+
+    def test_semantic_mismatches_refuse_without_recording_a_passed_row(self):
+        cases = (
+            ("schema", lambda r, c, p: r.__setitem__("schema_id", "cargo-allow.receipt.v1"), "expected cargo-allow.report.v1"),
+            ("schema_bool", lambda r, c, p: r.__setitem__("schema_version", True), "schema_version must be 1"),
+            ("status", lambda r, c, p: r.__setitem__("status", "failed"), "expected a passed check result"),
+            ("inventory", lambda r, c, p: r["inventory"].__setitem__("files_scanned", 3), "report/receipt inventory differs"),
+            ("policy", lambda r, c, p: c.__setitem__("policy_digest", "sha256:v1:" + "c" * 64), "warm_check semantic result"),
+            ("findings", lambda r, c, p: r["findings"].pop(), "arrays differ from summary lengths"),
+            ("outcomes", lambda r, c, p: r["outcomes"].pop(), "arrays differ from summary lengths"),
+            ("counts", lambda r, c, p: r["summary"].__setitem__("matched", 3), "summary differs from receipt counts"),
+            ("count_bool", lambda r, c, p: r["summary"].__setitem__("new", False), "summary counts must be nonnegative integers"),
+            ("outcome_status", lambda r, c, p: r["outcomes"][0].__setitem__("status", "new"), "outcomes differ from receipt counts"),
+            ("unknown_status", lambda r, c, p: r["outcomes"][0].__setitem__("status", "unknown"), "unknown outcome status"),
+            ("index", lambda r, c, p: r["outcomes"][0].__setitem__("finding_index", 2), "finding_index is outside"),
+            ("index_bool", lambda r, c, p: r["outcomes"][0].__setitem__("finding_index", True), "finding_index is outside"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                mutate(*values[:3])
+                self.assert_refused(diagnostic, values)
+
+    def test_full_report_detail_mutations_refuse_against_unchanged_audit(self):
+        cases = (
+            ("empty_findings", lambda r: r.__setitem__("findings", [{} for _ in r["findings"]]),
+             "missing required detail field"),
+            ("duplicated_finding", lambda r: r.__setitem__("findings", [copy.deepcopy(r["findings"][0]) for _ in r["findings"]]),
+             "first_audit semantic content"),
+            ("erased_outcome_fields", lambda r: r.__setitem__("outcomes", [{key: item[key] for key in ("status", "finding_index")} for item in r["outcomes"]]),
+             "missing required detail field"),
+            ("null_links", lambda r: [item.__setitem__("finding_index", None) for item in r["outcomes"]],
+             "first_audit semantic content"),
+            ("reordered_findings", lambda r: r["findings"].reverse(), "first_audit semantic content"),
+            ("changed_path", lambda r: r["findings"][0].__setitem__("path", "docs/other.md"), "first_audit semantic content"),
+            ("changed_message", lambda r: r["outcomes"][0].__setitem__("message", "substitute"), "first_audit semantic content"),
+            ("changed_allow_id", lambda r: r["outcomes"][0].__setitem__("allow_id", "substitute"), "first_audit semantic content"),
+            ("changed_candidates", lambda r: r["outcomes"][0].__setitem__("candidate_ids", ["substitute"]), "first_audit semantic content"),
+            ("changed_scanner", lambda r: r["rust_scanner"].__setitem__("files_scanned", 0), "first_audit semantic content"),
+            ("bool_scanner_count", lambda r: r["rust_scanner"].__setitem__("files_scanned", True), "first_audit semantic content"),
+            ("audit_field_on_check", lambda r: r.__setitem__("audit_remediation_roadmap", []), "first_audit semantic content"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                retained_controls = [encoded(value) for value in values[1:]]
+                mutate(values[0])
+                self.assertEqual([encoded(value) for value in values[1:]], retained_controls)
+                self.assert_refused(diagnostic, values)
+
+    def test_shared_invalid_detail_fields_refuse_before_content_parity(self):
+        # Even a matching malformed audit cannot bless erased or ill-typed
+        # detail. Field rules come from the existing report schema.
+        cases = (
+            ("missing_path", lambda r: r["findings"][0].pop("path"), "missing required detail field"),
+            ("empty_path", lambda r: r["findings"][0].__setitem__("path", ""), "invalid detail field length"),
+            ("line_bool", lambda r: r["findings"][1].__setitem__("line", True), "invalid detail field type"),
+            ("line_zero", lambda r: r["findings"][1].__setitem__("line", 0), "invalid detail field minimum"),
+            ("unknown_kind", lambda r: r["findings"][0].__setitem__("kind", "invented"), "invalid detail field value"),
+            ("missing_message", lambda r: r["outcomes"][0].pop("message"), "missing required detail field"),
+            ("score_float", lambda r: r["outcomes"][0].__setitem__("score", 0.0), "invalid detail field type"),
+            ("candidate_type", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [None]), "invalid detail field type"),
+            ("candidate_empty", lambda r: r["outcomes"][0].__setitem__("candidate_ids", [""]), "invalid detail field length"),
+            ("unknown_field", lambda r: r["findings"][0].__setitem__("omitted_detail", True), "unknown detail field"),
+        )
+        for label, mutate, diagnostic in cases:
+            with self.subTest(label=label):
+                values = command_artifacts()
+                mutate(values[0])
+                mutate(values[3])
+                self.assert_refused(diagnostic, values)
+
+    def test_audit_control_identity_and_presence_refuse(self):
+        values = command_artifacts()
+        values[3]["command"] = "check"
+        self.assert_refused("expected a cargo-allow audit artifact", values)
+        values = command_artifacts()
+        values[3].pop("rust_scanner")
+        self.assert_refused("missing required report field: first_audit", values)
+        values = command_artifacts()
+        values[3]["findings"][0]["path"] = "docs/other.md"
+        self.assert_refused("first_audit semantic content", values)
+
+    def test_payload_and_existing_command_gates_refuse(self):
+        self.assert_refused("8388608B catastrophic payload ceiling", sizes={"report": REPORT_LIMIT + 1})
+        self.assert_refused("16384B catastrophic payload ceiling", sizes={"receipt": RECEIPT_LIMIT + 1})
+        self.assert_refused("command failed (exit 2)", status=2)
+        self.assert_refused("exceeded the 60000ms catastrophic ceiling (60001ms)", clock="over")
+
+    def test_status_count_keys_match_the_existing_report_schema(self):
+        schema = json.loads(Path("docs/schemas/report.schema.json").read_text(encoding="utf-8"))
+        body = script.split("validate_full_check_json() {", 1)[1].split("<<'PY'\n", 1)[1].split("\nPY", 1)[0]
+        assignments = [node for node in ast.walk(ast.parse(body)) if isinstance(node, ast.Assign)
+                       and any(isinstance(target, ast.Name) and target.id == "statuses" for target in node.targets)]
+        self.assertEqual(len(assignments), 1)
+        self.assertEqual(set(ast.literal_eval(assignments[0].value)), set(schema["$defs"]["match_status"]["enum"]))
+        self.assertEqual(set(STATUSES), set(schema["$defs"]["match_status"]["enum"]))
+
+
+class FullCheckUtcControls(unittest.TestCase):
+    def invoke(self, days, command_days, *, corrupt=False, command_exit=0,
+               prior_archive=False):
+        if "\nmeasure_full_check_family() {\n" in script:
+            body = script.split("\nmeasure_full_check_family() {\n", 1)[1].split("\n}\n", 1)[0]
+            family = "\nmeasure_full_check_family() {\n" + body + "\n}\nmeasure_full_check_family\n"
+        else:
+            # The unmodified orchestration is also executable as the RED control.
+            family = script.split('log "measuring first process audit"\n', 1)[1].split(
+                '\nlog "measuring targeted why"', 1)[0]
+        with tempfile.TemporaryDirectory(prefix="perf-utc-window-") as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / "docs/schemas").mkdir(parents=True)
+            (root / "docs/schemas/report.schema.json").write_bytes(REPORT_SCHEMA)
+            output = root / "receipt/artifacts"
+            output.mkdir(parents=True)
+            candidate = root / "target/selected/cargo-allow"
+            candidate.parent.mkdir(parents=True)
+            views = {}
+            for day in set(command_days):
+                values = command_artifacts()
+                if day != "2026-10-10":
+                    for value in (values[0], values[3]):
+                        value["outcomes"][0].update(status="review_due", message="review is due")
+                        value["summary"].update(matched=1, review_due=1)
+                        for category in ("by_kind", "by_family"):
+                            value["source_inventory"][category][0].update(matched=0, review_items=1)
+                    for value in (values[1], values[2]):
+                        value["counts"].update(matched=1, review_due=1)
+                        value["advisory"].update(review_due=1)
+                        value["source_inventory"] = copy.deepcopy(values[0]["source_inventory"])
+                if corrupt:
+                    values[0]["findings"][0]["path"] = "docs/substituted.md"
+                views[day] = dict(zip(("report", "receipt", "reference", "audit"), values))
+            (root / "case.json").write_text(json.dumps({
+                "days": days, "command_days": command_days, "views": views,
+                "command_exit": command_exit,
+            }), encoding="utf-8")
+            clock = root / "clock.py"
+            clock.write_text(
+                "import json, os, sys\nfrom pathlib import Path\n"
+                "root = Path(os.environ['PROBE_ROOT'])\n"
+                "milliseconds = len(sys.argv) > 1\n"
+                "values = ([0, 11, 100, 122, 200, 233, 300, 344, 400, 455, 500, 566] if milliseconds "
+                "else json.loads((root / 'case.json').read_text())['days'])\n"
+                "counter = root / ('ms-count' if milliseconds else 'clock-count')\n"
+                "index = int(counter.read_text()) if counter.exists() else 0\n"
+                "counter.write_text(str(index + 1))\n"
+                "print(values[min(index, len(values) - 1)])\n", encoding="utf-8")
+            child = root / "child.py"
+            child.write_text(
+                "import json, os, sys\nfrom pathlib import Path\n"
+                "root = Path(os.environ['PROBE_ROOT']); args = sys.argv[1:]\n"
+                "case = json.loads((root / 'case.json').read_text())\n"
+                "trace = root / 'dispatch.jsonl'\n"
+                "index = len(trace.read_text().splitlines()) if trace.exists() else 0\n"
+                "day = case['command_days'][min(index, len(case['command_days']) - 1)]\n"
+                "with trace.open('a') as log: log.write(json.dumps({'argv': args, 'day': day}) + '\\n')\n"
+                "if case['command_exit'] and index == 1: sys.exit(case['command_exit'])\n"
+                "view = case['views'][day]; out = Path(args[args.index('--output') + 1])\n"
+                "if args[0] == 'audit': out.write_text(json.dumps(view['audit'], indent=2) + '\\n')\n"
+                "else:\n"
+                "    machine = args[args.index('--format') + 1] == 'json'\n"
+                "    out.write_text(json.dumps(view['report'], indent=2) + '\\n' if machine else 'passed\\n')\n"
+                "    receipt = Path(args[args.index('--receipt') + 1])\n"
+                "    receipt.write_text(json.dumps(view['receipt' if machine else 'reference'], indent=2) + '\\n')\n",
+                encoding="utf-8")
+            candidate.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                                 + shlex.quote(str(child)) + ' "$@"\n', encoding="utf-8")
+            candidate.chmod(0o755)
+            tools = root / "tools"
+            tools.mkdir()
+            for name in ("cargo", "rustc"):
+                (tools / name).write_text("#!/bin/sh\nexit 127\n", encoding="utf-8")
+                (tools / name).chmod(0o755)
+            # Fifteen already-controlled rows isolate preservation of the full
+            # denominator; only the three real production calls execute here.
+            preceding = [("cold", "cache_cold_on"), ("warm", "cache_warm_on"),
+                         ("targeted", "cache_disabled_off")]
+            following = [("targeted", name) for name in ("why_fast_path", "worklist", "diff_base")]
+            following += [("warm", "warm_audit"), ("targeted", "worklist_summary"),
+                          ("targeted", "check_summary")]
+            following += [("agent_loop", name) for name in (
+                "agent_loop_worklist", "agent_loop_why_plan", "agent_loop_add", "agent_loop_check",
+                "hooks_wrapped_check", "hooks_bare_check")]
+            (output / "controlled-existing.txt").write_bytes(b"controlled row\n")
+            existing_digest = hashlib.sha256(b"controlled row\n").hexdigest()
+            def rows(names):
+                return "".join("\t".join((phase, name, "0", "artifacts/controlled-existing.txt",
+                    existing_digest, "artifacts/controlled-existing.txt", existing_digest,
+                    "passed", "[]", "15", "15")) + "\n" for phase, name in names)
+            (root / "prefix.tsv").write_text(rows(preceding), encoding="utf-8")
+            (root / "suffix.tsv").write_text(rows(following), encoding="utf-8")
+            archive = root / "receipt/utc-rollover-attempt-1"
+            if prior_archive:
+                archive.mkdir()
+                (archive / "canary").write_bytes(b"prior owner\n")
+            probe = root / "scripts/perf-budget-smoke.sh"
+            probe.write_text(bootstrap + measurement
+                + '\nnow_ms() { "${py}" "$PROBE_ROOT/clock.py" ms; }\n'
+                + 'utc_day() { "${py}" "$PROBE_ROOT/clock.py"; }\n'
+                + 'cat "$PROBE_ROOT/prefix.tsv" >>"${metrics}"\n'
+                + family
+                + '\ncat "$PROBE_ROOT/suffix.tsv" >>"${metrics}"\n'
+                + 'write_receipt "pass" ""\n', encoding="utf-8")
+            environment = os.environ.copy()
+            environment.update({"PATH": str(tools) + os.pathsep + environment["PATH"],
+                "CARGO_ALLOW_BIN": "target/selected/cargo-allow", "PROFILE": "debug",
+                "OUTPUT_DIR": str(root / "receipt"), "HARD_CEILING_MS": "60000",
+                "PYTHON3": sys.executable, "CDPATH": "", "PERF_AGENT_LOOP_SUMMARY": "",
+                "PROBE_ROOT": str(root)})
+            result = subprocess.run(["bash", str(probe)], cwd=root, env=environment,
+                                    capture_output=True, text=True, timeout=30)
+            calls = [json.loads(line) for line in (root / "dispatch.jsonl").read_text().splitlines()]
+            receipt = json.loads((root / "receipt/operator-latency.receipt.json").read_text())
+            retained = {str(path.relative_to(root / "receipt")): path.read_bytes()
+                        for path in (root / "receipt").rglob("*") if path.is_file()}
+            print(f"UTC control: exit={result.returncode} calls={len(calls)} rows={len(receipt['samples'])}")
+            self.assertFalse(list((root / "target").glob("cargo-allow-operator-latency.*")))
+            return result, calls, receipt, retained, preceding, following
+
+    def assert_passed(self, observed, calls):
+        result, dispatch, receipt, retained, preceding, following = observed
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(dispatch), calls)
+        self.assertEqual(receipt["result"], "pass")
+        names = [sample["name"] for sample in receipt["samples"]]
+        self.assertEqual(names, [name for _, name in preceding]
+                         + ["first_audit", "warm_check", "full_check_json"]
+                         + [name for _, name in following])
+        self.assertEqual(len(names), 18)
+        self.assertEqual(len(set(names)), 18)
+        for index, call in enumerate(dispatch):
+            self.assertEqual(call["argv"][0], "audit" if index % 3 == 0 else "check")
+        self.assertEqual([sample["elapsed_ms"] for sample in receipt["samples"][3:6]],
+                         [11, 22, 33] if calls == 3 else [44, 55, 66])
+        for sample in receipt["samples"][3:6]:
+            for key, size in (("artifact", "payload_bytes"), ("semantic_artifact", "semantic_payload_bytes")):
+                data = retained[sample[key]["path"]]
+                self.assertEqual(sample[size], len(data))
+                self.assertEqual(sample[key]["sha256"], hashlib.sha256(data).hexdigest())
+
+    def assert_archived_measurements(self, observed, attempt):
+        retained = observed[3]
+        prefix = f"utc-rollover-attempt-{attempt}/"
+        rows = [line.split("\t") for line in retained[prefix + "samples.tsv"].decode().splitlines()]
+        self.assertEqual([row[1] for row in rows], ["first_audit", "warm_check", "full_check_json"])
+        self.assertEqual([int(row[2]) for row in rows], [11 * index for index in range(3 * attempt - 2, 3 * attempt + 1)])
+        for index, row in enumerate(rows):
+            self.assertEqual(len(row), 11)
+            self.assertEqual(row[7], "observed_not_admitted")
+            self.assertEqual(json.loads(row[8]), observed[1][3 * (attempt - 1) + index]["argv"])
+            for path_field, digest_field, size_field in ((3, 4, 9), (5, 6, 10)):
+                data = retained[prefix + row[path_field]]
+                self.assertEqual(row[digest_field], hashlib.sha256(data).hexdigest())
+                self.assertEqual(int(row[size_field]), len(data))
+
+    def test_same_day_preserves_one_three_command_attempt(self):
+        observed = self.invoke(["2026-10-10"] * 7, ["2026-10-10"] * 3)
+        self.assert_passed(observed, 3)
+        self.assertFalse(any(name.startswith("utc-rollover-") for name in observed[3]))
+
+    def test_rollover_between_commands_retries_all_three_and_retains_attempt(self):
+        old, new = "2026-10-10", "2026-10-11"
+        for boundary, command_days in ((3, [old, new, new]), (5, [old, old, new])):
+            with self.subTest(boundary=boundary):
+                observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
+                self.assert_passed(observed, 6)
+                retained = observed[3]
+                audit = json.loads(retained["utc-rollover-attempt-1/artifacts/first-audit.json"])
+                self.assertEqual(audit["outcomes"][0]["status"], "matched")
+                self.assertEqual(json.loads(retained["artifacts/first-audit.json"])["outcomes"][0]["status"], "review_due")
+                self.assertIn("utc-rollover-attempt-1/day-observations.tsv", retained)
+                self.assertIn("utc-rollover-attempt-1/samples.tsv", retained)
+                self.assert_archived_measurements(observed, 1)
+                self.assertTrue(any("retry" in item and "warm" in item for item in observed[2]["limitations"]))
+
+    def test_rollover_inside_a_command_is_not_admitted_as_a_stable_interval(self):
+        old, new = "2026-10-10", "2026-10-11"
+        for boundary, command_days in ((2, [new, new, new]), (6, [old, old, new])):
+            with self.subTest(boundary=boundary):
+                observed = self.invoke([old] * boundary + [new] * (14 - boundary), command_days + [new] * 3)
+                self.assert_passed(observed, 6)
+                self.assert_archived_measurements(observed, 1)
+
+    def test_repeated_rollover_refuses_after_two_attempts(self):
+        old, new, later = "2026-10-10", "2026-10-11", "2026-10-12"
+        observed = self.invoke([old] * 3 + [new] * 7 + [later] * 4,
+                               [old, new, new, new, later, later])
+        result, calls, receipt, retained, _, _ = observed
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(len(calls), 6)
+        self.assertIn("UTC day changed during both full-check attempts", result.stderr)
+        self.assertEqual([sample["name"] for sample in receipt["samples"]],
+                         ["cache_cold_on", "cache_warm_on", "cache_disabled_off"])
+        self.assertIn("utc-rollover-attempt-2/day-observations.tsv", retained)
+        for attempt in (1, 2):
+            self.assert_archived_measurements(observed, attempt)
+
+    def test_ci_upload_selects_all_retained_attempt_files(self):
+        old, new, later = "2026-10-10", "2026-10-11", "2026-10-12"
+        observed = self.invoke([old] * 3 + [new] * 7 + [later] * 4,
+                               [old, new, new, new, later, later])
+        workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+        upload = workflow.split("name: operator-latency-receipt\n", 1)[1].split("if-no-files-found:", 1)[0]
+        roots = [Path(line.strip()) for line in upload.split("path: |", 1)[1].splitlines() if line.strip()]
+        members = [Path("target/perf-budget") / name for name in observed[3]
+                   if name.startswith("utc-rollover-attempt-")]
+        self.assertEqual(len(members), 26)
+        self.assertTrue(all(any(root == member or root in member.parents for root in roots) for member in members))
+        missing_attempt_roots = [root for root in roots if "utc-rollover-attempt-" not in str(root)]
+        self.assertFalse(any(root == member or root in member.parents
+                             for root in missing_attempt_roots for member in members))
+
+    def test_stable_day_corruption_and_nonzero_command_are_not_retried(self):
+        day, tomorrow = "2026-10-10", "2026-10-11"
+        for options, expected_calls, diagnostic in (
+                ({"corrupt": True}, 3, "first_audit semantic content"),
+                ({"command_exit": 1}, 2, "command failed (exit 1)"),
+                ({"command_exit": 2}, 2, "command failed (exit 2)")):
+            with self.subTest(options=options):
+                dates = [day] * 7 if options.get("corrupt") else [day] * 3 + [tomorrow] * 4
+                observed = self.invoke(dates, [day, tomorrow, tomorrow] if options.get("command_exit") else [day] * 3,
+                                       **options)
+                self.assertEqual(observed[0].returncode, 1)
+                self.assertIn(diagnostic, observed[0].stderr)
+                self.assertEqual(len(observed[1]), expected_calls)
+                self.assertFalse(any(name.startswith("utc-rollover-") for name in observed[3]))
+
+    def test_archive_collision_preserves_prior_owner_and_refuses(self):
+        old, new = "2026-10-10", "2026-10-11"
+        observed = self.invoke([old] * 3 + [new] * 11, [old, new, new, new, new, new], prior_archive=True)
+        self.assertEqual(observed[0].returncode, 1)
+        self.assertIn("cannot exclusively retain UTC rollover attempt", observed[0].stderr)
+        self.assertEqual(len(observed[1]), 3)
+        self.assertEqual(observed[3]["utc-rollover-attempt-1/canary"], b"prior owner\n")
+        self.assertEqual([name for name in observed[3] if name.startswith("utc-rollover-")],
+                         ["utc-rollover-attempt-1/canary"])
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+PY_FULL_CHECK_JSON
 
 printf 'ok operator-latency harness characterization\n'
