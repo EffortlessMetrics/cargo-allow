@@ -356,6 +356,7 @@ fn dry_run_announcement_includes_preview_and_next_steps() {
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -398,6 +399,7 @@ fn dry_run_announcement_strict_preview_promotes_mode_and_stale_failure() {
         "policy/allow.toml",
         true,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -417,12 +419,14 @@ fn dry_run_announcement_keep_and_overwrite_use_action_word() {
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
     let overwrite = super::dry_run_announcement_styled(
         "overwrite",
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(
@@ -443,12 +447,14 @@ fn post_write_announcement_shares_next_steps_with_dry_run() {
         "created",
         "policy/allow.toml",
         allow_report::Style::PLAIN,
+        None,
     );
     let dry = super::dry_run_announcement_styled(
         "create",
         "policy/allow.toml",
         false,
         allow_report::Style::PLAIN,
+        None,
     );
 
     assert!(created.starts_with("created policy/allow.toml\n"));
@@ -461,12 +467,59 @@ fn post_write_announcement_shares_next_steps_with_dry_run() {
 }
 
 #[test]
+fn announcements_name_commit_step_only_in_git_worktree() {
+    // #4479: inside a Git worktree the next steps name the commit that makes
+    // git-tracked inventory see the starter policy; outside one the text is
+    // byte-identical to the historical guidance.
+    let with_git = super::post_write_announcement_styled(
+        "created",
+        "policy/allow.toml",
+        allow_report::Style::PLAIN,
+        Some("policy/allow.toml"),
+    );
+    assert!(
+        with_git.contains("git add policy/allow.toml"),
+        "git worktree next steps should name the commit step: {with_git}"
+    );
+    assert!(
+        with_git.contains("reads stale until then"),
+        "the step should say why it matters: {with_git}"
+    );
+
+    let without_git = super::post_write_announcement_styled(
+        "created",
+        "policy/allow.toml",
+        allow_report::Style::PLAIN,
+        None,
+    );
+    assert!(
+        !without_git.contains("git add"),
+        "non-git next steps must not mention git: {without_git}"
+    );
+
+    let dry_with_git = super::dry_run_announcement_styled(
+        "create",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::PLAIN,
+        Some("policy/allow.toml"),
+    );
+    let created_steps = with_git.split("next steps:\n").nth(1).unwrap_or("");
+    let dry_steps = dry_with_git.split("next steps:\n").nth(1).unwrap_or("");
+    assert_eq!(
+        created_steps, dry_steps,
+        "git step must match between dry-run and write paths"
+    );
+}
+
+#[test]
 fn init_human_summary_styles_fixed_action_markers_only() {
     let dry = super::dry_run_announcement_styled(
         "create",
         "policy/allow.toml",
         false,
         allow_report::Style::ANSI,
+        None,
     );
     assert!(dry.contains("would \u{1b}[33mcreate\u{1b}[0m policy/allow.toml"));
     assert!(!dry.contains("policy/allow.toml\u{1b}"));
@@ -475,6 +528,7 @@ fn init_human_summary_styles_fixed_action_markers_only() {
         "created",
         "policy/allow.toml",
         allow_report::Style::ANSI,
+        None,
     );
     assert!(written.starts_with("\u{1b}[32mcreated\u{1b}[0m policy/allow.toml\n"));
     assert!(!written.contains("policy/allow.toml\u{1b}"));

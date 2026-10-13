@@ -101,7 +101,17 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     let selected_policy_path = selection.as_ref().ok().map(|(path, _)| path.clone());
     if let Some(target) = &write_target {
-        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
+        // Keep the fail-closed containment rejection, but name its actual
+        // fix: the generic InvalidConfig Next line (init/--config) does not
+        // repair an out-of-root --write path (#4481).
+        crate::policy_config::assert_path_within_root(&mutation_root, target).map_err(|err| {
+            CargoAllowError::with_kind(err.kind(), err.message().to_string()).with_next_step(
+                format!(
+                    "pass a --write path inside {}, or run from that root (relative --write paths resolve against the current directory), then retry.",
+                    mutation_root.display()
+                ),
+            )
+        })?;
     }
     let mut collision_targets = Vec::new();
     if let Some(target) = write_target.as_deref() {
@@ -312,6 +322,29 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     if let Some(path) = &args.write {
         let absolute_target = write_target_after_containment(write_target.as_deref())?;
+        // Name the actual fix for the common baseline flow (writing over the
+        // existing policy): the generic Artifact Next line (writable/parent)
+        // contradicts this failure (#4481). Plain regular files only, judged
+        // by the leaf's own metadata: a directory cannot be force-overwritten
+        // and the apply layer refuses symlink leaves on replace, so both keep
+        // its own refusal. The apply below keeps its create-new-only refusal
+        // as the race-safe backstop.
+        let plain_file_target = std::fs::symlink_metadata(absolute_target)
+            .map(|metadata| metadata.file_type().is_file())
+            .unwrap_or(false);
+        if !args.force && plain_file_target {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!(
+                    "{} already exists; use --force to overwrite",
+                    absolute_target.display()
+                ),
+            )
+            .with_next_step(format!(
+                "pass --force to overwrite {}, choose a different --write path, or preview without --write first.",
+                absolute_target.display()
+            )));
+        }
         let target = portable_relative_under_root(&root, absolute_target)?;
         let mode = if args.force {
             SingleTargetApplyMode::ReplaceWithBackup

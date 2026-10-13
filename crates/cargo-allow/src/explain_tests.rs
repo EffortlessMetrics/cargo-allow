@@ -268,7 +268,13 @@ fn missing_explain_entry_is_a_usage_error() {
 
     assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
     assert!(err.to_string().contains("no allow entry `allow-missing`"));
-    assert!(err.to_string().contains("cargo-allow list"));
+    // The remedy is the typed next step since #4490, not message text.
+    assert!(
+        err.next_step()
+            .is_some_and(|step| step.contains("cargo-allow list")),
+        "typed remedy should name the list command: {:?}",
+        err.next_step()
+    );
 }
 
 #[test]
