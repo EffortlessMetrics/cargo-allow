@@ -1,0 +1,10 @@
+kind: Documentation
+body: >-
+  Align the command reference and SUPPORT_TIERS maturity table with the
+  current CLI surface (#4333): add the missing `migrate` row to the core
+  command reference; add `cadence`, `extraction-parity`, and `changie`
+  maturity rows (Not included / Experimental, each pointing at the guide
+  that actually invokes the command); and repoint the stale `vocabulary`
+  and `reference` primary guides to the guides that cover them (Migrate
+  from bare allow, Install shell completions). Every subcommand in
+  `cargo-allow --help` now has a maturity row whose guide resolves.
