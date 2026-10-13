@@ -101,7 +101,19 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     let selected_policy_path = selection.as_ref().ok().map(|(path, _)| path.clone());
     if let Some(target) = &write_target {
-        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
+        // Keep the fail-closed containment rejection, but name its actual
+        // fix: the generic InvalidConfig Next line (init/--config) does not
+        // repair an out-of-root --write path (#4481).
+        crate::policy_config::assert_path_within_root(&mutation_root, target).map_err(|err| {
+            CargoAllowError::with_kind(
+                err.kind(),
+                format!(
+                    "{}\nNext: pass a --write path inside {}, or run from that root (relative --write paths resolve against the current directory), then retry.",
+                    err.message(),
+                    mutation_root.display()
+                ),
+            )
+        })?;
     }
     let mut collision_targets = Vec::new();
     if let Some(target) = write_target.as_deref() {
@@ -312,6 +324,20 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     if let Some(path) = &args.write {
         let absolute_target = write_target_after_containment(write_target.as_deref())?;
+        // Name the actual fix for the common baseline flow (writing over the
+        // existing policy): the generic Artifact Next line (writable/parent)
+        // contradicts this failure (#4481). The apply below keeps its
+        // create-new-only refusal as the race-safe backstop.
+        if !args.force && absolute_target.exists() {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!(
+                    "{} already exists; use --force to overwrite\nNext: pass --force to overwrite {}, choose a different --write path, or preview without --write first.",
+                    absolute_target.display(),
+                    absolute_target.display()
+                ),
+            ));
+        }
         let target = portable_relative_under_root(&root, absolute_target)?;
         let mode = if args.force {
             SingleTargetApplyMode::ReplaceWithBackup

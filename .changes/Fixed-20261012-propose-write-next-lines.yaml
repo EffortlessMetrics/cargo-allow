@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  `cargo-allow propose --write` failures now name the actual fix. Writing
+  over an existing policy without `--force` no longer advises checking that
+  the path is writable, and an out-of-root `--write` path no longer advises
+  running `init` or passing `--config`; both errors keep failing closed and
+  now say exactly which option repairs them (#4481).
