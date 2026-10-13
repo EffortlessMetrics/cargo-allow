@@ -200,6 +200,88 @@ fn assert_success_and_quiet(command: &str, result: &std::process::Output) {
     );
 }
 
+/// #4477: human stdout `list` without `--limit` shows a bounded first page
+/// plus an explicit more-entries footer; JSON keeps the full set.
+#[test]
+fn list_human_stdout_is_bounded_by_default_and_json_is_not() {
+    let root = temp_root("list-bounded-default");
+    write_source_fixture(&root);
+    let mut policy = String::from("policy = \"cargo-allow\"\n");
+    for index in 0..25 {
+        policy.push_str(&format!(
+            r#"
+[[allow]]
+id = "allow-{index:02}"
+kind = "non_rust_file"
+family = "configuration"
+path = "docs/file-{index:02}.md"
+owner = "core"
+classification = "fixture"
+reason = "bounded list fixture"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/file-{index:02}.md"
+target_fingerprint = "md"
+glob = "docs/file-{index:02}.md"
+"#
+        ));
+    }
+    write_policy(&root, &policy);
+
+    let run_list = |extra: &[&str]| {
+        let mut command = cargo_allow_command();
+        command.arg("list").arg("--root").arg(&root);
+        for arg in extra {
+            command.arg(arg);
+        }
+        command
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}")))
+    };
+
+    let human = run_list(&[]);
+    let human_text = String::from_utf8_lossy(&human.stdout).into_owned();
+    assert!(human.status.success(), "list should succeed: {human_text}");
+    let shown = human_text.matches("- [").count();
+    assert_eq!(shown, 20, "default page shows 20 entries: {human_text}");
+    assert!(
+        human_text.contains("... 5 more entries not shown; rerun with --limit 25"),
+        "footer names the remainder and the fix: {human_text}"
+    );
+
+    let explicit = run_list(&["--limit", "25"]);
+    let explicit_text = String::from_utf8_lossy(&explicit.stdout).into_owned();
+    assert_eq!(
+        explicit_text.matches("- [").count(),
+        25,
+        "explicit --limit is honoured: {explicit_text}"
+    );
+    assert!(
+        !explicit_text.contains("more entries not shown"),
+        "no footer when nothing is hidden: {explicit_text}"
+    );
+
+    let json_output = root.join("list.json");
+    let json = run_list(&[
+        "--format",
+        "json",
+        "--output",
+        json_output.to_str().unwrap_or("list.json"),
+    ]);
+    assert!(json.status.success(), "json list should succeed");
+    let json_text = fs::read_to_string(&json_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read list json: {err}")));
+    assert_eq!(
+        json_text.matches("\"allow-").count() >= 25,
+        true,
+        "json keeps every entry id"
+    );
+
+    remove_temp_root(root);
+}
+
 fn write_source_fixture(root: &std::path::Path) {
     fs::create_dir_all(root.join("src"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));

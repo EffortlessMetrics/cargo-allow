@@ -102,7 +102,20 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     // Apply --offset/--limit pagination after filtering and before
     // rendering (#3173). Sort order is determined by the row builder; the
     // slice applies to the final sorted set.
-    let rows = paginate_list_rows(filtered_rows, args.offset.unwrap_or(0), args.limit);
+    //
+    // Human stdout without an explicit --limit gets a bounded first page
+    // (#4477): a large ledger otherwise dumps thousands of lines before the
+    // reader reaches anything actionable. JSON and --output artifacts keep
+    // the full set byte-identically; the bound is presentation only.
+    let human_stdout = matches!(args.format, HumanJsonFormat::Human) && args.output.is_none();
+    let total_rows = filtered_rows.len();
+    let effective_limit = if human_stdout && args.limit.is_none() {
+        Some(DEFAULT_HUMAN_LIST_PAGE)
+    } else {
+        args.limit
+    };
+    let rows = paginate_list_rows(filtered_rows, args.offset.unwrap_or(0), effective_limit);
+    let more_rows = total_rows.saturating_sub(args.offset.unwrap_or(0) + rows.len());
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
         crate::reporting::output_style()
     } else {
@@ -123,7 +136,14 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
                     list_args::concise_width(args),
                 )
             };
-            format!("{}\n{detail}", render_core_command_summary_human(&summary))
+            let text = format!("{}\n{detail}", render_core_command_summary_human(&summary));
+            if more_rows > 0 {
+                format!(
+                    "{text}\n... {more_rows} more entries not shown; rerun with --limit {total_rows} to see all, or page with --limit/--offset."
+                )
+            } else {
+                text
+            }
         }
         HumanJsonFormat::Json => {
             let detail = render_list_rows_json(&rows, &filters, context);
@@ -133,6 +153,9 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
+
+/// Default first-page size for human stdout `list` without `--limit` (#4477).
+const DEFAULT_HUMAN_LIST_PAGE: usize = 20;
 
 fn paginate_list_rows(rows: Vec<ListRow>, offset: usize, limit: Option<usize>) -> Vec<ListRow> {
     rows.into_iter()
