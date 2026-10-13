@@ -182,10 +182,14 @@ fn init_summary(
 }
 
 /// The `git add <policy>` next step, present only inside a Git worktree
-/// (`.git` file or directory at the resolved root) where git-tracked
-/// inventory cannot see the new policy file until it is committed (#4479).
+/// where git-tracked inventory cannot see the new policy file until it is
+/// committed (#4479). An explicit `--root` may name a directory nested
+/// inside the worktree, so `.git` (file or directory) is probed at the
+/// root and every ancestor, mirroring Git's own discovery.
 fn git_add_step<'a>(root: &Path, display: &'a str) -> Option<&'a str> {
-    root.join(".git").exists().then_some(display)
+    root.ancestors()
+        .any(|ancestor| ancestor.join(".git").exists())
+        .then_some(display)
 }
 
 fn spec_system_config_arg(config: &Path) -> Option<PathBuf> {

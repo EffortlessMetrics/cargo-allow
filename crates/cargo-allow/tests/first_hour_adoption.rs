@@ -620,6 +620,27 @@ fn first_hour_init_names_commit_step_and_seed_matches_once_committed() {
         "untracked starter policy seed should read stale again"
     );
 
+    // An explicit root nested inside the worktree must get the same
+    // guidance: Git discovers the worktree from the parent, so the
+    // detection probes ancestors, not just the root itself.
+    let nested = root.join("nested");
+    fs::create_dir_all(&nested)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create nested root: {err}")));
+    let nested_init = run(
+        cargo_allow()
+            .arg("init")
+            .arg("--root")
+            .arg(&nested)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run nested init: {err}"))),
+        "nested init",
+    );
+    assert!(
+        combined(&nested_init).contains("git add policy/allow.toml"),
+        "init at a nested root must name the commit step: {}",
+        combined(&nested_init)
+    );
+
     drop_root(root);
 }
 
