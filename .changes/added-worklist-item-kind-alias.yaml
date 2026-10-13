@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Worklist JSON work items now carry `item_kind` alongside `kind` with the
+  same value (#4365 Gap 1). The documented `--item-kind` filter name
+  previously had no matching artifact field, so agents mapped queue types
+  between artifact and filter by convention. `kind` is unchanged for
+  existing `cargo-allow.worklist.v1` consumers.
