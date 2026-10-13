@@ -4,11 +4,11 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4460,
   "base_ref": "main",
-  "base_sha": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
+  "base_sha": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
   "head_ref": "fix/3149-preserve-evaluated-command-summaries",
-  "head_sha": "f516f260a2d1f39dc586ceaf612c4934b4eb5c76",
-  "merge_base": "5eab438fd7df691e5f1f962f51eb6e4e9242adac",
-  "reviewed_diff_digest": "sha256:v1:05ed89e0fd201daa423f316be009de39d6d792940cac350949c0e500100af558",
+  "head_sha": "1422ad6faab916687859c9112fd310aae0eee06c",
+  "merge_base": "4c27c27a4dcde277a9c9ee60de9d548fbfd23096",
+  "reviewed_diff_digest": "sha256:v1:19a440867537528d4cd3b7a93603e40cdc0d299d036c05fa3518fb4b1739c9c8",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthor of this PR's code, tests, policy, note, integrations and wording repair. Shared model family, campaign context, tools, account transport and access to author proof remain correlated-failure limits. Coordinator retains the actual model COMMENT; no separate human or account approval is claimed.",
@@ -50,7 +50,8 @@
     "Actual clean local 955ff99e710dac95c4575aa9cf241403e9a82b10 has the exact hosted source tree. With explicit Rust 1.95 and two build jobs, all 34 integration tests passed, zero failed, ignored or filtered, at 00:15:40-00:19:08 UTC on 2026-10-11. Formatting passed, fresh dev governed diff was Complete with zero current and policy failures, and default no-new passed enforcing with failed=false, new=0, 2,689 files and 16,686 findings. Test, guard, transport and wording proof members were independently rehashed.",
     "The actual 955 dev executable, original depfile and fingerprints, 602 linked source inputs, 25 manifest and toolchain inputs and separately identified test harness are retained. Binary SHA256 is d0b7138187ed6537b233887b65be63f27f76ce73cbe3386c1f99de70c809ddc6. This is Linux source-build proof; test-product identity is not inferred from an unrelated executable filename, and no installed or other-platform qualification is claimed.",
     "Historical results remain historical: 26ca was 1 pass / 3 failures with a nondiscriminating second-member request setup; 996 was 31 pass / 1 failure; test-only 9e was 3 pass / 3 failures and exposed full-list truncation and single-human RenderFailure; earlier 3cde was 34 pass. None is relabeled as current 955 execution. Both #3880 advisory findings remain AcceptedFollowUp rather than Fixed.",
-    "Current source pregate 114348539419 succeeds. Readiness 114348920806 independently matches this exact pair and diff and was neutral because this retained record was absent. Pending native platform, package, coverage, interop and review jobs were not claimed green. Private-helper docstring percentages and paused or quota-limited model feedback do not substitute for current correctness review."
+    "Current source pregate 114348539419 succeeds. Readiness 114348920806 independently matches this exact pair and diff and was neutral because this retained record was absent. Pending native platform, package, coverage, interop and review jobs were not claimed green. Private-helper docstring percentages and paused or quota-limited model feedback do not substitute for current correctness review.",
+    "Bounded re-review 2026-10-13 for the post-integration pair: the effective merge base moved to 4c27c27a (main tip) via two integration merges (40d23359, 1422ad6f). Verified: (1) the seven PR-owned product/test files are byte-identical to the independently reviewed head f516f260 (zero-line delta under crates/ and .changes/); (2) main's movement between the old base 5eab438f and 4c27c27a touched none of the PR-owned seams; (3) the policy/allow.toml integration was re-resolved id-and-content-aware (main's allow-review-4455 rows retained, PR's allow-review-4460 rows appended verbatim), local no-new guard green at 1422ad6f with failed=false and new=0. The proven independent review reference and verdict are preserved unchanged; no PR-owned dimension was affected by the base movement."
   ],
   "required_ci": {
     "owner": "Coordinator must obtain independent review of this own-JSON-only successor, verify all other source modes and blobs and actual native readiness bootstrap, read fresh feedback, and finish every applicable current native gate. Any subsequent merge must use the exact reviewed head and settled campaign order, followed by resulting-main enforcement. Pending, stale, failed, cancelled, skipped or unavailable evidence is not green. Full #3149 catalogue and installed experience, reopened #3880, freeze and release authority remain separate.",
@@ -58,5 +59,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4460",
-  "reviewed_at_utc": "2026-10-11T00:31:59Z"
+  "reviewed_at_utc": "2026-10-13T02:45:00Z"
 }
