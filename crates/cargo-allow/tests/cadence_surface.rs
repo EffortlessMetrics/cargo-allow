@@ -479,9 +479,26 @@ fn cadence_boundary_pins_review_and_expiry_transitions() {
 /// the ambient UTC day is `expiring` for cadence and never `expired` for
 /// list/worklist/check, while an entry that expired yesterday is `expired`
 /// on all four — the yesterday rows keep the today assertions honest.
+/// `lifecycle_boundary.rs` pins the same law for matched entries across
+/// check/list/explain/cadence; this test pins the unused-entry path and the
+/// worklist queue, which that corpus does not exercise. Only cadence takes
+/// `--as-of`, so if UTC midnight intervenes the whole fixture is rebuilt
+/// once for the new day (the `lifecycle_boundary.rs` retry pattern) instead
+/// of silently skipping.
 #[test]
 fn expires_day_agrees_across_cadence_list_worklist_and_check() {
-    let today = allow_core::SimpleDate::today_utc_approx();
+    for _ in 0..2 {
+        let today = allow_core::SimpleDate::today_utc_approx();
+        if expires_day_cross_surface_attempt(today) {
+            return;
+        }
+    }
+    std::panic::panic_any("UTC day changed during both cross-surface attempts");
+}
+
+/// One cross-surface attempt pinned to `today`; returns false when the UTC
+/// day rolled over mid-attempt so the caller can rebuild the fixture.
+fn expires_day_cross_surface_attempt(today: allow_core::SimpleDate) -> bool {
     let yesterday = today.add_days(-1);
     let entries = vec![
         reviewed_entry(
@@ -518,6 +535,9 @@ fn expires_day_agrees_across_cadence_list_worklist_and_check() {
     );
 
     let list = fixture.surface_json("list", "cross-surface");
+    if allow_core::SimpleDate::today_utc_approx() != today {
+        return false;
+    }
     let list_status = |allow_id: &str| {
         list.pointer("/allow_entries")
             .and_then(Value::as_array)
@@ -542,6 +562,9 @@ fn expires_day_agrees_across_cadence_list_worklist_and_check() {
     );
 
     let worklist = fixture.surface_json("worklist", "cross-surface");
+    if allow_core::SimpleDate::today_utc_approx() != today {
+        return false;
+    }
     let has_expired_item = |allow_id: &str| {
         worklist
             .pointer("/work_items")
@@ -569,19 +592,15 @@ fn expires_day_agrees_across_cadence_list_worklist_and_check() {
         String::from_utf8_lossy(&check.stdout),
         String::from_utf8_lossy(&check.stderr)
     );
-    // A UTC midnight rollover mid-test would make the today entry genuinely
-    // expired for the ambient-day surfaces; the assertions above already ran
-    // against the same ambient day, so only the check text needs this guard.
-    if allow_core::SimpleDate::today_utc_approx() == today {
-        assert!(
-            !check_text.contains("allow-expires-today is expired on"),
-            "check must not report the expires day as expired:\n{check_text}"
-        );
-        assert!(
-            check_text.contains("allow-expired-yesterday is expired on"),
-            "check reports yesterday's entry as expired:\n{check_text}"
-        );
-    }
+    assert!(
+        !check_text.contains("allow-expires-today is expired on"),
+        "check must not report the expires day as expired:\n{check_text}"
+    );
+    assert!(
+        check_text.contains("allow-expired-yesterday is expired on"),
+        "check reports yesterday's entry as expired:\n{check_text}"
+    );
+    allow_core::SimpleDate::today_utc_approx() == today
 }
 
 /// Fixture c: the loader owns the fail-closed boundary. Malformed
