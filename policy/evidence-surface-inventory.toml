@@ -57,6 +57,7 @@ claim_boundary = "The typed candidate artifact contract is present and structura
 
 [[surfaces]]
 id = "exact-candidate-interop"
+owner_issue = 3357
 semantic_authority = "candidate interoperability"
 path = "crates/cargo-allow/tests/exact_candidate_interop.rs"
 subject = "candidate interop smoke"
@@ -260,6 +261,7 @@ claim_boundary = "The classifier's local cases are checked; a real rehearsal is 
 
 [[surfaces]]
 id = "release-rehearsal-incident-corpus"
+owner_issue = 3751
 semantic_authority = "release rehearsal incident corpus"
 path = "crates/cargo-allow/tests/release_rehearsal_incident_corpus.rs"
 subject = "release incident fixtures"
@@ -293,6 +295,7 @@ claim_boundary = "The documented journey is checked; a completed installation jo
 
 [[surfaces]]
 id = "release-rehearsal"
+owner_issue = 3751
 semantic_authority = "release rehearsal"
 path = "crates/cargo-allow/tests/release_rehearsal.rs"
 subject = "scripts/release-rehearsal.py"
@@ -581,6 +584,7 @@ claim_boundary = "Support wording is checked; package, platform, and external ev
 
 [[surfaces]]
 id = "rc1-publication-incident-reconciliation"
+owner_issue = 3759
 semantic_authority = "rc.1 publication incident reconciliation"
 path = "crates/cargo-allow/tests/rc_publication_incident.rs"
 subject = "docs/release/evidence/rc1-publication-incident.v1.json"
@@ -631,6 +635,7 @@ claim_boundary = "Fixtures prove mutation-history semantics; no live release cre
 
 [[surfaces]]
 id = "github-release-checkpoint-v1"
+owner_issue = 3933
 semantic_authority = "remotely durable GitHub Release checkpoints"
 path = "crates/cargo-allow/tests/github_release_checkpoint.rs"
 subject = "CargoAllowGitHubReleaseCheckpointV1"
@@ -647,6 +652,7 @@ claim_boundary = "Fixtures prove remote-durability semantics; no live uploads, p
 
 [[surfaces]]
 id = "release-operation-composition"
+owner_issue = 3940
 semantic_authority = "canonical release-operation identity shared across children"
 path = "crates/cargo-allow/tests/release_operation_composition.rs"
 subject = "CargoAllowReleaseOperationIdentityV1 across journal, checkpoint, lease, and tag"
@@ -663,6 +669,7 @@ claim_boundary = "Fixtures prove local cross-child binding only; no workflow tra
 
 [[surfaces]]
 id = "authenticated-release-operation-store"
+owner_issue = 3925
 semantic_authority = "#3925 durable lease store and #3927 authenticated custody readback"
 path = "crates/cargo-allow/tests/release_operation_store.rs"
 subject = "scripts/release_operation_store.py"
@@ -678,3 +685,35 @@ last_reconciled_commit = "c9616c3e66cb31e51332da970acd18ad8b8fee0b"
 claim_boundary = "The actual adapter is exercised with intercepted HTTP, not a local eligibility replacement. No live credential, authenticated external observation, control/tag ref, authorization mint or publication occurs. Rust compilation and native gates require separate evidence. Lease/tag subject comparison, checked journal/checkpoint head rebinding and real workflow integration remain with the named owners."
 
 [[surfaces]]
+id = "final-freeze-authenticated-qualification"
+owner_issue = 2501
+semantic_authority = "existing post-merge qualification, custody, transfer and final freeze replay"
+path = "crates/cargo-allow/tests/core_release_freeze_qualification_cli.rs"
+subject = "scripts/qualify-release-freeze.py and the actual Rust freeze composer"
+producer = "compiled cargo-allow producer/consumer with intercepted standard-library provider reads"
+consumer = "#2501 qualified freeze and serialized retained replay inputs"
+claimed_acceptance_row = "actual prepare/readback/typed-compose/replay qualification and custody boundaries"
+assertion_mechanism = "native binary preparation, separate immutable object retention, fresh intercepted reads, exact original producer/member mapping, serialized replay and targeted positive/negative controls"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded production behavior with synthetic provider responses"
+required_stronger_owner = "#2501 actual selected Complete freeze and workflow retention; #3792 rehearsal/registry proof; #2284 current controls; #3761 frozen manifest role; #3925 actual size feasibility"
+may_satisfy_release_gate = false
+last_reconciled_commit = "486b0b19cae43ce3b5e3919fff3a09772876fa15"
+claim_boundary = "The actual qualifier and Rust composer are exercised through intercepted HTTP, not a test-only eligibility model. No live credential, provider mutation, release authority, tag or publication is used. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real registry and rehearsal holds remain explicit."
+
+[[surfaces]]
+id = "release-final-tag-driver"
+owner_issue = 3930
+semantic_authority = "bounded final-tag production driver composition"
+path = "crates/cargo-allow/tests/release_final_tag_driver.rs"
+subject = "scripts/release-final-tag.py and scripts/test-release-final-tag.py"
+producer = "compiled cargo-allow producer/consumer with intercepted standard-library provider reads"
+consumer = "#3930 final-tag driver composition and retained replay inputs"
+claimed_acceptance_row = "actual typed-compose/request-shaping/readback driver composition and custody boundaries"
+assertion_mechanism = "native binary preparation, intercepted provider reads, exact typed member mapping, serialized replay and targeted positive/negative controls"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded production behavior with synthetic provider responses"
+required_stronger_owner = "#3930 actual selected final-tag production execution; #3925 actual store custody; #3927 authenticated readback; #3760 release authorization remains separate"
+may_satisfy_release_gate = false
+last_reconciled_commit = "ed093a27"
+claim_boundary = "The actual driver composition is exercised through intercepted HTTP and local fixture stores, not a live release path. No live credential, provider mutation, release authority, tag mint or publication occurs. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real release execution remains with #3760."

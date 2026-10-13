@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4455,
+  "base_ref": "main",
+  "base_sha": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
+  "head_ref": "docs/3759-rc1-receipt-attribution-20261010",
+  "head_sha": "6cf62d1f91a7ac33dfb00b65d533b792fdf02af6",
+  "merge_base": "30ac92bfb9dfa340cde0ac15383d63f0668a79ec",
+  "reviewed_diff_digest": "sha256:v1:f2853d2c8fb25598d03ee7677a81f150d5a3c2d1a5004b72f9d05ff8caf6e01b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/release_audit, separate nonauthor of this lane's source and metadata. Source author /root/publication_review; coordinating root retains the actual independent result and authors this metadata. Shared model family and campaign context disclosed; no independent human-review claim.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4455#pullrequestreview-5479954102"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4455#pullrequestreview-5479954102",
+    "Complete independent two-path source/consumer/evidence review: pr4455-release-audit-source-review-6cf62d1f.json, 86530 bytes, SHA256 5f35cee4a6297cd8e81f50e7568a18d1d2a4aa954ec951e443bb72dea200d25c. Exact hosted6cf62d1f, actual main/ref/unique merge base30ac92bf, tree9199cf379c1c0682398581208273c2c528782c58. Full19900-byte diff uses explicit abbreviation8. Actual synthetic a7ebdc9d7ba44c31d259ad3bd5e43dc4788fbc30 has exact [base,head] parents and identical tree, verified through native Git and API.",
+    "Only row_reconciliations/8/note and observation_limits/3 change semantic values; 155 CRLF lines normalize to LF and one Documentation changelog fragment is added. All2661 other existing paths/modes/blobs, policy, typed consumers and four historical freeze records are exact. All eight exact-candidate and two across-history dispositions, identities, checksums, dates and PartialObservation/PublicPrereleaseWithIncident/NotReusable posture are preserved.",
+    "Independent reviewer hashed/read four retained ZIPs and eight JSON members, checked CRCs/unique keys and fresh metadata, and read historical install/release job outcomes. The first allow-diff receipt has registry_checksum=null; the separate mismatch belongs to the incident narrative. Tiny install receipts carry only identity; historical workflow jobs supply the reported install/attestation outcomes. This source correction claims no current install or attestation.",
+    "The actual preparation/freeze consumers bind raw incident bytes. New incident SHA256 is7c40403c6ede69ba77c2bf0709b230f3fdab2e7976a306c5b494733c43164bc3; later records must bind it. Historical freeze receipts remain unchanged and are not relabeled.",
+    "Exact synthetic Ubuntu114259447431/run38067867769 passes all4 existing rc_publication_incident integration tests at2026-10-10T16:36:25.4317649Z. Exact-head pregate114259104155 passes native formatting/actionlint/enforcing no-new and typed Complete. At source review,34 checks succeeded, full test114262174813 remained running, and readiness was neutral because this record was absent; no full native success is inferred.",
+    "Fresh source-pair feedback has no inline threads or substantive blocking comment. This own-record-only successor requires independent bootstrap of actual source review ID/time, exact predecessor diff and all other preserved modes/blobs. #3759 remains open for broader current public observation and reconciliation."
+  ],
+  "required_ci": {
+    "owner": "Coordinating maintainer account: independently bootstrap this single-record successor, require all applicable current native deterministic gates and feedback dispositions, recheck exact head/base/ref/unique merge base, head-pin a normal merge, then retain the exact new-main enforcing receipt. Pending/stale/neutral evidence does not establish merge readiness; optional model job status is not independent clean source review.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38067867769/job/114259104155"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4455",
+  "reviewed_at_utc": "2026-10-10T16:54:56Z"
+}

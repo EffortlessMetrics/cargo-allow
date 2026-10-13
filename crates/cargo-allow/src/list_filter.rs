@@ -12,6 +12,12 @@ pub(super) fn validate_list_free_text_filters(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
 ) -> allow_core::CargoAllowResult<()> {
+    // An empty ledger keeps its empty-ledger summary semantics (the
+    // list.no_entries vs list.no_filter_matches distinction); fail-closed
+    // applies only when the ledger carries rows a typo could hide behind.
+    if rows.is_empty() {
+        return Ok(());
+    }
     validate_filter_value(
         "--family",
         "family",
@@ -23,6 +29,18 @@ pub(super) fn validate_list_free_text_filters(
         "source package",
         filters.source_package,
         rows.iter().filter_map(|row| row.source_package.as_deref()),
+    )?;
+    validate_filter_value(
+        "--owner",
+        "owner",
+        filters.owner,
+        rows.iter().map(|row| row.owner.as_str()),
+    )?;
+    validate_filter_value(
+        "--classification",
+        "classification",
+        filters.classification,
+        rows.iter().map(|row| row.classification.as_str()),
     )
 }
 
