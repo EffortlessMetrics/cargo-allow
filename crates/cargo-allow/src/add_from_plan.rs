@@ -109,7 +109,11 @@ fn stale(message: impl Into<String>) -> CargoAllowError {
 }
 
 fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
-    error.with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
+    error
+        .with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
+        .with_next_step(
+            "regenerate the plan with `cargo-allow why --kind <kind> --path <path> --line <n> --plan <file>` or repair the plan file, then retry.",
+        )
 }
 
 struct RegenHintContext<'a> {
@@ -194,18 +198,26 @@ fn enrich_with_regen_hint(
         );
     }
     let recorded = allow_report::sanitize_terminal_text(&plan_path.display().to_string());
-    error.with_message_suffix(format!(
-        "; regenerate with {command}\n\
-         ({recorded} already exists and add-finding plans are never overwritten)"
-    ))
+    error
+        .with_next_step(
+            "regenerate the plan with the printed `cargo-allow why --plan` command, then rerun this `add --from-plan` with the regenerated plan.",
+        )
+        .with_message_suffix(format!(
+            "; regenerate with {command}\n\
+             ({recorded} already exists and add-finding plans are never overwritten)"
+        ))
 }
 
 fn manual_regen_hint(error: CargoAllowError, reason: &str) -> CargoAllowError {
-    error.with_message_suffix(format!(
-        "; regenerate manually: {reason}. Run why --plan with an unused output path, \
-         the same root, selected policy and include-untracked setting, and the live finding \
-         coordinates; existing plans are never overwritten."
-    ))
+    error
+        .with_next_step(
+            "regenerate the plan manually as printed with an unused `why --plan` output path, then rerun this `add --from-plan`.",
+        )
+        .with_message_suffix(format!(
+            "; regenerate manually: {reason}. Run why --plan with an unused output path, \
+             the same root, selected policy and include-untracked setting, and the live finding \
+             coordinates; existing plans are never overwritten."
+        ))
 }
 
 /// Advice may follow a location-only move, but never a different target. Keep
@@ -311,7 +323,14 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     // No regeneration hint here: for a non-New posture the suggested `why
     // --plan` regen can never succeed (#4364). The message below already
     // directs the operator to `list` / `explain`, which do run.
-    ensure_addable_outcome(selected.status).map_err(|error| stale(error.to_string()))?;
+    ensure_addable_outcome(selected.status).map_err(|error| {
+        // #4364: regeneration can never succeed for a non-New posture, so the
+        // typed next step points at the posture readers instead of a `why
+        // --plan` command that would fail verbatim (#4501).
+        stale(error.to_string()).with_next_step(
+            "run `cargo-allow list` or `cargo-allow explain <id>` to see the finding's current posture, then address that posture before replaying this plan.",
+        )
+    })?;
 
     // Recompute every binding from the live scan and require an exact match.
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
