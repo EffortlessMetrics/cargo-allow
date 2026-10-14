@@ -125,11 +125,14 @@ Consumers should rely on these properties:
   `diff` — and the hard-error sidecars below, which hold no rendered detail
   to digest — emit the unresolved placeholder `local-repository:current`;
   successful `add` and `propose` summaries also emit
-  `local-repository:current`; and `list` emits
-  `local-repository:git_tracked`. Wrappers must not key one identity
-  across different commands, or across `init`/`diff`, `add`/`propose`,
-  `list`, and the error path, until one content-addressed cross-command
-  format is designed and emitted uniformly (#4393).
+  `local-repository:current`; and `list`, `refresh`, and `prune` emit
+  `local-repository:{inventory_source}`, where `{inventory_source}` is the
+  run's inventory tag — one of `git_tracked`, `git_index_staged_candidate`,
+  `filesystem_include_untracked`, or `filesystem_fallback` — not a content
+  digest. Wrappers must not key one identity across different commands, or
+  across `init`/`diff`, `add`/`propose`, `list`, `refresh`/`prune`, and the
+  error path, until one content-addressed cross-command format is designed
+  and emitted uniformly (#4393).
 - `operation_effects` states the operation's own read/write posture, separately
   from any paths a suggested next action may write. The inspection commands
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
