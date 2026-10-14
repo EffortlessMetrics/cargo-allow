@@ -568,6 +568,17 @@ fn list_summary_suggests_the_resolved_root_without_an_explicit_root_flag() -> Re
         args.first() == Some(&Value::from("explain")),
         format!("the suggestion should target explain: {args:?}"),
     )?;
+    // #4527 pins the documented identity family: `list` emits
+    // `local-repository:{inventory_source}` (a non-digest tag), not a
+    // content-addressed digest.
+    let identity = summary
+        .pointer("/subject/repository_identity")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "list summary needs a repository identity".to_string())?;
+    require(
+        identity == "local-repository:git_tracked",
+        format!("list identity must be the documented inventory-source tag: {identity}"),
+    )?;
     // The suggestion renders the root in the paste-safe forward-slash form,
     // canonicalized the same way the tool resolves it (temp_dir can hand back
     // an 8.3 short path on Windows runners).
