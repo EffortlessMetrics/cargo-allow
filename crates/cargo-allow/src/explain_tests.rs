@@ -9,6 +9,27 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[test]
+fn normalize_allow_id_shorthand_is_echo_faithful_on_numeric_overflow() {
+    // #4497: digits past usize::MAX cannot name a real ledger slot, but the
+    // normalization must not silently rewrite them to allow-0000.
+    assert_eq!(
+        super::normalize_allow_id_shorthand("18446744073709551616"),
+        "allow-18446744073709551616"
+    );
+    // In-range shorthands keep the zero-padded expansion.
+    assert_eq!(super::normalize_allow_id_shorthand("42"), "allow-0042");
+    assert_eq!(
+        super::normalize_allow_id_shorthand("18446744073709551615"),
+        "allow-18446744073709551615"
+    );
+    assert_eq!(
+        super::normalize_allow_id_shorthand("allow-0272"),
+        "allow-0272"
+    );
+    assert_eq!(super::normalize_allow_id_shorthand("named-id"), "named-id");
+}
+
 fn argv(items: Vec<&str>) -> Vec<String> {
     items.into_iter().map(String::from).collect()
 }
