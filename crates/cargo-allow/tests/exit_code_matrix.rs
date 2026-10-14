@@ -254,6 +254,47 @@ fn exit_matrix_explain_unknown_id_names_the_id_fix() {
     drop_root(root);
 }
 
+/// #4497: numeric shorthand past `usize::MAX` cannot name a real ledger slot,
+/// but the unknown-id error must echo the id the user typed instead of
+/// silently rewriting the overflowed number to `allow-0000`.
+#[test]
+fn exit_matrix_explain_numeric_overflow_echoes_the_typed_id() {
+    let root = temp_root("exit-explain-shorthand-overflow");
+    write_panic_source(&root);
+    let policy = root.join("policy/allow.toml");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(&policy, fixture_policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write fixture policy: {err}")));
+
+    let output = cargo_allow()
+        .arg("explain")
+        .arg("--root")
+        .arg(&root)
+        .arg("--config")
+        .arg(&policy)
+        .arg("18446744073709551616")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run explain: {err}")));
+    assert_exit(
+        "explain numeric shorthand overflow",
+        &output,
+        2,
+        "no allow entry `allow-18446744073709551616`",
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("allow-0000"),
+        "the overflowed shorthand must not be rewritten to allow-0000: {stderr}"
+    );
+    assert_eq!(
+        stderr.matches("Next:").count(),
+        1,
+        "exactly one Next line: {stderr}"
+    );
+    drop_root(root);
+}
+
 /// #4488: `diff` without a base and without an upstream fails with the
 /// typed next step (pass --base / set upstream), never the generic syntax
 /// advice, and renders exactly one Next line.
