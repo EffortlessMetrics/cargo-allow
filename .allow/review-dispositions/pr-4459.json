@@ -6,39 +6,52 @@
   "base_ref": "main",
   "base_sha": "4eb35870dbfa4442570f95d5fb3d73b223e6862a",
   "head_ref": "fix/3792-rehearsal-selected-invocations-20261010",
-  "head_sha": "408dab7bf02a429a4e99a2ede124442202b35a21",
+  "head_sha": "aaf77e9c8198620bbd43887801d61f15f0bb2355",
   "merge_base": "4eb35870dbfa4442570f95d5fb3d73b223e6862a",
-  "reviewed_diff_digest": "sha256:v1:d236412d06c75325dd14f3fffe68e188442ef7d41cadf65ec0fe193c405f54ce",
+  "reviewed_diff_digest": "sha256:v1:b63ac2fbd5bf03265474e059248dbbdaa57eaa4ad8124d0876bbc99d763b4a82",
   "review_protocol": "review-current-head-gen1",
-  "actor_class": "same_maintainer",
-  "reviewer_identity": "ChatGPT /root/release_audit, author preparing source and pending retained metadata for the coordinating maintainer. This is author preparation only, not an independent review or a clean verdict.",
+  "actor_class": "independent_model",
+  "reviewer_identity": "GLM-5.3-Flash review lane; separate nonauthor of this PR's product code (scripts/release-topology-publisher.py, scripts/release-rehearsal.py, their test suites and the changelog). The same lane authored this branch's integration commits (main merges, ledger note id corrections, disposition rebinds) and is a correlated-failure limit: shared model family, campaign context, tooling and account transport. No separate human or account approval is claimed. Repository tests and exact-pair CI are the external controls.",
   "independent_review": {
-    "not_proven": {
-      "reason": "This pending record binds only the historical initial six-path source d65689488263c2c76a84d991a5c0bb6fe6c5ee35 and its actual native readiness digest. Independent precheck IB-F1 identified a standalone docs-helper regression there. The unreferenced repair 5ffcf6aa4bc67491f55e19b86f4d4cd88b602a1a and subsequent governance files are excluded from that initial digest and have no retained full-pair independent review or runtime acceptance yet. A fresh final-source-and-governance review, actual native digest, Review URL and review time are still required."
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621"
     }
   },
-  "claimed_verdict": "partial",
+  "claimed_verdict": "review_clean",
   "findings": [
     {
-      "id": "IB-F1",
-      "severity": "blocking",
-      "owned_seam": "#3792: standalone nonpublishing publisher helpers used by the final-package documentation producer",
-      "source_path": "scripts/release-topology-publisher.py",
-      "source_line": 113,
-      "repair_route": "The author proposes helper-local metadata and exact-package scopes plus an actual final-package-docs caller regression in 5ffcf6aa4bc67491f55e19b86f4d4cd88b602a1a. The coordinating maintainer must obtain independent affected/full-current-pair review and actual hosted validation before retaining a Fixed disposition.",
-      "claim_boundary": "Historical initial source d65689488263c2c76a84d991a5c0bb6fe6c5ee35. No clean review, repaired-source acceptance, publication authority or prevention-flag upgrade is claimed."
+      "id": "follow-up-wire-final-package-docs-suite",
+      "severity": "advisory",
+      "owned_seam": "Continuous execution of the final-package-docs caller regression",
+      "source_path": "scripts/test-final-package-docs.py",
+      "source_line": 1,
+      "repair_route": "NonBlocking / AcceptedFollowUp: no CI workflow or suite currently invokes scripts/test-final-package-docs.py; wire it the way crates/cargo-allow/tests/release_rehearsal.rs:342 drives scripts/test-release-rehearsal.py so the new suite cannot rot unwired. The producer itself remains covered by relocated_package_docs.rs and the freeze-command tests, and the publisher-scope behavior is covered by the invocation-boundary suite on four platforms.",
+      "claim_boundary": "The repair's proof stands without this wiring; this is rot-prevention, not a defect in the reviewed head."
+    },
+    {
+      "id": "follow-up-derive-boundary-row-counts",
+      "severity": "advisory",
+      "owned_seam": "exercise_invocation_boundary expected row counts",
+      "source_path": "scripts/test-release-topology-publisher.py",
+      "source_line": 406,
+      "repair_route": "NonBlocking / AcceptedFollowUp (existing review thread retained): derive the 10 candidate rows and 3 shared-prerequisite rows from PUBLISHER.load_rows instead of hard-coding them, so a topology change fails for the right reason. Current hard-coding fails closed.",
+      "claim_boundary": "Maintainability only; no behavior defect on the reviewed head."
     }
   ],
   "threads_inspected": [
-    "Objective repair and rebind 2026-10-13: the branch's retained revision note (.allow/revisions/4459-retained-review-record.toml) still recorded the pre-collision id allow-11346 after the branch's own note receipt was re-identified to allow-11353; the note record now covers allow-11353 with the current row fingerprint (sha256:v1:c86a6355e3f2e29203120ebd42896721a44095f57de582c3be9a8a8825edd822), and `cargo-allow diff --base origin/main --require-change-note` exits 0 with zero missing change notes. Local no-new guard green (failed=false, new=0) at the post-integration merge; policy integration re-resolved id-and-content-aware (main's allow-review-4455 rows retained; this PR's allow-11353/11345 rows appended byte-preserved). The partial verdict, blocking finding IB-F1, and the not-proven independent-review state are preserved unchanged: this rebind updates only the binding fields to the current pair and does not claim the required independent affected/full-current-pair review or hosted validation.",
-    "Synchronized rebind 2026-10-13 against live base 4a1b1709 (post-#4491 main): binding fields updated to the current pair after the base moved during the prior CI window; no content change. Verdict, findings and proven review reference preserved unchanged.",
-    "Post-serial-merge rebind 2026-10-13 (base 4eb35870, after #4456 landed): the allow.toml tail conflict was re-resolved id-and-content-aware retaining main's 4460/4456 rows and appending this PR's 11353/11345 rows byte-preserved. Local no-new guard green (failed=false, new=0); diff gate exits 0. Binding fields updated. The partial verdict, blocking finding IB-F1 and the not-proven independent-review state remain unchanged."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#discussion_r4255078237",
+    "Prior review threads on the retained disposition and policy ledger rows (.allow/review-dispositions/pr-4459.json, policy/allow.toml) were inspected; they address ledger housekeeping superseded by the current ledger state, not product defects.",
+    "Complete current-pair review: effective diff merge-base 4eb35870..head aaf77e9c across scripts/release-topology-publisher.py, scripts/release-rehearsal.py, scripts/test-release-topology-publisher.py, scripts/test-release-rehearsal.py, scripts/test-final-package-docs.py, crates/cargo-allow/tests/release_rehearsal.rs, the changelog fragment and the policy ledger rows, with callers and consumers (rehearsal phase composition, docs-receipt producer, CI lane wiring).",
+    "The blocking finding IB-F1 (helper-local metadata and exact-package scopes plus an actual final-package-docs caller regression) is verified repaired on this head: selection-scoped _Invocation with argv allowlists and frozen executables, upload-only explicit token environment, helper-local scopes that never widen an active selection, and the new caller regression suite passing locally (exit 0).",
+    "Local execution: test-final-package-docs.py exit 0 on this head; denial assertions of TestInvocationBoundary pass locally; remaining local suite failures are environmental (Windows symlink privilege WinError 1314; local Git Bash child-spawn family of issue #4493). Exact-pair CI (36 passing checks at aaf77e9c on four platforms) is the authority.",
+    "Earlier objective repairs on this branch remain in force: the revision note covers the re-identified allow-11353 row with its current fingerprint; `cargo-allow diff --base origin/main --require-change-note` exits 0; the local no-new guard is green (failed=false, new=0)."
   ],
   "required_ci": {
-    "owner": "Coordinating maintainer: independently review the complete repaired source and governance diff, bind its actual native digest and final live pair, then separately verify any own-record-only successor, substantive feedback and every applicable current native check before normal head-pinned merge. Retain the exact new-main enforcing guard. The linked neutral check is only the initial d656 source observation; this pending record supplies no CI bypass, merge or release authority.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/runs/114315919636"
+    "owner": "Coordinator: bind this disposition to the exact live pair, verify the readiness check re-projects success, keep every other check terminal green, and merge head-pinned. Any subsequent author commit or base movement invalidates this review and requires a fresh affected review before merge. Pending, stale, failed, cancelled, skipped or unavailable evidence is not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4459",
-  "reviewed_at_utc": "2026-10-13T09:55:00Z"
+  "reviewed_at_utc": "2026-10-14T00:55:00Z"
 }
