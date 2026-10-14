@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Docs: the command-summary identity contract now enumerates every
+  non-digest `subject.repository_identity` emitter accurately (#4506).
+  Alongside `init`/`diff` and the hard-error sidecars (placeholder
+  `local-repository:current`), successful `add` and `propose` summaries
+  also emit `local-repository:current`, and `list` emits
+  `local-repository:git_tracked`; the wrapper keying warning names all of
+  them until the content-addressed cross-command format is designed
+  (#4393). A regression test pins `add`'s placeholder emission so the
+  docs and the behavior cannot drift apart silently.
