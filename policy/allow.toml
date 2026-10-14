@@ -24283,3 +24283,25 @@ normalized_snippet_hash = "fnv1a64:97d452d0a0249937"
 [allow.last_seen]
 line = 243
 column = 40
+
+[[allow]]
+id = "allow-1133"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4507 summary-output ledger-collision receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["issue:4507"]
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
