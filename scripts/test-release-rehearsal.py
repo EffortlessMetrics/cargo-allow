@@ -14,6 +14,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -68,6 +69,9 @@ class TestReceiptOutput(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.real_run = subprocess.run
+        selector = mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable)
+        selector.start()
+        self.addCleanup(selector.stop)
         self.tracked = mock.patch.object(
             REHEARSAL.subprocess, "run",
             return_value=subprocess.CompletedProcess([], 0, b"Cargo.toml\0target/tracked.json\0", b""),
@@ -413,7 +417,7 @@ class TestCandidateIdentity(unittest.TestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
-        self.candidate = Path(directory.name) / "candidate"
+        self.candidate = Path(directory.name) / ("candidate.exe" if os.name == "nt" else "candidate")
         self.candidate.write_bytes(b"identified candidate bytes")
         environment = mock.patch.dict(os.environ, {}, clear=True)
         environment.start()
@@ -674,6 +678,7 @@ class TestCandidateIdentity(unittest.TestCase):
 
     def test_standalone_still_uses_deliberate_cargo_build(self) -> None:
         with (
+            mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable),
             mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"),
             mock.patch.object(REHEARSAL.subprocess, "run", return_value=
                               subprocess.CompletedProcess([], 0, json.dumps(self.projection), "")) as run,
@@ -1358,6 +1363,258 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), "")
         self.assertIn("instrumentation failed", stderr.getvalue())
         self.require_no_phases()
+
+
+
+class TestInvocationBoundary(unittest.TestCase):
+    """Actual owned adapters, with harmless child canaries and separate bypasses."""
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory(prefix="rehearsal-invocation-")
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name).resolve()
+        self.canary = self.root / "forbidden-child.txt"
+        self.real_run = subprocess.run
+        self.environment = {"PATH": str(Path(sys.executable).parent), "BENIGN": "retained"}
+        if "SYSTEMROOT" in os.environ:
+            self.environment["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+        self.stack = contextlib.ExitStack()
+        self.addCleanup(self.stack.close)
+        self.stack.enter_context(mock.patch.object(REHEARSAL, "ROOT", self.root))
+        self.stack.enter_context(mock.patch.object(
+            REHEARSAL, "os", SimpleNamespace(environ=self.environment),
+        ))
+
+    def canary_command(self) -> list[str]:
+        return [
+            sys.executable, "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('attempted', encoding='utf-8')",
+            str(self.canary),
+        ]
+
+    @staticmethod
+    def bypass(command, *, operation, selected=None, **options):
+        # Deliberate mutant: remove only the owned invocation check.
+        return REHEARSAL.subprocess.run(command, **options)
+
+    def test_generic_characterization_has_no_arbitrary_child_permission(self) -> None:
+        with mock.patch.object(REHEARSAL.subprocess, "run", wraps=self.real_run) as terminal:
+            status = REHEARSAL._run_characterization(self.canary_command())
+            self.assertEqual(status, "InstrumentFailure", "arbitrary characterization reached a child")
+            terminal.assert_not_called()
+            self.assertFalse(self.canary.exists())
+            with mock.patch.object(REHEARSAL, "_run_process", side_effect=self.bypass):
+                self.assertEqual(REHEARSAL._run_characterization(self.canary_command()), "Incomplete")
+            terminal.assert_called_once()
+            self.assertEqual(self.canary.read_text(encoding="utf-8"), "attempted")
+
+    def test_real_proof_route_denies_replaced_argv_and_its_bypass_is_detected(self) -> None:
+        proof = REHEARSAL._run_proof
+
+        def changed(command, **selection):
+            return proof(self.canary_command(), **selection)
+
+        def require_denial() -> None:
+            self.assertEqual(
+                REHEARSAL.run_phase_publisher_state_machine({}), "InstrumentFailure",
+                "publisher proof reached a forbidden child",
+            )
+            self.assertFalse(self.canary.exists(), "publisher proof changed the canary")
+
+        with mock.patch.object(REHEARSAL, "_run_proof", side_effect=changed), \
+                mock.patch.object(REHEARSAL.subprocess, "run", wraps=self.real_run) as terminal:
+            require_denial()
+            terminal.assert_not_called()
+            with mock.patch.object(REHEARSAL, "_run_process", side_effect=self.bypass):
+                with self.assertRaisesRegex(AssertionError, "publisher proof reached"):
+                    require_denial()
+            terminal.assert_called_once()
+            self.assertEqual(self.canary.read_text(encoding="utf-8"), "attempted")
+
+    def test_history_phase_requires_its_check_form(self) -> None:
+        script = self.root / "scripts/generate-changie-history.py"
+        script.parent.mkdir()
+        script.write_text(
+            "from pathlib import Path\nimport sys\n"
+            "if sys.argv[1:] != ['--check']:\n"
+            "    Path(__file__).resolve().parents[1].joinpath('forbidden-child.txt').write_text('attempted')\n",
+            encoding="utf-8",
+        )
+        with mock.patch.object(REHEARSAL, "_select_tool", return_value=None), \
+                mock.patch.object(REHEARSAL.subprocess, "run", wraps=self.real_run) as terminal:
+            # The actual history child succeeds; missing identity remains its
+            # existing downstream Incomplete result, not a fabricated Complete.
+            self.assertEqual(REHEARSAL.run_phase_docs_and_support({}), "Incomplete")
+            terminal.assert_called_once()
+            self.assertEqual(terminal.call_args.args[0][-1], "--check")
+            self.assertEqual(terminal.call_args.kwargs["executable"], str(Path(sys.executable).absolute()))
+            self.assertFalse(self.canary.exists())
+            terminal.reset_mock()
+            proof = REHEARSAL._run_proof
+
+            def writing_form(command, **selection):
+                return proof(command[:-1], **selection)
+
+            with mock.patch.object(REHEARSAL, "_run_proof", side_effect=writing_form):
+                self.assertEqual(REHEARSAL.run_phase_docs_and_support({}), "InstrumentFailure")
+            terminal.assert_not_called()
+            self.assertFalse(self.canary.exists())
+
+    def test_full_git_argv_root_and_process_options_are_closed(self) -> None:
+        command = ["git", "--no-replace-objects", "rev-parse", "--verify", "HEAD^{commit}"]
+        options = dict(cwd=self.root, env=self.environment, capture_output=True,
+                       text=True, timeout=15, check=False)
+        cases = [
+            (["git", "tag", "v-fixture"], {}),
+            (["git", "update-ref", "refs/tags/fixture", "a" * 40], {}),
+            (["git", "push", "fixture"], {}),
+            ([sys.executable, *command[1:]], {}),
+            ([*command, "--quiet"], {}),
+            (command, {"cwd": self.root.parent}),
+            (command, {"shell": True}),
+            (command, {"executable": sys.executable}),
+            (command, {"timeout": 301}),
+            (command, {"check": True}),
+            (command, {"input": b"unselected"}),
+            (command, {"env": None}),
+        ]
+        with mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable), \
+                REHEARSAL._invocation_scope(), \
+                mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+            for argv, extra in cases:
+                with self.subTest(argv=argv, extra=tuple(extra)):
+                    with self.assertRaisesRegex(OSError, "not selected"):
+                        REHEARSAL._run_process(
+                            argv, operation="resolve-commit", selected="HEAD", **(options | extra),
+                        )
+                    terminal.assert_not_called()
+            with self.assertRaisesRegex(OSError, "not selected"):
+                REHEARSAL._run_process(command, operation="unselected", **options)
+            terminal.assert_not_called()
+
+    def test_captured_selection_survives_path_movement_and_scope_is_restored(self) -> None:
+        with mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable) as lookup, \
+                mock.patch.object(REHEARSAL.subprocess, "run", return_value=
+                                  subprocess.CompletedProcess([], 0, "a" * 40, "")) as terminal:
+            with REHEARSAL._invocation_scope() as selected:
+                original_root = selected.root
+                self.assertEqual(lookup.call_count, 2)
+                self.environment["PATH"] = str(self.root / "unselected-tools")
+                self.assertEqual(REHEARSAL.resolve_commit("HEAD"), "a" * 40)
+                self.assertEqual(lookup.call_count, 2)
+                self.assertEqual(terminal.call_args.kwargs["executable"], sys.executable)
+                self.assertEqual(terminal.call_args.kwargs["cwd"], original_root)
+                self.assertEqual(terminal.call_args.args[0][0], "git")
+                terminal.reset_mock()
+                with mock.patch.object(REHEARSAL, "ROOT", self.root / "other"):
+                    self.assertEqual(REHEARSAL.run_phase_publisher_state_machine({}), "InstrumentFailure")
+                terminal.assert_not_called()
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            with REHEARSAL._invocation_scope():
+                self.assertEqual(lookup.call_count, 4)
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+
+    def test_verified_candidate_does_not_authorize_another_executable(self) -> None:
+        candidate = self.root / ("candidate.exe" if os.name == "nt" else "candidate")
+        candidate.write_bytes(b"selected candidate bytes")
+        digest = REHEARSAL.compute_sha256(candidate)
+        invoke = REHEARSAL._run_process
+
+        def substituted(command, **selection):
+            return invoke([sys.executable, *command[1:]], **selection)
+
+        with mock.patch.object(REHEARSAL, "_workspace_version", return_value="0.2.0"), \
+                mock.patch.object(REHEARSAL, "_run_process", side_effect=substituted), \
+                mock.patch.object(REHEARSAL.subprocess, "run") as terminal, \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(REHEARSAL.run_phase_release_identity(
+                {}, candidate_executable=candidate, candidate_sha256=digest,
+            ), "InstrumentFailure")
+            terminal.assert_not_called()
+        self.assertEqual(REHEARSAL.compute_sha256(candidate), digest)
+
+
+    def test_direct_helpers_and_nested_scopes_restore_selection_after_failure(self) -> None:
+        observed = []
+
+        def terminal(command, **options):
+            observed.append(REHEARSAL._INVOCATION.get())
+            if len(observed) == 1:
+                raise OSError("fixture terminal failure")
+            self.assertEqual(command[0], "git")
+            self.assertEqual(options["executable"], sys.executable)
+            return subprocess.CompletedProcess(command, 0, "a" * 40, "")
+
+        with mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable) as lookup, \
+                mock.patch.object(REHEARSAL.subprocess, "run", side_effect=terminal):
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            with self.assertRaisesRegex(OSError, "fixture terminal failure"):
+                REHEARSAL.resolve_commit("HEAD")
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            self.assertEqual(lookup.call_count, 2)
+            with mock.patch.object(REHEARSAL, "ROOT", self.root / "later-root"):
+                self.assertEqual(REHEARSAL.resolve_commit("HEAD"), "a" * 40)
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            self.assertEqual(lookup.call_count, 4)
+            self.assertIsNot(observed[0], observed[1])
+            self.assertEqual(observed[0].root, self.root)
+            self.assertEqual(observed[1].root, self.root / "later-root")
+            with REHEARSAL._invocation_scope() as outer:
+                with self.assertRaisesRegex(OSError, "nested failure"):
+                    with REHEARSAL._invocation_scope() as inner:
+                        self.assertIs(inner, outer)
+                        raise OSError("nested failure")
+                self.assertIs(REHEARSAL._INVOCATION.get(), outer)
+                self.assertEqual(REHEARSAL.resolve_commit("HEAD"), "a" * 40)
+                self.assertIs(observed[-1], outer)
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            self.assertEqual(lookup.call_count, 6)
+
+    def test_public_entries_restore_context_after_nested_builder_failure(self) -> None:
+        observed = []
+
+        def failed_builder(*args, **kwargs):
+            selected = REHEARSAL._INVOCATION.get()
+            self.assertIsNotNone(selected)
+            observed.append(selected)
+            with REHEARSAL._invocation_scope() as nested:
+                self.assertIs(nested, selected)
+            raise OSError("fixture builder failure")
+
+        with mock.patch.object(REHEARSAL, "_select_tool", return_value=sys.executable) as lookup, \
+                mock.patch.object(REHEARSAL, "_build_rehearsal_receipt", side_effect=failed_builder), \
+                mock.patch.object(REHEARSAL, "_write_receipt") as write, \
+                mock.patch.object(sys, "argv", ["release-rehearsal.py", "--commit", "HEAD"]), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(REHEARSAL.main(), 2)
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            self.assertEqual(lookup.call_count, 2)
+            with self.assertRaisesRegex(OSError, "fixture builder failure"):
+                REHEARSAL.build_rehearsal_receipt("HEAD")
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
+            self.assertEqual(lookup.call_count, 4)
+            self.assertIsNot(observed[0], observed[1])
+            write.assert_not_called()
+
+    def test_missing_and_unsupported_executables_fail_at_the_terminal_boundary(self) -> None:
+        values = [None, "", 7, "git", str(self.root / "invalid\nexecutable")]
+        for value in values:
+            with self.subTest(executable=value), \
+                    mock.patch.object(REHEARSAL, "_select_tool", return_value=value), \
+                    mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+                # Capturing an unavailable unused tool is not itself fatal.
+                with REHEARSAL._invocation_scope():
+                    with self.assertRaisesRegex(OSError, "executable"):
+                        REHEARSAL.resolve_commit("HEAD")
+                terminal.assert_not_called()
+                self.assertIsNone(REHEARSAL._INVOCATION.get())
+        with mock.patch.object(REHEARSAL, "_PLATFORM_NAME", "nt"), \
+                mock.patch.object(REHEARSAL, "_select_tool", return_value=str(self.root / "git.cmd")), \
+                mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+            with self.assertRaisesRegex(OSError, "executable form"):
+                REHEARSAL.resolve_commit("HEAD")
+            terminal.assert_not_called()
+            self.assertIsNone(REHEARSAL._INVOCATION.get())
 
 
 if __name__ == "__main__":

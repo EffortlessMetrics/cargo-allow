@@ -10,10 +10,14 @@ version already exists, and publishes only missing rows in dependency order.
 from __future__ import annotations
 
 import argparse
+import contextlib
+from contextvars import ContextVar
 import hashlib
 import json
 import os
+from os import name as _PLATFORM_NAME, pathsep as _PATH_SEPARATOR
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -57,21 +61,113 @@ def bounded_reference(value: str, field: str) -> str:
     return value
 
 
-def token_free_environment() -> dict[str, str]:
+class _Invocation:
+    """Private selection for owned processes; not publication authority."""
+
+    def __init__(self, args: argparse.Namespace | None) -> None:
+        self.root = ROOT.resolve()
+        search_path = _PATH_SEPARATOR.join(
+            str(path if path.is_absolute() else self.root / path)
+            for value in os.environ.get("PATH", "").split(_PATH_SEPARATOR)
+            if value
+            for path in [Path(value)]
+        )
+        self.tools = {name: _select_tool(name, search_path) for name in ("git", "cargo")}
+        self.mode = args.mode if args is not None else None
+        self.metadata_allowed = self.mode is not None
+        self.list_only = args.list if args is not None else False
+        self.publish = bool(args is not None and args.publish and not args.registry_preflight and not args.package_only)
+        self.authorization = ""
+        self.package_command: list[str] | None = None
+        self.publish_names: set[str] = set()
+
+
+def _select_tool(name: str, search_path: str) -> str | None:
+    """Freeze an executable inside explicit lookup roots, including on Windows."""
+    found = shutil.which(name, path=search_path)
+    if found is None:
+        return None
+    selected = Path(found).absolute()
+    roots = {Path(value).absolute() for value in search_path.split(_PATH_SEPARATOR) if value}
+    if selected.parent not in roots:
+        return None
+    if _PLATFORM_NAME == "nt" and selected.suffix.lower() not in {".exe", ".com"}:
+        return None
+    return str(selected)
+
+
+_INVOCATION: ContextVar[_Invocation | None] = ContextVar("publisher_invocation", default=None)
+
+
+@contextlib.contextmanager
+def _invocation_scope(args: argparse.Namespace | None = None):
+    current = _INVOCATION.get()
+    token = _INVOCATION.set(_Invocation(args)) if args is not None or current is None else None
+    try:
+        yield _INVOCATION.get()
+    finally:
+        if token is not None:
+            _INVOCATION.reset(token)
+
+
+def _checked_invocation(command: list[str]) -> tuple[str, bool]:
+    context = _INVOCATION.get()
+    if context is None or ROOT.resolve() != context.root or context.list_only:
+        fail("subprocess invocation has no matching selected operation")
+    tool = None
+    upload = False
+    if command in (["git", "rev-parse", "HEAD^{commit}"], ["git", "rev-parse", "HEAD^{tree}"]):
+        tool = "git"
+    elif context.metadata_allowed and command == [
+        "cargo", "metadata", "--format-version", "1", "--no-deps", "--locked",
+    ]:
+        tool = "cargo"
+    elif context.package_command is not None and command == context.package_command:
+        tool = "cargo"
+    elif context.publish and context.authorization:
+        for name in context.publish_names:
+            if command == ["cargo", "publish", "--dry-run", "-p", name, "--locked"]:
+                tool = "cargo"
+                break
+            if command == ["cargo", "publish", "-p", name, "--locked"]:
+                tool, upload = "cargo", True
+                break
+    if tool is None:
+        fail("subprocess argv is not selected for this operation")
+    executable = context.tools.get(tool)
+    if executable is None:
+        fail("selected subprocess executable is unavailable")
+    if (
+        not isinstance(executable, str) or not executable
+        or any(char in executable for char in "\r\n\0")
+        or not Path(executable).is_absolute()
+        or _PLATFORM_NAME == "nt" and Path(executable).suffix.lower() not in {".exe", ".com"}
+    ):
+        fail("selected subprocess executable form is not supported")
+    return executable, upload
+
+
+def token_free_environment(environment: dict[str, str] | None = None) -> dict[str, str]:
     # Filter the selected key before retrieving any values. This is a
     # CARGO_REGISTRY_TOKEN boundary, not proof about other credential sources.
+    source = os.environ if environment is None else environment
     return {
-        name: os.environ[name]
-        for name in os.environ
+        name: source[name]
+        for name in source
         if name.upper() != "CARGO_REGISTRY_TOKEN"
     }
 
 
 def run(command: list[str], *, env: dict[str, str] | None = None) -> str:
+    command = list(command)
+    executable, upload = _checked_invocation(command)
+    if upload and env is None:
+        fail("selected publication requires an explicit child environment")
     result = subprocess.run(
         command,
         cwd=ROOT,
-        env=token_free_environment() if env is None else env,
+        env=env if upload else token_free_environment(env),
+        executable=executable,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -95,7 +191,8 @@ def sha256_text(path: Path) -> str:
 
 
 def git_identity(kind: str) -> str:
-    return run(["git", "rev-parse", f"HEAD^{{{kind}}}"]).strip()
+    with _invocation_scope():
+        return run(["git", "rev-parse", f"HEAD^{{{kind}}}"]).strip()
 
 
 def load_rows(topology_path: Path, mode: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -137,7 +234,13 @@ def load_rows(topology_path: Path, mode: str) -> tuple[dict[str, Any], list[dict
 
 
 def cargo_packages() -> dict[str, dict[str, Any]]:
-    metadata = json.loads(run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]))
+    current = _INVOCATION.get()
+    with _invocation_scope() as invocation:
+        # Direct readers get only this helper's nonpublishing operation.
+        # An active selection must already allow metadata; never widen it.
+        if current is None:
+            invocation.metadata_allowed = True
+        metadata = json.loads(run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]))
     return {package["name"]: package for package in metadata["packages"]}
 
 
@@ -303,7 +406,13 @@ def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -
     ]
     for name in sorted(packages.keys() - selected):
         command.extend(["--exclude", name])
-    run(command)
+    current = _INVOCATION.get()
+    with _invocation_scope() as invocation:
+        # The docs receipt producer also calls this helper without the CLI.
+        # Preserve an active selection instead of blessing a changed command.
+        if current is None:
+            invocation.package_command = list(command)
+        run(command)
 
 
 def package_crate(name: str, version: str) -> tuple[Path, str]:
@@ -609,6 +718,11 @@ def main() -> int:
         ):
             fail("package receipt must not overwrite the publication receipt")
 
+    with _invocation_scope(args) as invocation:
+        return _main_selected(args, invocation)
+
+
+def _main_selected(args: argparse.Namespace, invocation: _Invocation) -> int:
     topology_path = args.topology.resolve()
     topology, rows = load_rows(topology_path, args.mode)
     if args.list:
@@ -622,6 +736,7 @@ def main() -> int:
     authorization = bounded_reference(args.authorization, "authorization") if args.authorization else ""
     if args.publish and not authorization:
         fail("--authorization is required before publication")
+    invocation.authorization = authorization
     recovery_receipt = None
     prior_rows: dict[tuple[str, str], dict[str, Any]] = {}
     if args.recovery_receipt is not None:
@@ -647,7 +762,18 @@ def main() -> int:
 
     packages = cargo_packages()
     validate_rows(rows, packages)
-    package_workspace({row["cargo_package_name"] for row in rows}, packages)
+    selected_names = {row["cargo_package_name"] for row in rows}
+    invocation.package_command = [
+        "cargo", "package", "--workspace", "--locked", "--no-verify",
+        "--target-dir", str(package_target_dir()),
+    ]
+    for name in sorted(packages.keys() - selected_names):
+        invocation.package_command.extend(["--exclude", name])
+    invocation.publish_names = {
+        row["cargo_package_name"] for row in rows
+        if args.mode != "cargo-allow" or row["product_family"] == "cargo-allow"
+    }
+    package_workspace(selected_names, packages)
     receipt: dict[str, Any] = {
         "schema_id": (
             "cargo-allow.shared-package-candidate.v1"
@@ -783,6 +909,7 @@ def main() -> int:
         # registry preflight and Cargo's dry-run have already succeeded
         # without retrieving or forwarding it. A missing token is a local
         # denial, not a new publication incident eligible for recovery.
+        _checked_invocation(["cargo", "publish", "-p", name, "--locked"])
         token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
         if not token:
             fail("CARGO_REGISTRY_TOKEN is required before the first upload")
