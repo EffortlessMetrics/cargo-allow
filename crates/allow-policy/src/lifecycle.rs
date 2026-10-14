@@ -23,7 +23,7 @@ pub(crate) fn validate_lifecycle_requirements(
 ) -> CargoAllowResult<()> {
     if requirements.expires_or_review_after_required && !has_real_lifecycle_review(entry) {
         return Err(CargoAllowError::new(format!(
-            "{} missing expires or review_after",
+            "{} missing expires or review_after: `expires` and `review_after` are absent but policy requires a lifecycle review; set `expires = \"YYYY-MM-DD\"` or `review_after = \"YYYY-MM-DD\"` on this entry",
             entry.id
         )));
     }
