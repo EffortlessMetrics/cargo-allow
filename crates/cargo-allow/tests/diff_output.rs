@@ -1730,6 +1730,47 @@ callee = "unwrap"
 }
 
 #[test]
+fn diff_multi_format_emit_writes_every_requested_format() {
+    // #4528: `--emit markdown,sarif` must emit BOTH formats like check, not
+    // silently keep only the first comma token.
+    let root = temp_root("diff-multi-format-emit");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(None),
+    );
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "diff",
+            "--base",
+            "HEAD",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "markdown,sarif",
+            "--format",
+            "json",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    assert!(
+        output.status.success(),
+        "multi-format diff must succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let manifest_text = fs::read_to_string(root.join("artifacts/diff-artifact_set_manifest.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read manifest: {err}")));
+    assert!(
+        manifest_text.contains("\"markdown\"") && manifest_text.contains("\"sarif\""),
+        "both requested formats must be recorded in the manifest: {manifest_text}"
+    );
+    assert!(root.join("artifacts/diff-markdown.md").is_file());
+    assert!(root.join("artifacts/diff-sarif.json").is_file());
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_bad_emit_value_fails_with_typed_usage_error() {
     // #4505: the identical --emit mistake on `check` exits 2 with
     // error[E0001_USAGE] and a structured Next line; diff must match instead
