@@ -61,6 +61,16 @@ fn audit_multi_format_emit_writes_every_requested_format() {
 ",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    // A selected policy is required so the artifact set's
+    // resolved_config_identity exists; without it the set fails closed as
+    // InstrumentFailure under the #4526 validation gate.
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     let output = cargo_allow_command()
         .current_dir(&root)
         .args([
