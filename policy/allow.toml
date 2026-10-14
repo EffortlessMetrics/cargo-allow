@@ -24305,3 +24305,26 @@ glob = ".allow/revisions/4507-summary-output-ledger-collision.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1134"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/add_tests.rs"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Unit test pins the terminal-only stderr-note decision for the #4509 summary placement: the expect documents the interactive-candidate invariant (terminal without a sidecar always gets the note)."
+evidence = ["test:candidate_stderr_note_skips_capture_and_sidecar_writes", "issue:4509"]
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_stderr_note_skips_capture_and_sidecar_writes"
+callee = "expect"
+receiver_fingerprint = "candidate_stderr_note(None, true)"
+normalized_snippet_hash = "fnv1a64:5bf3d82e8cac23ec"
+
+[allow.last_seen]
+line = 16
+column = 10

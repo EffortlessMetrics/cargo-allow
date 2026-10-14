@@ -1,0 +1,10 @@
+# #4509: exact add summary stderr-note receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1134"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:470faaf62c1409f314cc57837cb9c1dfbee668cd5552d4242035bf22eb9b6146"
+reason = "Test-only expect receipt for the #4509 stderr-note decision pin: the unit test asserts the interactive-candidate invariant (terminal without a sidecar always gets the note) and that captured output and sidecar writes stay silent."
