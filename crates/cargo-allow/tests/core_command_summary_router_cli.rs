@@ -458,6 +458,55 @@ fn triage_summary_matrix_preserves_read_only_and_judgment_boundaries() -> Result
 }
 
 #[test]
+fn list_summary_suggests_the_resolved_root_without_an_explicit_root_flag() -> Result<(), String> {
+    // #4510: the documented promise (#4393) is that a suggested argv can
+    // execute from any working directory. With no explicit --root, the
+    // suggestion must carry the resolved absolute root instead of omitting
+    // --root entirely.
+    let root = temp_root("summary-list-root-suggestion")?;
+    write_source(
+        &root,
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )?;
+    run(&root, &["init"])?;
+    // Void the receipted finding so the entry goes stale and `list`
+    // suggests `explain <id>` as the primary action.
+    write_source(
+        &root,
+        "pub fn value() -> u8 { 1 }
+",
+    )?;
+    git_commit_fixture(&root)?;
+
+    let output = run(&root, &["list", "--format", "json"])?;
+    let list_json: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("parse list summary: {error}"))?;
+    let summary = list_json
+        .get("core_command_summary")
+        .ok_or_else(|| "list JSON omitted the common summary".to_string())?;
+    let args = summary
+        .pointer("/primary_action/args")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "list summary must suggest a primary action argv".to_string())?;
+    require(
+        args.first() == Some(&Value::from("explain")),
+        format!("the suggestion should target explain: {args:?}"),
+    )?;
+    // The suggestion renders the root in the paste-safe forward-slash form.
+    let expected_root = root.to_string_lossy().replace('\\', "/");
+    require(
+        args.windows(2).any(|pair| {
+            pair.first() == Some(&Value::from("--root"))
+                && pair.get(1).and_then(Value::as_str) == Some(expected_root.as_str())
+        }),
+        format!("the suggestion must carry the resolved absolute root {expected_root:?}: {args:?}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn list_summary_distinguishes_empty_ledger_from_empty_filter_result() -> Result<(), String> {
     let root = temp_root("summary-list-filter-matrix")?;
     write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
