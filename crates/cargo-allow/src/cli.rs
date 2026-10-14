@@ -454,7 +454,7 @@ fn configure_summary_output(
             (SourceTreeRoot, args.config.clone()),
         ],
         CargoAllowCommand::Migrate(args) => vec![
-            (SourceTreeRoot, Some(args.out.clone())),
+            (SourceTreeRoot, args.out.clone()),
             (WorkingDirectory, args.summary_output.clone()),
         ],
         _ => {
