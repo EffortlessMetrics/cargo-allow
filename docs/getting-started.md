@@ -392,6 +392,16 @@ The boundary between those four commands is the point:
 - `add --from-plan --update` revalidates every plan binding against the live
   tree, then performs one atomic ledger write. If the tree moved since the
   plan was written it refuses and prints the exact regeneration command.
+- the `--evidence doc:docs/design.md` reference is validated against the
+  default source-tree inventory: **create the evidence file and `git add` it
+  before generating the plan**, or `add` refuses with
+  `error[E0007_ARTIFACT]` (the file is missing, or present but untracked).
+  If tracking the file stales the plan, `add` refuses and prints the exact
+  regeneration command — run it, then apply the regenerated plan. The
+  evidence doc is itself a new source-tree finding: the final
+  `check --mode no-new` reports `docs/design.md` as an unreceipted
+  `non_rust_file.documentation` finding. That is expected — receipt it (or
+  drop the evidence reference) in the same change.
 - the third command is a **targeted recheck** proving that one finding now
   reports `status: matched`. It is not a repository proof.
 - the final `check --mode no-new` is the CI-grade repository proof.
@@ -436,6 +446,9 @@ adoption](how-to/rollback-cargo-allow-adoption.md).
   findings whose `last_seen` location moved.
 - **evidence reference**: `doc:`, `test:`, `issue:`, … pointers checked for
   presence or reported as traceability without running external tools.
+  Local-file pointers (`doc:`, `spec:`, …) are checked against the default
+  source-tree inventory, so an `add --evidence doc:<path>` reference
+  requires the file to exist and be git-tracked when the plan is applied.
 - **occurrence headroom**: how many matching findings a receipt may still cover;
   prefer narrowing or source repair over silently widening.
 

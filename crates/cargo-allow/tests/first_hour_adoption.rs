@@ -138,6 +138,233 @@ fn inventory_steps(inventory: &str) -> Vec<InventoryStep> {
     steps
 }
 
+/// #4498: the documented receipt journey must complete as written once the
+/// evidence prerequisites are met — `doc:` evidence must exist and be
+/// git-tracked before `add --from-plan` (regenerating the stale plan with the
+/// printed command), and the evidence doc itself is a new finding the final
+/// `check --mode no-new` flags, exactly as the guide now states.
+#[test]
+fn receipt_journey_documented_steps_complete_with_evidence_prerequisites() {
+    let root = temp_root("receipt-journey");
+    write_source(
+        &root,
+        "pub fn first(v: Option<u8>) -> u8 { v.unwrap() }\npub fn second(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    );
+    fs::write(root.join("Cargo.toml"), "[workspace]\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write Cargo.toml: {err}")));
+    let git = |args: &[&str]| {
+        Command::new("git")
+            .args(args)
+            .current_dir(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+    };
+    git(&["init"]);
+    git(&["config", "user.email", "cargo-allow@example.invalid"]);
+    git(&["config", "user.name", "cargo-allow test"]);
+
+    // Adopt: `init` receipts the first panic finding; the second stays New.
+    run(
+        cargo_allow()
+            .current_dir(&root)
+            .args(["init", "--root", "."])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("init: {err}"))),
+        "init",
+    );
+    git(&["add", "-A"]);
+    git(&["commit", "-m", "adopt with one receipt"]);
+
+    let plan = root.join("target/cargo-allow/add-plan.json");
+
+    // Step 1: plan the second finding (documented `why --plan`).
+    run(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "why",
+                "--kind",
+                "panic",
+                "--path",
+                "src/lib.rs",
+                "--line",
+                "2",
+                "--plan",
+                &plan.to_string_lossy(),
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("why --plan: {err}"))),
+        "why --plan",
+    );
+
+    // Step 2: apply with doc: evidence before the file exists - the refusal
+    // is the documented evidence prerequisite (missing file).
+    let missing_evidence = run_fail(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "add",
+                "--from-plan",
+                &plan.to_string_lossy(),
+                "--update",
+                "--owner",
+                "core",
+                "--reason",
+                "bounded fixture exception",
+                "--evidence",
+                "doc:docs/design.md",
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("add (missing evidence): {err}"))),
+        "add (missing evidence)",
+    );
+    assert!(
+        combined(&missing_evidence).contains("local evidence file is missing"),
+        "the missing-evidence refusal must be named: {}",
+        combined(&missing_evidence)
+    );
+
+    // Step 3: create the file but leave it untracked - still refused
+    // (present but not in the default source-tree inventory).
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/design.md"), "# design\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence doc: {err}")));
+    let untracked_evidence = run_fail(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "add",
+                "--from-plan",
+                &plan.to_string_lossy(),
+                "--update",
+                "--owner",
+                "core",
+                "--reason",
+                "bounded fixture exception",
+                "--evidence",
+                "doc:docs/design.md",
+            ])
+            .output()
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("add (untracked evidence): {err}"))
+            }),
+        "add (untracked evidence)",
+    );
+    assert!(
+        combined(&untracked_evidence).contains("is not in the default source-tree inventory"),
+        "the untracked-evidence refusal must be named: {}",
+        combined(&untracked_evidence)
+    );
+
+    // Step 4: track the file - the plan is now stale and the refusal prints
+    // the exact regeneration command (documented stale-plan behavior).
+    git(&["add", "-A"]);
+    let stale = run_fail(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "add",
+                "--from-plan",
+                &plan.to_string_lossy(),
+                "--update",
+                "--owner",
+                "core",
+                "--reason",
+                "bounded fixture exception",
+                "--evidence",
+                "doc:docs/design.md",
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("add (stale plan): {err}"))),
+        "add (stale plan)",
+    );
+    let stale_text = combined(&stale);
+    assert!(
+        stale_text.contains("regenerate with"),
+        "the stale refusal must print the regeneration command: {stale_text}"
+    );
+
+    // Step 5: regenerate the plan per the documented recovery, then apply.
+    let retry_plan = root.join("target/cargo-allow/add-plan.retry-1.json");
+    run(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "why",
+                "--kind",
+                "panic",
+                "--path",
+                "src/lib.rs",
+                "--line",
+                "2",
+                "--plan",
+                &retry_plan.to_string_lossy(),
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("why --plan (regen): {err}"))),
+        "why --plan (regen)",
+    );
+    run(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "add",
+                "--from-plan",
+                &retry_plan.to_string_lossy(),
+                "--update",
+                "--owner",
+                "core",
+                "--reason",
+                "bounded fixture exception",
+                "--evidence",
+                "doc:docs/design.md",
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("add (applied): {err}"))),
+        "add (applied)",
+    );
+
+    // Step 6: the targeted recheck reports the finding as matched.
+    let recheck = combined(&run(
+        cargo_allow()
+            .current_dir(&root)
+            .args([
+                "why",
+                "--kind",
+                "panic",
+                "--path",
+                "src/lib.rs",
+                "--line",
+                "2",
+            ])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("why (recheck): {err}"))),
+        "why (recheck)",
+    ));
+    assert!(
+        recheck.contains("status: matched"),
+        "the receipted finding must recheck as matched: {recheck}"
+    );
+
+    // Step 7: the final no-new check flags the evidence doc itself as the
+    // new unreceipted finding, exactly as the guide now states.
+    let check = combined(&run_fail(
+        cargo_allow()
+            .current_dir(&root)
+            .args(["check", "--mode", "no-new", "--format", "markdown"])
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("check: {err}"))),
+        "check (flags the evidence doc)",
+    ));
+    assert!(
+        check.contains("docs/design.md"),
+        "the evidence doc must be flagged as a new unreceipted finding: {check}"
+    );
+
+    drop_root(root);
+}
+
 #[test]
 fn getting_started_documents_checked_step_inventory() {
     let guide = getting_started_doc();
