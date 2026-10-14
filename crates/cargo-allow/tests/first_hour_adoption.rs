@@ -223,6 +223,19 @@ fn receipt_journey_documented_steps_complete_with_evidence_prerequisites() {
         "the missing-evidence refusal must be named: {}",
         combined(&missing_evidence)
     );
+    // #4503: the Next line must name the evidence remedy, not the generic
+    // output-path writability hint.
+    assert!(
+        combined(&missing_evidence)
+            .contains("Next: create the referenced evidence file and track it in Git",),
+        "the refusal must type the evidence remedy: {}",
+        combined(&missing_evidence)
+    );
+    assert!(
+        !combined(&missing_evidence).contains("check the output path is writable"),
+        "the output-path hint must not misdirect evidence recovery: {}",
+        combined(&missing_evidence)
+    );
 
     // Step 3: create the file but leave it untracked - still refused
     // (present but not in the default source-tree inventory).
