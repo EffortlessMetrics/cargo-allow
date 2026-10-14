@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  UX: `diff` and `audit` now fail bad `--emit` values and artifact-emit
+  failures through the typed error path, matching `check` for the
+  identical mistake (#4505). A bad `--emit` value exits 2 with
+  `error[E0001_USAGE]` and the structured Next line (previously a bare
+  `cargo-allow diff: unsupported --emit format: ...` exit 1 with no code
+  and no Next), and a runtime artifact-emit failure exits with
+  `error[E0007_ARTIFACT]: artifact emit: ...` (previously a bare
+  untyped line). Downstream tooling can branch on the code instead of
+  rendered message text, per docs/error-codes.md.
