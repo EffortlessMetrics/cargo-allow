@@ -46,6 +46,36 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
         human_text.contains("Run: ") && human_text.contains("Rollback:"),
         "human adoption must carry the copyable Run command and the rollback statement",
     )?;
+    // #4530 pins frame membership, not just ordering: `Subject:` and
+    // `Coverage:` are summary-frame lines (before the plan body), while
+    // `Recommended next step:`, `Run:`, and `Rollback:` are plan-body lines
+    // (after `Repository state:`).
+    let subject_position = human_text
+        .find("Subject:")
+        .ok_or("human adoption must carry the Subject frame line")?;
+    let coverage_position = human_text
+        .find("Coverage:")
+        .ok_or("human adoption must carry the Coverage frame line")?;
+    let next_step_position = human_text
+        .find("Recommended next step:")
+        .ok_or("human adoption must carry exactly the plan's recommended step")?;
+    let run_position = human_text
+        .find("Run: ")
+        .ok_or("human adoption must carry a copyable Run command")?;
+    let rollback_position = human_text
+        .find("Rollback:")
+        .ok_or("human adoption must carry a rollback statement")?;
+    require(
+        subject_position < repository_state_position
+            && coverage_position < repository_state_position,
+        "Subject and Coverage are frame lines and must precede the plan body",
+    )?;
+    require(
+        repository_state_position < next_step_position
+            && next_step_position < run_position
+            && run_position < rollback_position,
+        "Recommended next step, Run, and Rollback are plan-body lines after Repository state",
+    )?;
 
     let human_output_name = format!("adoption-human-{}.txt", std::process::id());
     let human_output = run_adopt(&root, &["--output", human_output_name.as_str()])?;
