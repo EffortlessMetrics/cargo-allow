@@ -51,6 +51,46 @@ fn audit_artifact_emit_failure_fails_with_typed_artifact_error() {
 }
 
 #[test]
+fn audit_multi_format_emit_writes_every_requested_format() {
+    // #4528: `--emit markdown,json` must emit BOTH formats like check, not
+    // silently keep only the first comma token.
+    let root = temp_root("audit-multi-format-emit");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "markdown,json",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    assert!(
+        output.status.success(),
+        "multi-format audit must succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let manifest_text = fs::read_to_string(root.join("artifacts/audit-artifact_set_manifest.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read manifest: {err}")));
+    assert!(
+        manifest_text.contains("\"markdown\"") && manifest_text.contains("\"json\""),
+        "both requested formats must be recorded in the manifest: {manifest_text}"
+    );
+    assert!(root.join("artifacts/audit-markdown.md").is_file());
+    assert!(root.join("artifacts/audit-json.json").is_file());
+    remove_temp_root(root);
+}
+
+#[test]
 fn audit_bad_emit_value_fails_with_typed_usage_error() {
     // #4505: the identical --emit mistake on `check` exits 2 with
     // error[E0001_USAGE] and a structured Next line; audit must match instead
