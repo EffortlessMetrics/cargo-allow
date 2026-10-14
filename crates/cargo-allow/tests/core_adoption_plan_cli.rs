@@ -26,6 +26,26 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
         human_text.contains("Writes: nothing"),
         "human write posture",
     )?;
+    // #4500 pins the documented marker order (docs/getting-started.md): the
+    // summary frame — `Outcome:` first, then `Recommended next step:`,
+    // `Run:`, `Writes:`, `Rollback:` — leads, and `Repository state:` appears
+    // inside the plan body that follows. An agent keying the first line as
+    // `Repository state:` (the pre-#4500 wording) would misclassify every
+    // healthy adopt run.
+    let outcome_position = human_text
+        .find("Outcome:")
+        .ok_or("human adoption must open with the Outcome frame")?;
+    let repository_state_position = human_text
+        .find("Repository state:")
+        .ok_or("human adoption must carry the repository disposition")?;
+    require(
+        outcome_position < repository_state_position,
+        "the Outcome frame must lead and Repository state must appear in the plan body",
+    )?;
+    require(
+        human_text.contains("Run: ") && human_text.contains("Rollback:"),
+        "human adoption must carry the copyable Run command and the rollback statement",
+    )?;
 
     let human_output_name = format!("adoption-human-{}.txt", std::process::id());
     let human_output = run_adopt(&root, &["--output", human_output_name.as_str()])?;

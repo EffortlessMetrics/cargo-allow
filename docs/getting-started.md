@@ -68,9 +68,11 @@ cargo run -p cargo-allow -- adopt
 cargo run -p cargo-allow -- adopt --format json --output target/cargo-allow/adoption-plan.json
 ```
 
-Human output leads with `Repository state:`, one `Recommended next step:`, a
-copyable `Run:` command, an explicit `Writes:` line, and a rollback statement.
-The JSON artifact is `cargo-allow.core-adoption-plan.v1`; it is derived from
+Human output opens with the summary frame — `Outcome:`, one
+`Recommended next step:`, a copyable `Run:` command, an explicit `Writes:`
+line, and a rollback statement — followed by the plan body, which carries
+`Repository state:` (the disposition of the scanned tree) and its subject
+and coverage details. The JSON artifact is `cargo-allow.core-adoption-plan.v1`; it is derived from
 the same plan and is portable across checkout paths. Published `0.1.11` does
 not expose `adopt` yet, so keep this command on the Source-candidate path.
 
