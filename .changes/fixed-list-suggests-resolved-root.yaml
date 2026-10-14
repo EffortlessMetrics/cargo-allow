@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `list` now suggests the resolved source-tree root in its canonical
+  `Next:` action and JSON summary (#4510). With no explicit `--root` the
+  suggestion previously omitted the flag entirely, so executing the
+  suggested `cargo-allow explain <id>` from any other working directory
+  failed against the wrong ledger — the exact cross-checkout failure
+  #4393 fixed for check/worklist/why/explain/add. The root renders in the
+  same paste-safe forward-slash form as the other scan-surface commands.

@@ -91,11 +91,19 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         .filter(|row| list_filter::list_row_matches(row, &filters))
         .cloned()
         .collect();
+    let suggestion_root = std::path::PathBuf::from(allow_core::strip_win32_verbatim_prefix(
+        &root.display().to_string(),
+    ));
     let summary = build_list_summary(
         &filtered_rows,
         &filters,
         context.inventory,
-        args.root.root.as_deref(),
+        // Suggest the resolved root, not the raw flag (#4510): with no
+        // explicit --root the raw flag is None and the suggestion would
+        // omit --root entirely, breaking the documented
+        // execute-from-any-working-directory promise. Normalize the Win32
+        // verbatim prefix so the suggested argv stays paste-safe.
+        Some(&suggestion_root),
         args.config.as_deref(),
         args.include_untracked,
     )?;
