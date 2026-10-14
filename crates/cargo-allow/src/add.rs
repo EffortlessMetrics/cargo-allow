@@ -522,8 +522,8 @@ fn candidate_stderr_note(summary_output: Option<&Path>, is_terminal: bool) -> Op
 }
 
 /// Print the candidate entry to stdout, preceded by the terminal-only note
-/// when the summary block will follow on stderr (#4509). Split from
-/// [`cmd_add`](crate::cmd_add) so the note branch is executable — and
+/// when the summary block will follow on stderr (#4509). Split from the
+/// command entry point so the note branch is executable — and
 /// coverage-measured — without a real terminal.
 fn print_candidate_entry_with_note(
     rendered: &str,
