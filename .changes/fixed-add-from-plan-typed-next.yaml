@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `add --from-plan` rejections now type their recovery as the
+  structured `Next:` action instead of falling through to the generic
+  "review the command syntax" Usage advice that contradicted the remedy
+  already printed in the message (#4501). Stale-plan rejections carry the
+  plan-regeneration step (matching the printed `cargo-allow why --plan`
+  command), malformed-plan input errors name regeneration or repair, and
+  non-New posture rejections point at `list`/`explain` per the #4364
+  carve-out. Exit codes, error codes, and messages are unchanged.

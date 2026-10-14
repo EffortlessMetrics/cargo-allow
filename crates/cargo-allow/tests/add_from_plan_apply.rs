@@ -643,6 +643,19 @@ fn add_from_plan_moved_line_recovery_hint_runs_verbatim() -> Result<(), Box<dyn 
         "the refusal must be source-binding drift: {rejection_text}"
     );
     assert!(rejection_text.contains("(policy unchanged)"));
+    // #4501: the structured Next line must carry the plan-recovery remedy —
+    // never the generic Usage fallback that sends a correct command into a
+    // retry loop.
+    assert!(
+        rejection_text.contains(
+            "Next: regenerate the plan with the printed `cargo-allow why --plan` command",
+        ),
+        "the stale rejection must type its regeneration next step: {rejection_text}"
+    );
+    assert!(
+        !rejection_text.contains("review the command syntax with `cargo-allow <command> --help`"),
+        "the generic Usage fallback must not override the typed regeneration step: {rejection_text}"
+    );
     assert_eq!(fs::read(&policy_path)?, policy_before);
     assert_eq!(fs::read(&plan_path)?, old_plan_before);
 
