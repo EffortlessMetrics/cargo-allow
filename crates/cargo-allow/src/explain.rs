@@ -264,10 +264,15 @@ pub(crate) fn missing_allow_entry_error(id: &str) -> CargoAllowError {
 /// If `raw` is purely numeric, expands to `allow-{raw:04}` (zero-padded to 4
 /// digits, matching the ledger's standard id format). Non-numeric ids pass
 /// through unchanged. So "42" → "allow-0042", "allow-0272" → "allow-0272".
+/// Digits past `usize::MAX` cannot name a real ledger slot, but the unknown-id
+/// error must still echo the id the user typed, not silently rewrite it to
+/// `allow-0000` (#4497).
 fn normalize_allow_id_shorthand(raw: &str) -> String {
     if raw.chars().all(|c| c.is_ascii_digit()) && !raw.is_empty() {
-        let n: usize = raw.parse().unwrap_or(0);
-        format!("allow-{n:04}")
+        match raw.parse::<usize>() {
+            Ok(n) => format!("allow-{n:04}"),
+            Err(_) => format!("allow-{raw}"),
+        }
     } else {
         raw.to_string()
     }
