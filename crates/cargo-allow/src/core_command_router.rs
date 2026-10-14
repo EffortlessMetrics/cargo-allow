@@ -800,6 +800,22 @@ fn resolve_summary_output_target(
             ));
         }
     }
+    // The conventional ledger location is an implicit collision even when no
+    // explicit `--config` names it: commands discover that file on their own,
+    // and `init` hands the operator exactly the untracked window where the
+    // tracked-file check below cannot see it (#4507). The sidecar write is an
+    // unconditional replace, so a summary path that lands on the live ledger
+    // would destroy it while the summary claims "Writes: nothing".
+    let conventional_ledger = resolve_under_root(root, Path::new("policy/allow.toml"));
+    let conventional_target =
+        effortless_repo_edit::resolve_mutation_target(&conventional_ledger, root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    if summary_target.target_fingerprint() == conventional_target.target_fingerprint() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--command-summary-output may not overwrite the policy ledger at its default location",
+        ));
+    }
     reject_tracked_summary_output(root, summary_target.normalized_absolute())?;
     Ok(summary_target)
 }

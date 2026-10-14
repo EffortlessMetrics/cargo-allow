@@ -232,6 +232,50 @@ fn summary_sidecar_rejects_canonical_alias_collision_before_detail_write() -> Re
     fs::remove_dir_all(root).map_err(|error| error.to_string())
 }
 
+#[test]
+fn summary_sidecar_rejects_untracked_default_ledger_collision() -> Result<(), String> {
+    // #4507: the summary write is an unconditional replace, and the tracked-file
+    // guard cannot see a ledger that `init` just created but the operator has
+    // not committed yet. The conventional ledger location is therefore an
+    // implicit collision even with no explicit --config conflict registered.
+    let root = temp_root("ledger-sidecar").map_err(|error| error.to_string())?;
+    let ledger = root.join("policy").join("allow.toml");
+    fs::create_dir_all(ledger.parent().expect("policy parent"))
+        .map_err(|error| error.to_string())?;
+    fs::write(&ledger, "sentinel ledger\n").map_err(|error| error.to_string())?;
+    let config = SummaryOutputConfig::new(ledger.clone(), Vec::new());
+
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&root.join("report.json")),
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&config),
+    )
+    .err()
+    .ok_or_else(|| "untracked default-ledger collision should fail".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::Usage,
+        format!(
+            "ledger collision used the wrong error kind: {}",
+            error.code()
+        ),
+    )?;
+    require(
+        error.message().contains("default location"),
+        format!("unexpected ledger collision message: {}", error.message()),
+    )?;
+    require(
+        fs::read_to_string(&ledger).map_err(|error| error.to_string())? == "sentinel ledger\n",
+        "ledger collision destroyed the untracked policy ledger",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
 #[cfg(unix)]
 #[test]
 fn summary_sidecar_rejects_parent_symlink_escape_before_emit() -> Result<(), String> {
