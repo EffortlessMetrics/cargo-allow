@@ -32,7 +32,7 @@ pub(crate) fn parity_migrate_args(root: PathBuf, from: PathBuf, out: PathBuf) ->
         root: crate::RootArgs { root: Some(root) },
         from: Some(from),
         repo_policy: None,
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -59,10 +59,14 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     // alias spellings of the same destination must converge on one lock key.
     let cwd = current_dir()?;
     let repository_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let output_absolute = if args.out.is_absolute() {
-        args.out.clone()
-    } else {
-        cwd.join(&args.out)
+    let output_absolute = match &args.out {
+        // The default ledger location belongs to the migrated tree, not to
+        // the caller's working directory (#4508): `migrate --root <other>`
+        // run from inside a different checkout must not write through the
+        // default into the caller's own live ledger.
+        None => repository_root.join("policy/allow.toml"),
+        Some(out) if out.is_absolute() => out.clone(),
+        Some(out) => cwd.join(out),
     };
     crate::command_support::reject_legacy_summary_output_collision(
         &repository_root,
@@ -212,7 +216,7 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             render_migrate_summary_styled(
                 &cfg,
                 &migration.context,
-                &args.out,
+                &output_absolute,
                 args.force || args.update,
                 style,
             )
@@ -220,7 +224,7 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         HumanJsonFormat::Json => render_migrate_summary_json(
             &cfg,
             &migration.context,
-            &args.out,
+            &output_absolute,
             args.force || args.update,
         ),
     };

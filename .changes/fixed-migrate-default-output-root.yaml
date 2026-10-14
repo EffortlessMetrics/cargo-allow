@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `migrate --root <other-repo>` without an explicit `--output` now
+  writes the default `policy/allow.toml` under the migrated root instead
+  of the calling working directory (#4508). The old default resolved
+  against the caller's working directory, so migrating a ledger elsewhere
+  from inside a different checkout could silently replace that checkout's
+  own live ledger through the external-output `--force` path. Explicit
+  `--output` paths keep working-directory resolution, and the migration
+  summary names the effective absolute output path.
