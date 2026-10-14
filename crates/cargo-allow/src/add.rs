@@ -46,7 +46,8 @@ use effortless_repo_edit::{
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
-use std::path::PathBuf;
+use std::io::IsTerminal;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn parity_add_args(root: PathBuf, config: PathBuf) -> AddArgs {
     AddArgs {
@@ -459,7 +460,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         .into_result()
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     } else {
-        println!("{rendered}");
+        // When printing the full candidate entry to stdout, warn interactive
+        // users that the summary is on stderr so they don't miss it — the
+        // same terminal note `propose` prints (#3191, #4509).
+        print_candidate_entry_with_note(
+            &rendered,
+            args.summary_output.as_deref(),
+            std::io::stdout().is_terminal(),
+        );
         eprintln!(
             "Nothing was persisted. Rerun with --update to write this entry into the live policy."
         );
@@ -500,6 +508,32 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+/// The terminal-only note printed when the candidate entry goes to stdout and
+/// the summary block follows on stderr, so interactive users do not miss it
+/// (#4509). Captured (non-terminal) output and sidecar writes skip the note.
+fn candidate_stderr_note(summary_output: Option<&Path>, is_terminal: bool) -> Option<&'static str> {
+    if is_terminal && summary_output.is_none() {
+        Some("note: candidate policy entry written to stdout; summary follows below on stderr")
+    } else {
+        None
+    }
+}
+
+/// Print the candidate entry to stdout, preceded by the terminal-only note
+/// when the summary block will follow on stderr (#4509). Split from the
+/// command entry point so the note branch is executable — and
+/// coverage-measured — without a real terminal.
+fn print_candidate_entry_with_note(
+    rendered: &str,
+    summary_output: Option<&Path>,
+    is_terminal: bool,
+) {
+    if let Some(note) = candidate_stderr_note(summary_output, is_terminal) {
+        eprintln!("{note}");
+    }
+    println!("{rendered}");
 }
 
 fn write_target_after_containment(

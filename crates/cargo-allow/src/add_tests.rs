@@ -9,6 +9,28 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
+fn candidate_stderr_note_skips_capture_and_sidecar_writes() {
+    // #4509: the note is terminal-only — captured output (tests, wrappers)
+    // and sidecar writes stay silent, interactive candidates get it.
+    let note = candidate_stderr_note(None, true)
+        .expect("interactive candidate without sidecar must get the note");
+    assert!(note.contains("summary follows below on stderr"));
+    assert_eq!(candidate_stderr_note(None, false), None);
+    assert_eq!(
+        candidate_stderr_note(Some(Path::new("summary.json")), true),
+        None
+    );
+    assert_eq!(
+        candidate_stderr_note(Some(Path::new("summary.json")), false),
+        None
+    );
+    // Executing the print path keeps the terminal-only branch
+    // coverage-measured; the note text itself is pinned above.
+    print_candidate_entry_with_note("candidate entry", None, true);
+    print_candidate_entry_with_note("candidate entry", Some(Path::new("s.json")), false);
+}
+
+#[test]
 fn clap_parses_add_from_finding() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
