@@ -700,3 +700,20 @@ required_stronger_owner = "#2501 actual selected Complete freeze and workflow re
 may_satisfy_release_gate = false
 last_reconciled_commit = "486b0b19cae43ce3b5e3919fff3a09772876fa15"
 claim_boundary = "The actual qualifier and Rust composer are exercised through intercepted HTTP, not a test-only eligibility model. No live credential, provider mutation, release authority, tag or publication is used. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real registry and rehearsal holds remain explicit."
+
+[[surfaces]]
+id = "release-final-tag-driver"
+owner_issue = 3930
+semantic_authority = "bounded final-tag production driver composition"
+path = "crates/cargo-allow/tests/release_final_tag_driver.rs"
+subject = "scripts/release-final-tag.py and scripts/test-release-final-tag.py"
+producer = "compiled cargo-allow producer/consumer with intercepted standard-library provider reads"
+consumer = "#3930 final-tag driver composition and retained replay inputs"
+claimed_acceptance_row = "actual typed-compose/request-shaping/readback driver composition and custody boundaries"
+assertion_mechanism = "native binary preparation, intercepted provider reads, exact typed member mapping, serialized replay and targeted positive/negative controls"
+evidence_class = "ProductionBehaviorValidation"
+disposition = "bounded production behavior with synthetic provider responses"
+required_stronger_owner = "#3930 actual selected final-tag production execution; #3925 actual store custody; #3927 authenticated readback; #3760 release authorization remains separate"
+may_satisfy_release_gate = false
+last_reconciled_commit = "ed093a27"
+claim_boundary = "The actual driver composition is exercised through intercepted HTTP and local fixture stores, not a live release path. No live credential, provider mutation, release authority, tag mint or publication occurs. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real release execution remains with #3760."

@@ -4,13 +4,13 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-11345"]
+allow_ids = ["allow-11356"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:2b8f8fac4d4a29ac8bcac15b383b87d9ddf36647aaf3e89f6b28b54458450cca"
+after_fingerprint = "sha256:v1:09d1b12d911d2ac95e61930b4ab7969ab15062a4a8700c18069e2f38c4c90ccc"
 reason = "Retained structured review evidence for PR #4459 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
 
 [[records]]
-allow_ids = ["allow-11353"]
+allow_ids = ["allow-11355"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:c86a6355e3f2e29203120ebd42896721a44095f57de582c3be9a8a8825edd822"
+after_fingerprint = "sha256:v1:c06b4801ab3cf2bd79207114815567ed38d57ad4c5f417fb8419bc8c1d85e49b"
 reason = "Authored revision note for the exact retained PR #4459 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."

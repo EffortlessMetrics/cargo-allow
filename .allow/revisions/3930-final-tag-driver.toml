@@ -1,0 +1,30 @@
+# #3930: exact final-tag driver source-inventory receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11345"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:757489e9a1a49e02192f4087c11f53ca23c3b33c802fe340292da99e6c69dc2b"
+reason = "Intentional executable final-tag I/O consumer under #3930/#3925. It composes the existing typed bridge and authenticated store, retains intent and Started before one nonforced request, and cannot derive release authority from local JSON or synthetic validation."
+
+[[records]]
+allow_ids = ["allow-11353"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dc551aba931107ce1e5440f0b12181db44c699155a806f6e762ec1ab1683a51e"
+reason = "Intercepted production consumer tests for the final-tag driver. Full lifecycle controls require the actual compiled Rust bridge and existing typed fixture; I/O-only validation is a separate narrower scope and no test authorizes a live tag, mint or publication."
+
+[[records]]
+allow_ids = ["allow-11347"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f4e9749bd9c30cda647d8a69884c12a28dc9e4008d06ff67fb8833211b19756a"
+reason = "Authored revision note for these exact #3930 source-inventory entries and this note, under the acknowledged reversible implementation scope. It does not grant merge, CI bypass, release readiness or irreversible-operation authority."
+
+# PR #4448: exact retained-review path admitted under the acknowledged repair scope.
+
+[[records]]
+allow_ids = ["allow-11354"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:314ba2fc786f5737418e79f02cff57d38378580d5231c8ea06cd9daea2c85870"
+reason = "Retained structured review evidence for PR #4448 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
