@@ -46,6 +46,7 @@ use effortless_repo_edit::{
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 
 pub(crate) fn parity_add_args(root: PathBuf, config: PathBuf) -> AddArgs {
@@ -462,14 +463,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         // When printing the full candidate entry to stdout, warn interactive
         // users that the summary is on stderr so they don't miss it — the
         // same terminal note `propose` prints (#3191, #4509).
-        use std::io::IsTerminal;
-        if let Some(note) = candidate_stderr_note(
+        print_candidate_entry_with_note(
+            &rendered,
             args.summary_output.as_deref(),
             std::io::stdout().is_terminal(),
-        ) {
-            eprintln!("{note}");
-        }
-        println!("{rendered}");
+        );
         eprintln!(
             "Nothing was persisted. Rerun with --update to write this entry into the live policy."
         );
@@ -521,6 +519,21 @@ fn candidate_stderr_note(summary_output: Option<&Path>, is_terminal: bool) -> Op
     } else {
         None
     }
+}
+
+/// Print the candidate entry to stdout, preceded by the terminal-only note
+/// when the summary block will follow on stderr (#4509). Split from
+/// [`cmd_add`](crate::cmd_add) so the note branch is executable — and
+/// coverage-measured — without a real terminal.
+fn print_candidate_entry_with_note(
+    rendered: &str,
+    summary_output: Option<&Path>,
+    is_terminal: bool,
+) {
+    if let Some(note) = candidate_stderr_note(summary_output, is_terminal) {
+        eprintln!("{note}");
+    }
+    println!("{rendered}");
 }
 
 fn write_target_after_containment(

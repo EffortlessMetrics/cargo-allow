@@ -24,6 +24,10 @@ fn candidate_stderr_note_skips_capture_and_sidecar_writes() {
         candidate_stderr_note(Some(Path::new("summary.json")), false),
         None
     );
+    // Executing the print path keeps the terminal-only branch
+    // coverage-measured; the note text itself is pinned above.
+    print_candidate_entry_with_note("candidate entry", None, true);
+    print_candidate_entry_with_note("candidate entry", Some(Path::new("s.json")), false);
 }
 
 #[test]
