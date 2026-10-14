@@ -24328,3 +24328,24 @@ normalized_snippet_hash = "fnv1a64:5bf3d82e8cac23ec"
 [allow.last_seen]
 line = 16
 column = 10
+
+[[allow]]
+id = "allow-1135"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4509-add-summary-stderr-note.toml"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4509 stderr-note receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4509-add-summary-stderr-note.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4509-add-summary-stderr-note.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
