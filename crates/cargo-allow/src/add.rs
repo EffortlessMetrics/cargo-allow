@@ -389,8 +389,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if args.dry_run {
         // --dry-run: compute and validate the entry, print it, but skip the
         // write/replace (#3189). The candidate goes to stdout; --summary-output
-        // stays reserved for the add summary delivered below (#4532).
-        println!("{rendered}");
+        // stays reserved for the add summary delivered below (#4532). The
+        // placement (stdout candidate, stderr summary) is the one the
+        // terminal-only note explains, so dry-run gets it too (#4533).
+        print_candidate_entry_with_note(
+            &rendered,
+            args.summary_output.as_deref(),
+            std::io::stdout().is_terminal(),
+        );
         eprintln!("dry-run: no files written (--dry-run)");
     } else if args.update {
         let policy_target = live_policy_target.as_deref().ok_or_else(|| {
