@@ -1771,6 +1771,48 @@ fn diff_multi_format_emit_writes_every_requested_format() {
 }
 
 #[test]
+fn diff_render_failed_emit_fails_with_typed_artifact_error() {
+    // #4526: a parser-accepted format whose render fails (`human` has no
+    // report renderer) must fail the invocation like check, not exit 0 with
+    // a RenderFailed manifest.
+    let root = temp_root("diff-render-failed-typed");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(None),
+    );
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "diff",
+            "--base",
+            "HEAD",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "human",
+            "--format",
+            "json",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a RenderFailed emit must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
+        "the typed RenderFailure error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("human_summary is not a report renderer"),
+        "the RenderFailure detail must name the format: {stderr}"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_bad_emit_value_fails_with_typed_usage_error() {
     // #4505: the identical --emit mistake on `check` exits 2 with
     // error[E0001_USAGE] and a structured Next line; diff must match instead

@@ -465,7 +465,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             report_context: &receipt_context,
             receipt_context: Some(&receipt_context),
         };
-        artifact_emit::emit_artifact_set(
+        let artifacts = artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "diff",
@@ -489,6 +489,34 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 format!("artifact emit: {error}"),
             )
         })?;
+        // Validate the emitted set like check does (#4526): a parser-accepted
+        // format whose render fails (for example `--emit human`) must fail
+        // the invocation, not exit 0 with a RenderFailed manifest.
+        let validation = artifacts.validate();
+        if !matches!(
+            validation.result,
+            allow_report::EvaluationArtifactSetResultV2::Complete
+                | allow_report::EvaluationArtifactSetResultV2::SemanticNonGreen
+        ) {
+            let details = validation
+                .gaps
+                .into_iter()
+                .chain(
+                    artifacts
+                        .artifacts
+                        .iter()
+                        .flat_map(|artifact| artifact.render_errors.iter().cloned()),
+                )
+                .collect::<Vec<_>>();
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!(
+                    "artifact emit {:?}: {}",
+                    validation.result,
+                    details.join("; ")
+                ),
+            ));
+        }
     }
     if failed {
         process::exit(1);

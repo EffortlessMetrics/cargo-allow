@@ -91,6 +91,47 @@ fn audit_multi_format_emit_writes_every_requested_format() {
 }
 
 #[test]
+fn audit_render_failed_emit_fails_with_typed_artifact_error() {
+    // #4526: a parser-accepted format whose render fails (`human` has no
+    // report renderer) must fail the invocation like check, not exit 0 with
+    // a RenderFailed manifest.
+    let root = temp_root("audit-render-failed-typed");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "human",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a RenderFailed emit must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
+        "the typed RenderFailure error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("human_summary is not a report renderer"),
+        "the RenderFailure detail must name the format: {stderr}"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
 fn audit_bad_emit_value_fails_with_typed_usage_error() {
     // #4505: the identical --emit mistake on `check` exits 2 with
     // error[E0001_USAGE] and a structured Next line; audit must match instead
