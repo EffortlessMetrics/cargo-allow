@@ -458,6 +458,81 @@ fn triage_summary_matrix_preserves_read_only_and_judgment_boundaries() -> Result
 }
 
 #[test]
+fn add_summary_emits_the_documented_current_identity_placeholder() -> Result<(), String> {
+    // #4506 pins the documented identity contract (docs/schemas/README.md):
+    // successful `add` summaries emit the unresolved
+    // `local-repository:current` placeholder — enumerated alongside
+    // `init`/`diff` and `list`'s `local-repository:git_tracked` — until the
+    // content-addressed cross-command format is designed (#4393). If this
+    // assertion starts failing because the identity became content-addressed,
+    // update the README enumeration in the same change.
+    let root = temp_root("summary-add-identity-placeholder")?;
+    write_source(
+        &root,
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )?;
+    fs::create_dir_all(root.join("policy"))
+        .map_err(|error| format!("create policy dir: {error}"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+"#,
+    )
+    .map_err(|error| format!("write policy fixture: {error}"))?;
+
+    let sidecar = root.join("add-summary.json");
+    let output = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &sidecar.to_string_lossy(),
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "identity contract fixture",
+            "--update",
+        ],
+    )?;
+    // `add` prints the candidate entry on stdout; its summary block goes to
+    // stderr (#4509), so completion is asserted via the sidecar below.
+    let _ = output;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read add summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse add summary: {error}"))?;
+    require(
+        field(&summary, &["reason", "code"]) == Some(&Value::from("add.live_entry")),
+        format!("the add run must apply the entry: {summary:?}"),
+    )?;
+    require(
+        field(&summary, &["subject", "repository_identity"])
+            == Some(&Value::from("local-repository:current")),
+        format!("the add summary must emit the documented placeholder identity: {summary:?}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn list_summary_suggests_the_resolved_root_without_an_explicit_root_flag() -> Result<(), String> {
     // #4510: the documented promise (#4393) is that a suggested argv can
     // execute from any working directory. With no explicit --root, the

@@ -117,11 +117,15 @@ Consumers should rely on these properties:
   currently per command, not per repository, and is **design-pending**
   (#4393): most commands derive the digest from their own rendered detail
   (equal for re-runs of the same command on the same content, from any
-  checkout location), while `init` and `diff` — and the hard-error sidecars
-  below, which hold no rendered detail to digest — still emit the unresolved
-  placeholder `local-repository:current`. Wrappers must not key one identity
-  across different commands, or across `init`/`diff` and the error path, until
-  one content-addressed cross-command format is designed and emitted uniformly.
+  checkout location). The documented non-digest identities are: `init` and
+  `diff` — and the hard-error sidecars below, which hold no rendered detail
+  to digest — emit the unresolved placeholder `local-repository:current`;
+  successful `add` and `propose` summaries also emit
+  `local-repository:current`; and `list` emits
+  `local-repository:git_tracked`. Wrappers must not key one identity
+  across different commands, or across `init`/`diff`, `add`/`propose`,
+  `list`, and the error path, until one content-addressed cross-command
+  format is designed and emitted uniformly (#4393).
 - `operation_effects` states the operation's own read/write posture, separately
   from any paths a suggested next action may write. The inspection commands
   (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
