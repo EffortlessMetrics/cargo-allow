@@ -32,7 +32,6 @@ pub(super) use add_types::AddContext;
 use crate::command_support::select_mutation_policy;
 use crate::{
     HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir, emit_stderr_text,
-    emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -389,8 +388,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         });
     if args.dry_run {
         // --dry-run: compute and validate the entry, print it, but skip the
-        // write/replace (#3189).
-        emit_text(args.summary_output.as_deref(), &rendered)?;
+        // write/replace (#3189). The candidate goes to stdout; --summary-output
+        // stays reserved for the add summary delivered below (#4532).
+        println!("{rendered}");
         eprintln!("dry-run: no files written (--dry-run)");
     } else if args.update {
         let policy_target = live_policy_target.as_deref().ok_or_else(|| {
@@ -503,9 +503,8 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             crate::core_command_summary::render_core_command_summary_human(&core_summary)
         );
     }
-    if args.dry_run {
-        return Ok(());
-    }
+    // Dry-run reaches this too: --summary-output carries the add summary in
+    // every mode (#4532) — the candidate itself goes only to stdout.
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
 }
