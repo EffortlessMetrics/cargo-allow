@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: the required-field error for a missing lifecycle review now names
+  the fix, matching the #4478 sibling pattern for owner, reason,
+  classification, and evidence. `X missing expires or review_after`
+  becomes `X missing expires or review_after: `expires` and
+  `review_after` are absent but policy requires a lifecycle review; set
+  `expires = "YYYY-MM-DD"` or `review_after = "YYYY-MM-DD"` on this
+  entry`. Exit codes and error codes are unchanged.
