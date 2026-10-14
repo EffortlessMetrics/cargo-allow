@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  UX: interactive `add` candidate runs now print the same terminal note
+  `propose` prints — "candidate policy entry written to stdout; summary
+  follows below on stderr" — so the summary block on stderr is not
+  missed (#4509). docs/schemas/README.md's summary contract now carves
+  out the add/propose placement explicitly: their stdout carries the
+  candidate policy artifact first and the summary block renders on
+  stderr after it; read the sidecar or stderr for those two commands. A
+  placement pin test asserts stdout carries the candidate entry without
+  the Outcome block while stderr carries it.

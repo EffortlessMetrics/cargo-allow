@@ -97,7 +97,11 @@ posture, next proof boundary, and what remains unproven.
 The same projection is what the human output renders as its opening
 `Outcome` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` / `Then` /
 `Not proven` block, so automation never has to parse human prose to decide
-whether a command passed or what to run next. The block's first line is
+whether a command passed or what to run next. The documented exception is
+`add` and `propose`: their stdout carries the candidate policy artifact
+first, and the summary block renders on **stderr** after it (each prints a
+terminal-only note so interactive users do not miss it); read the sidecar or
+stderr for those two commands. The block's first line is
 labelled `Outcome` — not `Result` — so that a report tail which prints the
 enforcement gate verdict (for example `Result: passed (enforcing)`) can never
 be mistaken for a second, contradictory statement of the summary's `result_class`
