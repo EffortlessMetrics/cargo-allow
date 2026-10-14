@@ -61,6 +61,16 @@ fn audit_multi_format_emit_writes_every_requested_format() {
 ",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    // A selected policy is required so the artifact set's
+    // resolved_config_identity exists; without it the set fails closed as
+    // InstrumentFailure under the #4526 validation gate.
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     let output = cargo_allow_command()
         .current_dir(&root)
         .args([
@@ -87,6 +97,47 @@ fn audit_multi_format_emit_writes_every_requested_format() {
     );
     assert!(root.join("artifacts/audit-markdown.md").is_file());
     assert!(root.join("artifacts/audit-json.json").is_file());
+    remove_temp_root(root);
+}
+
+#[test]
+fn audit_render_failed_emit_fails_with_typed_artifact_error() {
+    // #4526: a parser-accepted format whose render fails (`human` has no
+    // report renderer) must fail the invocation like check, not exit 0 with
+    // a RenderFailed manifest.
+    let root = temp_root("audit-render-failed-typed");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "human",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a RenderFailed emit must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
+        "the typed RenderFailure error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("human_summary is not a report renderer"),
+        "the RenderFailure detail must name the format: {stderr}"
+    );
     remove_temp_root(root);
 }
 

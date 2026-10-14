@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `diff` and `audit` now validate the emitted artifact set like
+  `check`, so a parser-accepted format whose render fails (for example
+  `--emit human`, which has no report renderer) fails the invocation
+  with `error[E0007_ARTIFACT]: artifact emit RenderFailure: ...` instead
+  of exiting 0 with a RenderFailed manifest and none of the requested
+  artifacts (#4526). The branch-on-the-code contract now gives the same
+  outcome for the same input on every artifact-emitting command.
