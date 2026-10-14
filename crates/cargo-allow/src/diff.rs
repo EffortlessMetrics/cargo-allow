@@ -452,13 +452,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
-            Ok(formats) => formats,
-            Err(error) => {
-                eprintln!("cargo-allow diff: {error}");
-                process::exit(1);
-            }
-        };
+        // The identical mistake on `check` exits 2 with a typed Usage error
+        // (#4505): route bad --emit values through the same typed path.
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         let emit_ctx = artifact_emit::ArtifactEmitContext {
             command: "diff",
             findings: &findings_for_report,
@@ -467,7 +465,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             report_context: &receipt_context,
             receipt_context: Some(&receipt_context),
         };
-        if let Err(error) = artifact_emit::emit_artifact_set(
+        artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "diff",
@@ -484,10 +482,13 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 source_subject: &format!("diff:{}", args.base.as_deref().unwrap_or("HEAD")),
             },
             &emit_ctx,
-        ) {
-            eprintln!("cargo-allow diff: artifact emit: {error}");
-            process::exit(1);
-        }
+        )
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!("artifact emit: {error}"),
+            )
+        })?;
     }
     if failed {
         process::exit(1);

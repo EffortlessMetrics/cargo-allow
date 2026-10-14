@@ -92,13 +92,11 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     })?;
 
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
-            Ok(formats) => formats,
-            Err(error) => {
-                eprintln!("cargo-allow audit: {error}");
-                std::process::exit(1);
-            }
-        };
+        // The identical mistake on `check` exits 2 with a typed Usage error
+        // (#4505): route bad --emit values through the same typed path.
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         let source_ctx = SourceTreeReportContext::new(&root, inventory_facts);
         let mut artifact_context =
             source_ctx.report(Some(policy_baseline_debt_entries(&report_cfg)));
@@ -113,7 +111,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             receipt_context: None,
         };
         let source_subj = format!("audit:{}", args.kind.as_deref().unwrap_or("all"));
-        if let Err(error) = artifact_emit::emit_artifact_set(
+        artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "audit",
@@ -124,10 +122,13 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
                 source_subject: &source_subj,
             },
             &emit_ctx,
-        ) {
-            eprintln!("cargo-allow audit: artifact emit: {error}");
-            std::process::exit(1);
-        }
+        )
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!("artifact emit: {error}"),
+            )
+        })?;
     }
     Ok(())
 }

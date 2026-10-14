@@ -1,5 +1,104 @@
 mod json_assertions;
 mod support;
+#[test]
+fn audit_artifact_emit_failure_fails_with_typed_artifact_error() {
+    // #4505: a runtime artifact-emit failure carries the typed
+    // error[E0007_ARTIFACT] and the artifact Next hint, not a bare exit 1.
+    let root = temp_root("audit-emit-failure-typed");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    fs::write(
+        root.join("notadir"),
+        "a file where a directory must go
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write collision file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "notadir",
+            "--emit",
+            "markdown",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "an emit failure must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit:"),
+        "the typed artifact error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next:"),
+        "the structured Next line must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("cargo-allow audit: artifact emit:"),
+        "the bare untyped stderr line must be gone: {stderr}"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
+fn audit_bad_emit_value_fails_with_typed_usage_error() {
+    // #4505: the identical --emit mistake on `check` exits 2 with
+    // error[E0001_USAGE] and a structured Next line; audit must match instead
+    // of a bare "cargo-allow audit: ..." exit 1.
+    let root = temp_root("audit-bad-emit-typed");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "bogus-format",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a bad --emit value must fail: {stderr}"
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "usage mistakes exit 2 like check: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0001_USAGE]: unsupported --emit format"),
+        "the typed usage error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next:"),
+        "the structured Next line must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("cargo-allow audit: unsupported"),
+        "the bare untyped stderr line must be gone: {stderr}"
+    );
+    remove_temp_root(root);
+}
 
 use std::fs;
 
