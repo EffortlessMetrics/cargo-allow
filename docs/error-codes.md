@@ -27,6 +27,15 @@ Clap before `main`), never by matching message text.
 Policy-gate failures in `check` / `diff` still exit `1` from those command
 handlers. Structured usage errors that reach `main` share exit `2` with Clap.
 
+Screening note: failures that Clap itself rejects **before `main`** — invalid
+values for validated enum flags such as `--kind <KIND>` or `--item-kind
+<ITEM_KIND>`, unknown flags, missing required arguments — render in Clap's own
+format (`error: invalid value ...` followed by `For more information, try
+'--help'.`). They exit `2` but carry **no `error[E...]` code and no `Next:`
+line**, because no `CargoAllowError` exists yet. Screeners must treat
+"exit 2 without an `error[E...]` prefix" as a Clap-level usage rejection, not
+as a missing code.
+
 ## Registry
 
 | Code | Kind | Meaning |
