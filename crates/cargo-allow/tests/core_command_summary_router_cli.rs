@@ -493,8 +493,13 @@ fn list_summary_suggests_the_resolved_root_without_an_explicit_root_flag() -> Re
         args.first() == Some(&Value::from("explain")),
         format!("the suggestion should target explain: {args:?}"),
     )?;
-    // The suggestion renders the root in the paste-safe forward-slash form.
-    let expected_root = root.to_string_lossy().replace('\\', "/");
+    // The suggestion renders the root in the paste-safe forward-slash form,
+    // canonicalized the same way the tool resolves it (temp_dir can hand back
+    // an 8.3 short path on Windows runners).
+    let expected_root = root
+        .canonicalize()
+        .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
     require(
         args.windows(2).any(|pair| {
             pair.first() == Some(&Value::from("--root"))
