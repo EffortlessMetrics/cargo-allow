@@ -1,0 +1,16 @@
+# #4507: exact summary-output ledger-collision repair receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1132"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b461c05a6975ef3edf08eb7cb0910acd0c9440cd41f35c2681009f799e714d1c"
+reason = "Test-only panic-family receipt for the #4507 collision-refusal fixture: the test creates the conventional ledger with a sentinel and asserts the sidecar write refuses it; the expect documents the invariant that the policy parent exists."
+
+[[records]]
+allow_ids = ["allow-1133"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9f51a167344232da931d178c4b381bad6b6d7987cc3fad5b10941dfd26ea5e7b"
+reason = "Authored revision note for the exact #4507 summary-output ledger-collision receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."

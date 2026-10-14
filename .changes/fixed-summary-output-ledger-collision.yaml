@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  UX: `--command-summary-output` now refuses the conventional policy
+  ledger location instead of silently replacing it (#4507). The sidecar
+  write is an unconditional atomic replace, and its collision guards
+  covered explicit `--config` paths and tracked or staged files only —
+  so a summary path landing on `policy/allow.toml` during the untracked
+  window `init` leaves behind destroyed the live ledger under a
+  "Writes: nothing in this operation" banner. The default ledger
+  location is now an implicit collision for every summary-supported
+  command, refused with `E0001_USAGE` before any write.
