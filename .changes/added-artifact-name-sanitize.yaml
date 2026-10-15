@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Infra: the floor-receipt-regeneration upload step now flattens the
+  selected ref into a slug for the artifact name (artifact names reject
+  `/`, and branch refs like `dependabot/cargo/jsonschema-0.58.1`
+  contain it). Proofs on such refs completed but the receipts could not
+  be retained; the sanitized name fixes the upload without touching the
+  proof itself.
