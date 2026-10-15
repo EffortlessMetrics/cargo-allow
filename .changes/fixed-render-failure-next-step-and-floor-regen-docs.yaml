@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  UX and docs: RenderFailure-class artifact-emit failures now carry a
+  typed Next step — "drop the failing format from --emit (or use that
+  format's dedicated command), then retry" — at the check/diff/audit
+  validation sites, replacing the Artifact kind's generic output-path
+  hint that misdirected format recovery (#4526/#4503-class follow-up).
+  docs/ci/direct-floor-proof.md now documents the #4493 local-environment
+  limitation (the proof's fixture suites cannot run in local Windows Git
+  Bash) and the runner-based regeneration path: dispatch the
+  floor-receipt-regeneration workflow per product and retain the
+  uploaded receipts; never hand-repair receipt digests to substitute for
+  a runner proof.

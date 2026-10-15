@@ -138,6 +138,18 @@ fn audit_render_failed_emit_fails_with_typed_artifact_error() {
         stderr.contains("human_summary is not a report renderer"),
         "the RenderFailure detail must name the format: {stderr}"
     );
+    // #4503-class: the Next line must carry the format-level remedy, not the
+    // generic output-path hint.
+    assert!(
+        stderr.contains(
+            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
+        ),
+        "the RenderFailure error must type its next step: {stderr}"
+    );
+    assert!(
+        !stderr.contains("check the output path is writable"),
+        "the output-path hint must not misdirect format recovery: {stderr}"
+    );
     remove_temp_root(root);
 }
 

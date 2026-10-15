@@ -435,6 +435,13 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                     validation.result,
                     details.join("; ")
                 ),
+            )
+            // RenderFailure details name the format-level remedy (drop the
+            // failing format or use its dedicated command); type it so the
+            // Next line doesn't fall back to the generic output-path hint
+            // (#4526/#4503-class).
+            .with_next_step(
+                "drop the failing format from --emit (or use that format's dedicated command), then retry.",
             ));
         }
     }
