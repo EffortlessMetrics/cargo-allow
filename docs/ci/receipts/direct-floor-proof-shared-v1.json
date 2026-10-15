@@ -11,8 +11,8 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host:x86_64-unknown-linux-gnu",
- "manifest_set_digest": "0ca4f9eb8992041fde83c1c720bbc1aa51895f603382ca68c5f18255ce52a328",
- "lock_digest": "fc4f38834ca26322a1339a96024b85b0c4ea787e7563667e541cf13b63497c41",
+ "manifest_set_digest": "4430bf35921f23a321655487516a7bffd24fc1b3a23cb39cbda6b371682068ae",
+ "lock_digest": "808326f45858ca6758dbf8f920762eb7eb7c439ac130a5f9c93e9e3feec40b09",
  "rows": [
   {
    "package": "serde",
@@ -81,7 +81,7 @@
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
-  "local floor subject: source 80d0b63e5446568ad4d76cee5af4cb98d79ab233; executed commit 6416feddd438109e4bfbb32b4f69933b9d18d184; tree 4ec5c5205de296b219d2b3e39b01dc7db3227acf; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "local floor subject: source 87dbf2dfa2343fd56d7373934daa2f0c92c64c22; executed commit cc207f7c4ddd40a3b32375b6ce51dfb3930e25ef; tree ecbe00427c7c7dcecaf8e82274afedcd7de72168; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }
