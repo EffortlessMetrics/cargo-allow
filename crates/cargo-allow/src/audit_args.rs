@@ -32,6 +32,6 @@ pub(crate) struct ReportArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
     /// Comma-separated renderer formats to emit (markdown,json,html).
-    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    #[arg(long, value_name = "FORMATS")]
     pub(crate) emit: Option<String>,
 }

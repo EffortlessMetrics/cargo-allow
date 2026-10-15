@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Restrict rehearsal and nested publisher subprocesses to captured executable,
+  root, argument and selected-operation boundaries, including fresh scoped
+  metadata and packaging helpers for the final-package docs producer. Preserve
+  token-free nonpublishing paths, publication receipt behavior and all seven unproven
+  prevention flags; this does not establish descendant or host confinement.

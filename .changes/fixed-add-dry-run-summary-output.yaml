@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `add --dry-run --summary-output <path>` now writes the documented
+  `cargo-allow.add.v1` summary artifact to the path in every
+  `--summary-format` mode (#4532). The old dry-run branch hijacked the
+  sidecar for the candidate policy TOML and returned before emitting the
+  summary at all, so a pipeline following the producer contract got
+  mis-typed sidecar content and no machine-readable summary with a
+  success exit. The candidate entry goes to stdout in dry-run, matching
+  every other mode.

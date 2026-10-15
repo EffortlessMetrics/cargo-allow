@@ -198,7 +198,10 @@ cargo-allow hooks apply --plan target/cargo-allow/pre-commit-hook-plan.json --ac
 ```
 
 `hooks status` is read-only. Without `--plan`, it reports the default ambient
-plan; pass the exact JSON plan when inspecting a verified hook. `hooks apply`
+plan; pass the exact JSON plan when inspecting a verified hook. Run anywhere —
+including outside a Git repository, where it exits `0` with
+`disposition: Missing` against the start directory (no repository means no
+hook to inspect, which is a status result, not an error). `hooks apply`
 resolves the repository's Git hooks directory, validates the plan schema and
 identity, and atomically creates the selected hook only when it is absent. It
 never overwrites an existing hook:

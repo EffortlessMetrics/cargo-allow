@@ -1,0 +1,8 @@
+kind: Documentation
+body: >-
+  Correct the RC.1 incident record's evidence attribution (#3759): identify
+  install receipts as identity-only, attribute historical install and
+  attestation outcomes to workflow jobs, and distinguish the first allow-diff
+  receipt's null registry checksum from the separate incident narrative.
+  Preserve the recorded incident history, checksum dispositions, partial
+  observation, and exclusion from final 0.2.0 evidence.

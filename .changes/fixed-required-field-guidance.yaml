@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: required-field policy errors now say what to write (#4345 item 4a).
+  `allow-0001 missing evidence` (and the owner/reason/classification
+  equivalents) named only the entry; each message now keeps its stable
+  prefix and adds the empty field, the requirement behind it, and the
+  concrete fix — for example which evidence reference shapes satisfy an
+  unsafe entry, or that only a concrete accountable owner replaces
+  `unowned`. No codes or exit behavior changed.

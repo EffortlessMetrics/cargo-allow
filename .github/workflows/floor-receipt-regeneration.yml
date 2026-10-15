@@ -1,0 +1,92 @@
+# Floor-receipt regeneration on a CI runner (#4493).
+#
+# The retained direct-floor receipts (docs/ci/receipts/) must be bound to
+# the live tree: their lock and manifest digests go stale whenever a branch
+# moves Cargo.lock or a manifest, and the drift meta-tests then fail. The
+# proof script's own test class includes fixture suites that cannot run in
+# a local Windows Git Bash environment (#4493), so regeneration needs a
+# runner. This dispatchable workflow runs scripts/proof-direct-floors.sh
+# for the selected products on the selected ref and uploads the regenerated
+# receipts and selection companions as artifacts for retention.
+#
+# Read-only over the repository: the proof pins dependency floors inside a
+# temporary worktree and writes only to docs/ci/receipts/ and target/.
+# Nothing is committed or published; the caller retains the artifacts and
+# commits them through the normal review flow.
+
+name: floor-receipt-regeneration
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or ref to regenerate receipts on (required).'
+        required: true
+        type: string
+      products:
+        description: 'Comma-separated products (cargo-allow, shared, cargo-intent, cargo-proof). Default: all four.'
+        required: false
+        type: string
+        default: 'cargo-allow,shared,cargo-intent,cargo-proof'
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Regenerate direct-floor receipts per product
+        env:
+          CI_PROOF_MSRV: '1.95'
+          PRODUCTS: ${{ inputs.products }}
+        run: |
+          set -euo pipefail
+          # cargo-allow's retained receipt proves check/test/package; the
+          # advisory products are check-only, matching
+          # scripts/proof-advisory-products.sh.
+          classes_for() {
+            case "$1" in
+              cargo-allow) printf '%s' 'check,test,package' ;;
+              *) printf '%s' 'check' ;;
+            esac
+          }
+          products="${PRODUCTS:-cargo-allow,shared,cargo-intent,cargo-proof}"
+          mkdir -p docs/ci/receipts target/cargo-allow
+          status=0
+          IFS=',' read -ra product_list <<< "$products"
+          for product in "${product_list[@]}"; do
+            echo "=== direct-floor proof: $product (classes: $(classes_for "$product")) ==="
+            CI_PROOF_PRODUCT="$product" \
+              CI_PROOF_MSRV="1.95" \
+              CI_PROOF_CLASSES="$(classes_for "$product")" \
+              CI_PROOF_OUT="docs/ci/receipts/direct-floor-proof-$product-v1.json" \
+              bash scripts/proof-direct-floors.sh || status=1
+          done
+          echo "proof status: $status (0 = every class proved; nonzero = a class failed and its receipt was not retained)"
+          exit "$status"
+      - name: Compute the artifact name
+        if: always()
+        id: artifact-name
+        run: |
+          # Artifact names reject '/' and other characters; branch refs
+          # contain them, so flatten the ref to a safe slug.
+          slug="${ref//\//\-}"
+          echo "name=regenerated-floor-receipts-$slug" >> "$GITHUB_OUTPUT"
+        env:
+          ref: ${{ inputs.ref }}
+      - name: Upload regenerated receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.artifact-name.outputs.name }}
+          path: |
+            docs/ci/receipts/direct-floor-proof-*.json
+            docs/ci/receipts/direct-floor-proof-*.selection.md
+          if-no-files-found: warn
