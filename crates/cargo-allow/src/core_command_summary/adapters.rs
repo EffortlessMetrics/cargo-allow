@@ -424,6 +424,21 @@ pub fn core_command_summary_from_add(
                 "source-syntax evaluation does not prove compiled or runtime correctness",
             ),
         )
+    } else if dry_run {
+        // #4550: --dry-run guarantees the candidate path does not exist, so
+        // the targeted-check argv would fail E0002 if executed verbatim; the
+        // honest follow-up is to persist the candidate first.
+        write_path.clone().map(|_| {
+            CoreCommandActionV1::decision(
+                "add.persist_candidate",
+                "rerun add without --dry-run to write the candidate, then run the targeted no-new check against it",
+            )
+            .with_contract(
+                "candidate generation and review do not prove policy posture",
+                "the preview must be persisted before any check can evaluate it",
+                "source-syntax evaluation does not prove compiled or runtime correctness",
+            )
+        })
     } else {
         write_path.clone().map(|path| {
             CoreCommandActionV1::command(

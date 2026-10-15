@@ -187,8 +187,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;
-    // otherwise stdout (None).
-    let policy_output: Option<String> = if args.update {
+    // otherwise stdout (None). --dry-run writes nothing, so it keeps the stdout
+    // posture even when a write target was requested — a "written" receipt for
+    // a file that does not exist would lie to dry-run pipelines (#4549).
+    let policy_output: Option<String> = if args.dry_run {
+        None
+    } else if args.update {
         Some(allow_core::strip_win32_verbatim_prefix(
             &selected_policy_path.display().to_string(),
         ))
@@ -264,12 +268,18 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 } else {
                     allow_report::Style::PLAIN
                 };
-                render_add_summary_broad_human(&broad, policy_output.as_deref(), style)
+                render_add_summary_broad_human(
+                    &broad,
+                    policy_output.as_deref(),
+                    args.dry_run,
+                    style,
+                )
             }
             HumanJsonFormat::Json => render_add_summary_broad_json(
                 &broad,
                 policy_output.as_deref(),
                 args.force,
+                args.dry_run,
                 &context,
             ),
         };
@@ -601,17 +611,24 @@ fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> Carg
 fn render_add_summary_broad_human(
     entry: &AllowEntry,
     policy_output: Option<&str>,
+    dry_run: bool,
     style: allow_report::Style,
 ) -> String {
-    let target = policy_output.unwrap_or("stdout");
+    // --dry-run persists nothing; a "policy written to ..." tail would claim a
+    // write that never happened (#4549).
+    let tail = if dry_run {
+        "dry-run: nothing written (candidate on stdout)".to_string()
+    } else {
+        format!("policy written to {}", policy_output.unwrap_or("stdout"))
+    };
     format!(
-        "added {} {} (kind={}, scope={}, occurrence_limit={}); policy written to {}\n",
+        "added {} {} (kind={}, scope={}, occurrence_limit={}); {}\n",
         style.status("baseline_debt", "broad baseline"),
         entry.id,
         entry.kind,
         entry.path_or_glob(),
         entry.occurrence_limit.unwrap_or(0),
-        target
+        tail
     )
 }
 
@@ -619,9 +636,16 @@ fn render_add_summary_broad_json(
     entry: &AllowEntry,
     policy_output: Option<&str>,
     force: bool,
+    dry_run: bool,
     context: &AddContext<'_>,
 ) -> String {
-    let action = if force { "overwrite" } else { "write" };
+    let action = if dry_run {
+        "dry-run"
+    } else if force {
+        "overwrite"
+    } else {
+        "write"
+    };
     let mutation_receipt = add_mutation_receipt(entry, context, policy_output);
     format!(
         "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",

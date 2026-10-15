@@ -337,3 +337,323 @@ fn remove_temp_root(root: PathBuf) {
         Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
 }
+
+#[test]
+fn add_dry_run_write_summary_reports_stdout_not_written() {
+    // #4549: --dry-run writes nothing, so the delivered summary must keep the
+    // stdout posture even when --write/--update requested a target; a
+    // "written" mutation receipt for a file that does not exist would lie to
+    // dry-run pipelines.
+    let root = temp_root("add-dry-run-write-posture");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let policy_before =
+        fs::read_to_string(root.join("policy/allow.toml")).expect("read policy before");
+
+    let sidecar = root.join("summary-write.json");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run write posture fixture",
+            "--dry-run",
+            "--write",
+            "candidate.toml",
+            "--summary-format",
+            "json",
+            "--summary-output",
+        ])
+        .arg(&sidecar)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add --dry-run --write: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "dry-run add --write must succeed: {stderr}"
+    );
+    assert!(
+        !root.join("candidate.toml").exists(),
+        "--dry-run must not create the candidate file"
+    );
+    let summary_text = fs::read_to_string(&sidecar)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read sidecar: {err}")));
+    let summary: serde_json::Value = serde_json::from_str(&summary_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
+    assert_eq!(
+        summary
+            .pointer("/mutation_receipt/result")
+            .and_then(serde_json::Value::as_str),
+        Some("stdout"),
+        "the mutation receipt must not claim a write under --dry-run: {summary_text}"
+    );
+    assert!(
+        summary
+            .pointer("/options/policy_output")
+            .map(serde_json::Value::is_null)
+            .unwrap_or(false),
+        "policy_output must stay unset for a dry-run preview: {summary_text}"
+    );
+
+    let sidecar_update = root.join("summary-update.json");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run update posture fixture",
+            "--id",
+            "allow-0002",
+            "--dry-run",
+            "--update",
+            "--summary-format",
+            "json",
+            "--summary-output",
+        ])
+        .arg(&sidecar_update)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add --dry-run --update: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "dry-run add --update must succeed: {stderr}"
+    );
+    let policy_after =
+        fs::read_to_string(root.join("policy/allow.toml")).expect("read policy after");
+    assert_eq!(
+        policy_before, policy_after,
+        "--dry-run --update must not change the live ledger"
+    );
+    let summary_text = fs::read_to_string(&sidecar_update)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read update sidecar: {err}")));
+    let summary: serde_json::Value = serde_json::from_str(&summary_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
+    assert_eq!(
+        summary
+            .pointer("/mutation_receipt/result")
+            .and_then(serde_json::Value::as_str),
+        Some("stdout"),
+        "the update-preview receipt must not claim a write: {summary_text}"
+    );
+    assert!(
+        summary
+            .pointer("/options/policy_output")
+            .map(serde_json::Value::is_null)
+            .unwrap_or(false),
+        "update-preview policy_output must stay unset: {summary_text}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn add_dry_run_broad_json_summary_reports_dry_run_action() {
+    // #4549: the broad (glob) JSON summary carried action "write" and the
+    // requested candidate path even under --dry-run; the posture must match
+    // what the operation actually did.
+    let root = temp_root("add-dry-run-broad-posture");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let sidecar = root.join("summary-broad.json");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--glob",
+            "src/lib.rs",
+            "--family",
+            "unwrap",
+            "--callee",
+            "unwrap",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run broad posture fixture",
+            "--dry-run",
+            "--write",
+            "candidate.toml",
+            "--summary-format",
+            "json",
+            "--summary-output",
+        ])
+        .arg(&sidecar)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run broad add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "dry-run broad add must succeed: {stderr}"
+    );
+    assert!(
+        !root.join("candidate.toml").exists(),
+        "--dry-run must not create the candidate file"
+    );
+    let summary_text = fs::read_to_string(&sidecar)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read sidecar: {err}")));
+    let summary: serde_json::Value = serde_json::from_str(&summary_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
+    assert_eq!(
+        summary.get("action").and_then(serde_json::Value::as_str),
+        Some("dry-run"),
+        "the broad action must not claim a write under --dry-run: {summary_text}"
+    );
+    assert_eq!(
+        summary
+            .get("policy_output")
+            .and_then(serde_json::Value::as_str),
+        Some("stdout"),
+        "the broad policy_output must report stdout under --dry-run: {summary_text}"
+    );
+    assert_eq!(
+        summary
+            .pointer("/mutation_receipt/result")
+            .and_then(serde_json::Value::as_str),
+        Some("stdout"),
+        "the broad mutation receipt must not claim a write: {summary_text}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn add_dry_run_write_core_summary_does_not_suggest_checking_missing_candidate() {
+    // #4550: the Then: proof is argv for verbatim execution, but --dry-run
+    // guarantees the candidate path does not exist; the suggested proof must
+    // be to persist the candidate first, not a check that fails E0002.
+    let root = temp_root("add-dry-run-then-proof");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let sidecar = root.join("summary.txt");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run then-proof fixture",
+            "--dry-run",
+            "--write",
+            "candidate.toml",
+            "--summary-output",
+        ])
+        .arg(&sidecar)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "dry-run add must succeed: {stderr}"
+    );
+    assert!(
+        !root.join("candidate.toml").exists(),
+        "--dry-run must not create the candidate file"
+    );
+    assert!(
+        stderr.contains(
+            "Then: rerun add without --dry-run to write the candidate, then run the targeted no-new check against it"
+        ),
+        "the Then: proof must direct the operator to persist the candidate first: {stderr}"
+    );
+    assert!(
+        !stderr.contains("--config candidate.toml"),
+        "the Then: proof must not target the candidate path --dry-run guarantees is absent: {stderr}"
+    );
+    let summary_text = fs::read_to_string(&sidecar)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read sidecar: {err}")));
+    assert!(
+        summary_text.contains("output: stdout"),
+        "the human sidecar must report stdout, not the unwritten candidate path: {summary_text}"
+    );
+
+    remove_temp_root(root);
+}

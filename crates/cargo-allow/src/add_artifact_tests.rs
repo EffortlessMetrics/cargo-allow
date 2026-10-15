@@ -24,6 +24,7 @@ fn render_broad_add_summary_json_escapes_string_fields() {
         &entry,
         Some("policy/\\\"quoted\\\\output.toml"),
         true,
+        false,
         &AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",
@@ -78,6 +79,7 @@ fn render_broad_add_summary_human_styles_fixed_baseline_marker() {
     let styled = render_add_summary_broad_human(
         &entry,
         Some("policy/allow.toml"),
+        false,
         allow_report::Style::ANSI,
     );
 
