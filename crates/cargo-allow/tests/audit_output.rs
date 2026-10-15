@@ -710,3 +710,149 @@ glob = "docs/baseline.md"
 "#
     )
 }
+
+#[test]
+fn audit_receipt_emit_fails_typed_not_panicked() {
+    // #4546: the shared parser accepts `receipt` for every command, but
+    // receipt artifacts are contract-bound to check/diff. audit must fail
+    // through the typed artifact path, not panic at the renderer's assert
+    // (exit 101) after already printing a green report.
+    let root = temp_root("audit-receipt-emit-typed");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    // A selected policy keeps the failure on the receipt render, not the
+    // structural InstrumentFailure gate.
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "receipt",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "an unrenderable receipt emit must fail: {stderr}"
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "the typed artifact path must exit 1, not the 101 panic path: {stderr}"
+    );
+    assert!(
+        !stderr.contains("panicked"),
+        "the renderer assert must not escape as a panic: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
+        "the typed RenderFailure error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("receipt artifacts support only"),
+        "the failure must name the receipt command contract: {stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
+        ),
+        "the RenderFailure error must type its next step: {stderr}"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
+fn audit_emit_without_artifact_dir_fails_at_arg_parse() {
+    // #4548: a lone --emit used to be a silent no-op (exit 0, nothing
+    // emitted); the pairing must be refused at argument parsing instead.
+    let root = temp_root("audit-emit-requires-dir");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["audit", "--kind", "unsafe", "--emit", "json"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "the missing sibling flag must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("--artifact-dir"),
+        "the usage error must name the required sibling flag: {stderr}"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "no artifact directory may be created for a rejected invocation"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
+fn audit_instrument_failure_next_does_not_suggest_dropping_formats() {
+    // #4551: the drop-the-format remedy only fits RenderFailure. Structural
+    // gaps (here: no selected policy, so resolved_config_identity is empty)
+    // must point at the manifest's gaps instead of an impossible format fix.
+    let root = temp_root("audit-instrument-failure-next");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "markdown,json",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "an InstrumentFailure emit must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("InstrumentFailure"),
+        "the structural outcome must be named: {stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "Next: inspect the failing gaps recorded in the artifact-set manifest, resolve the reported condition, then retry."
+        ),
+        "the structural failure must type its manifest-gap next step: {stderr}"
+    );
+    assert!(
+        !stderr.contains("drop the failing format"),
+        "the format remedy must not misdirect structural recovery: {stderr}"
+    );
+    remove_temp_root(root);
+}

@@ -982,3 +982,148 @@ target_fingerprint = "toml"
 glob = "policy/allow.toml"
 "#
 }
+
+#[test]
+fn staged_check_rejects_artifact_emission_flags() {
+    // #4547: the staged path never reads --emit/--artifact-dir, so the flags
+    // used to be silently ignored behind a green exit with no artifacts; the
+    // invocation must fail honest instead.
+    let root = temp_root("staged-emit-rejected");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+
+    let output = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--staged")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--mode")
+        .arg("audit")
+        .arg("--artifact-dir")
+        .arg("artifacts")
+        .arg("--emit")
+        .arg("json")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "the Unsupported rejection must keep the exit-1 contract: {stderr}"
+    );
+    assert!(
+        !output.status.success(),
+        "staged artifact emission must fail instead of being silently ignored: {stderr}"
+    );
+    assert!(
+        stderr.contains("does not yet support multi-format artifact emission"),
+        "the rejection must name the staged carve-out: {stderr}"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "no artifact directory may be created on the staged path"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn artifact_emission_flags_are_rejected_on_paths_that_ignore_them() {
+    // #4547-class (Devin review on the emit-honesty PR): several dispatch
+    // paths never read --emit/--artifact-dir, so the paired flags used to be
+    // silently ignored behind a green exit with no artifacts; each must fail
+    // honest instead. The guards fire before any repository work, so a plain
+    // temp root is enough.
+    let root = temp_root("unwired-emit-rejected");
+    let cases: [(&str, Vec<&str>); 4] = [
+        (
+            "--staged-identity-only",
+            vec![
+                "check",
+                "--staged-identity-only",
+                "--emit",
+                "json",
+                "--artifact-dir",
+                "artifacts",
+            ],
+        ),
+        (
+            "--staged --phase precommit with --profile spec-system",
+            vec![
+                "check",
+                "--staged",
+                "--phase",
+                "precommit",
+                "--profile",
+                "spec-system",
+                "--emit",
+                "json",
+                "--artifact-dir",
+                "artifacts",
+            ],
+        ),
+        (
+            "check --profile spec-system",
+            vec![
+                "check",
+                "--profile",
+                "spec-system",
+                "--emit",
+                "json",
+                "--artifact-dir",
+                "artifacts",
+            ],
+        ),
+        (
+            "audit --profile spec-system",
+            vec![
+                "audit",
+                "--profile",
+                "spec-system",
+                "--emit",
+                "json",
+                "--artifact-dir",
+                "artifacts",
+            ],
+        ),
+    ];
+    for (surface, args) in cases {
+        let output = cargo_allow_command()
+            .current_dir(&root)
+            .args(&args)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run {surface}: {err}")));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "the Unsupported rejection must keep the exit-1 contract on {surface}: {stderr}"
+        );
+        assert!(
+            !output.status.success(),
+            "{surface} must reject artifact emission instead of ignoring it: {stderr}"
+        );
+        let expected = format!("{surface} does not support multi-format artifact emission");
+        assert!(
+            stderr.contains(&expected),
+            "the rejection must name the surface `{surface}`: {stderr}"
+        );
+        assert!(
+            !root.join("artifacts").exists(),
+            "no artifact directory may be created on the {surface} path"
+        );
+    }
+
+    remove_temp_root(root);
+}

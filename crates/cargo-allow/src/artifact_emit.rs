@@ -61,6 +61,17 @@ fn render_one(format: RendererFormatV1, ctx: &ArtifactEmitContext<'_>) -> Result
             Ok(render_html_with_context(command, findings, outcomes, failed, rc).into_bytes())
         }
         RendererFormatV1::Receipt => {
+            // Receipt artifacts are contract-bound to the registered receipt
+            // commands; another command (for example audit) must fail the
+            // render honestly instead of tripping the renderer's assert
+            // (#4546).
+            if !allow_report::RECEIPT_COMMANDS.contains(&command) {
+                return Err(format!(
+                    "format receipt is not a report renderer for command {command}; \
+                     receipt artifacts support only {}",
+                    allow_report::RECEIPT_COMMANDS.join(", ")
+                ));
+            }
             let receipt_rc = ctx.receipt_context.unwrap_or(&rc);
             let text = render_receipt_with_context_and_inventory(
                 command,

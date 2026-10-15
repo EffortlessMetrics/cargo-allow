@@ -29,7 +29,8 @@ pub(crate) struct DiffArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
     /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
-    #[arg(long, value_name = "FORMATS")]
+    /// Requires --artifact-dir; a lone --emit would be silently dropped (#4548).
+    #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,
     /// Base Git revision; resolves to an exact commit before comparison.
     /// When omitted, auto-detects the merge-base of HEAD and its upstream
@@ -141,5 +142,27 @@ mod tests {
             args.receipt,
             Some(PathBuf::from("target/cargo-allow/diff.receipt.json"))
         );
+    }
+
+    #[test]
+    fn diff_args_emit_requires_artifact_dir() {
+        // #4548: a lone --emit used to be a silently dropped no-op; the
+        // pairing must be refused at argument parsing instead.
+        let missing = DiffArgs::try_parse_from(["diff", "--base", "HEAD", "--emit", "json"]);
+        assert!(
+            missing.is_err(),
+            "--emit without --artifact-dir must not parse"
+        );
+        let paired = DiffArgs::try_parse_from([
+            "diff",
+            "--base",
+            "HEAD",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "json",
+        ])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("paired flags must parse: {err}")));
+        assert_eq!(paired.emit.as_deref(), Some("json"));
     }
 }

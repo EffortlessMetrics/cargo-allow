@@ -16,6 +16,15 @@ use crate::{
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         reject_source_exception_options(args.compat, args.kind.as_deref(), args.include_untracked)?;
+        // #4547-class: the spec-system path never reads these flags; fail
+        // honest instead of silently ignoring them behind a green exit.
+        if args.emit.is_some() || args.artifact_dir.is_some() {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Unsupported,
+                "audit --profile spec-system does not support multi-format artifact emission; \
+                 drop --emit and --artifact-dir, then retry",
+            ));
+        }
         return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
             command: "audit",
             root: &args.root,
@@ -148,20 +157,32 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
                         .flat_map(|artifact| artifact.render_errors.iter().cloned()),
                 )
                 .collect::<Vec<_>>();
-            return Err(CargoAllowError::with_kind(
+            let error = CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
                     "artifact emit {:?}: {}",
                     validation.result,
                     details.join("; ")
                 ),
-            )
-            // RenderFailure details name the format-level remedy (drop the
-            // failing format or use its dedicated command); type it so the
-            // Next line doesn't fall back to the generic output-path hint
-            // (#4526/#4503-class).
-            .with_next_step(
-                "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+            );
+            if artifacts
+                .artifacts
+                .iter()
+                .any(|artifact| !artifact.render_errors.is_empty())
+            {
+                // RenderFailure details name the format-level remedy (drop the
+                // failing format or use its dedicated command); type it so the
+                // Next line doesn't fall back to the generic output-path hint
+                // (#4526/#4503-class).
+                return Err(error.with_next_step(
+                    "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+                ));
+            }
+            // Non-render failures (for example InstrumentFailure structural
+            // gaps) cannot be fixed by dropping a format; point at the
+            // manifest's reported gaps instead (#4551).
+            return Err(error.with_next_step(
+                "inspect the failing gaps recorded in the artifact-set manifest, resolve the reported condition, then retry.",
             ));
         }
     }

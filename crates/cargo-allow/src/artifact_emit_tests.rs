@@ -25,6 +25,30 @@ fn config<'a>(identity: &'a str, source: &'a str) -> EmitConfig<'a> {
 }
 
 #[test]
+fn receipt_render_for_unregistered_command_fails_instead_of_panicking() -> Result<(), String> {
+    // #4546: the shared parser accepts `receipt` for every command, but the
+    // receipt renderer asserts on unregistered commands. The emitter must
+    // surface that as a render error so the validation gate types it.
+    let report = allow_report::ReportContext::default();
+    let ctx = ArtifactEmitContext {
+        command: "audit",
+        ..context(&report)
+    };
+    match render_one(RendererFormatV1::Receipt, &ctx) {
+        Ok(_) => Err("receipt render on audit must not succeed".to_string()),
+        Err(error) => {
+            if !error.contains("receipt artifacts support only") {
+                return Err(format!("error must name the receipt contract: {error}"));
+            }
+            if !error.contains("audit") {
+                return Err(format!("error must name the offending command: {error}"));
+            }
+            Ok(())
+        }
+    }
+}
+
+#[test]
 fn semantic_digest_binds_identity_and_subject() -> Result<(), String> {
     let report = allow_report::ReportContext::default();
     let ctx = context(&report);
