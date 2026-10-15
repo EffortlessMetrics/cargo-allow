@@ -135,9 +135,12 @@ Consumers should rely on these properties:
   successful `add` and `propose` summaries also emit
   `local-repository:current`; and `list`, `refresh`, and `prune` emit
   `local-repository:{inventory_source}`, where `{inventory_source}` is the
-  run's inventory tag — one of `git_tracked`, `git_index_staged_candidate`,
-  `filesystem_include_untracked`, or `filesystem_fallback` — not a content
-  digest. Wrappers must not key one identity across different commands, or
+  run's inventory tag — one of `git_tracked`, `filesystem_include_untracked`,
+  or `filesystem_fallback` — not a content digest. (`git_index_staged_candidate`
+  exists in the crate-wide inventory enum for staged evaluation, but no
+  command emits `local-repository:git_index_staged_candidate`: the staged
+  path reports a content-digest identity instead.) Wrappers must not key one
+  identity across different commands, or
   across `init`/`diff`, `add`/`propose`, `list`, `refresh`/`prune`, and the
   error path, until one content-addressed cross-command format is designed
   and emitted uniformly (#4393).

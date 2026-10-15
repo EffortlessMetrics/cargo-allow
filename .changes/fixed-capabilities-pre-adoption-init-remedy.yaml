@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  UX: the pre-adoption `capabilities` failure now types its remedy. When
+  the policy-scoped `capabilities` run has no policy file yet, the
+  `error[E0003_INVALID_POLICY]` Next line sends the operator to
+  `cargo-allow init` (matching docs/getting-started.md §2b) instead of
+  the generic "repair the policy entry" advice, which points at a path
+  that does not exist before adoption (#4545). The
+  inventory-identity enumeration for `list`, `refresh`, and `prune` in
+  docs/schemas/README.md now names only the reachable tags —
+  `git_tracked`, `filesystem_include_untracked`,
+  `filesystem_fallback` — and notes that no command emits
+  `local-repository:git_index_staged_candidate` because the staged path
+  reports a content-digest identity (#4552).

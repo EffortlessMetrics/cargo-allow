@@ -86,6 +86,18 @@ fn capabilities_with_explicit_policy_before_adoption_fails_e0003() -> TestResult
         stderr.contains("error[E0003_INVALID_POLICY]"),
         "the typed policy error must render: {stderr}"
     );
+    // #4545: the Next line must send the operator to §4's init, not to
+    // repairing a policy entry at a path that does not exist yet.
+    assert!(
+        stderr.contains(
+            "Next: run `cargo-allow init` to create the starter policy, then rerun this command."
+        ),
+        "the pre-adoption remedy must be typed as init: {stderr}"
+    );
+    assert!(
+        !stderr.contains("repair the policy entry"),
+        "the generic policy-entry remedy must not misdirect pre-adoption recovery: {stderr}"
+    );
     assert!(
         output.stdout.is_empty(),
         "no capabilities catalog may be produced before adoption"
