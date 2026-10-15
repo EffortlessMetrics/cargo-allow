@@ -1017,6 +1017,11 @@ fn staged_check_rejects_artifact_emission_flags() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
     let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "the Unsupported rejection must keep the exit-1 contract: {stderr}"
+    );
     assert!(
         !output.status.success(),
         "staged artifact emission must fail instead of being silently ignored: {stderr}"
@@ -1100,6 +1105,11 @@ fn artifact_emission_flags_are_rejected_on_paths_that_ignore_them() {
             .output()
             .unwrap_or_else(|err| std::panic::panic_any(format!("run {surface}: {err}")));
         let stderr = String::from_utf8_lossy(&output.stderr);
+        assert_eq!(
+            output.status.code(),
+            Some(1),
+            "the Unsupported rejection must keep the exit-1 contract on {surface}: {stderr}"
+        );
         assert!(
             !output.status.success(),
             "{surface} must reject artifact emission instead of ignoring it: {stderr}"
