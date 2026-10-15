@@ -1,0 +1,7 @@
+kind: Changed
+body: >-
+  Human `cargo-allow worklist` output on stdout now shows a bounded first
+  page of 20 items when no paging flags are given, ending with a footer
+  naming how many items remain and how to page through them, mirroring the
+  `list` bound. JSON detail, summaries, and `--output` artifacts keep the
+  full queue unchanged (#4477).
