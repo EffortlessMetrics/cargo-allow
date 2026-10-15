@@ -742,9 +742,20 @@ fn hooks_apply_preserves_unmanaged_hook_and_records_manual_merge() -> TestResult
         !output.status.success(),
         "apply unexpectedly replaced an unmanaged hook",
     )?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
     require(
-        String::from_utf8_lossy(&output.stderr).contains("ManualMerge"),
+        stderr.contains("ManualMerge"),
         "manual-merge error did not name the disposition",
+    )?;
+    // #4524: the repository-state refusal is Unsupported (E0010) with a
+    // typed next step, not the Artifact kind's output-path hint.
+    require(
+        stderr.contains("error[E0010_UNSUPPORTED]"),
+        "the ManualMerge refusal must be Unsupported",
+    )?;
+    require(
+        stderr.contains("Next: merge the managed block manually"),
+        "the ManualMerge refusal must type its next step",
     )?;
     require(
         fs::read_to_string(&hook)? == "#!/bin/sh\ncustom hook\n",

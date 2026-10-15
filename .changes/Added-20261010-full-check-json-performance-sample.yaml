@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Measure the full check JSON report and its separate receipt in the existing
+  operator-latency harness, preserve complete report detail against the existing
+  audit control, verify receipt agreement and retained artifact digests, and
+  document bounded receipt and command-summary consumers. Retain and retry one
+  UTC-crossed report comparison without weakening same-day checks or hiding
+  command failures, and disclose the retry's warmer-cache timing limitation.
+time: 2026-10-10T00:00:00Z

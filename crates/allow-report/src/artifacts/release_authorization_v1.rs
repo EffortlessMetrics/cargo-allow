@@ -17,7 +17,7 @@ mod tests;
 pub(crate) use evaluate::authorization_statement_digest;
 pub use evaluate::{
     compile_release_authorization_v1, release_authorization_denominator_binding_v1,
-    transition_authorization_consumption,
+    transition_authorization_consumption, validate_release_authorization_continuation_v1,
 };
 
 pub const RELEASE_AUTHORIZATION_SCHEMA_ID: &str = "cargo-allow.release-authorization.v1";

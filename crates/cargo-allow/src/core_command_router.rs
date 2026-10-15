@@ -52,6 +52,17 @@ impl SummaryOutputConfig {
 
 static SUMMARY_OUTPUT: OnceLock<SummaryOutputConfig> = OnceLock::new();
 
+/// A command's error-summary handoff for one CLI invocation.
+///
+/// An evaluated domain error may retain the command's own summary only after
+/// all detailed output has succeeded. Writing a sidecar alone is insufficient:
+/// a later rendering or artifact error still needs the typed hard-error summary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ErrorSummaryDisposition {
+    Required,
+    EvaluatedOutcome,
+}
+
 pub(crate) fn configure_summary_output(config: SummaryOutputConfig) -> CargoAllowResult<()> {
     SUMMARY_OUTPUT.set(config).map_err(|_| {
         CargoAllowError::with_kind(
@@ -83,6 +94,16 @@ fn print_report_with_summary_config(
     write_summary_artifact_with_config(args.root, &summary, summary_config)?;
 
     emit_text(args.output, &rendered)
+}
+
+/// Emit the same report-derived sidecar when a command intentionally keeps its
+/// detailed report off stdout, such as the human receipt-only check route.
+pub(crate) fn write_report_summary_artifact(args: &ReportRenderArgs<'_>) -> CargoAllowResult<()> {
+    let Some(config) = SUMMARY_OUTPUT.get() else {
+        return Ok(());
+    };
+    let summary = build_report_summary(args)?;
+    write_summary_artifact_with_config(args.root, &summary, Some(config))
 }
 
 /// Write the `--summary-output` artifact for a command that builds its own
@@ -160,7 +181,7 @@ pub(crate) fn build_error_summary(
             "the failed command's typed error classification and reason only",
         )
         .with_limitations(vec![
-            "the source-syntax scan the command would have reported was not completed".to_string(),
+            "this error summary does not attest whether source scanning or evaluation completed".to_string(),
             "the failure classification does not establish, repair, or authorize any source exception".to_string(),
         ]),
     )
@@ -825,6 +846,22 @@ fn resolve_summary_output_target(
                 "--command-summary-output must differ from --output, --receipt, and --config",
             ));
         }
+    }
+    // The conventional ledger location is an implicit collision even when no
+    // explicit `--config` names it: commands discover that file on their own,
+    // and `init` hands the operator exactly the untracked window where the
+    // tracked-file check below cannot see it (#4507). The sidecar write is an
+    // unconditional replace, so a summary path that lands on the live ledger
+    // would destroy it while the summary claims "Writes: nothing".
+    let conventional_ledger = resolve_under_root(root, Path::new("policy/allow.toml"));
+    let conventional_target =
+        effortless_repo_edit::resolve_mutation_target(&conventional_ledger, root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    if summary_target.target_fingerprint() == conventional_target.target_fingerprint() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--command-summary-output may not overwrite the policy ledger at its default location",
+        ));
     }
     reject_tracked_summary_output(root, summary_target.normalized_absolute())?;
     Ok(summary_target)

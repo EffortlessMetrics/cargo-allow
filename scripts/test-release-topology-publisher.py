@@ -64,10 +64,11 @@ class TokenBoundaryEnvironment(Mapping[str, str]):
 
 def exercise_publisher_token_boundary() -> None:
     """Run main and its real helpers; replace only process and registry seams."""
-    original = {name: getattr(PUBLISHER, name) for name in ("ROOT", "os", "subprocess", "registry_checksum")}
+    original = {name: getattr(PUBLISHER, name) for name in ("ROOT", "os", "subprocess", "registry_checksum", "_select_tool")}
     original_argv = sys.argv
     scenarios = 0
     try:
+        PUBLISHER._select_tool = lambda _name, _path: sys.executable
         with tempfile.TemporaryDirectory(prefix="publisher-token-boundary-") as temporary:
             cases = [
                 ("list", "cargo-allow", ["--list"], "exact", None),
@@ -234,6 +235,455 @@ def exercise_publisher_token_boundary() -> None:
         for name, value in original.items():
             setattr(PUBLISHER, name, value)
     print(f"publisher selected-token boundary: {scenarios} scenarios passed")
+
+
+
+def exercise_invocation_boundary() -> None:
+    """Exercise both real owners and detect independently omitted guards."""
+    from unittest import mock
+
+    spec = importlib.util.spec_from_file_location(
+        "invocation_rehearsal", ROOT / "scripts/release-rehearsal.py",
+    )
+    if spec is None or spec.loader is None:
+        raise AssertionError("cannot load the existing rehearsal producer")
+    rehearsal = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rehearsal)
+    real_run = subprocess.run
+    environment = TokenBoundaryEnvironment()
+    cases = 0
+    with tempfile.TemporaryDirectory(prefix="publisher-invocation-") as temporary:
+        root = Path(temporary).resolve()
+        (root / "Cargo.lock").write_text("selected fixture lock", encoding="utf-8")
+        canary = root / "forbidden-child.txt"
+        canary_command = [
+            sys.executable, "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).write_text('attempted', encoding='utf-8')",
+            str(canary),
+        ]
+        child_environment = {}
+        if "SYSTEMROOT" in os.environ:
+            child_environment["SYSTEMROOT"] = os.environ["SYSTEMROOT"]
+
+        def attempt() -> None:
+            real_run(canary_command, cwd=root, env=child_environment, check=True,
+                     timeout=15, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+        def requires_failure(action, message: str) -> None:
+            try:
+                action()
+            except AssertionError as error:
+                assert message in str(error), str(error)
+            else:
+                raise AssertionError("omitting the selected boundary did not fail its control")
+
+        with mock.patch.object(PUBLISHER, "ROOT", root), \
+                mock.patch.object(PUBLISHER, "os", SimpleNamespace(environ=environment)):
+            # This unchanged run() API is also a meaningful old-source negative:
+            # the former adapter executes this harmless, unselected child.
+            try:
+                PUBLISHER.run(canary_command, env=child_environment)
+            except SystemExit as error:
+                assert "selected operation" in str(error)
+            else:
+                raise AssertionError("unselected publisher command reached a child")
+            assert not canary.exists()
+            with mock.patch.object(PUBLISHER, "_checked_invocation", return_value=(sys.executable, False)):
+                PUBLISHER.run(canary_command, env=child_environment)
+            assert canary.read_text(encoding="utf-8") == "attempted"
+            assert environment.reads == 0
+            canary.unlink()
+            cases += 1
+
+        all_rows = PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, "all")[1]
+        rows_by_name = {row["cargo_package_name"]: row for row in all_rows}
+        packages = [
+            {"name": row["cargo_package_name"], "version": row["package_version"],
+             "publish": ["crates-io"], "dependencies": []}
+            for row in all_rows
+        ]
+        outer_calls: list[list[str]] = []
+        commands: list[list[str]] = []
+        denials: list[str] = []
+
+        def reset() -> None:
+            outer_calls.clear()
+            commands.clear()
+            denials.clear()
+            canary.unlink(missing_ok=True)
+            target = root / "target"
+            if target.exists():
+                shutil.rmtree(target)
+
+        def process(command, **kwargs):
+            commands.append(list(command))
+            assert kwargs["cwd"] == root
+            assert kwargs["executable"] == sys.executable
+            assert TOKEN_KEY not in kwargs["env"]
+            if command == ["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]:
+                return subprocess.CompletedProcess(command, 0, json.dumps({"packages": packages}))
+            if command[:2] == ["cargo", "package"]:
+                assert command[command.index("--target-dir") + 1] == str(root / "target")
+                excluded = {command[index + 1] for index, value in enumerate(command) if value == "--exclude"}
+                destination = root / "target/package"
+                destination.mkdir(parents=True)
+                for row in all_rows:
+                    name = row["cargo_package_name"]
+                    if name not in excluded:
+                        (destination / f"{name}-{row['package_version']}.crate").write_bytes(name.encode())
+                return subprocess.CompletedProcess(command, 0, "")
+            if command in (["git", "rev-parse", "HEAD^{commit}"], ["git", "rev-parse", "HEAD^{tree}"]):
+                return subprocess.CompletedProcess(command, 0, "a" * 40)
+            attempt()
+            return subprocess.CompletedProcess(command, 0, "")
+
+        def registry(name, _version):
+            row = rows_by_name[name]
+            if row["product_family"] == "shared":
+                return row["expected_registry_checksum"].removeprefix("sha256:")
+            return hashlib.sha256(name.encode()).hexdigest()
+
+        def outer_process(command, **kwargs):
+            outer_calls.append(list(command))
+            expected_prefix = [
+                sys.executable, (root / "scripts/release-topology-publisher.py").as_posix(),
+                "--mode", "cargo-allow",
+            ]
+            expected_suffixes = [
+                ["--package-only", "--receipt", str(root / "target/cargo-allow/rehearsal-candidate-package-set.json")],
+                ["--registry-preflight", "--receipt", str(root / "target/cargo-allow/rehearsal-shared-preflight.json")],
+            ]
+            if command[:4] != expected_prefix or command[4:] not in expected_suffixes:
+                attempt()
+                return subprocess.CompletedProcess(command, 1, "", "outer forbidden invocation")
+            assert kwargs["cwd"] == root
+            assert kwargs["executable"] == str(Path(sys.executable).absolute())
+            assert TOKEN_KEY not in kwargs["env"]
+            with mock.patch.object(PUBLISHER, "os", SimpleNamespace(environ=kwargs["env"])), \
+                    mock.patch.object(sys, "argv", command[1:]), \
+                    redirect_stdout(io.StringIO()):
+                try:
+                    code = PUBLISHER.main()
+                except SystemExit as error:
+                    denials.append(str(error))
+                    return subprocess.CompletedProcess(command, 1, "", str(error))
+            return subprocess.CompletedProcess(command, code, "", "")
+
+        terminal = SimpleNamespace(run=process, PIPE=subprocess.PIPE, STDOUT=subprocess.STDOUT)
+        outer_terminal = SimpleNamespace(
+            run=outer_process, SubprocessError=subprocess.SubprocessError,
+            TimeoutExpired=subprocess.TimeoutExpired,
+        )
+        with mock.patch.object(PUBLISHER, "ROOT", root), \
+                mock.patch.object(PUBLISHER, "os", SimpleNamespace(environ=environment)), \
+                mock.patch.object(PUBLISHER, "subprocess", terminal), \
+                mock.patch.object(PUBLISHER, "_select_tool", return_value=sys.executable), \
+                mock.patch.object(PUBLISHER, "registry_checksum", side_effect=registry), \
+                mock.patch.object(rehearsal, "ROOT", root), \
+                mock.patch.object(rehearsal, "os", SimpleNamespace(environ=environment)), \
+                mock.patch.object(rehearsal, "subprocess", outer_terminal), \
+                mock.patch.object(rehearsal, "_select_tool", return_value=sys.executable):
+            selected_version = rows_by_name["cargo-allow"]["package_version"]
+
+            def candidate():
+                return rehearsal.run_phase_candidate_package_set({
+                    "release_identity": {"version": selected_version},
+                })
+
+            # Both guards are active along the original phase -> publisher main
+            # -> metadata/package/Git path. Only external terminal seams differ.
+            for phase in ("candidate", "shared"):
+                reset()
+                receipt = {"release_identity": {"version": selected_version}}
+                if phase == "candidate":
+                    status = rehearsal.run_phase_candidate_package_set(receipt)
+                    assert len(receipt["candidate_package_set"]["rows"]) == 10
+                    assert all(row["version"] == selected_version and row["size_bytes"] > 0
+                               for row in receipt["candidate_package_set"]["rows"])
+                else:
+                    status = rehearsal.run_phase_shared_prerequisites(receipt)
+                    assert len(receipt["shared_prerequisites"]) == 3
+                    assert all(row["state"] == "already_published_exact" for row in receipt["shared_prerequisites"])
+                assert status == "Complete" and len(outer_calls) == 1 and not denials
+                assert any(command[:2] == ["cargo", "package"] for command in commands)
+                assert not canary.exists() and environment.reads == 0
+                cases += 1
+
+            invoke = rehearsal._run_process
+            mutations = [
+                lambda command: [command[0], *command[1:3], "shared", *command[4:]],
+                lambda command: [command[0], *command[1:3], "all", *command[4:]],
+                lambda command: [command[0], *command[1:3], "namespace", *command[4:]],
+                lambda command: [*command[:4], "--publish", "--authorization", "issue:3792", *command[5:]],
+                lambda command: [*command, "--list"],
+                lambda command: [*command[:-1], str(root.parent / "unselected-receipt.json")],
+                lambda command: [sys.executable + "-unselected", *command[1:]],
+            ]
+
+            def outer_denied() -> None:
+                assert candidate() == "InstrumentFailure", "outer invocation was not denied"
+                assert not outer_calls and not commands and not canary.exists()
+
+            for mutation in mutations:
+                reset()
+
+                def changed(command, **selection):
+                    return invoke(mutation(command), **selection)
+
+                with mock.patch.object(rehearsal, "_run_process", side_effect=changed):
+                    outer_denied()
+                cases += 1
+            reset()
+
+            def omitted_outer(command, *, operation, selected=None, **options):
+                return outer_process(mutations[3](command), **options)
+
+            with mock.patch.object(rehearsal, "_run_process", side_effect=omitted_outer):
+                requires_failure(outer_denied, "outer invocation was not denied")
+            assert len(outer_calls) == 1 and canary.read_text(encoding="utf-8") == "attempted"
+            assert environment.reads == 0
+            cases += 1
+
+            run = PUBLISHER.run
+            forbidden = [
+                ["cargo", "publish", "-p", "cargo-allow", "--locked"],
+                ["cargo", "publish", "--dry-run", "-p", "cargo-allow", "--locked"],
+                ["git", "update-ref", "refs/tags/fixture", "a" * 40],
+                canary_command,
+            ]
+
+            def nested_denied() -> None:
+                status = candidate()
+                assert not canary.exists(), "nested invocation changed the canary"
+                assert status == "Mismatch" and len(outer_calls) == 1
+                assert denials and "not selected" in denials[-1]
+                assert commands == [["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]]
+                assert not (root / "target/package").exists()
+                assert environment.reads == 0
+
+            for replacement in forbidden:
+                reset()
+
+                def changed_package(command, **options):
+                    return run(replacement if command[:2] == ["cargo", "package"] else command, **options)
+
+                with mock.patch.object(PUBLISHER, "run", side_effect=changed_package):
+                    nested_denied()
+                cases += 1
+            reset()
+
+            def publish_instead(command, **options):
+                return run(forbidden[0] if command[:2] == ["cargo", "package"] else command, **options)
+
+            with mock.patch.object(PUBLISHER, "run", side_effect=publish_instead), \
+                    mock.patch.object(PUBLISHER, "_checked_invocation", return_value=(sys.executable, False)):
+                requires_failure(nested_denied, "nested invocation changed the canary")
+            assert canary.read_text(encoding="utf-8") == "attempted"
+            assert environment.reads == 0
+            cases += 1
+
+            # Direct publisher mode selection must still deny publication for
+            # every nonpublishing mode, including --publish --registry-preflight.
+            modes = [(mode, flags) for mode in PUBLISHER.FAMILY_MODES for flags in ([], ["--package-only"])]
+            modes += [("cargo-allow", ["--registry-preflight"]),
+                      ("cargo-allow", ["--publish", "--registry-preflight", "--authorization", "issue:3792"])]
+            for mode, flags in modes:
+                selected_rows = PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, mode)[1]
+                selected_name = next(
+                    row["cargo_package_name"] for row in selected_rows
+                    if mode != "cargo-allow" or row["product_family"] == "cargo-allow"
+                )
+                for dry_run in (False, True):
+                    reset()
+                    forbidden_publish = ["cargo", "publish"] + (["--dry-run"] if dry_run else [])
+                    forbidden_publish += ["-p", selected_name, "--locked"]
+                    authority = [] if "--authorization" in flags else ["--authorization", "issue:3792"]
+                    argv = [str(PUBLISHER_PATH), "--mode", mode, "--receipt",
+                            str(root / "target/direct.json"), *flags, *authority]
+
+                    def changed_mode(command, **options):
+                        return run(forbidden_publish if command[:2] == ["cargo", "package"] else command, **options)
+
+                    with mock.patch.object(sys, "argv", argv), \
+                            mock.patch.object(PUBLISHER, "run", side_effect=changed_mode), \
+                            redirect_stdout(io.StringIO()):
+                        try:
+                            PUBLISHER.main()
+                        except SystemExit as error:
+                            assert "not selected" in str(error)
+                        else:
+                            raise AssertionError(f"{mode}/{flags} admitted a publication command")
+                    assert not canary.exists() and environment.reads == 0
+                    assert commands == [["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]]
+                    assert PUBLISHER._INVOCATION.get() is None
+                    cases += 1
+
+            for alter in (
+                lambda command: [*command, "--allow-dirty"],
+                lambda command: [*command, "--target-dir", str(root / "unselected-target")],
+                lambda command: command[:-2],
+            ):
+                reset()
+
+                def changed_package_arguments(command, **options):
+                    return run(alter(command) if command[:2] == ["cargo", "package"] else command, **options)
+
+                with mock.patch.object(PUBLISHER, "run", side_effect=changed_package_arguments):
+                    nested_denied()
+                cases += 1
+
+            reset()
+
+            def changed_root(command, **options):
+                if command[:2] == ["cargo", "package"]:
+                    with mock.patch.object(PUBLISHER, "ROOT", root / "unselected-root"):
+                        return run(command, **options)
+                return run(command, **options)
+
+            with mock.patch.object(PUBLISHER, "run", side_effect=changed_root):
+                assert candidate() == "Mismatch"
+            assert denials and "selected operation" in denials[-1]
+            assert commands == [["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"]]
+            assert not (root / "unselected-root").exists() and not canary.exists()
+            assert environment.reads == 0
+            cases += 1
+
+            reset()
+            package = PUBLISHER.package_workspace
+
+            def explicit_environment(selected, metadata):
+                run(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"], env=environment)
+                package(selected, metadata)
+
+            with mock.patch.object(PUBLISHER, "package_workspace", side_effect=explicit_environment):
+                assert candidate() == "Complete"
+            assert environment.reads == 0 and not canary.exists()
+            assert sum(command[:2] == ["cargo", "metadata"] for command in commands) == 2
+            assert PUBLISHER._INVOCATION.get() is None
+            cases += 1
+
+
+            reset()
+            selected_args = SimpleNamespace(
+                mode="cargo-allow", list=False, publish=True,
+                registry_preflight=False, package_only=False,
+            )
+            read_rows = PUBLISHER.load_rows
+            upload = ["cargo", "publish", "-p", "cargo-allow", "--locked"]
+            with PUBLISHER._invocation_scope(selected_args) as outer:
+                outer.authorization = "issue:3792"
+                outer.publish_names = {"cargo-allow"}
+                assert PUBLISHER._checked_invocation(upload) == (sys.executable, True)
+                with PUBLISHER._invocation_scope() as reader:
+                    assert reader is outer
+                for fail_read in (False, True):
+                    nested_contexts = []
+
+                    def nested_rows(path, mode):
+                        inner = PUBLISHER._INVOCATION.get()
+                        nested_contexts.append(inner)
+                        assert inner is not outer and inner.list_only and not inner.publish
+                        try:
+                            PUBLISHER.run(upload)
+                        except SystemExit as error:
+                            assert "selected operation" in str(error)
+                        else:
+                            raise AssertionError("reentrant list inherited outer publication selection")
+                        if fail_read:
+                            raise OSError("fixture nested list failure")
+                        return read_rows(path, mode)
+
+                    with mock.patch.object(sys, "argv", [str(PUBLISHER_PATH), "--mode", "cargo-allow", "--list"]), \
+                            mock.patch.object(PUBLISHER, "load_rows", side_effect=nested_rows), \
+                            redirect_stdout(io.StringIO()):
+                        if fail_read:
+                            try:
+                                PUBLISHER.main()
+                            except OSError as error:
+                                assert str(error) == "fixture nested list failure"
+                            else:
+                                raise AssertionError("nested list failure did not propagate")
+                        else:
+                            assert PUBLISHER.main() == 0
+                    assert len(nested_contexts) == 1
+                    assert PUBLISHER._INVOCATION.get() is outer
+                    assert PUBLISHER._checked_invocation(upload) == (sys.executable, True)
+                    assert not commands and not canary.exists() and environment.reads == 0
+                    cases += 1
+            assert PUBLISHER._INVOCATION.get() is None
+
+            observed_contexts = []
+
+            def reader_process(command, **options):
+                selected = PUBLISHER._INVOCATION.get()
+                observed_contexts.append(selected)
+                assert selected.mode is None and not selected.publish
+                assert selected.package_command is None and not selected.publish_names
+                assert command == ["git", "rev-parse", "HEAD^{commit}"]
+                assert options["cwd"] == selected.root and options["executable"] == sys.executable
+                assert TOKEN_KEY not in options["env"]
+                if len(observed_contexts) == 1:
+                    raise OSError("fixture reader terminal failure")
+                return subprocess.CompletedProcess(command, 0, "a" * 40)
+
+            with mock.patch.object(PUBLISHER.subprocess, "run", side_effect=reader_process), \
+                    mock.patch.object(PUBLISHER, "_select_tool", return_value=sys.executable) as lookup:
+                try:
+                    PUBLISHER.git_identity("commit")
+                except OSError as error:
+                    assert str(error) == "fixture reader terminal failure"
+                else:
+                    raise AssertionError("reader terminal failure did not propagate")
+                assert PUBLISHER._INVOCATION.get() is None
+                assert lookup.call_count == 2
+                cases += 1
+                with mock.patch.object(PUBLISHER, "ROOT", root / "later-reader-root"):
+                    assert PUBLISHER.git_identity("commit") == "a" * 40
+                assert PUBLISHER._INVOCATION.get() is None
+                assert lookup.call_count == 4
+                assert observed_contexts[0] is not observed_contexts[1]
+                assert observed_contexts[0].root == root
+                assert observed_contexts[1].root == root / "later-reader-root"
+                assert not commands and not canary.exists() and environment.reads == 0
+                cases += 1
+
+            # Unused unavailable executables do not block --list. Attempting
+            # a tool, or bypassing lookup with an unsupported form, must deny
+            # before the real process adapter or any selected-token read.
+            with mock.patch.object(PUBLISHER, "_select_tool", return_value=None), \
+                    mock.patch.object(sys, "argv", [str(PUBLISHER_PATH), "--mode", "cargo-allow", "--list"]), \
+                    redirect_stdout(io.StringIO()):
+                assert PUBLISHER.main() == 0
+            assert PUBLISHER._INVOCATION.get() is None
+            cases += 1
+            for value in (None, "", 7, "git", str(root / "invalid\nexecutable")):
+                with mock.patch.object(PUBLISHER, "_select_tool", return_value=value), \
+                        mock.patch.object(PUBLISHER.subprocess, "run") as child:
+                    try:
+                        PUBLISHER.git_identity("commit")
+                    except SystemExit as error:
+                        assert "executable" in str(error)
+                    else:
+                        raise AssertionError("unsupported selected executable reached a child")
+                    child.assert_not_called()
+                assert PUBLISHER._INVOCATION.get() is None
+                assert environment.reads == 0
+                cases += 1
+            with mock.patch.object(PUBLISHER, "_PLATFORM_NAME", "nt"), \
+                    mock.patch.object(PUBLISHER, "_select_tool", return_value=str(root / "git.cmd")), \
+                    mock.patch.object(PUBLISHER.subprocess, "run") as child:
+                try:
+                    PUBLISHER.git_identity("commit")
+                except SystemExit as error:
+                    assert "executable form" in str(error)
+                else:
+                    raise AssertionError("batch executable form reached a child")
+                child.assert_not_called()
+            assert PUBLISHER._INVOCATION.get() is None
+            assert not commands and not canary.exists() and environment.reads == 0
+            cases += 1
+
+    print(f"publisher selected-invocation boundary: {cases} cases passed")
 
 
 def expect_failure(action: Callable[[], Any]) -> None:
@@ -544,6 +994,7 @@ def exercise_cargo_allow_checksum_equality() -> None:
             "validate_rows",
             "shared_registry_preflight",
             "run",
+            "_select_tool",
             "wait_for_checksum",
         )
     }
@@ -572,6 +1023,7 @@ def exercise_cargo_allow_checksum_equality() -> None:
         PUBLISHER.validate_rows = lambda _rows, _packages: None
         PUBLISHER.shared_registry_preflight = lambda *_args, **_kwargs: None
         PUBLISHER.run = lambda *args, **kwargs: ""
+        PUBLISHER._select_tool = lambda _name, _path: sys.executable
 
         # Existing row with matching checksum -> verified_existing
         PUBLISHER.registry_checksum = lambda _name, _version: DIGEST
@@ -1665,6 +2117,7 @@ def main() -> None:
         expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
 
     exercise_publisher_token_boundary()
+    exercise_invocation_boundary()
     exercise_workflow_token_boundary()
     exercise_workflow_dispatch()
     exercise_package_artifact_directory()

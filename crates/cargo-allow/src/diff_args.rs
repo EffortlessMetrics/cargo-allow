@@ -29,7 +29,7 @@ pub(crate) struct DiffArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
     /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
-    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    #[arg(long, value_name = "FORMATS")]
     pub(crate) emit: Option<String>,
     /// Base Git revision; resolves to an exact commit before comparison.
     /// When omitted, auto-detects the merge-base of HEAD and its upstream
