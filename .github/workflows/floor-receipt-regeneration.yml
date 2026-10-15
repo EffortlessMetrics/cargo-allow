@@ -71,11 +71,21 @@ jobs:
           done
           echo "proof status: $status (0 = every class proved; nonzero = a class failed and its receipt was not retained)"
           exit "$status"
+      - name: Compute the artifact name
+        if: always()
+        id: artifact-name
+        run: |
+          # Artifact names reject '/' and other characters; branch refs
+          # contain them, so flatten the ref to a safe slug.
+          slug="${ref//\//\-}"
+          echo "name=regenerated-floor-receipts-$slug" >> "$GITHUB_OUTPUT"
+        env:
+          ref: ${{ inputs.ref }}
       - name: Upload regenerated receipts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: regenerated-floor-receipts-${{ inputs.ref }}
+          name: ${{ steps.artifact-name.outputs.name }}
           path: |
             docs/ci/receipts/direct-floor-proof-*.json
             docs/ci/receipts/direct-floor-proof-*.selection.md
