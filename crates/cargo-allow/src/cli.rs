@@ -135,7 +135,7 @@ pub(crate) enum CargoAllowCommand {
     Completions(completions::CompletionsArgs),
     /// Generate a deterministic command reference with checked support metadata.
     Reference(reference::ReferenceArgs),
-    /// Preview checked local hook plans without changing the repository.
+    /// Plan, inspect, apply, or remove checked local hooks.
     Hooks(hooks::HooksArgs),
     /// Emit runtime parity evidence for extraction stages.
     ExtractionParity(extraction_parity_command::ParityArgs),
@@ -618,6 +618,28 @@ mod command_summary_supported_set_tests {
                 "--help must name `{name}` as a --command-summary-output command; flag help text: {flag_help:?}"
             );
         }
+    }
+
+    #[test]
+    fn hooks_help_names_mutating_subcommands() {
+        // #4333: the parent one-liner must not promise "without changing
+        // the repository" while `apply`/`remove` mutate Git hooks.
+        let about = CargoAllowCli::command()
+            .find_subcommand("hooks")
+            .and_then(|command| command.get_about())
+            .map(|about| about.to_string());
+        assert!(
+            about
+                .as_deref()
+                .is_some_and(|text| text.contains("apply") && text.contains("remove")),
+            "hooks --help must name apply/remove; about: {about:?}"
+        );
+        assert!(
+            !about
+                .as_deref()
+                .is_some_and(|text| text.contains("without changing")),
+            "hooks --help must not claim no repository change; about: {about:?}"
+        );
     }
 
     #[test]
