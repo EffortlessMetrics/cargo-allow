@@ -57,6 +57,46 @@ fn validator() -> Result<jsonschema::Validator, Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn capabilities_with_missing_custom_policy_names_the_path_remedy() -> TestResult {
+    // #4545 review: `init` only writes the default policy/allow.toml, so a
+    // missing nondefault --config selection must get the create-or-repoint
+    // remedy, not the init one.
+    let fixture = Fixture::new("missing-custom-policy")?;
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&fixture.0)
+        .args([
+            "capabilities",
+            "--root",
+            ".",
+            "--config",
+            "custom/other.toml",
+            "--format",
+            "json",
+        ])
+        .output()?;
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "missing custom policy must exit 1: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error[E0003_INVALID_POLICY]"),
+        "the typed policy error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("create a cargo-allow policy at the reported path"),
+        "the nondefault remedy must direct at the reported path: {stderr}"
+    );
+    assert!(
+        !stderr.contains("run `cargo-allow init` to create the starter policy"),
+        "init would not create the custom path, so it must not be suggested: {stderr}"
+    );
+    Ok(())
+}
+
+#[test]
 fn capabilities_with_explicit_policy_before_adoption_fails_e0003() -> TestResult {
     // #4529 pins the documented prerequisite (docs/getting-started.md §2b):
     // the policy-scoped capabilities variant reads the policy ledger, which
@@ -85,6 +125,18 @@ fn capabilities_with_explicit_policy_before_adoption_fails_e0003() -> TestResult
     assert!(
         stderr.contains("error[E0003_INVALID_POLICY]"),
         "the typed policy error must render: {stderr}"
+    );
+    // #4545: the Next line must send the operator to §4's init, not to
+    // repairing a policy entry at a path that does not exist yet.
+    assert!(
+        stderr.contains(
+            "Next: run `cargo-allow init` to create the starter policy, then rerun this command."
+        ),
+        "the pre-adoption remedy must be typed as init: {stderr}"
+    );
+    assert!(
+        !stderr.contains("repair the policy entry"),
+        "the generic policy-entry remedy must not misdirect pre-adoption recovery: {stderr}"
     );
     assert!(
         output.stdout.is_empty(),

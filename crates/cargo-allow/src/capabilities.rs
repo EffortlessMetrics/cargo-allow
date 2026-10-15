@@ -543,11 +543,35 @@ fn configured_file_family_capabilities(
     let Some(policy) = observation.policy else {
         return Ok(Vec::new());
     };
+    let policy_path = observation.discovery.path.clone();
     let config = policy.map_err(|error| {
-        CargoAllowError::with_kind(
+        let error = CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidPolicy,
             format!("failed to load capability policy: {error}"),
-        )
+        );
+        // Only a confirmed-missing file gets a creation remedy: a stat
+        // failure on an existing file must keep the generic repair path
+        // (#4545 review).
+        let confirmed_missing = policy_path
+            .as_deref()
+            .is_some_and(|path| matches!(path.try_exists(), Ok(false)));
+        if confirmed_missing && policy_path.as_deref() == Some(&root.join("policy/allow.toml")) {
+            // docs/getting-started.md §2b: before adoption the default
+            // policy file does not exist yet, and the remedy is §4's
+            // `cargo-allow init`, not repairing a policy entry (#4545).
+            error.with_next_step(
+                "run `cargo-allow init` to create the starter policy, then rerun this command.",
+            )
+        } else if confirmed_missing {
+            // A missing nondefault selection cannot be fixed by `init`,
+            // which only writes the default `policy/allow.toml` (#4545
+            // review).
+            error.with_next_step(
+                "create a cargo-allow policy at the reported path, or rerun with --config pointing at an existing policy, then retry.",
+            )
+        } else {
+            error
+        }
     })?;
 
     if args
