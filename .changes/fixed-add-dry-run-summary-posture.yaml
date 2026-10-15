@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  UX: `add --dry-run` summaries no longer claim writes that never
+  happened. With `--dry-run --write`/`--update`, the delivered summary
+  keeps the stdout posture (`mutation_receipt.result` `stdout`,
+  `options.policy_output` unset, broad JSON `action` `dry-run`,
+  human `output: stdout`) instead of asserting `written`/`write` against
+  a file `--dry-run` guarantees does not exist (#4549), and the core
+  summary's `Then:` proof directs the operator to rerun without
+  `--dry-run` to persist the candidate instead of suggesting a
+  `check --config <candidate>` that would fail `E0002` verbatim
+  (#4550).
