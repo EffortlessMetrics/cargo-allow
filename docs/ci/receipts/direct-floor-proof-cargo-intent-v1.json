@@ -7,9 +7,9 @@
  ],
  "msrv": "1.95",
  "toolchain": "1.95.0",
- "target": "host:x86_64-pc-windows-msvc",
- "manifest_set_digest": "0ca4f9eb8992041fde83c1c720bbc1aa51895f603382ca68c5f18255ce52a328",
- "lock_digest": "c6730d656e7686213bf37e4fa4474bbe61824039b31fdfb02d25bcee92e98775",
+ "target": "host:x86_64-unknown-linux-gnu",
+ "manifest_set_digest": "4430bf35921f23a321655487516a7bffd24fc1b3a23cb39cbda6b371682068ae",
+ "lock_digest": "df563de1769131a406710819d7caa0af5759b8f31628df216b7ce8fc22f4b531",
  "rows": [
   {
    "package": "clap",
@@ -77,17 +77,17 @@
  ],
  "commands": [
   "cargo update -p <dep>@<locked-version> --precise <floor> (bare name only while bootstrapping an absent lock row)",
-  "cargo check --locked --target x86_64-pc-windows-msvc -p cargo-intent -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index -p intent-compiler -p intent-model -p intent-protocol"
+  "cargo check --locked --target x86_64-unknown-linux-gnu -p cargo-intent -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index -p intent-compiler -p intent-model -p intent-protocol"
  ],
- "floor_lock_digest": "sha256:v1:f7040f43c42e7bd5eaab1806d70933bbe5a9d61d942efcf5d8cff38b514f4a23",
+ "floor_lock_digest": "sha256:v1:131be3f2ce18e7bc051590bab9e0b31cbafe522284a62132a2a5d35faa855710",
  "limitations": [
   "bounded proof: the check classes over the cargo-intent closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",
   "dev-dependencies are exercised by the test class but are not certified floors",
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
-  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
+  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:a883eb778b6bc6be81518ce8ed2ddbcf9a10889e9548316c970c89264f261230; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent",
-  "local floor subject: source c2131ec3fe8c0ec88c293ed438f603f4bbaf6c15; executed commit da4d891d115f1e5db4b3a1b38bdd04f0c3b0c518; tree a9a35f12b761da044987cf41bd49e61c2633acdf; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "local floor subject: source 1ef59f21f57f3e7bb7016b1d69161af56da30c03; executed commit ff68b13dbc7dde56b98dda020305fbdfc18a51ad; tree 15000fb7f9e7dcd0746762b87b2b91bf02c11417; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the cargo-intent package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }
