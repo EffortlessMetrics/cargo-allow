@@ -7,6 +7,10 @@ use allow_report::ReleaseVersionV1;
 use intent_model::parse_package_postures_v1;
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
+// Newest published prerelease (#4567): the GitHub Actions examples teach the
+// 0.2 artifact-emission surface, which the published stable lacks, so they
+// pin this version until the 0.2.0 stable release promotes over it.
+const EXAMPLE_PRERELEASE_PIN_VERSION: &str = "0.2.0-rc.1";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.10";
 const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.11.md";
 const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.10.md";
@@ -825,7 +829,8 @@ fn install_examples_use_published_release() {
         "release record should note that public install examples pin the published release"
     );
 
-    for relative_path in release_install_surfaces() {
+    // Doc install surfaces teach the published stable channel and pin it.
+    for relative_path in release_doc_install_surfaces() {
         let content = read_workspace_file(&root, relative_path);
         assert!(
             content.contains(&format!(
@@ -838,6 +843,32 @@ fn install_examples_use_published_release() {
                 "cargo install cargo-allow --version {PREVIOUS_PUBLISHED_VERSION} --locked"
             )),
             "{relative_path} should not keep the previous {PREVIOUS_PUBLISHED_VERSION} install pin after publication"
+        );
+    }
+
+    // The two GitHub Actions examples are contract-pinned (#3881) to the 0.2
+    // artifact-emission surface, which no published stable carries (#4567):
+    // they pin the newest published prerelease and guard the surface before
+    // their run steps (ci_workflow_contract pins the same strings). When the
+    // 0.2.0 stable release publishes, promote this constant to it and move
+    // the examples onto the stable pin.
+    for relative_path in release_example_install_surfaces() {
+        let content = read_workspace_file(&root, relative_path);
+        assert!(
+            content.contains(&format!(
+                "cargo install cargo-allow --version {EXAMPLE_PRERELEASE_PIN_VERSION} --locked"
+            )),
+            "{relative_path} should install the newest published cargo-allow {EXAMPLE_PRERELEASE_PIN_VERSION} prerelease"
+        );
+        assert!(
+            !content.contains(&format!(
+                "cargo install cargo-allow --version {PUBLISHED_RELEASE_VERSION} --locked"
+            )),
+            "{relative_path} should not keep the {PUBLISHED_RELEASE_VERSION} install pin whose binary lacks the example's own commands (#4567)"
+        );
+        assert!(
+            content.contains("Verify the installed binary has 0.2 artifact emission"),
+            "{relative_path} should guard the 0.2 artifact-emission surface before its run step (#4567)"
         );
     }
 }
@@ -944,11 +975,12 @@ fn workspace_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn release_install_surfaces() -> &'static [&'static str] {
+fn release_doc_install_surfaces() -> &'static [&'static str] {
+    &["README.md", "docs/ci.md", "docs/getting-started.md"]
+}
+
+fn release_example_install_surfaces() -> &'static [&'static str] {
     &[
-        "README.md",
-        "docs/ci.md",
-        "docs/getting-started.md",
         "examples/github-actions/cargo-allow-check.yml",
         "examples/github-actions/cargo-allow-diff.yml",
     ]

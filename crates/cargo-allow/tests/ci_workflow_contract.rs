@@ -101,7 +101,8 @@ fn run_in_ci_links_complete_workflow_examples() {
         "fetch-depth: 0",
         "if: always()",
         "continue-on-error",
-        "cargo install cargo-allow --version 0.1.11 --locked",
+        "cargo install cargo-allow --version 0.2.0-rc.1 --locked",
+        "Verify the installed binary has 0.2 artifact emission",
         "troubleshoot-cargo-allow.md",
         "rollback-cargo-allow-adoption.md",
         "error-codes.md",
@@ -173,13 +174,26 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         !SHALLOW_NEGATIVE.contains("fetch-depth: 0"),
         "shallow negative fixture must omit fetch-depth: 0"
     );
+    // #4567: --artifact-dir/--emit are 0.2 artifact emission and no
+    // published build carries them yet, so both examples pin the newest
+    // published prerelease and fail loudly in a guard step that names the
+    // gap instead of with a bare usage error in the run step.
     assert!(
-        DIFF_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
-        "PR example must pin Published 0.1.11"
+        DIFF_WORKFLOW.contains("cargo install cargo-allow --version 0.2.0-rc.1 --locked"),
+        "PR example must pin the newest published prerelease"
     );
     assert!(
-        CHECK_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
-        "mainline example must pin Published 0.1.11"
+        CHECK_WORKFLOW.contains("cargo install cargo-allow --version 0.2.0-rc.1 --locked"),
+        "mainline example must pin the newest published prerelease"
+    );
+    assert!(
+        DIFF_WORKFLOW.contains("Verify the installed binary has 0.2 artifact emission")
+            && CHECK_WORKFLOW.contains("Verify the installed binary has 0.2 artifact emission"),
+        "both examples must guard the 0.2 artifact-emission surface before the run step"
+    );
+    assert!(
+        DIFF_WORKFLOW.contains("#4567") && CHECK_WORKFLOW.contains("#4567"),
+        "both examples must name the version-surface gap"
     );
     assert!(
         DIFF_WORKFLOW.contains("upload-artifact") && DIFF_WORKFLOW.contains("if: always()"),

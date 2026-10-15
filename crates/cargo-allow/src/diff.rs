@@ -251,6 +251,14 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                 .with_rust_files_skipped(scan.rust_files_skipped)
                 .with_rust_files_with_parse_errors(scan.rust_files_with_parse_errors);
         }
+        // #4565: the explicit-head branch bypasses the world load, so these
+        // facts carried no policy digest and every --emit request failed the
+        // artifact-set identity gate with `resolved_config_identity is
+        // missing` while its artifacts were already written to disk. Bind
+        // the exact head policy bytes this diff evaluated.
+        if let Some(text) = allow_diff::read_file_at_revision(&root, head, &policy_path)? {
+            facts = facts.with_policy_digest(allow_core::sha256_v1_bytes(text.as_bytes()));
+        }
         facts
     } else {
         current_world_loaded(&current_world)?.inventory_facts

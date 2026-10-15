@@ -370,7 +370,7 @@ pub fn core_command_summary_from_add(
         scope,
     } = facts;
     let complete = completeness == CompletenessV1::Complete;
-    let mut primary_action = if live_update {
+    let mut primary_action = if live_update && !dry_run {
         CoreCommandActionV1::command(
             "add.explain_entry",
             "Inspect the newly retained entry",
@@ -380,6 +380,19 @@ pub fn core_command_summary_from_add(
         .with_contract(
             "add records the selected typed finding as one policy entry",
             "the entry's selector, evidence, ownership, and lifecycle fields are shown",
+            "entry inspection does not prove the repository passes the no-new gate",
+        )
+    } else if dry_run && live_update {
+        // #4571: the live-update preview's old primary kept the explain
+        // argv, which fails verbatim until the entry is persisted; the
+        // preview's actual next action is to persist it.
+        CoreCommandActionV1::decision(
+            "add.persist_live_entry",
+            "rerun add without --dry-run to write this entry into the live ledger, then inspect it with explain",
+        )
+        .with_contract(
+            "add records the selected typed finding as one policy entry",
+            "the preview must be persisted before explain can inspect the entry",
             "entry inspection does not prove the repository passes the no-new gate",
         )
     } else {
@@ -408,26 +421,26 @@ pub fn core_command_summary_from_add(
         // would still print the candidate to stdout, so no verbatim proof
         // command applies (#4550/#4554 review).
         None
-    } else if dry_run {
-        // #4550: --dry-run guarantees the target is unwritten, so any
-        // post-write proof argv would fail or prove an unchanged ledger if
-        // executed verbatim; the honest follow-up is to persist first. The
-        // live-update preview checks the unchanged ledger, so it gets the
-        // same persist-first route instead of the live-policy check
-        // (#4554 review).
+    } else if dry_run && candidate_write {
+        // #4550: --dry-run guarantees the candidate path does not exist, so
+        // the targeted-check argv would fail E0002 if executed verbatim;
+        // the honest follow-up is to persist the candidate first.
         write_path.clone().map(|_| {
-            let title = if live_update {
-                "rerun add without --dry-run to write the entry into the live ledger, then run the enforcing no-new check"
-            } else {
-                "rerun add without --dry-run to write the candidate, then run the targeted no-new check against it"
-            };
-            CoreCommandActionV1::decision("add.persist_candidate", title).with_contract(
+            CoreCommandActionV1::decision(
+                "add.persist_candidate",
+                "rerun add without --dry-run to write the candidate, then run the targeted no-new check against it",
+            )
+            .with_contract(
                 "candidate generation and review do not prove policy posture",
                 "the preview must be persisted before any check can evaluate it",
                 "source-syntax evaluation does not prove compiled or runtime correctness",
             )
         })
     } else if live_update {
+        // Reached for both a real live update and its #4571 dry-run preview:
+        // the preview's Next: names the persist step, after which the
+        // enforcing check is verbatim-runnable and proves the retained
+        // entry.
         Some(
             CoreCommandActionV1::command(
                 "add.full_no_new_check",

@@ -856,3 +856,37 @@ fn audit_instrument_failure_next_does_not_suggest_dropping_formats() {
     );
     remove_temp_root(root);
 }
+
+#[test]
+fn audit_artifact_dir_without_emit_fails_at_arg_parse() {
+    // #4564: a lone --artifact-dir used to be a silent no-op (exit 0,
+    // nothing emitted), the inverse asymmetry of the lone --emit rejection;
+    // the pairing must be refused at argument parsing instead.
+    let root = temp_root("audit-artifact-dir-requires-emit");
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["audit", "--kind", "unsafe", "--artifact-dir", "artifacts"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "the missing sibling flag must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("--emit"),
+        "the usage error must name the required sibling flag: {stderr}"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "no artifact directory may be created for a rejected invocation"
+    );
+    remove_temp_root(root);
+}
