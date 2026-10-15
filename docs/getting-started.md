@@ -121,6 +121,11 @@ cargo run -p cargo-allow -- capabilities --class not-included
 cargo run -p cargo-allow -- capabilities --root . --config policy/allow.toml --format json
 ```
 
+The first three run anywhere. The fourth reads the policy ledger at
+`policy/allow.toml`, which §4's `init` creates — before that step it fails
+with `error[E0003_INVALID_POLICY]` (exit 1); the remedy is to continue with
+§4 and rerun it after adoption, not to repair a policy entry.
+
 This is a current source-candidate command; the published `0.1.11` binary
 predates this matrix and does not expose it yet.
 
@@ -180,6 +185,13 @@ Audit with one unreceipted finding:
 An advisory audit can pass while reporting findings. Choose a bootstrap path
 only after reviewing what the audit found; do not treat `status: "passed"` as
 approval of an unreceipted exception.
+
+On any real Cargo repository the tracked `Cargo.toml` is itself reported as a
+`non_rust_file.package_metadata` finding, so a first audit typically shows at
+least that row rather than the clean zero-finding excerpt above (which occurs
+on trees with no tracked non-Rust files, such as the src-only fixture the
+checked journey test uses). Receipt it as part of adoption — the ledger's own
+bootstrap does exactly that.
 
 ### Choose a report format
 
