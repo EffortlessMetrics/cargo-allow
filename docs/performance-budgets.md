@@ -72,7 +72,7 @@ with their actual argv, elapsed times, hashes and byte counts. Its artifact
 paths resolve from that archive's root, while argv retains the paths originally
 dispatched. CI uploads both bounded attempt directories with the receipt.
 The harness then retries all three controls once, replacing only their rows
-and current artifacts; the successful receipt still has 18 unique sample rows.
+and current artifacts; the successful receipt still has 22 unique sample rows.
 Its limitations record the retry and that its `first_audit` timing may benefit
 from warmer filesystem caches. A second crossover refuses. Command failures,
 exceeded ceilings and same-day content mismatches still fail immediately;
@@ -263,13 +263,14 @@ re-baselines them, and every advisory target below is non-blocking.
 
 The one-file incremental row **does not meet the earlier < 2,000 ms
 "Edit → re-check loop" aspiration** at this denominator: 6,242 ms with a
-warm cache is statistically indistinguishable from the full warm check
-(6,613 ms `warm_check`, 6,064 ms `agent_loop_check` in the same run).
-Skipping the tree-sitter parse of one file saves almost nothing because
-findings × entries matching dominates the command. The < 2,000 ms target
-stays a 0.3-scale optimization goal (bucketed matching, #2514 incremental
-evaluation), not a met budget; the harness-enforced gate remains the
-60,000 ms ceiling and the 16,384 B receipt ceiling.
+warm cache sits inside the run's own host-noise band around the full warm
+check (6,613 ms `warm_check`, 6,064 ms `agent_loop_check`; one pass per
+sample, so this is an observed overlap, not a distributional claim).
+Skipping the tree-sitter parse of one file produced no measurable fast
+path because findings × entries matching dominates the command. The
+< 2,000 ms target stays a 0.3-scale optimization goal (bucketed matching,
+#2514 incremental evaluation), not a met budget; the harness-enforced gate
+remains the 60,000 ms ceiling and the 16,384 B receipt ceiling.
 
 `cadence` on this ledger emits a 762,788 B JSON report — about 11.6× the
 65,536 B advisory agent-read target. Agents should treat full cadence JSON

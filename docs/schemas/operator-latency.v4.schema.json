@@ -180,7 +180,7 @@
       "required": ["name", "phase", "cache_mode", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
       "properties": {
         "name": { "type": "string" },
-        "phase": { "enum": ["cold", "warm", "targeted", "agent_loop"] },
+        "phase": { "enum": ["cold", "warm", "targeted", "agent_loop", "cadence", "delta", "incremental"] },
         "cache_mode": { "enum": ["on", "off", "not_applicable"] },
         "argv": {
           "type": "array",

@@ -1142,6 +1142,22 @@ MEASURE_PHASE="delta" measure_agent_step "delta_compile_unchanged_pair" \
   --base-lock Cargo.lock --head-lock Cargo.lock \
   --base-commit "${delta_head_commit}" --head-commit "${delta_head_commit}" \
   --output .measurement/delta-unchanged-pair.json
+# The schema-id marker alone cannot distinguish an empty movement set from a
+# spurious one; identical base and head inputs must compile zero rows
+# (CodeRabbit review on the #4339 PR).
+"${py}" - "$(py_path "${artifact_dir}/delta-unchanged-pair.json")" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+receipt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+rows = receipt.get("rows", [])
+if rows:
+    raise SystemExit(
+        "delta_compile_unchanged_pair must compile zero movement rows; got "
+        f"{len(rows)}: {json.dumps(rows)[:400]}"
+    )
+PY
 
 write_receipt "pass" ""
 

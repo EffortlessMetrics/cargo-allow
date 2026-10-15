@@ -54,12 +54,16 @@ assert "cache_mode_samples" in schema["$defs"]["sample_policy"]["required"]
 assert "cache_mode" in schema["$defs"]["sample"]["required"]
 assert "samples" in schema["required"]
 # v4 is an additive bump over v3: per-sample and per-composite-step
-# semantic_payload_bytes recording the semantic artifact's byte count.
+# semantic_payload_bytes recording the semantic artifact's byte count,
+# then the #4339 families as their own phases with optional receipt counts.
 assert set(schema["$defs"]["sample"]["properties"]["phase"]["enum"]) == {
-    "cold", "warm", "targeted", "agent_loop",
+    "cold", "warm", "targeted", "agent_loop", "cadence", "delta", "incremental",
 }
 assert "agent_loop_samples" in schema["$defs"]["sample_policy"]["properties"]
 assert "agent_loop_samples" not in schema["$defs"]["sample_policy"]["required"]
+for family in ("cadence_samples", "delta_samples", "incremental_samples"):
+    assert family in schema["$defs"]["sample_policy"]["properties"]
+    assert family not in schema["$defs"]["sample_policy"]["required"]
 assert schema["$defs"]["sample"]["properties"]["payload_bytes"]["type"] == ["integer", "null"]
 assert schema["$defs"]["sample"]["properties"]["semantic_payload_bytes"]["type"] == ["integer", "null"]
 assert schema["$defs"]["sample"]["properties"]["semantic_payload_bytes"]["minimum"] == 0
