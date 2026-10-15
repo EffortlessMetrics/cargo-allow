@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: `add --dry-run` candidate runs now print the same terminal-only
+  note as applied runs — "candidate policy entry written to stdout;
+  summary follows below on stderr" — since the placement it explains
+  (stdout candidate, stderr summary) is identical in both modes
+  (#4533). The note stays gated on a real terminal and absent when
+  `--summary-output` writes the sidecar.

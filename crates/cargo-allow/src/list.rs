@@ -91,18 +91,42 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         .filter(|row| list_filter::list_row_matches(row, &filters))
         .cloned()
         .collect();
+    let suggestion_root = std::path::PathBuf::from(allow_core::strip_win32_verbatim_prefix(
+        &root.display().to_string(),
+    ));
     let summary = build_list_summary(
         &filtered_rows,
         &filters,
         context.inventory,
-        args.root.root.as_deref(),
+        // Suggest the resolved root, not the raw flag (#4510): with no
+        // explicit --root the raw flag is None and the suggestion would
+        // omit --root entirely, breaking the documented
+        // execute-from-any-working-directory promise. Normalize the Win32
+        // verbatim prefix so the suggested argv stays paste-safe.
+        Some(&suggestion_root),
         args.config.as_deref(),
         args.include_untracked,
     )?;
     // Apply --offset/--limit pagination after filtering and before
     // rendering (#3173). Sort order is determined by the row builder; the
     // slice applies to the final sorted set.
-    let rows = paginate_list_rows(filtered_rows, args.offset.unwrap_or(0), args.limit);
+    //
+    // Human stdout without an explicit --limit gets a bounded first page
+    // (#4477): a large ledger otherwise dumps thousands of lines before the
+    // reader reaches anything actionable. JSON and --output artifacts keep
+    // the full set byte-identically; the bound is presentation only.
+    let human_stdout = matches!(args.format, HumanJsonFormat::Human) && args.output.is_none();
+    let total_rows = filtered_rows.len();
+    // The default page applies only when the caller supplied neither paging
+    // flag: an explicit --offset alone historically shows every remaining
+    // row, and that behavior is preserved.
+    let effective_limit = if human_stdout && args.limit.is_none() && args.offset.is_none() {
+        Some(DEFAULT_HUMAN_LIST_PAGE)
+    } else {
+        args.limit
+    };
+    let rows = paginate_list_rows(filtered_rows, args.offset.unwrap_or(0), effective_limit);
+    let more_rows = total_rows.saturating_sub(args.offset.unwrap_or(0) + rows.len());
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
         crate::reporting::output_style()
     } else {
@@ -123,7 +147,22 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
                     list_args::concise_width(args),
                 )
             };
-            format!("{}\n{detail}", render_core_command_summary_human(&summary))
+            let text = format!("{}\n{detail}", render_core_command_summary_human(&summary));
+            // The footer is stdout guidance only: --output artifacts (human
+            // or JSON) keep their pre-#4477 bytes exactly.
+            if human_stdout && more_rows > 0 {
+                if args.offset.unwrap_or(0) == 0 {
+                    format!(
+                        "{text}\n... {more_rows} more entries not shown; rerun with --limit {total_rows} to see all, or page with --limit/--offset."
+                    )
+                } else {
+                    format!(
+                        "{text}\n... {more_rows} more entries after this page not shown; page with --limit/--offset, or drop --offset and use --limit {total_rows} to see all."
+                    )
+                }
+            } else {
+                text
+            }
         }
         HumanJsonFormat::Json => {
             let detail = render_list_rows_json(&rows, &filters, context);
@@ -133,6 +172,9 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
+
+/// Default first-page size for human stdout `list` without `--limit` (#4477).
+const DEFAULT_HUMAN_LIST_PAGE: usize = 20;
 
 fn paginate_list_rows(rows: Vec<ListRow>, offset: usize, limit: Option<usize>) -> Vec<ListRow> {
     rows.into_iter()

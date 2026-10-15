@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Docs: docs/error-codes.md now states explicitly that failures Clap
+  rejects before `main` (invalid values for validated enum flags such as
+  `--kind` / `--item-kind`, unknown flags, missing required arguments)
+  render in Clap's own format, exit `2`, and carry no `error[E...]` code
+  and no `Next:` line — screeners must treat "exit 2 without an
+  `error[E...]` prefix" as a Clap-level usage rejection, not a missing
+  code (#4502). docs/how-to/adopt-cargo-allow.md now states that
+  `hooks status` is valid anywhere and exits `0` with
+  `disposition: Missing` outside a Git repository (#4504).

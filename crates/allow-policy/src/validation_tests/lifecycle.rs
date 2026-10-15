@@ -115,6 +115,12 @@ fn rejects_never_expiry_without_review_after_when_lifecycle_required() {
     );
 
     assert!(err.contains("missing expires or review_after"));
+    // #4499: the error must name the fix, matching the #4478 sibling pattern
+    // for owner/reason/classification/evidence required-field errors.
+    assert!(
+        err.contains("set `expires = \"YYYY-MM-DD\"` or `review_after = \"YYYY-MM-DD\"`"),
+        "the required-field error must name the fix clause: {err}"
+    );
 }
 
 #[test]

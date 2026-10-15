@@ -1,0 +1,60 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4456,
+  "base_ref": "main",
+  "base_sha": "4a1b17091d41483ef69a05f999beef8450ca585c",
+  "head_ref": "perf/4374-full-check-json-20261010",
+  "head_sha": "b05764cfb3176939efc774fee21f917f54780741",
+  "merge_base": "58f1b645ac8faf97002a52340bd49a7ecf125768",
+  "reviewed_diff_digest": "sha256:v1:96291f8f4b5652aeb0f619072cfdc9d2b6f10c2f962d1bf8c569a4ac959b0bbe",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "ChatGPT /root/product_audit; separate nonauthor of this performance PR's source, UTC/custody repairs, policy, note and integration. Same model family, shared campaign context and shared account transport are disclosed. The coordinating account transports the anchored model COMMENT; no independent human approval is claimed. /root/campaign_audit authored the initial retained record; /root authored its evidence-only compiler-attribution correction. Neither author claims to be the independent reviewer.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#pullrequestreview-5481598254"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "4238564484",
+      "severity": "advisory",
+      "owned_seam": "Performance harness validator diagnostics; #4374",
+      "source_path": "scripts/perf-budget-smoke.sh",
+      "source_line": 299,
+      "repair_route": "NonBlocking follow-up under #4374: improve exception-type and missing-field diagnostics while preserving malformed-artifact refusal and existing substring controls.",
+      "claim_boundary": "The terse KeyError wording remains unchanged. Malformed artifacts already refuse and retain a failed instrument receipt; this advisory is not claimed as repaired and does not weaken full-content or payload validation."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#pullrequestreview-5481598254",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#discussion_r4239394282",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#discussion_r4239976011",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#discussion_r4238564484",
+    "UTC 4239394282: Fixed in actual 9bb9fc80 / 5eab, confirmed by the anchored source review and current coordinator reply. Whole-subprocess day bracketing, one whole-family retry and second-rollover refusal retain strict lifecycle parity and genuine command, missing-output, time/size and stable-day semantic failures.",
+    "PERF-C1 and PERF-C2: Fixed. Every successful discarded child retains actual argv, elapsed time, byte lengths and hashes as observed_not_admitted; archive-relative paths resolve within exclusive owned attempt directories. CI retains both exact bounded attempt roots. The d1b4 findings and RED evidence remain historical, separate from repaired 0a607dea controls.",
+    "The original count-only detail finding remains Fixed. All five behavioral modes/blobs equal reviewed 0a607dea; all 29 prior test-method ASTs, including 19 original methods, and 55 schema entries are unchanged. There are 36 current methods and exactly 18 final rows. A successful retry explicitly discloses warmer caches, including first_audit.",
+    "The complete seven-path source diff is 80,140 bytes with the recorded canonical digest. The reviewer independently verified all six normal transported commits, all 2,689 source entries against local 9fc64eb9, and synthetic fe5e68e0c5ea888d19d7404d056417c2a8dbf114 with ordered [5eab, 9bb] parents and identical tree. Native source readiness reports the same base, merge base and digest.",
+    "Policy and note were fully reviewed: exact 756,267-byte main prefix plus 1,629-byte native suffix, 757,896 bytes and 1,103 unique IDs, preserving all 1,101 prior entries. Both exact future evidence paths came from actual why-plan/add executions and canonical note fingerprints. The temporary nonreview seed is absent. This child adds only the actual own-review JSON.",
+    "Actual local 0a607dea controlled suite passes 36 methods; temporary GREEN archive assertions ran before cleanup and are not claimed as retained GREEN archive custody. Local tree-equivalent 9fc64eb9 fmt, governed diff and enforcing no-new pass: zero current/policy failures, new 0, 2,689 files / 16,686 findings. Retained Rust 1.95 producer 8c1a1a15 has 1,372 equal Rust/Cargo inputs; the 873-member author packet is independently rehashed. Earlier E0463 and missing-note failures remain separate.",
+    "Native source pregate 114366333942 in run 38104273435 passes actionlint/fmt and actual compilation/invocation of enforcing no-new, with new 0 and typed Complete. Its setup installs/defaults and explicitly probes Rust 1.95, but the log reports the repository stable override before unqualified Cargo commands; the exact effective compiler version for those commands is not established. The reviewer independently checked original artifact 11689013198 and its 975-byte member against the source/base. The separately pinned local Rust 1.95 build and native Rust 1.99 operator retain their distinct provenances. This evidence does not waive metadata/bootstrap or later current checks.",
+    "Current native operator job 114366741883 in run 38104273435 passes all 18 rows. Independent readback verifies original artifact 11688808852, its 872,732-byte ZIP, 33 members and 36 referenced size/digest bindings. Full JSON is 7,134,555 bytes at 3,330 ms, separate receipt 9,135 bytes and new 0. This is actual synthetic fe5e68e0 / Rust 1.99 release evidence, distinct from local Rust 1.95. Receipt binary 0072e4d152be2661fd3f7bc1a5ccb26a20f96ede835c85eaf54cd81e26f99cc3 was not included in the ZIP and is not independently byte-rehashed. No native UTC crossover occurred.",
+    "The source review's pre-submit snapshot had 28 successful, five in-progress and one neutral latest check names. Native platform/package/coverage/review completion and this record's independent bootstrap remain separate owner obligations. Historical 5480152298, quota responses and bot summaries are not borrowed as current approval. Diagnostic 4238564484 remains NonBlocking under #4374.",
+    "Broader #4374 / #2045 work remains open. This retained source verdict makes no optimization, serialization-dominance, installed qualification, release-authority or new 0.2 requirement claim. The other execution's #4435 then #4458 merge slots are unchanged.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4456#pullrequestreview-5481650934",
+    "PERF-PROV-1: the authentic 02:47:44Z correction on actual 0f1f0c93 withdraws the native pregate Rust 1.95 attribution in source review 5481598254 and holds metadata review 5481639623 until this evidence-only own-record correction receives a renewed independent actual-head metadata/bootstrap review. The inaccurate sentence is corrected here; the original native reviews and sealed source/metadata packets remain historical, accompanied by the independent correction. The actual reviewed source remains 9bb9fc80 / c7852069 with its authentic 02:22:16Z source review. The separate record-head bot finding 4240006293 remains refuted; no source SHA is relabeled as the metadata head.",
+    "Bounded re-review 2026-10-13 for the post-integration pair: the effective merge base moved to 4c27c27a (main tip). A prior head 405fd5e0 briefly carried unresolved policy/allow.toml conflict markers from an integration merge; it was rebuilt as d522bb5b with an id-and-content-aware tail-merge resolution (main's allow-review-4455 rows retained, this PR's allow-review-4456 rows appended verbatim) and verified with the local no-new guard green (failed=false, new=0). Verified: the four PR-owned files (.github/workflows/ci.yml, docs/performance-budgets.md, scripts/perf-budget-smoke.sh, scripts/test-perf-budget-smoke.sh) are byte-identical to the independently reviewed head 9bb9fc80 (zero-line delta), and 9bb9fc80 is an ancestor of d522bb5b. The proven independent review reference and verdict are preserved unchanged; no PR-owned dimension was affected by the base movement or the policy integration.",
+    "Post-merge-rebase rebind 2026-10-13 (base 58f1b645): the merge of #4460 into main moved the base again and introduced an allow.toml tail conflict with this PR; re-resolved id-and-content-aware (main's allow-review-4460 rows retained; this PR's allow-review-4456 rows appended verbatim with original field values). Local no-new guard green (failed=false, new=0) and `cargo-allow diff --base origin/main --require-change-note` exits 0. The four PR-owned files remain byte-identical to the independently reviewed head 9bb9fc80. Binding fields updated to the current pair; verdict and proven review reference preserved unchanged.",
+    "Synchronized rebind 2026-10-13 against live base 4a1b1709 (post-#4491 main): binding fields updated to the current pair after the base moved during the prior CI window; no content change. Verdict, findings and proven review reference preserved unchanged."
+  ],
+  "required_ci": {
+    "owner": "Root/coordinating maintainer must verify this sole-JSON child's source preservation and independent actual-hosted metadata/bootstrap review, every applicable current native check and substantive thread disposition, then perform fresh exact-pair Ready/merge preflight and resulting-main guard. This source review and record waive no pending, neutral, skipped, cancelled, failed, stale or unavailable evidence. They do not authorize a merge slot or release operation.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/38104273435"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4456",
+  "reviewed_at_utc": "2026-10-13T08:45:00Z"
+}

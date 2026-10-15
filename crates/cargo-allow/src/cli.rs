@@ -20,7 +20,9 @@ mod frozen_subject_lock_command;
 mod minimum_version_selection_command;
 mod reconcile_package_publication_command;
 pub(crate) mod release_authorization_command;
+mod release_final_tag_bridge;
 pub(crate) mod release_freeze_command;
+mod release_freeze_rehearsal;
 mod release_identity_command;
 mod review_disposition_command;
 mod review_readiness_command;
@@ -134,7 +136,7 @@ pub(crate) enum CargoAllowCommand {
     Completions(completions::CompletionsArgs),
     /// Generate a deterministic command reference with checked support metadata.
     Reference(reference::ReferenceArgs),
-    /// Preview checked local hook plans without changing the repository.
+    /// Plan, inspect, apply, or remove checked local hooks.
     Hooks(hooks::HooksArgs),
     /// Emit runtime parity evidence for extraction stages.
     ExtractionParity(extraction_parity_command::ParityArgs),
@@ -160,6 +162,9 @@ pub(crate) enum CargoAllowCommand {
     /// Compose and replay the final release freeze from retained evidence.
     #[command(hide = true)]
     ReleaseFreeze(release_freeze_command::ReleaseFreezeArgs),
+    /// Apply typed final-tag driver reducers to bounded process input.
+    #[command(hide = true)]
+    ReleaseFinalTagBridge(release_final_tag_bridge::ReleaseFinalTagBridgeArgs),
     /// Evaluate the frozen-subject lock against ordinary mutation.
     #[command(hide = true)]
     FrozenSubjectLock(frozen_subject_lock_command::FrozenSubjectLockArgs),
@@ -261,9 +266,12 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         return Ok(());
     };
     configure_summary_output(cli.command_summary_output, &command)?;
+    let mut error_summary = crate::core_command_router::ErrorSummaryDisposition::Required;
     let result: CargoAllowResult<()> = match &command {
         CargoAllowCommand::Init(args) => init::cmd_init(args),
-        CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(args),
+        CargoAllowCommand::Adopt(args) => {
+            adoption::cmd_adopt_with_summary_disposition(args, &mut error_summary)
+        }
         CargoAllowCommand::Audit(args) => audit::cmd_audit(args),
         CargoAllowCommand::Check(args) => check::cmd_check(args),
         CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(args),
@@ -278,7 +286,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Migrate(args) => migrate::cmd_migrate(args),
         CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(args),
         CargoAllowCommand::Prune(args) => prune::cmd_prune(args),
-        CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(args),
+        CargoAllowCommand::Doctor(args) => {
+            doctor::cmd_doctor_with_summary_disposition(args, &mut error_summary)
+        }
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(args),
         CargoAllowCommand::Completions(args) => completions::cmd_completions(args),
@@ -302,6 +312,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
             candidate_preparation_command::cmd_prep_candidate(args)
         }
         CargoAllowCommand::ReleaseFreeze(args) => release_freeze_command::cmd_release_freeze(args),
+        CargoAllowCommand::ReleaseFinalTagBridge(args) => {
+            release_final_tag_bridge::cmd_release_final_tag_bridge(args)
+        }
         CargoAllowCommand::FrozenSubjectLock(args) => {
             frozen_subject_lock_command::cmd_frozen_subject_lock(args)
         }
@@ -337,7 +350,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
     // #4393: a summary-supported command that exits on a hard error still
     // writes its `--command-summary-output` sidecar, classified by the typed
     // error code, so the failure class is reachable through the sidecar.
-    if let Err(error) = result.as_ref() {
+    if let (Err(error), crate::core_command_router::ErrorSummaryDisposition::Required) =
+        (result.as_ref(), error_summary)
+    {
         crate::core_command_router::write_error_summary_artifact(
             summary_error_context(&command),
             error,
@@ -446,7 +461,7 @@ fn configure_summary_output(
             (SourceTreeRoot, args.config.clone()),
         ],
         CargoAllowCommand::Migrate(args) => vec![
-            (SourceTreeRoot, Some(args.out.clone())),
+            (SourceTreeRoot, args.out.clone()),
             (WorkingDirectory, args.summary_output.clone()),
         ],
         _ => {
@@ -571,6 +586,7 @@ impl CargoAllowCommand {
         "reconcile-package-publication",
         "prep-candidate",
         "release-freeze",
+        "release-final-tag-bridge",
         "frozen-subject-lock",
         "campaign-closeout",
         "review-disposition",
@@ -610,6 +626,28 @@ mod command_summary_supported_set_tests {
                 "--help must name `{name}` as a --command-summary-output command; flag help text: {flag_help:?}"
             );
         }
+    }
+
+    #[test]
+    fn hooks_help_names_mutating_subcommands() {
+        // #4333: the parent one-liner must not promise "without changing
+        // the repository" while `apply`/`remove` mutate Git hooks.
+        let about = CargoAllowCli::command()
+            .find_subcommand("hooks")
+            .and_then(|command| command.get_about())
+            .map(|about| about.to_string());
+        assert!(
+            about
+                .as_deref()
+                .is_some_and(|text| text.contains("apply") && text.contains("remove")),
+            "hooks --help must name apply/remove; about: {about:?}"
+        );
+        assert!(
+            !about
+                .as_deref()
+                .is_some_and(|text| text.contains("without changing")),
+            "hooks --help must not claim no repository change; about: {about:?}"
+        );
     }
 
     #[test]

@@ -46,7 +46,18 @@ struct AdoptionArtifact {
     plan: allow_report::CoreAdoptionPlanV1,
 }
 
+#[cfg(test)]
 pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
+    cmd_adopt_with_summary_disposition(
+        args,
+        &mut crate::core_command_router::ErrorSummaryDisposition::Required,
+    )
+}
+
+pub(crate) fn cmd_adopt_with_summary_disposition(
+    args: &AdoptionArgs,
+    error_summary: &mut crate::core_command_router::ErrorSummaryDisposition,
+) -> CargoAllowResult<()> {
     let inspection = inspect(args)?;
     let output = args
         .output
@@ -109,13 +120,10 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
         allow_report::BootstrapDisposition::PartialInventory
         | allow_report::BootstrapDisposition::InvalidPolicy
         | allow_report::BootstrapDisposition::UnsupportedRepositoryState
-        | allow_report::BootstrapDisposition::InstrumentFailure => Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Artifact,
-            format!(
-                "cargo-allow adopt: {}",
-                disposition_text(artifact.plan.bootstrap_disposition)
-            ),
-        )),
+        | allow_report::BootstrapDisposition::InstrumentFailure => {
+            *error_summary = crate::core_command_router::ErrorSummaryDisposition::EvaluatedOutcome;
+            Err(bootstrap_failure_error(artifact.plan.bootstrap_disposition))
+        }
         _ => Ok(()),
     }
 }
@@ -788,6 +796,36 @@ fn sanitize_diagnostic(root: &Path, diagnostic: &str) -> String {
         .replace(&root_forward, "<repository-root>")
 }
 
+/// The typed registry-class error for a failing `adopt` bootstrap
+/// disposition, with a per-disposition recovery step (#4524). Split from the
+/// command body so every mapping arm is unit-coverable without driving the
+/// full adopt flow through each repository state.
+fn bootstrap_failure_error(disposition: allow_report::BootstrapDisposition) -> CargoAllowError {
+    let (kind, next_step) = match disposition {
+        allow_report::BootstrapDisposition::InvalidPolicy => (
+            CargoAllowErrorKind::InvalidPolicy,
+            "repair or remove the invalid policy ledger, then rerun `adopt`.",
+        ),
+        allow_report::BootstrapDisposition::PartialInventory => (
+            CargoAllowErrorKind::Inventory,
+            "resolve the partial inventory (missing or unreadable tracked files), then rerun `adopt`.",
+        ),
+        allow_report::BootstrapDisposition::UnsupportedRepositoryState => (
+            CargoAllowErrorKind::Unsupported,
+            "restore the repository to a supported state (clean worktree, committed HEAD), then rerun `adopt`.",
+        ),
+        _ => (
+            CargoAllowErrorKind::InstrumentFailure,
+            "address the instrument failure named in the plan, then rerun `adopt`.",
+        ),
+    };
+    CargoAllowError::with_kind(
+        kind,
+        format!("cargo-allow adopt: {}", disposition_text(disposition)),
+    )
+    .with_next_step(next_step)
+}
+
 fn disposition_text(disposition: allow_report::BootstrapDisposition) -> &'static str {
     match disposition {
         allow_report::BootstrapDisposition::CleanNoPolicy => "clean_no_policy",
@@ -852,6 +890,51 @@ fn render_human(plan: &allow_report::CoreAdoptionPlanV1, style: allow_report::St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bootstrap_failure_error_maps_every_disposition_to_its_registry_class() -> Result<(), String>
+    {
+        // #4524: each failing adopt bootstrap disposition carries its registry
+        // class and a typed recovery step instead of the Artifact kind's
+        // output-path hint.
+        let cases = [
+            (
+                allow_report::BootstrapDisposition::InvalidPolicy,
+                CargoAllowErrorKind::InvalidPolicy,
+                "repair or remove the invalid policy ledger",
+            ),
+            (
+                allow_report::BootstrapDisposition::PartialInventory,
+                CargoAllowErrorKind::Inventory,
+                "resolve the partial inventory",
+            ),
+            (
+                allow_report::BootstrapDisposition::UnsupportedRepositoryState,
+                CargoAllowErrorKind::Unsupported,
+                "restore the repository to a supported state",
+            ),
+            (
+                allow_report::BootstrapDisposition::InstrumentFailure,
+                CargoAllowErrorKind::InstrumentFailure,
+                "address the instrument failure",
+            ),
+        ];
+        for (disposition, expected_kind, next_step_fragment) in cases {
+            let error = bootstrap_failure_error(disposition);
+            assert!(
+                error.kind() == expected_kind,
+                "wrong registry class for the disposition"
+            );
+            let next = error.next_step().unwrap_or_else(|| {
+                std::panic::panic_any("the bootstrap failure must type a next step")
+            });
+            assert!(
+                next.contains(next_step_fragment),
+                "the next step must name the recovery"
+            );
+        }
+        Ok(())
+    }
 
     fn require(condition: bool, message: &str) -> Result<(), String> {
         condition.then_some(()).ok_or_else(|| message.to_string())

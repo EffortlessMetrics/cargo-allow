@@ -55,7 +55,7 @@ fn clap_parses_repo_policy_migrate() {
             summary_output: Some(summary_output),
             ..
         })) if dir == Path::new("policy")
-            && out == Path::new("target/allow.toml")
+            && out == Some(Path::new("target/allow.toml").to_path_buf())
             && summary_output == Path::new("target/migrate-summary.json")
     ));
 }
@@ -66,7 +66,7 @@ fn migrate_requires_one_input_source() {
         root: RootArgs::default(),
         from: None,
         repo_policy: None,
-        out: PathBuf::from("target/unused.toml"),
+        out: Some(PathBuf::from("target/unused.toml")),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -83,7 +83,7 @@ fn migrate_requires_one_input_source() {
         root: RootArgs::default(),
         from: Some(PathBuf::from("legacy.toml")),
         repo_policy: Some(PathBuf::from("policy")),
-        out: PathBuf::from("target/unused.toml"),
+        out: Some(PathBuf::from("target/unused.toml")),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -116,7 +116,7 @@ fn migrate_refuses_existing_output_without_force() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -148,7 +148,7 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out: out.clone(),
+        out: Some(out.clone()),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -160,6 +160,64 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
     assert!(rendered.contains("process_spawn"));
     assert!(rendered.contains("network_destination"));
+}
+
+#[test]
+fn migrate_default_output_lands_under_root_not_calling_directory() {
+    // #4508: with no explicit --output, the default ledger location belongs to
+    // the migrated tree. An agent running `migrate --root <fixture>` from a
+    // different checkout (the test process's own working directory here) must
+    // never write through the default into the caller's own live ledger.
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    // The caller's working directory has no policy ledger here; the defect
+    // under test would CREATE one at the conventional location beside the
+    // test process instead of writing the migrated tree.
+    let caller_ledger = std::env::current_dir()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cwd: {err}")))
+        .join("policy")
+        .join("allow.toml");
+    assert!(
+        !caller_ledger.exists(),
+        "probe premise: no ledger at the working directory's default location"
+    );
+
+    let fixture_ledger = dir.join("policy").join("allow.toml");
+    let _ = fs::remove_file(&fixture_ledger);
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs {
+            root: Some(dir.clone()),
+        },
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: None,
+        force: true,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("default-output migrate: {err}")));
+
+    let rendered = fs::read_to_string(&fixture_ledger).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "default output must land under the migrated root: {err}"
+        ))
+    });
+    assert!(
+        rendered.contains("network_destination"),
+        "the migrated entries must land in the fixture ledger"
+    );
+    assert!(
+        !caller_ledger.exists(),
+        "a --root-scoped default migrate must not create a ledger in the calling directory"
+    );
 }
 
 #[test]
@@ -196,7 +254,7 @@ fn migrate_external_output_uses_held_target_and_preserves_force_backup() {
         },
         from: None,
         repo_policy: Some(policy_dir.clone()),
-        out: out_alias.clone(),
+        out: Some(out_alias.clone()),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -214,7 +272,7 @@ fn migrate_external_output_uses_held_target_and_preserves_force_backup() {
         root: RootArgs { root: Some(dir) },
         from: None,
         repo_policy: Some(policy_dir),
-        out: out_alias,
+        out: Some(out_alias),
         force: true,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -269,7 +327,7 @@ fn migrate_summary_collision_rejects_before_touching_destination_or_backup() {
         },
         from: None,
         repo_policy: Some(policy_dir),
-        out: out.clone(),
+        out: Some(out.clone()),
         force: true,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -319,7 +377,7 @@ fn migrate_external_output_rejects_leaf_symlink_without_touching_sentinel() {
         root: RootArgs { root: Some(dir) },
         from: None,
         repo_policy: Some(policy_dir),
-        out: out.clone(),
+        out: Some(out.clone()),
         force: true,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -364,7 +422,7 @@ fn migrate_external_output_rejects_directory_without_touching_neighbor() {
         root: RootArgs { root: Some(dir) },
         from: None,
         repo_policy: Some(policy_dir),
-        out: out.clone(),
+        out: Some(out.clone()),
         force: true,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -502,7 +560,7 @@ fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out: out.clone(),
+        out: Some(out.clone()),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Json,
@@ -614,7 +672,7 @@ fn migrate_repo_policy_summary_counts_unsafe_weak_evidence() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Json,
@@ -668,7 +726,7 @@ fn migrate_repo_policy_summary_counts_unsafe_broken_evidence() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Json,
@@ -725,7 +783,7 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
         root: RootArgs::default(),
         from: None,
         repo_policy: Some(policy_dir),
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Human,
@@ -778,7 +836,7 @@ fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
         },
         from: Some(from),
         repo_policy: None,
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Json,
@@ -854,7 +912,7 @@ fn migrate_from_infers_root_for_evidence_diagnostics() {
         root: RootArgs::default(),
         from: Some(from),
         repo_policy: None,
-        out,
+        out: Some(out),
         force: false,
         update: false,
         summary_format: HumanJsonFormat::Json,

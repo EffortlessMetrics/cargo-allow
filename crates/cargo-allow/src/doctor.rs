@@ -61,7 +61,18 @@ struct DoctorWorldContext {
     rust_scan: allow_rust::RustScanResult,
 }
 
+#[cfg(test)]
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
+    cmd_doctor_with_summary_disposition(
+        args,
+        &mut crate::core_command_router::ErrorSummaryDisposition::Required,
+    )
+}
+
+pub(crate) fn cmd_doctor_with_summary_disposition(
+    args: &DoctorArgs,
+    error_summary: &mut crate::core_command_router::ErrorSummaryDisposition,
+) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         if args.support_bundle.is_some() {
             return Err(CargoAllowError::with_kind(
@@ -375,6 +386,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     // as a merge blocker.
     if args.require_clean && (rust_scan.files_skipped > 0 || rust_scan.files_with_parse_errors > 0)
     {
+        *error_summary = crate::core_command_router::ErrorSummaryDisposition::EvaluatedOutcome;
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::PolicyViolation,
             format!(
@@ -389,6 +401,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             Some(Err(_)) => CargoAllowErrorKind::InvalidPolicy,
             Some(Ok(_)) => CargoAllowErrorKind::PolicyViolation,
         };
+        *error_summary = crate::core_command_router::ErrorSummaryDisposition::EvaluatedOutcome;
         return Err(CargoAllowError::with_kind(
             kind,
             "doctor --require-clean: policy config is invalid or missing",

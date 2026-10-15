@@ -105,11 +105,9 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         // fix: the generic InvalidConfig Next line (init/--config) does not
         // repair an out-of-root --write path (#4481).
         crate::policy_config::assert_path_within_root(&mutation_root, target).map_err(|err| {
-            CargoAllowError::with_kind(
-                err.kind(),
+            CargoAllowError::with_kind(err.kind(), err.message().to_string()).with_next_step(
                 format!(
-                    "{}\nNext: pass a --write path inside {}, or run from that root (relative --write paths resolve against the current directory), then retry.",
-                    err.message(),
+                    "pass a --write path inside {}, or run from that root (relative --write paths resolve against the current directory), then retry.",
                     mutation_root.display()
                 ),
             )
@@ -338,11 +336,14 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
-                    "{} already exists; use --force to overwrite\nNext: pass --force to overwrite {}, choose a different --write path, or preview without --write first.",
-                    absolute_target.display(),
+                    "{} already exists; use --force to overwrite",
                     absolute_target.display()
                 ),
-            ));
+            )
+            .with_next_step(format!(
+                "pass --force to overwrite {}, choose a different --write path, or preview without --write first.",
+                absolute_target.display()
+            )));
         }
         let target = portable_relative_under_root(&root, absolute_target)?;
         let mode = if args.force {

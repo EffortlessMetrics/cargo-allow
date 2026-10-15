@@ -66,6 +66,12 @@ pub(crate) fn validate_evidence_references_for_source_tree(
                         reference.diagnostic.raw,
                         reference.source.message(&reference.diagnostic.message)
                     ),
+                )
+                // The failure is about the evidence reference, not the
+                // output path; name the evidence remedy so the operator is
+                // not sent checking writability (#4503).
+                .with_next_step(
+                    "create the referenced evidence file and track it in Git (`git add <path>`), then retry; when applying a `--from-plan`, regenerate the plan first as the printed `cargo-allow why --plan` command shows.",
                 ));
             }
         }

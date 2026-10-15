@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: broken local evidence-link failures now carry a typed Next step
+  naming the evidence remedy — create the referenced evidence file and
+  track it in Git, then retry (regenerating the plan first when applying
+  a `--from-plan`) — instead of the Artifact kind's generic
+  output-path writability hint that misdirected recovery (#4503).
+  Error codes, messages, and exit codes are unchanged.

@@ -10,9 +10,9 @@
  ],
  "msrv": "1.95",
  "toolchain": "1.95.0",
- "target": "host:x86_64-pc-windows-msvc",
- "manifest_set_digest": "0ca4f9eb8992041fde83c1c720bbc1aa51895f603382ca68c5f18255ce52a328",
- "lock_digest": "c6730d656e7686213bf37e4fa4474bbe61824039b31fdfb02d25bcee92e98775",
+ "target": "host:x86_64-unknown-linux-gnu",
+ "manifest_set_digest": "4430bf35921f23a321655487516a7bffd24fc1b3a23cb39cbda6b371682068ae",
+ "lock_digest": "808326f45858ca6758dbf8f920762eb7eb7c439ac130a5f9c93e9e3feec40b09",
  "rows": [
   {
    "package": "serde",
@@ -71,17 +71,17 @@
  ],
  "commands": [
   "cargo update -p <dep>@<locked-version> --precise <floor> (bare name only while bootstrapping an absent lock row)",
-  "cargo check --locked --target x86_64-pc-windows-msvc -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
+  "cargo check --locked --target x86_64-unknown-linux-gnu -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
  ],
- "floor_lock_digest": "sha256:v1:7b24bc6772437884f9c7d729a73f647d7d7ed8bf20f167d421f873628bccc05d",
+ "floor_lock_digest": "sha256:v1:7d9fce41516c62564885856637e4d10c8d38a950c6b29e42ad9e7f6798261008",
  "limitations": [
   "bounded proof: the check classes over the shared closure, not every target or feature combination",
   "advisory: report-only product rows never gate the cargo-allow release set",
   "dev-dependencies are exercised by the test class but are not certified floors",
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
-  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
+  "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
-  "local floor subject: source c2131ec3fe8c0ec88c293ed438f603f4bbaf6c15; executed commit 796feea32fb11e3d430e06ed80e997e22591d0de; tree 719322a961c97f79fa5ee8ef861cff23100a2b20; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "local floor subject: source 87dbf2dfa2343fd56d7373934daa2f0c92c64c22; executed commit cc207f7c4ddd40a3b32375b6ce51dfb3930e25ef; tree ecbe00427c7c7dcecaf8e82274afedcd7de72168; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }

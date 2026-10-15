@@ -24188,6 +24188,7 @@ glob = "docs/release/final-freeze-qualification-v1.md"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-review-4455-record"
 kind = "non_rust_file"
@@ -24209,7 +24210,6 @@ glob = ".allow/review-dispositions/pr-4455.json"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 
 [[allow]]
@@ -24234,4 +24234,368 @@ glob = ".allow/revisions/4455-retained-review-record.toml"
 line = 1
 column = 1
 
+[[allow]]
+id = "allow-review-4460-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4460.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4460 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4460", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
 
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4460.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4460.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-review-4460-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4460-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4460 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4460", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4460-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4460-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-review-4456-record"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4456.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4456 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4456", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4456.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4456.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-review-4456-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4456-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4456 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4456", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-11"
+review_after = "2027-01-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4456-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4456-retained-review-record.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11353"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-final-tag.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intercepted production consumer tests for the final-tag driver. Full lifecycle controls require the actual compiled Rust bridge and existing typed fixture; I/O-only validation is a separate narrower scope and no test authorizes a live tag, mint or publication."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-final-tag.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-final-tag.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11354"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4448.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4448 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4448", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4448.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4448.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11345"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-final-tag.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Intentional executable final-tag I/O consumer under #3930/#3925. It composes the existing typed bridge and authenticated store, retains intent and Started before one nonforced request, and cannot derive release authority from local JSON or synthetic validation."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-final-tag.py"
+target_fingerprint = "py"
+glob = "scripts/release-final-tag.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11347"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3930-final-tag-driver.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Authored revision note for these exact #3930 source-inventory entries and this note, under the acknowledged reversible implementation scope. It does not grant merge, CI bypass, release readiness or irreversible-operation authority."
+evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
+links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3930-final-tag-driver.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3930-final-tag-driver.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11355"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4459-retained-review-record.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact retained PR #4459 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md","doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4459-retained-review-record.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4459-retained-review-record.toml"
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11356"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4459.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained structured review evidence for PR #4459 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-10"
+review_after = "2027-01-08"
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4459.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4459.json"
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1132"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/core_command_router/tests.rs"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Test fixture creates the policy ledger via create_dir_all plus a sentinel write; the expect documents the invariant that the parent exists, and this is test-only code asserting the #4507 collision refusal."
+evidence = ["test:summary_sidecar_rejects_untracked_default_ledger_collision", "issue:4507"]
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "summary_sidecar_rejects_untracked_default_ledger_collision"
+callee = "expect"
+receiver_fingerprint = "ledger.parent()"
+normalized_snippet_hash = "fnv1a64:97d452d0a0249937"
+
+[allow.last_seen]
+line = 243
+column = 40
+
+[[allow]]
+id = "allow-1133"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4507 summary-output ledger-collision receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["issue:4507"]
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4507-summary-output-ledger-collision.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1134"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/src/add_tests.rs"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Unit test pins the terminal-only stderr-note decision for the #4509 summary placement: the expect documents the interactive-candidate invariant (terminal without a sidecar always gets the note)."
+evidence = ["test:candidate_stderr_note_skips_capture_and_sidecar_writes", "issue:4509"]
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "candidate_stderr_note_skips_capture_and_sidecar_writes"
+callee = "expect"
+receiver_fingerprint = "candidate_stderr_note(None, true)"
+normalized_snippet_hash = "fnv1a64:5bf3d82e8cac23ec"
+
+[allow.last_seen]
+line = 16
+column = 10
+
+[[allow]]
+id = "allow-1135"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4509-add-summary-stderr-note.toml"
+owner = "core/tooling"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4509 stderr-note receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+created = "2026-10-14"
+review_after = "2027-01-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4509-add-summary-stderr-note.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4509-add-summary-stderr-note.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1136"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/floor-receipt-regeneration.yml"
+owner = "core/ci"
+classification = "workflow_regeneration"
+reason = "Dispatchable floor-receipt regeneration runner for #4493: runs the retained direct-floor proof per product on a runner and uploads the regenerated receipts as artifacts, so receipt drift on moved branches has a runner-based regeneration path."
+evidence = ["issue:4493", "issue:4525"]
+created = "2026-10-15"
+review_after = "2027-01-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/floor-receipt-regeneration.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/floor-receipt-regeneration.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1137"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4493 floor-receipt-regeneration workflow receipt and this note; records bounded infra provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["issue:4493"]
+created = "2026-10-15"
+review_after = "2027-01-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

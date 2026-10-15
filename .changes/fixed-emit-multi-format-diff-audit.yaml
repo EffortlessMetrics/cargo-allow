@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `diff --emit markdown,json` and `audit --emit markdown,json` now
+  emit every requested format, matching `check` (#4528). Both arg
+  declarations carried `value_delimiter = ','` on a single-value
+  `Option<String>`, so Clap split the value and only the first comma
+  token ever reached the emit parser — the rest of the request was
+  silently dropped with a green exit. Removing the delimiter lets the
+  full comma-separated list flow to the same parser check uses.

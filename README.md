@@ -298,6 +298,13 @@ recheck that finding with `why`, and prove the repository with
 `check --mode no-new`. See
 [Manage an exception](docs/how-to/manage-an-exception.md).
 
+Two prerequisites the `--evidence doc:docs/design.md` reference carries: the
+evidence file must exist **and** be git-tracked before `add --from-plan`
+runs (otherwise it refuses with `error[E0007_ARTIFACT]`; regenerate the plan
+with the printed `why --plan` command if tracking it stales the plan), and
+the evidence doc is itself a new finding that the follow-up
+`check --mode no-new` flags until it is receipted in the same change.
+
 ## CI
 
 For pull requests:
