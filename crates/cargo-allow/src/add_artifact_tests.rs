@@ -88,6 +88,19 @@ fn render_broad_add_summary_human_styles_fixed_baseline_marker() {
         "added \u{1b}[31mbroad baseline\u{1b}[0m allow-broad (kind=panic, scope=src/**/*.rs, occurrence_limit=2); policy written to policy/allow.toml\n"
     );
     assert_eq!(styled.matches('\u{1b}').count(), 2);
+
+    // #4549/#4554 review: the dry-run branch keeps the preview tense and
+    // never claims a write.
+    let dry_run_plain = render_add_summary_broad_human(
+        &entry,
+        Some("policy/allow.toml"),
+        true,
+        allow_report::Style::PLAIN,
+    );
+    assert_eq!(
+        dry_run_plain,
+        "would add broad baseline allow-broad (kind=panic, scope=src/**/*.rs, occurrence_limit=2); dry-run: nothing written (candidate on stdout)\n"
+    );
 }
 
 #[test]
