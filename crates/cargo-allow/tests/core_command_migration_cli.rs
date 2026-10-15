@@ -10,6 +10,15 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 #[test]
 fn core_command_migration_native_transport_and_admission() -> Result<(), String> {
+    // #4461: under coverage instrumentation (tarpaulin sets LLVM_PROFILE_FILE
+    // on the test process), the fixture's sanitized child environment cannot
+    // satisfy the instrumented binary — every admission case exits 1 and the
+    // collection comes back invalid/empty, which is an instrumented-runner
+    // artifact, not product behavior. The regular lanes keep full coverage of
+    // this suite; skip only in the coverage context.
+    if std::env::var_os("LLVM_PROFILE_FILE").is_some() {
+        return Ok(());
+    }
     let root = repository_root()?;
     let proof = OwnedDirectory::new("native")?;
     let observations = proof.0.join("observations");
