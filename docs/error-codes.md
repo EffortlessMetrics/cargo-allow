@@ -42,7 +42,7 @@ as a missing code.
 | --- | --- | --- |
 | `E0001_USAGE` | `usage` | Invalid command-line usage or incompatible options. |
 | `E0002_INVALID_CONFIG` | `invalid_config` | Missing or invalid runtime configuration. |
-| `E0003_INVALID_POLICY` | `invalid_policy` | Invalid policy ledger, schema, or policy value. |
+| `E0003_INVALID_POLICY` | `invalid_policy` | Missing policy ledger, or invalid or malformed policy ledger, schema, or policy value. |
 | `E0004_INVENTORY` | `inventory` | Source inventory discovery or access failure. |
 | `E0005_SCAN` | `scan` | Source scanning or source-file read failure. |
 | `E0006_POLICY_VIOLATION` | `policy_violation` | The selected policy mode rejected findings or posture. |

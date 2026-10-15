@@ -57,6 +57,47 @@ fn validator() -> Result<jsonschema::Validator, Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn capabilities_with_absolute_default_policy_path_gets_the_init_remedy() -> TestResult {
+    // #4558: an absolute spelling of the default policy (the CI `$(pwd)`
+    // idiom) resolves to the same missing file as the relative default
+    // spelling, so it must get the init remedy, not create-or-repoint.
+    let fixture = Fixture::new("absolute-default-policy")?;
+    let absolute = fixture.0.join("policy/allow.toml");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&fixture.0)
+        .arg("capabilities")
+        .arg("--root")
+        .arg(".")
+        .arg("--config")
+        .arg(&absolute)
+        .arg("--format")
+        .arg("json")
+        .output()?;
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "missing absolute default policy must exit 1: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error[E0003_INVALID_POLICY]"),
+        "the typed policy error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "Next: run `cargo-allow init` to create the starter policy, then rerun this command."
+        ),
+        "the absolute default spelling must get the init remedy: {stderr}"
+    );
+    assert!(
+        !stderr.contains("create a cargo-allow policy at the reported path"),
+        "the create-or-repoint remedy must not replace init for the default path: {stderr}"
+    );
+    Ok(())
+}
+
+#[test]
 fn capabilities_with_missing_custom_policy_names_the_path_remedy() -> TestResult {
     // #4545 review: `init` only writes the default policy/allow.toml, so a
     // missing nondefault --config selection must get the create-or-repoint

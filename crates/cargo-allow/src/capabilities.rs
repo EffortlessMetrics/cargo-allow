@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::policy_config::observe_policy_for_diagnostics;
 use crate::{RootArgs, current_dir, emit_text, resolve_source_tree_root};
@@ -531,6 +531,25 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
     emit_text(args.output.as_deref(), &format!("{rendered}\n"))
 }
 
+/// Whether `path` names the default `policy/allow.toml` under `root`,
+/// compared spelling-insensitively: an explicit `--config
+/// "$PWD/policy/allow.toml"` resolves to the same missing file as the
+/// relative default spelling, and both deserve the init remedy (#4558).
+/// Verbatim-prefix and separator differences are normalized; comparison is
+/// case-insensitive on Windows, where path case is not significant.
+fn is_default_policy_path(path: &Path, root: &Path) -> bool {
+    fn normalized(path: &Path) -> String {
+        let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
+        let text = text.replace(std::path::MAIN_SEPARATOR, "/");
+        if cfg!(windows) {
+            text.to_ascii_lowercase()
+        } else {
+            text
+        }
+    }
+    normalized(path) == normalized(&root.join("policy").join("allow.toml"))
+}
+
 fn configured_file_family_capabilities(
     args: &CapabilitiesArgs,
 ) -> CargoAllowResult<Vec<ConfiguredFileFamilyCapability>> {
@@ -555,7 +574,11 @@ fn configured_file_family_capabilities(
         let confirmed_missing = policy_path
             .as_deref()
             .is_some_and(|path| matches!(path.try_exists(), Ok(false)));
-        if confirmed_missing && policy_path.as_deref() == Some(&root.join("policy/allow.toml")) {
+        if confirmed_missing
+            && policy_path.as_deref().is_some_and(|path| {
+                is_default_policy_path(path, &root)
+            })
+        {
             // docs/getting-started.md §2b: before adoption the default
             // policy file does not exist yet, and the remedy is §4's
             // `cargo-allow init`, not repairing a policy entry (#4545).
