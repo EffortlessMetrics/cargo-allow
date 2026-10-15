@@ -368,8 +368,8 @@ expires_or_review_after_required = true
 "#,
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
-    let policy_before =
-        fs::read_to_string(root.join("policy/allow.toml")).expect("read policy before");
+    let policy_before = fs::read_to_string(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy before: {err}")));
 
     let sidecar = root.join("summary-write.json");
     let output = cargo_allow_command()
@@ -455,8 +455,8 @@ expires_or_review_after_required = true
         output.status.success(),
         "dry-run add --update must succeed: {stderr}"
     );
-    let policy_after =
-        fs::read_to_string(root.join("policy/allow.toml")).expect("read policy after");
+    let policy_after = fs::read_to_string(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy after: {err}")));
     assert_eq!(
         policy_before, policy_after,
         "--dry-run --update must not change the live ledger"
