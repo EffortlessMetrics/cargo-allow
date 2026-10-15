@@ -50,9 +50,14 @@ fn workflow_construction_inventory_covers_the_live_denominator() {
         .iter()
         .filter(|p| p.starts_with(".github/workflows/"))
         .collect();
-    assert_eq!(workflows.len(), 10, "ten current workflows: {workflows:?}");
+    assert_eq!(
+        workflows.len(),
+        11,
+        "eleven current workflows: {workflows:?}"
+    );
     for expected in [
         ".github/workflows/ci.yml",
+        ".github/workflows/floor-receipt-regeneration.yml",
         ".github/workflows/release.yml",
         ".github/workflows/release-authorized.yml",
         ".github/workflows/review-readiness.yml",

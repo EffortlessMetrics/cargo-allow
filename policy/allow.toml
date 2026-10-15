@@ -24349,3 +24349,47 @@ glob = ".allow/revisions/4509-add-summary-stderr-note.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1136"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/floor-receipt-regeneration.yml"
+owner = "core/ci"
+classification = "workflow_regeneration"
+reason = "Dispatchable floor-receipt regeneration runner for #4493: runs the retained direct-floor proof per product on a runner and uploads the regenerated receipts as artifacts, so receipt drift on moved branches has a runner-based regeneration path."
+evidence = ["issue:4493", "issue:4525"]
+created = "2026-10-15"
+review_after = "2027-01-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/floor-receipt-regeneration.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/floor-receipt-regeneration.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1137"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Authored revision note for the exact #4493 floor-receipt-regeneration workflow receipt and this note; records bounded infra provenance without widening directory scope or granting merge, CI-bypass, or release authority."
+evidence = ["issue:4493"]
+created = "2026-10-15"
+review_after = "2027-01-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4493-floor-receipt-regeneration.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
