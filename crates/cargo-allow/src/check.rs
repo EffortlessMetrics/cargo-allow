@@ -67,6 +67,10 @@ pub(crate) fn cmd_check_with_persistent_cache(
     }
     if args.staged || args.phase.is_some() || args.staged_identity_only {
         if args.staged_identity_only {
+            reject_unwired_artifact_emission(
+                args.emit.is_some() || args.artifact_dir.is_some(),
+                "--staged-identity-only",
+            )?;
             return spec_precommit::cmd_staged_identity(args);
         }
         if !args.staged || !matches!(args.phase, Some(CheckPhase::Precommit)) {
@@ -81,6 +85,10 @@ pub(crate) fn cmd_check_with_persistent_cache(
                 args.kind.as_deref(),
                 args.include_untracked,
                 &args.deny,
+            )?;
+            reject_unwired_artifact_emission(
+                args.emit.is_some() || args.artifact_dir.is_some(),
+                "--staged --phase precommit with --profile spec-system",
             )?;
             return spec_precommit::cmd_spec_precommit(args);
         }
@@ -127,6 +135,10 @@ pub(crate) fn cmd_check_with_persistent_cache(
             args.kind.as_deref(),
             args.include_untracked,
             &args.deny,
+        )?;
+        reject_unwired_artifact_emission(
+            args.emit.is_some() || args.artifact_dir.is_some(),
+            "check --profile spec-system",
         )?;
         return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
             command: "check",
@@ -829,6 +841,22 @@ fn run_provenance() -> RunProvenance {
 fn resolve_check_root(args: &CheckArgs) -> CargoAllowResult<PathBuf> {
     let cwd = current_dir()?;
     resolve_source_tree_root(args.root.root.as_deref(), cwd)
+}
+
+/// Fail honest when a dispatch path never reads `--emit`/`--artifact-dir`
+/// (#4547-class): the paired flags used to be silently ignored behind a
+/// green exit with no artifacts.
+fn reject_unwired_artifact_emission(requested: bool, surface: &str) -> CargoAllowResult<()> {
+    if requested {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            format!(
+                "{surface} does not support multi-format artifact emission; \
+                 drop --emit and --artifact-dir, then retry"
+            ),
+        ));
+    }
+    Ok(())
 }
 
 fn reject_source_exception_options(

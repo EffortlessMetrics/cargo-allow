@@ -16,6 +16,15 @@ use crate::{
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         reject_source_exception_options(args.compat, args.kind.as_deref(), args.include_untracked)?;
+        // #4547-class: the spec-system path never reads these flags; fail
+        // honest instead of silently ignoring them behind a green exit.
+        if args.emit.is_some() || args.artifact_dir.is_some() {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Unsupported,
+                "audit --profile spec-system does not support multi-format artifact emission; \
+                 drop --emit and --artifact-dir, then retry",
+            ));
+        }
         return spec_system::cmd_spec_system(spec_system::SpecSystemCommandArgs {
             command: "audit",
             root: &args.root,
