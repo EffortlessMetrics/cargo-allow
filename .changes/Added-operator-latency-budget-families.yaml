@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Measure the three command families the operator-latency matrix predated
+  (#4339): one explicit-date `cadence` sample at full-ledger scale, two
+  committed base/head manifest+lockfile `dependency-graph-delta compile`
+  samples (a moved pair whose receipt must name the committed probe
+  package, and an unchanged pair that must compile zero movement rows),
+  and a one-file incremental sample measured as a comment-only edit
+  followed by a warm cache-on no-new check in the agent-loop fixture.
+  The receipt records the new phase counts, the first Windows debug
+  observation is documented in docs/performance-budgets.md, and the
+  one-file edit-to-recheck loop measurably does not meet the earlier
+  < 2,000 ms aspiration at self-hosted scale because matching, not
+  parsing, dominates the command.

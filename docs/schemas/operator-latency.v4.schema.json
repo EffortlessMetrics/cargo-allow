@@ -92,6 +92,9 @@
         "warm_process_samples": { "type": "integer", "minimum": 0 },
         "targeted_samples": { "type": "integer", "minimum": 0 },
         "agent_loop_samples": { "type": "integer", "minimum": 0 },
+        "cadence_samples": { "type": "integer", "minimum": 0 },
+        "delta_samples": { "type": "integer", "minimum": 0 },
+        "incremental_samples": { "type": "integer", "minimum": 0 },
         "cache_mode_samples": {
           "type": "object",
           "additionalProperties": false,
@@ -177,7 +180,7 @@
       "required": ["name", "phase", "cache_mode", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
       "properties": {
         "name": { "type": "string" },
-        "phase": { "enum": ["cold", "warm", "targeted", "agent_loop"] },
+        "phase": { "enum": ["cold", "warm", "targeted", "agent_loop", "cadence", "delta", "incremental"] },
         "cache_mode": { "enum": ["on", "off", "not_applicable"] },
         "argv": {
           "type": "array",

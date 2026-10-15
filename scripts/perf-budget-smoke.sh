@@ -341,6 +341,9 @@ payload_ceilings() {
     why_fast_path) printf '%s\n' '8192 8192' ;;
     agent_loop_why_plan) printf '%s\n' '8192 12288' ;;
     agent_loop_add) printf '%s\n' '4096 4096' ;;
+    cadence_explicit_date) printf '%s\n' '2097152 2097152' ;;
+    incremental_one_file_check) printf '%s\n' '16384 16384' ;;
+    delta_compile_moved_pair | delta_compile_unchanged_pair) printf '%s\n' '65536 65536' ;;
     *) printf '%s\n' '- -' ;;
   esac
 }
@@ -461,6 +464,9 @@ payload = {
         "warm_process_samples": sum(row["phase"] == "warm" for row in sample_rows),
         "targeted_samples": sum(row["phase"] == "targeted" for row in sample_rows),
         "agent_loop_samples": sum(row["phase"] == "agent_loop" for row in sample_rows),
+        "cadence_samples": sum(row["phase"] == "cadence" for row in sample_rows),
+        "delta_samples": sum(row["phase"] == "delta" for row in sample_rows),
+        "incremental_samples": sum(row["phase"] == "incremental" for row in sample_rows),
         "cache_mode_samples": {
             mode: sum(row["cache_mode"] == mode for row in sample_rows)
             for mode in ("on", "off", "not_applicable")
@@ -482,6 +488,7 @@ payload = {
         "payload_bytes_recorded_per_sample",
         "semantic_artifact_bytes_recorded_per_sample",
         "agent_loop_composite_steps_attributable",
+        "cadence_delta_and_one_file_incremental_families_measured",
     ],
     "limitations": [
         "first_process_sample is not an operating-system-cold cache measurement",
@@ -707,7 +714,7 @@ measure_agent_step() {
   payload_bytes="$(artifact_payload_bytes "${artifact}")"
   semantic_payload_bytes="$(artifact_payload_bytes "${semantic}")"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "agent_loop" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
+    "${MEASURE_PHASE:-agent_loop}" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
     "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" \
     "${payload_bytes}" "${semantic_payload_bytes}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
@@ -1071,6 +1078,86 @@ Path(out_path).write_text(json.dumps(summary, sort_keys=True, separators=(",", "
 PY
 PERF_AGENT_LOOP_SUMMARY="$(py_path "${output_dir}/.agent-loop.summary.json")"
 export PERF_AGENT_LOOP_SUMMARY
+
+# --- #4339 families: cadence, one-file incremental, committed delta --------
+#
+# Three command families the original matrix predated. All run inside the
+# same disposable full-scale clone as the agent-loop composite and record
+# the same 11-column metrics contract, tagged with their own phase so the
+# receipt's semantic denominator names the family, not just the label.
+
+log "measuring explicit-date cadence at full-ledger scale"
+MEASURE_PHASE="cadence" measure_agent_step "cadence_explicit_date" \
+  "artifacts/cadence-explicit-date.json" "artifacts/cadence-explicit-date.json" \
+  '"schema_id": "cargo-allow.cadence.v1"' \
+  cadence --as-of "$(date -u +%F)" --format json \
+  --output .measurement/cadence-explicit-date.json
+
+log "measuring the one-file incremental edit → re-check loop"
+# The agent-loop composite left the clone's gate green with a warm
+# persistent cache; this comment-only edit invalidates exactly one cached
+# file, so the sample measures the single-file rescan loop (#2571/#2514).
+printf '%s\n' '// perf-budget incremental probe: comment-only edit' \
+  >>"${agent_loop_root}/crates/cargo-allow/src/agent_loop_probe.rs"
+MEASURE_PHASE="incremental" measure_agent_step "incremental_one_file_check" \
+  "artifacts/incremental-check.receipt.json" "artifacts/incremental-check.receipt.json" \
+  '"failed": false' \
+  check --mode no-new --persistent-cache on --format markdown \
+  --receipt .measurement/incremental-check.receipt.json \
+  --output .measurement/incremental-check.md
+
+log "preparing the committed base/head manifest+lockfile delta pair"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" show HEAD:Cargo.toml \
+  >"${agent_loop_root}/.measurement/base-manifest.toml" ||
+  fail "delta base manifest extraction failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" show HEAD:Cargo.lock \
+  >"${agent_loop_root}/.measurement/base-lock.toml" ||
+  fail "delta base lock extraction failed"
+delta_base_commit="$(env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" rev-parse HEAD)"
+printf '%s\n' '' '[[package]]' 'name = "perf-budget-delta-probe"' 'version = "0.1.0"' \
+  >>"${agent_loop_root}/Cargo.lock"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" add Cargo.lock ||
+  fail "delta probe git add failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" \
+  -c user.email=cargo-allow@example.invalid -c user.name=cargo-allow-perf \
+  commit -qm perf-delta-probe || fail "delta probe git commit failed"
+delta_head_commit="$(env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" rev-parse HEAD)"
+
+log "measuring dependency-graph-delta compile over the moved committed pair"
+MEASURE_PHASE="delta" measure_agent_step "delta_compile_moved_pair" \
+  "artifacts/delta-moved-pair.json" "artifacts/delta-moved-pair.json" \
+  'perf-budget-delta-probe' \
+  dependency-graph-delta compile \
+  --base-manifest .measurement/base-manifest.toml --head-manifest Cargo.toml \
+  --base-lock .measurement/base-lock.toml --head-lock Cargo.lock \
+  --base-commit "${delta_base_commit}" --head-commit "${delta_head_commit}" \
+  --output .measurement/delta-moved-pair.json
+
+log "measuring dependency-graph-delta compile over the unchanged committed pair"
+MEASURE_PHASE="delta" measure_agent_step "delta_compile_unchanged_pair" \
+  "artifacts/delta-unchanged-pair.json" "artifacts/delta-unchanged-pair.json" \
+  '"schema_id": "cargo-allow.dependency-graph-delta-compiler.v1"' \
+  dependency-graph-delta compile \
+  --base-manifest Cargo.toml --head-manifest Cargo.toml \
+  --base-lock Cargo.lock --head-lock Cargo.lock \
+  --base-commit "${delta_head_commit}" --head-commit "${delta_head_commit}" \
+  --output .measurement/delta-unchanged-pair.json
+# The schema-id marker alone cannot distinguish an empty movement set from a
+# spurious one; identical base and head inputs must compile zero rows
+# (CodeRabbit review on the #4339 PR).
+"${py}" - "$(py_path "${artifact_dir}/delta-unchanged-pair.json")" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+receipt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+rows = receipt.get("rows", [])
+if rows:
+    raise SystemExit(
+        "delta_compile_unchanged_pair must compile zero movement rows; got "
+        f"{len(rows)}: {json.dumps(rows)[:400]}"
+    )
+PY
 
 write_receipt "pass" ""
 
