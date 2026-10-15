@@ -428,20 +428,32 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                         .flat_map(|artifact| artifact.render_errors.iter().cloned()),
                 )
                 .collect::<Vec<_>>();
-            return Err(CargoAllowError::with_kind(
+            let error = CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
                     "artifact emit {:?}: {}",
                     validation.result,
                     details.join("; ")
                 ),
-            )
-            // RenderFailure details name the format-level remedy (drop the
-            // failing format or use its dedicated command); type it so the
-            // Next line doesn't fall back to the generic output-path hint
-            // (#4526/#4503-class).
-            .with_next_step(
-                "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+            );
+            if artifacts
+                .artifacts
+                .iter()
+                .any(|artifact| !artifact.render_errors.is_empty())
+            {
+                // RenderFailure details name the format-level remedy (drop the
+                // failing format or use its dedicated command); type it so the
+                // Next line doesn't fall back to the generic output-path hint
+                // (#4526/#4503-class).
+                return Err(error.with_next_step(
+                    "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+                ));
+            }
+            // Non-render failures (for example InstrumentFailure structural
+            // gaps) cannot be fixed by dropping a format; point at the
+            // manifest's reported gaps instead (#4551).
+            return Err(error.with_next_step(
+                "inspect the failing gaps recorded in the artifact-set manifest, resolve the reported condition, then retry.",
             ));
         }
     }
@@ -464,6 +476,14 @@ pub(crate) fn source_coupling_relation(
 }
 
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
+    if args.emit.is_some() || args.artifact_dir.is_some() {
+        // #4547: the staged path never reads these flags, so they used to be
+        // silently ignored behind a green exit; fail honest instead.
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            "exact staged source-exception evaluation does not yet support multi-format artifact emission; drop --emit and --artifact-dir, or run the tracked-worktree check for artifact output",
+        ));
+    }
     crate::emit_scan_status(
         "check",
         args.format,

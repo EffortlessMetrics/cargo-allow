@@ -508,20 +508,32 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                         .flat_map(|artifact| artifact.render_errors.iter().cloned()),
                 )
                 .collect::<Vec<_>>();
-            return Err(CargoAllowError::with_kind(
+            let error = CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Artifact,
                 format!(
                     "artifact emit {:?}: {}",
                     validation.result,
                     details.join("; ")
                 ),
-            )
-            // RenderFailure details name the format-level remedy (drop the
-            // failing format or use its dedicated command); type it so the
-            // Next line doesn't fall back to the generic output-path hint
-            // (#4526/#4503-class).
-            .with_next_step(
-                "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+            );
+            if artifacts
+                .artifacts
+                .iter()
+                .any(|artifact| !artifact.render_errors.is_empty())
+            {
+                // RenderFailure details name the format-level remedy (drop the
+                // failing format or use its dedicated command); type it so the
+                // Next line doesn't fall back to the generic output-path hint
+                // (#4526/#4503-class).
+                return Err(error.with_next_step(
+                    "drop the failing format from --emit (or use that format's dedicated command), then retry.",
+                ));
+            }
+            // Non-render failures (for example InstrumentFailure structural
+            // gaps) cannot be fixed by dropping a format; point at the
+            // manifest's reported gaps instead (#4551).
+            return Err(error.with_next_step(
+                "inspect the failing gaps recorded in the artifact-set manifest, resolve the reported condition, then retry.",
             ));
         }
     }

@@ -31,7 +31,30 @@ pub(crate) struct ReportArgs {
     /// Emit multi-format artifacts into this directory.
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
-    /// Comma-separated renderer formats to emit (markdown,json,html).
-    #[arg(long, value_name = "FORMATS")]
+    /// Comma-separated renderer formats to emit (markdown,json,html,sarif).
+    /// Requires --artifact-dir; a lone --emit would be silently dropped (#4548).
+    #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn report_args_emit_requires_artifact_dir() {
+        // #4548: a lone --emit used to be a silently dropped no-op; the
+        // pairing must be refused at argument parsing instead.
+        let missing = ReportArgs::try_parse_from(["audit", "--emit", "json"]);
+        assert!(
+            missing.is_err(),
+            "--emit without --artifact-dir must not parse"
+        );
+        let paired =
+            ReportArgs::try_parse_from(["audit", "--artifact-dir", "artifacts", "--emit", "json"])
+                .unwrap_or_else(|err| {
+                    std::panic::panic_any(format!("paired flags must parse: {err}"))
+                });
+        assert_eq!(paired.emit.as_deref(), Some("json"));
+    }
 }

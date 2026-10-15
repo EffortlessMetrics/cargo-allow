@@ -44,7 +44,8 @@ pub(crate) struct CheckArgs {
     #[arg(long, value_name = "DIR")]
     pub(crate) artifact_dir: Option<PathBuf>,
     /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
-    #[arg(long, value_name = "FORMATS")]
+    /// Requires --artifact-dir; a lone --emit would be silently dropped (#4548).
+    #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,
     /// Check mode [possible values: no-new, audit, strict, release].
     ///   no-new   Fail on new/expired/ambiguous/invalid_selector/
@@ -85,6 +86,33 @@ pub(crate) struct CheckArgs {
     /// Authorize source-preview evidence for an explicit tool-under-test.
     #[arg(long)]
     pub(crate) preview_authorized: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_args_emit_requires_artifact_dir() {
+        // #4548: a lone --emit used to be a silently dropped no-op; the
+        // pairing must be refused at argument parsing instead.
+        let missing = CheckArgs::try_parse_from(["check", "--mode", "no-new", "--emit", "json"]);
+        assert!(
+            missing.is_err(),
+            "--emit without --artifact-dir must not parse"
+        );
+        let paired = CheckArgs::try_parse_from([
+            "check",
+            "--mode",
+            "no-new",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "json",
+        ])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("paired flags must parse: {err}")));
+        assert_eq!(paired.emit.as_deref(), Some("json"));
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]

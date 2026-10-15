@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  UX: the `--emit` artifact surface now fails honest everywhere. `audit
+  --emit receipt` fails with `error[E0007_ARTIFACT]: artifact emit
+  RenderFailure: ...` naming the receipt command contract instead of
+  panicking with exit 101 after a green report (#4546); a lone `--emit`
+  without `--artifact-dir` is refused at argument parsing on `check`,
+  `diff`, and `audit` instead of being silently dropped behind exit 0
+  (#4548); `check --staged` rejects `--emit`/`--artifact-dir` as
+  unsupported instead of silently ignoring them (#4547); and the typed
+  artifact Next step suggests dropping a format only for render failures,
+  pointing structural failures (for example InstrumentFailure) at the
+  manifest's reported gaps instead (#4551).

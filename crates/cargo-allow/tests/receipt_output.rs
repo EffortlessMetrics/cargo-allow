@@ -982,3 +982,53 @@ target_fingerprint = "toml"
 glob = "policy/allow.toml"
 "#
 }
+
+#[test]
+fn staged_check_rejects_artifact_emission_flags() {
+    // #4547: the staged path never reads --emit/--artifact-dir, so the flags
+    // used to be silently ignored behind a green exit with no artifacts; the
+    // invocation must fail honest instead.
+    let root = temp_root("staged-emit-rejected");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+
+    let output = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--staged")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--mode")
+        .arg("audit")
+        .arg("--artifact-dir")
+        .arg("artifacts")
+        .arg("--emit")
+        .arg("json")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "staged artifact emission must fail instead of being silently ignored: {stderr}"
+    );
+    assert!(
+        stderr.contains("does not yet support multi-format artifact emission"),
+        "the rejection must name the staged carve-out: {stderr}"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "no artifact directory may be created on the staged path"
+    );
+
+    remove_temp_root(root);
+}
