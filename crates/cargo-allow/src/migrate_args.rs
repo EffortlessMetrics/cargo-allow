@@ -13,13 +13,11 @@ pub(crate) struct MigrateArgs {
     /// Directory containing compatible legacy policy files.
     #[arg(long)]
     pub(crate) repo_policy: Option<PathBuf>,
-    /// Output canonical policy path.
-    #[arg(
-        long = "output",
-        visible_alias = "out",
-        default_value = "policy/allow.toml"
-    )]
-    pub(crate) out: PathBuf,
+    /// Output canonical policy path. Relative paths resolve against the
+    /// working directory; when omitted, the migrated tree's own
+    /// `policy/allow.toml` is written (not the calling directory's).
+    #[arg(long = "output", visible_alias = "out")]
+    pub(crate) out: Option<PathBuf>,
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(crate) force: bool,

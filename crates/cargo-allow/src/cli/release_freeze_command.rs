@@ -43,8 +43,7 @@ use allow_report::{
 use clap::{Parser, Subcommand, ValueEnum};
 use serde_json::Value as Json;
 
-#[path = "release_freeze_rehearsal.rs"]
-mod rehearsal;
+use super::release_freeze_rehearsal as rehearsal;
 
 #[path = "release_freeze_registry.rs"]
 mod registry;

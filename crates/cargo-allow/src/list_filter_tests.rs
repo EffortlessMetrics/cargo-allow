@@ -296,9 +296,29 @@ fn list_free_text_filters_fail_closed_on_unknown_values() {
     );
     assert!(error.to_string().contains("allow-core"), "{error}");
 
-    // An empty ledger carries no values, so any set filter is unknown.
-    let error =
+    // Unknown owner and classification fail closed the same way.
+    let mut owner_filters = filters_with(None, None);
+    owner_filters.owner = Some("nobody");
+    let error = list_filter::validate_list_free_text_filters(&rows, &owner_filters).unwrap_err();
+    assert!(
+        error.to_string().contains("unknown --owner value `nobody`"),
+        "{error}"
+    );
+    let mut class_filters = filters_with(None, None);
+    class_filters.classification = Some("nope");
+    let error = list_filter::validate_list_free_text_filters(&rows, &class_filters).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("unknown --classification value `nope`"),
+        "{error}"
+    );
+    assert!(error.to_string().contains("reviewed_exception"), "{error}");
+
+    // An empty ledger keeps empty-ledger semantics instead of erroring:
+    // there is no slice a typo could be confused with.
+    assert!(
         list_filter::validate_list_free_text_filters(&[], &filters_with(Some("unwrap"), None))
-            .unwrap_err();
-    assert!(error.to_string().contains("none"), "{error}");
+            .is_ok()
+    );
 }

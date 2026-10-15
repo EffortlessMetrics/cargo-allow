@@ -68,8 +68,11 @@ cargo run -p cargo-allow -- adopt
 cargo run -p cargo-allow -- adopt --format json --output target/cargo-allow/adoption-plan.json
 ```
 
-Human output leads with `Repository state:`, one `Recommended next step:`, a
-copyable `Run:` command, an explicit `Writes:` line, and a rollback statement.
+Human output opens with the summary frame — `Outcome:`, `Why:`, `Subject:`,
+`Coverage:`, `Next:`, `Writes:`, `Then:`, and `Not proven:` — followed by the
+plan body, which carries `Repository state:` (the disposition of the scanned
+tree), exactly one `Recommended next step:`, a copyable `Run:` command, an
+explicit `Writes:` line for the plan's own target, and a rollback statement.
 The JSON artifact is `cargo-allow.core-adoption-plan.v1`; it is derived from
 the same plan and is portable across checkout paths. Published `0.1.11` does
 not expose `adopt` yet, so keep this command on the Source-candidate path.
@@ -117,6 +120,11 @@ cargo run -p cargo-allow -- capabilities --format json
 cargo run -p cargo-allow -- capabilities --class not-included
 cargo run -p cargo-allow -- capabilities --root . --config policy/allow.toml --format json
 ```
+
+The first three run anywhere. The fourth reads the policy ledger at
+`policy/allow.toml`, which §4's `init` creates — before that step it fails
+with `error[E0003_INVALID_POLICY]` (exit 1); the remedy is to continue with
+§4 and rerun it after adoption, not to repair a policy entry.
 
 This is a current source-candidate command; the published `0.1.11` binary
 predates this matrix and does not expose it yet.
@@ -178,6 +186,13 @@ An advisory audit can pass while reporting findings. Choose a bootstrap path
 only after reviewing what the audit found; do not treat `status: "passed"` as
 approval of an unreceipted exception.
 
+On any real Cargo repository the tracked `Cargo.toml` is itself reported as a
+`non_rust_file.package_metadata` finding, so a first audit typically shows at
+least that row rather than the clean zero-finding excerpt above (which occurs
+on trees with no tracked non-Rust files, such as the src-only fixture the
+checked journey test uses). Receipt it as part of adoption — the ledger's own
+bootstrap does exactly that.
+
 ### Choose a report format
 
 `audit`, `check`, and `diff` support these report formats:
@@ -234,6 +249,15 @@ cargo-allow init --root .
 Creates `policy/allow.toml` with workspace defaults and no generated debt.
 Useful when the tree is clean or you want to receipt findings one-by-one with
 `add` later.
+
+**Set the first-run expectation before you choose.** On an ordinary existing
+repository, `init` followed by `check --mode no-new` is expected to be red:
+the strict ledger receipts nothing yet, so every retained finding reports as
+`new: unreceipted` and the check fails. That red is the tool working as
+designed, not a broken install — it is the list of decisions still to make.
+If you want the first gate green while you work through that list, choose
+`propose` (reviewed `baseline_debt`) instead; if you stay on `init`, expect
+to receipt findings deliberately until the check turns green.
 
 Both bootstrap paths seed one entry: the ledger's receipt for itself. The
 policy file is a tracked non-Rust file, so once it is committed it appears in
@@ -383,6 +407,16 @@ The boundary between those four commands is the point:
 - `add --from-plan --update` revalidates every plan binding against the live
   tree, then performs one atomic ledger write. If the tree moved since the
   plan was written it refuses and prints the exact regeneration command.
+- the `--evidence doc:docs/design.md` reference is validated against the
+  default source-tree inventory: **create the evidence file and `git add` it
+  before generating the plan**, or `add` refuses with
+  `error[E0007_ARTIFACT]` (the file is missing, or present but untracked).
+  If tracking the file stales the plan, `add` refuses and prints the exact
+  regeneration command — run it, then apply the regenerated plan. The
+  evidence doc is itself a new source-tree finding: the final
+  `check --mode no-new` reports `docs/design.md` as an unreceipted
+  `non_rust_file.documentation` finding. That is expected — receipt it (or
+  drop the evidence reference) in the same change.
 - the third command is a **targeted recheck** proving that one finding now
   reports `status: matched`. It is not a repository proof.
 - the final `check --mode no-new` is the CI-grade repository proof.
@@ -427,6 +461,9 @@ adoption](how-to/rollback-cargo-allow-adoption.md).
   findings whose `last_seen` location moved.
 - **evidence reference**: `doc:`, `test:`, `issue:`, … pointers checked for
   presence or reported as traceability without running external tools.
+  Local-file pointers (`doc:`, `spec:`, …) are checked against the default
+  source-tree inventory, so an `add --evidence doc:<path>` reference
+  requires the file to exist and be git-tracked when the plan is applied.
 - **occurrence headroom**: how many matching findings a receipt may still cover;
   prefer narrowing or source repair over silently widening.
 

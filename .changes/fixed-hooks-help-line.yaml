@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `cargo-allow hooks --help` no longer understates the command
+  (#4333). The parent one-liner read "Preview checked local hook plans
+  without changing the repository" while `hooks apply` and
+  `hooks remove` mutate Git hooks. It now reads "Plan, inspect, apply, or
+  remove checked local hooks", matching the subcommand table. Also
+  verified: `cadence` and `capabilities` do not yet honor `--color`
+  (their human renderers take no style), so they were deliberately not
+  added to the `--color` honored-by list.

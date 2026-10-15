@@ -21,6 +21,12 @@ pub(super) fn validate_free_text_filters(
     items: &[WorkItem],
     filters: WorklistFilters<'_>,
 ) -> allow_core::CargoAllowResult<()> {
+    // An empty queue keeps its empty-queue summary semantics; fail-closed
+    // applies only when the queue carries items a typo could be confused
+    // with an empty slice of.
+    if items.is_empty() {
+        return Ok(());
+    }
     validate_filter_value(
         "--family",
         "family",
@@ -34,6 +40,20 @@ pub(super) fn validate_free_text_filters(
         items
             .iter()
             .filter_map(|item| item.source_package.as_deref()),
+    )?;
+    validate_filter_value(
+        "--owner",
+        "owner",
+        filters.owner,
+        items.iter().filter_map(|item| item.owner.as_deref()),
+    )?;
+    validate_filter_value(
+        "--classification",
+        "classification",
+        filters.classification,
+        items
+            .iter()
+            .filter_map(|item| item.classification.as_deref()),
     )
 }
 
@@ -381,13 +401,39 @@ mod tests {
         );
         assert!(error.to_string().contains("allow-report"), "{error}");
 
-        // An empty queue carries no values, so any set filter is unknown.
+        // Unknown owner and classification fail closed the same way.
+        let filters = WorklistFilters {
+            owner: Some("nobody"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert!(
+            error.to_string().contains("unknown --owner value `nobody`"),
+            "{error}"
+        );
+        assert!(
+            error.to_string().contains("observed owner values: owner"),
+            "{error}"
+        );
+        let filters = WorklistFilters {
+            classification: Some("nope"),
+            ..WorklistFilters::default()
+        };
+        let error = validate_free_text_filters(&items, filters).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("unknown --classification value `nope`"),
+            "{error}"
+        );
+
+        // An empty queue keeps empty-queue semantics instead of erroring:
+        // there is no slice a typo could be confused with.
         let filters = WorklistFilters {
             family: Some("unwrap"),
             ..WorklistFilters::default()
         };
-        let error = validate_free_text_filters(&[], filters).unwrap_err();
-        assert!(error.to_string().contains("none"), "{error}");
+        assert!(validate_free_text_filters(&[], filters).is_ok());
     }
 
     #[test]

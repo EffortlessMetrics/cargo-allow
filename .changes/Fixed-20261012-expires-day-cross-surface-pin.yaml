@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  The strict policy-entry expiry boundary is now pinned by a binary-level
+  test across cadence, list, worklist, and check: an entry expiring on the
+  current day stays `expiring` (never `expired`) on every read surface, and
+  an entry that expired the day before is `expired` on all four. The cadence
+  agent guide cites the pinning test where it states the unified law (#4391).

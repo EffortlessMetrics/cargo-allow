@@ -28,7 +28,10 @@ behind `check`, `list`, `worklist`, and `explain` share that strict policy-entry
 expiry boundary. On `expires == as-of`, cadence reports `expiring` with zero
 days remaining and the entry has not expired on the other surfaces; it can
 still carry unrelated match or review attention. Federation drain deadlines
-remain inclusive and do not govern policy-entry expiry.
+remain inclusive and do not govern policy-entry expiry. The cross-surface
+agreement is pinned by `expires_day_agrees_across_cadence_list_worklist_and_check`
+in `crates/cargo-allow/tests/cadence_surface.rs`, which also pins the
+day-after case as `expired` on all four surfaces.
 Work the rows by `required_disposition`:
 - `review_due_soon` (within 14 days): schedule the review.
 - `review_overdue`: review now or narrow the entry.

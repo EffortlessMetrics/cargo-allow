@@ -1,0 +1,58 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4459,
+  "base_ref": "main",
+  "base_sha": "e91910078c755df4d69ab1d4bc635340703279c2",
+  "head_ref": "fix/3792-rehearsal-selected-invocations-20261010",
+  "head_sha": "d3964e23487fd683363a7961af053469f649c53b",
+  "merge_base": "e91910078c755df4d69ab1d4bc635340703279c2",
+  "reviewed_diff_digest": "sha256:v1:a03e8a919aa390c904203fa63a0b48ba92b974c4990372ab5bcc87b1a268a8e0",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "GLM-5.3-Flash review lane; separate nonauthor of this PR's product code (scripts/release-topology-publisher.py, scripts/release-rehearsal.py, their test suites and the changelog). The same lane authored this branch's integration commits (main merges, ledger note id corrections, disposition rebinds) and is a correlated-failure limit: shared model family, campaign context, tooling and account transport. No separate human or account approval is claimed. Repository tests and exact-pair CI are the external controls.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "follow-up-wire-final-package-docs-suite",
+      "severity": "advisory",
+      "owned_seam": "Continuous execution of the final-package-docs caller regression",
+      "source_path": "scripts/test-final-package-docs.py",
+      "source_line": 1,
+      "repair_route": "NonBlocking / AcceptedFollowUp: no CI workflow or suite currently invokes scripts/test-final-package-docs.py; wire it the way crates/cargo-allow/tests/release_rehearsal.rs:342 drives scripts/test-release-rehearsal.py so the new suite cannot rot unwired. The producer itself remains covered by relocated_package_docs.rs and the freeze-command tests, and the publisher-scope behavior is covered by the invocation-boundary suite on four platforms.",
+      "claim_boundary": "The repair's proof stands without this wiring; this is rot-prevention, not a defect in the reviewed head."
+    },
+    {
+      "id": "follow-up-derive-boundary-row-counts",
+      "severity": "advisory",
+      "owned_seam": "exercise_invocation_boundary expected row counts",
+      "source_path": "scripts/test-release-topology-publisher.py",
+      "source_line": 406,
+      "repair_route": "NonBlocking / AcceptedFollowUp (existing review thread retained): derive the 10 candidate rows and 3 shared-prerequisite rows from PUBLISHER.load_rows instead of hard-coding them, so a topology change fails for the right reason. Current hard-coding fails closed.",
+      "claim_boundary": "Maintainability only; no behavior defect on the reviewed head."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#discussion_r4255078237",
+    "Prior review threads on the retained disposition and policy ledger rows (.allow/review-dispositions/pr-4459.json, policy/allow.toml) were inspected; they address ledger housekeeping superseded by the current ledger state, not product defects.",
+    "Complete current-pair review: effective diff merge-base 4eb35870..head aaf77e9c across scripts/release-topology-publisher.py, scripts/release-rehearsal.py, scripts/test-release-topology-publisher.py, scripts/test-release-rehearsal.py, scripts/test-final-package-docs.py, crates/cargo-allow/tests/release_rehearsal.rs, the changelog fragment and the policy ledger rows, with callers and consumers (rehearsal phase composition, docs-receipt producer, CI lane wiring).",
+    "The blocking finding IB-F1 (helper-local metadata and exact-package scopes plus an actual final-package-docs caller regression) is verified repaired on this head: selection-scoped _Invocation with argv allowlists and frozen executables, upload-only explicit token environment, helper-local scopes that never widen an active selection, and the new caller regression suite passing locally (exit 0).",
+    "Local execution: test-final-package-docs.py exit 0 on this head; denial assertions of TestInvocationBoundary pass locally; remaining local suite failures are environmental (Windows symlink privilege WinError 1314; local Git Bash child-spawn family of issue #4493). Exact-pair CI (36 passing checks at aaf77e9c on four platforms) is the authority.",
+    "Earlier objective repairs on this branch remain in force: the revision note covers the re-identified allow-11353 row with its current fingerprint; `cargo-allow diff --base origin/main --require-change-note` exits 0; the local no-new guard is green (failed=false, new=0).",
+    "Post-serial-merge bounded re-verification 2026-10-13 (base e9191007, after #4448 landed): the merge into this branch was policy-ledger-only — all seven PR-owned product files are byte-identical to the reviewed head aaf77e9c (zero-line delta); the allow.toml tail conflict was re-resolved id-and-content-aware with this PR's two receipt rows re-identified to allow-11355/allow-11356 per the collision law (main's #4448 rows 11353/11345/11347 retained verbatim), and the retained revision note covers the new ids with fresh row fingerprints; diff gate exits 0 and the no-new guard is green (failed=false, new=0). The proven review reference and review_clean verdict are preserved: no product dimension was affected by the integration."
+  ],
+  "required_ci": {
+    "owner": "Coordinator: bind this disposition to the exact live pair, verify the readiness check re-projects success, keep every other check terminal green, and merge head-pinned. Any subsequent author commit or base movement invalidates this review and requires a fresh affected review before merge. Pending, stale, failed, cancelled, skipped or unavailable evidence is not green.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4459#pullrequestreview-5511800621"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4459",
+  "reviewed_at_utc": "2026-10-14T01:40:00Z"
+}

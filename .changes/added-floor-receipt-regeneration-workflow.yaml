@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Infra: a dispatchable `floor-receipt-regeneration` workflow runs
+  scripts/proof-direct-floors.sh per product on any selected ref and
+  uploads the regenerated receipts and selection companions as
+  artifacts (#4493). The proof's fixture suites cannot run in a local
+  Windows Git Bash environment, so retained floor receipts went stale
+  on manifest/lock movement with no runner-based regeneration path;
+  this workflow is that path, unblocking the receipt-drift failures on
+  moved branches. The live workflow-construction denominator registers
+  the new file (11 workflows).

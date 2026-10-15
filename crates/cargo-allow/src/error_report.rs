@@ -16,7 +16,14 @@ use std::io::{self, Write};
 /// operator the next safe step. Messages that already carry a `Next:` line
 /// (for example located policy parse repairs) keep theirs and gain no second.
 pub(crate) fn format_cli_error(err: &CargoAllowError) -> String {
-    let mut out = format!("error[{}]: {}", err.code(), err.message());
+    // When a typed next step is present it replaces any message-carried
+    // `Next:` line: the diagnosis is the message up to that line, so the
+    // rendered report still carries exactly one Next (#4488).
+    let diagnosis = match err.next_step() {
+        Some(_) => err.message().split("\nNext:").next().unwrap_or(""),
+        None => err.message(),
+    };
+    let mut out = format!("error[{}]: {}", err.code(), diagnosis);
     let mut current = err.source();
     while let Some(cause) = current {
         let text = cause.to_string();
@@ -28,7 +35,13 @@ pub(crate) fn format_cli_error(err: &CargoAllowError) -> String {
         }
         current = cause.source();
     }
-    if !err.message().contains("Next:") {
+    // A typed next step wins: it is the remedy the raise site chose for this
+    // exact failure (#4488). Exactly one `Next:` line is rendered in every
+    // path: typed, then message-carried, then the per-kind generic.
+    if let Some(next_step) = err.next_step() {
+        out.push_str("\nNext: ");
+        out.push_str(next_step);
+    } else if !err.message().contains("Next:") {
         out.push_str("\nNext: ");
         out.push_str(next_action_for_kind(err.kind()));
     }
@@ -145,6 +158,41 @@ mod tests {
         );
         let report = format_cli_error(&err);
         assert_eq!(report.matches("Next:").count(), 1, "{report}");
+    }
+
+    #[test]
+    fn format_cli_error_prefers_typed_next_step() {
+        // #4488: the typed remedy wins over both the message-carried and the
+        // per-kind generic guidance, and renders exactly one Next line.
+        let err = CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "diff requires --base <revision>",
+        )
+        .with_next_step("pass --base <revision>, then retry.");
+        let report = format_cli_error(&err);
+        assert_eq!(report.matches("Next:").count(), 1, "{report}");
+        assert!(
+            report.ends_with("Next: pass --base <revision>, then retry."),
+            "{report}"
+        );
+        assert!(!report.contains("review the command syntax"), "{report}");
+
+        let plain = CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "plain failure");
+        assert_eq!(plain.next_step(), None);
+
+        // Typed + message-carried: the typed step replaces the carried one.
+        let both = CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "stale plan\nNext: embedded guidance.",
+        )
+        .with_next_step("typed guidance.");
+        let both_report = format_cli_error(&both);
+        assert_eq!(both_report.matches("Next:").count(), 1, "{both_report}");
+        assert!(
+            both_report.contains("Next: typed guidance."),
+            "{both_report}"
+        );
+        assert!(!both_report.contains("embedded guidance"), "{both_report}");
     }
 
     #[test]
