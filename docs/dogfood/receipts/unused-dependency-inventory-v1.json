@@ -747,6 +747,15 @@
           "disposition": "retain_with_evidence",
           "inventory_verdict": "used",
           "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
+        },
+        {
+          "dependency_name": "winapi-util",
+          "class": "target_specific",
+          "optional": false,
+          "target": "cfg(windows)",
+          "disposition": "retain_with_evidence",
+          "inventory_verdict": "used",
+          "note": "implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required"
         }
       ]
     },
