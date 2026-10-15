@@ -101,6 +101,20 @@ real successful execution produces replacements and the unsuppressed checks
 accept the resulting source/receipt set. Do not manually repair receipt digests,
 floors, targets, roots, or dispositions to satisfy freshness checks.
 
+## Local environment limitation and runner-based regeneration
+
+Regeneration is a runner-backed operation. The proof's fixture suites require a
+bash + `python3` dispatch environment that local Windows Git Bash hosts do not
+provide (#4493): locally the suites fail (python3 gate, empty-PATH child
+dispatch, and Windows symlink-privilege errors), which stalls receipt
+regeneration on Windows development machines without indicating a product
+defect. Regenerate receipts with the dispatchable
+`floor-receipt-regeneration` workflow on a runner (inputs: the ref to
+regenerate on and the product list; cargo-allow proves check/test/package,
+advisory products check-only), then retain the uploaded
+`docs/ci/receipts/` artifacts into the branch through the normal review flow.
+Do not hand-repair receipt digests to substitute for a runner proof.
+
 ## Retained Windows execution
 
 ### Producer protocol controls
