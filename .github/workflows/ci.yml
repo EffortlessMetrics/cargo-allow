@@ -550,10 +550,24 @@ jobs:
               + policy["warm_process_samples"]
               + policy["targeted_samples"]
               + policy["agent_loop_samples"]
+              + policy["cadence_samples"]
+              + policy["delta_samples"]
+              + policy["incremental_samples"]
           )
-          assert policy["cache_mode_samples"] == {"on": 2, "off": 1, "not_applicable": 15}
+          assert policy["cache_mode_samples"] == {"on": 3, "off": 1, "not_applicable": 18}
           assert (policy["cold_process_samples"], policy["warm_process_samples"], policy["targeted_samples"], policy["agent_loop_samples"]) == (2, 4, 6, 6)
+          assert (policy["cadence_samples"], policy["delta_samples"], policy["incremental_samples"]) == (1, 2, 1)
           assert all(sample["status"] == "passed" for sample in receipt["samples"])
+          cadence_rows = [sample for sample in samples if sample["name"] == "cadence_explicit_date"]
+          assert len(cadence_rows) == 1, "expected exactly one cadence_explicit_date sample"
+          assert cadence_rows[0]["phase"] == "cadence" and cadence_rows[0]["cache_mode"] == "not_applicable"
+          delta_rows = [sample for sample in samples if sample["phase"] == "delta"]
+          assert sorted(sample["name"] for sample in delta_rows) == [
+              "delta_compile_moved_pair", "delta_compile_unchanged_pair",
+          ], "expected exactly the two committed-pair delta compile samples"
+          incremental_rows = [sample for sample in samples if sample["name"] == "incremental_one_file_check"]
+          assert len(incremental_rows) == 1, "expected exactly one incremental_one_file_check sample"
+          assert incremental_rows[0]["phase"] == "incremental" and incremental_rows[0]["cache_mode"] == "on"
           full_checks = [sample for sample in samples if sample["name"] == "full_check_json"]
           assert len(full_checks) == 1, "expected exactly one full_check_json sample"
           full_check = full_checks[0]

@@ -458,6 +458,10 @@ def receipt_fixture():
         ("agent_loop_check", "agent_loop", "not_applicable"),
         ("hooks_wrapped_check", "agent_loop", "not_applicable"),
         ("hooks_bare_check", "agent_loop", "not_applicable"),
+        ("cadence_explicit_date", "cadence", "not_applicable"),
+        ("incremental_one_file_check", "incremental", "on"),
+        ("delta_compile_moved_pair", "delta", "not_applicable"),
+        ("delta_compile_unchanged_pair", "delta", "not_applicable"),
     ]
     samples = []
     for index, (name, phase, mode) in enumerate(names):
@@ -491,7 +495,8 @@ def receipt_fixture():
         "sample_policy": {
             "cold_process_samples": 2, "warm_process_samples": 4,
             "targeted_samples": 6, "agent_loop_samples": 6,
-            "cache_mode_samples": {"on": 2, "off": 1, "not_applicable": 15},
+            "cadence_samples": 1, "delta_samples": 2, "incremental_samples": 1,
+            "cache_mode_samples": {"on": 3, "off": 1, "not_applicable": 18},
         },
         "budget": {
             "name": "operator_loop_hard_ceiling", "kind": "catastrophic_regression",
@@ -526,7 +531,7 @@ def receipt_fixture():
 
 def duration_paths():
     return (
-        [("samples", i, "elapsed_ms") for i in range(18)]
+        [("samples", i, "elapsed_ms") for i in range(22)]
         + [("agent_loop", "composite", "steps", i, "elapsed_ms") for i in range(4)]
         + [
             ("agent_loop", "composite", "total_elapsed_ms"),
@@ -606,7 +611,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
     def assert_accepted(self, receipt):
         result = self.invoke(receipt)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "validated 18 operator-latency samples")
+        self.assertEqual(result.stdout.strip(), "validated 22 operator-latency samples")
 
     def assert_rejected(self, receipt, label, *, diagnostic=None):
         result = self.invoke(receipt)
@@ -614,7 +619,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
             result.returncode, 1,
             f"invalid receipt accepted: {label}; stdout={result.stdout!r}; stderr={result.stderr!r}",
         )
-        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
+        self.assertNotIn("validated 22 operator-latency samples", result.stdout)
         self.assertTrue(result.stderr, f"missing rejection diagnostic: {label}")
         if diagnostic is not None:
             self.assertIn(diagnostic, result.stderr)
@@ -688,7 +693,7 @@ class ReceiptAdmissionControls(unittest.TestCase):
                                 retained.write_bytes(b"x" + data[1:] if mutation == "same_size" else data[:-1])
                         result = self.invoke(receipt, mutate_retained=mutate)
                         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-                        self.assertNotIn("validated 18 operator-latency samples", result.stdout)
+                        self.assertNotIn("validated 22 operator-latency samples", result.stdout)
                         diagnostic = {
                             "same_size": f"{key} sha256 must match",
                             "truncated": "must match the retained",
@@ -1582,6 +1587,10 @@ class FullCheckUtcControls(unittest.TestCase):
             following += [("agent_loop", name) for name in (
                 "agent_loop_worklist", "agent_loop_why_plan", "agent_loop_add", "agent_loop_check",
                 "hooks_wrapped_check", "hooks_bare_check")]
+            following += [("cadence", "cadence_explicit_date"),
+                          ("incremental", "incremental_one_file_check"),
+                          ("delta", "delta_compile_moved_pair"),
+                          ("delta", "delta_compile_unchanged_pair")]
             (output / "controlled-existing.txt").write_bytes(b"controlled row\n")
             existing_digest = hashlib.sha256(b"controlled row\n").hexdigest()
             def rows(names):
@@ -1627,8 +1636,8 @@ class FullCheckUtcControls(unittest.TestCase):
         self.assertEqual(names, [name for _, name in preceding]
                          + ["first_audit", "warm_check", "full_check_json"]
                          + [name for _, name in following])
-        self.assertEqual(len(names), 18)
-        self.assertEqual(len(set(names)), 18)
+        self.assertEqual(len(names), 22)
+        self.assertEqual(len(set(names)), 22)
         for index, call in enumerate(dispatch):
             self.assertEqual(call["argv"][0], "audit" if index % 3 == 0 else "check")
         self.assertEqual([sample["elapsed_ms"] for sample in receipt["samples"][3:6]],

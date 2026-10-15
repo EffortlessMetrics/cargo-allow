@@ -31,12 +31,18 @@ artifact SHA-256 digests, so a same-size substitution also refuses. Derived hook
 overhead remains signed. These are targeted contract checks, not full JSON
 Schema validation.
 
-The current hosted matrix requires 18 samples: 2 cold, 4 warm, 6 targeted and
-6 agent-loop rows. Its explicit cache modes remain 2 on and 1 off; the other
-15 rows do not explicitly select a cache mode. `full_check_json` adds one warm
-`check --mode no-new --format json` invocation to the existing 17 rows. It
-retains `artifacts/full-check.json` as the measured report and
-`artifacts/full-check.receipt.json` as its separate semantic artifact.
+The current hosted matrix requires 22 samples: 2 cold, 4 warm, 6 targeted,
+6 agent-loop, 1 cadence, 2 delta and 1 incremental rows. Its explicit cache
+modes are 3 on and 1 off; the other 18 rows do not explicitly select a cache
+mode. `full_check_json` adds one warm `check --mode no-new --format json`
+invocation to the earlier 17 rows. It retains `artifacts/full-check.json` as
+the measured report and `artifacts/full-check.receipt.json` as its separate
+semantic artifact. The #4339 families add one explicit-date `cadence` row at
+full-ledger scale, two committed base/head manifest+lockfile
+`dependency-graph-delta compile` rows (one moved pair whose receipt must name
+the committed probe package, one unchanged pair), and one one-file
+incremental row measured as a comment-only edit followed by a warm
+cache-on no-new check inside the agent-loop fixture.
 
 Before recording that row as passed, the harness parses the report and receipt,
 rejects duplicate keys and malformed JSON, checks the report's array lengths
@@ -236,9 +242,40 @@ The timing ranges overlap, so this observation does not establish that JSON
 serialization dominates command time. The new sample applies the existing
 60,000 ms catastrophic time ceiling, the audit-sized 8,388,608 B report ceiling
 and the 16,384 B check receipt ceiling. A current hosted release baseline and
-cost attribution remain follow-through under #4374; cadence, dependency-delta
-and dedicated one-file-edit measurements remain under #4339. This adds no new
-advisory performance promise or 0.2 release requirement.
+cost attribution remain follow-through under #4374.
+
+## Cadence, dependency-delta and one-file incremental families (#4339, 2026-10-15)
+
+The harness now measures the three command families the original matrix
+predated. First retained observation: Windows debug build at main
+`8004f02b` on a loaded shared host, inside the disposable full-scale clone
+(~2,575 tracked files, ~1,049 ledger entries, ~16,170 findings), one pass
+per sample against the 60,000 ms catastrophic ceiling. These are
+**indicative debug-host observations**; the hosted Linux release receipt
+re-baselines them, and every advisory target below is non-blocking.
+
+| Sample (phase) | Measured (this observation) | Payload bytes | Advisory target | Basis |
+| --- | ---: | ---: | ---: | --- |
+| `cadence_explicit_date` (cadence) | 364 ms | 762,788 B | < 2,000 ms | policy parse + inventory listing; no finding scan |
+| `incremental_one_file_check` (incremental, cache on) | 6,242 ms | 9,599 B | see note | one cached file invalidated by a comment-only edit |
+| `delta_compile_moved_pair` (delta) | 321 ms | 1,958 B | < 2,000 ms | committed pair whose receipt must name the added probe package |
+| `delta_compile_unchanged_pair` (delta) | 280 ms | 1,618 B | < 2,000 ms | same-commit pair compiles zero movement rows |
+
+The one-file incremental row **does not meet the earlier < 2,000 ms
+"Edit → re-check loop" aspiration** at this denominator: 6,242 ms with a
+warm cache is statistically indistinguishable from the full warm check
+(6,613 ms `warm_check`, 6,064 ms `agent_loop_check` in the same run).
+Skipping the tree-sitter parse of one file saves almost nothing because
+findings × entries matching dominates the command. The < 2,000 ms target
+stays a 0.3-scale optimization goal (bucketed matching, #2514 incremental
+evaluation), not a met budget; the harness-enforced gate remains the
+60,000 ms ceiling and the 16,384 B receipt ceiling.
+
+`cadence` on this ledger emits a 762,788 B JSON report — about 11.6× the
+65,536 B advisory agent-read target. Agents should treat full cadence JSON
+as a batch-analysis artifact (or filter by `--as-of` horizon downstream),
+not a per-loop machine read. The delta-compile receipts are small because
+they carry movement rows, not the package inventory.
 
 ## What drives the cost
 
