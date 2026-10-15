@@ -7,17 +7,17 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-intent
 - Package roots: cargo-intent
 - Selected closure: cargo-intent, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index, intent-compiler, intent-model, intent-protocol
-- Starting source commit: 80d0b63e5446568ad4d76cee5af4cb98d79ab233
+- Starting source commit: 87dbf2dfa2343fd56d7373934daa2f0c92c64c22
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:a883eb778b6bc6be81518ce8ed2ddbcf9a10889e9548316c970c89264f261230
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
-- Executed floor commit: df3356c3413554729b5972b28f981aac25bfef0e
-- Executed floor tree: 9d86b4f9c12c6f39b8285b6fd9f686cc1388db85
+- Executed floor commit: 099c50620ff9b4e4b673944e53e1e4d5753ed382
+- Executed floor tree: 166fae9a15e9abdc66ae44447630554c175b5bba
 - Receipt: direct-floor-proof-cargo-intent-v1.json
-- Receipt SHA-256: sha256:v1:71d48bbd3ac896bf98e2a8c2518179d0a33cfeaf6237beafc02530b96571e951
-- Manifest-set digest: 0ca4f9eb8992041fde83c1c720bbc1aa51895f603382ca68c5f18255ce52a328
-- Starting lock digest: fc4f38834ca26322a1339a96024b85b0c4ea787e7563667e541cf13b63497c41
+- Receipt SHA-256: sha256:v1:aced0a0a5d6443c8df90045b62d5fc43cc6ce4a4b3e51be659adb8433700eca1
+- Manifest-set digest: 4430bf35921f23a321655487516a7bffd24fc1b3a23cb39cbda6b371682068ae
+- Starting lock digest: 808326f45858ca6758dbf8f920762eb7eb7c439ac130a5f9c93e9e3feec40b09
 - Executed floor-lock digest: sha256:v1:131be3f2ce18e7bc051590bab9e0b31cbafe522284a62132a2a5d35faa855710
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
