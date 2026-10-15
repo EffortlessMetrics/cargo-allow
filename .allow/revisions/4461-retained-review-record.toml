@@ -1,0 +1,19 @@
+# PR #4461: exact retained-review evidence and this note.
+# These exact path admissions do not authorize merge, CI bypass, release,
+# installed qualification or completion of the command-migration denominator.
+# Fingerprints come from the actual native diff starter at fc449440.
+# No review JSON is committed before an actual independent source review.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-review-4461-record"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:94f0cc632c8f4f9e417532d0f811aaeaefd899e90f27dc4d0a733df471942784"
+reason = "Retained structured review evidence for PR #4461 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
+
+[[records]]
+allow_ids = ["allow-review-4461-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:045dbc486f2329f12220bc380339eb4dd959ef483e8c6311c9ad179682469226"
+reason = "Authored revision note for the exact retained PR #4461 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."

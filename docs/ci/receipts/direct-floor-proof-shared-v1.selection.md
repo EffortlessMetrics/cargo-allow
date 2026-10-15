@@ -7,17 +7,17 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: shared
 - Package roots: effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit, effortless-rust-source-index
 - Selected closure: effortless-repo-edit, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index
-- Starting source commit: 87dbf2dfa2343fd56d7373934daa2f0c92c64c22
+- Starting source commit: 86f20f75c4e9923f744988900d8e9c8ed508bbae
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
-- Executed floor commit: cc207f7c4ddd40a3b32375b6ce51dfb3930e25ef
-- Executed floor tree: ecbe00427c7c7dcecaf8e82274afedcd7de72168
+- Executed floor commit: 4b682b9fa92ce12d928b35f7ebe910435417f99a
+- Executed floor tree: c9ebc94c451ab9a6410be38485faa1dc01f98ad4
 - Receipt: direct-floor-proof-shared-v1.json
-- Receipt SHA-256: sha256:v1:2a0df9d73ba6c03e3d32e4985c8354f2a1c4540c0a4b501d8c5920c99b39ea0e
-- Manifest-set digest: 4430bf35921f23a321655487516a7bffd24fc1b3a23cb39cbda6b371682068ae
-- Starting lock digest: 808326f45858ca6758dbf8f920762eb7eb7c439ac130a5f9c93e9e3feec40b09
+- Receipt SHA-256: sha256:v1:aa87aaf3088b1cefbbce97a56266cc493ac276266e9931d568822eeb1e7f1af2
+- Manifest-set digest: 15033bc3547c8f5eac558c0da38ce2e6aaa943c1eac7e34c968dfd1395357ffc
+- Starting lock digest: 23ec0471dece6c1f62825df721dd3090faffcba46765ba7df48df852898a1d2f
 - Executed floor-lock digest: sha256:v1:7d9fce41516c62564885856637e4d10c8d38a950c6b29e42ad9e7f6798261008
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |

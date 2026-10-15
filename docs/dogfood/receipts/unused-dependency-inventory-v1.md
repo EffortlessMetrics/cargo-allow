@@ -83,6 +83,7 @@
 | cargo-allow | cargo-allow.default | sha2 | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | terminal_size | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-allow | cargo-allow.default | toml | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
+| cargo-allow | cargo-allow.default | winapi-util | target_specific | false | cfg(windows) | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-proof | cargo-proof.default | clap | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-proof | cargo-proof.default | effortless-repo-protocol | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |
 | cargo-proof | cargo-proof.default | effortless-rust-source-index | normal | false |  | used | retain_with_evidence | implicit retain: exact reference evidence exists in the scanned inputs, so no reviewed row is required |

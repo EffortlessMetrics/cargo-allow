@@ -61,6 +61,11 @@ serde_json.workspace = true
 # the shell proof lane hashes.
 sha2.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+# Already part of the locked same-file dependency; read-only native identity
+# and hard-link counts are not stable std MetadataExt APIs at the 1.95 MSRV.
+winapi-util = "0.1.11"
+
 [dev-dependencies]
 jsonschema = { version = "0.58.1", default-features = false }
 effortless-rust-source-index = { path = "../effortless-rust-source-index" }

@@ -1,0 +1,2 @@
+# Preserve the catalogue's literal SHA-256 pin across platform checkouts.
+core-command-migration-cases.v1.json text eol=lf
