@@ -375,6 +375,21 @@ fn receipt_journey_documented_steps_complete_with_evidence_prerequisites() {
         "the evidence doc must be flagged as a new unreceipted finding: {check}"
     );
 
+    // Step 8 (#4531): the guide now states that a real Cargo repository's
+    // tracked Cargo.toml is itself reported as a package_metadata finding.
+    // Pin that reachable first-run behavior on the journey fixture: the
+    // advisory audit names Cargo.toml as non_rust_file.package_metadata.
+    let audit = cargo_allow()
+        .current_dir(&root)
+        .args(["audit", "--format", "json"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("audit: {err}")));
+    let audit_json = String::from_utf8_lossy(&audit.stdout);
+    assert!(
+        audit_json.contains("\"kind\": \"non_rust_file\"") && audit_json.contains("Cargo.toml"),
+        "the tracked Cargo.toml must be reported as a package_metadata finding: {audit_json}"
+    );
+
     drop_root(root);
 }
 
