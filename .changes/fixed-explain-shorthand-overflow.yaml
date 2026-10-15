@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  UX: `explain <number>` with digits past `usize::MAX` now echoes the id
+  the caller typed (for example `allow-18446744073709551616`) instead of
+  silently rewriting the overflowed shorthand to `allow-0000` — a real,
+  different ledger slot (#4497). The unknown-id error, its single typed
+  Next line, and all in-range shorthand behavior are unchanged.

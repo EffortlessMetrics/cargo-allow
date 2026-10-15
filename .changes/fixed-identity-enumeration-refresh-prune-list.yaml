@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Docs: the command-summary identity enumeration now covers every
+  non-digest emitter accurately (#4525, #4527). `refresh` and `prune`
+  summaries emit `local-repository:{inventory_source}` rather than the
+  claimed content-addressed digest, and `list`'s identity is the
+  inventory-source family (`git_tracked`,
+  `git_index_staged_candidate`, `filesystem_include_untracked`,
+  `filesystem_fallback`) rather than a single fixed `git_tracked` value.
+  The wrapper keying warning names `refresh`/`prune` too, and a
+  regression assertion pins `list`'s identity to the documented
+  inventory-source tag.

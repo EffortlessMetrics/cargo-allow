@@ -78,6 +78,230 @@ safety_comment_required = false
     remove_temp_root(root);
 }
 
+#[test]
+fn add_dry_run_keeps_candidate_stdout_summary_stderr_and_note_terminal_only() {
+    // #4533: dry-run has the same stdout-candidate/stderr-summary placement
+    // as the applied mode, so it gets the same terminal-only note decision.
+    // In captured (non-terminal) output the note must be suppressed — this
+    // pins both the placement and the note's terminal-only gate.
+    let root = temp_root("add-dry-run-placement");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run placement fixture",
+            "--dry-run",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    assert!(
+        output.status.success(),
+        "dry-run add must succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stdout.contains("[[allow]]"),
+        "stdout must carry the candidate entry: {stdout}"
+    );
+    assert!(
+        !stdout.contains("Outcome:"),
+        "stdout must not lead with the summary block: {stdout}"
+    );
+    assert!(
+        stderr.contains("Outcome:"),
+        "the summary block must render on stderr: {stderr}"
+    );
+    assert!(stderr.contains("dry-run: no files written"));
+    assert!(
+        !stdout.contains("summary follows below on stderr")
+            && !stderr.contains("summary follows below on stderr"),
+        "the terminal-only note must not leak into captured output"
+    );
+}
+
+#[test]
+fn add_dry_run_summary_output_receives_the_add_summary() {
+    // #4532: --summary-output belongs to the add summary in every mode. The
+    // old dry-run branch hijacked it for the candidate policy TOML and
+    // returned before emitting the summary at all.
+    let root = temp_root("add-dry-run-summary");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let sidecar = root.join("add-summary.json");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "dry-run summary fixture",
+            "--dry-run",
+            "--summary-format",
+            "json",
+            "--summary-output",
+        ])
+        .arg(&sidecar)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    assert!(
+        output.status.success(),
+        "dry-run add must succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("[[allow]]"),
+        "stdout must carry the candidate entry: {stdout}"
+    );
+    let summary_text = fs::read_to_string(&sidecar)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read sidecar: {err}")));
+    assert!(
+        summary_text.contains("\"schema_id\"") && summary_text.contains("cargo-allow.add.v1"),
+        "the sidecar must hold the JSON add summary, not the candidate TOML: {summary_text}"
+    );
+    assert!(
+        !stdout.contains("schema_id"),
+        "stdout must not carry the summary"
+    );
+}
+
+#[test]
+fn add_candidate_stdout_carries_the_artifact_and_stderr_carries_the_summary() {
+    // #4509 pins the documented carve-out (docs/schemas/README.md): `add`
+    // stdout carries the candidate policy entry first, and the summary block
+    // renders on stderr after it — automation reads the sidecar or stderr
+    // for `add`, not stdout. (The terminal-only "summary follows below on
+    // stderr" note is not visible through captured output.)
+    let root = temp_root("add-summary-placement");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "placement fixture",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    assert!(
+        output.status.success(),
+        "the candidate add must succeed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stdout.contains("[[allow]]") && stdout.contains("core/fixture"),
+        "stdout must carry the candidate policy entry: {stdout}"
+    );
+    assert!(
+        !stdout.contains("Outcome:"),
+        "stdout must not lead with the summary block: {stdout}"
+    );
+    assert!(
+        stderr.contains("Outcome:"),
+        "the summary block must render on stderr: {stderr}"
+    );
+}
+
 fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
 }

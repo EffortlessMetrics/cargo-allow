@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Docs: docs/getting-started.md's `adopt` output description now names
+  the summary-frame lines and plan-body lines correctly (#4530). The
+  frame carries `Outcome:` / `Why:` / `Subject:` / `Coverage:` / `Next:`
+  / `Writes:` / `Then:` / `Not proven:`; the plan body that follows
+  carries `Repository state:`, exactly one `Recommended next step:`, a
+  copyable `Run:` command, an explicit `Writes:` line for the plan's own
+  target, and a rollback statement. The previous wording attributed
+  `Recommended next step:` / `Run:` / the rollback to the frame and
+  subject/coverage to the body — the opposite of the actual bytes. The
+  adoption CLI test now pins frame membership, not just ordering.

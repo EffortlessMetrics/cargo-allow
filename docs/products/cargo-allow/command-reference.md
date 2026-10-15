@@ -17,6 +17,7 @@ review/evidence helpers:
 | `list`, `explain`, `why` | Inspect retained entries and unreceipted findings. |
 | `init`, `propose`, `add`, `refresh`, `prune` | Plan or apply bounded ledger changes. |
 | `worklist` | Emit actionable repair items. |
+| `migrate` | Convert compatible legacy policy files and xtask/ripr bespoke ledgers. |
 
 Report commands such as `audit`, `check`, `diff`, `list`, `explain`, `why`, and
 `worklist` use `--format json` for machine-readable output. Mutation commands

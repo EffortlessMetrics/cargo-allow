@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Docs: docs/getting-started.md's `adopt` wording now matches the actual
+  output order (#4500). The summary frame — `Outcome:`, one
+  `Recommended next step:`, a copyable `Run:` command, an explicit
+  `Writes:` line, and a rollback statement — opens the human output, and
+  the plan body that follows carries `Repository state:` with the
+  scanned tree's disposition. The old wording said the output "leads
+  with `Repository state:`", which sent agents keying the first line
+  into misclassifying every healthy adopt run. A regression assertion
+  pins the documented marker order.

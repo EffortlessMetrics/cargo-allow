@@ -71,23 +71,29 @@ pub(crate) fn validate_allow_entry_requirements(
         validate_no_surrounding_whitespace(&format!("{} reason", entry.id), &entry.reason)?;
     }
     if requirements.owner_required && entry.owner.trim().is_empty() {
-        return Err(CargoAllowError::new(format!("{} missing owner", entry.id)));
+        return Err(CargoAllowError::new(format!(
+            "{} missing owner: `owner` is empty but policy requires an owner for every entry; set `owner` to the team or person accountable for this entry",
+            entry.id
+        )));
     }
     if requirements.owner_required
         && entry.owner.trim() == "unowned"
         && entry.classification != "baseline_debt"
     {
         return Err(CargoAllowError::new(format!(
-            "{} missing concrete owner",
+            "{} missing concrete owner: `owner` is `unowned` but policy requires a concrete owner; replace `unowned` with the team or person accountable for this entry",
             entry.id
         )));
     }
     if requirements.reason_required && entry.reason.trim().is_empty() {
-        return Err(CargoAllowError::new(format!("{} missing reason", entry.id)));
+        return Err(CargoAllowError::new(format!(
+            "{} missing reason: `reason` is empty but policy requires a reason for every entry; state why this exception is retained",
+            entry.id
+        )));
     }
     if requirements.classification_required && entry.classification.trim().is_empty() {
         return Err(CargoAllowError::new(format!(
-            "{} missing classification",
+            "{} missing classification: `classification` is empty but policy requires a classification for every entry; set one such as `reviewed_exception` or `baseline_debt`",
             entry.id
         )));
     }
@@ -125,7 +131,7 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
         && entry.evidence.is_empty()
     {
         return Err(CargoAllowError::new(format!(
-            "{} unsafe entry missing evidence",
+            "{} unsafe entry missing evidence: `evidence` is empty but policy requires evidence for unsafe entries; add at least one reference such as `doc:<path>`, `test:<name>`, or `issue:<ref>`",
             entry.id
         )));
     }
@@ -176,7 +182,7 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
     if requirements.evidence_required {
         if entry.evidence.is_empty() {
             return Err(CargoAllowError::new(format!(
-                "{} missing evidence",
+                "{} missing evidence: `evidence` is empty but policy requires evidence for every entry; add at least one reference such as `doc:<path>`, `test:<name>`, or `issue:<ref>`",
                 entry.id
             )));
         }
@@ -446,7 +452,7 @@ mod tests {
                 &requirements,
                 LinkScopeValidation::Strict
             ))
-            .contains("missing-owner missing owner")
+            .contains("missing-owner missing owner: `owner` is empty but policy requires an owner")
         );
         assert!(
             err_text(validate_allow_entry_requirements(
@@ -454,7 +460,7 @@ mod tests {
                 &requirements,
                 LinkScopeValidation::Strict
             ))
-            .contains("unowned-reviewed missing concrete owner")
+            .contains("unowned-reviewed missing concrete owner: `owner` is `unowned`")
         );
         assert!(
             validate_allow_entry_requirements(
@@ -470,7 +476,9 @@ mod tests {
                 &requirements,
                 LinkScopeValidation::Strict
             ))
-            .contains("missing-reason missing reason")
+            .contains(
+                "missing-reason missing reason: `reason` is empty but policy requires a reason"
+            )
         );
         assert!(
             err_text(validate_allow_entry_requirements(
@@ -478,7 +486,7 @@ mod tests {
                 &requirements,
                 LinkScopeValidation::Strict
             ))
-            .contains("missing-classification missing classification")
+            .contains("missing-classification missing classification: `classification` is empty")
         );
     }
 
@@ -626,7 +634,7 @@ mod tests {
                 &unsafe_missing,
                 &requirements
             ))
-            .contains("unsafe-missing unsafe entry missing evidence")
+            .contains("unsafe-missing unsafe entry missing evidence: `evidence` is empty but policy requires evidence for unsafe entries")
         );
         assert!(
             err_text(validate_allow_entry_evidence_and_limit(
@@ -641,7 +649,7 @@ mod tests {
                 &evidence_required,
                 &strict_requirements
             ))
-            .contains("missing-general-evidence missing evidence")
+            .contains("missing-general-evidence missing evidence: `evidence` is empty but policy requires evidence for every entry")
         );
         assert!(
             err_text(validate_allow_entry_evidence_and_limit(

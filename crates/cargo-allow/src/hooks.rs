@@ -743,9 +743,10 @@ fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
 fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
     if !args.accept {
         return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Artifact,
+            CargoAllowErrorKind::Usage,
             "hook apply is preview-safe by default; pass --accept to create the managed hook",
-        ));
+        )
+        .with_next_step("rerun with `--accept` to create the managed hook."));
     }
     let root = source_tree_root()?;
     apply_resolved(args, &root)
@@ -797,11 +798,14 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
             },
         )?;
         return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Artifact,
+            CargoAllowErrorKind::Unsupported,
             format!(
                 "existing hook has disposition {disposition}; no files were changed, see receipt {}",
                 receipt_path.display()
             ),
+        )
+        .with_next_step(
+            "merge the managed block manually per the apply receipt (or remove the foreign hook), then rerun `hooks apply --accept`.",
         ));
     }
 
@@ -833,9 +837,10 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
 fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     if !args.accept {
         return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Artifact,
+            CargoAllowErrorKind::Usage,
             "hook remove is preview-safe by default; pass --accept to remove the exact managed hook",
-        ));
+        )
+        .with_next_step("rerun with `--accept` to remove the exact managed hook."));
     }
 
     let root = source_tree_root()?;

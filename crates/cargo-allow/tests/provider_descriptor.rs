@@ -57,6 +57,43 @@ fn validator() -> Result<jsonschema::Validator, Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn capabilities_with_explicit_policy_before_adoption_fails_e0003() -> TestResult {
+    // #4529 pins the documented prerequisite (docs/getting-started.md §2b):
+    // the policy-scoped capabilities variant reads the policy ledger, which
+    // §4's `init` creates. Before adoption it fails with E0003_INVALID_POLICY
+    // (exit 1) — the remedy is to adopt first, not to repair a policy entry.
+    let fixture = Fixture::new("pre-adoption-policy")?;
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&fixture.0)
+        .args([
+            "capabilities",
+            "--root",
+            ".",
+            "--config",
+            "policy/allow.toml",
+            "--format",
+            "json",
+        ])
+        .output()?;
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "pre-adoption capabilities must exit 1: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error[E0003_INVALID_POLICY]"),
+        "the typed policy error must render: {stderr}"
+    );
+    assert!(
+        output.stdout.is_empty(),
+        "no capabilities catalog may be produced before adoption"
+    );
+    Ok(())
+}
+
+#[test]
 fn provider_descriptor_stdout_conforms_without_repository_or_policy() -> TestResult {
     let fixture = Fixture::new("stdout")?;
     // No Git repository exists here; malformed ambient policy must not be read.

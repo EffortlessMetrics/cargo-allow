@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Docs: the plan-then-apply receipt journey in docs/getting-started.md
+  and README.md now states the evidence prerequisites the tool enforces
+  (#4498). An `--evidence doc:<path>` reference requires the file to
+  exist and be git-tracked before `add --from-plan` (otherwise it
+  refuses with `error[E0007_ARTIFACT]`; regenerate the plan with the
+  printed `why --plan` command when tracking the file stales it), and
+  the evidence doc itself is a new finding the follow-up
+  `check --mode no-new` flags until it is receipted in the same change.
+  A journey regression test executes the documented steps in order and
+  asserts every documented refusal and the documented end state.

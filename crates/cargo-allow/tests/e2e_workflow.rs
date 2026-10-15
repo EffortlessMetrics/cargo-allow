@@ -332,6 +332,133 @@ safety_comment_required = false
     remove_temp_root(root);
 }
 
+/// #4481: both `propose --write` failures must name their actual fix.
+/// The already-exists refusal must not inherit the generic writable/parent
+/// Next line, and the out-of-root refusal must not inherit init/--config.
+#[test]
+fn propose_write_failures_name_the_actual_fix() {
+    let root = temp_root("e2e-propose-write-guidance");
+    write_panic_source(
+        &root,
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    );
+    let policy_output = root.join("policy/allow.toml");
+    let run_propose = |extra: &[&str]| {
+        let mut command = cargo_allow_command();
+        command
+            .arg("propose")
+            .arg("--root")
+            .arg(&root)
+            .arg("--kind")
+            .arg("panic");
+        for arg in extra {
+            command.arg(arg);
+        }
+        command
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}")))
+    };
+
+    // A fresh in-root target writes successfully (control).
+    let write_arg = policy_output.to_str().unwrap_or("policy/allow.toml");
+    let first = run_propose(&["--write", write_arg]);
+    assert!(
+        first.status.success(),
+        "first propose --write should succeed: {}",
+        String::from_utf8_lossy(&first.stderr)
+    );
+
+    // Already exists without --force: specific Next, no generic advice.
+    let second = run_propose(&["--write", write_arg]);
+    let second_text = String::from_utf8_lossy(&second.stderr).into_owned();
+    assert!(
+        !second.status.success(),
+        "rewrite without --force must fail"
+    );
+    assert!(
+        second_text.contains("error[E0007_ARTIFACT]"),
+        "exists failure keeps its code: {second_text}"
+    );
+    assert!(
+        second_text.contains("Next: pass --force to overwrite"),
+        "exists failure names --force: {second_text}"
+    );
+    assert!(
+        !second_text.contains("check the output path is writable"),
+        "exists failure must not blame writability: {second_text}"
+    );
+
+    // --force still overwrites (negative control).
+    let forced = run_propose(&["--write", write_arg, "--force"]);
+    assert!(
+        forced.status.success(),
+        "--force overwrite should succeed: {}",
+        String::from_utf8_lossy(&forced.stderr)
+    );
+
+    // A directory target is not the exists case: it must not receive
+    // --force advice (force cannot overwrite a directory); the apply
+    // layer's own refusal stands.
+    let dir_target = root.join("policy-dir-target");
+    fs::create_dir_all(&dir_target)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create dir target: {err}")));
+    let dir_arg = dir_target.to_str().unwrap_or("dir");
+    let dir_run = run_propose(&["--write", dir_arg]);
+    let dir_text = String::from_utf8_lossy(&dir_run.stderr).into_owned();
+    assert!(!dir_run.status.success(), "directory write must fail");
+    assert!(
+        !dir_text.contains("Next: pass --force to overwrite"),
+        "directory target must not receive --force advice: {dir_text}"
+    );
+
+    // A symlink-to-file target also keeps the apply layer's refusal: the
+    // apply layer refuses symlink leaves on replace, so --force advice
+    // would be unusable there too. Creation is best-effort (symlink
+    // privilege varies by host); the directory case above always runs.
+    let link_target = root.join("policy-link-target.toml");
+    let link_created = {
+        #[cfg(windows)]
+        {
+            std::os::windows::fs::symlink_file(&policy_output, &link_target).is_ok()
+        }
+        #[cfg(not(windows))]
+        {
+            std::os::unix::fs::symlink(&policy_output, &link_target).is_ok()
+        }
+    };
+    if link_created {
+        let link_arg = link_target.to_str().unwrap_or("link");
+        let link_run = run_propose(&["--write", link_arg]);
+        let link_text = String::from_utf8_lossy(&link_run.stderr).into_owned();
+        assert!(!link_run.status.success(), "symlink write must fail");
+        assert!(
+            !link_text.contains("Next: pass --force to overwrite"),
+            "symlink target must not receive --force advice: {link_text}"
+        );
+    }
+
+    // Out-of-root target: fail closed, nothing written, specific Next.
+    let outside = root.join("../outside-propose.toml");
+    let outside_arg = outside.to_str().unwrap_or("outside");
+    let blocked = run_propose(&["--write", outside_arg]);
+    let blocked_text = String::from_utf8_lossy(&blocked.stderr).into_owned();
+    assert!(!blocked.status.success(), "out-of-root write must fail");
+    assert!(
+        blocked_text.contains("Next: pass a --write path inside"),
+        "containment failure names the inside-root fix: {blocked_text}"
+    );
+    assert!(
+        !blocked_text.contains("run `cargo-allow init`"),
+        "containment failure must not suggest init: {blocked_text}"
+    );
+    assert!(
+        !outside.exists(),
+        "out-of-root write must not create the target"
+    );
+
+    remove_temp_root(root);
+}
+
 fn write_panic_source(root: &std::path::Path, contents: &str) {
     fs::create_dir_all(root.join("src"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));

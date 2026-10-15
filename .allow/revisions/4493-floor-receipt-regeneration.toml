@@ -1,0 +1,16 @@
+# #4493: exact floor-receipt-regeneration workflow receipt.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1136"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0280625e2a6c9777e87c39a3af15795d9902fae8b27678938241a6ee65850fc8"
+reason = "Workflow declaration for the #4493 dispatchable floor-receipt regeneration runner: proves the retained direct-floor receipts per product on a runner and uploads them as artifacts, giving receipt drift a runner-based regeneration path without committing or publishing anything."
+
+[[records]]
+allow_ids = ["allow-1137"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e5febc12f6ac3c8f6ccb31905e73f15381d833229ceb583b3b1a7494b5a132f3"
+reason = "Authored revision note for the exact #4493 floor-receipt-regeneration workflow receipt and this note; records bounded infra provenance without widening directory scope or granting merge, CI-bypass, or release authority."

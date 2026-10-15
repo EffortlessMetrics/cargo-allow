@@ -245,7 +245,7 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
     // starter-policy preview is intentionally omitted here because spec-system
     // init writes .allow/profiles/spec-system.toml, not policy/allow.toml.
     println!();
-    print!("{}", crate::init::next_steps_block());
+    print!("{}", crate::init::next_steps_block(None));
 
     Ok(())
 }

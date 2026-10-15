@@ -279,30 +279,32 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
         || source_coupling_failed;
+    let report_args = ReportRenderArgs {
+        command: "check",
+        format: effective_format,
+        baseline_debt_entries,
+        evidence,
+        findings: &findings,
+        outcomes: &projected_outcomes,
+        failed,
+        output: args.output.as_deref(),
+        root: &root,
+        inventory_facts,
+        inventory_source_identity: None,
+        enforcement: Some(if mode.is_advisory() {
+            RECEIPT_ENFORCEMENT_ADVISORY
+        } else {
+            RECEIPT_ENFORCEMENT_ENFORCING
+        }),
+    };
     if should_emit_report_stdout(
         args.output.as_deref(),
         args.receipt.as_deref(),
         effective_format,
     ) {
-        print_report(ReportRenderArgs {
-            command: "check",
-            format: effective_format,
-            baseline_debt_entries,
-            evidence,
-            findings: &findings,
-            outcomes: &projected_outcomes,
-            failed,
-            output: args.output.as_deref(),
-            root: &root,
-            inventory_facts,
-            inventory_source_identity: None,
-            enforcement: Some(if mode.is_advisory() {
-                RECEIPT_ENFORCEMENT_ADVISORY
-            } else {
-                RECEIPT_ENFORCEMENT_ENFORCING
-            }),
-        })?;
+        print_report(report_args)?;
     } else if args.format == crate::OutputFormat::Human && args.receipt.is_some() {
+        crate::core_command_router::write_report_summary_artifact(&report_args)?;
         // When only --receipt is given (no --output), the full human report is
         // suppressed to keep stdout clean for CI scripts. But the operator still
         // needs a pass/fail signal — emit a brief summary to stderr (#3190).
@@ -364,13 +366,11 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
-            Ok(formats) => formats,
-            Err(error) => {
-                eprintln!("cargo-allow check: {error}");
-                process::exit(1);
-            }
-        };
+        // Return late output errors so the wrapper can replace an evaluated
+        // receipt, remove the stale report and let the CLI replace its summary.
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         let mut artifact_context = source_context.report(Some(baseline_debt_entries));
         evidence.apply_to(&mut artifact_context);
         artifact_context.mode = Some(mode.as_str());
@@ -392,7 +392,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             allow_report::EvaluationResultClassV2::Passed
         };
-        if let Err(error) = artifact_emit::emit_artifact_set(
+        let artifacts = artifact_emit::emit_artifact_set(
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "check",
@@ -403,9 +403,39 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 source_subject: &source_subj,
             },
             &emit_ctx,
+        )
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!("artifact emit: {error}"),
+            )
+        })?;
+        let validation = artifacts.validate();
+        if !matches!(
+            validation.result,
+            allow_report::EvaluationArtifactSetResultV2::Complete
+                | allow_report::EvaluationArtifactSetResultV2::SemanticNonGreen
         ) {
-            eprintln!("cargo-allow check: artifact emit: {error}");
-            process::exit(1);
+            // Keep the emitted manifest's semantic result and completed members.
+            // Required rendering failure changes this invocation's output result.
+            let details = validation
+                .gaps
+                .into_iter()
+                .chain(
+                    artifacts
+                        .artifacts
+                        .iter()
+                        .flat_map(|artifact| artifact.render_errors.iter().cloned()),
+                )
+                .collect::<Vec<_>>();
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Artifact,
+                format!(
+                    "artifact emit {:?}: {}",
+                    validation.result,
+                    details.join("; ")
+                ),
+            ));
         }
     }
     if failed {

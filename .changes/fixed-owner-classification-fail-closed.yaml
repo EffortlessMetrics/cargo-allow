@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `worklist` and `list` now also fail closed on unknown `--owner` and
+  `--classification` values, completing the free-text filter contract from
+  #4365. A typo such as `list --owner bogus_owner` previously returned an
+  empty result indistinguishable from a genuinely empty slice; it now
+  errors with the observed owner/classification values. Empty ledgers and
+  queues keep their existing empty-result summary semantics
+  (`list.no_entries` vs `list.no_filter_matches`), and valid values are
+  unchanged.

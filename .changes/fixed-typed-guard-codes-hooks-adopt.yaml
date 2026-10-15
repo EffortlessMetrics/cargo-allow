@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  UX: hooks and adopt hard failures now carry their registry classes and
+  typed next steps instead of the Artifact kind's generic output-path
+  hint (#4524). `hooks apply`/`hooks remove` without `--accept` are
+  usage errors (`E0001_USAGE`, exit 2) with a rerun-with-`--accept`
+  step; `hooks apply` against a foreign hook (ManualMerge and similar
+  dispositions) is `E0010_UNSUPPORTED` with a manual-merge step; and
+  `adopt` bootstrap failures map to their registry classes
+  (`E0003_INVALID_POLICY`, `E0004_INVENTORY`, `E0010_UNSUPPORTED`,
+  `E0011_INSTRUMENT_FAILURE`) with per-disposition recovery steps
+  instead of a shared `error[E0007_ARTIFACT]` whose output-path remedy
+  could not fix any of them.

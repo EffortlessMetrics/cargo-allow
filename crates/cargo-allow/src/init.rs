@@ -87,6 +87,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 &display,
                 args.strict,
                 crate::reporting::output_style(),
+                git_add_step(&root, &display),
             )
         );
         return Ok(());
@@ -145,7 +146,12 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     print!(
         "{}{}",
         crate::core_command_summary::render_core_command_summary_human(&summary),
-        post_write_announcement_styled(action, &display, crate::reporting::output_style())
+        post_write_announcement_styled(
+            action,
+            &display,
+            crate::reporting::output_style(),
+            git_add_step(&root, &display),
+        )
     );
     Ok(())
 }
@@ -173,6 +179,17 @@ fn init_summary(
             format!("failed to build init command summary: {error}"),
         )
     })
+}
+
+/// The `git add <policy>` next step, present only inside a Git worktree
+/// where git-tracked inventory cannot see the new policy file until it is
+/// committed (#4479). An explicit `--root` may name a directory nested
+/// inside the worktree, so `.git` (file or directory) is probed at the
+/// root and every ancestor, mirroring Git's own discovery.
+fn git_add_step<'a>(root: &Path, display: &'a str) -> Option<&'a str> {
+    root.ancestors()
+        .any(|ancestor| ancestor.join(".git").exists())
+        .then_some(display)
 }
 
 fn spec_system_config_arg(config: &Path) -> Option<PathBuf> {
@@ -247,6 +264,7 @@ fn dry_run_announcement_styled(
     display: &str,
     strict: bool,
     style: allow_report::Style,
+    git_add_step: Option<&str>,
 ) -> String {
     let mut out = String::new();
     out.push_str(&format!(
@@ -257,7 +275,7 @@ fn dry_run_announcement_styled(
     out.push_str("starter policy shape:\n");
     out.push_str(&starter_policy_preview(strict));
     out.push('\n');
-    out.push_str(&next_steps_block());
+    out.push_str(&next_steps_block(git_add_step));
     out
 }
 
@@ -268,11 +286,12 @@ fn post_write_announcement_styled(
     action: &str,
     display: &str,
     style: allow_report::Style,
+    git_add_step: Option<&str>,
 ) -> String {
     let mut out = String::new();
     out.push_str(&format!("{} {display}\n", style_init_action(style, action)));
     out.push('\n');
-    out.push_str(&next_steps_block());
+    out.push_str(&next_steps_block(git_add_step));
     out
 }
 
@@ -284,17 +303,28 @@ fn style_init_action(style: allow_report::Style, action: &str) -> String {
     }
 }
 
-pub(crate) fn next_steps_block() -> String {
-    "next steps:\n  \
-     cargo-allow audit                  # inventory current exceptions\n  \
-     cargo-allow propose                # preview baseline_debt for exceptions this tree already carries\n  \
-     cargo-allow check --mode no-new    # enforce no-new-debt (after the tree is receipted or baselined)\n  \
-     cargo-allow capabilities           # inspect sensor claims and exclusions\n  \
-     cargo-allow vocabulary             # list finding kinds, evidence prefixes, statuses\n  \
-     cargo-allow why --kind <kind> --path <path> --line <line>  # diagnose a finding\n  \
-     cargo-allow add --update           # receipt a reviewed exception\n  \
-     cargo-allow worklist               # see review-due and stale entries\n"
-        .to_string()
+pub(crate) fn next_steps_block(git_add_step: Option<&str>) -> String {
+    // The starter policy inventories git-tracked files, so until the new
+    // policy file itself is committed its seeded self-receipt reads stale
+    // and the first check confuses a brand-new user (#4479). Naming the
+    // commit step is guidance only; nothing is staged or committed here.
+    let git_step = match git_add_step {
+        Some(display) => format!(
+            "  git add {display}               # commit the starter policy so git-tracked inventory sees it (its self-receipt reads stale until then)\n"
+        ),
+        None => String::new(),
+    };
+    format!(
+        "next steps:\n{git_step}  \
+         cargo-allow audit                  # inventory current exceptions\n  \
+         cargo-allow propose                # preview baseline_debt for exceptions this tree already carries\n  \
+         cargo-allow check --mode no-new    # enforce no-new-debt (after the tree is receipted or baselined)\n  \
+         cargo-allow capabilities           # inspect sensor claims and exclusions\n  \
+         cargo-allow vocabulary             # list finding kinds, evidence prefixes, statuses\n  \
+         cargo-allow why --kind <kind> --path <path> --line <line>  # diagnose a finding\n  \
+         cargo-allow add --update           # receipt a reviewed exception\n  \
+         cargo-allow worklist               # see review-due and stale entries\n"
+    )
 }
 
 #[cfg(test)]
