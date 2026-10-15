@@ -20,7 +20,7 @@ import sys
 
 
 JSON_LIMIT = 8 * 1024 * 1024
-BINARY_LIMIT = 256 * 1024 * 1024
+BINARY_LIMIT = 512 * 1024 * 1024
 FIRST_FAMILY_COMMANDS = {"adopt", "doctor", "audit", "check"}
 MAX_SELECTED_CASES = 29
 SCHEMA = "cargo-allow.command-case-bundle.v1"
