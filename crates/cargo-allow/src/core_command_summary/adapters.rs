@@ -403,7 +403,31 @@ pub fn core_command_summary_from_add(
             primary_action = primary_action.with_write_posture(write_posture, vec![path]);
         }
     }
-    let next_proof = if live_update {
+    let next_proof = if dry_run && !(live_update || candidate_write) {
+        // A bare preview persists nothing, and rerunning without --dry-run
+        // would still print the candidate to stdout, so no verbatim proof
+        // command applies (#4550/#4554 review).
+        None
+    } else if dry_run {
+        // #4550: --dry-run guarantees the target is unwritten, so any
+        // post-write proof argv would fail or prove an unchanged ledger if
+        // executed verbatim; the honest follow-up is to persist first. The
+        // live-update preview checks the unchanged ledger, so it gets the
+        // same persist-first route instead of the live-policy check
+        // (#4554 review).
+        write_path.clone().map(|_| {
+            let title = if live_update {
+                "rerun add without --dry-run to write the entry into the live ledger, then run the enforcing no-new check"
+            } else {
+                "rerun add without --dry-run to write the candidate, then run the targeted no-new check against it"
+            };
+            CoreCommandActionV1::decision("add.persist_candidate", title).with_contract(
+                "candidate generation and review do not prove policy posture",
+                "the preview must be persisted before any check can evaluate it",
+                "source-syntax evaluation does not prove compiled or runtime correctness",
+            )
+        })
+    } else if live_update {
         Some(
             CoreCommandActionV1::command(
                 "add.full_no_new_check",
@@ -424,22 +448,7 @@ pub fn core_command_summary_from_add(
                 "source-syntax evaluation does not prove compiled or runtime correctness",
             ),
         )
-    } else if dry_run {
-        // #4550: --dry-run guarantees the candidate path does not exist, so
-        // the targeted-check argv would fail E0002 if executed verbatim; the
-        // honest follow-up is to persist the candidate first.
-        write_path.clone().map(|_| {
-            CoreCommandActionV1::decision(
-                "add.persist_candidate",
-                "rerun add without --dry-run to write the candidate, then run the targeted no-new check against it",
-            )
-            .with_contract(
-                "candidate generation and review do not prove policy posture",
-                "the preview must be persisted before any check can evaluate it",
-                "source-syntax evaluation does not prove compiled or runtime correctness",
-            )
-        })
-    } else {
+    } else if candidate_write {
         write_path.clone().map(|path| {
             CoreCommandActionV1::command(
                 "add.targeted_no_new_check",
@@ -462,6 +471,11 @@ pub fn core_command_summary_from_add(
                 "source-syntax evaluation does not prove compiled or runtime correctness",
             )
         })
+    } else {
+        // Nothing was persisted and no write target was requested; the
+        // candidate lives only on stdout, so there is nothing a proof
+        // command could evaluate.
+        None
     };
     let (result_class, posture) = if !complete {
         (ResultClassV1::PartialData, CoreCommandPostureV1::Blocking)

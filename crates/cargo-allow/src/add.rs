@@ -615,14 +615,22 @@ fn render_add_summary_broad_human(
     style: allow_report::Style,
 ) -> String {
     // --dry-run persists nothing; a "policy written to ..." tail would claim a
-    // write that never happened (#4549).
-    let tail = if dry_run {
-        "dry-run: nothing written (candidate on stdout)".to_string()
+    // write that never happened, and the lead verb must stay in preview tense
+    // so the summary does not open with a claim the run retracts (#4549).
+    let (lead, tail) = if dry_run {
+        (
+            "would add",
+            "dry-run: nothing written (candidate on stdout)".to_string(),
+        )
     } else {
-        format!("policy written to {}", policy_output.unwrap_or("stdout"))
+        (
+            "added",
+            format!("policy written to {}", policy_output.unwrap_or("stdout")),
+        )
     };
     format!(
-        "added {} {} (kind={}, scope={}, occurrence_limit={}); {}\n",
+        "{} {} {} (kind={}, scope={}, occurrence_limit={}); {}\n",
+        lead,
         style.status("baseline_debt", "broad baseline"),
         entry.id,
         entry.kind,

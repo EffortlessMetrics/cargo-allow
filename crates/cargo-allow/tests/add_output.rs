@@ -657,3 +657,134 @@ expires_or_review_after_required = true
 
     remove_temp_root(root);
 }
+
+#[test]
+fn add_dry_run_without_write_target_selects_no_proof_command() {
+    // #4550/#4554 review: a bare preview persists nothing and rerunning
+    // without --dry-run would still print to stdout, so no verbatim proof
+    // command applies; the old adapter suggested a check against the live
+    // policy path as if it evaluated the candidate.
+    let root = temp_root("add-dry-run-bare-no-proof");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "bare preview fixture",
+            "--dry-run",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "bare dry-run add must succeed: {stderr}"
+    );
+    assert!(
+        stderr.contains("Then: no follow-up proof command selected"),
+        "a bare preview must select no proof command: {stderr}"
+    );
+    assert!(
+        !stderr.contains("--config"),
+        "the summary must not point any check at a policy that lacks the preview: {stderr}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn add_dry_run_update_preview_directs_persist_first() {
+    // #4554 review: the live-update preview's old Then: ran the enforcing
+    // check against the unchanged ledger, which cannot verify the previewed
+    // entry; it must direct the operator to persist first, like the
+    // candidate-write preview does.
+    let root = temp_root("add-dry-run-update-proof");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "update preview fixture",
+            "--dry-run",
+            "--update",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "update-preview dry-run add must succeed: {stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "Then: rerun add without --dry-run to write the entry into the live ledger, then run the enforcing no-new check"
+        ),
+        "the update preview must direct the operator to persist first: {stderr}"
+    );
+
+    remove_temp_root(root);
+}
