@@ -566,16 +566,48 @@ fn is_default_policy_path(path: &Path, root: &Path) -> bool {
     fn normalized(path: &Path) -> String {
         let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
         let text = text.replace(std::path::MAIN_SEPARATOR, "/");
+        // A canonicalized Windows UNC root collapses to one leading slash
+        // while a user-spelled UNC path keeps two; compare past the
+        // leading slashes (#4573 review).
+        let text = text.trim_start_matches('/');
         if cfg!(windows) {
             text.to_ascii_lowercase()
         } else {
-            text
+            text.to_string()
         }
     }
     normalized(&best_effort_canonical(path))
         == normalized(&best_effort_canonical(
             &root.join("policy").join("allow.toml"),
         ))
+}
+
+#[cfg(test)]
+mod default_policy_path_tests {
+    use super::is_default_policy_path;
+
+    #[test]
+    fn default_policy_spellings_compare_equal_across_prefix_forms() {
+        // #4558/#4573: the relative, absolute, and UNC-spelled forms of the
+        // default policy location must all compare as the default (the
+        // canonicalized UNC root collapses to one leading slash while the
+        // user spelling keeps two), and a genuinely different path must
+        // not.
+        let root = std::path::Path::new("/repo-root");
+        assert!(is_default_policy_path(
+            std::path::Path::new("/repo-root/policy/allow.toml"),
+            root
+        ));
+        let unc_root = std::path::Path::new("//server/share/repo");
+        assert!(is_default_policy_path(
+            std::path::Path::new("//server/share/repo/policy/allow.toml"),
+            unc_root
+        ));
+        assert!(!is_default_policy_path(
+            std::path::Path::new("/repo-root/custom/other.toml"),
+            root
+        ));
+    }
 }
 
 fn configured_file_family_capabilities(
