@@ -370,6 +370,7 @@ mod tests {
             core_command_summary_ref: Some("core-command-summary.json".to_string()),
             detailed_result_ref: Some("check-receipt.json".to_string()),
             limitations: Vec::new(),
+            validation_gaps: Vec::new(),
             claim_boundary: "one evaluation, many renderers".to_string(),
         }
     }
