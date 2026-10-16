@@ -283,6 +283,14 @@ mod compat_selected_policy_path_tests {
             ("panic", "policy/no-panic-baseline.toml"),
             ("unsafe", "policy/unsafe-allowlist.toml"),
             ("process", "policy/process-allowlist.toml"),
+            ("no-panic-allowlist", "policy/no-panic-allowlist.toml"),
+            ("executable", "policy/executable-allowlist.toml"),
+            ("workflow", "policy/workflow-allowlist.toml"),
+            (
+                "dependency-surface",
+                "policy/dependency-surface-allowlist.toml",
+            ),
+            ("generated", "policy/generated-allowlist.toml"),
         ];
         for (kind, expected) in cases {
             assert_eq!(
