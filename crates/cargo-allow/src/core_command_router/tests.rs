@@ -40,6 +40,43 @@ fn report_args<'a>(
 }
 
 #[test]
+fn report_summary_declares_absolute_artifact_dir_writes() {
+    // #4566/#4575 review: an absolute --artifact-dir must keep its own
+    // path text when it is not under the scan root.
+    let root = std::env::temp_dir().join("report-summary-absolute-artifacts");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create fixture root");
+    let artifacts = std::env::current_dir()
+        .expect("cwd")
+        .join("target/absolute-artifacts-probe");
+    let facts = crate::core_command_router::ReportSummaryFacts {
+        command: "check",
+        root: &root,
+        inventory_facts: crate::InventoryFacts::scanned(
+            allow_inventory::InventorySource::GitTracked,
+            7,
+        ),
+        failed: false,
+        advisory_count: 0,
+        subject: crate::core_command_router::report_subject_from_identity(
+            "identity:fixture",
+            crate::InventoryFacts::scanned(allow_inventory::InventorySource::GitTracked, 7),
+            None,
+        ),
+        artifact_emission: Some(&artifacts),
+    };
+    let summary =
+        crate::core_command_router::build_report_summary_from_facts(facts).expect("summary builds");
+    assert!(summary.operation_effects.writes_repository);
+    let declared = summary.operation_effects.write_paths.join(";");
+    assert!(
+        declared.contains("absolute-artifacts-probe"),
+        "the write path must name the artifact directory: {declared}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn human_report_starts_with_the_common_summary() -> Result<(), String> {
     let root = temp_root("human").map_err(|error| error.to_string())?;
     let output = root.join("report.txt");
