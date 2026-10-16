@@ -13,6 +13,7 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
     context: &'a AddContext<'b>,
     policy_output: Option<&'a str>,
     dry_run: bool,
+    live_update: bool,
 ) -> MutationReceipt<'a> {
     let result = if policy_output.is_some() {
         "written"
@@ -20,13 +21,21 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
         "stdout"
     };
     let next_commands = if dry_run {
-        vec![
+        // #4575 review: explain reads the LIVE ledger, so the guidance must
+        // reflect when the rerun actually reaches it — the --update rerun
+        // writes the ledger, a --write rerun only writes the candidate.
+        let persist_step = if live_update {
             format!(
-                "rerun add without --dry-run to write this entry, then run `cargo-allow explain {}`",
+                "rerun add without --dry-run to write this entry into the live ledger, then run `cargo-allow explain {}`",
                 entry.id
-            ),
-            "cargo-allow check --mode no-new".to_string(),
-        ]
+            )
+        } else {
+            format!(
+                "rerun add without --dry-run to write the candidate, then apply the entry to the live ledger (--update); `cargo-allow explain {}` works once it is retained",
+                entry.id
+            )
+        };
+        vec![persist_step, "cargo-allow check --mode no-new".to_string()]
     } else {
         vec![
             format!("cargo-allow explain {}", entry.id),
@@ -54,7 +63,15 @@ pub(super) fn render_add_summary(
     policy_output: Option<&str>,
     context: AddContext<'_>,
 ) -> String {
-    render_add_summary_styled(entry, finding, policy_output, false, context, Style::PLAIN)
+    render_add_summary_styled(
+        entry,
+        finding,
+        policy_output,
+        false,
+        false,
+        context,
+        Style::PLAIN,
+    )
 }
 
 pub(super) fn render_add_summary_styled(
@@ -62,10 +79,12 @@ pub(super) fn render_add_summary_styled(
     finding: &Finding,
     policy_output: Option<&str>,
     dry_run: bool,
+    live_update: bool,
     context: AddContext<'_>,
     style: Style,
 ) -> String {
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output, dry_run);
+    let mutation_receipt =
+        add_mutation_receipt(entry, &context, policy_output, dry_run, live_update);
     allow_report::render_add_human_styled(
         allow_report::AddReport::new(
             context.inventory,
@@ -85,9 +104,11 @@ pub(super) fn render_add_summary_json(
     policy_output: Option<&str>,
     force: bool,
     dry_run: bool,
+    live_update: bool,
     context: AddContext<'_>,
 ) -> String {
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output, dry_run);
+    let mutation_receipt =
+        add_mutation_receipt(entry, &context, policy_output, dry_run, live_update);
     allow_report::render_add_json(allow_report::AddReport::new(
         context.inventory,
         entry,
