@@ -7,5 +7,7 @@ body: >-
   4,817 ms; warm check 4,509 ms against the < 5,000 ms CI-gate target),
   targets are restated from the hosted numbers, the `why` fast-path
   aspiration is re-baselined from < 500 ms to < 2,000 ms, and #4496's
-  spurious catastrophic-ceiling trip is addressed by the retained-run
-  methodology plus the unchanged 60,000 ms blocking gate.
+  spurious catastrophic-ceiling trip predates the matrix: the unchanged
+  60,000 ms per-command blocking gate still fails a new sample above it,
+  while the retained-run methodology preserves UTC-rollover evidence for
+  comparison.
