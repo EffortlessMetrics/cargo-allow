@@ -62,8 +62,11 @@ pub(crate) fn compat_selected_policy_path(
     } else if is_network_compat_kind(compat_kind) {
         "policy/network-allowlist.toml"
     } else if matches!(
-        compat_kind.trim(),
-        "generated" | "generated-code" | "generated_code"
+        // The parsed kind is case-insensitive (#4581 review): load_compat_world
+        // selects the generated policy through parse_kind_filter, so
+        // `--kind GENERATED` reaches this helper too.
+        parse_kind_filter(compat_kind).map(|parsed| parsed.kind == FindingKind::GeneratedCode),
+        Ok(true)
     ) {
         "policy/generated-allowlist.toml"
     } else {
@@ -310,6 +313,12 @@ mod compat_selected_policy_path_tests {
         );
         assert_eq!(
             compat_selected_policy_path(None, root, Some("generated_code")),
+            Some(root.join("policy/generated-allowlist.toml")),
+        );
+        // The parser is case-insensitive, and load_compat_world selects the
+        // generated policy for uppercase spellings through it.
+        assert_eq!(
+            compat_selected_policy_path(None, root, Some("GENERATED")),
             Some(root.join("policy/generated-allowlist.toml")),
         );
         // An explicit --config overrides the per-kind default file.
