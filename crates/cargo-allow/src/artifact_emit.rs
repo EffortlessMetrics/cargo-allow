@@ -175,7 +175,10 @@ pub struct EmitConfig<'a> {
 /// Refuse an artifact directory that would contain the selected policy
 /// file: emitted report files beside the live ledger is a collision the
 /// OutputConflict classification could never see (its detection was
-/// unreachable dead code, removed with #4561).
+/// unreachable dead code, removed with #4561). Ordering scope: this runs
+/// before the artifact writes only — each command's report and receipt
+/// outputs are governed by their own containment assertions earlier in
+/// the command.
 pub(crate) fn ensure_artifact_dir_separate(
     artifact_dir: &std::path::Path,
     protected_file: Option<&std::path::Path>,
