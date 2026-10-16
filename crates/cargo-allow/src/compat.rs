@@ -266,3 +266,39 @@ mod tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod compat_selected_policy_path_tests {
+    use super::compat_selected_policy_path;
+
+    #[test]
+    fn compat_kinds_select_their_legacy_policy_defaults() {
+        // #4576 review: the artifact-collision guard protects the legacy
+        // file the compat world actually loads; the mapping here must match
+        // the loaders' defaults.
+        let root = std::path::Path::new("/repo");
+        let cases = [
+            ("lint-exception", "policy/clippy-exceptions.toml"),
+            ("network", "policy/network-allowlist.toml"),
+            ("panic", "policy/no-panic-baseline.toml"),
+            ("unsafe", "policy/unsafe-allowlist.toml"),
+            ("process", "policy/process-allowlist.toml"),
+        ];
+        for (kind, expected) in cases {
+            assert_eq!(
+                compat_selected_policy_path(None, root, Some(kind)),
+                Some(root.join(expected)),
+                "kind {kind} must select {expected}"
+            );
+        }
+        // An explicit --config overrides the per-kind default file.
+        assert_eq!(
+            compat_selected_policy_path(
+                Some(std::path::Path::new("custom/legacy.toml")),
+                root,
+                Some("network"),
+            ),
+            Some(std::path::PathBuf::from("custom/legacy.toml")),
+        );
+    }
+}

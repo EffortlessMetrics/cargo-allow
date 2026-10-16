@@ -118,6 +118,16 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             .map_err(|error| {
                 CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
             })?;
+        // #4565-class: the compat world's inventory facts carry no policy
+        // digest, so every --emit format failed the artifact-set identity
+        // gate with `resolved_config_identity is missing`; bind the exact
+        // legacy policy bytes this run evaluated.
+        let compat_policy_digest = protected_policy.as_deref().and_then(|path| {
+            std::fs::read_to_string(path)
+                .ok()
+                .map(|text| allow_core::sha256_v1_bytes(text.as_bytes()))
+        });
+        let inventory_facts = inventory_facts.with_optional_policy_digest(compat_policy_digest);
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {

@@ -957,3 +957,92 @@ fn audit_artifact_dir_without_emit_fails_at_arg_parse() {
     );
     remove_temp_root(root);
 }
+
+#[test]
+fn audit_compat_guard_protects_the_legacy_policy() {
+    // #4576 review + codecov/patch: under --compat the run loads a legacy
+    // policy file (here the network allowlist), and the artifact-collision
+    // guard must protect THAT file; this also exercises the compat arm of
+    // the guard and the compat path helper end to end.
+    let root = temp_root("audit-compat-guard");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/network-allowlist.toml"),
+        r#"schema_version = 1
+policy = "network-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "net-crates-io-fetch"
+destination = "crates.io"
+auth_required = false
+lane = "build"
+owner = "release"
+reason = "cargo fetch resolves and downloads crate dependencies."
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy policy: {err}")));
+    fs::write(root.join("tracked.txt"), "tracked\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--compat",
+            "--kind",
+            "network",
+            "--config",
+            "policy/network-allowlist.toml",
+            "--artifact-dir",
+            "policy",
+            "--emit",
+            "markdown",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run compat audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a legacy-policy-colliding artifact dir must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("would contain the selected policy file"),
+        "the typed error must name the collision: {stderr}"
+    );
+    assert!(
+        !root.join("policy/audit-markdown.md").is_file(),
+        "no artifact may be written into the legacy policy directory"
+    );
+
+    // The non-collision side succeeds: artifacts outside the legacy policy
+    // directory are emitted normally.
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--compat",
+            "--kind",
+            "network",
+            "--config",
+            "policy/network-allowlist.toml",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "markdown",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run compat audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "a non-colliding compat emit must succeed: {stderr}"
+    );
+    assert!(root.join("artifacts/audit-markdown.md").is_file());
+
+    remove_temp_root(root);
+}
