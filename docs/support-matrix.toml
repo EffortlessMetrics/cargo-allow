@@ -131,6 +131,7 @@ ids = [
   "cargo-allow.cadence.v1",
   "cargo-allow.core-adoption-plan.v1",
   "cargo-allow.doctor.v1",
+  "cargo-allow.evaluation-artifact-set.v1",
   "cargo-allow.explain.v1",
   "cargo-allow.list.v1",
   "cargo-allow.migrate.v1",
