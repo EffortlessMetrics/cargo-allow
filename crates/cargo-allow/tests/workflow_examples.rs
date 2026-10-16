@@ -63,8 +63,7 @@ fn both_examples_have_exact_install_identity() -> Result<(), String> {
         // exact `--version 0.` pin. Either way the install is exact —
         // never floating.
         let pins_published_version = text.contains("cargo install cargo-allow --version 0.");
-        let pins_source_candidate =
-            text.contains("--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911");
+        let pins_source_candidate = text.contains("--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911");
         if !pins_published_version && !pins_source_candidate {
             return Err(format!("{name} uses a floating install"));
         }
