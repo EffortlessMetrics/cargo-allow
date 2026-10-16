@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Low-severity wave-4 doc and remedy fixes. docs/error-codes.md's E0003
+  meaning now covers the missing-ledger case — the dominant observed
+  trigger and the documented pre-adoption failure (#4557). A missing
+  default `policy/allow.toml` selected through an absolute `--config`
+  spelling (the CI `$(pwd)` idiom) now gets the `cargo-allow init`
+  remedy like the relative spelling, via spelling-insensitive default
+  path comparison instead of raw component equality (#4558). The
+  per-command `--emit` help lists match one shared parser: `check` and
+  `diff` now list `html`, and every list names the `md` alias (#4563).
