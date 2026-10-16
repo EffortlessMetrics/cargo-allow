@@ -463,6 +463,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
+        artifact_emit::ensure_artifact_dir_separate(artifact_dir, Some(&root.join(&policy_path)))
+            .map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {

@@ -102,6 +102,13 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     })?;
 
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
+        artifact_emit::ensure_artifact_dir_separate(
+            artifact_dir,
+            crate::policy_config::config_path(&root, args.config.as_deref()).as_deref(),
+        )
+        .map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {

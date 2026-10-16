@@ -1,0 +1,16 @@
+kind: Fixed
+body: >-
+  Repair the remaining low wave-4 findings. A broad `--glob` baseline
+  whose kind findings were blocked by the structural selector gate now
+  says so and directs at `--callee` instead of blaming the glob for
+  being empty — and only when matching findings were actually blocked
+  (#4569). An artifact directory that would contain the selected policy
+  file is refused with a typed usage error before any write, replacing
+  the OutputConflict classification that was unreachable dead code
+  (#4561). docs/schemas/README.md documents the broad-scope add summary
+  envelope — its exact fields and the `action` values `write`,
+  `overwrite`, and `dry-run` — as positional documentation rather than a
+  governed schema (#4570). #4559 is dispositioned on the issue: the
+  no-policy InstrumentFailure on `diff`/`check` is unreachable by
+  construction because both commands fail closed at the policy gate
+  first, which is the honest behavior.

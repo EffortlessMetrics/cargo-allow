@@ -252,6 +252,32 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         });
         let count = count_in_scope_findings(&findings, &broad);
         if count == 0 {
+            // #4569: for structural-identity kinds the gate lives in the
+            // selector, not the glob. When the glob does hold {kind}
+            // findings, the empty-scope message would blame a glob that
+            // actually holds matching findings; only a genuinely empty
+            // glob keeps it.
+            let kind_findings_under_glob = findings
+                .iter()
+                .filter(|finding| {
+                    finding.kind == parsed_kind.kind
+                        && allow_core::glob_matches(&glob, &finding.path)
+                })
+                .count();
+            if kind_findings_under_glob > 0
+                && parsed_kind.kind.requires_source_selector_identity()
+                && args.callee.is_none()
+            {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
+                    format!(
+                        "{} findings require a structural selector identity for a --glob baseline; \
+                         pass --callee <name> (for example --callee unwrap) so the broad selector can match \
+                         — --family alone cannot satisfy the structural gate",
+                        kind
+                    ),
+                ));
+            }
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 format!(
