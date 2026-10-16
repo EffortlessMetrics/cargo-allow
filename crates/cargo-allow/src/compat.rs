@@ -61,7 +61,10 @@ pub(crate) fn compat_selected_policy_path(
         "policy/process-allowlist.toml"
     } else if is_network_compat_kind(compat_kind) {
         "policy/network-allowlist.toml"
-    } else if compat_kind == "generated" {
+    } else if matches!(
+        compat_kind.trim(),
+        "generated" | "generated-code" | "generated_code"
+    ) {
         "policy/generated-allowlist.toml"
     } else {
         "policy/non-rust-allowlist.toml"
@@ -299,6 +302,16 @@ mod compat_selected_policy_path_tests {
                 "kind {kind} must select {expected}"
             );
         }
+        // The generated surface accepts the parser's spellings (#4578
+        // review): whitespace-trimmed, hyphen and underscore forms.
+        assert_eq!(
+            compat_selected_policy_path(None, root, Some(" generated-code ")),
+            Some(root.join("policy/generated-allowlist.toml")),
+        );
+        assert_eq!(
+            compat_selected_policy_path(None, root, Some("generated_code")),
+            Some(root.join("policy/generated-allowlist.toml")),
+        );
         // An explicit --config overrides the per-kind default file.
         assert_eq!(
             compat_selected_policy_path(
