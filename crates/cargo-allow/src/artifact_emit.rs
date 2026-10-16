@@ -250,13 +250,27 @@ fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
                     return path.to_path_buf();
                 }
             }
-            None => return path.to_path_buf(),
+            // file_name() is None both at the filesystem root and for a
+            // path terminating in `..`. Only the `..` ending folds: the OS
+            // would create the missing segment and pop it, netting the
+            // parent (#4583 review). A root cursor with nothing left just
+            // returns the walk input.
+            None => {
+                let fold = cursor.ends_with("..");
+                if !cursor.pop() && !fold {
+                    return path.to_path_buf();
+                }
+                if fold {
+                    missing.push(std::ffi::OsString::from(".."));
+                }
+                continue;
+            }
         }
     }
 }
 
 /// Render and write the requested artifacts into `artifact_dir`, producing a
-/// typed `EvaluationArtifactSetV1` manifest.tV1` manifest.
+/// typed `EvaluationArtifactSetV1` manifest.
 pub fn emit_artifact_set(
     artifact_dir: &std::path::Path,
     config: &EmitConfig<'_>,
