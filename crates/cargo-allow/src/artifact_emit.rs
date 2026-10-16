@@ -243,7 +243,21 @@ fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
             }
             return result;
         }
+        // A path terminating in `..` never resolves while its parent is
+        // missing (file_name() is None there); fold that segment lexically
+        // onto the missing tail so the walk can continue — the OS resolves
+        // the same path by creating the parent and popping it (#4583
+        // review).
         match cursor.file_name() {
+            Some(name) if name == ".." => {
+                missing.push(name.to_os_string());
+                if !cursor.pop() {
+                    return path.to_path_buf();
+                }
+                if !cursor.pop() {
+                    return path.to_path_buf();
+                }
+            }
             Some(name) => {
                 missing.push(name.to_os_string());
                 if !cursor.pop() {
@@ -256,7 +270,7 @@ fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
 }
 
 /// Render and write the requested artifacts into `artifact_dir`, producing a
-/// typed `EvaluationArtifactSetV1` manifest.tV1` manifest.
+/// typed `EvaluationArtifactSetV1` manifest.
 pub fn emit_artifact_set(
     artifact_dir: &std::path::Path,
     config: &EmitConfig<'_>,
