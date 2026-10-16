@@ -178,7 +178,8 @@ fn artifact_dir_separation_covers_spelling_and_none_cases() {
     // #4561/#4576-review: the guard must refuse a directory that contains
     // the selected policy file across relative/absolute spellings, accept
     // separate locations, and no-op without a protected file.
-    let root = std::env::temp_dir().join("artifact-separation-probe");
+    let root =
+        std::env::temp_dir().join(format!("artifact-separation-probe-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let policy = root.join("policy/allow.toml");
     std::fs::create_dir_all(policy.parent().unwrap_or_else(|| std::path::Path::new(".")))

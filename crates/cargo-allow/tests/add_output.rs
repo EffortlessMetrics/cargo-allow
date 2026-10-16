@@ -423,7 +423,8 @@ fn add_dry_run_write_summary_reports_stdout_not_written() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
-        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
     fs::write(
@@ -581,7 +582,8 @@ fn add_dry_run_broad_json_summary_reports_dry_run_action() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
-        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
     fs::write(
@@ -674,7 +676,8 @@ fn add_dry_run_write_core_summary_does_not_suggest_checking_missing_candidate() 
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
-        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
     fs::write(
@@ -757,7 +760,8 @@ fn add_dry_run_without_write_target_selects_no_proof_command() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
-        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
     fs::write(
@@ -823,7 +827,8 @@ fn add_dry_run_update_preview_directs_persist_first() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
-        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
     fs::write(
