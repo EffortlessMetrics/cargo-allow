@@ -45,9 +45,10 @@ fn report_summary_declares_absolute_artifact_dir_writes() {
     // path text when it is not under the scan root.
     let root = std::env::temp_dir().join("report-summary-absolute-artifacts");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("create fixture root");
+    std::fs::create_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture root: {err}")));
     let artifacts = std::env::current_dir()
-        .expect("cwd")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("resolve cwd: {err}")))
         .join("target/absolute-artifacts-probe");
     let facts = crate::core_command_router::ReportSummaryFacts {
         command: "check",
@@ -65,8 +66,8 @@ fn report_summary_declares_absolute_artifact_dir_writes() {
         ),
         artifact_emission: Some(&artifacts),
     };
-    let summary =
-        crate::core_command_router::build_report_summary_from_facts(facts).expect("summary builds");
+    let summary = crate::core_command_router::build_report_summary_from_facts(facts)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("summary builds: {err}")));
     assert!(summary.operation_effects.writes_repository);
     let declared = summary.operation_effects.write_paths.join(";");
     assert!(
