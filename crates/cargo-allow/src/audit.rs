@@ -98,6 +98,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         inventory_source_identity: None,
         // `audit` never fails a run; its pass is advisory by definition.
         enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
+        artifact_emission: args.artifact_dir.as_deref(),
     })?;
 
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {

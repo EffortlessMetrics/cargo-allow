@@ -362,13 +362,21 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 } else {
                     allow_report::Style::PLAIN
                 };
-                render_add_summary_styled(&entry, finding, policy_output.as_deref(), context, style)
+                render_add_summary_styled(
+                    &entry,
+                    finding,
+                    policy_output.as_deref(),
+                    args.dry_run,
+                    context,
+                    style,
+                )
             }
             HumanJsonFormat::Json => render_add_summary_json(
                 &entry,
                 finding,
                 policy_output.as_deref(),
                 args.force,
+                args.dry_run,
                 context,
             ),
         };
@@ -654,7 +662,7 @@ fn render_add_summary_broad_json(
     } else {
         "write"
     };
-    let mutation_receipt = add_mutation_receipt(entry, context, policy_output);
+    let mutation_receipt = add_mutation_receipt(entry, context, policy_output, dry_run);
     format!(
         "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
         json_escape(&entry.id),
@@ -757,6 +765,7 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
         &add_entry,
         &add_finding,
         Some("policy/allow.proposed.toml"),
+        false,
         false,
         AddContext {
             inventory: allow_report::InventoryContext::source_syntax(

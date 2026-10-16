@@ -132,6 +132,7 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
         &finding,
         Some("policy/allow.proposed.toml"),
         true,
+        false,
         AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",

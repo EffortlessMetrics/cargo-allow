@@ -6,15 +6,32 @@ use super::AddContext;
 /// Shared mutation-receipt envelope for `add` (GOAL-0004 PR 5A;
 /// CARGO-ALLOW-SPEC-0008 "Mutation Receipt Envelope"). Provenance and
 /// changed-entry metadata only; does not change `add`'s write behavior.
+/// Under `--dry-run` the entry is not persisted, so the receipt's verify
+/// commands must not lead with the failing `explain <id>` argv (#4568).
 pub(super) fn add_mutation_receipt<'a, 'b>(
     entry: &'a AllowEntry,
     context: &'a AddContext<'b>,
     policy_output: Option<&'a str>,
+    dry_run: bool,
 ) -> MutationReceipt<'a> {
     let result = if policy_output.is_some() {
         "written"
     } else {
         "stdout"
+    };
+    let next_commands = if dry_run {
+        vec![
+            format!(
+                "rerun add without --dry-run to write this entry, then run `cargo-allow explain {}`",
+                entry.id
+            ),
+            "cargo-allow check --mode no-new".to_string(),
+        ]
+    } else {
+        vec![
+            format!("cargo-allow explain {}", entry.id),
+            "cargo-allow check --mode no-new".to_string(),
+        ]
     };
     MutationReceipt {
         operation: "add",
@@ -26,10 +43,7 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
         before_fingerprints: vec![None],
         after_fingerprints: vec![Some(allow_core::allow_entry_content_fingerprint(entry))],
         result,
-        next_commands: vec![
-            format!("cargo-allow explain {}", entry.id),
-            "cargo-allow check --mode no-new".to_string(),
-        ],
+        next_commands,
     }
 }
 
@@ -40,17 +54,18 @@ pub(super) fn render_add_summary(
     policy_output: Option<&str>,
     context: AddContext<'_>,
 ) -> String {
-    render_add_summary_styled(entry, finding, policy_output, context, Style::PLAIN)
+    render_add_summary_styled(entry, finding, policy_output, false, context, Style::PLAIN)
 }
 
 pub(super) fn render_add_summary_styled(
     entry: &AllowEntry,
     finding: &Finding,
     policy_output: Option<&str>,
+    dry_run: bool,
     context: AddContext<'_>,
     style: Style,
 ) -> String {
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output);
+    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output, dry_run);
     allow_report::render_add_human_styled(
         allow_report::AddReport::new(
             context.inventory,
@@ -69,9 +84,10 @@ pub(super) fn render_add_summary_json(
     finding: &Finding,
     policy_output: Option<&str>,
     force: bool,
+    dry_run: bool,
     context: AddContext<'_>,
 ) -> String {
-    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output);
+    let mutation_receipt = add_mutation_receipt(entry, &context, policy_output, dry_run);
     allow_report::render_add_json(allow_report::AddReport::new(
         context.inventory,
         entry,

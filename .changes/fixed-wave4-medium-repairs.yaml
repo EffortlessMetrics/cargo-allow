@@ -1,0 +1,17 @@
+kind: Fixed
+body: >-
+  Repair the three medium wave-4 findings. `check`/`audit` summaries now
+  declare their artifact writes: with `--artifact-dir`/`--emit` active,
+  `operation_effects.writes_repository` is true naming the artifact
+  directory, and the human `Writes:` line names it, instead of a
+  hardcoded read-only claim while the run writes 2–5 report files
+  (#4566). `add --dry-run` mutation receipts lead their
+  `next_commands` with the persist step instead of the verbatim-failing
+  `cargo-allow explain <id>` argv (#4568). A non-Complete emitted
+  artifact-set manifest now records its `validation_gaps`, so the typed
+  "inspect the failing gaps recorded in the artifact-set manifest" Next
+  line points at real recorded content — including the
+  `resolved_config_identity is missing` gap — instead of gaps absent
+  from the file (#4560). The missing-default-policy spelling comparison
+  also folds `.` and `..` lexically before canonicalization (#4574
+  review).

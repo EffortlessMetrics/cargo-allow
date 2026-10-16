@@ -79,6 +79,10 @@ pub(crate) struct ReportRenderArgs<'a> {
     /// mode that produced a pass. Previously this reached the receipt only,
     /// which left every report claiming `advisory` regardless of mode (#2832).
     pub(crate) enforcement: Option<&'a str>,
+    /// The paired `--artifact-dir` target when artifact emission is active,
+    /// so the operation's own write posture reflects the files the run
+    /// writes instead of a hardcoded read-only claim (#4566).
+    pub(crate) artifact_emission: Option<&'a Path>,
 }
 
 #[derive(Debug, Clone)]
@@ -423,6 +427,7 @@ mod tests {
                 root: &root,
                 inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
                 inventory_source_identity: None,
+                artifact_emission: None,
                 enforcement: None,
             })
             .unwrap_or_else(|err| std::panic::panic_any(format!("print {file_name}: {err}")));

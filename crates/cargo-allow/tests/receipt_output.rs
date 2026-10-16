@@ -1127,3 +1127,97 @@ fn artifact_emission_flags_are_rejected_on_paths_that_ignore_them() {
 
     remove_temp_root(root);
 }
+
+#[test]
+fn check_summary_write_posture_reflects_artifact_emission() {
+    // #4566: with --artifact-dir/--emit the operation writes the rendered
+    // report files, so the summary's operation_effects (and the human
+    // Writes: line) must name that instead of a hardcoded read-only claim;
+    // without the flags the read-only posture stands.
+    let root = temp_root("check-summary-emission-posture");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn ok() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    git(&root, &["init", "-q"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "green fixture"]);
+
+    let sidecar = root.join("summary-emitting.json");
+    let output = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--artifact-dir")
+        .arg(root.join("artifacts"))
+        .arg("--emit")
+        .arg("markdown")
+        .arg("--format")
+        .arg("human")
+        .arg("--command-summary-output")
+        .arg(&sidecar)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run emitting check: {err}")));
+    assert_status("emitting check", &output, true);
+    let summary: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read sidecar: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
+    assert_eq!(
+        summary
+            .pointer("/operation_effects/writes_repository")
+            .and_then(serde_json::Value::as_bool),
+        Some(true),
+        "an emitting run must declare its writes: {summary}"
+    );
+    let write_path = summary
+        .pointer("/operation_effects/write_paths/0")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        write_path.contains("artifacts"),
+        "the write path must name the artifact directory: {write_path}"
+    );
+    assert!(root.join("artifacts/check-markdown.md").is_file());
+
+    let bare = root.join("summary-bare.json");
+    let output = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("human")
+        .arg("--command-summary-output")
+        .arg(&bare)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run bare check: {err}")));
+    assert_status("bare check", &output, true);
+    let summary: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(&bare)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read bare sidecar: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
+    assert_eq!(
+        summary
+            .pointer("/operation_effects/writes_repository")
+            .and_then(serde_json::Value::as_bool),
+        Some(false),
+        "a bare run stays read-only: {summary}"
+    );
+
+    remove_temp_root(root);
+}

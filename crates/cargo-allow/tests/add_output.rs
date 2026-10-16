@@ -423,6 +423,20 @@ expires_or_review_after_required = true
             .unwrap_or(false),
         "policy_output must stay unset for a dry-run preview: {summary_text}"
     );
+    // #4568: the receipt's verify commands must not lead with the failing
+    // explain argv before the entry is persisted.
+    let first_next_command = summary
+        .pointer("/mutation_receipt/next_commands/0")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        first_next_command.contains("rerun add without --dry-run"),
+        "the dry-run receipt must lead with the persist step: {first_next_command}"
+    );
+    assert!(
+        !first_next_command.starts_with("cargo-allow explain"),
+        "the dry-run receipt must not lead with the verbatim-failing explain argv: {first_next_command}"
+    );
 
     let sidecar_update = root.join("summary-update.json");
     let output = cargo_allow_command()

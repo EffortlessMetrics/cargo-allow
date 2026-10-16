@@ -133,6 +133,12 @@ pub struct EvaluationArtifactSetV1 {
     pub detailed_result_ref: Option<String>,
     pub limitations: Vec<String>,
     pub claim_boundary: String,
+    /// Validation gaps recorded at emission time so a non-Complete set's
+    /// persisted manifest carries the failing conditions the typed Next
+    /// line points at (#4560). Empty for Complete and SemanticNonGreen
+    /// sets.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub validation_gaps: Vec<String>,
 }
 
 impl EvaluationArtifactSetV1 {

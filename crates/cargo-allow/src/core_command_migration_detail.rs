@@ -823,6 +823,7 @@ fn report(
             inventory_facts: facts,
             failed: detail.failed,
             advisory_count,
+            artifact_emission: None,
             subject,
         },
     )

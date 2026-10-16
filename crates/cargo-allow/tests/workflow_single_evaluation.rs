@@ -40,6 +40,7 @@ fn make_set(
         core_command_summary_ref: None,
         detailed_result_ref: None,
         limitations: Vec::new(),
+        validation_gaps: Vec::new(),
         claim_boundary: "single evaluation, multi-format".to_string(),
     }
 }
