@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       # #4567: --artifact-dir/--emit are 0.2 artifact emission; no published
       # build carries them yet (0.2.0-rc.1 predates the surface), so this

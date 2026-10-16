@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       # #4567: --artifact-dir/--emit are 0.2 artifact emission; no published
       # build carries them yet (0.2.0-rc.1 predates the surface), so this
