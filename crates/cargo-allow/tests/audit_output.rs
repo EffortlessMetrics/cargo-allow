@@ -854,6 +854,21 @@ fn audit_instrument_failure_next_does_not_suggest_dropping_formats() {
         !stderr.contains("drop the failing format"),
         "the format remedy must not misdirect structural recovery: {stderr}"
     );
+    // #4560: the Next line points at the manifest's recorded gaps, so the
+    // persisted manifest must carry them.
+    let manifest_text = fs::read_to_string(root.join("artifacts/audit-artifact_set_manifest.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read manifest: {err}")));
+    let manifest: serde_json::Value = serde_json::from_str(&manifest_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest must be JSON: {err}")));
+    let gaps = manifest
+        .get("validation_gaps")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("manifest must record validation_gaps"));
+    assert!(
+        gaps.iter()
+            .any(|gap| { gap.as_str() == Some("resolved_config_identity is missing") }),
+        "the manifest must record the failing gap: {manifest_text}"
+    );
     remove_temp_root(root);
 }
 

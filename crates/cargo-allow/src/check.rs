@@ -308,6 +308,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             RECEIPT_ENFORCEMENT_ENFORCING
         }),
+        artifact_emission: args.artifact_dir.as_deref(),
     };
     if should_emit_report_stdout(
         args.output.as_deref(),
@@ -593,6 +594,8 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             } else {
                 RECEIPT_ENFORCEMENT_ENFORCING
             }),
+            // Staged evaluation rejects artifact flags outright (#4547).
+            artifact_emission: None,
         })?;
     }
     if let Some(path) = &args.receipt {

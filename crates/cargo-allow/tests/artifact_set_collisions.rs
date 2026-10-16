@@ -58,6 +58,7 @@ fn partial_artifact_set_is_fail_honest() {
         resolved_config_identity: format!("sha256:{}", "a".repeat(64)),
         semantic_result_digest: format!("sha256:{}", "b".repeat(64)),
         result_class: EvaluationResultClassV2::Passed,
+        validation_gaps: Vec::new(),
         blocking: false,
         requested_formats: vec![
             RendererFormatV1::Markdown,

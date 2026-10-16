@@ -541,9 +541,28 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
 /// and Windows verbatim prefixes, then separators are normalized and the
 /// comparison case-folds on Windows, where path case is not significant.
 fn is_default_policy_path(path: &Path, root: &Path) -> bool {
+    /// Fold `.` and `..` lexically before canonicalization: canonicalize
+    /// resolves parent segments on the EXISTING prefix, so a missing file
+    /// under `policy/..` would otherwise reconstruct against the wrong
+    /// base (#4574 review).
+    fn lexically_normalized(path: &Path) -> PathBuf {
+        let mut result = PathBuf::new();
+        for component in path.components() {
+            match component {
+                std::path::Component::CurDir => {}
+                std::path::Component::ParentDir => {
+                    if !result.pop() {
+                        result.push(component);
+                    }
+                }
+                other => result.push(other.as_os_str()),
+            }
+        }
+        result
+    }
     fn best_effort_canonical(path: &Path) -> PathBuf {
         let mut missing: Vec<std::ffi::OsString> = Vec::new();
-        let mut cursor = path.to_path_buf();
+        let mut cursor = lexically_normalized(path);
         loop {
             if let Ok(resolved) = cursor.canonicalize() {
                 let mut result = resolved;
@@ -602,6 +621,12 @@ mod default_policy_path_tests {
         assert!(is_default_policy_path(
             std::path::Path::new("//server/share/repo/policy/allow.toml"),
             unc_root
+        ));
+        // #4574 review: parent segments must fold before the missing-file
+        // walk, or the reconstruction lands on the wrong base.
+        assert!(is_default_policy_path(
+            std::path::Path::new("/repo-root/policy/../policy/allow.toml"),
+            root
         ));
         assert!(!is_default_policy_path(
             std::path::Path::new("/repo-root/custom/other.toml"),

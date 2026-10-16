@@ -35,6 +35,7 @@ fn report_args<'a>(
         inventory_facts,
         inventory_source_identity: None,
         enforcement: None,
+        artifact_emission: None,
     }
 }
 

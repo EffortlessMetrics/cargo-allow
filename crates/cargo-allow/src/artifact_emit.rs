@@ -216,7 +216,7 @@ pub fn emit_artifact_set(
         }
     }
 
-    let set = EvaluationArtifactSetV1 {
+    let mut set = EvaluationArtifactSetV1 {
         schema_id: "cargo-allow.evaluation-artifact-set.v1".to_string(),
         schema_version: 1,
         tool: "cargo-allow".to_string(),
@@ -236,6 +236,7 @@ pub fn emit_artifact_set(
         claim_boundary: ("One-evaluation multi-artifact output; renderers consume the \
              same semantic result without re-evaluation."
             .to_string()),
+        validation_gaps: Vec::new(),
     };
 
     let validation = set.validate();
@@ -244,6 +245,12 @@ pub fn emit_artifact_set(
             "artifact set validation detected output conflict: {:?}",
             validation.gaps
         ));
+    }
+    // #4560: a non-Complete set's persisted manifest must carry the failing
+    // gaps, so the typed Next line ("inspect the failing gaps recorded in
+    // the artifact-set manifest") points at real recorded content.
+    if !validation.gaps.is_empty() {
+        set.validation_gaps = validation.gaps.clone();
     }
 
     let manifest_name = EvaluationArtifactSetV1::artifact_file_name(

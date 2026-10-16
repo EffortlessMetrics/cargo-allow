@@ -255,6 +255,10 @@ pub(crate) struct ReportSummaryFacts<'a> {
     pub(crate) failed: bool,
     pub(crate) advisory_count: usize,
     pub(crate) subject: CoreSourceSubjectV1,
+    /// The paired `--artifact-dir` target when artifact emission is active,
+    /// so the operation's own write posture reflects the emitted files
+    /// instead of a hardcoded read-only claim (#4566).
+    pub(crate) artifact_emission: Option<&'a Path>,
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
@@ -265,6 +269,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
         failed: args.failed,
         advisory_count: report_advisory_count(args.outcomes, args.evidence),
         subject: report_subject(args)?,
+        artifact_emission: args.artifact_emission,
     })
 }
 
@@ -401,10 +406,50 @@ pub(crate) fn build_report_summary_from_facts(
         primary_action,
         additional_action_count: 0,
         additional_actions_ref: None,
-        operation_effects: CoreCommandEffectsV1::read_only(vec![
-            "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
-            "does not execute repository code or external evidence tools".to_string(),
-        ]),
+        // #4566: with artifact emission active the operation writes the
+        // rendered report files into --artifact-dir; the summary's own
+        // write posture must name that instead of claiming read-only.
+        operation_effects: facts
+            .artifact_emission
+            .map(|dir| {
+                // The emitter resolves a relative --artifact-dir against the
+                // process working directory, not against --root; name the
+                // same location the write lands on (#4575 review).
+                let resolved = if dir.is_absolute() {
+                    dir.to_path_buf()
+                } else {
+                    std::env::current_dir()
+                        .map(|cwd| cwd.join(dir))
+                        .unwrap_or_else(|_| dir.to_path_buf())
+                };
+                let dir_text = crate::policy_config::portable_relative_under_root(
+                    facts.root,
+                    &resolved,
+                )
+                .map(|relative| {
+                    relative
+                        .to_string_lossy()
+                        .replace(std::path::MAIN_SEPARATOR, "/")
+                })
+                .unwrap_or_else(|_| resolved.display().to_string());
+                CoreCommandEffectsV1 {
+                    reads_repository: true,
+                    writes_repository: true,
+                    executes_repository_code: false,
+                    invokes_network: false,
+                    write_paths: vec![dir_text],
+                    explicit_non_effects: vec![
+                        "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
+                        "writes only the rendered report artifacts under the artifact directory".to_string(),
+                    ],
+                }
+            })
+            .unwrap_or_else(|| {
+                CoreCommandEffectsV1::read_only(vec![
+                    "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
+                    "does not execute repository code or external evidence tools".to_string(),
+                ])
+            }),
         next_proof,
         artifacts: Vec::new(),
         claim_boundary: ClaimBoundaryV1::new(
