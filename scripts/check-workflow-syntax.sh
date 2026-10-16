@@ -80,7 +80,7 @@ pin="$(grep -oE 'ACTIONLINT_SHA256: "[0-9a-f]{64}"' .github/workflows/ci.yml | g
 mapfile -t covered < "${work}/covered.txt"
 
 set +e
-"${ACTIONLINT}" -shellcheck= -ignore 'label "macos-15-intel" is unknown' \
+"${ACTIONLINT}" -shellcheck= -ignore 'label "macos-15-intel" is unknown' -ignore 'label "macos-26" is unknown' \
   -format '{{json .}}' "${covered[@]}" > "${work}/findings.json" 2> "${work}/stderr.log"
 status=$?
 set -e
@@ -121,6 +121,8 @@ tool_run = {
         "-shellcheck=",
         "-ignore",
         "label \"macos-15-intel\" is unknown",
+        "-ignore",
+        "label \"macos-26\" is unknown",
         "-format",
         "{{json .}}",
     ],

@@ -85,10 +85,10 @@ evidence = "ci.yml job `test-core-platforms` runs the release set on windows-lat
 install_evidence = "release.yml `install-smoke` matrix includes windows-latest against the published crate on tag push"
 
 [[platform]]
-runner = "macos-14"
+runner = "macos-26"
 target = "aarch64-apple-darwin"
 tier = "ci_proven_bounded"
-evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-14"
+evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-26"
 note = "allow-rust persistent scan-cache fixture is excluded because the hosted runner exposes /var as /private/var."
 
 [[platform]]
@@ -230,7 +230,7 @@ dimension = "platform"
 subject = "aarch64-apple-darwin"
 disposition = "not_included"
 proof_owner = "ci.yml job `test-core-platforms` (bounded evidence only)"
-required_evidence = "bounded release-set suite on macos-14; bounded CI provenness is support evidence, never a selected final claim"
+required_evidence = "bounded release-set suite on macos-26; bounded CI provenness is support evidence, never a selected final claim"
 evidence_reference = ".github/workflows/ci.yml"
 claim_effect = "the final release makes no macOS ARM support claim; the platform remains outside the selected denominator"
 staleness_inputs = ["runner inventory in ci.yml"]
