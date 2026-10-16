@@ -101,7 +101,11 @@ fn run_in_ci_links_complete_workflow_examples() {
         "fetch-depth: 0",
         "if: always()",
         "continue-on-error",
-        "cargo install cargo-allow --version 0.1.11 --locked",
+        "cargo install cargo-allow \\",
+        "--git https://github.com/EffortlessMetrics/cargo-allow \\",
+        "--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911 \\",
+        "--locked",
+        "Verify the installed binary has 0.2 artifact emission",
         "troubleshoot-cargo-allow.md",
         "rollback-cargo-allow-adoption.md",
         "error-codes.md",
@@ -173,13 +177,34 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         !SHALLOW_NEGATIVE.contains("fetch-depth: 0"),
         "shallow negative fixture must omit fetch-depth: 0"
     );
+    // #4567: --artifact-dir/--emit are 0.2 artifact emission and no
+    // published build carries them yet (0.2.0-rc.1 predates the surface),
+    // so both examples install a pinned source-candidate commit that has
+    // the surface and are runnable end to end today; the guard step keeps
+    // the surface requirement explicit.
     assert!(
-        DIFF_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
-        "PR example must pin Published 0.1.11"
+        DIFF_WORKFLOW.contains("--git https://github.com/EffortlessMetrics/cargo-allow")
+            && CHECK_WORKFLOW.contains("--git https://github.com/EffortlessMetrics/cargo-allow"),
+        "both examples must install from the cargo-allow repository"
     );
     assert!(
-        CHECK_WORKFLOW.contains("cargo install cargo-allow --version 0.1.11 --locked"),
-        "mainline example must pin Published 0.1.11"
+        DIFF_WORKFLOW.contains("--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911")
+            && CHECK_WORKFLOW.contains("--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911"),
+        "both examples must pin the exact source-candidate commit"
+    );
+    assert!(
+        !DIFF_WORKFLOW.contains("cargo install cargo-allow --version")
+            && !CHECK_WORKFLOW.contains("cargo install cargo-allow --version"),
+        "no example may pin a published version whose binary lacks the taught surface (#4567)"
+    );
+    assert!(
+        DIFF_WORKFLOW.contains("Verify the installed binary has 0.2 artifact emission")
+            && CHECK_WORKFLOW.contains("Verify the installed binary has 0.2 artifact emission"),
+        "both examples must guard the 0.2 artifact-emission surface before the run step"
+    );
+    assert!(
+        DIFF_WORKFLOW.contains("#4567") && CHECK_WORKFLOW.contains("#4567"),
+        "both examples must name the version-surface gap"
     );
     assert!(
         DIFF_WORKFLOW.contains("upload-artifact") && DIFF_WORKFLOW.contains("if: always()"),

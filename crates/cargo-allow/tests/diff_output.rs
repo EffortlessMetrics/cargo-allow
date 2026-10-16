@@ -1947,3 +1947,152 @@ fn assert_policy_change(value: &Value, kind: &str, allow_id: &str, severity: &st
         "expected policy change kind={kind} allow_id={allow_id} severity={severity}; got {changes:?}"
     );
 }
+
+#[test]
+fn diff_explicit_head_emit_binds_the_head_policy_identity() {
+    // #4565: the explicit --head branch bypassed the world load, so its
+    // inventory facts carried no policy digest and every --emit format
+    // failed the artifact-set identity gate with
+    // `resolved_config_identity is missing` while the artifacts were
+    // already written to disk; emit must succeed with the head policy
+    // digest bound.
+    let root = temp_root("diff-head-emit-identity");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn ok() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        policy_with_workspace_ignored(&["policy/**"]),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init", "-q"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "green base"]);
+    git(&root, &["commit", "--allow-empty", "-m", "empty head"]);
+
+    let output = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("HEAD")
+        .arg("--artifact-dir")
+        .arg(root.join("artifacts"))
+        .arg("--emit")
+        .arg("markdown,json")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(root.join("diff.json"))
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "diff --head emit must succeed with a selected head policy: {stderr}"
+    );
+    let manifest_text = fs::read_to_string(root.join("artifacts/diff-artifact_set_manifest.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read manifest: {err}")));
+    let manifest: Value = serde_json::from_str(&manifest_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest must be JSON: {err}")));
+    let identity = manifest
+        .get("resolved_config_identity")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        identity.starts_with("sha256:v1:"),
+        "resolved_config_identity must carry the head policy digest: {identity}"
+    );
+    assert!(root.join("artifacts/diff-markdown.md").is_file());
+    assert!(root.join("artifacts/diff-json.json").is_file());
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_explicit_head_emit_survives_a_removed_head_policy() {
+    // #4572 review: the head revision may REMOVE the selected policy — a
+    // supported policy-removal comparison — and the artifact identity must
+    // then bind the empty head policy content instead of failing
+    // validation with the artifacts already on disk.
+    let root = temp_root("diff-head-emit-removed-policy");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn ok() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "policy = \"cargo-allow\"\n\n[workspace]\nignored = [\"policy/**\"]\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init", "-q"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "base with policy"]);
+    git(&root, &["rm", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "head removes the policy"]);
+
+    let output = cargo_allow_command()
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD~1")
+        .arg("--head")
+        .arg("HEAD")
+        .arg("--artifact-dir")
+        .arg(root.join("artifacts"))
+        .arg("--emit")
+        .arg("markdown,json")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(root.join("diff.json"))
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("E0007_ARTIFACT"),
+        "a removed head policy must not fail the artifact identity gate: {stderr}"
+    );
+    assert!(
+        !stderr.contains("resolved_config_identity is missing"),
+        "the removed-policy identity must be the empty-content digest: {stderr}"
+    );
+    let manifest_text = fs::read_to_string(root.join("artifacts/diff-artifact_set_manifest.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read manifest: {err}")));
+    let manifest: Value = serde_json::from_str(&manifest_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest must be JSON: {err}")));
+    let identity = manifest
+        .get("resolved_config_identity")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        identity.starts_with("sha256:v1:"),
+        "the removed head policy must still bind a digest (the empty content): {identity}"
+    );
+    // The diff itself is a real policy removal: the invocation keeps the
+    // diff posture exit, not the artifact gate.
+    assert!(
+        !output.status.success(),
+        "removing the policy is a posture failure; only the artifacts must succeed"
+    );
+
+    remove_temp_root(root);
+}

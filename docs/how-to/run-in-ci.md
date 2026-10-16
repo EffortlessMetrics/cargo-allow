@@ -25,8 +25,23 @@ Removal: [Rollback cargo-allow adoption](rollback-cargo-allow-adoption.md).
 | **Published** `0.1.11` | `cargo install cargo-allow --version 0.1.11 --locked` |
 | **Source candidate** (unreleased main) | `cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked` |
 
-The committed examples pin Published `0.1.11`. Keep first-run commands inside
-the offline registry
+The committed examples teach `--artifact-dir`/`--emit`, the 0.2
+artifact-emission surface, which no published build carries yet (#4567); they
+therefore install a pinned source-candidate commit and guard the installed
+binary before their run steps:
+
+```bash
+cargo install cargo-allow \
+  --git https://github.com/EffortlessMetrics/cargo-allow \
+  --rev 65d76b1494656904c8ce30cf518f2e5bf85a6911 \
+  --locked
+```
+
+Each example also carries a `Verify the installed binary has 0.2 artifact emission`
+guard step before its run step, so a mismatched install fails with an
+explanation instead of a bare usage error. Keep first-run commands inside
+the offline
+registry
 ([`published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml)).
 Do not teach candidate-only commands such as `why` as ordinary Published CI
 steps.

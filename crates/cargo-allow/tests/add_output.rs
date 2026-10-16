@@ -779,11 +779,22 @@ expires_or_review_after_required = true
         output.status.success(),
         "update-preview dry-run add must succeed: {stderr}"
     );
+    // #4571: Next: names the persist step and must not carry the
+    // verbatim-failing explain argv; Then: is the enforcing check, which is
+    // runnable after the operator persists.
     assert!(
         stderr.contains(
-            "Then: rerun add without --dry-run to write the entry into the live ledger, then run the enforcing no-new check"
+            "Next: rerun add without --dry-run to write this entry into the live ledger, then inspect it with explain"
         ),
-        "the update preview must direct the operator to persist first: {stderr}"
+        "the update preview's Next: must direct the operator to persist first: {stderr}"
+    );
+    assert!(
+        !stderr.contains("explain allow-"),
+        "the update preview must not suggest explain before the entry exists: {stderr}"
+    );
+    assert!(
+        stderr.contains("Then: cargo-allow check --mode no-new"),
+        "the update preview's Then: proof must be the runnable enforcing check: {stderr}"
     );
 
     remove_temp_root(root);

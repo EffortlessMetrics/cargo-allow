@@ -163,6 +163,12 @@ checkout/install/artifact steps):
 - [PR posture diff](github-actions/cargo-allow-diff.yml) — requires `fetch-depth: 0`
 - [Mainline no-new check](github-actions/cargo-allow-check.yml)
 
+Version note (#4567): both examples invoke `--artifact-dir`/`--emit`, the 0.2
+artifact-emission surface. No published cargo-allow build carries it yet
+(`0.2.0-rc.1` predates the surface), so each example guards the installed
+binary before the run step and fails with an explanatory error; bump the
+install pin when the 0.2.0 release publishes.
+
 Operator how-to: [Run in CI](../docs/how-to/run-in-ci.md).
 Troubleshooting: [Troubleshoot cargo-allow](../docs/how-to/troubleshoot-cargo-allow.md).
 Rollback: [Rollback cargo-allow adoption](../docs/how-to/rollback-cargo-allow-adoption.md).

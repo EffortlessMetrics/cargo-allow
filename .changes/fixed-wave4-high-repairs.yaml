@@ -1,0 +1,19 @@
+kind: Fixed
+body: >-
+  Repair the four high-severity wave-4 findings. `diff --head` binds the
+  exact head policy bytes into its inventory facts, so artifact emission
+  succeeds with a real `resolved_config_identity` instead of failing
+  `E0007 ... resolved_config_identity is missing` with the artifacts
+  already on disk (#4565). A lone `--artifact-dir` is refused at argument
+  parsing on `check`, `diff`, and `audit` — the inverse pairing of the
+  lone `--emit` rejection — and the stale "--emit would be silently
+  dropped" help sentence now describes the actual refusal (#4564,
+  #4562). The GitHub Actions examples pin the newest published prerelease
+  and guard the installed binary for the 0.2 artifact-emission surface
+  before their run steps, because no published build (including
+  `0.2.0-rc.1`, verified against the real published crate) carries it
+  yet; the getting-started version table no longer claims the prerelease
+  carries artifact-dir emission (#4567). `add --dry-run --update` names
+  the persist step as its primary action instead of the verbatim-failing
+  `explain <id>` argv, and its Then: proof becomes the enforcing check
+  that is runnable after the operator persists (#4571).
