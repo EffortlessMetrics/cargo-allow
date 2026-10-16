@@ -339,6 +339,78 @@ fn remove_temp_root(root: PathBuf) {
 }
 
 #[test]
+fn add_broad_family_only_names_the_structural_gate_not_the_glob() {
+    // #4569: for structural-identity kinds, --family alone can never
+    // satisfy the selector gate; the old error blamed the glob ("no
+    // current panic findings match glob") even when the glob held matching
+    // findings, and its remedy could not lead to the fix.
+    let root = temp_root("add-broad-family-gate");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--glob",
+            "src/lib.rs",
+            "--family",
+            "unwrap",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "family-only fixture",
+            "--dry-run",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run broad add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "the family-only broad add must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("findings require a structural selector identity"),
+        "the error must name the structural gate: {stderr}"
+    );
+    assert!(
+        stderr.contains("--callee"),
+        "the error must direct at --callee: {stderr}"
+    );
+    assert!(
+        !stderr.contains("no current panic findings match glob"),
+        "the glob-blaming error must be gone: {stderr}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn add_dry_run_write_summary_reports_stdout_not_written() {
     // #4549: --dry-run writes nothing, so the delivered summary must keep the
     // stdout posture even when --write/--update requested a target; a

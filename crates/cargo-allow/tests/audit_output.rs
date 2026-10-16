@@ -778,6 +778,58 @@ fn audit_receipt_emit_fails_typed_not_panicked() {
 }
 
 #[test]
+fn audit_artifact_dir_may_not_contain_the_selected_policy() {
+    // #4561: emitting artifacts beside the live policy is a real collision
+    // the OutputConflict classification could never see; the invocation
+    // must refuse it typed before any write.
+    let root = temp_root("audit-artifact-dir-policy-collision");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"
+policy = \"cargo-allow\"
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "audit",
+            "--kind",
+            "unsafe",
+            "--config",
+            "policy/allow.toml",
+            "--artifact-dir",
+            "policy",
+            "--emit",
+            "markdown",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a policy-colliding artifact dir must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("would contain the selected policy file"),
+        "the typed error must name the collision: {stderr}"
+    );
+    assert!(
+        !root.join("policy/audit-markdown.md").is_file(),
+        "no artifact may be written into the policy directory"
+    );
+    remove_temp_root(root);
+}
+
+#[test]
 fn audit_emit_without_artifact_dir_fails_at_arg_parse() {
     // #4548: a lone --emit used to be a silent no-op (exit 0, nothing
     // emitted); the pairing must be refused at argument parsing instead.

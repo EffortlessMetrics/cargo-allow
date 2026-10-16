@@ -88,11 +88,27 @@ partial; #3876 owns single-resolution command consumption.
 | Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json --summary-output <path>` |
 | Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json --summary-output <path>` |
+| Broad-scope add summary (compact envelope, no schema contract) | — | `cargo-allow add --glob <glob> --summary-format json --summary-output <path>` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 | Lifecycle cadence | `cargo-allow.cadence.v1` | `cargo-allow cadence --format json` |
 | Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... diff --base <rev>`, `... init`, `... propose`, `... add ...`, `... refresh --allow-id <id>`, `... prune`, `... migrate --from <path>`, `... explain <id>`, `... why`, `... worklist` |
+
+### Broad-scope add summary envelope (#4570)
+
+`add --glob` emits a compact JSON envelope instead of the single-entry
+`cargo-allow.add.v1` schema. It has no schema file and carries exactly these
+top-level fields: `id`, `kind`, `scope` (the `--glob`), `occurrence_limit`
+(the ratchet floor pinned to the current in-scope count), `policy_output`
+(the written target, or `"stdout"` when nothing was persisted — always
+`"stdout"` under `--dry-run`), `action` — one of `write` (default
+`--write`), `overwrite` (`--force` without `--dry-run`), or `dry-run`
+(`--dry-run` takes precedence over `--force`) — and `mutation_receipt`
+(the shared mutation-receipt envelope, whose `result` is `stdout` under
+`--dry-run`). Treat the envelope as positional documentation, not a
+governed schema: fields may be added, and consumers must branch on
+`action` and `mutation_receipt.result`, not on absent keys.
 
 ## Common command summary
 
