@@ -535,9 +535,34 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
 /// compared spelling-insensitively: an explicit `--config
 /// "$PWD/policy/allow.toml"` resolves to the same missing file as the
 /// relative default spelling, and both deserve the init remedy (#4558).
-/// Verbatim-prefix and separator differences are normalized; comparison is
-/// case-insensitive on Windows, where path case is not significant.
+/// The file is confirmed missing, so canonicalization cannot run on it
+/// directly; the deepest existing ancestor is canonicalized instead, which
+/// also resolves symlinked temp ancestors (macOS `/var` → `/private/var`)
+/// and Windows verbatim prefixes, then separators are normalized and the
+/// comparison case-folds on Windows, where path case is not significant.
 fn is_default_policy_path(path: &Path, root: &Path) -> bool {
+    fn best_effort_canonical(path: &Path) -> PathBuf {
+        let mut missing: Vec<std::ffi::OsString> = Vec::new();
+        let mut cursor = path.to_path_buf();
+        loop {
+            if let Ok(resolved) = cursor.canonicalize() {
+                let mut result = resolved;
+                for component in missing.iter().rev() {
+                    result.push(component);
+                }
+                return result;
+            }
+            match cursor.file_name() {
+                Some(name) => {
+                    missing.push(name.to_os_string());
+                    if !cursor.pop() {
+                        return path.to_path_buf();
+                    }
+                }
+                None => return path.to_path_buf(),
+            }
+        }
+    }
     fn normalized(path: &Path) -> String {
         let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
         let text = text.replace(std::path::MAIN_SEPARATOR, "/");
@@ -547,7 +572,10 @@ fn is_default_policy_path(path: &Path, root: &Path) -> bool {
             text
         }
     }
-    normalized(path) == normalized(&root.join("policy").join("allow.toml"))
+    normalized(&best_effort_canonical(path))
+        == normalized(&best_effort_canonical(
+            &root.join("policy").join("allow.toml"),
+        ))
 }
 
 fn configured_file_family_capabilities(
