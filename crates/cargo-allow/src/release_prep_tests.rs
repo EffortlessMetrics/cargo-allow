@@ -7,10 +7,11 @@ use allow_report::ReleaseVersionV1;
 use intent_model::parse_package_postures_v1;
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
-// Newest published prerelease (#4567): the GitHub Actions examples teach the
-// 0.2 artifact-emission surface, which the published stable lacks, so they
-// pin this version until the 0.2.0 stable release promotes over it.
-const EXAMPLE_PRERELEASE_PIN_VERSION: &str = "0.2.0-rc.1";
+// Source-candidate commit the GitHub Actions examples install (#4567): the
+// 0.2 artifact-emission surface the examples teach is not in any published
+// build, so they install this exact main commit until the 0.2.0 stable
+// release promotes the examples onto the crates.io pin.
+const EXAMPLE_SOURCE_CANDIDATE_REV: &str = "65d76b1494656904c8ce30cf518f2e5bf85a6911";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.10";
 const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.11.md";
 const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.10.md";
@@ -847,18 +848,16 @@ fn install_examples_use_published_release() {
     }
 
     // The two GitHub Actions examples are contract-pinned (#3881) to the 0.2
-    // artifact-emission surface, which no published stable carries (#4567):
-    // they pin the newest published prerelease and guard the surface before
-    // their run steps (ci_workflow_contract pins the same strings). When the
-    // 0.2.0 stable release publishes, promote this constant to it and move
-    // the examples onto the stable pin.
+    // artifact-emission surface, which no published build carries (#4567):
+    // they install a pinned source-candidate commit and guard the surface
+    // before their run steps (ci_workflow_contract pins the same strings).
+    // When the 0.2.0 stable release publishes, move the examples onto the
+    // crates.io pin and retire this constant.
     for relative_path in release_example_install_surfaces() {
         let content = read_workspace_file(&root, relative_path);
         assert!(
-            content.contains(&format!(
-                "cargo install cargo-allow --version {EXAMPLE_PRERELEASE_PIN_VERSION} --locked"
-            )),
-            "{relative_path} should install the newest published cargo-allow {EXAMPLE_PRERELEASE_PIN_VERSION} prerelease"
+            content.contains(&format!("--rev {EXAMPLE_SOURCE_CANDIDATE_REV}")),
+            "{relative_path} should install the pinned source-candidate commit {EXAMPLE_SOURCE_CANDIDATE_REV}"
         );
         assert!(
             !content.contains(&format!(

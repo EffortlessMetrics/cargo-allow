@@ -41,8 +41,11 @@ fn examples_do_not_use_ambient_binary() -> Result<(), String> {
             return Err(format!("{name} installs from 'latest'"));
         }
         // The issue forbids "no ambient binary" — the install step must pin
-        // an exact version.
-        if !text.contains("--version 0.") {
+        // an exact version or, while no published build carries the taught
+        // surface (#4567), an exact source-candidate revision.
+        let pins_published_version = text.contains("--version 0.");
+        let pins_source_candidate = text.contains("--rev 65d76b1494656904c8ce30cf518f2e5bf85a6911");
+        if !pins_published_version && !pins_source_candidate {
             return Err(format!("{name} does not pin an exact cargo-allow version"));
         }
     }

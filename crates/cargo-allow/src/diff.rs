@@ -255,10 +255,13 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         // facts carried no policy digest and every --emit request failed the
         // artifact-set identity gate with `resolved_config_identity is
         // missing` while its artifacts were already written to disk. Bind
-        // the exact head policy bytes this diff evaluated.
-        if let Some(text) = allow_diff::read_file_at_revision(&root, head, &policy_path)? {
-            facts = facts.with_policy_digest(allow_core::sha256_v1_bytes(text.as_bytes()));
-        }
+        // the exact head policy bytes this diff evaluated; a head revision
+        // that removed the selected policy digests the empty text, which is
+        // the content it was evaluated against (#4572 review).
+        let head_policy_text = allow_diff::read_file_at_revision(&root, head, &policy_path)?;
+        facts = facts.with_policy_digest(allow_core::sha256_v1_bytes(
+            head_policy_text.as_deref().unwrap_or_default().as_bytes(),
+        ));
         facts
     } else {
         current_world_loaded(&current_world)?.inventory_facts

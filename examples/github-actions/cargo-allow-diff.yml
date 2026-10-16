@@ -15,13 +15,19 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       # #4567: --artifact-dir/--emit are 0.2 artifact emission; no published
       # build carries them yet (0.2.0-rc.1 predates the surface), so this
-      # lane fails loudly in the guard below until the 0.2.0 release
-      # publishes. Bump this pin together with the guard when it does.
-      - name: Install cargo-allow
-        run: cargo install cargo-allow --version 0.2.0-rc.1 --locked
+      # example installs a pinned source-candidate commit that has the
+      # surface. When the 0.2.0 release publishes, switch this step to the
+      # published 0.2.0 crates.io pin.
+      - name: Install cargo-allow (source candidate; no published build has 0.2 artifact emission yet)
+        run: |
+          cargo install cargo-allow \
+            --git https://github.com/EffortlessMetrics/cargo-allow \
+            --rev 65d76b1494656904c8ce30cf518f2e5bf85a6911 \
+            --locked
       - name: Verify the installed binary has 0.2 artifact emission
         run: |
           cargo-allow diff --help | grep -q -- '--artifact-dir' || {
