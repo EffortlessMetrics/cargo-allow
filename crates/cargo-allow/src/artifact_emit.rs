@@ -243,15 +243,29 @@ fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
             }
             return result;
         }
-        // A path terminating in `..` never resolves while its parent is
-        // missing, and file_name() is None there: fold the terminal `..`
-        // onto the missing tail and continue with the parent — the OS
-        // resolves the same path by creating the missing segment and
-        // popping it (#4583 review).
-        if !cursor.pop() {
-            return path.to_path_buf();
+        match cursor.file_name() {
+            Some(name) => {
+                missing.push(name.to_os_string());
+                if !cursor.pop() {
+                    return path.to_path_buf();
+                }
+            }
+            // file_name() is None both at the filesystem root and for a
+            // path terminating in `..`. Only the `..` ending folds: the OS
+            // would create the missing segment and pop it, netting the
+            // parent (#4583 review). A root cursor with nothing left just
+            // returns the walk input.
+            None => {
+                if cursor.ends_with("..") {
+                    missing.push(std::ffi::OsString::from(".."));
+                    if !cursor.pop() {
+                        return path.to_path_buf();
+                    }
+                    continue;
+                }
+                return path.to_path_buf();
+            }
         }
-        missing.push(std::ffi::OsString::from(".."));
     }
 }
 

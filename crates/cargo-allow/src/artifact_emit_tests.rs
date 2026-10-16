@@ -197,6 +197,11 @@ fn artifact_dir_separation_covers_spelling_and_none_cases() {
     // `newdir/..` as the parent (#4583 review).
     assert!(ensure_artifact_dir_separate(&root.join("newdir/../policy"), Some(&policy),).is_err());
 
+    // A missing directory followed by `..` resolves through the fold: the
+    // OS creates the missing segment then pops it, so the guard must treat
+    // `newdir/..` as the parent (#4583 review).
+    assert!(ensure_artifact_dir_separate(&root.join("newdir/../policy"), Some(&policy),).is_err());
+
     // A separate directory is accepted.
     assert!(
         ensure_artifact_dir_separate(std::path::Path::new("artifacts"), Some(&policy),).is_ok()
