@@ -412,16 +412,26 @@ pub(crate) fn build_report_summary_from_facts(
         operation_effects: facts
             .artifact_emission
             .map(|dir| {
+                // The emitter resolves a relative --artifact-dir against the
+                // process working directory, not against --root; name the
+                // same location the write lands on (#4575 review).
+                let resolved = if dir.is_absolute() {
+                    dir.to_path_buf()
+                } else {
+                    std::env::current_dir()
+                        .map(|cwd| cwd.join(dir))
+                        .unwrap_or_else(|_| dir.to_path_buf())
+                };
                 let dir_text = crate::policy_config::portable_relative_under_root(
                     facts.root,
-                    dir,
+                    &resolved,
                 )
                 .map(|relative| {
                     relative
                         .to_string_lossy()
                         .replace(std::path::MAIN_SEPARATOR, "/")
                 })
-                .unwrap_or_else(|_| dir.display().to_string());
+                .unwrap_or_else(|_| resolved.display().to_string());
                 CoreCommandEffectsV1 {
                     reads_repository: true,
                     writes_repository: true,
