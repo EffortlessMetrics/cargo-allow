@@ -1,0 +1,17 @@
+# #4560/#4583: governed schema contract for the evaluation artifact-set
+# manifest.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1147"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1ddf7c74b47f5214f3ca3bcb8db2dc901502659dd66a235c6c06c19271e1fc71"
+reason = "Receipts docs/schemas/evaluation-artifact-set.schema.json, the governed contract for the multi-artifact manifest that check/diff/audit write into --artifact-dir: the manifest now carries command, the common inventory facts, scanner_limitations, the governed claim_boundary flag array, and the recorded validation_gaps, so the typed manifest-gap Next line points at real content. Test-only provenance; no source findings receipted."
+
+[[records]]
+allow_ids = ["allow-1148"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:76704bea0e70f3d4ab46839cdf7a3e574c81e2ef7c83bddaf0454e944d6b364a"
+reason = "Self-receipt row for this note file: the authored revision note is itself a non_rust_file.configuration finding, receipted so the governed-schema lane is fully covered."

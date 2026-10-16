@@ -40,8 +40,12 @@ pub(crate) struct SchemaContract {
     pub(crate) fixed_command: Option<&'static str>,
 }
 
-pub(crate) fn schema_contracts() -> [SchemaContract; 17] {
+pub(crate) fn schema_contracts() -> [SchemaContract; 18] {
     [
+        schema_contract(
+            "evaluation-artifact-set",
+            ::std::include_str!("../../../docs/schemas/evaluation-artifact-set.schema.json"),
+        ),
         schema_contract(
             "add",
             ::std::include_str!("../../../docs/schemas/add.schema.json"),

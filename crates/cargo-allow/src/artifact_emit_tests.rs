@@ -202,3 +202,44 @@ fn artifact_dir_separation_covers_spelling_and_none_cases() {
 
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[cfg(unix)]
+#[test]
+fn artifact_dir_separation_resolves_symlinks_in_existing_prefixes() {
+    // #4576 review: emission resolves `link/..` through the OS (link target
+    // first, then the parent), so the guard must check the same directory.
+    // A policy file inside the link target IS inside the resolved artifact
+    // directory's parent chain and must be refused.
+    use std::os::unix::fs::symlink;
+
+    let root = std::env::temp_dir().join(format!(
+        "artifact-separation-symlink-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&root);
+    let target = root.join("target-dir");
+    std::fs::create_dir_all(target.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create target dir: {err}")));
+    let policy = target.join("policy/allow.toml");
+    std::fs::write(&policy, "policy = \"cargo-allow\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    symlink(&target, root.join("link"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create symlink: {err}")));
+
+    // `link/..` resolves through the link to the PARENT of target-dir; a
+    // directory named target-dir/policy is not inside it, so this accepted
+    // case pins that resolution happens at all...
+    let resolved_parent = best_effort_canonical(&root.join("link/.."));
+    assert_eq!(
+        resolved_parent,
+        root.canonicalize()
+            .unwrap_or_else(|err| { std::panic::panic_any(format!("canonicalize root: {err}")) }),
+        "link/.. must resolve through the link to root"
+    );
+
+    // ...and `link/policy` resolves INSIDE the link target, where the
+    // policy file lives, so that containment is refused.
+    assert!(ensure_artifact_dir_separate(&root.join("link/policy"), Some(&policy),).is_err());
+
+    let _ = std::fs::remove_dir_all(&root);
+}

@@ -101,6 +101,26 @@ pub struct EvaluationArtifactSetV1Validation {
     pub gaps: Vec<String>,
 }
 
+/// The common source-tree inventory facts every governed source-tree
+/// artifact carries (common.v1 `$defs/inventory`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct EvaluationInventoryV1 {
+    pub scope: String,
+    pub scanner: String,
+    pub source: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub files_scanned: Option<u64>,
+    #[serde(default)]
+    pub empty_git_tracked: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completeness: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_identity: Option<String>,
+}
+
 /// The canonical typed artifact set. One evaluation → one set.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EvaluationArtifactSetV1 {
@@ -111,6 +131,8 @@ pub struct EvaluationArtifactSetV1 {
     pub tool_version: String,
     /// Operation and mode (e.g. "check" / "no-new").
     pub operation: String,
+    /// The command that ran the evaluation ("audit", "check", or "diff").
+    pub command: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
     /// Exact repository source subject identity (commit or worktree).
@@ -132,7 +154,12 @@ pub struct EvaluationArtifactSetV1 {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detailed_result_ref: Option<String>,
     pub limitations: Vec<String>,
-    pub claim_boundary: String,
+    pub claim_boundary: Vec<String>,
+    /// The common source-tree inventory facts of the evaluation (#4560
+    /// governed-schema alignment).
+    pub inventory: EvaluationInventoryV1,
+    /// The scanner limitations declared for the evaluation source.
+    pub scanner_limitations: Vec<String>,
     /// Validation gaps recorded at emission time so a non-Complete set's
     /// persisted manifest carries the failing conditions the typed Next
     /// line points at (#4560). Empty for Complete and SemanticNonGreen
@@ -201,7 +228,7 @@ impl EvaluationArtifactSetV1 {
                 "semantic_result_digest",
                 self.semantic_result_digest.as_str(),
             ),
-            ("claim_boundary", self.claim_boundary.as_str()),
+            ("claim_boundary", self.claim_boundary.join(" ").as_str()),
         ] {
             if value.trim().is_empty() {
                 gaps.push(format!("{field} is missing"));
@@ -249,7 +276,11 @@ impl EvaluationArtifactSetV1 {
             }
         }
 
-        if !self.claim_boundary.trim().is_empty() && self.claim_boundary.contains("/home/") {
+        if self
+            .claim_boundary
+            .iter()
+            .any(|flag| flag.contains("/home/"))
+        {
             gaps.push("claim_boundary contains private path data".to_string());
         }
 
@@ -351,6 +382,18 @@ mod tests {
             tool: "cargo-allow".to_string(),
             tool_version: "0.2.0-rc.1".to_string(),
             operation: "check".to_string(),
+            command: "check".to_string(),
+            inventory: EvaluationInventoryV1 {
+                scope: "source_tree".to_string(),
+                scanner: "source_syntax".to_string(),
+                source: "git_tracked".to_string(),
+                root: None,
+                files_scanned: Some(7),
+                empty_git_tracked: false,
+                completeness: None,
+                source_identity: None,
+            },
+            scanner_limitations: Vec::new(),
             mode: Some("no-new".to_string()),
             source_subject: "worktree:clean".to_string(),
             resolved_config_identity: "sha256:".to_string() + &"a".repeat(64),
@@ -371,7 +414,7 @@ mod tests {
             detailed_result_ref: Some("check-receipt.json".to_string()),
             limitations: Vec::new(),
             validation_gaps: Vec::new(),
-            claim_boundary: "one evaluation, many renderers".to_string(),
+            claim_boundary: vec!["one evaluation, many renderers".to_string()],
         }
     }
 

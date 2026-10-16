@@ -435,8 +435,8 @@ pub use publication_journal_v1::{
 pub use evaluation_artifact_set_v1::{
     EVALUATION_ARTIFACT_SET_V1_SCHEMA_ID, EVALUATION_ARTIFACT_SET_V1_SCHEMA_VERSION,
     EvaluationArtifactEntryV1, EvaluationArtifactSetResultV2, EvaluationArtifactSetV1,
-    EvaluationArtifactSetV1Validation, EvaluationResultClassV2, RendererFormatV1,
-    render_evaluation_artifact_set_v1, render_evaluation_artifact_set_v1_bytes,
+    EvaluationArtifactSetV1Validation, EvaluationInventoryV1, EvaluationResultClassV2,
+    RendererFormatV1, render_evaluation_artifact_set_v1, render_evaluation_artifact_set_v1_bytes,
 };
 
 pub use isolated_install_receipt_v2::{

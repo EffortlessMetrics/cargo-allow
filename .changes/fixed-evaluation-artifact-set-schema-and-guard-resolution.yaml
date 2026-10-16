@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Govern the evaluation artifact-set manifest: a
+  `cargo-allow.evaluation-artifact-set.v1` schema contract
+  (docs/schemas/evaluation-artifact-set.schema.json) carries the full
+  common-v1 source-tree defs with `command`, `inventory`,
+  `scanner_limitations`, the governed `claim_boundary` flag array, and
+  the recorded `validation_gaps` required or typed, and the emitter now
+  stamps the evaluation's command, inventory facts, scanner
+  limitations, and claim-boundary flags into every manifest. The
+  artifact-directory collision guard resolves the directory through the
+  OS (symlinked existing prefixes canonicalize; only not-yet-existing
+  tail segments fold lexically) and compares resolved paths
+  component-wise, so non-UTF-8 spellings never collapse. The
+  capabilities and compat inline test modules move to sibling
+  `*_tests.rs` files per the repo convention.

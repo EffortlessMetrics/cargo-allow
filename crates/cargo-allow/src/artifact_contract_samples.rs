@@ -412,6 +412,91 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
     let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &ledger);
     vec![
         ArtifactSample {
+            name: "evaluation_artifact_set",
+            schema_name: "evaluation-artifact-set",
+            json: allow_report::render_evaluation_artifact_set_v1(
+                &allow_report::EvaluationArtifactSetV1 {
+                    schema_id: "cargo-allow.evaluation-artifact-set.v1".to_string(),
+                    schema_version: 1,
+                    tool: "cargo-allow".to_string(),
+                    tool_version: env!("CARGO_PKG_VERSION").to_string(),
+                    operation: "audit".to_string(),
+                    command: "audit".to_string(),
+                    mode: None,
+                    source_subject: "audit:unsafe".to_string(),
+                    resolved_config_identity: format!("sha256:v1:{}", "a".repeat(64)),
+                    semantic_result_digest: format!("sha256:v1:{}", "b".repeat(64)),
+                    result_class: allow_report::EvaluationResultClassV2::Advisory,
+                    blocking: false,
+                    requested_formats: vec![
+                        allow_report::RendererFormatV1::Markdown,
+                        allow_report::RendererFormatV1::Json,
+                    ],
+                    artifacts: vec![
+                        allow_report::EvaluationArtifactEntryV1 {
+                            format: allow_report::RendererFormatV1::Markdown,
+                            file_name: "audit-markdown.md".to_string(),
+                            content_digest: Some(format!("sha256:v1:{}", "c".repeat(64))),
+                            size_bytes: Some(1524),
+                            status: "Written".to_string(),
+                            render_errors: Vec::new(),
+                        },
+                        allow_report::EvaluationArtifactEntryV1 {
+                            format: allow_report::RendererFormatV1::Json,
+                            file_name: "audit-json.json".to_string(),
+                            content_digest: Some(format!("sha256:v1:{}", "d".repeat(64))),
+                            size_bytes: Some(2263),
+                            status: "Written".to_string(),
+                            render_errors: Vec::new(),
+                        },
+                    ],
+                    core_command_summary_ref: None,
+                    detailed_result_ref: None,
+                    limitations: Vec::new(),
+                    claim_boundary: allow_report::CLAIM_BOUNDARY
+                        .iter()
+                        .map(|flag| flag.to_string())
+                        .collect(),
+                    inventory: allow_report::EvaluationInventoryV1 {
+                        scope: "source_tree".to_string(),
+                        scanner: "source_syntax".to_string(),
+                        source: "git_tracked".to_string(),
+                        root: Some("fixtures/source-snapshot".to_string()),
+                        files_scanned: Some(7),
+                        empty_git_tracked: false,
+                        completeness: Some("complete".to_string()),
+                        source_identity: None,
+                    },
+                    scanner_limitations: allow_report::SCANNER_LIMITATIONS
+                        .iter()
+                        .map(|limitation| limitation.to_string())
+                        .collect(),
+                    validation_gaps: Vec::new(),
+                },
+            )
+            .expect("evaluation artifact set renders"),
+            expected_command: "audit",
+            expected_top_level_keys: &[
+                "artifacts",
+                "blocking",
+                "claim_boundary",
+                "command",
+                "inventory",
+                "limitations",
+                "operation",
+                "requested_formats",
+                "resolved_config_identity",
+                "result_class",
+                "schema_id",
+                "schema_version",
+                "scanner_limitations",
+                "semantic_result_digest",
+                "source_subject",
+                "tool",
+                "tool_version",
+            ],
+        },
+        ArtifactSample {
             name: "audit_report",
             schema_name: "report",
             json: audit_report_json,
