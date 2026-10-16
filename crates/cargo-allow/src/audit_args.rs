@@ -32,7 +32,7 @@ pub(crate) struct ReportArgs {
     /// Requires --emit; a lone --artifact-dir emits nothing (#4564).
     #[arg(long, value_name = "DIR", requires = "emit")]
     pub(crate) artifact_dir: Option<PathBuf>,
-    /// Comma-separated renderer formats to emit (markdown,json,html,sarif).
+    /// Comma-separated renderer formats to emit (markdown,json,html,sarif; md aliases markdown).
     /// Requires --artifact-dir; the pairing is refused at argument parsing (#4548).
     #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,

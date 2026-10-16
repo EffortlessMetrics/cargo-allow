@@ -29,7 +29,7 @@ pub(crate) struct DiffArgs {
     /// Requires --emit; a lone --artifact-dir emits nothing (#4564).
     #[arg(long, value_name = "DIR", requires = "emit")]
     pub(crate) artifact_dir: Option<PathBuf>,
-    /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
+    /// Comma-separated renderer formats to emit (markdown,json,sarif,html,receipt; md aliases markdown).
     /// Requires --artifact-dir; the pairing is refused at argument parsing (#4548).
     #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,

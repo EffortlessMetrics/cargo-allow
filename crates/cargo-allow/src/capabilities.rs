@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::policy_config::observe_policy_for_diagnostics;
 use crate::{RootArgs, current_dir, emit_text, resolve_source_tree_root};
@@ -531,6 +531,85 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
     emit_text(args.output.as_deref(), &format!("{rendered}\n"))
 }
 
+/// Whether `path` names the default `policy/allow.toml` under `root`,
+/// compared spelling-insensitively: an explicit `--config
+/// "$PWD/policy/allow.toml"` resolves to the same missing file as the
+/// relative default spelling, and both deserve the init remedy (#4558).
+/// The file is confirmed missing, so canonicalization cannot run on it
+/// directly; the deepest existing ancestor is canonicalized instead, which
+/// also resolves symlinked temp ancestors (macOS `/var` → `/private/var`)
+/// and Windows verbatim prefixes, then separators are normalized and the
+/// comparison case-folds on Windows, where path case is not significant.
+fn is_default_policy_path(path: &Path, root: &Path) -> bool {
+    fn best_effort_canonical(path: &Path) -> PathBuf {
+        let mut missing: Vec<std::ffi::OsString> = Vec::new();
+        let mut cursor = path.to_path_buf();
+        loop {
+            if let Ok(resolved) = cursor.canonicalize() {
+                let mut result = resolved;
+                for component in missing.iter().rev() {
+                    result.push(component);
+                }
+                return result;
+            }
+            match cursor.file_name() {
+                Some(name) => {
+                    missing.push(name.to_os_string());
+                    if !cursor.pop() {
+                        return path.to_path_buf();
+                    }
+                }
+                None => return path.to_path_buf(),
+            }
+        }
+    }
+    fn normalized(path: &Path) -> String {
+        let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
+        let text = text.replace(std::path::MAIN_SEPARATOR, "/");
+        // A canonicalized Windows UNC root collapses to one leading slash
+        // while a user-spelled UNC path keeps two; compare past the
+        // leading slashes (#4573 review).
+        let text = text.trim_start_matches('/');
+        if cfg!(windows) {
+            text.to_ascii_lowercase()
+        } else {
+            text.to_string()
+        }
+    }
+    normalized(&best_effort_canonical(path))
+        == normalized(&best_effort_canonical(
+            &root.join("policy").join("allow.toml"),
+        ))
+}
+
+#[cfg(test)]
+mod default_policy_path_tests {
+    use super::is_default_policy_path;
+
+    #[test]
+    fn default_policy_spellings_compare_equal_across_prefix_forms() {
+        // #4558/#4573: the relative, absolute, and UNC-spelled forms of the
+        // default policy location must all compare as the default (the
+        // canonicalized UNC root collapses to one leading slash while the
+        // user spelling keeps two), and a genuinely different path must
+        // not.
+        let root = std::path::Path::new("/repo-root");
+        assert!(is_default_policy_path(
+            std::path::Path::new("/repo-root/policy/allow.toml"),
+            root
+        ));
+        let unc_root = std::path::Path::new("//server/share/repo");
+        assert!(is_default_policy_path(
+            std::path::Path::new("//server/share/repo/policy/allow.toml"),
+            unc_root
+        ));
+        assert!(!is_default_policy_path(
+            std::path::Path::new("/repo-root/custom/other.toml"),
+            root
+        ));
+    }
+}
+
 fn configured_file_family_capabilities(
     args: &CapabilitiesArgs,
 ) -> CargoAllowResult<Vec<ConfiguredFileFamilyCapability>> {
@@ -555,7 +634,11 @@ fn configured_file_family_capabilities(
         let confirmed_missing = policy_path
             .as_deref()
             .is_some_and(|path| matches!(path.try_exists(), Ok(false)));
-        if confirmed_missing && policy_path.as_deref() == Some(&root.join("policy/allow.toml")) {
+        if confirmed_missing
+            && policy_path.as_deref().is_some_and(|path| {
+                is_default_policy_path(path, &root)
+            })
+        {
             // docs/getting-started.md §2b: before adoption the default
             // policy file does not exist yet, and the remedy is §4's
             // `cargo-allow init`, not repairing a policy entry (#4545).
