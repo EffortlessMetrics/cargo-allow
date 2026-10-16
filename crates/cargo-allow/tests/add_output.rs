@@ -885,3 +885,70 @@ expires_or_review_after_required = true
 
     remove_temp_root(root);
 }
+
+#[test]
+fn add_broad_family_excluded_glob_keeps_the_empty_scope_message() {
+    // #4576 review: the blocked-findings count applies the same --family
+    // filter the broad selector will, so a family-excluded glob is
+    // genuinely empty for this request and keeps the empty-scope message
+    // instead of the structural-gate one that --callee cannot fix.
+    let root = temp_root("add-broad-family-excluded");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--glob",
+            "src/lib.rs",
+            "--family",
+            "somewhere-else",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "family-excluded fixture",
+            "--dry-run",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run broad add: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "a family-excluded glob must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("no current panic findings match glob"),
+        "a family-excluded glob is genuinely empty for this request: {stderr}"
+    );
+    assert!(
+        !stderr.contains("structural selector identity"),
+        "the structural-gate message must not fire for a family-excluded glob: {stderr}"
+    );
+
+    remove_temp_root(root);
+}

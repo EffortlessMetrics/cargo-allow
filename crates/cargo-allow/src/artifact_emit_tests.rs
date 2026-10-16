@@ -172,3 +172,32 @@ fn semantic_digest_binds_report_and_receipt_context() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn artifact_dir_separation_covers_spelling_and_none_cases() {
+    // #4561/#4576-review: the guard must refuse a directory that contains
+    // the selected policy file across relative/absolute spellings, accept
+    // separate locations, and no-op without a protected file.
+    let root = std::env::temp_dir().join("artifact-separation-probe");
+    let _ = std::fs::remove_dir_all(&root);
+    let policy = root.join("policy/allow.toml");
+    std::fs::create_dir_all(policy.parent().unwrap_or_else(|| std::path::Path::new(".")))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    std::fs::write(&policy, "policy = \"cargo-allow\"\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+
+    // Containing directories are refused across spellings: plain absolute,
+    // and a parent-segment spelling that folds to the same directory.
+    assert!(ensure_artifact_dir_separate(&root.join("policy"), Some(&policy),).is_err());
+    assert!(ensure_artifact_dir_separate(&root.join("policy/../policy"), Some(&policy),).is_err());
+
+    // A separate directory is accepted.
+    assert!(
+        ensure_artifact_dir_separate(std::path::Path::new("artifacts"), Some(&policy),).is_ok()
+    );
+
+    // No protected file: nothing to refuse.
+    assert!(ensure_artifact_dir_separate(std::path::Path::new("policy"), None).is_ok());
+
+    let _ = std::fs::remove_dir_all(&root);
+}

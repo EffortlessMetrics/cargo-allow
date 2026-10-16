@@ -257,10 +257,18 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             // findings, the empty-scope message would blame a glob that
             // actually holds matching findings; only a genuinely empty
             // glob keeps it.
+            // The blocked-findings count must apply the same --family
+            // filter the broad selector will: a family-excluded glob is
+            // genuinely empty for this request, and sending the operator
+            // to --callee cannot make it match (#4576 review).
             let kind_findings_under_glob = findings
                 .iter()
                 .filter(|finding| {
                     finding.kind == parsed_kind.kind
+                        && args
+                            .family
+                            .as_deref()
+                            .is_none_or(|family| finding.family.as_deref() == Some(family))
                         && allow_core::glob_matches(&glob, &finding.path)
                 })
                 .count();

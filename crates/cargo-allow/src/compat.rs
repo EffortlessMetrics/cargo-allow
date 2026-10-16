@@ -33,6 +33,42 @@ fn compat_kind_ignores_include_untracked(compat_kind: &str, parsed_filter: &Kind
         || parsed_filter.kind == FindingKind::GeneratedCode
 }
 
+/// The legacy policy path the compat world selects for `kind_filter` —
+/// the same `compat_policy_path` resolution the loaders use — so callers
+/// outside the world (the artifact-collision guard) can protect the file
+/// the run actually loads (#4576 review).
+pub(crate) fn compat_selected_policy_path(
+    config: Option<&Path>,
+    root: &Path,
+    kind_filter: Option<&str>,
+) -> Option<PathBuf> {
+    let compat_kind = kind_filter.unwrap_or("non-rust");
+    let default_policy_file = if is_no_panic_allowlist_compat_kind(compat_kind) {
+        "policy/no-panic-allowlist.toml"
+    } else if is_panic_compat_kind(compat_kind) {
+        "policy/no-panic-baseline.toml"
+    } else if is_clippy_compat_kind(compat_kind) {
+        "policy/clippy-exceptions.toml"
+    } else if is_unsafe_compat_kind(compat_kind) {
+        "policy/unsafe-allowlist.toml"
+    } else if is_executable_compat_kind(compat_kind) {
+        "policy/executable-allowlist.toml"
+    } else if is_workflow_compat_kind(compat_kind) {
+        "policy/workflow-allowlist.toml"
+    } else if is_dependency_surface_compat_kind(compat_kind) {
+        "policy/dependency-surface-allowlist.toml"
+    } else if is_process_compat_kind(compat_kind) {
+        "policy/process-allowlist.toml"
+    } else if is_network_compat_kind(compat_kind) {
+        "policy/network-allowlist.toml"
+    } else if compat_kind == "generated" {
+        "policy/generated-allowlist.toml"
+    } else {
+        "policy/non-rust-allowlist.toml"
+    };
+    Some(compat_policy_path(config, root, default_policy_file))
+}
+
 pub(crate) fn load_compat_world(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
@@ -228,5 +264,49 @@ mod tests {
             "dependency-surface",
             &non_rust
         ));
+    }
+}
+
+#[cfg(test)]
+mod compat_selected_policy_path_tests {
+    use super::compat_selected_policy_path;
+
+    #[test]
+    fn compat_kinds_select_their_legacy_policy_defaults() {
+        // #4576 review: the artifact-collision guard protects the legacy
+        // file the compat world actually loads; the mapping here must match
+        // the loaders' defaults.
+        let root = std::path::Path::new("/repo");
+        let cases = [
+            ("lint-exception", "policy/clippy-exceptions.toml"),
+            ("network", "policy/network-allowlist.toml"),
+            ("panic", "policy/no-panic-baseline.toml"),
+            ("unsafe", "policy/unsafe-allowlist.toml"),
+            ("process", "policy/process-allowlist.toml"),
+            ("no-panic-allowlist", "policy/no-panic-allowlist.toml"),
+            ("executable", "policy/executable-allowlist.toml"),
+            ("workflow", "policy/workflow-allowlist.toml"),
+            (
+                "dependency-surface",
+                "policy/dependency-surface-allowlist.toml",
+            ),
+            ("generated", "policy/generated-allowlist.toml"),
+        ];
+        for (kind, expected) in cases {
+            assert_eq!(
+                compat_selected_policy_path(None, root, Some(kind)),
+                Some(root.join(expected)),
+                "kind {kind} must select {expected}"
+            );
+        }
+        // An explicit --config overrides the per-kind default file.
+        assert_eq!(
+            compat_selected_policy_path(
+                Some(std::path::Path::new("custom/legacy.toml")),
+                root,
+                Some("network"),
+            ),
+            Some(std::path::PathBuf::from("custom/legacy.toml")),
+        );
     }
 }
