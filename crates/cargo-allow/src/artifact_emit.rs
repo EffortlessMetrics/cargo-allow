@@ -172,6 +172,74 @@ pub struct EmitConfig<'a> {
     pub source_subject: &'a str,
 }
 
+/// Refuse an artifact directory that would contain the selected policy
+/// file: emitted report files beside the live ledger is a collision the
+/// OutputConflict classification could never see (its detection was
+/// unreachable dead code, removed with #4561).
+pub(crate) fn ensure_artifact_dir_separate(
+    artifact_dir: &std::path::Path,
+    protected_file: Option<&std::path::Path>,
+) -> Result<(), String> {
+    let Some(protected) = protected_file else {
+        return Ok(());
+    };
+    fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
+        let mut lexical = std::path::PathBuf::new();
+        for component in path.components() {
+            match component {
+                std::path::Component::CurDir => {}
+                std::path::Component::ParentDir => {
+                    if !lexical.pop() {
+                        lexical.push(component);
+                    }
+                }
+                other => lexical.push(other.as_os_str()),
+            }
+        }
+        let mut missing: Vec<std::ffi::OsString> = Vec::new();
+        let mut cursor = lexical.clone();
+        loop {
+            if let Ok(resolved) = cursor.canonicalize() {
+                let mut result = resolved;
+                for component in missing.iter().rev() {
+                    result.push(component);
+                }
+                return result;
+            }
+            match cursor.file_name() {
+                Some(name) => {
+                    missing.push(name.to_os_string());
+                    if !cursor.pop() {
+                        return lexical;
+                    }
+                }
+                None => return lexical,
+            }
+        }
+    }
+    fn normalized(path: &std::path::Path) -> String {
+        let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
+        let text = text.replace(std::path::MAIN_SEPARATOR, "/");
+        if cfg!(windows) {
+            text.to_ascii_lowercase()
+        } else {
+            text
+        }
+    }
+    let guarded = format!(
+        "{}/",
+        normalized(&best_effort_canonical(artifact_dir)).trim_end_matches('/')
+    );
+    if normalized(&best_effort_canonical(protected)).starts_with(&guarded) {
+        return Err(format!(
+            "the artifact directory would contain the selected policy file ({} inside {}); choose a directory outside the policy location",
+            protected.display(),
+            artifact_dir.display()
+        ));
+    }
+    Ok(())
+}
+
 /// Render and write the requested artifacts into `artifact_dir`, producing a
 /// typed `EvaluationArtifactSetV1` manifest.
 pub fn emit_artifact_set(
@@ -240,12 +308,14 @@ pub fn emit_artifact_set(
     };
 
     let validation = set.validate();
-    if validation.result == EvaluationArtifactSetResultV2::OutputConflict {
-        return Err(format!(
-            "artifact set validation detected output conflict: {:?}",
-            validation.gaps
-        ));
-    }
+    // The OutputConflict arm is unreachable here: limitations are never
+    // populated by this emitter, and the real collision (artifacts beside
+    // the selected policy) is refused by ensure_artifact_dir_separate
+    // before any write (#4561).
+    debug_assert_ne!(
+        validation.result,
+        EvaluationArtifactSetResultV2::OutputConflict
+    );
     // #4560: a non-Complete set's persisted manifest must carry the failing
     // gaps, so the typed Next line ("inspect the failing gaps recorded in
     // the artifact-set manifest") points at real recorded content.

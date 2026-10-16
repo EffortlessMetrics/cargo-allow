@@ -33,6 +33,13 @@ allowed_markers = ["discover_config_path(", "load_policy_at_path_with_digest("]
 claim_boundary = "Observes canonical adoption diagnostics and selected policy facts; does not provide a fallback selector."
 
 [[consumers]]
+id = "audit"
+path = "crates/cargo-allow/src/audit.rs"
+role = "artifact-emission collision guard for the selected policy"
+allowed_markers = ["config_path("]
+claim_boundary = "Re-derives the already-selected policy path read-only to refuse an artifact directory that would contain it; does not define precedence or authorize writes."
+
+[[consumers]]
 id = "propose"
 path = "crates/cargo-allow/src/propose.rs"
 role = "selected mutation-policy loading"
