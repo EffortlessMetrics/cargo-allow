@@ -184,21 +184,23 @@ it. One pass per sample; the retained receipt ships with the CI run.
 | `hooks run` wrapper overhead | 65 ms | ≤ 2,000 ms (retained) | ≤ 2,000 ms |
 | `cadence --as-of` (full-ledger) | 38 ms | < 2,000 ms (retained from #4339) | < 2,000 ms |
 | `dependency-graph-delta compile` (moved pair) | 8 ms | < 2,000 ms (retained from #4339) | < 2,000 ms |
-| one-file incremental (cache on) | 4,482 ms | see the #4339 note — matching dominates | < 2,000 ms aspiration |
+| One-file incremental (cache on) | 4,482 ms | see the #4339 note — matching dominates | < 2,000 ms aspiration |
 
 ### Agent-loop composite (advisory target)
 
 `worklist` → `why --plan` → `add --from-plan --update` → `check --mode
 no-new`: **≤ 15,000 ms end-to-end** for one receipted repair at self-hosted
 scale — restated from ≤ 30,000 ms now that the hosted reference measures
-**10,660 ms** (the ≤ 30,000 ms form, and the 28,627 ms loaded-debug
-measurement behind it, date from the pre-#4339 matrix and are retained as
+**10,660 ms** (the ≤ 30,000 ms form and the 28,627 ms loaded-debug
+measurement behind it date from the pre-#4339 matrix and are retained as
 history). Per-step rows plus a derived composite total are recorded in the
 receipt so a regression in any step is attributable. #4495's loaded-debug
 miss (36,645 ms) and #4496's spurious 93,140 ms catastrophic-ceiling trip
-both predate this matrix; the 60,000 ms ceiling stays the blocking gate and
-the retained-run methodology (receipt commit pinning, UTC-day controls,
-payload ceilings) is the arbiter for host-noise outliers.
+both predate this matrix; the 60,000 ms per-command ceiling stays the
+blocking gate and the retained-run methodology (receipt commit pinning,
+UTC-day controls, payload ceilings) excludes UTC-rollover attempts from
+admission and preserves their evidence — a new sample above the ceiling
+still fails.
 
 ### Payload budgets
 
