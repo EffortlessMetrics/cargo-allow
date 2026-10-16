@@ -266,4 +266,10 @@ fn best_effort_canonical_degrades_gracefully_on_unresolvable_inputs() {
     // walk returns the lexically folded input rather than panicking.
     let escaped = best_effort_canonical(std::path::Path::new("/../../etc"));
     assert!(escaped.ends_with("etc"));
+
+    // An empty walk input degrades to the empty path.
+    assert_eq!(
+        best_effort_canonical(std::path::Path::new("")),
+        std::path::Path::new("")
+    );
 }

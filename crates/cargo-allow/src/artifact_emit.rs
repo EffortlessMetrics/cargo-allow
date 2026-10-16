@@ -256,14 +256,14 @@ fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
             // parent (#4583 review). A root cursor with nothing left just
             // returns the walk input.
             None => {
-                if cursor.ends_with("..") {
-                    missing.push(std::ffi::OsString::from(".."));
-                    if !cursor.pop() {
-                        return path.to_path_buf();
-                    }
-                    continue;
+                let fold = cursor.ends_with("..");
+                if !cursor.pop() && !fold {
+                    return path.to_path_buf();
                 }
-                return path.to_path_buf();
+                if fold {
+                    missing.push(std::ffi::OsString::from(".."));
+                }
+                continue;
             }
         }
     }
