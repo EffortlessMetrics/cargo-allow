@@ -253,3 +253,17 @@ fn artifact_dir_separation_resolves_symlinks_in_existing_prefixes() {
 
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn best_effort_canonical_degrades_gracefully_on_unresolvable_inputs() {
+    // #4585 codecov: the defensive arms (pop past the filesystem root, and
+    // an empty/unresolvable walk input) must return without panicking so
+    // the guard degrades to a no-match instead of failing the command.
+    let empty = best_effort_canonical(std::path::Path::new(""));
+    assert!(empty.as_os_str().is_empty() || empty.as_os_str() == ".");
+
+    // Leading `..` segments past the filesystem root cannot resolve; the
+    // walk returns the lexically folded input rather than panicking.
+    let escaped = best_effort_canonical(std::path::Path::new("/../../etc"));
+    assert!(escaped.ends_with("etc"));
+}
