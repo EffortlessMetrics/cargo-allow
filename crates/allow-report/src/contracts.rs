@@ -171,6 +171,14 @@ pub(crate) const PRUNE_ARTIFACT: ArtifactContract = ArtifactContract {
     fixed_command: Some("prune"),
 };
 
+pub(crate) const EVALUATION_ARTIFACT_SET_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "evaluation-artifact-set",
+    schema_id: "cargo-allow.evaluation-artifact-set.v1",
+    schema_version: 1,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: None,
+};
+
 pub(crate) const RECEIPT_ARTIFACT: ArtifactContract = ArtifactContract {
     name: "receipt",
     schema_id: RECEIPT_SCHEMA_ID,
@@ -226,6 +234,7 @@ pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     CADENCE_ARTIFACT,
     CORE_ADOPTION_PLAN_ARTIFACT,
     DOCTOR_ARTIFACT,
+    EVALUATION_ARTIFACT_SET_ARTIFACT,
     EXPLAIN_ARTIFACT,
     LIST_ARTIFACT,
     MIGRATE_ARTIFACT,

@@ -78,6 +78,7 @@ partial; #3876 owns single-resolution command consumption.
 | Core adoption plan | `cargo-allow.core-adoption-plan.v1` | `cargo-allow adopt --format json` |
 | Setup diagnostics | `cargo-allow.doctor.v1` | `cargo-allow doctor --format json` |
 | Audit/check/diff report | `cargo-allow.report.v1` | `cargo-allow audit --format json`, `cargo-allow check --format json`, `cargo-allow diff --format json` |
+| Evaluation artifact-set manifest | `cargo-allow.evaluation-artifact-set.v1` | `cargo-allow audit --artifact-dir <dir> --emit <formats>`, `cargo-allow check --artifact-dir <dir> --emit <formats>`, `cargo-allow diff --base <rev> --artifact-dir <dir> --emit <formats>` |
 | Check/diff receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>`, `cargo-allow diff --receipt <path>` |
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
 | Unreceipted finding explanation | `cargo-allow.why.v1` | `cargo-allow why --kind <kind> --path <path> --line <line> --format json` |
@@ -357,6 +358,7 @@ promote policy, authorize publication, or establish release readiness.
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 - [cadence.schema.json](cadence.schema.json)
+- [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status plus, for non-Complete sets, the recorded `validation_gaps`)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)

@@ -38,6 +38,7 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
             "cadence",
             "core-adoption-plan",
             "doctor",
+            "evaluation-artifact-set",
             "explain",
             "list",
             "migrate",

@@ -29,6 +29,18 @@ fn make_set(
         tool: "cargo-allow".to_string(),
         tool_version: "0.2.0-rc.1".to_string(),
         operation: "check".to_string(),
+        command: "check".to_string(),
+        inventory: allow_report::EvaluationInventoryV1 {
+            scope: "source_tree".to_string(),
+            scanner: "source_syntax".to_string(),
+            source: "git_tracked".to_string(),
+            root: None,
+            files_scanned: Some(7),
+            empty_git_tracked: false,
+            completeness: None,
+            source_identity: None,
+        },
+        scanner_limitations: Vec::new(),
         mode: Some("no-new".to_string()),
         source_subject: "worktree:clean".to_string(),
         resolved_config_identity: format!("sha256:{}", "a".repeat(64)),
@@ -41,7 +53,7 @@ fn make_set(
         detailed_result_ref: None,
         limitations: Vec::new(),
         validation_gaps: Vec::new(),
-        claim_boundary: "single evaluation, multi-format".to_string(),
+        claim_boundary: vec!["single evaluation, multi-format".to_string()],
     }
 }
 

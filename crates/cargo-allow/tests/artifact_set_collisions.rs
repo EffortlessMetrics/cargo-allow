@@ -53,6 +53,18 @@ fn partial_artifact_set_is_fail_honest() {
         tool: "cargo-allow".to_string(),
         tool_version: "0.2.0-rc.1".to_string(),
         operation: "check".to_string(),
+        command: "check".to_string(),
+        inventory: allow_report::EvaluationInventoryV1 {
+            scope: "source_tree".to_string(),
+            scanner: "source_syntax".to_string(),
+            source: "git_tracked".to_string(),
+            root: None,
+            files_scanned: Some(7),
+            empty_git_tracked: false,
+            completeness: None,
+            source_identity: None,
+        },
+        scanner_limitations: Vec::new(),
         mode: None,
         source_subject: "worktree".to_string(),
         resolved_config_identity: format!("sha256:{}", "a".repeat(64)),
@@ -69,7 +81,7 @@ fn partial_artifact_set_is_fail_honest() {
         core_command_summary_ref: None,
         detailed_result_ref: None,
         limitations: vec!["SARIF renderer failed".to_string()],
-        claim_boundary: "bounded artifact set".to_string(),
+        claim_boundary: vec!["bounded artifact set".to_string()],
     };
     let validation = set.validate();
     assert_eq!(

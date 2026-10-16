@@ -172,6 +172,25 @@ pub struct EmitConfig<'a> {
     pub source_subject: &'a str,
 }
 
+/// The common source-tree inventory facts of one evaluation, bound from
+/// the report context so the artifact-set manifest carries the same
+/// governed inventory shape as receipts and reports (#4560 alignment).
+fn inventory_value_for_artifacts(
+    ctx: &ArtifactEmitContext<'_>,
+) -> allow_report::EvaluationInventoryV1 {
+    let inventory = &ctx.report_context.inventory;
+    allow_report::EvaluationInventoryV1 {
+        scope: inventory.scope.to_string(),
+        scanner: inventory.scanner.to_string(),
+        source: inventory.source.to_string(),
+        root: inventory.root.map(str::to_string),
+        files_scanned: inventory.files_scanned.map(|count| count as u64),
+        empty_git_tracked: inventory.empty_git_tracked,
+        completeness: inventory.completeness.map(str::to_string),
+        source_identity: inventory.source_identity.map(str::to_string),
+    }
+}
+
 /// Refuse an artifact directory that would contain the selected policy
 /// file: emitted report files beside the live ledger is a collision the
 /// OutputConflict classification could never see (its detection was
@@ -179,6 +198,12 @@ pub struct EmitConfig<'a> {
 /// before the artifact writes only — each command's report and receipt
 /// outputs are governed by their own containment assertions earlier in
 /// the command.
+///
+/// Resolution is OS-accurate for the directory: symlinks in existing
+/// prefixes resolve through the OS (canonicalize) and only segments after
+/// the deepest existing ancestor are folded lexically. Comparison is
+/// component-wise on the resolved paths, so non-UTF-8 spellings never
+/// collapse (#4576 review).
 pub(crate) fn ensure_artifact_dir_separate(
     artifact_dir: &std::path::Path,
     protected_file: Option<&std::path::Path>,
@@ -186,54 +211,9 @@ pub(crate) fn ensure_artifact_dir_separate(
     let Some(protected) = protected_file else {
         return Ok(());
     };
-    fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
-        let mut lexical = std::path::PathBuf::new();
-        for component in path.components() {
-            match component {
-                std::path::Component::CurDir => {}
-                std::path::Component::ParentDir => {
-                    if !lexical.pop() {
-                        lexical.push(component);
-                    }
-                }
-                other => lexical.push(other.as_os_str()),
-            }
-        }
-        let mut missing: Vec<std::ffi::OsString> = Vec::new();
-        let mut cursor = lexical.clone();
-        loop {
-            if let Ok(resolved) = cursor.canonicalize() {
-                let mut result = resolved;
-                for component in missing.iter().rev() {
-                    result.push(component);
-                }
-                return result;
-            }
-            match cursor.file_name() {
-                Some(name) => {
-                    missing.push(name.to_os_string());
-                    if !cursor.pop() {
-                        return lexical;
-                    }
-                }
-                None => return lexical,
-            }
-        }
-    }
-    fn normalized(path: &std::path::Path) -> String {
-        let text = allow_core::strip_win32_verbatim_prefix(&path.display().to_string());
-        let text = text.replace(std::path::MAIN_SEPARATOR, "/");
-        if cfg!(windows) {
-            text.to_ascii_lowercase()
-        } else {
-            text
-        }
-    }
-    let guarded = format!(
-        "{}/",
-        normalized(&best_effort_canonical(artifact_dir)).trim_end_matches('/')
-    );
-    if normalized(&best_effort_canonical(protected)).starts_with(&guarded) {
+    let resolved_dir = best_effort_canonical(artifact_dir);
+    let resolved_protected = best_effort_canonical(protected);
+    if resolved_protected.starts_with(&resolved_dir) {
         return Err(format!(
             "the artifact directory would contain the selected policy file ({} inside {}); choose a directory outside the policy location",
             protected.display(),
@@ -243,8 +223,40 @@ pub(crate) fn ensure_artifact_dir_separate(
     Ok(())
 }
 
+/// Resolve `path` as far as the OS can: canonicalize the deepest existing
+/// ancestor (which follows symlinks and resolves `..` natively), then
+/// append the not-yet-existing tail with `.`/`..` folded lexically. Never
+/// pre-folds `..` across an existing symlinked segment — the OS would
+/// resolve that through the link target (#4576 review).
+fn best_effort_canonical(path: &std::path::Path) -> std::path::PathBuf {
+    let mut missing: Vec<std::ffi::OsString> = Vec::new();
+    let mut cursor = path.to_path_buf();
+    loop {
+        if let Ok(resolved) = cursor.canonicalize() {
+            let mut result = resolved;
+            for component in missing.iter().rev() {
+                if component.as_os_str() == ".." {
+                    result.pop();
+                } else if component.as_os_str() != "." {
+                    result.push(component);
+                }
+            }
+            return result;
+        }
+        match cursor.file_name() {
+            Some(name) => {
+                missing.push(name.to_os_string());
+                if !cursor.pop() {
+                    return path.to_path_buf();
+                }
+            }
+            None => return path.to_path_buf(),
+        }
+    }
+}
+
 /// Render and write the requested artifacts into `artifact_dir`, producing a
-/// typed `EvaluationArtifactSetV1` manifest.
+/// typed `EvaluationArtifactSetV1` manifest.tV1` manifest.
 pub fn emit_artifact_set(
     artifact_dir: &std::path::Path,
     config: &EmitConfig<'_>,
@@ -293,7 +305,13 @@ pub fn emit_artifact_set(
         tool: "cargo-allow".to_string(),
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         operation: operation.to_string(),
+        command: ctx.command.to_string(),
         mode: None,
+        inventory: inventory_value_for_artifacts(ctx),
+        scanner_limitations: allow_report::SCANNER_LIMITATIONS
+            .iter()
+            .map(|limitation| limitation.to_string())
+            .collect(),
         source_subject: config.source_subject.to_string(),
         resolved_config_identity: config.resolved_config_identity.to_string(),
         semantic_result_digest: semantic_result_digest(config, ctx),
@@ -304,9 +322,12 @@ pub fn emit_artifact_set(
         core_command_summary_ref: None,
         detailed_result_ref: None,
         limitations: Vec::new(),
-        claim_boundary: ("One-evaluation multi-artifact output; renderers consume the \
-             same semantic result without re-evaluation."
-            .to_string()),
+        claim_boundary: allow_report::claim_boundary_for_schema_id(
+            allow_report::EVALUATION_ARTIFACT_SET_V1_SCHEMA_ID,
+        )
+        .iter()
+        .map(|flag| flag.to_string())
+        .collect(),
         validation_gaps: Vec::new(),
     };
 

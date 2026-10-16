@@ -1,0 +1,2995 @@
+{
+  "$defs": {
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "git_index_staged_candidate",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this scan. This may be an absolute path in local artifacts."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when a full inventory was collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
+        },
+        "completeness": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "scoped",
+            "fallback",
+            "partial"
+          ],
+          "description": "Authoritative inventory coverage classification for this artifact."
+        },
+        "source_identity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact source candidate identity when the inventory is staged or otherwise immutable."
+        }
+      }
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed"
+      ]
+    },
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory",
+        "source_syntax_only",
+        "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked",
+        "rustc_not_invoked",
+        "clippy_not_invoked",
+        "build_scripts_not_executed",
+        "proc_macros_not_executed",
+        "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed",
+        "mir_not_analyzed",
+        "build_output_not_analyzed",
+        "control_flow_not_analyzed",
+        "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked",
+        "repository_code_not_executed",
+        "source_text_in_identity_fields"
+      ]
+    },
+    "inventory_source": {
+      "type": "string",
+      "enum": [
+        "git_tracked",
+        "git_index_staged_candidate",
+        "filesystem_fallback",
+        "filesystem_include_untracked",
+        "unknown"
+      ]
+    },
+    "governed_source_exception_kind": {
+      "type": "string",
+      "enum": [
+        "panic",
+        "unsafe",
+        "lint_exception",
+        "non_rust_file",
+        "generated_code",
+        "policy_exception"
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "line",
+        "container",
+        "ast_kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "description": "Scanner-provided finding family; omitted when unavailable."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_package": {
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
+        },
+        "ast_kind": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "selected_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "path",
+        "line",
+        "column",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "const": "selected"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "description": "Scanner-provided finding family; omitted when unavailable."
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
+        },
+        "source_package": {
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "current_finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "kind",
+        "path",
+        "line",
+        "column",
+        "identity",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "description": "Scanner-provided finding family; omitted when unavailable."
+        },
+        "path": {
+          "type": "string"
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source line for review/navigation when available."
+        },
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation when available."
+        },
+        "source_package": {
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity"
+        },
+        "message": {
+          "type": "string"
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "match_status": {
+      "type": "string",
+      "enum": [
+        "matched",
+        "new",
+        "stale",
+        "expired",
+        "review_due",
+        "location_drift",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ]
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "allow_id",
+        "finding_index",
+        "score",
+        "message"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/match_status"
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Structured candidate allow-entry IDs considered while resolving the finding. Ambiguous rows contain all tied candidates; an empty array means no policy candidates were considered."
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "location_drift",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location_drift": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level baseline_debt entries retained in the scanned policy. This is distinct from outcome-level baseline_debt status and is present when retained generated debt would otherwise be hidden by matched outcomes."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level allow entries with no evidence references. This is distinct from outcome-level evidence_missing status and is present when retained evidence gaps would otherwise be hidden by matched outcomes."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence or link references found while auditing policy evidence."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references. These strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findings",
+        "outcomes",
+        "matched",
+        "new",
+        "expired",
+        "review_due",
+        "location_drift",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcomes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location_drift": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Outcome-status count for baseline debt outcomes. Policy-level baseline debt inventory may also be reported under summary.policy_baseline_debt and trend.baseline_debt when available."
+        },
+        "policy_baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of generated baseline_debt entries when it exceeds baseline_debt outcomes."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references when it exceeds evidence_missing outcomes."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence or link references found while auditing policy evidence. These are source-tree evidence/link problems, not executed proof failures."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references. These strings are retained as traceability but are not recognized as typed evidence by cargo-allow."
+        }
+      }
+    },
+    "trend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "review_items",
+        "new",
+        "expired",
+        "review_due",
+        "location_drift",
+        "stale",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt"
+      ],
+      "properties": {
+        "review_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total review-oriented items, including policy-level baseline debt inventory when available."
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expired": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_due": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "location_drift": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ambiguous": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid_selector": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_field": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_missing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "baseline_debt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy-level count of generated baseline_debt entries when available; otherwise the baseline_debt outcome count. Prefer summary.policy_baseline_debt for explicit policy-level debt when present."
+        },
+        "policy_missing_evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional policy-level count of allow entries with no evidence references included in review item totals when available."
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of missing or invalid local evidence or link references included in review item totals when available."
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of unstructured or unknown-prefix evidence or link references included in review item totals when available."
+        },
+        "occurrence_headroom": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of matched allow entries whose occurrence_limit exceeds the current matched count and can be ratcheted down."
+        },
+        "mirror_divergence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of canonical versus mirror ledger divergences during active drain windows."
+        }
+      }
+    },
+    "audit_remediation_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "count",
+        "command"
+      ],
+      "properties": {
+        "signal": {
+          "enum": [
+            "new_unreceipted",
+            "expired",
+            "review_due",
+            "stale",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_links",
+            "weak_evidence_references",
+            "baseline_debt",
+            "occurrence_headroom"
+          ],
+          "description": "Audit remediation signal routed by this roadmap row."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-friendly roadmap label for display and agent logs."
+        },
+        "route_kind": {
+          "enum": [
+            "worklist_status",
+            "worklist_item_kind",
+            "worklist_filter",
+            "prune_stale"
+          ],
+          "description": "Machine routing mode for the follow-up command."
+        },
+        "item_kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "expired_allow",
+            "review_due",
+            "stale_allow",
+            "ambiguous_selector",
+            "invalid_selector",
+            "missing_required_field",
+            "missing_evidence",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "baseline_debt",
+            "occurrence_headroom",
+            "mirror_divergence"
+          ],
+          "description": "Stable cargo-allow worklist item kind associated with this row when applicable."
+        },
+        "worklist_status": {
+          "enum": [
+            "new",
+            "expired",
+            "review_due",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field"
+          ],
+          "description": "Worklist --status value used by this row when route_kind is worklist_status."
+        },
+        "worklist_filter": {
+          "enum": [
+            "missing_evidence",
+            "baseline_debt"
+          ],
+          "description": "Named worklist filter used by this row when route_kind is worklist_filter."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of audit items routed by this roadmap row."
+        },
+        "command": {
+          "type": "string",
+          "description": "Suggested cargo-allow command for this audit remediation row."
+        }
+      }
+    },
+    "source_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findings",
+        "by_kind",
+        "by_family"
+      ],
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of syntax-visible source exception findings included in this report."
+        },
+        "by_kind": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_inventory_kind_row"
+          }
+        },
+        "by_family": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_inventory_family_row"
+          }
+        }
+      }
+    },
+    "source_inventory_kind_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "total",
+        "matched",
+        "new",
+        "review_items"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/governed_source_exception_kind"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "source_inventory_family_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "family",
+        "label",
+        "total",
+        "matched",
+        "new",
+        "review_items"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/governed_source_exception_kind"
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-friendly kind.family label used by text and Markdown reports."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_items": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "structural_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "language",
+        "crate_name",
+        "module",
+        "container",
+        "ast_kind",
+        "symbol",
+        "callee",
+        "macro_name",
+        "lint",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "column_hint"
+      ],
+      "properties": {
+        "language": {
+          "type": "string"
+        },
+        "crate_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "module": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ast_kind": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Optional one-based source line hint for review/navigation only; excluded from stable identity."
+        },
+        "column_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Optional one-based source character-column hint for review/navigation only; excluded from stable identity."
+        }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "line_hint",
+        "glob"
+      ],
+      "properties": {
+        "ast_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "container": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "macro_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "receiver_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_snippet_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "line_hint": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Optional one-based source line hint for review only; structural selector fields remain the durable identity."
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "allow_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "scope",
+        "path",
+        "glob",
+        "owner",
+        "classification",
+        "reason",
+        "evidence",
+        "links",
+        "occurrence_limit",
+        "lifecycle",
+        "selector",
+        "last_seen"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "description": "Policy family; omitted when unavailable."
+        },
+        "scope": {
+          "type": "string"
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "glob": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "occurrence_limit": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Optional matched-finding count cap for counted baselines. Runtime rejects 0 and values above OCCURRENCE_LIMIT_MAX (10000)."
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "selector": {
+          "$ref": "#/$defs/selector"
+        },
+        "last_seen": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/span"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "created": {
+          "type": "string",
+          "description": "Creation date; omitted when unavailable."
+        },
+        "review_after": {
+          "type": "string",
+          "description": "Review date; omitted when unavailable."
+        },
+        "expires": {
+          "type": "string",
+          "description": "Expiry date; omitted when unavailable."
+        }
+      }
+    },
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "column"
+      ],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based source line for review/navigation."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based source character column for review/navigation."
+        }
+      }
+    },
+    "canonical_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "coverage",
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy"
+      ],
+      "description": "Canonical typed evidence prefixes shown in cargo-allow user guidance."
+    },
+    "recognized_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "unsafe_review",
+        "coverage",
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy",
+        "legacy_policy"
+      ],
+      "description": "All evidence prefixes recognized by the policy parser, including compatibility aliases."
+    },
+    "local_file_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "doc",
+        "spec",
+        "adr",
+        "ripr",
+        "unsafe-review",
+        "unsafe_review",
+        "coverage"
+      ],
+      "description": "Recognized evidence prefixes that cargo-allow validates as local source-tree file references."
+    },
+    "traceability_evidence_prefix": {
+      "type": "string",
+      "enum": [
+        "test",
+        "cargo",
+        "issue",
+        "pr",
+        "legacy-policy",
+        "legacy_policy"
+      ],
+      "description": "Recognized evidence prefixes treated as traceability references; cargo-allow does not execute or resolve them."
+    },
+    "evidence_reference_status": {
+      "type": "string",
+      "enum": [
+        "local_file_present",
+        "local_file_missing",
+        "invalid_local_path",
+        "traceability_only",
+        "unstructured"
+      ]
+    },
+    "evidence_reference_category": {
+      "type": "string",
+      "enum": [
+        "present",
+        "missing",
+        "invalid_local_path",
+        "not_local",
+        "unknown_prefix",
+        "untyped"
+      ],
+      "description": "Structured diagnostic category for evidence references. This preserves the stable status field while distinguishing weak evidence causes such as unknown prefixes and untyped strings. Human renderers may map these values to friendlier labels."
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "prefix",
+        "target",
+        "status",
+        "message"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original evidence reference string from the allow entry."
+        },
+        "prefix": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Evidence reference prefix before ':', or null for unstructured evidence strings."
+        },
+        "target": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized evidence reference target when present."
+        },
+        "status": {
+          "$ref": "#/$defs/evidence_reference_status"
+        },
+        "category": {
+          "$ref": "#/$defs/evidence_reference_category",
+          "description": "Optional structured diagnostic category. Current producers emit it; it remains optional for v1 compatibility with older artifacts. Human renderers may map this machine vocabulary to friendlier labels."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "evidence_change_field": {
+      "enum": [
+        "evidence",
+        "links"
+      ]
+    },
+    "exception_identity_change_field": {
+      "enum": [
+        "kind",
+        "family"
+      ]
+    },
+    "exception_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/exception_identity_change_field",
+          "description": "Governed exception identity field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Governed exception identity value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Governed exception identity value after the policy change when available."
+        }
+      }
+    },
+    "metadata_change_field": {
+      "enum": [
+        "owner",
+        "reason",
+        "classification"
+      ]
+    },
+    "metadata_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/metadata_change_field",
+          "description": "Policy metadata field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy metadata value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy metadata value after the policy change when available."
+        }
+      }
+    },
+    "requirement_change_field": {
+      "enum": [
+        "owner_required",
+        "reason_required",
+        "classification_required",
+        "evidence_required",
+        "expires_or_review_after_required",
+        "allow_bare_allow_attributes",
+        "lint_policy_id_required",
+        "stale_entries_fail",
+        "calendar_expiry_blocks_no_new",
+        "unsafe.evidence_required",
+        "unsafe.verified_evidence_required",
+        "unsafe.safety_comment_required"
+      ]
+    },
+    "requirement_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/requirement_change_field",
+          "description": "Policy requirement field that changed."
+        },
+        "before": {
+          "type": "boolean",
+          "description": "Requirement value before the policy change."
+        },
+        "after": {
+          "type": "boolean",
+          "description": "Requirement value after the policy change."
+        }
+      }
+    },
+    "policy_status_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy status value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Policy status value after the policy change when available."
+        }
+      }
+    },
+    "stale_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "owner",
+        "classification",
+        "scope",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": "string",
+          "description": "Policy family; omitted when unavailable."
+        },
+        "owner": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "worklist_filters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --kind filter, or null when the worklist includes all governed kinds."
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --family filter, or null when all scanner or policy families are included."
+        },
+        "item_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --item-kind filter using the canonical underscore work item kind, or null when all work item queue kinds are included."
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "location_drift",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt",
+            null
+          ],
+          "description": "Applied --status filter, or null when all match statuses are included."
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --allow-id filter, or null when all allow entries are included."
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --path source-tree path or path-prefix filter, or null when all work item paths are included."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --source-package filter, or null when all scanner-provided source package contexts are included."
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --owner filter, or null when all policy owners are included."
+        },
+        "classification": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Applied --classification filter, or null when all policy classifications are included."
+        },
+        "baseline_debt": {
+          "type": "boolean",
+          "description": "Applied --baseline-debt filter. True means only generated baseline debt work items are included."
+        },
+        "broad_scope": {
+          "type": "boolean",
+          "description": "Applied --broad-scope filter. True means only broad source-tree scope advisory work items are included."
+        },
+        "risk": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            null
+          ],
+          "description": "Applied --risk filter, or null when all risk levels are included."
+        },
+        "difficulty": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "small",
+            "medium",
+            null
+          ],
+          "description": "Applied --difficulty filter, or null when all difficulty levels are included."
+        },
+        "missing_evidence": {
+          "type": "boolean",
+          "description": "Applied --missing-evidence filter. True means only policy-backed work items with no evidence references are included."
+        },
+        "broken_evidence": {
+          "type": "boolean",
+          "description": "Applied --broken-evidence filter. True means only broken local evidence reference work items are included."
+        },
+        "weak_evidence": {
+          "type": "boolean",
+          "description": "Applied --weak-evidence filter. True means only weak evidence reference work items are included."
+        }
+      }
+    },
+    "work_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "item_kind",
+        "risk",
+        "difficulty",
+        "status",
+        "allow_id",
+        "finding_index",
+        "path",
+        "message",
+        "suggested_actions",
+        "proof_commands"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^work-[a-z0-9-]+-[0-9]{4}$"
+        },
+        "kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "occurrence_headroom",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "mirror_divergence"
+          ],
+          "description": "Stable queue item kind emitted by cargo-allow worklist."
+        },
+        "item_kind": {
+          "enum": [
+            "new_unreceipted_finding",
+            "occurrence_limit_exceeded",
+            "occurrence_headroom",
+            "expired_allow",
+            "stale_allow",
+            "ambiguous_selector",
+            "unsafe_missing_evidence",
+            "missing_evidence",
+            "missing_required_field",
+            "invalid_selector",
+            "baseline_debt",
+            "review_due",
+            "matched",
+            "broad_scope",
+            "broken_evidence_link",
+            "weak_evidence_reference",
+            "mirror_divergence"
+          ],
+          "description": "Alias of `kind` using the documented `--item-kind` filter name; always emitted with the same value as `kind`."
+        },
+        "exception_kind": {
+          "type": "string",
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ],
+          "description": "Governed source exception surface behind the work item; omitted when unavailable."
+        },
+        "family": {
+          "type": "string",
+          "description": "More specific scanner or policy family behind the work item; omitted when unavailable."
+        },
+        "owner": {
+          "type": "string",
+          "description": "Policy owner for the related allow entry; omitted when unavailable."
+        },
+        "classification": {
+          "type": "string",
+          "description": "Policy classification for the related allow entry; omitted when unavailable."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Policy reason for the related allow entry; omitted when unavailable."
+        },
+        "created": {
+          "type": "string",
+          "description": "Policy creation date for the related allow entry; omitted when unavailable."
+        },
+        "review_after": {
+          "type": "string",
+          "description": "Policy review-after date for the related allow entry; omitted when unavailable."
+        },
+        "expires": {
+          "type": "string",
+          "description": "Policy expiry date for the related allow entry; omitted when unavailable."
+        },
+        "evidence_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Number of evidence references on the related allow entry, when available."
+        },
+        "selector_precision": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Selector precision score for the related allow entry, when available. Higher scores indicate narrower policy selectors; this is routing metadata, not proof of correctness."
+        },
+        "risk": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "difficulty": {
+          "enum": [
+            "small",
+            "medium"
+          ]
+        },
+        "status": {
+          "enum": [
+            "matched",
+            "new",
+            "stale",
+            "expired",
+            "review_due",
+            "location_drift",
+            "ambiguous",
+            "invalid_selector",
+            "missing_required_field",
+            "evidence_missing",
+            "baseline_debt"
+          ]
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Structured candidate allow-entry IDs considered while resolving the finding. Ambiguous rows contain all tied candidates; an empty array means no policy candidates were considered."
+        },
+        "finding_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Source-tree path for source-backed work items, or a local evidence path for broken_evidence_link items. Null means the item is not tied to a source-tree path, including weak_evidence_reference items whose evidence target is not locally validated."
+        },
+        "evidence_reference": {
+          "$ref": "#/$defs/evidence_reference",
+          "description": "Structured evidence diagnostic for broken_evidence_link and weak_evidence_reference work items. Absent for work items that are not tied to a specific evidence reference."
+        },
+        "source_package": {
+          "type": "string",
+          "description": "Explicit source-tree package context when provided by a scanner; omitted when unavailable and not Cargo metadata or build proof."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggested_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proof_commands": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^cargo-allow ",
+            "description": "Suggested follow-up command. cargo-allow emits standalone cargo-allow commands here; it does not execute them."
+          }
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical ledger ID when federation provenance is present."
+        },
+        "ledger_path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical ledger path when federation provenance is present."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "description": "Optional one-based source line for review/navigation only; omitted when unavailable and excluded from stable finding identity."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967295,
+          "description": "Optional one-based source character column for review/navigation only; omitted when unavailable and excluded from stable finding identity."
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation lane owning the work item, when known."
+        },
+        "mode": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation ledger mode, when known."
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Federation ledger role, when known."
+        }
+      }
+    },
+    "evidence_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "removed",
+        "added"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/evidence_change_field",
+          "description": "Policy collection that changed."
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Values removed from the policy collection."
+        },
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Values added to the policy collection."
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "net_posture",
+        "reviewer_action",
+        "summary",
+        "finding_changes",
+        "policy_changes"
+      ],
+      "properties": {
+        "net_posture": {
+          "enum": [
+            "worse",
+            "review-required",
+            "improved",
+            "unchanged"
+          ]
+        },
+        "reviewer_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "diff_analysis": {
+          "$ref": "#/$defs/diff_analysis"
+        },
+        "movement": {
+          "$ref": "#/$defs/diff_movement_counts"
+        },
+        "posture_delta": {
+          "$ref": "#/$defs/diff_posture_delta_counts"
+        },
+        "summary": {
+          "$ref": "#/$defs/diff_summary"
+        },
+        "finding_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding_posture_change"
+          }
+        },
+        "policy_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policy_change"
+          }
+        }
+      }
+    },
+    "diff_movement_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "introduced",
+        "retained",
+        "removed"
+      ],
+      "properties": {
+        "introduced": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "diff_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result_class",
+        "base_inventory_complete",
+        "base_scanner_complete",
+        "head_inventory_complete",
+        "head_scanner_complete",
+        "introduced",
+        "retained",
+        "removed"
+      ],
+      "properties": {
+        "result_class": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "head_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_inventory_complete": {
+          "type": "boolean"
+        },
+        "base_scanner_complete": {
+          "type": "boolean"
+        },
+        "head_inventory_complete": {
+          "type": "boolean"
+        },
+        "head_scanner_complete": {
+          "type": "boolean"
+        },
+        "introduced": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "retained": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "diff_posture_delta_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "improved",
+        "worsened",
+        "review_required",
+        "unchanged"
+      ],
+      "properties": {
+        "improved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "worsened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "review_required": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unchanged": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "diff_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_failures",
+        "new_findings",
+        "removed_findings",
+        "policy_failures",
+        "policy_review_items",
+        "policy_improvements"
+      ],
+      "properties": {
+        "current_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_evidence_links": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_evidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_evidence_references": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_broadened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scope_narrowed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_precision_decreased": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selector_precision_increased": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_evidence_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_evidence_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removal_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removal_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidence_removal_improvements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weak_link_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "broken_link_added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "link_removal_improvements": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "new_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed_findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_failures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_review_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_improvements": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "coverage_movement": {
+      "type": "string",
+      "enum": [
+        "new",
+        "worsened",
+        "resolved",
+        "inherited",
+        "retained"
+      ],
+      "description": "Coverage projection of canonical movement, posture delta, and diff attribution. Current producers emit this field; it remains optional for older v1 artifacts."
+    },
+    "finding_posture_kind": {
+      "type": "string",
+      "enum": [
+        "new",
+        "removed"
+      ]
+    },
+    "finding_posture_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change",
+        "movement",
+        "posture_delta",
+        "changed_in_diff",
+        "key",
+        "kind",
+        "family",
+        "path"
+      ],
+      "properties": {
+        "change": {
+          "enum": [
+            "new",
+            "removed"
+          ]
+        },
+        "movement": {
+          "enum": [
+            "introduced",
+            "retained",
+            "removed"
+          ]
+        },
+        "coverage_movement": {
+          "$ref": "#/$defs/coverage_movement"
+        },
+        "posture_delta": {
+          "enum": [
+            "improved",
+            "worsened",
+            "review_required",
+            "unchanged"
+          ]
+        },
+        "changed_in_diff": {
+          "type": "boolean"
+        },
+        "subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "allow_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "panic",
+            "unsafe",
+            "lint_exception",
+            "non_rust_file",
+            "generated_code",
+            "policy_exception"
+          ]
+        },
+        "family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional one-based source line for review/navigation only; excluded from stable finding identity."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Optional one-based source character column for review/navigation only; excluded from stable finding identity."
+        },
+        "source_package": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "identity": {
+          "$ref": "#/$defs/structural_identity",
+          "description": "Optional structural identity context for the source finding; line_hint and column_hint remain review/navigation hints, not stable identity."
+        }
+      }
+    },
+    "policy_change_severity": {
+      "type": "string",
+      "enum": [
+        "improvement",
+        "review",
+        "fail"
+      ]
+    },
+    "policy_change_kind": {
+      "type": "string",
+      "enum": [
+        "added_allow",
+        "removed_allow",
+        "baseline_debt_added",
+        "baseline_debt_introduced",
+        "baseline_debt_normalized",
+        "kind_changed",
+        "family_changed",
+        "family_rule_added",
+        "family_rule_removed",
+        "ambiguous_classification",
+        "scope_broadened",
+        "scope_changed",
+        "scope_narrowed",
+        "selector_changed",
+        "selector_precision_decreased",
+        "selector_precision_increased",
+        "created_added",
+        "created_changed",
+        "created_removed",
+        "expiry_extended",
+        "expiry_shortened",
+        "review_after_extended",
+        "review_after_shortened",
+        "evidence_added",
+        "evidence_removed",
+        "link_added",
+        "link_removed",
+        "owner_added",
+        "owner_changed",
+        "owner_removed",
+        "owner_unassigned",
+        "policy_owner_added",
+        "policy_owner_changed",
+        "policy_owner_removed",
+        "policy_owner_unassigned",
+        "policy_status_changed",
+        "policy_status_weakened",
+        "policy_status_tightened",
+        "reason_added",
+        "reason_changed",
+        "reason_removed",
+        "requirement_loosened",
+        "requirement_tightened",
+        "workspace_ignored_added",
+        "workspace_ignored_removed",
+        "workspace_generated_added",
+        "workspace_generated_removed",
+        "classification_added",
+        "classification_changed",
+        "classification_removed",
+        "occurrence_limit_tightened",
+        "occurrence_limit_loosened"
+      ]
+    },
+    "policy_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "movement",
+        "posture_delta",
+        "changed_in_diff",
+        "allow_id",
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "severity": {
+          "enum": [
+            "improvement",
+            "review",
+            "fail"
+          ]
+        },
+        "movement": {
+          "enum": [
+            "introduced",
+            "retained",
+            "removed"
+          ]
+        },
+        "coverage_movement": {
+          "$ref": "#/$defs/coverage_movement"
+        },
+        "posture_delta": {
+          "enum": [
+            "improved",
+            "worsened",
+            "review_required",
+            "unchanged"
+          ]
+        },
+        "changed_in_diff": {
+          "type": "boolean"
+        },
+        "subject": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "allow_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ledger_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lane": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "added_allow",
+            "removed_allow",
+            "baseline_debt_added",
+            "baseline_debt_introduced",
+            "baseline_debt_normalized",
+            "kind_changed",
+            "family_changed",
+            "family_rule_added",
+            "family_rule_removed",
+            "ambiguous_classification",
+            "scope_broadened",
+            "scope_changed",
+            "scope_narrowed",
+            "selector_changed",
+            "selector_precision_decreased",
+            "selector_precision_increased",
+            "created_added",
+            "created_changed",
+            "created_removed",
+            "expiry_extended",
+            "expiry_shortened",
+            "review_after_extended",
+            "review_after_shortened",
+            "evidence_added",
+            "evidence_removed",
+            "link_added",
+            "link_removed",
+            "owner_added",
+            "owner_changed",
+            "owner_removed",
+            "owner_unassigned",
+            "policy_owner_added",
+            "policy_owner_changed",
+            "policy_owner_removed",
+            "policy_owner_unassigned",
+            "policy_status_changed",
+            "policy_status_weakened",
+            "policy_status_tightened",
+            "reason_added",
+            "reason_changed",
+            "reason_removed",
+            "requirement_loosened",
+            "requirement_tightened",
+            "workspace_ignored_added",
+            "workspace_ignored_removed",
+            "workspace_generated_added",
+            "workspace_generated_removed",
+            "classification_added",
+            "classification_changed",
+            "classification_removed",
+            "occurrence_limit_tightened",
+            "occurrence_limit_loosened"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exception_identity": {
+          "$ref": "#/$defs/exception_identity_change",
+          "description": "Optional structured governed exception identity delta for kind_changed and family_changed policy changes."
+        },
+        "selector_identity": {
+          "$ref": "#/$defs/selector_identity_change",
+          "description": "Optional structured selector identity delta for selector_changed policy changes."
+        },
+        "selector_precision": {
+          "$ref": "#/$defs/selector_precision_change",
+          "description": "Optional structured selector precision delta for selector_precision_decreased and selector_precision_increased policy changes."
+        },
+        "scope": {
+          "$ref": "#/$defs/scope_change",
+          "description": "Optional structured source-tree scope delta for scope_broadened, scope_narrowed, and scope_changed policy changes."
+        },
+        "occurrence_limit": {
+          "$ref": "#/$defs/occurrence_limit_change",
+          "description": "Optional structured occurrence-limit delta for occurrence_limit_tightened and occurrence_limit_loosened policy changes."
+        },
+        "lifecycle": {
+          "$ref": "#/$defs/lifecycle_change",
+          "description": "Optional structured lifecycle delta for created, expiry, and review_after policy changes."
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence_change",
+          "description": "Optional structured evidence/link delta for evidence_added, evidence_removed, link_added, and link_removed policy changes."
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata_change",
+          "description": "Optional structured owner/reason/classification delta for metadata and baseline_debt classification policy changes."
+        },
+        "requirement": {
+          "$ref": "#/$defs/requirement_change",
+          "description": "Optional structured requirement delta for requirement_loosened and requirement_tightened policy changes."
+        },
+        "policy_status": {
+          "$ref": "#/$defs/policy_status_change",
+          "description": "Optional structured top-level policy status delta for policy_status_weakened, policy_status_tightened, and policy_status_changed policy changes."
+        }
+      }
+    },
+    "selector_precision_field": {
+      "enum": [
+        "path",
+        "glob",
+        "family",
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash",
+        "occurrence_limit"
+      ]
+    },
+    "selector_precision_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after",
+        "removed_fields",
+        "added_fields"
+      ],
+      "properties": {
+        "before": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Selector precision score before the policy change."
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Selector precision score after the policy change."
+        },
+        "removed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_precision_field"
+          },
+          "description": "Selector fields that were present before the change and absent after it."
+        },
+        "added_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_precision_field"
+          },
+          "description": "Selector fields that were absent before the change and present after it."
+        }
+      }
+    },
+    "scope_change_field": {
+      "enum": [
+        "path",
+        "glob",
+        "selector.glob",
+        "effective"
+      ]
+    },
+    "selector_identity_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed_fields"
+      ],
+      "properties": {
+        "changed_fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/selector_identity_change_field"
+          },
+          "description": "Structural selector fields whose normalized values changed without changing selector precision."
+        }
+      }
+    },
+    "selector_identity_change_field": {
+      "enum": [
+        "ast_kind",
+        "container",
+        "callee",
+        "macro_name",
+        "lint",
+        "symbol",
+        "receiver_fingerprint",
+        "target_fingerprint",
+        "normalized_snippet_hash"
+      ]
+    },
+    "lifecycle_change_field": {
+      "enum": [
+        "created",
+        "expires",
+        "review_after"
+      ]
+    },
+    "lifecycle_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/lifecycle_change_field",
+          "description": "Lifecycle field that changed."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lifecycle value before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Lifecycle value after the policy change when available."
+        }
+      }
+    },
+    "occurrence_limit_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "before",
+        "after"
+      ],
+      "properties": {
+        "before": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Allowed occurrence count before the policy change, or null when unset."
+        },
+        "after": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Allowed occurrence count after the policy change, or null when unset."
+        }
+      }
+    },
+    "scope_change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "field",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/scope_change_field",
+          "description": "Scope carrier that changed, or effective when the scope moved between carriers."
+        },
+        "before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized source-tree scope before the policy change when available."
+        },
+        "after": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Normalized source-tree scope after the policy change when available."
+        }
+      }
+    },
+    "source_syntax_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "source_syntax"
+        },
+        "source": {
+          "$ref": "#/$defs/inventory_source"
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this artifact. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before scanner filtering, when collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
+        }
+      }
+    },
+    "policy_migration_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "scanner",
+        "source"
+      ],
+      "properties": {
+        "scope": {
+          "const": "source_tree"
+        },
+        "scanner": {
+          "const": "policy_migration"
+        },
+        "source": {
+          "$ref": "#/$defs/inventory_source"
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Local source-tree root used for this migration artifact. This may be an absolute path."
+        },
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of source-tree inventory files considered before migration output, when collected."
+        },
+        "empty_git_tracked": {
+          "type": "boolean",
+          "description": "True when git inventory succeeded but reported no tracked files, such as a freshly initialized repo before git add."
+        }
+      }
+    }
+  },
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/evaluation-artifact-set.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One-evaluation multi-artifact manifest: the typed record of every renderer file a single `check`/`diff`/`audit` evaluation emitted into `--artifact-dir`, including per-file render status and, for non-Complete sets, the recorded validation gaps the typed Next line points at.",
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.evaluation-artifact-set.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "tool": {
+      "const": "cargo-allow"
+    },
+    "tool_version": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "audit",
+        "check",
+        "diff"
+      ]
+    },
+    "command": {
+      "description": "The command that ran the evaluation.",
+      "enum": [
+        "audit",
+        "check",
+        "diff"
+      ]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "source_subject": {
+      "type": "string"
+    },
+    "resolved_config_identity": {
+      "type": "string"
+    },
+    "semantic_result_digest": {
+      "type": "string",
+      "pattern": "^sha256:v1:[0-9a-f]{64}$"
+    },
+    "result_class": {
+      "enum": [
+        "passed",
+        "blocking",
+        "advisory",
+        "partial",
+        "unknown_attribution",
+        "stale",
+        "unsupported",
+        "instrument_failure"
+      ]
+    },
+    "blocking": {
+      "type": "boolean"
+    },
+    "requested_formats": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "human_summary",
+          "markdown",
+          "json",
+          "html",
+          "sarif",
+          "receipt",
+          "core_command_summary",
+          "artifact_set_manifest"
+        ]
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "file_name",
+          "status"
+        ],
+        "properties": {
+          "format": {
+            "enum": [
+              "human_summary",
+              "markdown",
+              "json",
+              "html",
+              "sarif",
+              "receipt",
+              "core_command_summary",
+              "artifact_set_manifest"
+            ]
+          },
+          "file_name": {
+            "type": "string"
+          },
+          "content_digest": {
+            "type": "string",
+            "pattern": "^sha256:v1:[0-9a-f]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "Written",
+              "RenderFailed"
+            ]
+          },
+          "render_errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "core_command_summary_ref": {
+      "type": "string"
+    },
+    "detailed_result_ref": {
+      "type": "string"
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim_boundary_flag"
+      }
+    },
+    "validation_gaps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "scanner_limitations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/scanner_limitation"
+      }
+    },
+    "inventory": {
+      "$ref": "#/$defs/inventory"
+    }
+  },
+  "required": [
+    "schema_id",
+    "schema_version",
+    "tool",
+    "tool_version",
+    "operation",
+    "command",
+    "source_subject",
+    "resolved_config_identity",
+    "semantic_result_digest",
+    "result_class",
+    "blocking",
+    "requested_formats",
+    "artifacts",
+    "limitations",
+    "claim_boundary",
+    "inventory",
+    "scanner_limitations"
+  ],
+  "title": "cargo-allow evaluation-artifact-set v1",
+  "type": "object"
+}
