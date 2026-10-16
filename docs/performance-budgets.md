@@ -133,13 +133,13 @@ gate from the design docs:
 
 > A narrow source edit must not trigger an expensive full-product ceremony.
 
-Initial targets (subject to revision after CI baseline):
+Initial targets (revised per the 2026-10-16 hosted re-baseline, #4495/#4496):
 
 | Budget | Target | Rationale |
 | --- | ---: | --- |
-| `why` on one finding | < 500 ms | The fast path already meets this |
-| `check --mode no-new` (this repo) | < 5,000 ms | CI gate must be fast |
-| One-file incremental | < 2,000 ms | Edit → re-check loop |
+| `why` on one finding | < 2,000 ms (re-baselined from < 500 ms) | hosted release measures 1,173 ms; the fast path skips the tree walk but still loads the ledger and scans one file |
+| `check --mode no-new` (this repo) | < 5,000 ms | met on the hosted reference (4,509 ms) |
+| One-file incremental | < 2,000 ms (0.3 aspiration) | not met at self-hosted scale; matching, not parsing, dominates — see the #4339 section |
 
 ## Agentic-surface budgets (#4366)
 
@@ -158,29 +158,47 @@ Measured baselines below are from #4366's design session (2026-10-04,
 Windows debug host, loaded machine, pair `f4321d19`; per-surface min-of-6
 across two passes, composite min-of-3). They are **indicative debug-host
 observations, not universal hardware claims**. The hosted Linux release
-receipt is the comparable observation and re-baselines these numbers per the
-revision clause above; until then the catastrophic ceilings (60,000 ms
-latency; payload ceilings in the table below) are the only harness-enforced
-gates, and every advisory target here is non-blocking.
+receipt is the comparable observation and has now re-baselined them: see
+the hosted re-baseline section below (#4495/#4496, 2026-10-16, 22-sample
+matrix at main `07491e39`). The catastrophic ceilings (60,000 ms latency;
+payload ceilings in the tables) remain the only harness-enforced gates, and
+every advisory target here is non-blocking.
 
-### Per-surface latency (advisory targets; catastrophic ceiling stays 60,000 ms)
+### Hosted re-baseline (2026-10-16, #4339 matrix — #4495/#4496)
 
-| Surface | Advisory target | Measured min (2026-10-04, Windows debug) | Basis |
-| --- | ---: | ---: | --- |
-| `worklist --format json` (self-hosted scale) | < 8,000 ms | 3,026 ms | release CI well under |
-| `why --plan` on one new finding | < 2,000 ms | 1,007 ms | plan re-scans the tree |
-| `add --from-plan --update` | < 12,000 ms | 9,146 ms | full re-scan + full-result validation + atomic replace |
-| `check --mode no-new` | < 5,000 ms (existing target) | 8,826 ms | loaded-debug overshoot; re-baseline per #4339 |
-| `audit --format json` | < 8,000 ms | 2,891 ms | full scan + report |
-| `hooks run` wrapper overhead | ≤ 2,000 ms over a paired bare `check` | within host noise | paired-sample budget keeps it bounded |
+The hosted Linux release receipt (ubuntu-latest, 22/22 samples pass,
+repository commit `07491e39`) is now the authoritative reference. Every
+advisory target the #4495/#4496 observations missed on the loaded debug
+host is met on the hosted reference, and the targets are restated against
+it. One pass per sample; the retained receipt ships with the CI run.
+
+| Surface | Hosted release (this re-baseline) | Restated advisory target | Prior target (retained as history) |
+| --- | ---: | ---: | ---: |
+| `worklist --format json` (targeted) | 1,620 ms | < 4,000 ms | < 8,000 ms |
+| `agent_loop_worklist` (in-loop) | 4,817 ms | < 8,000 ms (retained) | < 8,000 ms |
+| `why --plan` on one new finding | 126 ms | < 2,000 ms (retained) | < 2,000 ms |
+| `why` fast path | 1,173 ms | < 2,000 ms (re-baselined) | < 500 ms (0.2.0 aspiration) |
+| `add --from-plan --update` | 1,078 ms | < 6,000 ms (re-baselined) | < 12,000 ms |
+| `check --mode no-new` (warm) | 4,509 ms | < 5,000 ms — now met on the hosted reference | < 5,000 ms |
+| `audit --format json` (warm) | 1,757 ms | < 4,000 ms (re-baselined) | < 8,000 ms |
+| `hooks run` wrapper overhead | 65 ms | ≤ 2,000 ms (retained) | ≤ 2,000 ms |
+| `cadence --as-of` (full-ledger) | 38 ms | < 2,000 ms (retained from #4339) | < 2,000 ms |
+| `dependency-graph-delta compile` (moved pair) | 8 ms | < 2,000 ms (retained from #4339) | < 2,000 ms |
+| one-file incremental (cache on) | 4,482 ms | see the #4339 note — matching dominates | < 2,000 ms aspiration |
 
 ### Agent-loop composite (advisory target)
 
 `worklist` → `why --plan` → `add --from-plan --update` → `check --mode
-no-new`: **≤ 30,000 ms end-to-end** for one receipted repair at self-hosted
-scale (measured min 28,627 ms on the loaded debug host; per-step rows plus a
-derived composite total are recorded in the receipt so a regression in any
-step is attributable).
+no-new`: **≤ 15,000 ms end-to-end** for one receipted repair at self-hosted
+scale — restated from ≤ 30,000 ms now that the hosted reference measures
+**10,660 ms** (the ≤ 30,000 ms form, and the 28,627 ms loaded-debug
+measurement behind it, date from the pre-#4339 matrix and are retained as
+history). Per-step rows plus a derived composite total are recorded in the
+receipt so a regression in any step is attributable. #4495's loaded-debug
+miss (36,645 ms) and #4496's spurious 93,140 ms catastrophic-ceiling trip
+both predate this matrix; the 60,000 ms ceiling stays the blocking gate and
+the retained-run methodology (receipt commit pinning, UTC-day controls,
+payload ceilings) is the arbiter for host-noise outliers.
 
 ### Payload budgets
 
