@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  `check --compat` now binds the legacy policy digest and protects the
+  compat-selected legacy policy file. The compat world's inventory facts
+  never carried a policy digest, so `check --compat --receipt` dropped
+  policy-byte provenance entirely (#4593) and `check --compat
+  --artifact-dir --emit <format>` always failed the artifact-set identity
+  gate with `resolved_config_identity is missing` while the artifacts
+  were already written (#4590) — the same #4565-class hole #4578 fixed
+  on the audit path. The artifact-collision guard also now protects the
+  compat-selected legacy policy file instead of no-opping on the
+  canonically-discovered path (#4591).
