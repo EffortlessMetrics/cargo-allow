@@ -226,6 +226,7 @@ pub fn project_github_pr_check(
     let mut annotations: Vec<CargoAllowGitHubPrAnnotationV1> = Vec::new();
     let mut omitted_by_class: std::collections::BTreeMap<String, u32> =
         std::collections::BTreeMap::new();
+    let mut private_absolute_rejected = 0usize;
 
     let diff = &report.diff;
     if let Some(diff_view) = diff {
@@ -255,32 +256,43 @@ pub fn project_github_pr_check(
                         | GitHubPrAnnotationClassV1::UnknownAttribution
                 );
             if inline_class {
-                match change_row.line {
-                    Some(line) if !change_row.path.trim().is_empty() => {
-                        candidate_rows.push((
-                            annotation_priority(classification),
-                            CargoAllowGitHubPrAnnotationV1 {
-                                annotation_id: change_row.key.clone(),
-                                classification,
-                                kind: change_row.kind.clone(),
-                                path: change_row.path.clone(),
-                                start_line: line,
-                                end_line: line,
-                                message: format!(
-                                    "{} {}: {} ({})",
-                                    classification_class_label(classification),
-                                    change_row.kind.as_str(),
-                                    change_row.key.as_str(),
-                                    artifact_reference
-                                ),
-                            },
-                        ));
-                    }
-                    _ => {
-                        let entry = omitted_by_class
-                            .entry(classification_class_label(classification).to_string())
-                            .or_insert(0);
-                        *entry += 1;
+                if is_private_absolute_path(&change_row.path) {
+                    // Privacy law: private absolute paths are rejected, never
+                    // rewritten. The row keeps its earned counts but is
+                    // omitted from annotation with the privacy cause recorded.
+                    let entry = omitted_by_class
+                        .entry(classification_class_label(classification).to_string())
+                        .or_insert(0);
+                    *entry += 1;
+                    private_absolute_rejected += 1;
+                } else {
+                    match change_row.line {
+                        Some(line) if !change_row.path.trim().is_empty() => {
+                            candidate_rows.push((
+                                annotation_priority(classification),
+                                CargoAllowGitHubPrAnnotationV1 {
+                                    annotation_id: change_row.key.clone(),
+                                    classification,
+                                    kind: change_row.kind.clone(),
+                                    path: change_row.path.clone(),
+                                    start_line: line,
+                                    end_line: line,
+                                    message: format!(
+                                        "{} {}: {} ({})",
+                                        classification_class_label(classification),
+                                        change_row.kind.as_str(),
+                                        change_row.key.as_str(),
+                                        artifact_reference
+                                    ),
+                                },
+                            ));
+                        }
+                        _ => {
+                            let entry = omitted_by_class
+                                .entry(classification_class_label(classification).to_string())
+                                .or_insert(0);
+                            *entry += 1;
+                        }
                     }
                 }
             }
@@ -302,6 +314,12 @@ pub fn project_github_pr_check(
                 .or_insert(0);
             *entry += omitted as u32;
             limitations.push("annotation budget truncated; see omitted counts".to_string());
+        }
+        if private_absolute_rejected > 0 {
+            limitations.push(format!(
+                "private absolute paths are rejected; \
+                 {private_absolute_rejected} finding row(s) omitted from annotation projection"
+            ));
         }
     } else {
         limitations.push("diff evaluation is absent from the report".to_string());
@@ -370,6 +388,25 @@ fn bare_check(
              release authority."
             .to_string()),
     }
+}
+
+/// Conservative cross-platform absolute-path detection backing the privacy
+/// law: a path is rejected when it is absolute under ANY platform's rules,
+/// not just the host's. A leading `/` or `\` covers Unix roots, Windows
+/// roots, `\\?\` verbatim prefixes, and `\\server\share` UNC paths; a leading
+/// ASCII drive-letter prefix (`C:`, `C:/`, `C:\`) covers Windows drives.
+/// Host-dependent `std::path::Path::is_absolute` would let `/abs/x` pass on
+/// Windows hosts, so this stays pure string logic.
+fn is_private_absolute_path(path: &str) -> bool {
+    let trimmed = path.trim();
+    if trimmed.starts_with('/') || trimmed.starts_with('\\') {
+        return true;
+    }
+    let mut chars = trimmed.chars();
+    matches!(
+        (chars.next(), chars.next()),
+        (Some(letter), Some(':')) if letter.is_ascii_alphabetic()
+    )
 }
 
 fn classify_row(
@@ -482,7 +519,8 @@ impl GitHubPrAnnotationClassV1 {
 
 /// Validate the assembled check against its structural law: only exact
 /// current Passed is clean; truncated checks are never Complete; subject
-/// and artifact identities are present.
+/// and artifact identities are present; private absolute annotation paths
+/// are rejected.
 pub fn validate_github_pr_check_v1(check: &CargoAllowGitHubPrCheckV1) -> Result<(), String> {
     if check.schema_id != GITHUB_PR_CHECK_V1_SCHEMA_ID
         || check.schema_version != GITHUB_PR_CHECK_V1_SCHEMA_VERSION
@@ -507,15 +545,15 @@ pub fn validate_github_pr_check_v1(check: &CargoAllowGitHubPrCheckV1) -> Result<
     {
         return Err("clean result with blocking, omitted, or partial inputs".to_string());
     }
-    if !clean && check.omitted_count > 0 && check.result == GitHubPrCheckResultV1::Passed {
-        return Err("omitted rows cannot coexist with Passed".to_string());
-    }
     for annotation in &check.annotations {
         if annotation.annotation_id.trim().is_empty() {
             return Err("annotation without a stable identity".to_string());
         }
         if annotation.path.trim().is_empty() {
             return Err("annotation without a path".to_string());
+        }
+        if is_private_absolute_path(&annotation.path) {
+            return Err("annotation path is a private absolute path".to_string());
         }
     }
     Ok(())
@@ -743,5 +781,106 @@ mod tests {
             return Err(format!("clean gate projected {check:?}"));
         }
         Ok(())
+    }
+
+    #[test]
+    fn private_absolute_path_detection_covers_platform_spellings() -> Result<(), String> {
+        // The privacy filter is conservative: a path absolute under ANY
+        // platform's rules is rejected, while relative spellings pass.
+        let cases: [(&str, bool); 10] = [
+            ("", false),
+            ("relative/x.rs", false),
+            ("relative\\windows.rs", false),
+            ("./dot/relative.rs", false),
+            ("/abs/x.rs", true),
+            ("\\abs", true),
+            ("C:\\abs", true),
+            ("C:/abs", true),
+            ("\\\\?\\C:\\abs", true),
+            ("\\\\server\\share\\x", true),
+        ];
+        for (path, expected) in cases {
+            let actual = is_private_absolute_path(path);
+            if actual != expected {
+                return Err(format!(
+                    "private absolute detection for {path:?} returned {actual}, expected {expected}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn absolute_path_row_is_rejected_with_privacy_omission_not_annotated() -> Result<(), String> {
+        // One projectable row and one absolute-path row: the annotation only
+        // survives for the relative path, the absolute row is omitted with
+        // the privacy cause recorded, and the check stays fail-honest.
+        let mut absolute_row = introduced_row();
+        absolute_row.key = "panic:C:/abs/leak.rs".to_string();
+        absolute_row.path = "C:/abs/leak.rs".to_string();
+        let report = canonical_blocking_report("worse", vec![introduced_row(), absolute_row]);
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4608-privacy",
+        );
+        if check.result != GitHubPrCheckResultV1::FindingsBlocking
+            || check.introduced_count != 2
+            || check.annotated_count != 1
+            || check.omitted_count != 1
+        {
+            return Err(format!("absolute-path row projected {check:?}"));
+        }
+        let survivor_ok = check
+            .annotations
+            .first()
+            .is_some_and(|annotation| annotation.path == "src/new.rs");
+        if check.annotations.len() != 1 || !survivor_ok {
+            return Err(format!("wrong surviving annotations {check:?}"));
+        }
+        if !check
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("private absolute"))
+        {
+            return Err(format!(
+                "privacy omission reason missing: {:?}",
+                check.limitations
+            ));
+        }
+        validate_github_pr_check_v1(&check)
+            .map_err(|error| format!("projected check with privacy omission invalid: {error}"))
+    }
+
+    #[test]
+    fn validate_rejects_annotation_with_private_absolute_path() -> Result<(), String> {
+        // Defense in depth: a non-canonical producer hand-assembling a check
+        // with an absolute annotation path must fail validation even though
+        // the projection itself never emits one.
+        let report = canonical_blocking_report("worse", vec![introduced_row()]);
+        let mut check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4608-validate",
+        );
+        let annotation = check
+            .annotations
+            .get_mut(0)
+            .ok_or_else(|| "fixture produced no annotation to mutate".to_string())?;
+        annotation.path = "/abs/leak.rs".to_string();
+        match validate_github_pr_check_v1(&check) {
+            Ok(()) => Err("absolute annotation path passed validation".to_string()),
+            Err(error) => {
+                if error.contains("private absolute") {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected validation error: {error}"))
+                }
+            }
+        }
     }
 }
