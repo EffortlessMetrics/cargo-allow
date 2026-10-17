@@ -1,12 +1,13 @@
 use super::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
     count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
+    select_add_finding,
 };
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowErrorKind, Finding, FindingKind, Lifecycle, MatchStatus,
     Selector, Span, StructuralIdentity,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn entry_with_id(id: &str) -> AllowEntry {
     AllowEntry {
@@ -284,4 +285,80 @@ fn ensure_broad_scope_addable_allows_a_first_time_baseline() {
     let cfg = AllowConfig::empty();
 
     assert!(ensure_broad_scope_addable(&cfg, &entry).is_ok());
+}
+
+fn panic_kind_filter() -> Result<crate::KindFilter, Box<dyn std::error::Error>> {
+    match crate::parse_kind_filter("panic") {
+        Ok(kind) => Ok(kind),
+        Err(error) => Err(format!("parse panic kind filter: {error}").into()),
+    }
+}
+
+/// #4610: the no-current-finding usage error carries a typed next step, so the
+/// rendered report complements the in-message remedy instead of appending the
+/// contradictory generic "review the command syntax" line.
+#[test]
+fn select_add_finding_no_finding_error_carries_a_typed_next_step()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let error = match select_add_finding(&[], kind, Path::new("src/lib.rs"), 1) {
+        Err(error) => error,
+        Ok(_) => return Err("an empty finding list must refuse the add".into()),
+    };
+
+    let next_step = error
+        .next_step()
+        .ok_or("the no-finding error must carry a typed next step")?;
+    assert!(
+        next_step.contains("pass the exact --line"),
+        "the next step must direct at an exact --line: {next_step}"
+    );
+    let report = crate::error_report::format_cli_error(&error);
+    assert!(
+        report.contains("Next: pass the exact --line"),
+        "the typed next step must render: {report}"
+    );
+    assert!(
+        !report.contains("review the command syntax"),
+        "the generic syntax line must not contradict the typed remedy: {report}"
+    );
+    assert_eq!(report.matches("Next:").count(), 1, "{report}");
+    Ok(())
+}
+
+/// #4610: the ambiguous-add usage error carries a typed next step pointing at
+/// the read-only way to find the exact line numbers, replacing the generic
+/// syntax line.
+#[test]
+fn select_add_finding_ambiguous_error_carries_a_typed_next_step()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    // Two findings one line away from the requested line: an exact tie.
+    let findings = vec![
+        panic_unwrap_finding("src/foo.rs", 1),
+        panic_unwrap_finding("src/foo.rs", 3),
+    ];
+    let error = match select_add_finding(&findings, kind, Path::new("src/foo.rs"), 2) {
+        Err(error) => error,
+        Ok(_) => return Err("an exact two-finding tie must refuse the add".into()),
+    };
+
+    let next_step = error
+        .next_step()
+        .ok_or("the ambiguous-add error must carry a typed next step")?;
+    assert!(
+        next_step.contains("cargo-allow check --kind panic --format json"),
+        "the next step must point at the read-only line-number listing: {next_step}"
+    );
+    let report = crate::error_report::format_cli_error(&error);
+    assert!(
+        report.contains("Next: run `cargo-allow check --kind panic --format json`"),
+        "the typed next step must render: {report}"
+    );
+    assert!(
+        !report.contains("review the command syntax"),
+        "the generic syntax line must not contradict the typed remedy: {report}"
+    );
+    assert_eq!(report.matches("Next:").count(), 1, "{report}");
+    Ok(())
 }

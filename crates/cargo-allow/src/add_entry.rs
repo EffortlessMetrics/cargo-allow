@@ -36,6 +36,13 @@ pub(crate) fn select_add_finding<'a>(
                      or use `--include-untracked` if the source file is not git-tracked",
                 kind.kind, normalized_path, line, kind.kind
             ),
+        )
+        // #4610: the message already carries the listing remedy; the typed
+        // next step complements it with what to do next instead of the
+        // contradictory generic "review the command syntax" line.
+        .with_next_step(
+            "pass the exact --line of one of the listed findings, \
+                 or pass a different --kind when the occurrence belongs to another finding class.",
         ));
     };
     let tied = candidates
@@ -50,7 +57,14 @@ pub(crate) fn select_add_finding<'a>(
                      specify an exact --line that matches only one finding",
                 normalized_path, line
             ),
-        ));
+        )
+        // #4610: complement the in-message remedy with the read-only way
+        // to find the exact line numbers, not the generic syntax line.
+        .with_next_step(format!(
+            "run `cargo-allow check --kind {} --format json` to see the exact line numbers \
+                 near {}:{}, then pass one of them.",
+            kind.kind, normalized_path, line
+        )));
     }
     Ok((index, finding))
 }

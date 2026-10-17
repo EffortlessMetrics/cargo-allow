@@ -1105,3 +1105,124 @@ fn add_without_kind_or_target_still_requires_kind_at_parse_time() -> Result<(), 
     remove_temp_root(root);
     Ok(())
 }
+
+/// #4610: the no-current-finding add error must render the typed next step on
+/// stderr and must not append the contradictory generic "review the command
+/// syntax" line after the message already names the real remedy.
+#[test]
+fn add_no_finding_error_renders_typed_next_step_not_generic_syntax_line()
+-> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-no-finding-next-step");
+    // A source file with no findings at all: the add request is syntactically
+    // valid, so the generic syntax remedy would be contradictory.
+    fs::write(root.join("src/empty.rs"), "pub fn plain() -> u8 { 0 }\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write empty source: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/empty.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "no-finding fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "adding where no finding exists must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("no current panic finding found near"),
+        "the no-finding message must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: pass the exact --line"),
+        "the typed next step must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "the generic syntax line must not follow the typed remedy: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4610: the ambiguous-add error must render the typed next step pointing at
+/// the read-only exact-line listing, not the generic syntax line.
+#[test]
+fn add_ambiguous_error_renders_typed_next_step_not_generic_syntax_line()
+-> Result<(), std::io::Error> {
+    let root = temp_root("add-ambiguous-next-step");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    // Unwraps on lines 1 and 3: --line 2 is an exact tie.
+    fs::write(
+        root.join("src/amb.rs"),
+        "pub fn a(v: Option<u8>) -> u8 { v.unwrap() }\npub fn pad() -> u8 { 0 }\npub fn b(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write ambiguous source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/amb.rs",
+            "--line",
+            "2",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "ambiguous fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "an ambiguous add request must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("ambiguous add request"),
+        "the ambiguous message must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: run `cargo-allow check --kind panic --format json`"),
+        "the typed next step must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "the generic syntax line must not follow the typed remedy: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
