@@ -42,30 +42,33 @@ pub(crate) fn compat_selected_policy_path(
     root: &Path,
     kind_filter: Option<&str>,
 ) -> Option<PathBuf> {
-    let compat_kind = kind_filter.unwrap_or("non-rust");
-    let default_policy_file = if is_no_panic_allowlist_compat_kind(compat_kind) {
+    let compat_kind = kind_filter
+        .unwrap_or("non-rust")
+        .trim()
+        .to_ascii_lowercase();
+    let default_policy_file = if is_no_panic_allowlist_compat_kind(&compat_kind) {
         "policy/no-panic-allowlist.toml"
-    } else if is_panic_compat_kind(compat_kind) {
+    } else if is_panic_compat_kind(&compat_kind) {
         "policy/no-panic-baseline.toml"
-    } else if is_clippy_compat_kind(compat_kind) {
+    } else if is_clippy_compat_kind(&compat_kind) {
         "policy/clippy-exceptions.toml"
-    } else if is_unsafe_compat_kind(compat_kind) {
+    } else if is_unsafe_compat_kind(&compat_kind) {
         "policy/unsafe-allowlist.toml"
-    } else if is_executable_compat_kind(compat_kind) {
+    } else if is_executable_compat_kind(&compat_kind) {
         "policy/executable-allowlist.toml"
-    } else if is_workflow_compat_kind(compat_kind) {
+    } else if is_workflow_compat_kind(&compat_kind) {
         "policy/workflow-allowlist.toml"
-    } else if is_dependency_surface_compat_kind(compat_kind) {
+    } else if is_dependency_surface_compat_kind(&compat_kind) {
         "policy/dependency-surface-allowlist.toml"
-    } else if is_process_compat_kind(compat_kind) {
+    } else if is_process_compat_kind(&compat_kind) {
         "policy/process-allowlist.toml"
-    } else if is_network_compat_kind(compat_kind) {
+    } else if is_network_compat_kind(&compat_kind) {
         "policy/network-allowlist.toml"
     } else if matches!(
         // The parsed kind is case-insensitive (#4581 review): load_compat_world
         // selects the generated policy through parse_kind_filter, so
         // `--kind GENERATED` reaches this helper too.
-        parse_kind_filter(compat_kind).map(|parsed| parsed.kind == FindingKind::GeneratedCode),
+        parse_kind_filter(&compat_kind).map(|parsed| parsed.kind == FindingKind::GeneratedCode),
         Ok(true)
     ) {
         "policy/generated-allowlist.toml"
@@ -81,7 +84,13 @@ pub(crate) fn load_compat_world(
     kind_filter: Option<&str>,
     include_untracked: bool,
 ) -> CargoAllowResult<(PathBuf, AllowConfig, Vec<Finding>, InventoryFacts)> {
-    let compat_kind = kind_filter.unwrap_or("non-rust");
+    // #4589: normalize once so every per-kind arm (and the collision
+    // guard's helper) sees the same case-insensitive spelling the parser
+    // accepts; the raw value previously leaked into the dispatch.
+    let compat_kind = kind_filter
+        .unwrap_or("non-rust")
+        .trim()
+        .to_ascii_lowercase();
     let parsed_filter = kind_filter
         .map(parse_kind_filter)
         .transpose()?
@@ -93,7 +102,7 @@ pub(crate) fn load_compat_world(
     // .gitattributes source, and the process/network surfaces derive findings
     // from policy config, so `--include-untracked` would be silently ignored.
     // Fail closed rather than accept a flag that does nothing (#1948).
-    if include_untracked && compat_kind_ignores_include_untracked(compat_kind, &parsed_filter) {
+    if include_untracked && compat_kind_ignores_include_untracked(&compat_kind, &parsed_filter) {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
             format!(
@@ -103,35 +112,35 @@ pub(crate) fn load_compat_world(
     }
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    if is_no_panic_allowlist_compat_kind(compat_kind) {
+    if is_no_panic_allowlist_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/no-panic-allowlist.toml");
         let cfg = allow_policy_legacy::load_no_panic_allowlist_compat_config(policy_path)?;
         let (findings, inventory_facts) =
             scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Panic)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
-    if is_panic_compat_kind(compat_kind) {
+    if is_panic_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/no-panic-baseline.toml");
         let cfg = allow_policy_legacy::load_no_panic_baseline_compat_config(policy_path)?;
         let (findings, inventory_facts) =
             scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Panic)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
-    if is_clippy_compat_kind(compat_kind) {
+    if is_clippy_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/clippy-exceptions.toml");
         let cfg = allow_policy_legacy::load_clippy_exceptions_compat_config(policy_path)?;
         let (findings, inventory_facts) =
             scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::LintException)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
-    if is_unsafe_compat_kind(compat_kind) {
+    if is_unsafe_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/unsafe-allowlist.toml");
         let cfg = allow_policy_legacy::load_unsafe_allowlist_compat_config(policy_path)?;
         let (findings, inventory_facts) =
             scan_legacy_rust_compat(&root, &cfg, include_untracked, FindingKind::Unsafe)?;
         return Ok((root, cfg, findings, inventory_facts));
     }
-    if is_executable_compat_kind(compat_kind) {
+    if is_executable_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/executable-allowlist.toml");
         let cfg = allow_policy_legacy::load_executable_compat_config(policy_path)?;
         let findings = allow_policy_legacy::executable_findings_from_git(&root)?;
@@ -142,7 +151,7 @@ pub(crate) fn load_compat_world(
             InventoryFacts::source_only(InventorySource::FilesystemFallback),
         ));
     }
-    if is_workflow_compat_kind(compat_kind) {
+    if is_workflow_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/workflow-allowlist.toml");
         let cfg = allow_policy_legacy::load_workflow_compat_config(policy_path)?;
         let findings = allow_policy_legacy::workflow_findings_from_files(&root)?;
@@ -153,7 +162,7 @@ pub(crate) fn load_compat_world(
             InventoryFacts::source_only(InventorySource::GitTracked),
         ));
     }
-    if is_dependency_surface_compat_kind(compat_kind) {
+    if is_dependency_surface_compat_kind(&compat_kind) {
         let policy_path =
             compat_policy_path(config, &root, "policy/dependency-surface-allowlist.toml");
         let cfg = allow_policy_legacy::load_dependency_surface_compat_config(policy_path)?;
@@ -173,7 +182,7 @@ pub(crate) fn load_compat_world(
             InventoryFacts::scanned_inventory(&inventory),
         ));
     }
-    if is_process_compat_kind(compat_kind) {
+    if is_process_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/process-allowlist.toml");
         let cfg = allow_policy_legacy::load_process_compat_config(policy_path)?;
         let findings = allow_policy_legacy::process_findings_from_config(&cfg);
@@ -184,7 +193,7 @@ pub(crate) fn load_compat_world(
             InventoryFacts::source_only(InventorySource::FilesystemFallback),
         ));
     }
-    if is_network_compat_kind(compat_kind) {
+    if is_network_compat_kind(&compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/network-allowlist.toml");
         let cfg = allow_policy_legacy::load_network_compat_config(policy_path)?;
         let findings = allow_policy_legacy::network_findings_from_config(&cfg);

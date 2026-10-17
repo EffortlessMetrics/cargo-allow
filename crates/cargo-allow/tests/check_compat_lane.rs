@@ -166,3 +166,73 @@ fn git_init(root: &std::path::Path) {
         );
     }
 }
+
+#[test]
+fn audit_compat_accepts_uppercase_kind_spellings() {
+    // #4589: parse_kind_filter is case-insensitive, and load_compat_world
+    // now normalizes the raw kind before dispatch, so `--kind UNSAFE` must
+    // behave exactly like `--kind unsafe` instead of failing with a usage
+    // error that lists the lowercase spelling as supported.
+    let root = unique_root("check-compat-uppercase");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("policy/network-allowlist.toml"),
+        network_policy_fixture(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy policy: {err}")));
+    fs::write(
+        root.join("policy/unsafe-allowlist.toml"),
+        r#"schema_version = 1
+policy = "unsafe-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "unsafe-read"
+path = "src/lib.rs"
+family = "unsafe_block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Caller validates pointer before read."
+evidence = ["unsafe-review:docs/evidence/unsafe/read.json"]
+created = "2026-05-09"
+expires = "permanent"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn ok() {}
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+
+    // `generated` is covered by the compat_selected_policy_path unit
+    // tests; its legacy fixture needs a generator row, so it is not
+    // duplicated here.
+    for kind in ["UNSAFE", "NETWORK"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+            .arg("audit")
+            .arg("--compat")
+            .arg("--kind")
+            .arg(kind)
+            .arg("--root")
+            .arg(&root)
+            .arg("--artifact-dir")
+            .arg(root.join("artifacts"))
+            .arg("--emit")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run compat audit {kind}: {err}")));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            output.status.success(),
+            "uppercase/spaced kind {kind} must load like the lowercase spelling: {stderr}"
+        );
+    }
+
+    remove_root(&root);
+}

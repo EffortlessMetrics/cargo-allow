@@ -2096,3 +2096,61 @@ fn diff_explicit_head_emit_survives_a_removed_head_policy() {
 
     remove_temp_root(root);
 }
+
+#[test]
+fn diff_collision_refusal_leaves_no_success_shaped_outputs() {
+    // #4592: on collision-guard refusal, diff must not leave success-shaped
+    // report/receipt files for an invocation that exited 2 (check rewinds
+    // its outputs; the diff/audit refusals fire before their writes).
+    let root = temp_root("diff-collision-refusal");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(None),
+    );
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .arg("diff")
+        .arg("--base")
+        .arg("HEAD")
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--artifact-dir")
+        .arg("policy")
+        .arg("--emit")
+        .arg("json")
+        .arg("--receipt")
+        .arg(root.join("receipt.json"))
+        .arg("--output")
+        .arg(root.join("report.md"))
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a policy-colliding artifact dir must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("would contain the selected policy file"),
+        "the typed error must name the collision: {stderr}"
+    );
+    assert!(
+        !root.join("receipt.json").is_file(),
+        "no receipt may survive the refusal"
+    );
+    assert!(
+        !root.join("report.md").is_file(),
+        "no report may survive the refusal"
+    );
+    let policy_entries: Vec<_> = fs::read_dir(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy dir: {err}")))
+        .map(|entry| entry.unwrap_or_else(|err| std::panic::panic_any(format!("{err}"))))
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .collect();
+    assert!(
+        policy_entries.iter().all(|name| name == "allow.toml"),
+        "the policy directory must hold only the policy file: {policy_entries:?}"
+    );
+
+    remove_temp_root(root);
+}
