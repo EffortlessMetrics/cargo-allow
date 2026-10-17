@@ -6,7 +6,7 @@ body: >-
   with a usage error that lists the lowercase spelling as supported
   (#4589). The artifact-dir collision guard runs before the report and
   receipt writes on `diff` (and before the report on `audit`), so a
-  refusal never leaves success-shaped outputs beside the live policy
+  refusal does not write new outputs beside the live policy
   (#4592). A partial inventory (a tracked file missing from the worktree
   walk) now fails `check --mode no-new` exactly as the staged path
   already did, instead of exiting 0 behind a `Outcome: partial_data

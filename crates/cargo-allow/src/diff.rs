@@ -476,7 +476,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
         // (#4592: the collision guard runs before the report/receipt writes,
-        // so a refusal never leaves success-shaped evidence on disk.)
+        // so a refusal writes no new outputs beside the live policy.)
+        // The parse is deliberately late: the report/receipt above have
+        // already carried this invocation's --command-summary-output sidecar
+        // duty (#4393), so hoisting the parse would strand a stale sidecar
+        // on usage errors.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
