@@ -82,10 +82,17 @@ fn check_compat_binds_legacy_policy_digest_and_guards_the_selected_policy() {
         stderr.contains("would contain the selected policy file"),
         "the collision guard must protect the compat-selected legacy policy: {stderr}"
     );
-    assert!(
-        !root.join("policy/check-json.json").is_file(),
-        "no artifact may be written into the legacy policy directory"
-    );
+    for entry in fs::read_dir(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy dir: {err}")))
+    {
+        let name = entry
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read dir entry: {err}")))
+            .file_name();
+        assert!(
+            name.to_string_lossy() == "network-allowlist.toml",
+            "the legacy policy directory must hold only the legacy policy: {name:?}"
+        );
+    }
 
     // Safe artifact dir: the emit succeeds with the legacy policy digest
     // bound in both the manifest identity and the receipt provenance.
@@ -120,16 +127,19 @@ fn check_compat_binds_legacy_policy_digest_and_guards_the_selected_policy() {
         .get("resolved_config_identity")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
-    assert!(
-        identity.starts_with("sha256:v1:"),
-        "resolved_config_identity must bind the legacy policy digest: {identity}"
+    let legacy_text = fs::read_to_string(root.join("policy/network-allowlist.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read legacy policy: {err}")));
+    let expected_digest = allow_core::sha256_v1_bytes(legacy_text.as_bytes());
+    assert_eq!(
+        identity, expected_digest,
+        "resolved_config_identity must be the legacy policy bytes' digest"
     );
 
     let receipt_text = fs::read_to_string(root.join("compat-receipt.json"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read receipt: {err}")));
     assert!(
-        receipt_text.contains("policy_digest"),
-        "the compat receipt must carry policy-byte provenance: {receipt_text}"
+        receipt_text.contains(&expected_digest),
+        "the compat receipt must carry the legacy policy digest: {receipt_text}"
     );
 
     remove_root(&root);
@@ -144,10 +154,15 @@ fn git_init(root: &std::path::Path) {
         &["commit", "-m", "compat fixture"],
     ];
     for git_args in git_invocations {
-        std::process::Command::new("git")
+        let output = std::process::Command::new("git")
             .args(git_args)
             .current_dir(root)
             .output()
             .unwrap_or_else(|err| std::panic::panic_any(format!("git {git_args:?}: {err}")));
+        assert!(
+            output.status.success(),
+            "git {git_args:?} failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
