@@ -415,7 +415,7 @@ pub fn scanner_limitations_for_schema_id(schema_id: &str) -> &'static [&'static 
     }
 }
 
-pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for matching).";
+pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint, and raw-text receiver_fingerprint/target_fingerprint values) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for snippet-hash-anchored (exact-occurrence) matching; source-text identity fields are cleared before matching, so structural-tier entries that pin them require an unredacted scan).";
 
 /// The passing result label, shared by every renderer.
 ///

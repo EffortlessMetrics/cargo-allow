@@ -699,7 +699,7 @@ artifact's scan surface, not limitations.
 | `data_flow_not_analyzed` | Yes | data-flow analysis was not performed. |
 | `external_evidence_tools_not_invoked` | Yes | External evidence tools can be referenced by policy but were not executed by the scan. |
 | `repository_code_not_executed` | Yes | Repository code was not executed by cargo-allow. |
-| `source_text_in_identity_fields` | No | Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set `CARGO_ALLOW_REDACT_IDENTITY=1` to redact them. |
+| `source_text_in_identity_fields` | No | Identity fields (symbol, callee, container, module, macro_name, lint, and raw-text receiver_fingerprint/target_fingerprint values) carry source-derived text and are emitted in CI artifacts; set `CARGO_ALLOW_REDACT_IDENTITY=1` to redact them (structural hashes are preserved for snippet-hash-anchored (exact-occurrence) matching; source-text identity fields are cleared before matching, so structural-tier entries that pin them require an unredacted scan). |
 
 ## Contract Change Rules
 

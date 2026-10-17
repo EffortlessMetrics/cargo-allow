@@ -60,6 +60,7 @@ pub mod precommit_tool;
 mod propose;
 mod provider_contract;
 mod prune;
+mod redaction_disclosure;
 mod reference;
 mod refresh;
 mod reporting;
